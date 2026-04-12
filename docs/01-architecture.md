@@ -290,7 +290,7 @@ interface EditStep {
 Два графа:
 
 **Граф категорий** (внутри синтеза):
-- Данные: таблицы `categories` + `category_edges` + `category_topology`
+- Данные: таблицы `categories` + `category_edges` + `cluster_labels` + topology fields in categories
 - Парсинг: `parseGraph()` (строка 10654) + нормализация типов через Element Taxonomy (4.8) и `parseTopology()` (строка 10425) адаптируются для извлечения из HTML-ответа Claude и записи в БД
 - Визуализация: D3.js (2D) + Three.js (3D) — полностью на клиенте, данные загружаются через API
 - Код визуализации (`build2D()` строка 12156, `build3D()` строка 11172) переносится в React-компоненты
