@@ -8,7 +8,9 @@
 - Drizzle ORM: полная схема 26 таблиц, 30 FK, 7 UNIQUE, 33 индекса
 - Начальная миграция 0000_initial.sql — протестирована на live PostgreSQL
 - shared/types/: 11 файлов, 1113 строк, 111 экспортов — 1:1 со schema.ts
-- shared/constants/: 6 файлов, 654 строки — 93 философа, все enum-маппинги
+- shared/constants/: 6 файлов, 737 строк — сверены с исходником philosynth.html
+  - 74 философа (70 из исходника + Демокрит, Авиценна, Аверроэс, Оккам)
+  - 12 разделов (не 7), 34 ctx-ключа (не 19), коды Latin (не Cyrillic)
 - scripts/seed-taxonomy.ts: готов (18 типов категорий + 29 типов связей)
 - Полная кросс-верификация: schema ↔ types ↔ constants — 0 расхождений
 
@@ -39,11 +41,11 @@
 
 #### A3. shared/utils/ — минимальные реализации, нужен порт из исходника
 
-| Файл | Что портировать | Строки исходника |
+| Файл | Что портировать | Статус |
 |---|---|---|
-| shared/utils/transliterate.ts | transliterate() | 13634–13657 |
-| shared/utils/normalize.ts | normalizeName, normalizeType | 10502–10540 |
-| shared/utils/escape.ts | esc() — уже работает, но упрощённый | HTML escaping |
+| shared/utils/transliterate.ts | transliterate() | ✅ Портировано из исходника |
+| shared/utils/normalize.ts | normalizeName, normalizeType | Минимальная реализация, нужен порт (строки 10502–10540) |
+| shared/utils/escape.ts | esc() — уже работает, но упрощённый | Достаточно для MVP |
 
 ### Категория B: пустые директории — целые подсистемы
 

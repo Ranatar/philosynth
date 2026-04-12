@@ -1,122 +1,136 @@
 /**
- * Маппинг имён философов → filename-safe транслитерация (PHIL_FILENAME, строки 13542–13613).
- * Используется при экспорте HTML/PNG/MMD: имя файла включает имена участников.
- *
- * Формат: "Имя" → "imya" (краткая латиница, lowercase, без пробелов).
+ * Маппинг имён философов → filename-safe имя (PHIL_FILENAME).
+ * 70 записей из исходника (строка 13542), 36 дополнений (// +).
  */
 export const PHIL_FILENAME: Record<string, string> = {
   // Античность
-  Пифагор: "pythagoras",
-  Гераклит: "heraclitus",
-  Парменид: "parmenides",
-  Демокрит: "democritus",
-  Сократ: "socrates",
-  Платон: "plato",
-  Аристотель: "aristotle",
-  Эпикур: "epicurus",
-  "Зенон Стоик": "zeno-stoic",
-  Плотин: "plotinus",
-  "Секст Эмпирик": "sextus-empiricus",
+  "Пифагор": "Pythagoras",
+  "Гераклит": "Heraclitus",
+  "Парменид": "Parmenides",
+  "Демокрит": "Democritus",                     // +
+  "Сократ": "Socrates",
+  "Платон": "Plato",
+  "Аристотель": "Aristotle",
+  "Эпикур": "Epicurus",
+  "Зенон Стоик": "Zeno-Stoic",                  // +
+  "Секст Эмпирик": "Sextus-Empiricus",          // +
+  "Марк Аврелий": "Aurelius",
+  "Плотин": "Plotinus",
 
   // Средневековье
-  Августин: "augustine",
-  Боэций: "boethius",
-  "Аль-Фараби": "al-farabi",
-  Авиценна: "avicenna",
-  "Ансельм Кентерберийский": "anselm",
-  Аверроэс: "averroes",
-  Маймонид: "maimonides",
-  "Фома Аквинский": "aquinas",
-  "Иоанн Дунс Скот": "duns-scotus",
-  "Уильям Оккам": "ockham",
-  "Николай Кузанский": "cusanus",
+  "Августин": "Augustine",
+  "Боэций": "Boethius",                         // +
+  "Аль-Фараби": "Al-Farabi",                    // +
+  "Авиценна": "Avicenna",                       // +
+  "Ансельм Кентерберийский": "Anselm",
+  "Аверроэс": "Averroes",                       // +
+  "Маймонид": "Maimonides",                     // +
+  "Фома Аквинский": "Aquinas",
+  "Дунс Скот": "Scotus",
+  "Уильям Оккам": "Ockham",                     // +
+  "Николай Кузанский": "Cusanus",
 
-  // Возрождение и Новое время
-  Макиавелли: "machiavelli",
-  "Фрэнсис Бэкон": "bacon",
-  Декарт: "descartes",
-  Гоббс: "hobbes",
-  Спиноза: "spinoza",
-  Локк: "locke",
-  Лейбниц: "leibniz",
-  Беркли: "berkeley",
-  Юм: "hume",
-  Монтескьё: "montesquieu",
-  Руссо: "rousseau",
+  // Новое время
+  "Макиавелли": "Machiavelli",                  // +
+  "Фрэнсис Бэкон": "Bacon",
+  "Декарт": "Descartes",
+  "Гоббс": "Hobbes",                            // +
+  "Спиноза": "Spinoza",
+  "Локк": "Locke",
+  "Лейбниц": "Leibniz",
+  "Беркли": "Berkeley",
+  "Монтескьё": "Montesquieu",                   // +
+  "Юм": "Hume",
+  "Руссо": "Rousseau",
 
   // Классическая немецкая
-  Кант: "kant",
-  Фихте: "fichte",
-  Шеллинг: "schelling",
-  Гегель: "hegel",
-  Шопенгауэр: "schopenhauer",
-  Фейербах: "feuerbach",
+  "Кант": "Kant",
+  "Фихте": "Fichte",
+  "Шеллинг": "Schelling",
+  "Гегель": "Hegel",
+  "Шопенгауэр": "Schopenhauer",
+  "Фейербах": "Feuerbach",                      // +
 
   // XIX век
-  Маркс: "marx",
-  Кьеркегор: "kierkegaard",
-  Милль: "mill",
-  Ницше: "nietzsche",
-  Пирс: "peirce",
-  Джеймс: "james",
-  Дильтей: "dilthey",
-  Бергсон: "bergson",
-  Фреге: "frege",
+  "Огюст Конт": "Comte",
+  "Кьеркегор": "Kierkegaard",
+  "Маркс": "Marx",
+  "Милль": "Mill",                              // +
+  "Дильтей": "Dilthey",
+  "Брентано": "Brentano",
+  "Пирс": "Peirce",
+  "Ницше": "Nietzsche",
+  "Фреге": "Frege",
+  "Мейнонг": "Meinong",
+  "Джеймс": "James",                            // +
 
-  // Феноменология, экзистенциализм
-  Гуссерль: "husserl",
-  Хайдеггер: "heidegger",
-  Ясперс: "jaspers",
-  Сартр: "sartre",
-  "Мерло-Понти": "merleau-ponty",
-  Камю: "camus",
-  Марсель: "marcel",
-  Левинас: "levinas",
+  // Психоанализ
+  "Фрейд": "Freud",
+  "Юнг": "Jung",
 
-  // Аналитическая философия
-  Рассел: "russell",
-  Витгенштейн: "wittgenstein",
-  Карнап: "carnap",
-  Поппер: "popper",
-  Куайн: "quine",
-  Остин: "austin",
-  Райл: "ryle",
-  Куhn: "kuhn",
-  Лакатос: "lakatos",
-  Дэвидсон: "davidson",
-  Крипке: "kripke",
+  // XX век
+  "Гуссерль": "Husserl",
+  "Бергсон": "Bergson",
+  "Дьюи": "Dewey",
+  "Уайтхед": "Whitehead",
+  "Рассел": "Russell",
+  "Кассирер": "Cassirer",
+  "Витгенштейн": "Wittgenstein",
+  "Хайдеггер": "Heidegger",
+  "Ясперс": "Jaspers",                          // +
+  "Карнап": "Carnap",
+  "Батай": "Bataille",
+  "Марсель": "Marcel",                          // +
+  "Гадамер": "Gadamer",
+  "Лакан": "Lacan",
+  "Адорно": "Adorno",
+  "Хоркхаймер": "Horkheimer",                   // +
+  "Маркузе": "Marcuse",                         // +
+  "Сартр": "Sartre",
+  "Арендт": "Arendt",                           // +
+  "Левинас": "Levinas",
+  "Мерло-Понти": "Merleau-Ponty",
 
-  // Другие направления XX в.
-  Дьюи: "dewey",
-  Уайтхед: "whitehead",
-  Адорно: "adorno",
-  Хоркхаймер: "horkheimer",
-  Маркузе: "marcuse",
-  Хабермас: "habermas",
-  Арендт: "arendt",
-  Гадамер: "gadamer",
-  Рикёр: "ricoeur",
-  Фуко: "foucault",
-  Деррида: "derrida",
-  Делёз: "deleuze",
-  Бодрийяр: "baudrillard",
-  Лиотар: "lyotard",
-  Ролз: "rawls",
-  Нозик: "nozick",
+  // Аналитическая
+  "Куайн": "Quine",
+  "Поппер": "Popper",                           // +
+  "Остин": "Austin",                            // +
+  "Райл": "Ryle",                               // +
+  "Кун": "Kuhn",                                // +
+  "Лакатос": "Lakatos",                         // +
+  "Дэвидсон": "Davidson",                       // +
+  "Крипке": "Kripke",                           // +
 
-  // Русская философия
-  Чаадаев: "chaadaev",
-  Соловьёв: "solovyov",
-  Бердяев: "berdyaev",
-  Лосский: "lossky",
-  Флоренский: "florensky",
-  Шестов: "shestov",
-  Лосев: "losev",
+  "Камю": "Camus",
 
-  // Восточная философия
-  Конфуций: "confucius",
-  "Лао-Цзы": "laozi",
-  Нагарджуна: "nagarjuna",
+  // Постструктурализм, постмодерн, политическая
+  "Делёз": "Deleuze",
+  "Фуко": "Foucault",
+  "Деррида": "Derrida",
+  "Рикёр": "Ricoeur",                           // +
+  "Бодрийяр": "Baudrillard",                    // +
+  "Лиотар": "Lyotard",                          // +
+  "Хомский": "Chomsky",
+  "Рорти": "Rorty",
+  "Хабермас": "Habermas",
+  "Ролз": "Rawls",                              // +
+  "Нозик": "Nozick",                            // +
+  "Жижек": "Zizek",
+
+  // Восточная
+  "Конфуций": "Confucius",
+  "Лао-цзы": "Laozi",
+  "Нагарджуна": "Nagarjuna",
+  "Шанкара": "Shankara",
+
+  // Русская
+  "Чаадаев": "Chaadaev",                        // +
+  "Соловьёв": "Solovyov",
+  "Бердяев": "Berdyaev",
+  "Лосский": "Lossky",                          // +
+  "Флоренский": "Florensky",                    // +
+  "Шестов": "Shestov",                          // +
+  "Лосев": "Losev",
 };
 
 /**
@@ -125,19 +139,3 @@ export const PHIL_FILENAME: Record<string, string> = {
 export const FILENAME_TO_PHIL: Record<string, string> = Object.fromEntries(
   Object.entries(PHIL_FILENAME).map(([name, fname]) => [fname, name]),
 );
-
-/**
- * Генерирует имя файла для синтеза по списку участников.
- * Например: ["Кант", "Гегель"] → "kant-hegel"
- */
-export function buildSynthesisFilename(
-  philosophers: string[],
-  maxLength = 60,
-): string {
-  const parts = philosophers
-    .map((p) => PHIL_FILENAME[p] ?? p.toLowerCase().replace(/\s+/g, "-"))
-    .join("-");
-  return parts.length > maxLength
-    ? parts.slice(0, maxLength).replace(/-[^-]*$/, "")
-    : parts;
-}
