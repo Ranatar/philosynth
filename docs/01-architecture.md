@@ -46,103 +46,103 @@ Deploy:      Docker Compose (dev) → VPS / managed PostgreSQL (prod)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                           КЛИЕНТ (React)                           │
-│                                                                     │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
-│  │ Каталог  │ │ Редактор │ │  Граф    │ │ Режимы   │ │ Админка  │ │
-│  │концепций │ │синтеза   │ │ 2D/3D   │ │(оппонент,│ │промптов  │ │
-│  │          │ │          │ │          │ │переводч.)│ │          │ │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ │
-│       │            │            │             │            │       │
-│  ┌────┴────────────┴────────────┴─────────────┴────────────┴─────┐ │
-│  │              Zustand Store + WebSocket Client                  │ │
-│  └───────────────────────────┬───────────────────────────────────┘ │
-└──────────────────────────────┼───────────────────────────────────┘
-                               │ HTTP / WebSocket
+│                           КЛИЕНТ (React)                                                                          │
+│                                                                                                                   │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         │
+│  │ Каталог         │ │ Редактор       │ │  Граф           │ │ Режимы          │ │ Админка        │         │
+│  │концепций        │ │синтеза         │ │ 2D/3D           │ │(оппонент,       │ │промптов        │         │
+│  │                 │ │                │ │                 │ │переводч.).      │ │                │         │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘         │
+│          │                    │                   │                   │                    │                   │
+│  ┌────┴────────────┴───────────┴────────────┴────────────┴───────┐     │
+│  │              Zustand Store + WebSocket Client                                                           │     │
+│  └───────────────────────────┬───────────────────────────────────┘     │
+└──────────────────────────────┼──────────────────────────────────────┘
+                                                    │ HTTP / WebSocket
 ┌──────────────────────────────┼───────────────────────────────────┐
-│                        API GATEWAY (Hono)                        │
-│                                                                   │
-│  ┌─────────┐ ┌─────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ │
-│  │  Auth   │ │ Rate    │ │ Billing  │ │ CORS    │ │ Logging  │ │
-│  │Middleware│ │ Limiter │ │ Check    │ │         │ │          │ │
-│  └────┬────┘ └────┬────┘ └────┬─────┘ └────┬────┘ └────┬─────┘ │
-│       └───────────┴───────────┴────────────┴───────────┘         │
-│                               │                                   │
+│                        API GATEWAY (Hono)                                                                    │
+│                                                                                                              │
+│  ┌─────────┐ ┌─────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐         │
+│  │  Auth         │ │ Rate          │ │ Billing         │ │ CORS          │ │ Logging        │         │
+│  │Middleware.    │ │ Limiter       │ │ Check           │ │               │ │                │         │
+│  └────┬────┘ └────┬────┘ └────┬─────┘ └────┬────┘ └────┬─────┘         │
+│          └───────────┴───────────┴───────────┴───────────┘                   │
+│                                                  │                                                           │
 │  ┌────────────────────────────┼──────────────────────────────────┐│
-│  │                     ROUTE HANDLERS                            ││
-│  │                                                                ││
-│  │  /api/syntheses     CRUD, список, поиск                       ││
-│  │  /api/sections      Разделы: чтение, контекст                 ││
-│  │  /api/elements      Категории, тезисы, термины: CRUD          ││
-│  │  /api/generation    Запуск генерации, стриминг                ││
-│  │  /api/plans         Планы редактирования                      ││
-│  │  /api/modes         Оппонент, переводчик, временной срез      ││
-│  │  /api/lineage       Граф наследования                         ││
-│  │  /api/prompts       Prompt Registry (админ)                   ││
-│  │  /api/billing       Баланс, транзакции, ключи                 ││
-│  │  /ws                WebSocket: стриминг генерации             ││
+│  │                     ROUTE HANDLERS                                                                      ││
+│  │                                                                                                         ││
+│  │  /api/syntheses     CRUD, список, поиск                                                                 ││
+│  │  /api/sections      Разделы: чтение, контекст                                                           ││
+│  │  /api/elements      Категории, тезисы, термины: CRUD                                                    ││
+│  │  /api/generation    Запуск генерации, стриминг                                                          ││
+│  │  /api/plans         Планы редактирования                                                                ││
+│  │  /api/modes         Оппонент, переводчик, временной срез                                                ││
+│  │  /api/lineage       Граф наследования                                                                   ││
+│  │  /api/prompts       Prompt Registry (админ)                                                             ││
+│  │  /api/billing       Баланс, транзакции, ключи                                                           ││
+│  │  /ws                WebSocket: стриминг генерации                                                       ││
 │  └────────────────────────────┼──────────────────────────────────┘│
 └───────────────────────────────┼──────────────────────────────────┘
-                                │
+                                                     │
 ┌───────────────────────────────┼──────────────────────────────────┐
-│                        SERVICE LAYER                              │
-│                                                                   │
-│  ┌───────────────┐  ┌─────────────────┐  ┌────────────────────┐  │
-│  │  Synthesis     │  │  Prompt         │  │  Context           │  │
-│  │  Engine        │  │  Registry       │  │  Builder           │  │
-│  │                │  │                 │  │                    │  │
-│  │ buildSYS()     │  │ getTemplate()   │  │ buildContext       │  │
-│  │ buildSection   │  │ renderTemplate()│  │   ForSection()     │  │
-│  │   Defs()       │  │ listVersions() │  │ extractContext     │  │
-│  │ resolveContext │  │ activateVer()  │  │   Fragment()       │  │
-│  │   Deps()       │  │ testDraft()    │  │ budgeting          │  │
-│  │ buildEffective │  │                 │  │                    │  │
-│  │   Deps()       │  │                 │  │                    │  │
-│  │ compatAdvisor()│  │                 │  │                    │  │
-│  └───────┬───────┘  └────────┬────────┘  └─────────┬──────────┘  │
-│          │                   │                      │             │
-│  ┌───────┴───────┐  ┌───────┴─────────┐  ┌────────┴───────────┐  │
-│  │  Edit         │  │  Streaming      │  │  Graph             │  │
-│  │  Planner      │  │  Manager        │  │  Service           │  │
-│  │               │  │                 │  │                    │  │
-│  │ createPlan()  │  │ streamSection() │  │ parseGraph()       │  │
-│  │ confirmStep() │  │ Claude SSE →    │  │ parseTopology()    │  │
-│  │ cascadeAnalyze│  │   WebSocket     │  │ lineageTraversal() │  │
-│  │ executePlan() │  │ resumeOnError() │  │ ancestorSearch()   │  │
-│  └───────────────┘  └────────┬────────┘  └────────────────────┘  │
-│                              │                                    │
-└──────────────────────────────┼────────────────────────────────────┘
-                               │ SSE
-                    ┌──────────┴──────────┐
-                    │   Claude API        │
-                    │   (Anthropic)       │
-                    └─────────────────────┘
+│                        SERVICE LAYER                                                                         │
+│                                                                                                              │
+│  ┌───────────────┐  ┌─────────────────┐  ┌────────────────────┐       │
+│  │  Synthesis              │  │  Prompt                    │  │  Context                         │       │
+│  │  Engine                 │  │  Registry                  │  │  Builder                         │       │
+│  │                         │  │                            │  │                                  │       │
+│  │ buildSYS()              │  │ getTemplate()              │  │ buildContext                     │       │
+│  │ buildSection            │  │ renderTemplate()           │  │   ForSection()                   │       │
+│  │   Defs()                │  │ listVersions()             │  │ extractContext                   │       │
+│  │ resolveContext.         │  │ activateVer()              │  │   Fragment()                     │       │
+│  │   Deps()                │  │ testDraft()                │  │ budgeting                        │       │
+│  │ buildEffective          │  │                            │  │                                  │       │
+│  │   Deps()                │  │                            │  │                                  │       │
+│  │ compatAdvisor()         │  │                            │  │                                  │       │
+│  └───────┬───────┘  └────────┬────────┘  └─────────┬──────────┘       │
+│               │                              │                                  │                          │
+│  ┌───────┴───────┐  ┌───────┴─────────┐  ┌────────┴───────────┐       │
+│  │  Edit                   │  │  Streaming                 │  │  Graph                           │       │
+│  │  Planner                │  │  Manager                   │  │  Service                         │       │
+│  │                         │  │                            │  │                                  │       │
+│  │ createPlan()            │  │ streamSection()            │  │ parseGraph()                     │       │
+│  │ confirmStep()           │  │ Claude SSE →              │  │ parseTopology()                  │       │
+│  │ cascadeAnalyze          │  │   WebSocket                │  │ lineageTraversal()               │       │
+│  │ executePlan()           │  │ resumeOnError()            │  │ ancestorSearch()                 │       │
+│  └───────────────┘  └────────┬────────┘  └────────────────────┘       │
+│                                                │                                                            │
+└──────────────────────────────┼───────────────────────────────────┘
+                                                    │ SSE
+                                 ┌──────────┴──────────┐
+                                 │   Claude API                      │
+                                 │   (Anthropic)                     │
+                                 └─────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         DATA LAYER                                  │
-│                                                                     │
-│  ┌──────────────────────┐          ┌──────────────────────────┐    │
-│  │     PostgreSQL       │          │        Redis             │    │
-│  │                      │          │                          │    │
-│  │  users               │          │  prompt_cache:*          │    │
-│  │  sessions            │          │  config_cache:*          │    │
-│  │  syntheses           │          │  session:*               │    │
-│  │  sections            │          │  rate_limit:*            │    │
-│  │  categories          │          │  stream_state:*          │    │
-│  │  category_edges      │          │                          │    │
-│  │  glossary_terms      │          └──────────────────────────┘    │
-│  │  theses              │                                          │
-│  │  dialogue_turns      │                                          │
-│  │  synthesis_lineage   │                                          │
-│  │  prompt_templates    │                                          │
-│  │  synthesis_configs   │                                          │
-│  │  element_versions    │                                          │
-│  │  edit_plans          │                                          │
-│  │  mode_results        │                                          │
-│  │  api_usage           │                                          │
-│  │  transactions        │                                          │
-│  │  api_keys (encrypted)│                                          │
-│  └──────────────────────┘                                          │
+│                         DATA LAYER                                                                                │
+│                                                                                                                   │
+│  ┌──────────────────────┐          ┌──────────────────────────┐                │
+│  │     PostgreSQL       │             │        Redis                                          │                │
+│  │                      │             │                                                       │                │
+│  │  users               │             │  prompt_cache:*                                       │                │
+│  │  sessions            │             │  config_cache:*                                       │                │
+│  │  syntheses           │             │  session:*                                            │                │
+│  │  sections            │             │  rate_limit:*                                         │                │
+│  │  categories          │             │  stream_state:*                                       │                │
+│  │  category_edges      │             │                                                       │                │
+│  │  glossary_terms      │             └─────────────────────────────────┘                │
+│  │  theses              │                                                                                       │
+│  │  dialogue_turns      │                                                                                       │
+│  │  synthesis_lineage   │                                                                                       │
+│  │  prompt_templates    │                                                                                       │
+│  │  synthesis_configs   │                                                                                       │
+│  │  element_versions    │                                                                                       │
+│  │  edit_plans          │                                                                                       │
+│  │  mode_results        │                                                                                       │
+│  │  api_usage           │                                                                                       │
+│  │  transactions        │                                                                                       │
+│  │  api_keys (encrypted)│                                                                                       │
+│  └─────────────┘                                                                                        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
