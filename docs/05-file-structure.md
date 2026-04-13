@@ -16,12 +16,12 @@ philosynth-service/
 │       ├── tsconfig.json
 │       │
 │       ├── constants/
-│       │   ├── philosophers.ts         # Список философов (STATE.PH из строки 3935)
-│       │   ├── labels.ts               # ML, SL, DL, REVERSE_ML и т.д. (строки 3955–4108)
-│       │   ├── section-labels.ts       # KEY_LABELS, SECTION_LABELS (строки 4077–4108)
-│       │   ├── ctx-keys.ts             # ALL_CTX_KEYS, CTX_LABELS (строки 5128–5148)
-│       │   ├── phil-filename.ts        # PHIL_FILENAME (строки 13542–13613)
-│       │   └── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (строки 13615–13632)
+│       │   ├── philosophers.ts         # Список философов (STATE.PH)
+│       │   ├── labels.ts               # ML, SL, DL, REVERSE_ML и т.д. (ML, SL, DL, REVERSE_*, KEY_LABELS)
+│       │   ├── section-labels.ts       # KEY_LABELS, SECTION_LABELS (KEY_LABELS, SECTION_LABELS)
+│       │   ├── ctx-keys.ts             # ALL_CTX_KEYS, CTX_LABELS (ALL_CTX_KEYS, CTX_LABELS)
+│       │   ├── phil-filename.ts        # PHIL_FILENAME (PHIL_FILENAME)
+│       │   └── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (METHOD_CODE, LEVEL_CODE)
 │       │
 │       ├── types/
 │       │   ├── synthesis.ts            # SynthesisParams, SynthesisFull, SynthesisPreview
@@ -37,9 +37,9 @@ philosynth-service/
 │       │   └── ws-messages.ts          # Все типы WebSocket-сообщений (клиент↔сервер)
 │       │
 │       └── utils/
-│           ├── version.ts              # parseVersion, formatVersion (строки 4228–4332)
-│           ├── transliterate.ts        # transliterate() (строки 13634–13657)
-│           ├── normalize.ts            # normalizeName, normalizeType (строки 10502–10540)
+│           ├── version.ts              # parseVersion, formatVersion (parseVersion(), formatVersion())
+│           ├── transliterate.ts        # transliterate() (transliterate())
+│           ├── normalize.ts            # normalizeName, normalizeType (normalizeName(), normalizeType())
 │           └── escape.ts               # esc() — HTML-экранирование
 │
 ├── server/
@@ -83,33 +83,33 @@ philosynth-service/
 │   ├── services/
 │   │   ├── synthesis-engine.ts         # resolveContextDeps, buildEffectiveDeps,
 │   │   │                               # findSubstitute, deepMergeUniq
-│   │   │                               # (строки 4851–5520)
+│   │   │                               # (deepMergeUniq … buildDynamicOrder)
 │   │   │
 │   │   ├── section-defs-builder.ts     # buildSectionDefs, serializeParts, groupPasses
-│   │   │                               # (строки 8633–9596)
+│   │   │                               # (baseCtx … patchPromptsWithSecCtx)
 │   │   │
 │   │   ├── prompt-builder.ts           # buildSYS, baseCtx, buildQualityReinforcement
 │   │   │                               # Читает шаблоны из Prompt Registry
-│   │   │                               # (строки 7421–8056, 8633–8714, 9400–9596)
+│   │   │                               # (buildSYS, baseCtx, serializeParts, patchPromptsWithSecCtx)
 │   │   │
 │   │   ├── context-builder.ts          # buildContextForSection — адаптация DOM→БД
-│   │   │                               # (строки 7178–7353)
+│   │   │                               # (buildContextForSection())
 │   │   │
 │   │   ├── context-extractor.ts        # extract*() функции, адаптированные для БД/HTML-парсинга
-│   │   │                               # (строки 6818–7135)
+│   │   │                               # (extractContextFragment + extract*())
 │   │   │
 │   │   ├── generation-service.ts       # Оркестрация генерации: создание синтеза,
 │   │   │                               # проход по разделам, вызов Claude, сохранение
-│   │   │                               # Адаптация generateDoc() (строки 9600–10325)
-│   │   │                               # + regenerateSection (строки 15878–16101)
-│   │   │                               # + regenerateSubsection (строки 16103–16321)
+│   │   │                               # Адаптация generateDoc() (generateDoc(), go() (оркестрация генерации))
+│   │   │                               # + regenerateSection (regenerateSection())
+│   │   │                               # + regenerateSubsection (regenerateSubsection())
 │   │   │
 │   │   ├── streaming-manager.ts        # Claude SSE → парсинг → WebSocket-дельты
 │   │   │                               # + буферизация + reconnect через Redis
-│   │   │                               # Адаптация streamResp() (строки 10327–10420)
+│   │   │                               # Адаптация streamResp() (streamResp())
 │   │   │
 │   │   ├── graph-parser.ts             # parseGraph, parseTopology — серверный парсинг HTML
-│   │   │                               # (строки 10425–10691)
+│   │   │                               # (parseTopology() + parseGraph())
 │   │   │                               # + извлечение в categories/edges таблицы
 │   │   │
 │   │   ├── element-parser.ts           # Извлечение тезисов, глоссария, диалога из HTML
@@ -118,23 +118,23 @@ philosynth-service/
 │   │   ├── cascade-analyzer.ts         # computeDependents, getIntraDependents,
 │   │   │                               # getCrossSecDependents, getAffectedModes,
 │   │   │                               # sortInTopoOrder, buildFactualDepsMap
-│   │   │                               # (строки 5525–5812)
+│   │   │                               # (computeDependents … computeFactualDependents)
 │   │   │
 │   │   ├── edit-planner.ts             # createPlan, updatePlan, addCascadeSteps
-│   │   │                               # Адаптация recalcEditPlan (строка 15147),
-│   │   │                               # updateLiveCascade (строка 15232)
+│   │   │                               # Адаптация recalcEditPlan (recalcEditPlan()),
+│   │   │                               # updateLiveCascade (updateLiveCascade())
 │   │   │
 │   │   ├── plan-executor.ts            # executePlan — последовательное исполнение шагов
-│   │   │                               # Адаптация executeEditPlan (строка 15600)
+│   │   │                               # Адаптация executeEditPlan (executeEditPlan())
 │   │   │
 │   │   ├── compat-advisor.ts           # computeSectionRating, computeOverallCompat
-│   │   │                               # (строки 6129–6516)
+│   │   │                               # (computeSectionRating … getCompatAdvice)
 │   │   │
 │   │   ├── cost-estimator.ts           # estimateCost, estimateSubsectionCost, estimateModeCost
-│   │   │                               # (строки 6518–6816)
+│   │   │                               # (estimateCost … estimateModeCost)
 │   │   │
 │   │   ├── mode-service.ts             # MODE_CONFIG (→ Registry), buildModeContext, runMode
-│   │   │                               # (строки 18360–19023)
+│   │   │                               # (MODE_CONFIG … regenerateModeSilent (вся система режимов))
 │   │   │
 │   │   ├── element-editor.ts           # PATCH-обработчики для категорий/тезисов/глоссария
 │   │   │                               # + impact analysis (НОВОЕ)
@@ -154,11 +154,11 @@ philosynth-service/
 │   │   │
 │   │   ├── meta-synthesis-service.ts   # importConceptAsParticipant (из БД, не из DOM)
 │   │   │                               # checkGenealogyOverlaps, isAncestor
-│   │   │                               # (строки 17794–18108)
+│   │   │                               # (importConceptAsParticipant … isAncestor)
 │   │   │
 │   │   ├── import-service.ts           # importHTML, extractMetadata, extractSections,
 │   │   │                               # buildDocStateFromImport
-│   │   │                               # (строки 16955–17657)
+│   │   │                               # (весь импорт: handleImportFile … buildDocStateFromImport)
 │   │   │
 │   │   ├── prompt-registry.ts          # getTemplate, renderTemplate, listVersions,
 │   │   │                               # activateVersion, testDraft (НОВОЕ)
@@ -169,14 +169,14 @@ philosynth-service/
 │   │   │
 │   │   ├── lineage-service.ts          # Рекурсивные CTE для навигации по графу (НОВОЕ)
 │   │   │
-│   │   ├── log-formatter.ts            # formatCtxLog (строки 19116–19350)
+│   │   ├── log-formatter.ts            # formatCtxLog (formatCtxLog())
 │   │   │
 │   │   └── export/
 │   │       ├── html-exporter.ts        # saveHTML + buildGraphExportSection + buildModesExportSection
-│   │       │                           # (строки 14173–14003)
-│   │       ├── mmd-exporter.ts         # exportMMD (строки 12808–13028)
-│   │       ├── png-exporter.ts         # exportPNG — node-canvas (строки 13030–13481)
-│   │       ├── json-exporter.ts        # exportJSON (строки 13483–13529)
+│   │       │                           # (saveHTML + buildGraphExportSection)
+│   │       ├── mmd-exporter.ts         # exportMMD (exportMMD())
+│   │       ├── png-exporter.ts         # exportPNG — node-canvas (exportPNG())
+│   │       ├── json-exporter.ts        # exportJSON (exportJSON())
 │   │       └── md-exporter.ts          # Markdown экспорт (НОВОЕ)
 │   │
 │   ├── config/
@@ -189,11 +189,11 @@ philosynth-service/
 │   │   └── fragment-share.ts          # FRAGMENT_SHARE, CONTEXT_BUDGET
 │   │
 │   ├── utils/
-│   │   ├── deep-merge.ts               # deepMergeUniq (строка 4851)
+│   │   ├── deep-merge.ts               # deepMergeUniq (deepMergeUniq())
 │   │   ├── topo-sort.ts                # topologicalSort, computePredecessors,
-│   │   │                               # buildDynamicOrder (строки 5370–5520)
-│   │   ├── text.ts                     # truncateText, tableToText (строки 7355–7418)
-│   │   ├── css-audit.ts                # auditCSS (строки 14006–14171)
+│   │   │                               # buildDynamicOrder (computePredecessors … buildDynamicOrder)
+│   │   ├── text.ts                     # truncateText, tableToText (truncateText(), tableToText())
+│   │   ├── css-audit.ts                # auditCSS (auditCSS())
 │   │   ├── html-parser.ts              # Обёртка над linkedom для серверного DOM-парсинга
 │   │   └── crypto.ts                   # AES-256 шифрование API-ключей
 │   │
@@ -273,12 +273,12 @@ philosynth-service/
 │   │   │   │
 │   │   │   ├── graph/
 │   │   │   │   ├── GraphModal.tsx          # Модальное окно графа (2D/3D табы)
-│   │   │   │   ├── Graph3D.tsx             # Three.js рендерер (из build3D, строка 11172)
-│   │   │   │   ├── Graph2D.tsx             # D3.js рендерер (из build2D, строка 12156)
+│   │   │   │   ├── Graph3D.tsx             # Three.js рендерер (из build3D, build3D())
+│   │   │   │   ├── Graph2D.tsx             # D3.js рендерер (из build2D, build2D())
 │   │   │   │   ├── NodePanel.tsx           # Информационная панель узла
 │   │   │   │   ├── GraphLegend.tsx         # Легенда
 │   │   │   │   └── graph-utils.ts          # typeColor, edgeTypeStyle, polyPath, nodeSymbolPath
-│   │   │   │                               # (строки 10700–11075)
+│   │   │   │                               # (константы графа + вспомогательные функции)
 │   │   │   │
 │   │   │   ├── edit/
 │   │   │   │   ├── EditModal.tsx           # Модальное окно редактирования
@@ -309,7 +309,7 @@ philosynth-service/
 │   │   │   │
 │   │   │   ├── logs/
 │   │   │   │   ├── ContextLogViewer.tsx    # Модальное окно лога
-│   │   │   │   └── colorize-log.ts        # colorizeLog() (строки 19352–19800)
+│   │   │   │   └── colorize-log.ts        # colorizeLog() (colorizeLog())
 │   │   │   │
 │   │   │   └── shared/
 │   │   │       ├── Button.tsx
@@ -318,8 +318,8 @@ philosynth-service/
 │   │   │       └── ErrorBoundary.tsx
 │   │   │
 │   │   └── utils/
-│   │       ├── graph-physics.ts            # tick(), warmup() (строки 11098–11149)
-│   │       ├── graph-geometry.ts           # nodeGeometry3D, mkSprite (строки 11077–11170)
+│   │       ├── graph-physics.ts            # tick(), warmup() (tick(), warmup())
+│   │       ├── graph-geometry.ts           # nodeGeometry3D, mkSprite (nodeGeometry3D(), mkSprite())
 │   │       └── format.ts                  # Форматирование чисел, дат
 │   │
 │   └── public/

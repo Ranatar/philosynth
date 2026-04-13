@@ -627,8 +627,8 @@ CREATE INDEX idx_transforms_direction ON representation_transforms(synthesis_id,
 3. Сохраняет в гранулярные таблицы (`categories`, `category_edges`, `theses`, `glossary_terms`)
 
 Парсинг выполняется через `linkedom` (серверный DOM) или `cheerio`. Логика парсинга — прямой порт из исходника:
-- `parseGraph()` (строка 10654) → `categories` + `category_edges`
-- `parseTopology()` (строка 10425) → обновление `categories.cluster_indices`, `structural_roles`, `procedural_roles`; вставка `cluster_labels`
+- `parseGraph()` (parseGraph()) → `categories` + `category_edges`
+- `parseTopology()` (parseTopology()) → обновление `categories.cluster_indices`, `structural_roles`, `procedural_roles`; вставка `cluster_labels`
 - Парсинг тезисов: таблица «Сводная таблица тезисов» → `theses`
 - Парсинг глоссария: таблица «Таблица определений» → `glossary_terms`
 
@@ -636,7 +636,7 @@ CREATE INDEX idx_transforms_direction ON representation_transforms(synthesis_id,
 
 ## 4. Миграция из standalone-файлов
 
-Импорт существующих HTML-файлов PhiloSynth использует ту же логику, что `importHTML()` (строка 17122) из исходника:
+Импорт существующих HTML-файлов PhiloSynth использует ту же логику, что `importHTML()` (importHTML()) из исходника:
 
 1. `POST /api/syntheses/import` с HTML-файлом
 2. Сервер: `extractMetadata()` → `extractSections()` → `extractEmbeddedState()`

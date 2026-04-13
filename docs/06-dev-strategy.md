@@ -98,12 +98,12 @@
 
 **2.1. Перегенерация разделов**
 - `POST /syntheses/:id/regenerate/:sectionKey`
-- Адаптация regenerateSection (строки 15878–16101)
+- Адаптация regenerateSection (regenerateSection())
 - Стриминг через WebSocket
 
 **2.2. Перегенерация подразделов**
 - `POST /syntheses/:id/regenerate-subsection`
-- Адаптация regenerateSubsection (строки 16103–16321)
+- Адаптация regenerateSubsection (regenerateSubsection())
 - extractIntraSectionContext, extractRelevantIntraSectionContext
 
 **2.3. Каскадный анализ**

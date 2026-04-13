@@ -167,32 +167,32 @@ Deploy:      Docker Compose (dev) → VPS / managed PostgreSQL (prod)
 
 **Кэширование**: при старте сервера все active-шаблоны и конфиги загружаются в Redis. TTL — бесконечный, инвалидация — при обновлении через админ-API (`POST /api/prompts/{key}/activate`).
 
-**Источник исходника**: `buildSYS()` (строка 7421), METHOD_SUM/GRAPH/TOPOLOGY/GLOSSARY/THESES/DIALOGUE (строки 7478–7709), LEVEL_* (строки 7718–8056), CONTEXT_DEPS_* (строки 4882–5126), SUBSTITUTION_MAP (строки 5171–5288), COMPAT_MATRIX_COMPACT (строки 5896–6117), и все остальные конфиг-объекты.
+**Источник исходника**: `buildSYS()` (buildSYS()), METHOD_SUM/GRAPH/TOPOLOGY/GLOSSARY/THESES/DIALOGUE (METHOD_SUM … METHOD_DIALOGUE), LEVEL_* (LEVEL_COMPARATIVE_* … LEVEL_GENERATIVE_*), CONTEXT_DEPS_* (CONTEXT_DEPS_BASE … METHOD_DEPS_PATCH), SUBSTITUTION_MAP (SUBSTITUTION_MAP (оба варианта)), COMPAT_MATRIX_COMPACT (COMPAT_MATRIX_COMPACT), и все остальные конфиг-объекты.
 
 ### 4.2. Synthesis Engine
 
 Ядро системы. Портируется из исходника с минимальными изменениями в логике, но с заменой источников данных (DOM → БД).
 
 **Функции, переносимые почти дословно:**
-- `resolveContextDeps()` (строка 5151) — резолвер зависимостей
-- `deepMergeUniq()` (строка 4851) — слияние dep-объектов
-- `buildEffectiveDeps()` (строка 5328) — эффективные зависимости с подстановками
-- `computePredecessors()` (строка 5370) — предшественники
-- `buildDynamicOrder()` (строка 5419) — топологическая сортировка
-- `resolveCircularDeps()` (строка 5813) — разрыв циклов
-- `findSubstitute()` (строка 5307) — поиск заменителей
-- `computeSectionRating()` (строка 6129) — матрица совместимости
-- `estimateCost()` (строка 6518) — оценка стоимости
+- `resolveContextDeps()` (resolveContextDeps()) — резолвер зависимостей
+- `deepMergeUniq()` (deepMergeUniq()) — слияние dep-объектов
+- `buildEffectiveDeps()` (buildEffectiveDeps()) — эффективные зависимости с подстановками
+- `computePredecessors()` (computePredecessors()) — предшественники
+- `buildDynamicOrder()` (buildDynamicOrder()) — топологическая сортировка
+- `resolveCircularDeps()` (resolveCircularDeps()) — разрыв циклов
+- `findSubstitute()` (findSubstitute()) — поиск заменителей
+- `computeSectionRating()` (computeSectionRating()) — матрица совместимости
+- `estimateCost()` (estimateCost()) — оценка стоимости
 
 **Функции, требующие адаптации:**
-- `buildSectionDefs()` (строка 8825) — вместо хардкода читает шаблоны из Prompt Registry
-- `baseCtx()` (строка 8633) — параметры берутся из БД, а не из DOM
-- `serializeParts()` (строка 8714) — без изменений, но входные parts — из Registry
+- `buildSectionDefs()` (buildSectionDefs()) — вместо хардкода читает шаблоны из Prompt Registry
+- `baseCtx()` (baseCtx()) — параметры берутся из БД, а не из DOM
+- `serializeParts()` (serializeParts()) — без изменений, но входные parts — из Registry
 - `groupPasses()` — без изменений
 
 ### 4.3. Context Builder
 
-Строит контекст для каждого раздела из ранее сгенерированных разделов. В исходнике это `buildContextForSection()` (строка 7178) и ~20 функций `extract*()` (строки 6818–7135).
+Строит контекст для каждого раздела из ранее сгенерированных разделов. В исходнике это `buildContextForSection()` (buildContextForSection()) и ~20 функций `extract*()` (extractContextFragment + extract*()).
 
 **Критическое изменение**: в исходнике `extractContextFragment()` работает с DOM:
 ```javascript
@@ -210,7 +210,7 @@ case "graph:nodes": return formatCategoriesAsTable(
 
 ### 4.4. Streaming Manager
 
-**Исходник**: `streamResp()` (строка 10327) — прямой SSE от Claude API с записью HTML в DOM через `requestAnimationFrame`.
+**Исходник**: `streamResp()` (streamResp()) — прямой SSE от Claude API с записью HTML в DOM через `requestAnimationFrame`.
 
 **Сервис**: двухзвенный стриминг.
 
@@ -246,7 +246,7 @@ Claude API ──SSE──→ Backend ──WebSocket──→ Client
 
 Портирование каскадной системы из исходника. Заменяет цепочки `confirm()` → стриминг → `confirm()` на персистентные планы.
 
-**Исходник**: `executeEditPlan()` (строка 15600), `recalcEditPlan()` (строка 15147), `updateLiveCascade()` (строка 15233), `cascadeRegenerateOne()` (строка 16340).
+**Исходник**: `executeEditPlan()` (executeEditPlan()), `recalcEditPlan()` (recalcEditPlan()), `updateLiveCascade()`, `cascadeRegenerateOne()` (cascadeRegenerateOne()).
 
 **Сервис**: таблица `edit_plans`.
 
@@ -290,15 +290,15 @@ interface EditStep {
 Два графа:
 
 **Граф категорий** (внутри синтеза):
-- Данные: таблицы `categories` + `category_edges` + `cluster_labels` + topology fields in categories
-- Парсинг: `parseGraph()` (строка 10654) + нормализация типов через Element Taxonomy (4.8) и `parseTopology()` (строка 10425) адаптируются для извлечения из HTML-ответа Claude и записи в БД
+- Данные: таблицы `categories` + `category_edges` + `category_topology`
+- Парсинг: `parseGraph()` (parseGraph()) + нормализация типов через Element Taxonomy (4.8) и `parseTopology()` (parseTopology()) адаптируются для извлечения из HTML-ответа Claude и записи в БД
 - Визуализация: D3.js (2D) + Three.js (3D) — полностью на клиенте, данные загружаются через API
-- Код визуализации (`build2D()` строка 12156, `build3D()` строка 11172) переносится в React-компоненты
+- Код визуализации (`build2D()` build2D(), `build3D()` build3D()) переносится в React-компоненты
 
 **Граф наследования** (между концепциями):
 - Данные: таблица `synthesis_lineage`
 - Запросы: рекурсивные CTE (`WITH RECURSIVE ancestors AS (...)`)
-- Визуализация: генеалогическое дерево (`renderGenealogyTree()` строка 18177) → React-компонент
+- Визуализация: генеалогическое дерево (`renderGenealogyTree()` renderGenealogyTree()) → React-компонент
 - API: `GET /api/lineage/{id}/ancestors`, `GET /api/lineage/{id}/descendants`, `GET /api/lineage/search?philosopher=Кант`
 
 ### 4.7. Element Editor
@@ -396,9 +396,9 @@ interface EditStep {
 1. Клиент: POST /api/syntheses { ..., participants: [{ type: "synthesis", id: "..." }, ...] }
 2. Сервер:
    a. Для каждого участника-концепции загружает из БД: capsule, graphNodes, glossaryCompact,
-      thesesSummary, goals, tensions (аналог importConceptAsParticipant, строка 17794)
+      thesesSummary, goals, tensions (аналог importConceptAsParticipant, importConceptAsParticipant())
    b. Проверяет пригодность: обязательные разделы, генеалогические пересечения
-      (checkGenealogyOverlaps, строка 18289)
+      (checkGenealogyOverlaps, checkGenealogyOverlaps())
    c. Формирует conceptContextBlock() из данных БД (вместо DOM-парсинга)
    d. Далее — как обычная генерация, но с доп. контекстом концепций
    e. Записывает synthesis_lineage: parent_id → id участника
