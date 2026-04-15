@@ -249,10 +249,20 @@
 
 ### Фаза 6: Биллинг, админка, полировка (≈3–4 сессии)
 
-**6.1. Баланс сервиса**
-- Stripe интеграция (PaymentIntent)
-- `billing-service.ts`: пополнение, списание
-- `BillingPage.tsx`: баланс, пополнение, история
+**6.1. Три режима биллинга**
+
+Приоритет: BYO-Key → активная подписка → баланс → ошибка.
+
+- `billing-service.ts`: пополнение баланса (Stripe PaymentIntents), per-request списание
+- `subscription-service.ts`:
+  - Управление планами (`subscription_plans`): Starter / Pro / Academic
+  - Создание подписки (Stripe Subscriptions API)
+  - Счётчики квот (`used_syntheses`, `used_regenerations`, …) в `user_subscriptions`
+  - Сброс счётчиков при новом периоде (webhook `invoice.paid`)
+  - Отмена / возобновление (`cancel_at_period_end`)
+- `billing-check.ts` (middleware): определение режима + проверка квоты или баланса
+- Stripe Webhook endpoint: `invoice.paid`, `customer.subscription.updated`, `customer.subscription.deleted`
+- `BillingPage.tsx`: три вкладки — «Ключ API», «Подписка», «Баланс»
 
 **6.2. Prompt Registry UI**
 - `AdminPromptsPage.tsx`: список, редактирование, версионирование

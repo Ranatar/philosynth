@@ -2179,13 +2179,33 @@ streaming-manager.
 
 3. server/middleware/billing-check.ts:
    - Middleware для routes генерации:
-     a. Определяет режим биллинга пользователя:
-        - Если есть active api_key → mode: "byo"
-        - Если balance > 0 и нет api_key → mode: "service"
-        - Если нет ни того ни другого → 403 API_KEY_MISSING
-     b. Для mode "service": проверяет достаточность баланса 
-        (estimateCost от параметров запроса)
-     c. Прокидывает { billingMode, apiKey? } в context
+     a. Определяет режим биллинга (приоритет):
+        1. BYO-Key (active api_key) → mode: "byo", apiKey из расшифровки
+        2. Активная подписка с остатком квоты → mode: "subscription"
+        3. Баланс > estimatedCost → mode: "balance"
+        4. Иначе → 403 BILLING_REQUIRED
+     b. Для mode "subscription": проверяет нужную квоту
+        (syntheses для POST /syntheses, regenerations для regenerate, и т.д.)
+     c. Для mode "balance": проверяет достаточность баланса
+     d. Прокидывает { billingMode, apiKey?, subscriptionId? } в context
+
+4. server/services/subscription-service.ts:
+   - getPlans(): список активных тарифов из subscription_plans
+   - getActiveSubscription(userId): текущая подписка + план + использование
+   - createSubscription(userId, planId):
+     a. Stripe Subscriptions API → subscription + clientSecret
+     b. Создаёт запись в user_subscriptions
+   - cancelSubscription(userId): cancel_at_period_end = true
+   - resumeSubscription(userId): cancel_at_period_end = false
+   - incrementUsage(subscriptionId, quotaType):
+     Атомарный инкремент used_syntheses / used_regenerations / …
+   - checkQuota(subscriptionId, quotaType): остаток > 0?
+   - resetUsageCounters(subscriptionId):
+     Вызывается из webhook при invoice.paid (новый период)
+   - handleStripeWebhook(event):
+     Диспетчер: invoice.paid → resetUsageCounters,
+     customer.subscription.updated → обновить status/period,
+     customer.subscription.deleted → status = "canceled"
 
 4. Расширение server/services/streaming-manager.ts:
    - В streamSection: после получения usage от Claude,
@@ -2212,6 +2232,11 @@ streaming-manager.
 - «Протестируй недостаток баланса: баланс $0.001, попытка генерации exhaustive — ошибка INSUFFICIENT_BALANCE»
 - «Протестируй шифрование: storeApiKey → перезапуск сервера → getDecryptedKey возвращает тот же ключ»
 - «Edge case: пользователь с BYO-Key И балансом — приоритет BYO-Key»
+- «Протестируй подписку: создать Starter план → subscribe → Stripe mock → подписка active → сгенерировать синтез → used_syntheses = 1»
+- «Протестируй исчерпание квоты: used_syntheses = quota → следующий запрос → QUOTA_EXCEEDED (или fallback на баланс если есть)»
+- «Протестируй webhook: отправь mock invoice.paid → счётчики сброшены, period обновлён»
+- «Протестируй отмену: cancel → cancel_at_period_end = true → до конца периода работает → после — status canceled»
+- «Протестируй приоритет: пользователь с BYO-Key + подписка + баланс → используется BYO-Key. Удалить ключ → подписка. Исчерпать квоту → баланс»
 
 **Завершение беседы:**
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»

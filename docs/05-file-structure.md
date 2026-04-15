@@ -163,7 +163,8 @@ philosynth-service/
 │   │   ├── prompt-registry.ts          # getTemplate, renderTemplate, listVersions,
 │   │   │                               # activateVersion, testDraft (НОВОЕ)
 │   │   │
-│   │   ├── billing-service.ts          # Stripe, транзакции, проверка баланса (НОВОЕ)
+│   │   ├── billing-service.ts          # Stripe PaymentIntents, транзакции, проверка баланса
+│   │   ├── subscription-service.ts    # Stripe Subscriptions: планы, квоты, счётчики, webhook
 │   │   │
 │   │   ├── api-key-service.ts          # Шифрование/дешифрование, проксирование (НОВОЕ)
 │   │   │
@@ -231,6 +232,7 @@ philosynth-service/
 │   │   │   ├── modes.ts
 │   │   │   ├── lineage.ts
 │   │   │   ├── billing.ts
+│   │   │   ├── subscription.ts
 │   │   │   └── export.ts
 │   │   │
 │   │   ├── stores/

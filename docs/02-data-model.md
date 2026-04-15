@@ -514,7 +514,57 @@ CREATE INDEX idx_usage_user ON api_usage(user_id);
 CREATE INDEX idx_usage_synthesis ON api_usage(synthesis_id);
 ```
 
-### 2.22. category_type_catalog
+### 2.22. subscription_plans
+
+Тарифные планы.
+
+```sql
+CREATE TABLE subscription_plans (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name             TEXT NOT NULL UNIQUE,   -- 'starter', 'pro', 'academic'
+  display_name     TEXT NOT NULL,          -- 'Starter', 'Pro', 'Academic'
+  price_usd        NUMERIC(10, 2) NOT NULL,
+  billing_period   TEXT NOT NULL DEFAULT 'month',  -- 'month'|'year'
+  quota_syntheses     INT NOT NULL,  -- полных синтезов за период
+  quota_regenerations INT NOT NULL,  -- перегенераций разделов за период
+  quota_modes         INT NOT NULL,  -- запусков режимов за период
+  quota_enrichments   INT NOT NULL,  -- обогащений элементов за период
+  stripe_price_id  TEXT NOT NULL,    -- Stripe Price ID
+  is_active        BOOLEAN NOT NULL DEFAULT true,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### 2.23. user_subscriptions
+
+Активные подписки пользователей.
+
+```sql
+CREATE TABLE user_subscriptions (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                 UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan_id                 UUID NOT NULL REFERENCES subscription_plans(id),
+  stripe_subscription_id  TEXT NOT NULL,
+  status                  TEXT NOT NULL DEFAULT 'active',
+    -- 'active'|'past_due'|'canceled'|'trialing'|'incomplete'
+  current_period_start    TIMESTAMPTZ NOT NULL,
+  current_period_end      TIMESTAMPTZ NOT NULL,
+  -- Счётчики использования (сбрасываются в начале каждого периода)
+  used_syntheses          INT NOT NULL DEFAULT 0,
+  used_regenerations      INT NOT NULL DEFAULT 0,
+  used_modes              INT NOT NULL DEFAULT 0,
+  used_enrichments        INT NOT NULL DEFAULT 0,
+  cancel_at_period_end    BOOLEAN NOT NULL DEFAULT false,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_subscriptions_user ON user_subscriptions(user_id);
+CREATE INDEX idx_subscriptions_status ON user_subscriptions(status)
+  WHERE status IN ('active', 'trialing');
+```
+
+### 2.24. category_type_catalog
 
 Фиксированный каталог типов категорий — слой нормализации.
 
@@ -532,7 +582,7 @@ CREATE TABLE category_type_catalog (
 
 Начальное заполнение: 18 типов из предыдущего проекта (ontological, epistemological, axiological, ethical, aesthetic, metaphysical, logical, practical, political, theological, anthropological, social, linguistic, phenomenological, existential, analytical, hermeneutical, cross_disciplinary).
 
-### 2.23. relationship_type_catalog
+### 2.25. relationship_type_catalog
 
 Фиксированный каталог типов связей.
 
@@ -551,7 +601,7 @@ CREATE TABLE relationship_type_catalog (
 
 Начальное заполнение: 29 типов из предыдущего проекта.
 
-### 2.24. element_enrichments
+### 2.26. element_enrichments
 
 Результаты точечных Claude-запросов для обогащения отдельных элементов.
 
@@ -575,7 +625,7 @@ CREATE INDEX idx_enrichments_element ON element_enrichments(element_id, element_
 CREATE INDEX idx_enrichments_synthesis ON element_enrichments(synthesis_id);
 ```
 
-### 2.25. characteristic_justifications
+### 2.27. characteristic_justifications
 
 Философские обоснования числовых характеристик элементов.
 
@@ -598,7 +648,7 @@ CREATE TABLE characteristic_justifications (
 CREATE INDEX idx_justifications_element ON characteristic_justifications(element_id, element_type);
 ```
 
-### 2.26. representation_transforms
+### 2.28. representation_transforms
 
 История трансформаций graph↔theses — для откатов и аудита.
 
