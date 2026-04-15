@@ -10,6 +10,8 @@ PhiloSynth Service — веб-сервис для генерации, хране
 |---|---|---|
 | Состояние | DOC_STATE в памяти вкладки | PostgreSQL + Redis |
 | Пользователи | Один (анонимный) | Многопользовательский, аккаунты |
+
+> **v10**: список философов расширен на 36 позиций (Демокрит, Флоренский, Шестов и др.).
 | Хранение | HTML-файл с встроенным JSON | Гранулярная БД: разделы, категории, тезисы |
 | Стриминг | Браузер → Claude API напрямую | Клиент ↔ WebSocket ↔ Бэкенд ↔ Claude SSE |
 | Промпты | Захардкожены в JS (~7000 строк) | Prompt Registry (БД + кэш, без редеплоя) |
@@ -46,103 +48,103 @@ Deploy:      Docker Compose (dev) → VPS / managed PostgreSQL (prod)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                           КЛИЕНТ (React)                                                                          │
-│                                                                                                                   │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         │
-│  │ Каталог         │ │ Редактор       │ │  Граф           │ │ Режимы          │ │ Админка        │         │
-│  │концепций        │ │синтеза         │ │ 2D/3D           │ │(оппонент,       │ │промптов        │         │
-│  │                 │ │                │ │                 │ │переводч.).      │ │                │         │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘         │
-│          │                    │                   │                   │                    │                   │
-│  ┌────┴────────────┴───────────┴────────────┴────────────┴───────┐     │
-│  │              Zustand Store + WebSocket Client                                                           │     │
-│  └───────────────────────────┬───────────────────────────────────┘     │
-└──────────────────────────────┼──────────────────────────────────────┘
-                                                    │ HTTP / WebSocket
+│                           КЛИЕНТ (React)                           │
+│                                                                     │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
+│  │ Каталог  │ │ Редактор │ │  Граф    │ │ Режимы   │ │ Админка  │ │
+│  │концепций │ │синтеза   │ │ 2D/3D   │ │(оппонент,│ │промптов  │ │
+│  │          │ │          │ │          │ │переводч.)│ │          │ │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ │
+│       │            │            │             │            │       │
+│  ┌────┴────────────┴────────────┴─────────────┴────────────┴─────┐ │
+│  │              Zustand Store + WebSocket Client                  │ │
+│  └───────────────────────────┬───────────────────────────────────┘ │
+└──────────────────────────────┼───────────────────────────────────┘
+                               │ HTTP / WebSocket
 ┌──────────────────────────────┼───────────────────────────────────┐
-│                        API GATEWAY (Hono)                                                                    │
-│                                                                                                              │
-│  ┌─────────┐ ┌─────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐         │
-│  │  Auth         │ │ Rate          │ │ Billing         │ │ CORS          │ │ Logging        │         │
-│  │Middleware.    │ │ Limiter       │ │ Check           │ │               │ │                │         │
-│  └────┬────┘ └────┬────┘ └────┬─────┘ └────┬────┘ └────┬─────┘         │
-│          └───────────┴───────────┴───────────┴───────────┘                   │
-│                                                  │                                                           │
+│                        API GATEWAY (Hono)                        │
+│                                                                   │
+│  ┌─────────┐ ┌─────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ │
+│  │  Auth   │ │ Rate    │ │ Billing  │ │ CORS    │ │ Logging  │ │
+│  │Middleware│ │ Limiter │ │ Check    │ │         │ │          │ │
+│  └────┬────┘ └────┬────┘ └────┬─────┘ └────┬────┘ └────┬─────┘ │
+│       └───────────┴───────────┴────────────┴───────────┘         │
+│                               │                                   │
 │  ┌────────────────────────────┼──────────────────────────────────┐│
-│  │                     ROUTE HANDLERS                                                                      ││
-│  │                                                                                                         ││
-│  │  /api/syntheses     CRUD, список, поиск                                                                 ││
-│  │  /api/sections      Разделы: чтение, контекст                                                           ││
-│  │  /api/elements      Категории, тезисы, термины: CRUD                                                    ││
-│  │  /api/generation    Запуск генерации, стриминг                                                          ││
-│  │  /api/plans         Планы редактирования                                                                ││
-│  │  /api/modes         Оппонент, переводчик, временной срез                                                ││
-│  │  /api/lineage       Граф наследования                                                                   ││
-│  │  /api/prompts       Prompt Registry (админ)                                                             ││
-│  │  /api/billing       Баланс, транзакции, ключи                                                           ││
-│  │  /ws                WebSocket: стриминг генерации                                                       ││
+│  │                     ROUTE HANDLERS                            ││
+│  │                                                                ││
+│  │  /api/syntheses     CRUD, список, поиск                       ││
+│  │  /api/sections      Разделы: чтение, контекст                 ││
+│  │  /api/elements      Категории, тезисы, термины: CRUD          ││
+│  │  /api/generation    Запуск генерации, стриминг                ││
+│  │  /api/plans         Планы редактирования                      ││
+│  │  /api/modes         Оппонент, переводчик, временной срез      ││
+│  │  /api/lineage       Граф наследования                         ││
+│  │  /api/prompts       Prompt Registry (админ)                   ││
+│  │  /api/billing       Баланс, транзакции, ключи                 ││
+│  │  /ws                WebSocket: стриминг генерации             ││
 │  └────────────────────────────┼──────────────────────────────────┘│
 └───────────────────────────────┼──────────────────────────────────┘
-                                                     │
+                                │
 ┌───────────────────────────────┼──────────────────────────────────┐
-│                        SERVICE LAYER                                                                         │
-│                                                                                                              │
-│  ┌───────────────┐  ┌─────────────────┐  ┌────────────────────┐       │
-│  │  Synthesis              │  │  Prompt                    │  │  Context                         │       │
-│  │  Engine                 │  │  Registry                  │  │  Builder                         │       │
-│  │                         │  │                            │  │                                  │       │
-│  │ buildSYS()              │  │ getTemplate()              │  │ buildContext                     │       │
-│  │ buildSection            │  │ renderTemplate()           │  │   ForSection()                   │       │
-│  │   Defs()                │  │ listVersions()             │  │ extractContext                   │       │
-│  │ resolveContext.         │  │ activateVer()              │  │   Fragment()                     │       │
-│  │   Deps()                │  │ testDraft()                │  │ budgeting                        │       │
-│  │ buildEffective          │  │                            │  │                                  │       │
-│  │   Deps()                │  │                            │  │                                  │       │
-│  │ compatAdvisor()         │  │                            │  │                                  │       │
-│  └───────┬───────┘  └────────┬────────┘  └─────────┬──────────┘       │
-│               │                              │                                  │                          │
-│  ┌───────┴───────┐  ┌───────┴─────────┐  ┌────────┴───────────┐       │
-│  │  Edit                   │  │  Streaming                 │  │  Graph                           │       │
-│  │  Planner                │  │  Manager                   │  │  Service                         │       │
-│  │                         │  │                            │  │                                  │       │
-│  │ createPlan()            │  │ streamSection()            │  │ parseGraph()                     │       │
-│  │ confirmStep()           │  │ Claude SSE →              │  │ parseTopology()                  │       │
-│  │ cascadeAnalyze          │  │   WebSocket                │  │ lineageTraversal()               │       │
-│  │ executePlan()           │  │ resumeOnError()            │  │ ancestorSearch()                 │       │
-│  └───────────────┘  └────────┬────────┘  └────────────────────┘       │
-│                                                │                                                            │
-└──────────────────────────────┼───────────────────────────────────┘
-                                                    │ SSE
-                                 ┌──────────┴──────────┐
-                                 │   Claude API                      │
-                                 │   (Anthropic)                     │
-                                 └─────────────────────┘
+│                        SERVICE LAYER                              │
+│                                                                   │
+│  ┌───────────────┐  ┌─────────────────┐  ┌────────────────────┐  │
+│  │  Synthesis     │  │  Prompt         │  │  Context           │  │
+│  │  Engine        │  │  Registry       │  │  Builder           │  │
+│  │                │  │                 │  │                    │  │
+│  │ buildSYS()     │  │ getTemplate()   │  │ buildContext       │  │
+│  │ buildSection   │  │ renderTemplate()│  │   ForSection()     │  │
+│  │   Defs()       │  │ listVersions() │  │ extractContext     │  │
+│  │ resolveContext │  │ activateVer()  │  │   Fragment()       │  │
+│  │   Deps()       │  │ testDraft()    │  │ budgeting          │  │
+│  │ buildEffective │  │                 │  │                    │  │
+│  │   Deps()       │  │                 │  │                    │  │
+│  │ compatAdvisor()│  │                 │  │                    │  │
+│  └───────┬───────┘  └────────┬────────┘  └─────────┬──────────┘  │
+│          │                   │                      │             │
+│  ┌───────┴───────┐  ┌───────┴─────────┐  ┌────────┴───────────┐  │
+│  │  Edit         │  │  Streaming      │  │  Graph             │  │
+│  │  Planner      │  │  Manager        │  │  Service           │  │
+│  │               │  │                 │  │                    │  │
+│  │ createPlan()  │  │ streamSection() │  │ parseGraph()       │  │
+│  │ confirmStep() │  │ Claude SSE →    │  │ parseTopology()    │  │
+│  │ cascadeAnalyze│  │   WebSocket     │  │ lineageTraversal() │  │
+│  │ executePlan() │  │ resumeOnError() │  │ ancestorSearch()   │  │
+│  └───────────────┘  └────────┬────────┘  └────────────────────┘  │
+│                              │                                    │
+└──────────────────────────────┼────────────────────────────────────┘
+                               │ SSE
+                    ┌──────────┴──────────┐
+                    │   Claude API        │
+                    │   (Anthropic)       │
+                    └─────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         DATA LAYER                                                                                │
-│                                                                                                                   │
-│  ┌──────────────────────┐          ┌──────────────────────────┐                │
-│  │     PostgreSQL       │             │        Redis                                          │                │
-│  │                      │             │                                                       │                │
-│  │  users               │             │  prompt_cache:*                                       │                │
-│  │  sessions            │             │  config_cache:*                                       │                │
-│  │  syntheses           │             │  session:*                                            │                │
-│  │  sections            │             │  rate_limit:*                                         │                │
-│  │  categories          │             │  stream_state:*                                       │                │
-│  │  category_edges      │             │                                                       │                │
-│  │  glossary_terms      │             └─────────────────────────────────┘                │
-│  │  theses              │                                                                                       │
-│  │  dialogue_turns      │                                                                                       │
-│  │  synthesis_lineage   │                                                                                       │
-│  │  prompt_templates    │                                                                                       │
-│  │  synthesis_configs   │                                                                                       │
-│  │  element_versions    │                                                                                       │
-│  │  edit_plans          │                                                                                       │
-│  │  mode_results        │                                                                                       │
-│  │  api_usage           │                                                                                       │
-│  │  transactions        │                                                                                       │
-│  │  api_keys (encrypted)│                                                                                       │
-│  └─────────────┘                                                                                        │
+│                         DATA LAYER                                  │
+│                                                                     │
+│  ┌──────────────────────┐          ┌──────────────────────────┐    │
+│  │     PostgreSQL       │          │        Redis             │    │
+│  │                      │          │                          │    │
+│  │  users               │          │  prompt_cache:*          │    │
+│  │  sessions            │          │  config_cache:*          │    │
+│  │  syntheses           │          │  session:*               │    │
+│  │  sections            │          │  rate_limit:*            │    │
+│  │  categories          │          │  stream_state:*          │    │
+│  │  category_edges      │          │                          │    │
+│  │  glossary_terms      │          └──────────────────────────┘    │
+│  │  theses              │                                          │
+│  │  dialogue_turns      │                                          │
+│  │  synthesis_lineage   │                                          │
+│  │  prompt_templates    │                                          │
+│  │  synthesis_configs   │                                          │
+│  │  element_versions    │                                          │
+│  │  edit_plans          │                                          │
+│  │  mode_results        │                                          │
+│  │  api_usage           │                                          │
+│  │  transactions        │                                          │
+│  │  api_keys (encrypted)│                                          │
+│  └──────────────────────┘                                          │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -186,7 +188,7 @@ Deploy:      Docker Compose (dev) → VPS / managed PostgreSQL (prod)
 
 **Функции, требующие адаптации:**
 - `buildSectionDefs()` (buildSectionDefs()) — вместо хардкода читает шаблоны из Prompt Registry
-- `baseCtx()` (baseCtx()) — параметры берутся из БД, а не из DOM
+- `baseCtx()` (baseCtx()) — параметры берутся из БД, а не из DOM; в v10 из вывода убрана строка «ВЫБРАННЫЕ РАЗДЕЛЫ»
 - `serializeParts()` (serializeParts()) — без изменений, но входные parts — из Registry
 - `groupPasses()` — без изменений
 
@@ -281,8 +283,9 @@ interface EditStep {
 3. Клиент получает полный план с пометками `cascadeGenerated: true`
 4. Пользователь подтверждает/снимает шаги → `PATCH /api/plans/{id}`
 5. Пользователь нажимает ▶ → `POST /api/plans/{id}/execute`
-6. Сервер исполняет шаги последовательно, стримя результаты через WebSocket
-7. После каждого шага сервер пересчитывает downstream → может добавить новые шаги
+6. Сервер исполняет шаги в едином топологическом порядке (`buildPlanOrder`): добавления и перегенерации сортируются вместе по зависимостям, а не раздельно (v10)
+7. После всех шагов: предложение обновить «Структура документа» (если добавлялись/удалялись разделы) + каскад для downstream (v10)
+8. После каждого шага сервер может добавить новые шаги
 8. Клиент получает `plan_updated` и обновляет UI
 
 ### 4.6. Graph Service
@@ -294,6 +297,7 @@ interface EditStep {
 - Парсинг: `parseGraph()` (parseGraph()) + нормализация типов через Element Taxonomy (4.8) и `parseTopology()` (parseTopology()) адаптируются для извлечения из HTML-ответа Claude и записи в БД
 - Визуализация: D3.js (2D) + Three.js (3D) — полностью на клиенте, данные загружаются через API
 - Код визуализации (`build2D()` build2D(), `build3D()` build3D()) переносится в React-компоненты
+- Динамические палитры `_nodeColorMap`/`_edgeStyleMap` (hue-seeds + золотой угол); `showEdgePanel` (клик на связи); `getStructuralMarkers` (массив маркеров); `roleMode` по умолчанию `"procedural"`; `clearLegendFilter` + фильтр по легенде (`legendFilter`)
 
 **Граф наследования** (между концепциями):
 - Данные: таблица `synthesis_lineage`
@@ -303,7 +307,7 @@ interface EditStep {
 
 ### 4.7. Element Editor
 
-**Новая подсистема** (отсутствует в исходнике).
+**Новая подсистема** (отсутствует в исходнике; в v10 появился Unified Concept Pool на клиенте).
 
 Позволяет редактировать отдельные элементы синтеза без перегенерации:
 - Категории графа: имя, тип, определение, центральность, определённость, происхождение, роли
@@ -311,10 +315,13 @@ interface EditStep {
 - Тезисы: формулировка, обоснование, тип, степень новизны, связанные категории
 - Термины глоссария: определение, столбцы по уровню синтеза
 - Капсула: текст
+- `structureSections`: снимок `sectionOrder` для подраздела «Структура документа» (v10)
+
+> **v10**: ко всем промптам разделов добавляется `STOP_SIGNAL` — инструкция прекратить генерацию после последнего запрошенного раздела.
 
 **Расширенные характеристики** (из предыдущего проекта):
-- Категории: centrality, certainty + **historical_significance**, **innovation_degree** (1–5)
-- Связи: strength + **certainty**, **historical_support**, **logical_necessity**
+- Категории: centrality, certainty + **historical_significance**, **innovation_degree** (1–5), **clarity**, **breadth**, **depth**, **applicability** (0–1) — последние 4 добавлены в v10
+- Связи: strength + **certainty**, **historical_support**, **logical_necessity**, **innovation_degree** (1–5), **context_dependency** (0–1) — последние 2 добавлены в v10
 - Каждая характеристика имеет UI-слайдер и кнопку «Обоснование» → точечный запрос к Claude через Element Enrichment Service
 
 При сохранении изменения:
@@ -331,6 +338,8 @@ interface EditStep {
 **Каталог типов категорий** (`category_type_catalog`): 18 типов из предыдущего проекта (ontological, epistemological, axiological, ethical, aesthetic, metaphysical, logical, practical, political, theological, anthropological, social, linguistic, phenomenological, existential, analytical, hermeneutical, cross_disciplinary). Каждый тип — запись с именем, русским названием, описанием. Пользователь и админ могут добавлять новые типы.
 
 **Каталог типов связей** (`relationship_type_catalog`): 29 типов (hierarchical, causal, dialectical, correlational, disjunctive, conjunctive, contradiction, complementary, emergence, necessary_condition, sufficient_condition, identity, analogy, implementation, instantiation, generalization, part_whole, means_end, deductive, inductive, abductive, temporal, conceptual, definitional, manifestation, foundational, recognition, reflexion, development). Аналогично расширяемый.
+
+**Расширенные типы по методу** (v10): словари `_EXTRA_CATEGORY_TYPES` и `_EXTRA_EDGE_TYPES` добавляют типы в зависимости от метода синтеза (напр., `analytical` добавляет «дедуктивная», «индуктивная» и др. связи). Фразинг зависит от уровня синтеза (`_SYNTH_LEVEL_TYPE_PHRASING`). Функция `_buildExtraTypesBlock(method, synthLevel, kind)` генерирует блок для промпта.
 
 **Нормализация**: при парсинге HTML-ответа Claude (`graph-parser.ts`) каждый тип категории и связи маппится на ближайший элемент каталога через нечёткое сопоставление (аналог `part.includes(key)` из исходника). Промпты уже предписывают Claude фиксированные списки типов (14 для категорий, 12 для связей), поэтому нестандартные типы — редкость (только метод «творческий» допускает нестандартные типы связей). Неизвестные типы сохраняются как свободный текст и получают fallback-стилизацию при рендере.
 
@@ -349,7 +358,17 @@ interface EditStep {
 
 Каждый результат обогащения сохраняется в `element_enrichments` и может быть повторно запрошен с другими параметрами. Промптовые шаблоны — в Prompt Registry (ключи: `enrichment.category`, `enrichment.edge`, `enrichment.characteristic_justification`).
 
-### 4.10. Representation Transformer (graph↔theses)
+### 4.10. Prompt Skeleton Reconstruction (v10)
+
+Система реконструкции промптов для файлов, импортированных без `_promptSkeleton`:
+- `reconstructBaseCtxSkeleton(params, genCommon)` — базовый контекст с маркерами вместо содержимого концептов
+- `reconstructCtxMarkers(sectionKey)` — маркеры контекста из `ctxLog`
+- `reconstructSectionTask(genEntry, params)` — скелет задания раздела из определений
+- `reconstructSkeleton(genEntry)` — полный скелет: base + ctx + task + quality
+
+Используется в `formatPromptsForExport()` как fallback, когда `_promptSkeleton` отсутствует.
+
+### 4.11. Representation Transformer (graph↔theses)
 
 **Новая подсистема**.
 
@@ -372,7 +391,7 @@ interface EditStep {
 ### 5.1. Генерация нового синтеза
 
 ```
-1. Клиент: POST /api/syntheses { seed, philosophers, sections, method, depth, synthLevel, ctx }
+1. Клиент: POST /api/syntheses { seed, philosophers, sections, method, depth, synthLevel, ctx, extGraphMetrics? }
 2. Сервер:
    a. Создаёт запись в `syntheses` (status: "generating")
    b. resolveContextDeps() + buildEffectiveDeps() + buildDynamicOrder()
@@ -397,6 +416,11 @@ interface EditStep {
 2. Сервер:
    a. Для каждого участника-концепции загружает из БД: capsule, graphNodes, glossaryCompact,
       thesesSummary, goals, tensions (аналог importConceptAsParticipant, importConceptAsParticipant())
+      В v10 исходник: данные берутся из Unified Concept Pool (`_loadedConcepts`),
+      где каждая концепция хранит snapshot и participant; перед генерацией вызывается
+      `refreshAllSynthParticipants()` для актуализации контекста.
+      `genCommon.conceptBlockSizes` сохраняет размеры блоков контекста каждой
+      концепции (для реконструкции промптов при экспорте)
    b. Проверяет пригодность: обязательные разделы, генеалогические пересечения
       (checkGenealogyOverlaps, checkGenealogyOverlaps())
    c. Формирует conceptContextBlock() из данных БД (вместо DOM-парсинга)

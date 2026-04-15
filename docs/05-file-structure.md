@@ -16,7 +16,7 @@ philosynth-service/
 │       ├── tsconfig.json
 │       │
 │       ├── constants/
-│       │   ├── philosophers.ts         # Список философов (STATE.PH)
+│       │   ├── philosophers.ts         # Список философов (STATE.PH, +36 в v10)
 │       │   ├── labels.ts               # ML, SL, DL, REVERSE_ML и т.д. (ML, SL, DL, REVERSE_*, KEY_LABELS)
 │       │   ├── section-labels.ts       # KEY_LABELS, SECTION_LABELS (KEY_LABELS, SECTION_LABELS)
 │       │   ├── ctx-keys.ts             # ALL_CTX_KEYS, CTX_LABELS (ALL_CTX_KEYS, CTX_LABELS)
@@ -153,12 +153,12 @@ philosynth-service/
 │   │   │                               # (НОВОЕ, из предыдущего проекта)
 │   │   │
 │   │   ├── meta-synthesis-service.ts   # importConceptAsParticipant (из БД, не из DOM)
-│   │   │                               # checkGenealogyOverlaps, isAncestor
-│   │   │                               # (importConceptAsParticipant … isAncestor)
+│   │   │                               # checkGenealogyOverlaps
+│   │   │                               # (importConceptAsParticipant … reconstructGenealogy)
 │   │   │
 │   │   ├── import-service.ts           # importHTML, extractMetadata, extractSections,
 │   │   │                               # buildDocStateFromImport
-│   │   │                               # (весь импорт: handleImportFile … buildDocStateFromImport)
+│   │   │                               # (importHTML … buildDocStateFromImport)
 │   │   │
 │   │   ├── prompt-registry.ts          # getTemplate, renderTemplate, listVersions,
 │   │   │                               # activateVersion, testDraft (НОВОЕ)
@@ -168,6 +168,10 @@ philosynth-service/
 │   │   ├── api-key-service.ts          # Шифрование/дешифрование, проксирование (НОВОЕ)
 │   │   │
 │   │   ├── lineage-service.ts          # Рекурсивные CTE для навигации по графу (НОВОЕ)
+│   │   │
+│   │   ├── plan-order-builder.ts       # buildPlanOrder — единый топопорядок (v10)
+│   │   ├── structure-tracker.ts        # refreshSumDef, structureSections (v10)
+│   │   ├── prompt-reconstruction.ts    # reconstructBaseCtxSkeleton, reconstructCtxMarkers (v10)
 │   │   │
 │   │   ├── log-formatter.ts            # formatCtxLog (formatCtxLog())
 │   │   │
@@ -186,7 +190,9 @@ philosynth-service/
 │   │   ├── intra-deps.ts              # Начальные значения
 │   │   ├── subsection-ctx-keys.ts     # Начальные значения
 │   │   ├── topology-roles.ts          # Начальные значения
-│   │   └── fragment-share.ts          # FRAGMENT_SHARE, CONTEXT_BUDGET
+│   │   ├── fragment-share.ts          # FRAGMENT_SHARE, CONTEXT_BUDGET
+│   │   └── extra-types.ts             # _EXTRA_CATEGORY_TYPES, _EXTRA_EDGE_TYPES,
+│   │                                  # _SYNTH_LEVEL_TYPE_PHRASING (v10)
 │   │
 │   ├── utils/
 │   │   ├── deep-merge.ts               # deepMergeUniq (deepMergeUniq())
@@ -261,7 +267,7 @@ philosynth-service/
 │   │   │   │   ├── SectionPicker.tsx       # Чекбоксы секций с compat-adviser
 │   │   │   │   ├── CostEstimate.tsx        # Оценка стоимости
 │   │   │   │   ├── CompatAdvisor.tsx       # Рекомендации совместимости
-│   │   │   │   ├── ConceptParticipants.tsx  # Добавление концепций для мета-синтеза
+│   │   │   │   # ConceptParticipants.tsx заменён → pool/ConceptPool.tsx
 │   │   │   │   └── GenerationProgress.tsx  # Прогресс-панель (шаги, спиннеры)
 │   │   │   │
 │   │   │   ├── document/
@@ -277,8 +283,10 @@ philosynth-service/
 │   │   │   │   ├── Graph2D.tsx             # D3.js рендерер (из build2D, build2D())
 │   │   │   │   ├── NodePanel.tsx           # Информационная панель узла
 │   │   │   │   ├── GraphLegend.tsx         # Легенда
-│   │   │   │   └── graph-utils.ts          # typeColor, edgeTypeStyle, polyPath, nodeSymbolPath
-│   │   │   │                               # (константы графа + вспомогательные функции)
+│   │   │   │   ├── graph-utils.ts          # typeColor, edgeTypeStyle, polyPath, nodeSymbolPath,
+│   │   │   │   │                           # _rebuildNodeColors, _rebuildEdgeStyles, getStructuralMarkers,
+│   │   │   │   │                           # clearLegendFilter (v10: динамические палитры вместо TC/EC)
+│   │   │   │   └── EdgePanel.tsx           # showEdgePanel — панель информации о связи (v10)
 │   │   │   │
 │   │   │   ├── edit/
 │   │   │   │   ├── EditModal.tsx           # Модальное окно редактирования
@@ -301,6 +309,11 @@ philosynth-service/
 │   │   │   ├── lineage/
 │   │   │   │   ├── GenealogyTree.tsx       # Дерево наследования (CSS org-chart)
 │   │   │   │   └── LineageSearch.tsx       # Поиск по генеалогии
+│   │   │   │
+│   │   │   ├── pool/                        # Unified Concept Pool (v10)
+│   │   │   │   ├── ConceptPool.tsx          # Пул загруженных концепций
+│   │   │   │   ├── PoolCard.tsx             # Карточка концепции в пуле
+│   │   │   │   └── PoolSummary.tsx          # Саммари пула
 │   │   │   │
 │   │   │   ├── catalog/
 │   │   │   │   ├── SynthesisList.tsx       # Список карточек синтезов

@@ -78,6 +78,7 @@ CREATE TABLE syntheses (
     -- 'overview'|'standard'|'deep'|'exhaustive'
   generation_order TEXT NOT NULL DEFAULT 'architectural',
     -- 'architectural'|'genetic'
+  ext_graph_metrics BOOLEAN NOT NULL DEFAULT false,  -- расширенные характеристики графа (v10)
   context          TEXT NOT NULL DEFAULT '',  -- доп. контекст пользователя
   lang             TEXT NOT NULL DEFAULT 'Russian',
   
@@ -92,6 +93,7 @@ CREATE TABLE syntheses (
   section_order    JSONB NOT NULL DEFAULT '["sum"]',
   
   -- Версионирование (аналог DOC_STATE.docVersion)
+  structure_sections JSONB,  -- снимок sectionOrder для «Структура документа» (v10, nullable)
   version_base     INT NOT NULL DEFAULT 1,
   version_sub      INT NOT NULL DEFAULT 0,
   version_modes    INT NOT NULL DEFAULT 0,
@@ -190,6 +192,10 @@ CREATE TABLE categories (
   certainty      REAL NOT NULL DEFAULT 0.5,
   historical_significance REAL NOT NULL DEFAULT 0.5,  -- историческая значимость (0–1)
   innovation_degree       INT NOT NULL DEFAULT 1,     -- уровень инновационности (1–5)
+  clarity            REAL NOT NULL DEFAULT 0,       -- ясность (0–1, v10)
+  breadth            REAL NOT NULL DEFAULT 0,       -- широта (0–1, v10)
+  depth_score        REAL NOT NULL DEFAULT 0,       -- глубина (0–1, v10; «depth_score» чтобы не конфликтовать с SQL)
+  applicability      REAL NOT NULL DEFAULT 0,       -- применимость (0–1, v10)
   type_catalog_id  UUID REFERENCES category_type_catalog(id),  -- ссылка на каталог типов (нормализованный)
   origin         TEXT NOT NULL DEFAULT '',  -- столбец «Происхождение/Генеалогия/Преодолённые ограничения»
   
@@ -224,6 +230,8 @@ CREATE TABLE category_edges (
   certainty          REAL NOT NULL DEFAULT 0.5,  -- определённость/спорность связи
   historical_support REAL NOT NULL DEFAULT 0.5,  -- историческая поддержка
   logical_necessity  REAL NOT NULL DEFAULT 0.5,  -- логическая необходимость
+  innovation_degree  INT NOT NULL DEFAULT 1,        -- степень инновации связи (1–5, v10)
+  context_dependency REAL NOT NULL DEFAULT 0.5,     -- контекстозависимость (0–1, v10)
   type_catalog_id    UUID REFERENCES relationship_type_catalog(id),
   position      INT NOT NULL DEFAULT 0,
   source_origin TEXT NOT NULL DEFAULT 'generated',  -- 'generated'|'manual'

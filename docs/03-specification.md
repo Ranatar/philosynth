@@ -28,7 +28,7 @@
 
 | ID | Требование | Приоритет |
 |---|---|---|
-| G1 | Форма создания: философы, зерно, метод, уровень, глубина, порядок, контекст, секции | MVP |
+| G1 | Форма создания: философы (расширенный список, +36 в v10), зерно, метод, уровень, глубина, порядок, контекст, секции, extGraphMetrics | MVP |
 | G2 | Выбор секций с проверкой совместимости (матрица COMPAT_MATRIX) | MVP |
 | G3 | Оценка стоимости до генерации (estimateCost) | MVP |
 | G4 | Потоковая генерация с отображением прогресса в реальном времени | MVP |
@@ -133,8 +133,8 @@
 | EN1 | Точечное обогащение категории через Claude (описание, аналоги, трактовки) | Фаза 5 |
 | EN2 | Точечное обоснование связи через Claude (философское обоснование, контраргументы) | Фаза 5 |
 | EN3 | Обоснование числовой характеристики через Claude (почему centrality=0.9?) | Фаза 5 |
-| EN4 | Расширенные характеристики: historical_significance, innovation_degree для категорий | Фаза 5 |
-| EN5 | Расширенные характеристики: certainty, historical_support, logical_necessity для связей | Фаза 5 |
+| EN4 | Расширенные характеристики: historical_significance, innovation_degree, clarity, breadth, depth, applicability для категорий | Фаза 5 |
+| EN5 | Расширенные характеристики: certainty, historical_support, logical_necessity, innovation_degree, context_dependency для связей | Фаза 5 |
 | EN6 | UI-слайдеры для каждой характеристики + кнопка «Обоснование» | Фаза 5 |
 | RT1 | Трансформация graph→theses: генерация тезисов напрямую из графа БД | Фаза 5 |
 | RT2 | Трансформация theses→graph: построение графа напрямую из тезисов БД | Фаза 5 |
@@ -178,6 +178,7 @@ GET    /syntheses/public       ?page=1&limit=20&search=...&philosopher=Кант
 
 POST   /syntheses              { seed, philosophers: string[], sections: string[],
                                  method, depth, synthLevel, generationOrder?,
+                                 extGraphMetrics?: boolean,
                                  context?, sectionContexts?: Record<string, string>,
                                  lang?, participants?: ParticipantInput[] }
                                 → { id: string, status: "generating" }
@@ -206,12 +207,14 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
   synthLevel: string;
   depth: string;
   generationOrder: string;
+  extGraphMetrics: boolean;
   context: string;
   lang: string;
   status: string;
   isPublic: boolean;
   sectionOrder: string[];
   version: { base: number, sub: number, modes: number, modeRegen: number };
+  structureSections: string[] | null;  // v10: снимок sectionOrder
   capsuleHtml: string;
   totalInputTokens: number;
   totalOutputTokens: number;
@@ -265,8 +268,17 @@ GET    /syntheses/:id/categories/:catId
                                 → { category: Category }
 
 PATCH  /syntheses/:id/categories/:catId
-                                { name?, type?, definition?, centrality?, certainty?, origin? }
+                                { name?, type?, definition?, centrality?, certainty?, origin?,
+                                  historicalSignificance?, innovationDegree?,
+                                  clarity?, breadth?, depthScore?, applicability? }
                                 → { category: Category, impact: ImpactAnalysis }
+
+PATCH  /syntheses/:id/edges/:edgeId
+                                { description?, edgeType?, direction?, strength?,
+                                  certainty?, historicalSupport?, logicalNecessity?,
+                                  innovationDegree?, contextDependency? }
+                                → { edge: CategoryEdge, impact: ImpactAnalysis }
+                                // v10: добавлен PATCH для связей
 
 GET    /syntheses/:id/theses    → { theses: Thesis[] }
 

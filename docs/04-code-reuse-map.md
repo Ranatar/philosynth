@@ -66,7 +66,8 @@
 
 | Объект | Целевой модуль |
 |---|---|
-| `STATE` (списки философов, ML, SL, DL и т.д.) | `shared/constants/philosophers.ts`, `shared/constants/labels.ts` |
+| `STATE` (списки философов (+36 в v10), ML, SL, DL и т.д.) | `shared/constants/philosophers.ts`, `shared/constants/labels.ts` |
+| `_EXTRA_CATEGORY_TYPES`, `_EXTRA_EDGE_TYPES`, `_SYNTH_LEVEL_TYPE_PHRASING`, `_buildExtraTypesBlock()` | `server/config/extra-types.ts` (→ БД) (v10) |
 | `KEY_LABELS`, `SECTION_LABELS` | `shared/constants/section-labels.ts` |
 | `REVERSE_ML`, `REVERSE_DL`, `REVERSE_SL`, `METHOD_CODE`, `LEVEL_CODE`, `ORDER_CODE`, `DEPTH_CODE` | `shared/constants/labels.ts` |
 
@@ -76,6 +77,10 @@
 |---|---|
 | `parseTopology()` | `server/services/graph-parser.ts` |
 | `parseGraph()` | там же |
+| `_rebuildNodeColors()`, `_rebuildEdgeStyles()` | `client/components/graph/graph-utils.ts` (v10) |
+| `showEdgePanel()` | `client/components/graph/EdgePanel.tsx` (v10) |
+| `getStructuralMarkers()` (массив маркеров) | `client/components/graph/graph-utils.ts` (v10) |
+| `clearLegendFilter()`, `legendFilter` | `client/components/graph/GraphModal.tsx` (v10) |
 | `normalizeName()`, `normalizeType()` | `shared/utils/normalize.ts` |
 
 ### 1.8. Имена файлов
@@ -151,6 +156,7 @@
 | `extractEmbeddedState()` | Без изменений | там же |
 | `buildDocStateFromImport()` | Вместо DOC_STATE → создание записей в БД | там же |
 | `importConceptAsParticipant()` | Чтение из БД вместо из DOM | `server/services/meta-synthesis-service.ts` |
+| `genCommon.conceptBlockSizes` | Размеры контекстных блоков концепций (v10, для реконструкции промптов) | `server/services/generation-service.ts` |
 
 ### 2.7. Режимы
 
@@ -170,14 +176,14 @@
 | HTML-разметка (формы, модальные окна, layout) | React-компоненты |
 | `STATE` (DOM-рефы, глобальные переменные) | Zustand store |
 | `generateDoc()`, `go()` — DOM-оркестрация генерации | React + WebSocket hooks |
-| Константы графа (`TC`, `EC`, `CPAL`, `ROLE_REGISTRY`), `showNodePanel()` | React-компоненты GraphViewer, NodePanel |
+| Динамические палитры (`_nodeColorMap`, `_edgeStyleMap`, `_TC_HUE_SEEDS`, `_EC_HUE_SEEDS`, `_EC_DASH_SEEDS`, `CPAL`), `showNodePanel()`, `showEdgePanel()` | React-компоненты GraphViewer, NodePanel, EdgePanel |
 | `build3D()` — Three.js (вся 3D-логика) | `client/components/Graph3D.tsx` (React-обёртка) |
 | `build2D()` — D3.js (вся 2D-логика) | `client/components/Graph2D.tsx` (React-обёртка) |
-| `buildLegend()`, `switchView()`, `openGraph()`, `closeGraph()` | `client/components/GraphModal.tsx` |
+| `buildLegend()`, `switchView()`, `openGraph()`, `closeGraph()`, `clearLegendFilter()` | `client/components/GraphModal.tsx` |
 | `openEditModal()`, `renderEditSections()` | `client/components/EditModal.tsx` |
 | UI подразделовой перегенерации | `client/components/SubsectionRegenPanel.tsx` |
 | `addSection()`, `deleteSection()`, `rebuildDbMapping()` | Серверные операции через API |
-| `handleImportFile()`, `importFromUrl()`, UI импорта | `client/components/ImportPanel.tsx` |
+| `parseConceptFile()`, `addToPool()`, `removeFromPool()`, `selectForViewing()`, `snapshotCurrentState()`, `restoreFromPoolSnapshot()`, `syncConceptParticipants()`, `refreshPoolParticipant()`, `renderPoolConcepts()`, `handlePoolFileImport()`, `handlePoolUrlImport()` | `client/components/pool/ConceptPool.tsx` (v10, НОВОЕ) |
 | `syncFormFromImport()` | React state sync |
 | `renderGenealogyTree()` | `client/components/GenealogyTree.tsx` |
 | Mode modal UI | `client/components/ModeModal.tsx` |
@@ -217,6 +223,11 @@
 | `server/routes/transforms.ts` | API трансформаций + история + откат |
 | `client/components/edit/TransformPanel.tsx` | UI: кнопки трансформации, превью, история, откат |
 | `client/hooks/useWebSocket.ts` | WebSocket-hook с reconnect |
+| `server/services/plan-order-builder.ts` | `buildPlanOrder()` — единый топологический порядок add+regen (v10) |
+| Константа `STOP_SIGNAL` | Стоп-инструкция в конце каждого промпта раздела (v10) |
+| `server/services/structure-tracker.ts` | `refreshSumDef()`, `regenStructureFromEditModal()`, отслеживание `structureSections` (v10) |
+| `server/services/prompt-reconstruction.ts` | `reconstructBaseCtxSkeleton()`, `reconstructCtxMarkers()`, `reconstructSectionTask()`, `reconstructSkeleton()` (v10) |
+| `_EXTRA_CATEGORY_TYPES`, `_EXTRA_EDGE_TYPES`, `_buildExtraTypesBlock()` | Расширенные типы по методу/уровню (v10) |
 
 ---
 

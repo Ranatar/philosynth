@@ -21,6 +21,7 @@
 6. Vite + React: каркас с роутингом, Layout, заглушки страниц
 7. WebSocket: базовое подключение, ping/pong, reconnect
 8. `scripts/seed-prompts.ts`: извлечение всех промптов из исходника → `prompt_templates`
+   > v10: список философов расширен на 36 позиций — обновить `shared/constants/philosophers.ts`
 9. `scripts/seed-configs.ts`: извлечение конфигов → `synthesis_configs`
 10. `scripts/seed-taxonomy.ts`: заполнение `category_type_catalog` (18 типов) и `relationship_type_catalog` (29 типов) из предыдущего проекта
 
@@ -37,6 +38,9 @@
 **Порядок задач:**
 
 **1.1. Ядро генерации (бэкенд)**
+
+> **v10**: форма создания включает чекбокс `extGraphMetrics` (расширенные характеристики графа). Параметр передаётся в промпты и влияет на парсинг (дополнительные столбцы). Также промпты получают расширенные типы по методу (`_buildExtraTypesBlock`) и `STOP_SIGNAL`.
+
 - `prompt-registry.ts`: getTemplate, renderTemplate, getConfig (чтение из БД + Redis-кэш)
 - `synthesis-engine.ts`: перенос resolveContextDeps, buildEffectiveDeps, findSubstitute, deepMergeUniq
 - `section-defs-builder.ts`: перенос buildSectionDefs, serializeParts, groupPasses — с чтением из Registry
@@ -75,7 +79,7 @@
 **1.7. Граф категорий (клиент)**
 - `GraphModal.tsx`, `Graph3D.tsx`, `Graph2D.tsx`
 - `NodePanel.tsx`, `GraphLegend.tsx`
-- `graph-utils.ts` (typeColor, edgeTypeStyle и т.д.)
+- `graph-utils.ts` (typeColor, edgeTypeStyle, _rebuildNodeColors, _rebuildEdgeStyles, showEdgePanel, getStructuralMarkers, clearLegendFilter — v10: динамические палитры)
 - `graph-physics.ts` (tick, warmup)
 - `GET /syntheses/:id/categories`
 
@@ -114,6 +118,8 @@
 - `plan-executor.ts`: последовательное исполнение шагов
 - `POST /plans`, `PATCH /plans`, `POST /plans/:id/execute`
 
+> **v10**: исполнение плана использует `buildPlanOrder()` — единый топологический порядок для add+regen (вместо раздельных этапов). После плана: предложение обновить «Структура документа» + каскад для downstream.
+
 **2.5. UI редактирования**
 - `EditModal.tsx`, `EditSectionCard.tsx`
 - `SubsectionRegenPanel.tsx`
@@ -125,7 +131,12 @@
 - `DELETE` логика + перенумерация
 - `addSection` логика + вставка в правильную позицию
 
-**2.7. Лог контекста и генерации**
+**2.7. Трекинг «Структура документа» (v10)**
+- `DOC_STATE.structureSections`: снимок `sectionOrder` при генерации подраздела
+- `refreshSumDef()`: перестроение `sectionDefs["sum"]` после добавления/удаления разделов
+- Карточка «Структура устарела» в EditModal + `regenStructureFromEditModal()`
+
+**2.8. Лог контекста и генерации**
 - `log-formatter.ts`: перенос formatCtxLog
 - `ContextLogViewer.tsx`, `colorize-log.ts`
 - `GET /syntheses/:id/logs/formatted`
@@ -140,10 +151,11 @@
 
 **3.1. Мета-синтез**
 - `meta-synthesis-service.ts`: загрузка контекста участника из БД, conceptContextBlock
-- `ConceptParticipants.tsx`: добавление концепций из каталога
+- **Unified Concept Pool** (`ConceptPool.tsx`): загрузка концепций в пул, ◉ просмотр, ☑ мета-синтез
 - Проверки: пригодность, генеалогические пересечения
-- `checkGenealogyOverlaps`, `isAncestor`
+- `checkGenealogyOverlaps` (проверка `isAncestor` — в `lineage-service`)
 - synthesis_lineage: запись при создании
+- v10: `genCommon.conceptBlockSizes` — размеры блоков контекста концепций (для реконструкции промптов)
 
 **3.2. Граф наследования**
 - `lineage-service.ts`: рекурсивные CTE (ancestors, descendants)
@@ -167,6 +179,10 @@
 - `POST /modes/:modeKey/run`, стриминг через WebSocket
 - Хранение в `mode_results`
 
+**4.1b. Реконструкция промптов (v10)**
+- `prompt-reconstruction.ts`: `reconstructBaseCtxSkeleton`, `reconstructCtxMarkers`, `reconstructSectionTask`, `reconstructSkeleton`
+- Используется в `formatPromptsForExport()` для файлов без `_promptSkeleton`
+
 **4.2. Экспорт**
 - `html-exporter.ts`: генерация самодостаточного HTML (включая JS графа)
 - `mmd-exporter.ts`: Mermaid (перенос exportMMD)
@@ -174,10 +190,12 @@
 - `png-exporter.ts`: node-canvas рендер графа
 - `GET /export/html`, `/mmd`, `/png`, `/json`
 
-**4.3. Импорт**
+**4.3. Импорт + Unified Concept Pool**
 - `import-service.ts`: парсинг HTML → создание синтеза в БД
 - `ImportPage.tsx`: загрузка файла, валидация, предупреждения
 - `POST /syntheses/import`
+
+> **v10**: на клиенте раздельные блоки «Импорт файла» и «Концепции для Синтеза» заменены единым **Unified Concept Pool**. Пул позволяет загружать несколько концепций, переключаться между ними (◉ просмотр) и отмечать для мета-синтеза (☑). В сервисе это не меняет архитектуру (бэкенд по-прежнему принимает participants), но клиентский код пула — новый.
 
 **Результат**: все режимы работают, можно экспортировать/импортировать.
 
@@ -196,8 +214,8 @@
 - UI: история изменений элемента
 
 **5.3. Расширенные характеристики**
-- Добавить поля `historical_significance`, `innovation_degree` в categories
-- Добавить поля `certainty`, `historical_support`, `logical_necessity` в category_edges
+- Добавить поля `historical_significance`, `innovation_degree`, `clarity`, `breadth`, `depth_score`, `applicability` в categories (v10)
+- Добавить поля `certainty`, `historical_support`, `logical_necessity`, `innovation_degree`, `context_dependency` в category_edges (v10)
 - `CharacteristicSlider.tsx`: UI-слайдер для каждой характеристики
 - Интеграция с ElementEditor и NodePanel
 
@@ -337,7 +355,7 @@
 | Фаза | Сессий | Основные задачи |
 |---|---|---|
 | 0. Инфраструктура | 3–4 | Скелет, БД, Auth, WebSocket, seed |
-| 1. MVP | 8–10 | Генерация, просмотр, граф, каталог |
+| 1. MVP | 9–12 | Генерация, просмотр, граф, каталог, Concept Pool |
 | 2. Редактирование | 6–8 | Перегенерация, каскады, планы |
 | 3. Мета-синтез | 4–5 | Участники, наследование, навигация |
 | 4. Режимы + экспорт | 3–4 | Режимы, HTML/MMD/PNG/JSON экспорт, импорт |
