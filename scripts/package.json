@@ -1,0 +1,6 @@
+{
+  "name": "@philosynth/scripts",
+  "private": true,
+  "type": "module",
+  "description": "Seed- и служебные скрипты (запуск из корня: npm run seed:prompts / seed:configs / extract:seed). Файл нужен как маркер type=module: без него tsc/NodeNext трактует scripts/*.ts как CommonJS и типы зависимостей (drizzle-orm) резолвятся несовместимо с ESM-серверными модулями."
+}

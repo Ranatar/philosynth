@@ -1,0 +1,1249 @@
+// Фрагменты philosynth.html (26 024 стр., ревизия 2026-07) для беседы 0.1-monorepo-db
+// Сгенерировано extract-fragments.py; при обновлении исходника — перегенерировать.
+
+// ───── [html-форма (body→script)] philosynth.html строки 3530–4378 ─────
+  <body>
+        <div class="topbar">
+      <div class="topbar-left">
+        <span>PhiloSynth Pro™</span>
+        <span class="topbar-badge">Synthesis Engine v1.0</span>
+        <span>Платформа синтеза философских концепций · Claude-Powered · 3D/2D Graph</span>
+      </div>
+      <div class="topbar-right">Безопасная сессия · API-ключ хранится только в памяти вкладки</div>
+    </div>
+
+    <div class="site-header">
+      <div>
+        <div class="brand-name">
+          Philo<span>Synth</span>
+        </div>
+        <div class="brand-tagline">Система Синтеза Философских Концепций · Professional Grade</div>
+        <div class="brand-desc">
+          Платформа для автоматизированного синтеза, анализа и формализации философских концепций
+          на основе выбранных философских традиций. Генерация графов категорий с интерактивной
+          3D/2D-визуализацией, тезисов, диалогов, исторической контекстуализации и критического
+          анализа — в формате единого структурированного документа.
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="cert-badge gold">★ AI-POWERED SYNTHESIS</div>
+        <div class="cert-badge">THREE.JS + D3.JS GRAPH</div>
+        <div class="cert-badge">STREAMING OUTPUT</div>
+      </div>
+    </div>
+
+    <div class="main-wrap">
+      <!-- API KEY -->
+      <div
+        class="input-form"
+        id="apiKeyBlock"
+        style="border-top-color: var(--ink-dim); margin-bottom: 20px"
+      >
+        <div class="form-section-title">Авторизация API</div>
+        <div class="form-grid" style="grid-template-columns: 1fr auto; align-items: end">
+          <div class="form-group">
+            <div class="form-label">Ключ Anthropic API</div>
+            <div class="form-sublabel">
+              Вводится однократно за сессию. Не сохраняется нигде, кроме памяти вкладки.
+            </div>
+            <input
+              class="form-input"
+              id="apiKeyInput"
+              type="password"
+              placeholder="sk-ant-api03-..."
+              autocomplete="off"
+            />
+          </div>
+          <div class="form-group" style="flex-shrink: 0">
+            <button class="submit-btn" style="padding: 10px 24px" onclick="setApiKey()">
+              <span>Сохранить ключ</span>
+            </button>
+          </div>
+        </div>
+        <div
+          id="apiKeyStatus"
+          style="font-family: var(--mono); font-size: 10px; margin-top: 10px; color: var(--ink-dim)"
+        >
+          Ключ не введён
+        </div>
+      </div>
+
+      <!-- LANGUAGE -->
+      <div class="input-form" style="margin-bottom: 20px; border-top-color: var(--ink-dim)">
+        <div class="form-section-title">Язык генерации</div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr auto; align-items: end">
+          <div class="form-group">
+            <div class="form-label">Язык</div>
+            <select class="form-input" id="langSelect" onchange="onLangSelect()">
+              <option value="Russian">Русский</option>
+              <option value="English">English</option>
+              <option value="German">Deutsch</option>
+              <option value="French">Français</option>
+              <option value="Spanish">Español</option>
+              <option value="Chinese">中文</option>
+              <option value="Japanese">日本語</option>
+              <option value="Latin">Latina</option>
+              <option value="__custom">Другой…</option>
+            </select>
+          </div>
+          <div class="form-group" id="customLangGroup" style="display:none">
+            <div class="form-label">Укажите язык (по-английски)</div>
+            <input class="form-input" id="customLangInput" placeholder="e.g. Korean, Ancient Greek, Hindi" />
+          </div>
+          <div class="form-group" style="flex-shrink:0">
+            <button class="submit-btn" style="padding:10px 24px" onclick="saveLang()">
+              <span>Применить</span>
+            </button>
+          </div>
+        </div>
+        <div id="langStatus" style="font-family:var(--mono);font-size:10px;margin-top:10px;color:var(--ink-dim)">
+        </div>
+      </div>
+
+      <!-- INPUT FORM -->
+      <div class="input-form">
+        <div class="form-section-title">§ 0 — Параметры Синтеза Концепции</div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <div class="form-label">Зерно Концепции</div>
+            <div class="form-sublabel">
+              Опишите идею, тему или набор тезисов, вокруг которых строится синтез. Система выстроит
+              концепцию на основе выбранных философов и традиций.
+            </div>
+            <textarea
+              class="form-textarea"
+              id="seedInput"
+              placeholder="Например: «Синтез понимания сознания через призму феноменологии и аналитической философии» или «Новая этическая система, объединяющая стоицизм и экзистенциализм» или просто набор тезисов..."
+            ></textarea>
+          </div>
+
+          <div class="form-group full">
+            <div class="form-label">Философы для Синтеза</div>
+            <div class="form-sublabel">Выберите философов, чьи идеи станут основой. Рекомендуется 2–5 для лучшего результата. Полный каталог по эпохам.</div>
+
+            <!-- Philosopher grid: each epoch = one .phil-col-group column -->
+            <div class="checkboxes-row" id="philBox">
+
+              <!-- Античность -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">Досократики и Античность</div>
+                <label class="checkbox-item"><input type="checkbox" value="Пифагор" />Пифагор</label>
+                <label class="checkbox-item"><input type="checkbox" value="Гераклит" />Гераклит</label>
+                <label class="checkbox-item"><input type="checkbox" value="Парменид" />Парменид</label>
+                <label class="checkbox-item"><input type="checkbox" value="Демокрит" />Демокрит</label>
+                <label class="checkbox-item"><input type="checkbox" value="Сократ" />Сократ</label>
+                <label class="checkbox-item"><input type="checkbox" value="Платон" />Платон</label>
+                <label class="checkbox-item"><input type="checkbox" value="Аристотель" />Аристотель</label>
+                <label class="checkbox-item"><input type="checkbox" value="Эпикур" />Эпикур</label>
+                <label class="checkbox-item"><input type="checkbox" value="Зенон Стоик" />Зенон Стоик</label>
+                <label class="checkbox-item"><input type="checkbox" value="Секст Эмпирик" />Секст Эмпирик</label>
+                <label class="checkbox-item"><input type="checkbox" value="Марк Аврелий" />Марк Аврелий</label>
+                <label class="checkbox-item"><input type="checkbox" value="Плотин" />Плотин</label>
+              </div>
+
+              <!-- Средневековье -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">Средневековье</div>
+                <label class="checkbox-item"><input type="checkbox" value="Августин" />Августин</label>
+                <label class="checkbox-item"><input type="checkbox" value="Боэций" />Боэций</label>
+                <label class="checkbox-item"><input type="checkbox" value="Аль-Фараби" />Аль-Фараби</label>
+                <label class="checkbox-item"><input type="checkbox" value="Авиценна" />Авиценна</label>
+                <label class="checkbox-item"><input type="checkbox" value="Ансельм Кентерберийский" />Ансельм</label>
+                <label class="checkbox-item"><input type="checkbox" value="Аверроэс" />Аверроэс</label>
+                <label class="checkbox-item"><input type="checkbox" value="Маймонид" />Маймонид</label>
+                <label class="checkbox-item"><input type="checkbox" value="Фома Аквинский" />Фома Аквинский</label>
+                <label class="checkbox-item"><input type="checkbox" value="Дунс Скот" />Дунс Скот</label>
+                <label class="checkbox-item"><input type="checkbox" value="Уильям Оккам" />Оккам</label>
+                <label class="checkbox-item"><input type="checkbox" value="Николай Кузанский" />Николай Кузанский</label>
+              </div>
+
+              <!-- Новое Время -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">Новое Время (XVII–XVIII)</div>
+                <label class="checkbox-item"><input type="checkbox" value="Макиавелли" />Макиавелли</label>
+                <label class="checkbox-item"><input type="checkbox" value="Фрэнсис Бэкон" />Бэкон</label>
+                <label class="checkbox-item"><input type="checkbox" value="Декарт" />Декарт</label>
+                <label class="checkbox-item"><input type="checkbox" value="Гоббс" />Гоббс</label>
+                <label class="checkbox-item"><input type="checkbox" value="Спиноза" />Спиноза</label>
+                <label class="checkbox-item"><input type="checkbox" value="Локк" />Локк</label>
+                <label class="checkbox-item"><input type="checkbox" value="Лейбниц" />Лейбниц</label>
+                <label class="checkbox-item"><input type="checkbox" value="Беркли" />Беркли</label>
+                <label class="checkbox-item"><input type="checkbox" value="Монтескьё" />Монтескьё</label>
+                <label class="checkbox-item"><input type="checkbox" value="Юм" />Юм</label>
+                <label class="checkbox-item"><input type="checkbox" value="Руссо" />Руссо</label>
+              </div>
+
+              <!-- Немецкая Классика -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">Немецкая Классика</div>
+                <label class="checkbox-item"><input type="checkbox" value="Кант" />Кант</label>
+                <label class="checkbox-item"><input type="checkbox" value="Фихте" />Фихте</label>
+                <label class="checkbox-item"><input type="checkbox" value="Шеллинг" />Шеллинг</label>
+                <label class="checkbox-item"><input type="checkbox" value="Гегель" />Гегель</label>
+                <label class="checkbox-item"><input type="checkbox" value="Шопенгауэр" />Шопенгауэр</label>
+                <label class="checkbox-item"><input type="checkbox" value="Фейербах" />Фейербах</label>
+              </div>
+
+              <!-- XIX Век -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">XIX Век</div>
+                <label class="checkbox-item"><input type="checkbox" value="Огюст Конт" />Конт</label>
+                <label class="checkbox-item"><input type="checkbox" value="Кьеркегор" />Кьеркегор</label>
+                <label class="checkbox-item"><input type="checkbox" value="Маркс" />Маркс</label>
+                <label class="checkbox-item"><input type="checkbox" value="Милль" />Милль</label>
+                <label class="checkbox-item"><input type="checkbox" value="Дильтей" />Дильтей</label>
+                <label class="checkbox-item"><input type="checkbox" value="Брентано" />Брентано</label>
+                <label class="checkbox-item"><input type="checkbox" value="Пирс" />Пирс</label>
+                <label class="checkbox-item"><input type="checkbox" value="Ницше" />Ницше</label>
+                <label class="checkbox-item"><input type="checkbox" value="Джеймс" />Джеймс</label>
+              </div>
+
+              <!-- Рубеж XIX–XX -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">Рубеж XIX–XX</div>
+                <label class="checkbox-item"><input type="checkbox" value="Фреге" />Фреге</label>
+                <label class="checkbox-item"><input type="checkbox" value="Мейнонг" />Мейнонг</label>
+                <label class="checkbox-item"><input type="checkbox" value="Фрейд" />Фрейд</label>
+                <label class="checkbox-item"><input type="checkbox" value="Юнг" />Юнг</label>
+                <label class="checkbox-item"><input type="checkbox" value="Гуссерль" />Гуссерль</label>
+                <label class="checkbox-item"><input type="checkbox" value="Бергсон" />Бергсон</label>
+                <label class="checkbox-item"><input type="checkbox" value="Дьюи" />Дьюи</label>
+                <label class="checkbox-item"><input type="checkbox" value="Уайтхед" />Уайтхед</label>
+                <label class="checkbox-item"><input type="checkbox" value="Рассел" />Рассел</label>
+                <label class="checkbox-item"><input type="checkbox" value="Кассирер" />Кассирер</label>
+              </div>
+
+              <!-- XX Век (первая половина) -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">XX Век (первая половина)</div>
+                <label class="checkbox-item"><input type="checkbox" value="Витгенштейн" />Витгенштейн</label>
+                <label class="checkbox-item"><input type="checkbox" value="Хайдеггер" />Хайдеггер</label>
+                <label class="checkbox-item"><input type="checkbox" value="Ясперс" />Ясперс</label>
+                <label class="checkbox-item"><input type="checkbox" value="Карнап" />Карнап</label>
+                <label class="checkbox-item"><input type="checkbox" value="Батай" />Батай</label>
+                <label class="checkbox-item"><input type="checkbox" value="Марсель" />Марсель</label>
+                <label class="checkbox-item"><input type="checkbox" value="Гадамер" />Гадамер</label>
+                <label class="checkbox-item"><input type="checkbox" value="Лакан" />Лакан</label>
+                <label class="checkbox-item"><input type="checkbox" value="Адорно" />Адорно</label>
+                <label class="checkbox-item"><input type="checkbox" value="Хоркхаймер" />Хоркхаймер</label>
+                <label class="checkbox-item"><input type="checkbox" value="Маркузе" />Маркузе</label>
+                <label class="checkbox-item"><input type="checkbox" value="Сартр" />Сартр</label>
+                <label class="checkbox-item"><input type="checkbox" value="Арендт" />Арендт</label>
+                <label class="checkbox-item"><input type="checkbox" value="Левинас" />Левинас</label>
+                <label class="checkbox-item"><input type="checkbox" value="Мерло-Понти" />Мерло-Понти</label>
+                <label class="checkbox-item"><input type="checkbox" value="Куайн" />Куайн</label>
+                <label class="checkbox-item"><input type="checkbox" value="Поппер" />Поппер</label>
+                <label class="checkbox-item"><input type="checkbox" value="Остин" />Остин</label>
+                <label class="checkbox-item"><input type="checkbox" value="Райл" />Райл</label>
+                <label class="checkbox-item"><input type="checkbox" value="Кун" />Кун</label>
+                <label class="checkbox-item"><input type="checkbox" value="Лакатос" />Лакатос</label>
+                <label class="checkbox-item"><input type="checkbox" value="Дэвидсон" />Дэвидсон</label>
+                <label class="checkbox-item"><input type="checkbox" value="Крипке" />Крипке</label>
+                <label class="checkbox-item"><input type="checkbox" value="Камю" />Камю</label>
+              </div>
+
+              <!-- Современность -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">Современность</div>
+                <label class="checkbox-item"><input type="checkbox" value="Делёз" />Делёз</label>
+                <label class="checkbox-item"><input type="checkbox" value="Фуко" />Фуко</label>
+                <label class="checkbox-item"><input type="checkbox" value="Деррида" />Деррида</label>
+                <label class="checkbox-item"><input type="checkbox" value="Рикёр" />Рикёр</label>
+                <label class="checkbox-item"><input type="checkbox" value="Бодрийяр" />Бодрийяр</label>
+                <label class="checkbox-item"><input type="checkbox" value="Лиотар" />Лиотар</label>
+                <label class="checkbox-item"><input type="checkbox" value="Хомский" />Хомский</label>
+                <label class="checkbox-item"><input type="checkbox" value="Рорти" />Рорти</label>
+                <label class="checkbox-item"><input type="checkbox" value="Хабермас" />Хабермас</label>
+                <label class="checkbox-item"><input type="checkbox" value="Ролз" />Ролз</label>
+                <label class="checkbox-item"><input type="checkbox" value="Нозик" />Нозик</label>
+                <label class="checkbox-item"><input type="checkbox" value="Жижек" />Жижек</label>
+              </div>
+
+              <!-- Восточная -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">Восточная</div>
+                <label class="checkbox-item"><input type="checkbox" value="Конфуций" />Конфуций</label>
+                <label class="checkbox-item"><input type="checkbox" value="Лао-цзы" />Лао-цзы</label>
+                <label class="checkbox-item"><input type="checkbox" value="Нагарджуна" />Нагарджуна</label>
+                <label class="checkbox-item"><input type="checkbox" value="Шанкара" />Шанкара</label>
+                </div>
+              <!-- Русская -->
+              <div class="phil-col-group">
+                <div class="phil-group-label">Русская</div>
+                <label class="checkbox-item"><input type="checkbox" value="Чаадаев" />Чаадаев</label>
+                <label class="checkbox-item"><input type="checkbox" value="Соловьёв" />Соловьёв</label>
+                <label class="checkbox-item"><input type="checkbox" value="Лосский" />Лосский</label>
+                <label class="checkbox-item"><input type="checkbox" value="Бердяев" />Бердяев</label>
+                <label class="checkbox-item"><input type="checkbox" value="Флоренский" />Флоренский</label>
+                <label class="checkbox-item"><input type="checkbox" value="Шестов" />Шестов</label>
+                <label class="checkbox-item"><input type="checkbox" value="Лосев" />Лосев</label>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ЕДИНЫЙ ПУЛ ЗАГРУЖЕННЫХ КОНЦЕПЦИЙ -->
+        <div class="form-group full" id="conceptPoolBlock">
+          <div class="pool-block">
+            <div class="pool-block-title">Загруженные Концепции</div>
+            <div class="pool-block-desc">
+              Загрузите ранее сгенерированные PhiloSynth-концепции.
+              Выберите одну для просмотра/редактирования (◉) и/или отметьте для мета-синтеза (☑).
+            </div>
+            <div class="pool-actions">
+              <button class="action-btn" onclick="document.getElementById('poolFileInput').click()">
+                + Загрузить из файла
+              </button>
+              <button class="action-btn" onclick="togglePoolUrlRow()">
+                + Загрузить по URL
+              </button>
+            </div>
+            <div class="pool-url-row" id="poolUrlRow">
+              <input class="import-url-input" id="poolUrlInput" type="url"
+                     placeholder="https://example.com/document.html" style="flex:1"
+                     onkeydown="if(event.key==='Enter')handlePoolUrlImport()">
+              <button class="import-url-btn" onclick="handlePoolUrlImport()">↑ Загрузить</button>
+            </div>
+            <div class="pool-status" id="poolStatus"></div>
+            <div class="pool-list" id="poolList"></div>
+            <div class="pool-summary" id="poolSummary" style="display:none"></div>
+            <input type="file" id="poolFileInput" accept=".html,.htm"
+                   style="display:none" onchange="handlePoolFileImport(this)" multiple>
+            <div id="fullBudgetBlock" class="meta-option" style="display:none; margin-top:12px; padding:10px; border:1px solid var(--ink-line, #d8d4cc); background:rgba(0,0,0,0.02);">
+              <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:13px;">
+                <input type="checkbox" id="keepFullBudgetCb" onchange="onKeepFullBudgetChange()">
+                <span><strong>Сохранять полный бюджет секций</strong>
+                  <span style="color:var(--ink-dim, #8a8278); font-weight:normal;"> — не ужимать из-за контекста родительских концепций</span>
+                </span>
+              </label>
+              <div id="fullBudgetPreview" style="margin-top:8px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-dim, #8a8278); white-space:pre-line; line-height:1.6;"></div>
+            </div>
+          </div>
+        </div>
+
+          <div class="form-group">
+            <div class="form-label">Метод Синтеза</div>
+            <div class="form-sublabel">Стратегия объединения идей выбранных философов.</div>
+            <select class="form-select" id="synthesisMethod">
+              <option value="dialectical">Диалектический (тезис → антитезис → синтез)</option>
+              <option value="integrative">Интегративный (поиск общих оснований)</option>
+              <option value="deconstructive">Деконструктивный (разбор и пересборка)</option>
+              <option value="hermeneutical">Герменевтический (интерпретация и горизонт)</option>
+              <option value="analytical">Аналитический (формализация и уточнение)</option>
+              <option value="creative">Творческий (свободная комбинаторика)</option>
+            </select>
+            <div id="generationOrderHint" class="form-sublabel"></div>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Порядок Генерации</div>
+            <select class="form-select" id="generationOrder">
+              <option value="architectural" selected>Архитектурный (граф → определения → тезисы → диалог)</option>
+              <option value="genetic">Генетический (диалог → тезисы → определения → граф)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Уровень Синтеза</div>
+            <div class="form-sublabel">Насколько радикально категории отрываются от исходных традиций.</div>
+            <select class="form-select" id="synthesisLevel">
+              <option value="comparative" selected>Сравнительный (заимствование и переопределение)</option>
+              <option value="transformative">Преобразующий (из напряжений между философами)</option>
+              <option value="generative">Порождающий (от проблемы, не от философов)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Глубина Проработки</div>
+            <div class="form-sublabel">Влияет на объём и детализацию каждого раздела.</div>
+            <select class="form-select" id="depthLevel">
+              <option value="overview">Обзорная (компактный документ)</option>
+              <option value="standard" selected>Стандартная (развёрнутый анализ)</option>
+              <option value="deep">Глубокая (академический уровень)</option>
+              <option value="exhaustive">Исчерпывающая (монография)</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <div class="form-label">Дополнительный Контекст</div>
+            <div class="form-sublabel">Опционально. Любые уточнения, ограничения, фокус внимания.</div>
+            <textarea
+              class="form-textarea"
+              id="contextInput"
+              style="height: 60px"
+              placeholder="Например: фокус на этике, игнорировать метафизику, интересует применимость к образованию, сравнить с буддийской традицией..."
+            ></textarea>
+          </div>
+          <div class="form-group full">
+            <div class="form-label">Разделы Документа</div>
+            <div class="form-sublabel">Выберите, какие разделы включить в итоговый документ.</div>
+            <div class="checkboxes-row sections-row" id="sectionsRow">
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secGraph" checked />
+                    Граф категорий + 3D/2D
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-graph"
+                          onclick="toggleSecCtx('graph', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <div class="sec-item-row" id="extGraphMetricsRow" style="margin-left:28px;margin-top:2px">
+                  <label class="checkbox-item" style="font-size:11px;color:var(--ink-dim)">
+                    <input type="checkbox" id="extGraphMetrics" />
+                    Расширенные характеристики
+                  </label>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-graph"
+                          placeholder="Особые требования, акценты, ограничения для «Граф категорий»..."></textarea>
+              </div>
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secGlossary" checked />
+                    Глоссарий терминов
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-glossary"
+                          onclick="toggleSecCtx('glossary', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-glossary"
+                          placeholder="Особые требования для «Глоссарий терминов»..."></textarea>
+              </div>
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secTheses" checked />
+                    Корпус тезисов
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-theses"
+                          onclick="toggleSecCtx('theses', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-theses"
+                          placeholder="Особые требования для «Корпус тезисов»..."></textarea>
+              </div>
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secHistory" checked />
+                    Историческая контекстуализация
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-history"
+                          onclick="toggleSecCtx('history', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-history"
+                          placeholder="Особые требования для «Историческая контекстуализация»..."></textarea>
+              </div>
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secName" checked />
+                    Анализ названия
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-name"
+                          onclick="toggleSecCtx('name', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-name"
+                          placeholder="Особые требования для «Анализ названия»..."></textarea>
+              </div>
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secPractical" />
+                    Практическое применение
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-practical"
+                          onclick="toggleSecCtx('practical', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-practical"
+                          placeholder="Особые требования для «Практическое применение»..."></textarea>
+              </div>
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secDialogue" />
+                    Диалог между традициями
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-dialogue"
+                          onclick="toggleSecCtx('dialogue', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-dialogue"
+                          placeholder="Особые требования для «Диалог между традициями»..."></textarea>
+              </div>
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secEvolution" />
+                    Эволюция и перспективы
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-evolution"
+                          onclick="toggleSecCtx('evolution', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-evolution"
+                          placeholder="Особые требования для «Эволюция и перспективы»..."></textarea>
+              </div>
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secCritique" checked />
+                    Критический анализ
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-critique"
+                          onclick="toggleSecCtx('critique', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-critique"
+                          placeholder="Особые требования для «Критический анализ»..."></textarea>
+              </div>
+              <div class="sec-item-wrap">
+                <div class="sec-item-row">
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="secOrigin" />
+                    Анализ происхождения
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-origin"
+                          onclick="toggleSecCtx('origin', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-origin"
+                          placeholder="Особые требования для «Анализ происхождения»..."></textarea>
+              </div>
+              <div class="sec-item-wrap capsule-check">
+                <div class="sec-item-row">
+                  <label class="checkbox-item capsule-check-item">
+                    <input type="checkbox" id="secCapsule" />
+                    ◈ Капсула концепции
+                  </label>
+                  <button class="sec-ctx-btn" id="secCtxBtn-capsule"
+                          onclick="toggleSecCtx('capsule', this)"
+                          title="Доп. контекст для раздела">+</button>
+                </div>
+                <textarea class="sec-ctx-field" id="secCtx-capsule"
+                          placeholder="Особые требования для «Капсула концепции»..."></textarea>
+              </div>
+            </div>
+            <div class="sec-warnings" id="secWarnings"></div>
+            <div class="sec-recommendations" id="secRecommendations"></div>
+            <div class="sec-substitutions" id="secSubstitutions"></div>
+
+            <div class="sec-item-wrap" style="margin-top:12px;border-top:2px solid var(--violet);padding-top:10px">
+              <div class="sec-item-row">
+                <label class="checkbox-item" style="color:var(--violet);font-weight:600">
+                  <input type="checkbox" id="secSynthReady"
+                         onchange="onSynthReadyChange(this.checked)">
+                  ◈ Пригодность к дальнейшему синтезу
+                </label>
+              </div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--ink-dim);margin-top:4px;letter-spacing:0.3px">
+                Гарантирует наличие всех разделов, необходимых для использования
+                этой концепции как участника будущего мета-синтеза:
+                Резюме, Граф, Глоссарий, Тезисы, Название, Критический анализ, Капсула.
+              </div>
+            </div>
+
+            <div id="synthReadyHint" style="display:none;font-family:var(--mono);font-size:9px;
+              color:var(--gold);margin-top:4px;letter-spacing:0.3px">
+            </div>
+
+            <!-- Compatibility Advisor Panel -->
+            <div class="compat-panel hidden" id="compatPanel" data-severity="stable">
+              <div class="compat-header" onclick="toggleCompatPanel()">
+                <div class="compat-badge">
+                  <span class="compat-icon" id="compatIcon">●</span>
+                  <span id="compatTitle">Совместимость параметров</span>
+                </div>
+                <span class="compat-toggle">▼</span>
+              </div>
+              <div class="compat-body">
+                <div class="compat-body-inner">
+                  <div class="compat-desc" id="compatDesc"></div>
+                  <div class="compat-section-chips" id="compatChips"></div>
+                  <div class="compat-section-advice" id="compatSectionAdvice" style="display:none">
+                    <span class="advice-label">Совет по разделам</span>
+                    <span id="compatSectionAdviceText"></span>
+                  </div>
+                  <div class="compat-replacements" id="compatReplacements" style="display:none">
+                    <div class="compat-replacements-title">Рекомендуемые замены</div>
+                    <div id="compatReplaceButtons"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="submit-row">
+          <div class="submit-note">
+            Генерация документа выполняется в несколько проходов с потоковым выводом.
+            Каждый проход — отдельный запрос к Claude API. Полный документ может занять 2–5 минут
+            в зависимости от глубины и количества выбранных разделов.
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0">
+            <button class="submit-btn" id="submitBtn" onclick="generateDoc()">
+              <div class="spinner" id="btnSpinner"></div>
+              <span id="btnText">Синтезировать Концепцию</span>
+            </button>
+            <div id="costEstimate" style="font-family: var(--mono); font-size: 9px; color: var(--ink-dim); letter-spacing: 0.5px; text-align: right"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-panel" id="progressPanel">
+        <div class="progress-panel-header">
+          <div class="progress-title">⚙ Синтез Философской Концепции — В Процессе</div>
+          <div class="progress-panel-actions">
+            <span class="progress-pause-badge" id="progressPauseBadge"
+                  onclick="showPauseModal()" title="Клик — открыть модалку возобновления">
+              ⏸ Приостановлено
+            </span>
+            <button class="progress-abort-btn" id="progressAbortBtn"
+                    onclick="userAbortGeneration()" title="Остановить текущую генерацию">
+              ⏹ Остановить
+            </button>
+          </div>
+        </div>
+        <div class="progress-steps" id="progressSteps"></div>
+      </div>
+
+      <div class="output-wrap" id="outputWrap">
+        <div class="actions-bar">
+          <div
+            style="
+              font-family: var(--mono);
+              font-size: 10px;
+              color: var(--ink-dim);
+              letter-spacing: 1px;
+            "
+          >
+            ДОКУМЕНТ СГЕНЕРИРОВАН
+            <span class="import-indicator" id="importIndicator"></span>
+          </div>
+          <div class="actions-bar-btns">
+            <button
+              class="action-btn gold-btn"
+              id="btnGraph"
+              onclick="openGraph()"
+              style="display: none"
+            >
+              3D/2D Граф
+            </button>
+            <button class="action-btn" onclick="window.print()">Распечатать</button>
+            <button class="action-btn" onclick="viewRawHTML()">Raw HTML</button>
+            <button class="action-btn" onclick="viewCtxLog()">Лог контекста</button>
+            <button class="action-btn gold-btn" id="btnEdit" onclick="openEditModal()">Изменить</button>
+            <button class="action-btn" id="btnAdversarial" onclick="openModeModal('adversarial')" style="display:none">⚔ Оппонент</button>
+            <button class="action-btn" id="btnTranslator" onclick="openModeModal('translator')" style="display:none">🔄 Переводчик</button>
+            <button class="action-btn" id="btnTimeSlice" onclick="openModeModal('timeslice')" style="display:none">⏳ Временной срез</button>
+            <button class="action-btn" onclick="saveHTML()">Сохранить HTML</button>
+            <button class="action-btn" onclick="saveMD()">Сохранить MD</button>
+            <button class="action-btn" onclick="resetForm()">Новый Синтез</button>
+            <button class="action-btn primary" onclick="copyDoc()">Скопировать</button>
+          </div>
+        </div>
+        <div id="docOutput">
+          <div class="doc-header">
+            <div class="doc-type">PhiloSynth Pro™ · Синтез Философской Концепции</div>
+            <div class="doc-title" id="docTitle">Синтез Философской Концепции</div>
+            <button id="docTitleEditBtn" class="doc-title-edit-btn"
+              onclick="editDocTitle()" title="Редактировать название">✎
+            </button>
+            <div class="doc-subtitle" id="docSubtitle">—</div>
+            <div id="docHeaderExtras" style="margin-top:14px;display:flex;flex-direction:column;gap:6px;"></div>
+            <div class="doc-meta-grid">
+              <div class="doc-meta-item">
+                <span class="doc-meta-key">Документ №</span>
+                <span class="doc-meta-val" id="docNum">—</span>
+              </div>
+              <div class="doc-meta-item">
+                <span class="doc-meta-key">Дата составления</span>
+                <span class="doc-meta-val" id="docDate">—</span>
+              </div>
+              <div class="doc-meta-item">
+                <span class="doc-meta-key">Метод синтеза</span>
+                <span class="doc-meta-val gold" id="docMethod">—</span>
+              </div>
+              <div class="doc-meta-item">
+                <span class="doc-meta-key">Глубина</span>
+                <span class="doc-meta-val gold" id="docDepth">—</span>
+              </div>
+              <div class="doc-meta-item">
+                <span class="doc-meta-key">Уровень синтеза</span>
+                <span class="doc-meta-val gold" id="docSynthLevel">—</span>
+              </div>
+            </div>
+          </div>
+          <div id="docBodies"></div>
+          <div class="doc-footer" id="docFooter" style="display: none">
+            <div class="doc-footer-left">
+              PhiloSynth Pro™ · v1.0
+              <br />
+              Документ сгенерирован на основе анализа ИИ (Claude)
+              <br />
+              Сессия:
+              <span id="sessionId">—</span>
+              <br />
+              <span id="footerCost" style="color: var(--gold)"></span>
+            </div>
+            <div class="doc-footer-right">
+              <div class="validity-stamp">СИНТЕЗ ЗАВЕРШЁН</div>
+              <br />
+              Философы: <span id="footerPhil">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRAPH MODAL -->
+    <div class="gm-overlay" id="gmOverlay">
+      <div id="graph-tooltip" style="
+        position: absolute; pointer-events: none; display: none;
+        background: rgba(10,10,20,0.92); border: 1px solid rgba(255,255,255,0.15);
+        color: #c8c0b0; font: 12px 'IBM Plex Mono', monospace;
+        padding: 8px 12px; border-radius: 6px; max-width: 280px;
+        white-space: pre-wrap; line-height: 1.5; z-index: 999;">
+      </div>
+      <div class="gm-header">
+        <div class="gm-title">◈ Граф Категорий</div>
+        <div class="gm-actions">
+          <div class="gm-tabs">
+            <button class="gm-btn active" id="tab3d" onclick="switchView('3d')">3D</button>
+            <button class="gm-btn" id="tabClusters" onclick="toggleClusters()">◎ Кластеры</button>
+            <button class="gm-btn" id="tab2d" onclick="switchView('2d')">2D</button>
+          </div>
+          <div class="gm-export-wrap" id="exportWrap">
+            <button class="gm-btn gold" onclick="toggleExportMenu(event)">↓</button>
+            <div class="gm-export-menu">
+              <button class="gm-export-item" onclick="doExport(exportMMD)">MMD</button>
+              <button class="gm-export-item" onclick="doExport(exportPNG)">PNG</button>
+              <button class="gm-export-item" onclick="doExport(exportJSON)">JSON</button>
+            </div>
+          </div>
+          <button class="gm-btn close" onclick="closeGraph()">✕</button>
+        </div>
+      </div>
+      <div class="gm-body" id="gmBody">
+        <div class="gm-view active" id="view3d"></div>
+        <div class="gm-view" id="view2d"></div>
+        <div class="gm-hint" id="gmHint">Вращение: мышь · Зум: колёсико · Перетаскивание узлов</div>
+        <div class="gm-legend" id="gmLegend"></div>
+      </div>
+    </div>
+
+    <!-- RAW MODAL -->
+    <div class="raw-overlay" id="rawOverlay" onclick="if (event.target === this) closeRaw();">
+      <div class="raw-modal">
+        <div class="raw-modal-header">
+          <div class="raw-modal-title">⟨/⟩ Raw HTML</div>
+          <button class="raw-close" onclick="closeRaw()">✕ Закрыть</button>
+        </div>
+        <div class="raw-modal-body"><pre id="rawContent"></pre></div>
+        <div class="raw-modal-footer">
+          <div class="raw-info" id="rawInfo">—</div>
+          <button class="raw-copy" onclick="copyRaw()">Скопировать HTML</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTX LOG MODAL -->
+    <div class="raw-overlay" id="ctxLogOverlay" onclick="if (event.target === this) closeCtxLog();">
+      <div class="raw-modal" style="max-width: 1000px">
+        <div class="raw-modal-header">
+          <div class="raw-modal-title">◈ Лог Контекста</div>
+          <button class="raw-close" onclick="closeCtxLog()">✕ Закрыть</button>
+        </div>
+        <div class="raw-modal-body"><pre id="ctxLogContent" style="font-size: 12px; line-height: 1.6"></pre></div>
+        <div class="raw-modal-footer">
+          <div class="raw-info" id="ctxLogInfo">—</div>
+          <button class="raw-copy" onclick="downloadPrompts()"
+                  title="Скачать все промпты за сессию в файл .md">
+            ⤓ Скачать промпты
+          </button>
+          <button class="raw-copy" onclick="copyCtxLog()">Скопировать лог</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDIT MODAL -->
+    <div class="edit-overlay" id="editOverlay" onclick="if (event.target === this) closeEditModal();">
+      <div class="edit-modal">
+        <div class="edit-modal-header">
+          <div class="edit-modal-title">✎ Редактирование Разделов</div>
+          <button class="raw-close" onclick="closeEditModal()">✕ Закрыть</button>
+        </div>
+        <div class="edit-modal-body" id="editModalBody">
+          <!-- Каскадная панель (live-обновляется при изменении галочек) -->
+          <div class="cascade-panel" id="cascadePanel">
+            <div class="cascade-title">
+              <span>⚡</span>
+              <span id="cascadeTitle">Каскад зависимостей</span>
+            </div>
+            <div class="cascade-desc" id="cascadeDesc"></div>
+            <div class="cascade-list" id="cascadeList"></div>
+          </div>
+          <!-- Карточки разделов + панель добавления генерируются динамически -->
+        </div>
+        <div class="edit-modal-footer">
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--ink-dim);letter-spacing:1px" id="editFooterInfo"></div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--gold);letter-spacing:0.5px" id="editCostEstimate"></div>
+          </div>
+          <div class="edit-regen-progress" id="editPlanProgress">
+            <div class="edit-regen-spinner"></div>
+            <span id="editPlanProgressText"></span>
+          </div>
+          <button class="edit-sec-btn primary" id="editRunBtn" onclick="executeEditPlan()" disabled
+                  style="padding:10px 24px;font-size:11px;letter-spacing:2px">
+            ▶ Пуск
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODE MODAL -->
+    <div class="mode-overlay" id="modeOverlay" onclick="if(event.target===this)closeModeModal()">
+      <div class="mode-modal">
+        <div class="mode-modal-header">
+          <div class="mode-modal-title" id="modeTitle">Режим</div>
+          <button class="mode-modal-close" onclick="closeModeModal()">✕ Закрыть</button>
+        </div>
+        <div class="mode-modal-params">
+          <div class="form-group" id="modeParamsGroup"></div>
+          <div id="modeSuggestions" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
+          <div id="modeDepsWarnings" style="margin-top:8px"></div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+            <button class="submit-btn" style="padding:10px 24px" id="modeRunBtn" onclick="runMode()">
+              <div class="spinner" id="modeSpinner"></div>
+              <span id="modeRunText">Генерировать</span>
+            </button>
+            <button class="progress-abort-btn" id="modeAbortBtn"
+                    onclick="userAbortGeneration()"
+                    title="Остановить генерацию режима"
+                    style="margin-left:4px">
+              ⏹ Остановить
+            </button>
+            <div id="modeCostEstimate" style="font-family:var(--mono);font-size:9px;color:var(--ink-dim);letter-spacing:0.5px"></div>
+          </div>
+        </div>
+        <div id="modeTabsBar"></div>
+        <div class="mode-modal-body" id="modeBody">
+          <div id="modeContent" class="doc-content"></div>
+        </div>
+        <div class="mode-modal-footer">
+          <div class="mode-modal-info" id="modeInfo">—</div>
+          <button class="mode-modal-copy" onclick="copyModeContent()">Скопировать</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAUSE / RESUME MODAL (вставлено патчем) -->
+    <div class="pause-overlay" id="pauseOverlay"
+         onclick="if(event.target===this) closePauseModal()">
+      <div class="pause-modal">
+        <div class="pause-modal-header">
+          <div class="pause-modal-title" id="pauseModalTitle">⏸ Генерация приостановлена</div>
+          <button class="pause-modal-close" onclick="closePauseModal()">✕ Закрыть</button>
+        </div>
+        <div class="pause-modal-body" id="pauseModalBody"></div>
+        <div class="pause-modal-footer" id="pauseModalFooter"></div>
+      </div>
+    </div>
+
+    <script>
+
+// ───── [ML/DL/SL/REVERSE_*] philosynth.html строки 4415–4530 ─────
+        const ML = {
+        dialectical: "Диалектический",
+        integrative: "Интегративный",
+        deconstructive: "Деконструктивный",
+        hermeneutical: "Герменевтический",
+        analytical: "Аналитический",
+        creative: "Творческий",
+      };
+
+      // MD — описания методов синтеза, теперь индексированные по
+      // кардинальности участников (multi / single / none). Штатно
+      // обращения идут через mdText(p, method); прямое MD[method]
+      // для обратной совместимости возвращает описание multi-режима.
+      const MD_BY_CARD = {
+        multi: {
+          dialectical:
+            "Движение от тезиса к антитезису и к синтезу — обнаружение внутренних противоречий между традициями и их снятие в новом единстве",
+          integrative:
+            "Поиск общих оснований, скрытых точек пересечения и взаимодополняющих элементов между выбранными традициями",
+          deconstructive:
+            "Разбор базовых предпосылок каждой традиции, обнаружение скрытых допущений и пересборка из очищенных элементов",
+          hermeneutical:
+            "Погружение в горизонт понимания каждой традиции и расширение собственного горизонта через слияние перспектив",
+          analytical:
+            "Формализация ключевых положений, выявление логической структуры и построение непротиворечивого синтеза",
+          creative:
+            "Свободная комбинаторика идей с упором на оригинальность, неожиданные связи и порождающий потенциал",
+        },
+        single: {
+          dialectical:
+            "Движение от тезиса к антитезису и к синтезу — внутреннее диалектическое развитие исходной позиции, обнаружение её внутренних противоречий (в том числе в свете зерна концепции) и их снятие в новом единстве",
+          integrative:
+            "Поиск общих оснований и взаимодополняющих элементов между исходной позицией и проблемным полем, заданным зерном; интеграция с соседними философскими горизонтами, на которые опирается зерно",
+          deconstructive:
+            "Разбор базовых предпосылок исходной позиции, обнаружение её скрытых допущений в свете зерна и пересборка из очищенных элементов",
+          hermeneutical:
+            "Погружение в горизонт понимания исходной позиции и его расширение через последовательное вчитывание зерна концепции",
+          analytical:
+            "Формализация ключевых положений исходной позиции, уточнение их в свете зерна концепции и построение непротиворечивого развития",
+          creative:
+            "Свободная комбинаторика идей исходной позиции и тем, заданных зерном, с упором на оригинальность и порождающий потенциал",
+        },
+        none: {
+          dialectical:
+            "Движение от тезиса к антитезису и к синтезу — обнаружение внутренних противоречий внутри проблемного поля, задаваемого зерном, и их снятие в новом единстве",
+          integrative:
+            "Поиск общих оснований, скрытых точек пересечения и взаимодополняющих элементов в проблемном поле, задаваемом зерном",
+          deconstructive:
+            "Разбор базовых предпосылок, лежащих в основании проблемы, обнаружение скрытых допущений и пересборка из очищенных элементов",
+          hermeneutical:
+            "Погружение в горизонт понимания, задаваемый зерном, и расширение этого горизонта через последовательную интерпретацию",
+          analytical:
+            "Формализация ключевых положений, выявление логической структуры и построение непротиворечивой концепции из зерна",
+          creative:
+            "Свободная комбинаторика идей с упором на оригинальность, неожиданные связи и порождающий потенциал",
+        },
+      };
+      const MD = MD_BY_CARD.multi;  // бэк-совместимость: MD[method] — multi
+      function mdText(p, method) {
+        const card = participantCardinality(p);
+        const m = method || (p && p.method) || "dialectical";
+        return (MD_BY_CARD[card] && MD_BY_CARD[card][m])
+            || MD_BY_CARD.multi[m] || "";
+      }
+
+      const DL = {
+        overview: "Обзорная",
+        standard: "Стандартная",
+        deep: "Глубокая",
+        exhaustive: "Исчерпывающая",
+      };
+
+      const SL = {
+        comparative: "Сравнительный",
+        transformative: "Преобразующий",
+        generative: "Порождающий",
+      };
+
+      // SD — описания уровней синтеза, индексированные по кардинальности.
+      // Штатно — через sdText(p, level). Прямое SD[level] — для
+      // обратной совместимости возвращает multi-описание.
+      const SD_BY_CARD = {
+        multi: {
+          comparative:
+            "Категории заимствуются из исходных философов с переопределением, дополняются синтетическими",
+          transformative:
+            "Каждая категория обязана возникать из напряжения между минимум двумя философами, прямое заимствование запрещено",
+          generative:
+            "Категории порождаются проблемой, а не философами; философы — источники ограничений, которые синтез преодолевает",
+        },
+        single: {
+          comparative:
+            "Категории заимствуются из исходной позиции с переопределением и уточнением в свете зерна концепции, дополняются синтетическими",
+          transformative:
+            "Каждая категория обязана возникать из напряжения между исходной позицией и проблемным полем, задаваемым зерном; прямое заимствование без переосмысления запрещено",
+          generative:
+            "Категории порождаются проблемой (зерном), а не исходной позицией; исходная позиция — источник ограничений, которые синтез преодолевает",
+        },
+        none: {
+          comparative:
+            "Категории разрабатываются через сопоставление нескольких возможных трактовок зерна, с переопределением ключевых понятий и построением синтетического каркаса",
+          transformative:
+            "Каждая категория обязана возникать из напряжения между минимум двумя различимыми трактовками/горизонтами в поле зерна; прямое заимствование из одной узнаваемой традиции запрещено",
+          generative:
+            "Категории порождаются проблемой (зерном), а не готовыми системами; философские традиции — лишь источники ограничений, которые синтез преодолевает",
+        },
+      };
+      const SD = SD_BY_CARD.multi;  // бэк-совместимость: SD[level] — multi
+      function sdText(p, level) {
+        const card = participantCardinality(p);
+        const l = level || (p && p.synthLevel) || "comparative";
+        return (SD_BY_CARD[card] && SD_BY_CARD[card][l])
+            || SD_BY_CARD.multi[l] || SD_BY_CARD.multi.comparative;
+      }
+
+// ───── [KEY_LABELS] philosynth.html строки 5389–5402 ─────
+      const KEY_LABELS = {
+        sum: "Исполнительное резюме",
+        graph: "Граф категорий",
+        glossary: "Глоссарий терминов",
+        theses: "Корпус тезисов",
+        name: "Анализ названия",
+        history: "Историческая контекстуализация",
+        origin: "Анализ происхождения",
+        practical: "Практическое применение",
+        dialogue: "Диалог между традициями",
+        evolution: "Эволюция и перспективы",
+        critique: "Критический анализ",
+        capsule: "Капсула концепции",
+      };
+
+// ───── [CTX_LABELS] philosynth.html строки 8276–8311 ─────
+      const CTX_LABELS = {
+        "sum:goals":                "Резюме → Цели и метод",
+        "sum:portraits":            "Резюме → Портреты философов",
+        "sum:novelty":              "Резюме → Новизна и ценность",
+        "sum:tensions":             "Резюме → Точки напряжения",
+        "sum:coherence":            "Резюме → Индекс когерентности",
+        "sum:difficulty":           "Резюме → Оценка сложности",
+        "graph:nodes":              "Граф → Таблица категорий",
+        "graph:nodes_top":          "Граф → Топ категорий",
+        "graph:nodes_compact":      "Граф → Таблица категорий (компактная)",
+        "graph:edges":              "Граф → Таблица связей",
+        "graph:topology":           "Граф → Топология",
+        "glossary:table":           "Глоссарий → Определения",
+        "theses:full":              "Тезисы (полные)",
+        "theses:summary":           "Тезисы (сводка)",
+        "name:title":               "Название концепции",
+        "name:full":                "Анализ названия",
+        "history:contemporary":     "История → Современные концепции",
+        "history:genealogy":        "История → Генеалогия идей",
+        "history:influence":        "История → Потенциальное влияние",
+        "history:name_context":     "История → Название в ист. контексте",
+        "origin:genealogy":         "Происхождение → Родительские традиции",
+        "origin:decomposition":     "Происхождение → Декомпозиция элементов",
+        "origin:novelty":           "Происхождение → Оригинальность",
+        "evolution:directions":     "Эволюция → Направления развития",
+        "evolution:graph_changes":  "Эволюция → Изменения графа",
+        "evolution:name_evolution": "Эволюция → Название",
+        "evolution:science":        "Эволюция → Современная наука",
+        "dialogue:synthesis":       "Диалог → Аналитический комментарий",
+        "dialogue:new_concepts":         "Диалог → Новые понятия",
+        "dialogue:tensions_discovered":  "Диалог → Обнаруженные напряжения",
+        "dialogue:turning_points":       "Диалог → Переломные моменты",
+        "practical:summary":        "Практика → Сводная таблица",
+        "critique:final_table":     "Критика → Итоговая таблица",
+        "capsule:full":             "Капсула концепции",
+      };
+
+// ───── [PHIL_FILENAME] philosynth.html строки 17325–17432 ─────
+      const PHIL_FILENAME = {
+        "Пифагор": "Pythagoras",
+        "Гераклит": "Heraclitus",
+        "Парменид": "Parmenides",
+        "Демокрит": "Democritus",
+        "Сократ": "Socrates",
+        "Платон": "Plato",
+        "Аристотель": "Aristotle",
+        "Эпикур": "Epicurus",
+        "Зенон Стоик": "Zeno-Stoic",
+        "Секст Эмпирик": "Sextus-Empiricus",
+        "Марк Аврелий": "Aurelius",
+        "Плотин": "Plotinus",
+        "Августин": "Augustine",
+        "Боэций": "Boethius",
+        "Аль-Фараби": "Al-Farabi",
+        "Авиценна": "Avicenna",
+        "Ансельм Кентерберийский": "Anselm",
+        "Аверроэс": "Averroes",
+        "Маймонид": "Maimonides",
+        "Фома Аквинский": "Aquinas",
+        "Дунс Скот": "Scotus",
+        "Уильям Оккам": "Ockham",
+        "Николай Кузанский": "Cusanus",
+        "Макиавелли": "Machiavelli",
+        "Фрэнсис Бэкон": "Bacon",
+        "Декарт": "Descartes",
+        "Гоббс": "Hobbes",
+        "Спиноза": "Spinoza",
+        "Локк": "Locke",
+        "Лейбниц": "Leibniz",
+        "Беркли": "Berkeley",
+        "Монтескьё": "Montesquieu",
+        "Юм": "Hume",
+        "Руссо": "Rousseau",
+        "Кант": "Kant",
+        "Фихте": "Fichte",
+        "Шеллинг": "Schelling",
+        "Гегель": "Hegel",
+        "Шопенгауэр": "Schopenhauer",
+        "Фейербах": "Feuerbach",
+        "Огюст Конт": "Comte",
+        "Кьеркегор": "Kierkegaard",
+        "Маркс": "Marx",
+        "Милль": "Mill",
+        "Дильтей": "Dilthey",
+        "Брентано": "Brentano",
+        "Пирс": "Peirce",
+        "Ницше": "Nietzsche",
+        "Фреге": "Frege",
+        "Мейнонг": "Meinong",
+        "Джеймс": "James",
+        "Фрейд": "Freud",
+        "Юнг": "Jung",
+        "Гуссерль": "Husserl",
+        "Бергсон": "Bergson",
+        "Дьюи": "Dewey",
+        "Уайтхед": "Whitehead",
+        "Рассел": "Russell",
+        "Кассирер": "Cassirer",
+        "Витгенштейн": "Wittgenstein",
+        "Хайдеггер": "Heidegger",
+        "Ясперс": "Jaspers",
+        "Карнап": "Carnap",
+        "Батай": "Bataille",
+        "Марсель": "Marcel",
+        "Гадамер": "Gadamer",
+        "Лакан": "Lacan",
+        "Адорно": "Adorno",
+        "Хоркхаймер": "Horkheimer",
+        "Маркузе": "Marcuse",
+        "Сартр": "Sartre",
+        "Арендт": "Arendt",
+        "Левинас": "Levinas",
+        "Мерло-Понти": "Merleau-Ponty",
+        "Куайн": "Quine",
+        "Поппер": "Popper",
+        "Остин": "Austin",
+        "Райл": "Ryle",
+        "Кун": "Kuhn",
+        "Лакатос": "Lakatos",
+        "Дэвидсон": "Davidson",
+        "Крипке": "Kripke",
+        "Камю": "Camus",
+        "Делёз": "Deleuze",
+        "Фуко": "Foucault",
+        "Деррида": "Derrida",
+        "Рикёр": "Ricoeur",
+        "Бодрийяр": "Baudrillard",
+        "Лиотар": "Lyotard",
+        "Хомский": "Chomsky",
+        "Рорти": "Rorty",
+        "Хабермас": "Habermas",
+        "Ролз": "Rawls",
+        "Нозик": "Nozick",
+        "Жижек": "Zizek",
+        "Конфуций": "Confucius",
+        "Лао-цзы": "Laozi",
+        "Нагарджуна": "Nagarjuna",
+        "Шанкара": "Shankara",
+        "Чаадаев": "Chaadaev",
+        "Соловьёв": "Solovyov",
+        "Лосский": "Lossky",
+        "Бердяев": "Berdyaev",
+        "Флоренский": "Florensky",
+        "Шестов": "Shestov",
+        "Лосев": "Losev",
+      };
+
+// ───── [METHOD_CODE] philosynth.html строки 17434–17441 ─────
+      const METHOD_CODE = {
+        dialectical:    "l", 
+        integrative:    "t", 
+        deconstructive: "c",
+        hermeneutical:  "m", 
+        analytical:     "n", 
+        creative:       "r",
+      };
+
+// ───── [DOC_STATE] philosynth.html строки 5147–5216 ─────
+      const DOC_STATE = {
+        /** Признак наличия завершённой генерации */
+        ready: false,
+
+        /** Параметры, с которыми был сгенерирован документ */
+        params: null,  // { seed, phil, sec, method, depth, synthLevel, ctx, secCtx }
+
+        /** Порядок разделов (включая "sum") */
+        sectionOrder: [],
+
+        /** Маппинг sectionKey → индекс DOM-контейнера db{N} */
+        sectionDbIdx: {},
+
+        /** Маппинг sectionKey → { key, num, title, prompt } из buildSectionDefs */
+        sectionDefs: {},
+
+        /** effectiveDeps на момент генерации */
+        effectiveDeps: null,
+
+        /** resolvedDeps на момент генерации */
+        resolvedDeps: null,
+
+        /** Номер документа */
+        docNum: "",
+
+        /** Разделы, перегенерированные после исходной генерации */
+        editedSections: new Set(),
+
+        factualDeps: {},        
+        incomplete: false,   
+
+        docVersion: {
+          base: 1,
+          sub: 0,
+          modes: 0,
+          modeRegen: 0,
+        },
+
+        importWarnings: [],   
+
+        /** HTML капсулы */
+        capsuleHTML: "", 
+
+        /** Результаты режимов: { adversarial: { html, param, timestamp }, ... } */
+        modes: {}, 
+
+        /** Участники генерации (философы / концепции) */
+        participants: [],
+
+        /** Дерево генеалогии документа */
+        genealogy: null,
+
+        /** Снимок sectionOrder на момент последней генерации «Структура документа».
+         *  null = неизвестно (старый файл без этого поля). */
+        structureSections: null,
+
+        /** Состояние паузы при сбое генерации/плана.
+         *  null = нет паузы. Переживает экспорт/импорт.
+         *
+         *  kind === "gen": основная генерация прервана
+         *    { kind: "gen", passIdx, sectionKeys, sectionLabel, isPartial, reason,
+         *      reasonKind, timestamp, partialSubsections, expectedSubsections,
+         *      completedPasses: [[keys...], ...] }
+         *
+         *  kind === "plan": план редактирования прерван
+         *    { kind: "plan", stepIdx, totalSteps, failedOp, remainingOps,
+         *      plan, regenCtx, addCtx, reason, reasonKind, timestamp }
+         */
+        pausedState: null,
+      };
+
+// ───── [participantCardinality] philosynth.html строки 10561–10571 ─────
+      function participantCardinality(p) {
+        const phils = (p && p.phil && Array.isArray(p.phil)) ? p.phil.length : 0;
+        const philsViaParticipants = (p && p.participants)
+          ? p.participants.filter(x => x.type === "philosopher").length : 0;
+        const concepts = hasConceptParticipants(p)
+          ? p.participants.filter(x => x.type === "concept").length : 0;
+        const total = Math.max(phils, philsViaParticipants) + concepts;
+        if (total === 0) return "none";
+        if (total === 1) return "single";
+        return "multi";
+      }
+
+// ───── [participantWord] philosynth.html строки 10574–10579 ─────
+      function participantWord(p) {
+        const card = participantCardinality(p);
+        if (card === "none") return "традиций";
+        if (hasConceptParticipants(p)) return "участников синтеза";
+        return card === "single" ? "философских традиций" : "философов";
+      }
+
+// ───── [participantWordSg] philosynth.html строки 10582–10587 ─────
+      function participantWordSg(p) {
+        const card = participantCardinality(p);
+        if (card === "none") return "традиции";
+        if (hasConceptParticipants(p)) return "участника";
+        return card === "single" ? "философа" : "философа";
+      }
+
+// ───── [hasConceptParticipants] philosynth.html строки 9844–9846 ─────
+      function hasConceptParticipants(p) {
+        return p.isMetaSynthesis || false;
+      }

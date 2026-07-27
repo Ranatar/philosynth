@@ -1,0 +1,15 @@
+{
+  "name": "@philosynth/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./constants/*": "./constants/*.ts",
+    "./types/*": "./types/*.ts",
+    "./utils/*": "./utils/*.ts"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit"
+  }
+}

@@ -1,0 +1,26 @@
+// Фрагменты philosynth.html (26 024 стр., ревизия 2026-07) для беседы 0.4-client-design
+// Сгенерировано extract-fragments.py; при обновлении исходника — перегенерировать.
+
+// ───── [:root палитра] philosynth.html строки 14–35 ─────
+      :root {
+        --white: #fafaf8;
+        --off: #f2f0eb;
+        --paper: #fffef9;
+        --rule: #d8d4cc;
+        --rule-strong: #b0aa9f;
+        --ink: #1a1814;
+        --ink-mid: #4a463e;
+        --ink-dim: #8a8278;
+        --gold: #b8860b;
+        --gold-light: #d4a017;
+        --red: #8b1a1a;
+        --blue-corp: #1a2855;
+        --blue-mid: #2a3f7a;
+        --blue-light: #e8ecf8;
+        --violet: #6b00aa;
+        --violet-light: #f3eaff;
+        --green-check: #1a5c2a;
+        --mono: "IBM Plex Mono", monospace;
+        --sans: "IBM Plex Sans", sans-serif;
+        --serif: "Playfair Display", serif;
+      }
