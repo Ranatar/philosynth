@@ -138,7 +138,8 @@
 | `buildContextForSection()` | DOM → БД; плюс новое бюджетирование: `parentOverheadForSection()` + `applyBudgetPressure()`, запись parentSpec в ctxLog | `server/services/context-builder.ts` |
 | `extractContextFragment()` + 20 extract-функций | `el.querySelector('[data-section="..."]')` → SQL-запрос к `categories`, `theses`, `glossary_terms` | `server/services/context-extractor.ts` |
 | `truncateText()`, `tableToText()` | без изменений | `server/utils/text.ts` |
-| `extractIntraSectionContext()`, `extractRelevantIntraSectionContext()` | DOM → серверный HTML-парсинг (linkedom/cheerio) | `server/services/context-builder.ts` |
+| `extractRelevantIntraSectionContext()` | DOM → серверный HTML-парсинг (linkedom); INTRA_DEPS из Registry; `canonicalSubsectionKey` принимается колбэком до беседы 2.1 | `server/services/context-builder.ts` |
+| `extractIntraSectionContext()` | Реализация живёт в DOM-слое рядом с прочими extract*(); из `context-builder` реэкспортируется — соответствие карте без дублирования кода | `server/services/context-extractor.ts` |
 | `getSectionContextQuality()` | ctxLog из context_log (БД); бейдж качества на карточке раздела | `server/services/context-quality.ts` + `client/components/edit/EditSectionCard.tsx` |
 
 **Ключевое**: каждая из ~20 extract-функций сейчас парсит DOM. В сервисе часть из них будет читать из БД (категории, тезисы, глоссарий), часть — из `sections.html_content` через серверный DOM-парсер (для тех подразделов, которые не разбиты на элементы).
@@ -267,6 +268,7 @@
 | `server/routes/transforms.ts` | API трансформаций + история + откат |
 | `client/components/edit/TransformPanel.tsx` | UI: кнопки трансформации, превью, история, откат |
 | `client/hooks/useWebSocket.ts` | WebSocket-hook с reconnect |
+| `server/utils/html-parser.ts` | Обёртка над linkedom: `parseFragment` (контейнер-аналог `generated[key]`) + `innerText` — ПРИБЛИЖЕНИЕ браузерного innerText (linkedom даёт свой ≈ textContent). Единственная точка входа linkedom (беседа 1.3) |
 | `server/services/plan-order-builder.ts` | `buildPlanOrder()` — единый топологический порядок add+regen (v10) |
 | Константа `STOP_SIGNAL` | Стоп-инструкция в конце каждого промпта раздела (v10) |
 | `server/services/structure-tracker.ts` | `refreshSumDef()`, `regenStructureFromEditModal()`, отслеживание `structureSections` (v10) |

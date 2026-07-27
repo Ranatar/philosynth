@@ -39,10 +39,31 @@ export interface SectionFull {
   subsections: string[];
 }
 
-/** GET /syntheses/:id/sections/:key/context — отладочный эндпоинт */
+/**
+ * GET /syntheses/:id/sections/:key/context — отладочный эндпоинт (03-spec §2.3).
+ *
+ * ИСПРАВЛЕНО в беседе 1.3 вслед за правкой 03/I: поле называлось contextHtml,
+ * хотя buildContextForSection возвращает ПЛОСКИЙ ТЕКСТ блока «КОНТЕКСТ ИЗ
+ * ПРЕДЫДУЩИХ РАЗДЕЛОВ …»; отсутствовали поля v11 (режим бюджета, вес
+ * родительского контекста, spec родителей, счётчики). Состав приведён к
+ * CtxLogDraft, который отдаёт buildContextForSection.
+ */
 export interface SectionContextPreview {
-  contextHtml: string;
+  /** Готовый блок для промпта; "" — контекста нет */
+  contextText: string;
+  /** Эффективный бюджет после applyBudgetPressure */
   budget: number;
-  used: number;
+  /** Базовый бюджет ДО давления родителей (с критиковым ×1.5) */
+  rawBaseBudget: number;
+  /** Σ длин включённых фрагментов */
+  totalUsed: number;
+  budgetMode: import("./generation.js").BudgetMode;
+  /** Сырой вес родительского контекста раздела, симв. */
+  parentOverhead: number;
+  parentSpec: import("./generation.js").ParentSpecLog | null;
+  reqFound: number;
+  reqTotal: number;
+  optIncluded: number;
+  optTotal: number;
   entries: import("./generation.js").ContextEntry[];
 }

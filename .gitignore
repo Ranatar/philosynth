@@ -1,0 +1,22 @@
+# Зависимости
+node_modules/
+
+# Сборка
+dist/
+*.tsbuildinfo
+
+# Окружение — .env содержит DATABASE_URL с паролем и ключи API.
+# Отслеживается только .env.example (05-file-structure).
+.env
+.env.local
+.env.*.local
+
+# Локальные артефакты песочницы
+dump.rdb
+.cache/
+*.zip
+
+# Логи и системное
+*.log
+npm-debug.log*
+.DS_Store

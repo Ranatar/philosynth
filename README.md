@@ -69,10 +69,10 @@ npm run typecheck:scripts
 ```
 
 `check:integration` расширяется секциями по мере бесед (сейчас покрывает
-0.1–0.6); живые секции требуют поднятых PG и Redis и засеянных
-prompt_templates.
+0.1–0.6 и 1.1–1.3); живые секции требуют поднятых PG и Redis и засеянных
+prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена (беседы 0.1–0.6 + 0.3b)
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.3 закрыты
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -112,6 +112,29 @@ prompt_templates.
 - **Правки Фазы 0.** Дыры доков закрыты идемпотентными патч-скриптами
   (scripts/patch-docs-*.py); .mts-проверки подключены к typecheck.
 
-Не сделано (Фаза 1+): synthesis engine, prompt/context builder, streaming
-и pause/resume, страницы синтеза/каталога/графа, billing. Следующая по
-графу 07 — беседа 1.1 (критический путь) или клиентские ветки.
+- **1.1 — synthesis engine.** utils/deep-merge (deepMergeUniq) и
+  utils/topo-sort (computePredecessors, buildDynamicOrder, разрыв циклов
+  по слабейшему ребру); services/synthesis-engine (resolveContextDeps,
+  buildEffectiveDeps, findSubstitute — конфиги из Registry);
+  compat-advisor по entry-модели `level:method` с чипами и живыми
+  предупреждениями зависимостей; cost-estimator (константы и формулы
+  исходника дословно).
+- **1.2 — prompt builder + section defs.** extract-section-templates.mjs
+  сгенерировал 146 шаблонов `section.*` (итого 253 в Registry);
+  prompt-builder (buildSYS из четырёх частей, baseCtx = static + parents
+  через подключаемый провайдер, словоформы кардинальности) и
+  section-defs-builder (buildSectionDefs / serializeParts / groupPasses /
+  patchPromptsWithSecCtx); байтовая сверка с исходником 121/121 ✓.
+- **1.3 — context builder (DOM → БД).** buildContextForSection с полным
+  бюджетированием (пол 40% под давлением родительских концепций,
+  пережатие required за порогом 1.5×, статусы ctxLog); context-extractor
+  (все ветки диспетчера: приоритетные ключи из гранулярных таблиц,
+  остальные — из HTML раздела через linkedom); parent-context
+  (селективный родительский контекст, 4-слойные карты из Registry);
+  utils/html-parser — единственная точка входа linkedom.
+
+Не сделано (Фаза 1+): streaming и pause/resume, оркестрация генерации,
+парсеры графа и элементов, страницы синтеза/каталога/графа, каскады и
+план редактирования, мета-синтез, режимы, экспорт/импорт, billing.
+Следующая по графу 07 — беседа 1.4 (критический путь: в ней сходятся
+1.2 и 1.3) либо 2.1 параллельно.

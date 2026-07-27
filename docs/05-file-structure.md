@@ -11,7 +11,12 @@ philosynth-service/
 ├── package.json                    # Workspace root
 ├── tsconfig.base.json              # Общий TS-конфиг
 ├── docker-compose.yml              # PostgreSQL + Redis для dev
-├── .env.example
+├── .gitignore                      # node_modules, dist, .env (пароль БД
+│                                   # и ключи API), dump.rdb, архивы
+├── .env.example                    # ВСЕ переменные server/env.ts;
+│                                   # пароль БД обязан совпадать с дефолтом
+│                                   # env.ts — .env читает только drizzle-kit,
+│                                   # tsx-скрипты берут process.env
 ├── drizzle.config.ts               # Конфигурация Drizzle ORM
 │
 ├── packages/

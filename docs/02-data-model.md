@@ -442,7 +442,16 @@ CREATE TABLE context_log (
   -- v11 (tz_budget_mode / selective-parent-context):
   budget_mode   TEXT NOT NULL DEFAULT 'shrink',  -- 'full'|'shrink'
   parent_overhead INT NOT NULL DEFAULT 0,        -- вес родительского контекста (симв.)
-  parent_spec   JSONB,  -- per-parent spec: required/optional поля, missingRequired, опущенные
+  parent_spec   JSONB,  -- spec родительского контекста РАЗДЕЛА (не карта по
+                        -- родителям): { required, optional, perParent[], totalChars },
+                        -- где perParent[i] = { name, includedFields, omittedFields,
+                        -- missingRequired, chars } — buildParentSpecForLog [~10197]
+  -- ПРИМЕЧАНИЕ (беседа 1.3): ctxLog исходника несёт ещё rawBaseBudget и
+  -- conceptOverheadApplied. Колонок они НЕ требуют — оба восстановимы:
+  --   rawBaseBudget = CONTEXT_BUDGET[depth] × (section_key='critique' ? 1.5 : 1),
+  --   conceptOverheadApplied = rawBaseBudget − budget.
+  -- parent_overhead хранит СЫРОЙ вес родителей (parentOverheadForSection),
+  -- а не величину ужатия — это разные числа.
   entries       JSONB NOT NULL DEFAULT '[]',  -- массив { key, status, len, priority, isSubstitute, ... }
     -- поверх entries вычисляется качество контекста раздела
     -- (getSectionContextQuality → score + issues, бейдж в Edit Modal)

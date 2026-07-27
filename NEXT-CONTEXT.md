@@ -1000,3 +1000,230 @@ serializeParts вынесен из строки baseCtx в отдельную с
 УРОК ИДЕМПОТЕНТНОСТИ: в patch() проверять `new in text` ПЕРВЫМ — в
 правках-дописываниях (шапки-ревизии) old является префиксом new, и
 порядок old→new дублирует блок при повторном прогоне.
+
+---
+
+# Беседа 1.3 — итоги (context-builder / context-extractor)
+
+> Зафиксировано по завершении беседы 1.3. Модули: server/services/
+> context-builder.ts, context-extractor.ts, parent-context.ts,
+> server/utils/html-parser.ts.
+
+## Созданные/изменённые файлы
+
+- `server/services/context-builder.ts` — buildContextForSection [8313–8499]
+  (6 шагов 1:1), КАНОН applyBudgetPressure [10141] (пол 40%),
+  parentOverheadForSection [10150], computeConceptOverhead [10133],
+  extractRelevantIntraSectionContext [19894], реэкспорт
+  extractIntraSectionContext (карта 04 §2.1).
+- `server/services/context-extractor.ts` — extractContextFragment [8150–8270]
+  (ВСЕ ветки), ContextSource + createDbContextSource (мемоизация),
+  extractSection [7953], extractCapsuleText [11720], extractNameTitle [8068],
+  extractIntraSectionContext [19866], extractSubsectionContent [19950],
+  extractAllTablesAsText [8010], DB-аналоги extractGraphNodesTable /
+  Compact / Edges / GlossaryTable / ThesesSummary, обёртки
+  extractSummaryGoals / extractSummaryTensions (имена из 07).
+- `server/services/parent-context.ts` — resolveParentDeps [10092],
+  resolveParentDepsForSubsection [10114], resolveParentSpec (общая развилка
+  section/subsection), parentFieldsUsedFor [10182],
+  buildParentSpecForLog [10197], validateParentDeps [10055].
+- `server/utils/html-parser.ts` — parseFragment / innerText /
+  innerTextTrimmed поверх linkedom (добавлен в server/package.json).
+- `server/services/cost-estimator.ts` — ИЗМЕНЁН: приватная копия
+  applyBudgetPressure удалена, импорт из context-builder.
+- `packages/shared/types/generation.ts` — ИЗМЕНЁН: ParentSpecLog приведён
+  к исходнику, добавлены ParentSpecPerParent и CtxLogDraft.
+- `server/integration-check.mts` — += 2h / 4j / 5j; проверка 4h инвертирована
+  под состоявшийся перенос applyBudgetPressure.
+- `scripts/patch-docs-conv13.py` — идемпотентный патч 07 (8 правок).
+- Тесты в корне: `smoke-13-request1.mjs` (92/92, блок B — сверка HTML-портов
+  с исходником через vm), `test-13-requests2-7.mjs` (90/90, запросы 2–7).
+
+## Адаптации DOM/DOC_STATE → сервис (решения беседы)
+
+1. `generated` (карта sectionKey → DOM-элемент) → **ContextSource**: доступ к
+   разделам и гранулярным таблицам одного синтеза с мемоизацией. Создаётся
+   из synthesisId (createDbContextSource); в тестах подменяем объектом.
+2. Глобального ctxLog нет: buildContextForSection **ВОЗВРАЩАЕТ**
+   `{ text, ctxLog: CtxLogDraft | null }`. Персистентность в context_log —
+   generation-service (1.4). ctxLog=null только при раннем выходе
+   (раздела нет в картах зависимостей).
+3. **Схема БД не менялась.** Поля исходника rawBaseBudget и
+   conceptOverheadApplied колонок не имеют и не требуют:
+   `rawBaseBudget = CONTEXT_BUDGET[depth] × (sectionKey==="critique" ? 1.5 : 1)`,
+   `conceptOverheadApplied = rawBaseBudget − budget`. Колонка
+   `parent_overhead` хранит СЫРОЙ вес родителей (parentOverheadForSection),
+   а НЕ величину ужатия — это разные числа.
+4. Сигнатура: пять позиционных параметров как в 07 + шестой `opts`
+   (source / params / participants / subsectionName) вместо DOC_STATE.
+   `params` по умолчанию читаются из строки syntheses; `participants` —
+   параметр с дефолтом `[]` (наполнение полей — 3.1). Провайдер-заглушку,
+   как в 1.2, не заводили: вызывающий рядом.
+5. `innerText` — ПРИБЛИЖЕНИЕ, а не порт (см. грабли п. 1).
+6. `graphLastColName` берётся из Registry (`level.{level}.graph_last_col_name`),
+   фолбэк только на RegistryNotFoundError — сбои БД/Redis пробрасываются,
+   чтобы контекст не деградировал молча.
+7. FRAGMENT_SHARE в buildContextForSection НЕ участвует (только в оценщике) —
+   из конфигов читается лишь context_budget. Формулировку 07 не меняли.
+
+## Ревью по карте 04 (§2.1, §1.10)
+
+- §2.1 портировано ПОЛНОСТЬЮ: buildContextForSection ✓ (+ новое
+  бюджетирование: parentOverheadForSection + applyBudgetPressure, parentSpec
+  в ctxLog), extractContextFragment + все extract-функции ✓,
+  truncateText/tableToText — 0.1 ✓, extractIntraSectionContext ✓,
+  extractRelevantIntraSectionContext ✓ (с TODO(2.1) на каноникализацию).
+  НЕ портирован `getSectionContextQuality` → context-quality.ts: в тексте
+  беседы 1.3 не значился; дыра доков закрыта — модуль внесён в беседу 2.4
+  (patch-docs-conv13, 07/F) + ребро 2.3 ← 2.4 в §11.
+- §1.10 (доля этой беседы): resolveParentDeps ✓,
+  resolveParentDepsForSubsection ✓, parentFieldsUsedFor ✓,
+  buildParentSpecForLog ✓, applyBudgetPressure ✓ (канон),
+  parentOverheadForSection ✓, computeConceptOverhead ✓.
+  Осталось на 3.1: conceptContextBlockFull / conceptContextBlockSelective
+  (meta-synthesis-service) — к 1.3 не относятся.
+- Конфиги PARENT_* (server/config/parent-deps.ts) посеяны ещё в 0.3;
+  parent-context читает их ТОЛЬКО через Registry (проверка 4j).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **1.4 (streaming/generation)**: `context-builder.ts` (buildContextForSection
+  — вход конвейера; возвращает ctxLog, который надо писать в context_log),
+  `context-extractor.ts` (createDbContextSource), `parent-context.ts`
+  (провайдер для setParentContextProvider) + весь комплект 1.1/1.2.
+  ПОМНИТЬ: buildDynamicOrder уже отмутировал effectiveDeps — передавать в
+  buildContextForSection именно её.
+- **2.1 (cascade-analyzer)**: `context-builder.ts` (extractRelevantIntraSection
+  Context ждёт canonicalSubsectionKey колбэком — подставить настоящую),
+  `context-extractor.ts` (extractSubsectionContent).
+- **2.2 (plan-executor / regenerateSubsection)**: `context-builder.ts`
+  (opts.subsectionName → PARENT_INTRA_DEPS), `context-extractor.ts`.
+- **2.4 (логи)**: `context-builder.ts` (структура CtxLogDraft — вход
+  log-formatter), `shared/types/generation.ts` (CtxLogDraft, ParentSpecLog,
+  ContextEntry) + новый context-quality.ts по 07/F.
+- **3.1 (meta-synthesis)**: `parent-context.ts` целиком (resolveParentSpec —
+  общая точка для conceptContextBlockSelective), `context-builder.ts`
+  (parentOverheadForSection, computeConceptOverhead).
+- **Любая беседа с серверным HTML-парсингом** (1.4 graph-parser,
+  4.3 import-service): `server/utils/html-parser.ts` — единственная точка
+  входа linkedom (проверяется 4j).
+
+## Знания/грабли, добытые в 1.3
+
+1. **linkedom определяет СВОЙ `innerText`** (≈ textContent: `<p>a</p><p>b</p>`
+   → `ab`). Проверка `if (!("innerText" in node))` делает подмену молчаливым
+   no-op — перекрывать безусловно. Тот же капкан ждёт любой vm-эталон,
+   которому подсовывают браузерные хелперы.
+2. **Соседние блоки дают ДВЕ границы** (конец предыдущего + начало
+   следующего). Прямая вставка `\n` удваивает переносы. Решение: служебные
+   маркеры `\u0001` (line) / `\u0002` (para) со схлопыванием серии по
+   максимуму «силы». Абзацы/заголовки/таблицы дают пустую строку (в браузере
+   у них вертикальные margin), div/li/tr — один перенос.
+3. `buildDynamicOrder(effectiveDeps, selected, resolvedDeps, order)` —
+   карта ПЕРВЫМ аргументом, не список.
+4. **Дефолт DATABASE_URL в `server/env.ts` несёт пароль `philosynth_dev`**,
+   а `.env` читает только drizzle-kit — tsx-скрипты его НЕ подхватывают.
+   Расхождение выдаёт `28P01` под видом «Failed query», настоящая причина
+   в `err.cause` (та же грабля, что в 0.2).
+5. `RegistryNotFoundError` — единственный законный повод для фолбэка на
+   дефолт шаблона; глухой `catch {}` превращает падение БД в тихую
+   деградацию промпта.
+6. Проверки-парсеры в integration-check должны вырезать комментарии: JSDoc
+   портов легитимно цитирует имена исходника (`document.createElement`),
+   и наивный regexp ловит их как нарушение (случилось на 4j).
+7. `_t`-константы в integration-check нумеруются сквозной серией — брать
+   свободный диапазон (1.3 занял `_t40`–`_t50`).
+
+## Открытые TODO после 1.3
+
+1. **TODO(2.1)**: `canonicalSubsectionKey` [9753] в
+   extractRelevantIntraSectionContext — пока колбэк с тождеством по
+   умолчанию. Без настоящей каноникализации при кардинальности ≠ multi
+   портретные заголовки не совпадут с каноном INTRA_DEPS.
+2. **TODO(1.4)**: запись CtxLogDraft в context_log; регистрация
+   setParentContextProvider при старте генерационного слоя.
+3. **TODO(3.1)**: наполнение полей концепций-родителей
+   (importConceptAsParticipant), conceptContextBlockFull/Selective.
+4. **TODO(2.4)**: context-quality.ts по новой формулировке 07/F.
+5. `.env.example` числится в 05-file-structure, но в репозитории его нет —
+   мелкая дыра, не закрывалась (создавать не в этой беседе).
+
+## Патч доков по итогам 1.3
+
+`scripts/patch-docs-conv13.py` — идемпотентный (8 правок → повторный прогон
+skip×8): 07/A столбцы таблицы категорий («Категория» + столбец уровня из
+Registry), 07/B глоссарий без столбца «Категория», 07/C порог 1.5×budget и
+UNTOUCHABLE, 07/D null вместо пустой строки, 07/E parent-context.ts +
+html-parser.ts в первом запросе 1.3, 07/F context-quality.ts в беседу 2.4 +
+ребро 2.3 ← 2.4 в §11, 07/G шапка-ревизия.
+
+## Сплошная сверка доков с реализацией (вторая волна патча 1.3)
+
+Помимо четырёх неточностей, найденных тестами, сплошная сверка семи
+документов с фактическим кодом дала ещё девять расхождений — все закрыты
+тем же `scripts/patch-docs-conv13.py` (итог: 18 правок, повторный прогон
+skip×18):
+
+- **03/H** §2.3 — `SectionSummary` не был описан в спецификации, хотя
+  эндпоинт его возвращает, а `shared/types/section.ts` уже содержит
+  `contextQualityScore` (требование 01-arch §4.15 п.3).
+- **03/I** §2.3 — ответ `/sections/:key/context` назывался `contextHtml`,
+  хотя возвращается ПЛОСКИЙ ТЕКСТ; поля v11 (budgetMode, parentOverhead,
+  parentSpec, счётчики) отсутствовали. Приведён к `CtxLogDraft`.
+- **02/J** §2.16 — описание `parent_spec` («per-parent spec») противоречило
+  `buildParentSpecForLog`: структура ОДНА на раздел с разбивкой `perParent`.
+  Добавлено примечание, что rawBaseBudget/conceptOverheadApplied колонок не
+  требуют (восстановимы), а `parent_overhead` — сырой вес, не величина ужатия.
+- **01/K** §4.3 — `FRAGMENT_SHARE` числился участником
+  `buildContextForSection`; фактически он читается только оценщиком.
+- **04/L** §2.1 — `extractIntraSectionContext` числился в context-builder;
+  реализация в DOM-слое (context-extractor) + реэкспорт.
+- **04/M** §4 — добавлен `server/utils/html-parser.ts` (новый модуль,
+  единственная точка входа linkedom).
+- **07/N** беседа 1.4 — в контекст добавлены section-defs-builder,
+  cost-estimator, context-extractor, parent-context: без них оркестрация
+  не собирается (buildSectionDefs/groupPasses, провайдер, sysChars).
+- **07/O** беседа 2.1 — отмечен потребитель `canonicalSubsectionKey` из 1.3.
+- **05/P** — в дерево добавлен `.gitignore` (в репозитории отсутствовал:
+  `.env` с паролем БД и ключами API ничем не был защищён).
+
+Сопутствующие правки репозитория (следствие сверки, не docs):
+- создан **`.env.example`** — числился в 05, но отсутствовал; сверен с
+  `server/env.ts`: покрыты ВСЕ 16 переменных, включая
+  ANTHROPIC_MAX_TOKENS, STREAM_STUCK_MS, BILLING_MARKUP, три RATE_LIMIT_*;
+- создан **`.gitignore`** (node_modules, dist, .env, dump.rdb, архивы).
+
+## Обратная сверка: что из правок доков потребовало кода
+
+Вопрос «надо ли править файлы прежних бесед» проверен адресно по каждой из
+18 правок. Найден ОДИН отставший артефакт:
+
+- **`packages/shared/types/section.ts` (беседа 0.1), `SectionContextPreview`** —
+  нёс `contextHtml: string` и `used`, без единого поля v11. Правка 03/I
+  переименовала поле в `contextText` (возвращается плоский текст, не HTML) и
+  дополнила состав; тип приведён к `CtxLogDraft`: budget, rawBaseBudget,
+  totalUsed, budgetMode, parentOverhead, parentSpec, reqFound/reqTotal/
+  optIncluded/optTotal, entries. Потребителей ещё нет (routes/sections.ts —
+  будущая беседа), правка безопасна и делает контракт готовым к 1.6/2.4.
+
+Остальные правки кода не требуют — проверено, а не предположено:
+
+- `ParentSpecLog` (02/J) — тип уже исправлен в 1.3; `schema.ts` берёт его
+  через `$type<ParentSpecLog | null>()`, `parent-context` возвращает ровно
+  его, audit чист.
+- `SectionSummary` (03/H) — `shared/types/section.ts` уже содержал
+  `contextQualityScore`; документация догоняла код, а не наоборот.
+- `FRAGMENT_SHARE` (01/K) — сверено грепом: конфиг читает ТОЛЬКО
+  `cost-estimator`; `context-builder` его не касается.
+- 04/L, 04/M — описывают фактическое размещение модулей 1.3.
+- 07/E, 07/F, 07/N, 07/O, 05/P — про будущие беседы либо про репо-файлы;
+  существующего кода не касаются.
+
+**README.md** тоже был устаревшей документацией: статус останавливался на
+Фазе 0 и утверждал, что synthesis engine и context builder «не сделано».
+Обновлён (правки README/Q–S): покрытие check:integration, заголовок статуса,
+блоки бесед 1.1/1.2/1.3 и актуальный перечень несделанного с указанием, что
+следующая по графу — 1.4.
+
+Итог патча `scripts/patch-docs-conv13.py`: **21 правка**, повторный прогон
+skip×21.

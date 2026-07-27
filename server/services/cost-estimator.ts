@@ -26,9 +26,8 @@
  *    вычисляется parent-context/context-builder (беседа 1.3); здесь
  *    принимается готовым числом/колбэком, по умолчанию 0 (не мета-синтез);
  *  - applyBudgetPressure (пол 40%) по карте 04 принадлежит
- *    context-builder.ts (беседа 1.3) — до её появления здесь ЛОКАЛЬНАЯ
- *    копия с логикой исходника [10141]; TODO(1.3): заменить на импорт из
- *    context-builder и удалить копию.
+ *    context-builder.ts — ЗАКРЫТО в беседе 1.3: локальная копия удалена,
+ *    функция импортируется из канонического модуля.
  *
  * Сохранённые формулы и константы — дословно (включая эмпирику 2.6 симв./
  * токен для русского+HTML и цены $3/$15 за MTok).
@@ -37,6 +36,7 @@
 import type { Depth, GenerationOrder } from "@philosynth/shared/types/synthesis";
 
 import type { DepsMap, SectionDeps } from "../utils/deep-merge.js";
+import { applyBudgetPressure } from "./context-builder.js";
 import { sourceOf } from "../utils/topo-sort.js";
 import { getConfig } from "./prompt-registry.js";
 
@@ -81,45 +81,6 @@ export function mw(p: { depth?: Depth | string | undefined }): number {
 const SCAFFOLD_CHARS =
   `ПАРАМЕТРЫ СИНТЕЗА:\n\n\nЗАДАНИЕ: составь ТОЛЬКО следующие разделы (строго в указанном порядке, без добавления других):\n\n\n\n`
     .length;
-
-/* ── Локальная копия applyBudgetPressure [10141] — TODO(1.3) ─────────── */
-
-interface BudgetPressureResult {
-  effectiveBudget: number;
-  applied: number;
-  mode: "full" | "shrink";
-}
-
-/**
- * ЛОКАЛЬНАЯ копия applyBudgetPressure(baseBudget, conceptOverhead,
- * keepFullBudget) [10141] — логика 1:1 (нижний пол 40% базового бюджета).
- * Каноническое место — context-builder.ts (04-map §1.10, беседа 1.3);
- * TODO(1.3): переключить на импорт и удалить копию.
- */
-function applyBudgetPressure(
-  baseBudget: number,
-  conceptOverhead: number,
-  keepFullBudget: boolean,
-): BudgetPressureResult {
-  if (keepFullBudget || !conceptOverhead) {
-    return {
-      effectiveBudget: baseBudget,
-      applied: 0,
-      mode: keepFullBudget ? "full" : "shrink",
-    };
-  }
-  const effective = Math.max(
-    baseBudget - conceptOverhead,
-    Math.floor(baseBudget * 0.4),
-  );
-  return {
-    effectiveBudget: effective,
-    applied: baseBudget - effective,
-    mode: "shrink",
-  };
-}
-
-/* ── Общие типы результата ───────────────────────────────────────────── */
 
 export interface CostEstimate {
   inTokens: number;

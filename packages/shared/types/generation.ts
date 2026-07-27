@@ -69,16 +69,38 @@ export interface ContextEntry {
   [k: string]: unknown;
 }
 
-/** context_log.parent_spec — per-parent разбивка (v11, 01-arch §4.13 п.7) */
+/** Разбивка по одному родителю внутри ParentSpecLog.perParent */
+export interface ParentSpecPerParent {
+  /** Имя концепции-родителя */
+  name: string;
+  /** Поля spec, непустые у этого родителя (канонический порядок) */
+  includedFields: string[];
+  /** Непустые поля родителя ВНЕ spec раздела («Опущено: …» в логе) */
+  omittedFields: string[];
+  /** «⚠ отсутствует обязательное поле» в логе */
+  missingRequired: string[];
+  /** Вес включённых полей с заголовками и обвязкой, симв. */
+  chars: number;
+}
+
+/**
+ * context_log.parent_spec — spec родительского контекста раздела
+ * (v11, 01-arch §4.13 п.7).
+ *
+ * ИСПРАВЛЕНО в беседе 1.3: тип описывал карту «имя родителя → spec», тогда
+ * как buildParentSpecForLog [philosynth.html ~10197] возвращает ОДИН spec
+ * раздела (required/optional — общие для всех родителей) с разбивкой
+ * perParent. Приведено к исходнику.
+ */
 export interface ParentSpecLog {
-  [parentName: string]: {
-    required: string[];
-    optional: string[];
-    /** «⚠ отсутствует обязательное поле» в логе */
-    missingRequired: string[];
-    /** Опущенные поля */
-    omitted: string[];
-  };
+  /** Обязательные поля родителей для этого раздела/подраздела */
+  required: string[];
+  /** Опциональные поля */
+  optional: string[];
+  /** По одной записи на концепцию-родителя */
+  perParent: ParentSpecPerParent[];
+  /** Σ perParent[].chars */
+  totalChars: number;
 }
 
 /** Строка context_log (аналог ctxLog из исходника) */
@@ -100,6 +122,39 @@ export interface CtxLogEntry {
   parentSpec: ParentSpecLog | null;
   entries: ContextEntry[];
   createdAt: string;
+}
+
+/**
+ * Запись ctxLog, ещё не сохранённая в БД — то, что возвращает
+ * buildContextForSection (беседа 1.3). В исходнике эквивалент кладётся в
+ * глобальный массив ctxLog [~8357]; на сервере глобального состояния нет,
+ * запись отдаётся вызывающему (generation-service, беседа 1.4).
+ *
+ * Два поля исходника не имеют колонок в context_log (02-data-model §2.16) и
+ * НЕ требуют их: оба восстановимы из сохранённого —
+ *  rawBaseBudget = CONTEXT_BUDGET[depth] × (sectionKey === "critique" ? 1.5 : 1),
+ *  conceptOverheadApplied = rawBaseBudget − budget.
+ * Персистентная колонка parent_overhead хранит СЫРОЙ вес родителей
+ * (parentOverheadForSection), а не величину ужатия — это разные числа.
+ */
+export interface CtxLogDraft {
+  sectionKey: string;
+  /** Базовый бюджет ДО давления родителей (с критиковым ×1.5) */
+  rawBaseBudget: number;
+  /** На сколько бюджет ужат давлением родителей (0 при mode='full') */
+  conceptOverheadApplied: number;
+  budgetMode: BudgetMode;
+  /** Эффективный бюджет после applyBudgetPressure */
+  budget: number;
+  /** Сырой вес родительского контекста раздела, симв. → context_log.parent_overhead */
+  parentOverhead: number;
+  entries: ContextEntry[];
+  totalUsed: number;
+  reqFound: number;
+  reqTotal: number;
+  optIncluded: number;
+  optTotal: number;
+  parentSpec: ParentSpecLog | null;
 }
 
 /** Качество контекста раздела (getSectionContextQuality, v11 §4.15 п.3) */

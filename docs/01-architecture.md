@@ -214,7 +214,7 @@ case "graph:nodes": return formatCategoriesAsTable(
 );
 ```
 
-Каждая `extract*()` функция получает эквивалент, работающий с данными из БД вместо DOM-парсинга. Бюджетирование (`CONTEXT_BUDGET`, `FRAGMENT_SHARE`, приоритизация required/optional) переносится, но дополнено (v11): перед приоритизацией применяется давление родительского контекста — `parentOverheadForSection()` + `applyBudgetPressure()` с нижним полом 40% базового бюджета (4.13); в ctxLog пишется parentSpec, а поверх ctxLog вычисляется качество контекста раздела — `getSectionContextQuality()` → цветной бейдж на карточке раздела в Edit Modal.
+Каждая `extract*()` функция получает эквивалент, работающий с данными из БД вместо DOM-парсинга. Бюджетирование (`CONTEXT_BUDGET`, приоритизация required/optional) переносится, но дополнено (v11): перед приоритизацией применяется давление родительского контекста — `parentOverheadForSection()` + `applyBudgetPressure()` с нижним полом 40% базового бюджета (4.13); в ctxLog пишется parentSpec, а поверх ctxLog вычисляется качество контекста раздела — `getSectionContextQuality()` → цветной бейдж на карточке раздела в Edit Modal. `FRAGMENT_SHARE` в самом `buildContextForSection` не участвует (сверено в беседе 1.3): он читается только оценщиком стоимости (`cost-estimator`, доля фрагмента в бюджете при прогнозе), поэтому context-builder тянет из конфигов лишь `context_budget`.
 
 ### 4.4. Streaming Manager
 

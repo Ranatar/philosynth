@@ -287,10 +287,39 @@ GET    /syntheses/:id/sections/:key
                                 → { section: SectionFull }
 
 GET    /syntheses/:id/sections/:key/context
-                                → { contextHtml: string, budget: number, used: number,
+                                → { contextText: string, budget: number,
+                                    rawBaseBudget: number, totalUsed: number,
+                                    budgetMode: 'full'|'shrink',
+                                    parentOverhead: number,
+                                    parentSpec: ParentSpecLog | null,
+                                    reqFound: number, reqTotal: number,
+                                    optIncluded: number, optTotal: number,
                                     entries: ContextEntry[] }
                                 // Отладочный эндпоинт: показывает, какой контекст
-                                // будет использован при (пере)генерации этого раздела
+                                // будет использован при (пере)генерации раздела.
+                                // contextText — ПЛОСКИЙ ТЕКСТ блока «КОНТЕКСТ ИЗ
+                                // ПРЕДЫДУЩИХ РАЗДЕЛОВ …», а не HTML (прежнее имя
+                                // contextHtml вводило в заблуждение).
+                                // Поля соответствуют CtxLogDraft, который
+                                // возвращает buildContextForSection (беседа 1.3);
+                                // rawBaseBudget = CONTEXT_BUDGET[depth] ×
+                                // (key === 'critique' ? 1.5 : 1)
+```
+
+**SectionSummary** (элемент списка GET /syntheses/:id/sections):
+```typescript
+{
+  key: string;
+  sectionNum: number;
+  title: string;
+  isEdited: boolean;
+  htmlChars: number;              // длина html_content, симв.
+  contextQualityScore: number | null;  // v11: getSectionContextQuality
+                                       // (01 §4.15 п.3) — 0–100 либо null,
+                                       // если ctxLog по разделу отсутствует;
+                                       // цветной бейдж в Edit Modal
+  updatedAt: string;
+}
 ```
 
 **SectionFull:**

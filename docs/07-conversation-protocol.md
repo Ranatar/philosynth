@@ -21,6 +21,15 @@
 > в беседу 1.3 внесён канон applyBudgetPressure (перенос копии из
 > cost-estimator, метка TODO(1.3) в коде).
 >
+> **Правка 2026-07-27 (итоги 1.3)**: беседа 1.3 — столбцы таблицы категорий
+> приведены к промпту исходника (~10897, «Категория» + столбец уровня),
+> из ожиданий глоссария убран столбец «Категория» (~8021 берёт два
+> столбца), уточнён порог пережатия required 1.5×budget (~8419),
+> extractContextFragment возвращает null, а не пустую строку (~8150);
+> в первый запрос добавлены parent-context.ts и html-parser.ts;
+> в беседу 2.4 добавлен context-quality.ts (дыра: модуль из 04 §2.1 и 05
+> не создавался ни одной беседой) + ребро 2.3 ← 2.4 в §11.
+>
 > **Правка 2026-07-27 (итоги 1.2)**: groupPasses приведён к фактической
 > сигнатуре исходника — groupPasses(defs), по одному разделу на проход,
 > без effectiveDeps (первый запрос и тест беседы 1.2); ориентир длины
@@ -647,6 +656,16 @@ el.querySelector('[data-section="Таблица категорий"]'). В се�
 
 3. server/utils/text.ts: truncateText(), tableToText() — из truncateText()
 
+4. server/services/parent-context.ts (04 §1.10; ни одна беседа 07 его не создавала, хотя parentOverheadForSection и parentSpec в ctxLog без него не собираются):
+   - resolveParentDeps(), resolveParentDepsForSubsection() — 4-слойное слияние карт parent_deps.* из Registry тем же deepMergeUniq;
+   - parentFieldsUsedFor(), buildParentSpecForLog() — spec для ctxLog;
+   - validateParentDeps() — порт _validateParentDeps (в исходнике вызывается при загрузке модуля; здесь явный, карты приходят из БД).
+   conceptContextBlockFull/Selective — НЕ здесь (meta-synthesis-service, беседа 3.1).
+
+5. server/utils/html-parser.ts (05-file-structure; обёртка над linkedom):
+   - parseFragment(html) — контейнер-аналог generated[sectionKey];
+   - innerText(el) — ПРИБЛИЖЕНИЕ браузерного innerText: linkedom даёт свой innerText ≈ textContent (склеивает блоки без переносов), поэтому нужен обход дерева с границами блоков. Это адаптация, а не дословный порт.
+
 Приоритет extract-функций (реализовать в этой беседе):
 extractSummaryGoals, extractSummaryTensions, extractGraphNodesTable, 
 extractGraphEdges, extractGlossaryTable, extractThesesSummary.
@@ -654,12 +673,12 @@ extractGraphEdges, extractGlossaryTable, extractThesesSummary.
 ```
 
 **Последующие запросы:**
-- «Протестируй extractGraphNodesTable: вставь 5 записей в categories (разные типы, centrality, certainty) → extractGraphNodesTable возвращает форматированную таблицу с колонками Имя, Тип, Определение, Центральность, Определённость?»
-- «Протестируй extractGlossaryTable: 3 термина в glossary_terms → таблица с колонками Термин, Определение, Категория?»
+- «Протестируй extractGraphNodesTable: вставь 5 записей в categories (разные типы, centrality, certainty) → extractGraphNodesTable возвращает форматированную таблицу со столбцами промпта графа (philosynth.html ~10897): Категория, Тип, Определение, Центральность, Определённость и столбец уровня (comparative → «Происхождение», transformative → «Генеалогия», generative → «Преодолённые ограничения», шаблон Registry `level.{level}.graph_last_col_name`)? При extGraphMetrics — плюс 6 столбцов (Ист. значимость, Степень инновации, Ясность, Широта, Глубина, Применимость)?»
+- «Протестируй extractGlossaryTable: 3 термина в glossary_terms → таблица с колонками Термин, Определение? (extractGlossaryCompact исходника ~8021 берёт РОВНО первые два столбца — termCategory в межсекционный контекст не попадает; ячейки нормализуются как в tableToText: переносы и двойные пробелы → одиночный пробел)»
 - «Протестируй buildContextForSection: для sectionKey="theses", effectiveDeps показывает required=["sum:goals","graph:nodes_top"] — результат содержит оба фрагмента? Общая длина не превышает CONTEXT_BUDGET?»
-- «Протестируй бюджетирование: создай ситуацию, где суммарный контекст превышает CONTEXT_BUDGET — optional-фрагменты обрезаются, required — нет. ctxLog содержит записи со status "found", "truncated", "skipped_budget"?»
+- «Протестируй бюджетирование: создай ситуацию, где суммарный контекст превышает CONTEXT_BUDGET — optional-фрагменты обрезаются, required — нет. ctxLog содержит записи со status "found", "truncated", "skipped_budget"?» ВАЖНО: «required не обрезаются» верно лишь до порога 1.5×budget — шаг 4 исходника (~8419) пережимает required при requiredLen > budget×1.5, щадя неприкосновенный набор UNTOUCHABLE (graph:nodes, graph:edges, sum:goals, sum:tensions). Проверить обе стороны порога.
 - «Протестируй extractSummaryGoals: вставь HTML в sections WHERE key='sum' с data-section="Цели и задачи" → extractSummaryGoals парсит через linkedom и возвращает текст?»
-- «Edge case: buildContextForSection для первого раздела (sum) — priorContext пуст, функция не crash. extractContextFragment для раздела, который ещё не сгенерирован — возвращает пустую строку, не ошибку»
+- «Edge case: buildContextForSection для первого раздела (sum) — priorContext пуст, функция не crash. extractContextFragment для раздела, который ещё не сгенерирован — возвращает null (не пустую строку и не ошибку: null исходника ~8150 falsy и отличим от валидного пустого фрагмента, buildContextForSection трактует его как status="missing")»
 
 **Завершение беседы:**
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
@@ -675,8 +694,16 @@ extractGraphEdges, extractGlossaryTable, extractThesesSummary.
 - `03-specification.md` (секция 3 WebSocket-протокол)
 - `server/ws/handler.ts` (из 0.2)
 - `server/services/prompt-builder.ts` (из 1.2)
-- `server/services/context-builder.ts` (из 1.3)
+- `server/services/section-defs-builder.ts` (из 1.2: buildSectionDefs,
+  groupPasses, patchPromptsWithSecCtx — без них проходы не собрать)
+- `server/services/context-builder.ts` (из 1.3; ВОЗВРАЩАЕТ CtxLogDraft —
+  писать его в context_log обязан generation-service)
+- `server/services/context-extractor.ts` (из 1.3: createDbContextSource)
+- `server/services/parent-context.ts` (из 1.3: реализация провайдера для
+  setParentContextProvider — разъём, оставленный беседой 1.2)
 - `server/services/synthesis-engine.ts` (из 1.1)
+- `server/services/cost-estimator.ts` (из 1.1: sysChars = buildSYS().length,
+  baseStaticChars = baseCtxStatic().length, passes = groupPasses(defs))
 - `server/db/schema.ts`
 - Исходник: streamResp(), generateDoc() (только логика оркестрации, без DOM)
 
@@ -1139,7 +1166,11 @@ recalcEditPlan … updateLiveCascade: recalcEditPlan, updateLiveCascade).
    - buildCtxKeyConsumers() — обратная карта ключ→подразделы-потребители
      (гранулярный каскад: «перегенерировать подраздел, а не весь раздел», v11)
    - canonicalSubsectionKey() — каноникализация портретных заголовков
-     (варианты SUBSECTION_SUM_PORTRAIT схлопываются для карт зависимостей, v11)
+     (варианты SUBSECTION_SUM_PORTRAIT схлопываются для карт зависимостей, v11).
+     ПОТРЕБИТЕЛЬ ИЗ 1.3: extractRelevantIntraSectionContext в context-builder
+     принимает её колбэком (default — тождество, метка TODO(2.1) в коде);
+     после создания подставить настоящую, иначе при кардинальности ≠ multi
+     имена подразделов не совпадут с каноном INTRA_DEPS.
    - buildFactualDepsMap(ctxLog) — из buildFactualDepsMap()
    - computeFactualDependents(factDeps) — из computeFactualDependents()
    - analyzeImpact(synthesisId, plan): полный каскадный анализ —
@@ -1408,7 +1439,11 @@ refreshCtxLogIfOpen, viewCtxLog, downloadPrompts.
    - formatCtxLogHTML(synthesisId):
      Возвращает { text: string, html: string } — plain + colorized
 
-2. server/routes/logs.ts:
+2. server/services/context-quality.ts (04 §2.1, 01-arch §4.15 п.3; модуль не создавался ни одной беседой — дыра, найденная в 1.3):
+   - getSectionContextQuality(synthesisId, sectionKey) — по ПОСЛЕДНЕЙ записи context_log раздела: score = round(reqFound/reqTotal × 70 + min(1, totalUsed/budget) × 30) и issues («Отсутствовали обязательные: …», «N контекст(ов) пропущено из-за бюджета», «N контекст(ов) обрезано», «N подстановок(ки)»);
+   - score отдаётся в GET /syntheses/:id/sections → цветной бейдж качества на карточке раздела в Edit Modal (EditSectionCard.tsx, беседа 2.3: ≥90 зелёный). Беседа 2.3 зависит от этого модуля — см. §11.
+
+3. server/routes/logs.ts:
    - GET /syntheses/:id/logs/generation → массив GenerationLogEntry из БД
    - GET /syntheses/:id/logs/context → массив ContextLogEntry из БД
    - GET /syntheses/:id/logs/formatted → { text, html }
@@ -2666,6 +2701,7 @@ streaming-manager.
       ├── 5.2 (ElementEditor, CategoryEditor, VersionHistory)
       └── 6.2 (BillingPage, AdminPromptsPage)
 
+2.3 (бейдж качества контекста на карточке раздела) ← 2.4 (context-quality.ts, getSectionContextQuality)
 5.1 (element-editor, element-versioning) ← 0.1 (schema) + 2.1 (cascade-analyzer)
 5.3 (element-enrichment) ← 5.1 + 0.3b (taxonomy) + 1.4 (streaming-manager)
 5.4 (CharacteristicSlider, EnrichmentPanel, TaxonomySelector) ← 5.3 + 5.2 + 1.7 (NodePanel)

@@ -169,6 +169,46 @@ need(await import("./config/subsection-map.js"), [
     errs.push(`2g: SEED_SECTION_TEMPLATES: ${st12.length} шт., ожидали 146 уникальных section.*`);
 }
 
+// ── 2h. Модули беседы 1.3: context-builder, context-extractor, parent-context, html-parser ──
+need(await import("./services/context-builder.js"), [
+  "buildContextForSection","applyBudgetPressure","parentOverheadForSection",
+  "computeConceptOverhead","extractIntraSectionContext","extractRelevantIntraSectionContext",
+], "services/context-builder");
+need(await import("./services/context-extractor.js"), [
+  "createDbContextSource","extractContextFragment","extractGraphNodesTable",
+  "extractGraphNodesCompact","extractGraphEdges","extractGlossaryTable","extractThesesSummary",
+  "extractSummaryGoals","extractSummaryTensions","extractSection","extractCapsuleText",
+  "extractNameTitle","extractIntraSectionContext","extractSubsectionContent","extractAllTablesAsText",
+], "services/context-extractor");
+need(await import("./services/parent-context.js"), [
+  "resolveParentDeps","resolveParentDepsForSubsection","resolveParentSpec",
+  "parentFieldsUsedFor","buildParentSpecForLog","validateParentDeps",
+  "isConceptParticipant","parentFieldValue","normalizeSectionKey",
+  "getParentFieldOrder","getParentFieldLabels",
+], "services/parent-context");
+need(await import("./utils/html-parser.js"), [
+  "parseFragment","innerText","innerTextTrimmed",
+], "utils/html-parser");
+{
+  // Реэкспорт extractIntraSectionContext из context-builder (карта 04 §2.1) —
+  // ТА ЖЕ функция, что реализована в context-extractor, а не копия.
+  const cb2h = await import("./services/context-builder.js");
+  const cx2h = await import("./services/context-extractor.js");
+  if (!Object.is(cb2h.extractIntraSectionContext, cx2h.extractIntraSectionContext))
+    errs.push("2h: реэкспорт extractIntraSectionContext не тождествен реализации");
+  // Диспетчер обязан покрывать ВСЕ ключи CTX_LABELS (перечень v11 выводится
+  // из него); capsule:full обрабатывается до switch — как в исходнике [8153].
+  const cxSrc2h = readFileSync(new URL("./services/context-extractor.ts", import.meta.url), "utf8");
+  const { ALL_CTX_KEYS: ack2h } = await import("@philosynth/shared/constants/ctx-keys");
+  const missing2h = ack2h.filter(
+    (k) => k !== "capsule:full" && !cxSrc2h.includes(`case "${k}":`),
+  );
+  if (missing2h.length)
+    errs.push(`2h: extractContextFragment не покрывает ключи: ${missing2h.join(", ")}`);
+  if (!/if \(contextKey === "capsule:full"\)/.test(cxSrc2h))
+    errs.push("2h: capsule:full должен обрабатываться ДО гейта наличия раздела");
+}
+
 // ── 3. Типовые (compile-time) модули: сам факт импорта проверяет пути ──
 import type { SynthesisFull, PausedState } from "@philosynth/shared/types/synthesis";
 import type { SectionFull } from "@philosynth/shared/types/section";
@@ -690,10 +730,13 @@ const _t23: (k: string) => Promise<CompatEntry11 | null> = gce11;
 const _t24: (i: ECInput11) => Promise<FCE11> = ec11;
 const _t25: (i: { deps: SectionDeps11; params: { depth: "standard" }; sysChars: number }) => Promise<CE11> = emc11;
 {
-  // Парсинг: локальная копия applyBudgetPressure помечена TODO(1.3) и НЕ экспортируется
+  // Перенос закрыт в 1.3: копии applyBudgetPressure в оценщике нет,
+  // функция импортируется из канона context-builder.ts (04-map §1.10).
   const estSrc = readFileSync(new URL("./services/cost-estimator.ts", import.meta.url), "utf8");
-  if (!/TODO\(1\.3\)/.test(estSrc) || /export function applyBudgetPressure/.test(estSrc))
-    errs.push("4h: applyBudgetPressure — копия должна быть приватной с TODO(1.3)");
+  if (/function applyBudgetPressure/.test(estSrc) || /TODO\(1\.3\)/.test(estSrc))
+    errs.push("4h: копия applyBudgetPressure/метка TODO(1.3) должны быть удалены из cost-estimator (перенос 1.3)");
+  if (!/import \{ applyBudgetPressure \} from "\.\/context-builder\.js"/.test(estSrc))
+    errs.push("4h: cost-estimator должен импортировать applyBudgetPressure из context-builder");
   // Мутация effectiveDeps в buildDynamicOrder — задокументирована (семантика исходника)
   const topoSrc = readFileSync(new URL("./utils/topo-sort.ts", import.meta.url), "utf8");
   if (!/МУТИРУЕТ effectiveDeps/.test(topoSrc))
@@ -868,6 +911,206 @@ const _t31 = (d: SDF12[]): ESD12[][] => gp12(d);
     errs.push("5i: patchPromptsWithSecCtx не вписал secCtx в промпт graph");
 }
 
+// ── 4j. Контрактные проверки беседы 1.3 (context-builder/extractor/parent-context) ──
+// Типовые совместимости (компилятор — судья) + парсинг инвариантов порта.
+import type {
+  CtxLogDraft as CtxLogDraft13,
+  CtxLogEntry as CtxLogEntry13,
+  ContextEntry as ContextEntry13,
+  ParentSpecLog as ParentSpecLog13,
+} from "@philosynth/shared/types/generation";
+import type { DepsMap as DepsMap13, SectionDeps as SectionDeps13 } from "./utils/deep-merge.js";
+import {
+  buildContextForSection as bcfs13,
+  applyBudgetPressure as abp13,
+  parentOverheadForSection as pofs13,
+  computeConceptOverhead as cco13,
+  type BuildContextResult as BCR13,
+  type BudgetPressureResult as BPR13,
+} from "./services/context-builder.js";
+import {
+  resolveParentDeps as rpd13,
+  resolveParentDepsForSubsection as rpds13,
+  buildParentSpecForLog as bpsl13,
+  type ConceptParticipant as CP13,
+} from "./services/parent-context.js";
+import {
+  extractContextFragment as ecf13,
+  createDbContextSource as cdcs13,
+  type ContextSource as CS13,
+} from "./services/context-extractor.js";
+import { innerText as it13, type HtmlElement as HE13 } from "./utils/html-parser.js";
+
+// async-сигнатуры и возвраты соответствуют контрактам беседы 1.3
+const _t40: (
+  k: string, id: string, d: string,
+  e: DepsMap13 | null | undefined, r: DepsMap13,
+) => Promise<BCR13> = bcfs13;
+const _t41: (b: number, o: number, keep: boolean) => BPR13 = abp13;
+const _t42: (p: readonly CP13[] | null | undefined, k: string) => Promise<number> = pofs13;
+const _t43: (p: readonly CP13[] | null | undefined) => number = cco13;
+const _t44: (p: { generationOrder?: string }) => Promise<Record<string, SectionDeps13>> = rpd13;
+const _t45: (p: { synthLevel?: string }, k: string, sub: string) => Promise<SectionDeps13> = rpds13;
+const _t46: (
+  p: readonly CP13[] | null | undefined, q: Record<string, never>, k: string,
+) => Promise<ParentSpecLog13 | null> = bpsl13;
+const _t47: (k: string, src: CS13) => Promise<string | null> = ecf13;
+const _t48: (id: string) => CS13 = cdcs13;
+const _t49: (el: HE13 | null | undefined) => string = it13;
+// Черновик ctxLog покрывает все поля строки context_log, кроме служебных:
+// персистентность (беседа 1.4) не потребует довычислений.
+const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "createdAt"> = (d) => ({
+  sectionKey: d.sectionKey, budget: d.budget, totalUsed: d.totalUsed,
+  reqFound: d.reqFound, reqTotal: d.reqTotal,
+  optIncluded: d.optIncluded, optTotal: d.optTotal,
+  budgetMode: d.budgetMode, parentOverhead: d.parentOverhead,
+  parentSpec: d.parentSpec, entries: d.entries satisfies ContextEntry13[],
+});
+{
+  const cbSrc13 = readFileSync(new URL("./services/context-builder.ts", import.meta.url), "utf8");
+  const cxSrc13 = readFileSync(new URL("./services/context-extractor.ts", import.meta.url), "utf8");
+  const pcSrc13 = readFileSync(new URL("./services/parent-context.ts", import.meta.url), "utf8");
+  const hpSrc13 = readFileSync(new URL("./utils/html-parser.ts", import.meta.url), "utf8");
+
+  // Канон applyBudgetPressure: экспортируется отсюда, пол 40% дословно [10141]
+  if (!/export function applyBudgetPressure/.test(cbSrc13) ||
+      !/Math\.floor\(baseBudget \* 0\.4\)/.test(cbSrc13))
+    errs.push("4j: канон applyBudgetPressure отсутствует или пол 40% изменён");
+  // Неприкосновенный набор шага 4 — дословно [8420]
+  for (const k13 of ["graph:nodes", "graph:edges", "sum:goals", "sum:tensions"])
+    if (!new RegExp(`UNTOUCHABLE[\\s\\S]{0,240}"${k13}"`).test(cbSrc13))
+      errs.push(`4j: UNTOUCHABLE не содержит ${k13}`);
+  // Пороги бюджетирования [8340–8420] — дословно
+  if (!/totalBudget \* 1\.5/.test(cbSrc13) || !/totalBudget \* 1\.3/.test(cbSrc13) ||
+      !/remainingBudget > 500/.test(cbSrc13) || !/remainingBudget <= 300/.test(cbSrc13) ||
+      !/remainingBudget - 50/.test(cbSrc13))
+    errs.push("4j: пороги бюджетирования разошлись с исходником [8340–8420]");
+  // critique × 1.5 применяется ДО давления родителей [8332]
+  if (!/critique"[\s\S]{0,40}Math\.floor\(baseBudget \* 1\.5\)[\s\S]{0,400}applyBudgetPressure\(/.test(cbSrc13))
+    errs.push("4j: множитель critique×1.5 должен применяться ДО applyBudgetPressure");
+  // Вес родителя: +200 симв. служебной обёртки на концепцию [10150]
+  if (!/total \+= 200/.test(cbSrc13))
+    errs.push("4j: parentOverheadForSection без обвязки 200 симв. на концепцию");
+  // DOM-слой изолирован: сервисы 1.3 не трогают браузерные глобалы,
+  // linkedom импортируется ТОЛЬКО в server/utils/html-parser.ts.
+  // Комментарии вырезаются: в JSDoc портов имена исходника упоминаются легитимно.
+  const code13 = [cbSrc13, cxSrc13, pcSrc13]
+    .join("\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^[ \t]*\/\/.*$/gm, "");
+  if (/\bdocument\.(getElementById|createElement)\b|\bwindow\./.test(code13))
+    errs.push("4j: сервисы 1.3 обращаются к браузерным глобалам");
+  if (/from "linkedom"/.test(code13))
+    errs.push("4j: linkedom импортируется вне server/utils/html-parser.ts");
+  if (!/from "linkedom"/.test(hpSrc13))
+    errs.push("4j: html-parser должен быть единственной точкой входа linkedom");
+  // Тексты — из Registry, а не хардкодом (правило 1.2 сохраняется)
+  if (!/graph_last_col_name/.test(cxSrc13))
+    errs.push("4j: имя последнего столбца графа не берётся из Registry");
+  // Карты родителей — из Registry, не из server/config напрямую
+  if (/from "\.\.\/config\/parent-deps\.js"/.test(pcSrc13))
+    errs.push("4j: parent-context читает config/parent-deps в обход Registry");
+  // TODO следующих бесед помечены в коде
+  if (!/TODO\(2\.1\)/.test(cbSrc13))
+    errs.push("4j: TODO(2.1) canonicalSubsectionKey не помечен в context-builder");
+  // Гейт наличия раздела сохранён (аналог `if (!el) return null` [8155])
+  if (!/const el = await src\.getSectionElement/.test(cxSrc13) || !/if \(!el\) return null;/.test(cxSrc13))
+    errs.push("4j: гейт наличия раздела в extractContextFragment не сохранён");
+}
+
+// ── 5j. Живой конвейер беседы 1.3 против БД (ДО секции 5, закрывающей пул) ──
+// resolveContextDeps → buildEffectiveDeps → buildDynamicOrder →
+// buildContextForSection на реальных sections/categories.
+// Детальные кейсы — smoke-13-request1.mjs / test-13-requests2-7.mjs.
+{
+  const cb5j = await import("./services/context-builder.js");
+  const cx5j = await import("./services/context-extractor.js");
+  const pc5j = await import("./services/parent-context.js");
+  const eng5j = await import("./services/synthesis-engine.js");
+  const topo5j = await import("./utils/topo-sort.js");
+  const { db: db5j } = await import("./db/index.js");
+  const sch5j = await import("./db/schema.js");
+  const { eq: eq5j } = await import("drizzle-orm");
+
+  const u5j = (
+    await db5j.insert(sch5j.users)
+      .values({ email: `ic13-${Date.now()}@example.org`, passwordHash: "x" })
+      .returning({ id: sch5j.users.id })
+  )[0]!.id;
+
+  try {
+    const s5j = (
+      await db5j.insert(sch5j.syntheses)
+        .values({ userId: u5j, seed: "интеграция 1.3", depth: "standard" })
+        .returning({ id: sch5j.syntheses.id })
+    )[0]!.id;
+
+    await db5j.insert(sch5j.sections).values([
+      { synthesisId: s5j, key: "sum", sectionNum: 1, title: "Резюме",
+        htmlContent: '<div data-section="Цели и метод"><p>Цель интеграции.</p></div>' },
+      { synthesisId: s5j, key: "graph", sectionNum: 2, title: "Граф", htmlContent: "<p>граф</p>" },
+    ]);
+    await db5j.insert(sch5j.categories).values({
+      synthesisId: s5j, name: "Свобода", type: "онтологическая",
+      definition: "Способность к самоопределению", centrality: 0.9, certainty: 0.8, origin: "Кант",
+    });
+
+    const p5j = { method: "dialectical", synthLevel: "comparative", generationOrder: "architectural" } as const;
+    const rd5j = await eng5j.resolveContextDeps(p5j);
+    const sel5j = ["sum", "graph", "theses"];
+    const ed5j = await eng5j.buildEffectiveDeps(sel5j, rd5j, "architectural");
+    topo5j.buildDynamicOrder(ed5j, sel5j, rd5j, "architectural");
+
+    const res5j = await cb5j.buildContextForSection("theses", s5j, "standard", ed5j, rd5j);
+    if (!res5j.text.includes("КОНТЕКСТ ИЗ ПРЕДЫДУЩИХ РАЗДЕЛОВ") ||
+        !res5j.text.includes("ТАБЛИЦА КАТЕГОРИЙ"))
+      errs.push("5j: buildContextForSection не собрал контекст из БД (HTML + гранулярные таблицы)");
+    if (!res5j.ctxLog || res5j.ctxLog.budget !== 48000 ||
+        res5j.ctxLog.totalUsed > res5j.ctxLog.budget)
+      errs.push("5j: ctxLog — бюджет из Registry либо totalUsed некорректны");
+    if (!res5j.ctxLog?.entries.some((e) => e.status === "found" && e.priority === "required"))
+      errs.push("5j: ни один required-фрагмент не найден на живых данных");
+    if (res5j.ctxLog?.parentSpec !== null || res5j.ctxLog?.parentOverhead !== 0)
+      errs.push("5j: не-мета-синтез обязан давать parentSpec=null и overhead=0");
+
+    // Давление родителей: overhead > 0 → бюджет ужат ровно по applyBudgetPressure
+    const heavy5j = [{
+      type: "concept", name: "Родитель",
+      capsule: "к".repeat(30000), goals: "ц".repeat(30000), tensions: "н".repeat(30000),
+      graphNodes: "г".repeat(30000), thesesSummary: "с".repeat(30000),
+    }];
+    const pressed5j = await cb5j.buildContextForSection(
+      "theses", s5j, "standard", ed5j, rd5j, { participants: heavy5j },
+    );
+    const expected5j = Math.max(48000 - (pressed5j.ctxLog?.parentOverhead ?? 0), Math.floor(48000 * 0.4));
+    if (!pressed5j.ctxLog || pressed5j.ctxLog.parentOverhead <= 0 ||
+        pressed5j.ctxLog.budget !== expected5j)
+      errs.push("5j: давление родителей / пол 40% разошлись с applyBudgetPressure");
+    if (!pressed5j.ctxLog?.parentSpec || pressed5j.ctxLog.parentSpec.perParent.length !== 1)
+      errs.push("5j: parentSpec не заполнен при наличии концепций-родителей");
+    const kept5j = await cb5j.buildContextForSection(
+      "theses", s5j, "standard", ed5j, rd5j,
+      { participants: heavy5j, params: { keepFullBudget: true } },
+    );
+    if (kept5j.ctxLog?.budget !== 48000 || kept5j.ctxLog.budgetMode !== "full")
+      errs.push("5j: keepFullBudget не отключает ужатие бюджета");
+
+    // Диспетчер: несгенерированный раздел → null, не исключение
+    const src5j = cx5j.createDbContextSource(s5j);
+    if ((await cx5j.extractContextFragment("critique:full", src5j)) !== null)
+      errs.push("5j: фрагмент несгенерированного раздела обязан быть null");
+    if (!(await cx5j.extractGraphNodesTable(src5j))?.startsWith("ТАБЛИЦА КАТЕГОРИЙ:"))
+      errs.push("5j: extractGraphNodesTable из categories дал неожиданный формат");
+
+    // Карты родителей из Registry валидны (аналог _validateParentDeps [10055])
+    const warn5j = await pc5j.validateParentDeps();
+    if (warn5j.length)
+      errs.push(`5j: validateParentDeps дал ${warn5j.length} предупреждений: ${warn5j[0]}`);
+  } finally {
+    await db5j.delete(sch5j.users).where(eq5j(sch5j.users.id, u5j));
+  }
+}
+
 // ── 5. Async-цепочки: реальный запрос через db и через sql ──
 import { db, sql, closeDb } from "./db/index.js";
 const viaRaw = await sql`SELECT 1 AS one`;
@@ -884,4 +1127,4 @@ try { await sql`SELECT 1`; } catch { rejected = true; }
 if (!rejected) errs.push("await после closeDb не отклонился (пул не закрыт?)");
 
 if (errs.length) { console.error("ПРОБЛЕМЫ:\n" + errs.map(e => " - " + e).join("\n")); process.exit(1); }
-console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, приватность applyBudgetPressure с TODO(1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb)");
+console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb)");
