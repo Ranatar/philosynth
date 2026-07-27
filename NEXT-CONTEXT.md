@@ -830,3 +830,173 @@ estimateCascadeWaveCost и formatWaveCost — НЕ портированы: тр�
 беседа 2.1 += контекст (topo-sort, cost-estimator) + sourceOf-реэкспорт
 + перенос wave-функций, беседа 1.3 += канон applyBudgetPressure;
 04 §1.3 — строка оценщиков разнесена по беседам 1.1/2.1.
+
+# Беседа 1.2 — итоги и контекст для следующих бесед
+
+> Зафиксировано по завершении беседы 1.2 (Prompt Builder + Section Defs).
+> Запрос 1 верифицирован БАЙТОВОЙ сверкой с исходником
+> (smoke-12-request1.mjs, 121/121 ✓, 6 наборов параметров: multi/single/
+> none/meta_single/meta_multi, genetic, ext, lang=English); тестовые
+> запросы 2–8 — одним заходом (test-12-requests2-8.mjs, 46/46 ✓);
+> typecheck (shared+server+client+checks+scripts), audit,
+> check:integration (+= 2g/4i/5i) — зелёные.
+
+## Созданные/изменённые файлы
+
+- `scripts/extract-section-templates.mjs` (`npm run extract:sections`) —
+  генератор section-шаблонов по механике 0.3: vm-исполнение
+  buildSectionDefs из фрагмента 1.2 со стабами-плейсхолдерами; 9 профилей
+  параметров покрывают все ветки; QC: покрытие частей, инвентарь
+  плейсхолдеров (KNOWN_PLACEHOLDERS), пост-замены. Перегенерировать при
+  обновлении исходника.
+- `server/config/section-templates.ts` — СГЕНЕРИРОВАН, 146 шаблонов
+  `section.{key}.{preamble|preamble_short|intro|postamble|postamble_short|
+  sub.{slug}[.{variant}]|sub.{slug}.note|shared|bridge}`. Варианты:
+  `.none/.ext/.genetic/.meta_single/.meta_multi/.dialogue/.none_dialogue/
+  .interlayer` — ВЫБОР ВАРИАНТА в коде билдера, текст в Registry.
+- `server/config/subsection-map.ts` — SUBSECTION_MAP_BASE/GLOSSARY,
+  SUBSECTION_CRITIQUE_NOVELTY/CHECK, SUM_PORTRAIT_VARIANTS
+  [9314–9428, 9746] (источник сидинга конфига `subsection_map`).
+- `scripts/seed-prompts.ts` — += SEED_SECTION_TEMPLATES (всего 253
+  шаблона); `scripts/seed-configs.ts` — += `subsection_map` (всего 27;
+  закрыт TODO-4 беседы 0.3).
+- `server/services/prompt-builder.ts` — buildSYS(p, opts) [8590] из 4
+  частей Registry (system + условные lang_instruction/participants_note +
+  output_mode.{full|subsection|mode}); baseCtx [10515] =
+  baseCtxStatic [10315] + baseCtxParents [10371];
+  philNames/conceptNames [9849/9857]; participantsForPrompt [10531];
+  eachParticipant [10590]; hasNoParticipants; mdText/sdText [4473/4523]
+  async из конфигов md_by_card/sd_by_card; buildQualityReinforcement
+  [8649]; getStopSignal (шаблон stop_signal); buildExtraTypesBlock [8977]
+  из конфига extra_types + чистое ядро extraTypesBlockFrom;
+  participantVars (словоформы + min_words для renderTemplate, включая
+  participant_word_sg_cap).
+- `server/services/section-defs-builder.ts` — buildSectionDefs [10742]
+  async: каждый текст из Registry (r/rm/rl-хелперы с общим vars),
+  ветвление и порядок разделов 1:1 (sum всегда; далее graph, glossary,
+  theses, name, history, origin, practical, dialogue, evolution,
+  critique, capsule по p.sec); serializeParts [10623]; groupPasses
+  [11588]; patchPromptsWithSecCtx [11570]; parseGlossarySubsections
+  [11532]; SUBSECTION_SUM_PORTRAIT [9438]; buildSubsectionMap [9455] из
+  конфига subsection_map; SEC_NAMES [9291] (≡ KEY_LABELS, проверяется 2g).
+- `server/integration-check.mts` — += 2g (4 модуля 1.2, тождественность
+  реэкспортов, 146 уникальных ключей), 4i (async-сигнатуры, структурная
+  совместимость SectionParts→EstimateSectionParts и
+  SectionDefFull→EstimateSectionDef, groupPasses→estimateCost.passes без
+  приведения; парсинг: стоп-сигнал из Registry без хардкода, разъём
+  провайдера, тексты только из Registry, посевы/скрипт/баннер), 5i
+  (живой сквозной конвейер 1.1+1.2: buildSYS→baseCtxStatic→
+  buildSectionDefs→groupPasses→estimateCost с реальными sysChars/
+  baseStaticChars/passes→patchPromptsWithSecCtx) — закрыт хук
+  «подключить выходы 1.2 к estimateCost» из главы 1.1.
+- Тесты в корне: `smoke-12-request1.mjs` (байтовая сверка против vm с
+  РЕАЛЬНЫМИ хелперами исходника), `test-12-requests2-8.mjs` (запросы
+  2–8 протокола).
+
+## Адаптации DOM/DOC_STATE → сервис (решения беседы)
+
+1. Все тексты — в Registry; условия (кардинальность, мета, genetic, ext,
+   ±dialogue, interlayer) — в коде. Кардинальность НЕ в ключах:
+   словоформы подставляет рендерер (participantVars), кардинальные
+   ФОРМУЛИРОВКИ — вариантные ключи `.none/.meta_*` и конфиги
+   md_by_card/sd_by_card.
+2. baseCtxParents — ПОДКЛЮЧАЕМЫЙ провайдер (setParentContextProvider):
+   реализация conceptContextBlockFull/Selective +
+   resolveParentDepsForSubsection принадлежит 1.3 (parent-context) и 3.1
+   (meta-synthesis-service); без провайдера мета-синтез получает "" с
+   console.warn. Регистрация провайдера — при старте генерационного
+   слоя (1.4).
+3. STOP_SIGNAL: ОТСТУПЛЕНИЕ от 07 («константа в prompt-builder») —
+   текст посеян в 0.3 шаблоном `stop_signal`, здесь только getStopSignal
+   (единый источник истины). Добавляет его в конец задания ВЫЗЫВАЮЩИЙ
+   (оркестратор 1.4: `${sp}${quality}${STOP_SIGNAL}` как в исходнике).
+4. serializeParts живёт в section-defs-builder (не в prompt-builder, как
+   в карте 04): работает над parts, которые строит buildSectionDefs.
+5. parseGlossarySubsections принимает ОТРЕНДЕРЕННЫЙ текст
+   level.{level}.glossary_sec (в исходнике — (level, p) из замыкания).
+6. buildSubsectionMap async: канонические карты — конфиг subsection_map;
+   пункты 2–3 критики и портретный заголовок резолвятся в коде.
+7. groupPasses: сигнатура исходника БЕЗ effectiveDeps — по одному разделу
+   на проход (формулировка 07 с effectiveDeps не соответствует
+   исходнику; требование «sum раньше graph в разных проходах»
+   выполняется порядком defs автоматически).
+8. ФАКТ для тестов: длина buildSYS (dialectical/comparative/standard,
+   2 философа) — 3192 символа; ориентир 07 «5000–8000» неверен.
+
+## Ревью по карте 04 (§1.9, §2.2)
+
+- §2.2 портировано ПОЛНОСТЬЮ: buildSYS (+opts), METHOD_*/LEVEL_* (шаблоны
+  0.3, рендер rm/rl), buildSectionDefs (Registry + кардинальность),
+  baseCtx=static+parents (пер-секционный через провайдер), serializeParts,
+  patchPromptsWithSecCtx, buildQualityReinforcement.
+- §1.9 (доля этой беседы): SUBSECTION_SUM_PORTRAIT + _SUM_PORTRAIT_VARIANTS
+  ✓ (функция в билдере, варианты в конфиге), participantsForPrompt ✓;
+  MD_BY_CARD/SD_BY_CARD были посеяны в 0.3 (config/cardinality-prompts.ts),
+  здесь подключены mdText/sdText.
+- Остальное из §1.10 (resolveParentDeps*, applyBudgetPressure,
+  conceptContextBlock*) — беседы 1.3/3.1, к 1.2 не относится.
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **1.3 (Context Builder)**: prompt-builder.ts (семантика baseCtxParents
+  и разъём провайдера), section-defs-builder.ts (SUBSECTION_SUM_PORTRAIT,
+  buildSubsectionMap, parts-структура), cost-estimator.ts (перенос
+  applyBudgetPressure — канон в 07), synthesis-engine.ts, topo-sort.ts.
+- **1.4 (Generation Orchestrator)**: prompt-builder.ts (buildSYS, baseCtx,
+  buildQualityReinforcement, getStopSignal — сборка задания
+  `${sp}${quality}${STOP_SIGNAL}`), section-defs-builder.ts
+  (buildSectionDefs, groupPasses, patchPromptsWithSecCtx), + весь
+  комплект 1.1 (порядки, оценка: sysChars=buildSYS().length,
+  baseStaticChars=baseCtxStatic().length, passes=groupPasses(defs) —
+  образец в 5i integration-check).
+- **2.x (перегенерация подразделов)**: section-defs-builder.ts (parts,
+  serializeParts, buildSubsectionMap, parseGlossarySubsections),
+  prompt-builder.ts (buildSYS outputMode="subsection",
+  cost-estimator.estimateSubsectionCost принимает parts как есть).
+- **3.1 (Meta-Synthesis)**: prompt-builder.ts (setParentContextProvider,
+  hasConceptParticipants, участники type="concept"|"synthesis").
+- **4.1 (Режимы)**: prompt-builder.ts (buildSYS outputMode="mode",
+  baseCtx), конфиг mode_deps (0.3).
+- **Фаза 2 (админка Registry)**: server/config/section-templates.ts —
+  версионирование через listVersions/activateVersion уже работает,
+  ключи section.* стабильны.
+
+## Знания/грабли, добытые в 1.2
+
+1. Срез исходника, обрывающий JSDoc, оставляет незакрытый `/**`, который
+   «съедает» следующий срез до первого `*/` (симптом — ReferenceError на
+   константе, которая «точно есть»). Для промпт-блока брать 8590–9304
+   (не 9310); границы сверять по началу `/**`.
+2. Внутри блочных комментариев генерируемых файлов нельзя писать
+   `method.*/level.*` — `*/` закрывает комментарий (SyntaxError).
+3. Сверку jsonb-конфигов с исходником делать ПОКЛЮЧЕВО: порядок ключей
+   объекта в jsonb не сохраняется (JSON.stringify целиком даёт ложный
+   дифф).
+4. `{{participants}}` в шаблонах разворачивается ДО словоформ:
+   participantVars отдаёт и participantsForPrompt(p), и словоформы —
+   один vars на весь вызов buildSectionDefs (+ покейсовые extra).
+
+## Открытые TODO после 1.2
+
+1. TODO(1.3/3.1): реализация провайдера родительского контекста и
+   вызов setParentContextProvider при старте (1.4).
+2. TODO(1.4): сборка полного задания секции (sp + quality + STOP_SIGNAL)
+   и передача buildSYS(p, {outputMode}) по режиму вывода.
+3. TODO(1.3): applyBudgetPressure — импорт из context-builder вместо
+   локальной копии cost-estimator (перенос, канон в 07).
+4. ~~НЕТОЧНОСТИ 07 (длина buildSYS 3192, groupPasses без
+   effectiveDeps)~~ ЗАКРЫТО: scripts/patch-docs-conv12.py (07/A–D).
+5. ~~Карта 04 §2.2: serializeParts числится в prompt-builder~~ ЗАКРЫТО:
+   вынесен отдельной строкой в section-defs-builder (тот же патч, 04/E–F).
+
+## Патч доков по итогам 1.2
+
+`scripts/patch-docs-conv12.py` — идемпотентный (6 правок, повторные
+прогоны — skip×6): 07 — groupPasses приведён к фактической сигнатуре
+исходника groupPasses(defs) в первом запросе и тесте беседы 1.2, ориентир
+длины buildSYS исправлен на факт 3192, блок в шапке-ревизии; 04 —
+serializeParts вынесен из строки baseCtx в отдельную строку §2.2 с
+целевым модулем section-defs-builder.ts, строка в шапке-ревизии.
+УРОК ИДЕМПОТЕНТНОСТИ: в patch() проверять `new in text` ПЕРВЫМ — в
+правках-дописываниях (шапки-ревизии) old является префиксом new, и
+порядок old→new дублирует блок при повторном прогоне.

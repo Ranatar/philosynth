@@ -2,6 +2,11 @@
 
 > **Ревизия 2026-07-22**: карта актуализирована по исходнику 26 024 стр.
 > Спецификации подсистем v11 — 01-architecture, §4.12–4.15.
+>
+> **Правка 2026-07-27 (итоги 1.2)**: в §2.2 `serializeParts` вынесен в
+> отдельную строку с целевым модулем `section-defs-builder.ts`
+> (фактическое размещение: функция сериализует parts, которые строит
+> `buildSectionDefs`).
 
 
 ## Обзор
@@ -146,7 +151,8 @@
 | `METHOD_SUM` … `METHOD_DIALOGUE` | Каждый → шаблон `method.{method}.{section}` из Registry | там же |
 | `LEVEL_COMPARATIVE_*` … `LEVEL_GENERATIVE_*` | → шаблоны `level.{level}.{aspect}` из Registry | там же |
 | `buildSectionDefs()` | Вместо хардкоженных строк — `registry.getTemplate(key)`; ветвление по `participantCardinality()` (MD_BY_CARD/SD_BY_CARD) — схема ключей Registry должна учитывать кардинальность | `server/services/section-defs-builder.ts` |
-| `baseCtx(p, sectionKey)` = `baseCtxStatic()` + `baseCtxParents()`, `serializeParts()` | Параметры из БД; родительский контекст стал пер-секционным | `server/services/prompt-builder.ts` |
+| `baseCtx(p, sectionKey)` = `baseCtxStatic()` + `baseCtxParents()` | Параметры из БД; родительский контекст стал пер-секционным | `server/services/prompt-builder.ts` |
+| `serializeParts(parts)` | Без изменений в логике; живёт рядом с `buildSectionDefs`, чьи parts сериализует | `server/services/section-defs-builder.ts` |
 | `patchPromptsWithSecCtx()`, `buildQualityReinforcement()` | Без изменений в логике | там же |
 
 ### 2.3. Стриминг (прямой SSE → двухзвенный)

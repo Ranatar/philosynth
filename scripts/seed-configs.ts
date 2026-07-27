@@ -57,6 +57,13 @@ import {
   SD_BY_CARD,
 } from "../server/config/cardinality-prompts.js";
 import { MODE_DEPS } from "../server/config/mode-deps.js";
+import {
+  SUBSECTION_CRITIQUE_CHECK,
+  SUBSECTION_CRITIQUE_NOVELTY,
+  SUBSECTION_MAP_BASE,
+  SUBSECTION_MAP_GLOSSARY,
+  SUM_PORTRAIT_VARIANTS,
+} from "../server/config/subsection-map.js";
 
 const { synthesisConfigs } = schema;
 
@@ -104,6 +111,8 @@ const SEED_CONFIGS: SeedConfig[] = [
   { key: "sd_by_card", value: SD_BY_CARD, description: `SD_BY_CARD [${A} ~4496]: порождение категорий, 3 уровня × {multi|single|none}` },
   // ── Режимы (v11) ──
   { key: "mode_deps", value: MODE_DEPS, description: `MODE_DEPS [${A} ~22543]: декларативные ctx-зависимости режимов (adversarial/translator/timeslice)` },
+  // ── Карта подразделов (беседа 1.2; отложено из 0.3 намеренно) ──
+  { key: "subsection_map", value: { base: SUBSECTION_MAP_BASE, glossary: SUBSECTION_MAP_GLOSSARY, critiqueNovelty: SUBSECTION_CRITIQUE_NOVELTY, critiqueCheck: SUBSECTION_CRITIQUE_CHECK, sumPortraitVariants: SUM_PORTRAIT_VARIANTS }, description: `SUBSECTION_MAP_BASE/GLOSSARY + SUBSECTION_CRITIQUE_NOVELTY/CHECK + _SUM_PORTRAIT_VARIANTS [${A} ~9314–9434, ~9746]: канонические ключи («Портрет каждого философа»); заголовок портрета по кардинальности резолвит SUBSECTION_SUM_PORTRAIT (section-defs-builder, 01-arch §4.14)` },
 ];
 
 interface Report {

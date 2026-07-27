@@ -20,6 +20,11 @@
 > 1.1 — требуют cascade-analyzer) и реэкспортом sourceOf из topo-sort;
 > в беседу 1.3 внесён канон applyBudgetPressure (перенос копии из
 > cost-estimator, метка TODO(1.3) в коде).
+>
+> **Правка 2026-07-27 (итоги 1.2)**: groupPasses приведён к фактической
+> сигнатуре исходника — groupPasses(defs), по одному разделу на проход,
+> без effectiveDeps (первый запрос и тест беседы 1.2); ориентир длины
+> buildSYS в тесте исправлен на факт исходника (3192 симв.).
 
 ## 1. Общие принципы работы с контекстом
 
@@ -569,7 +574,9 @@ buildSectionDefs, serializeParts, baseCtx, buildQualityReinforcement, groupPasse
    - buildSectionDefs(params) — buildSectionDefs(). Каждый промпт читается из Registry:
      registry.getTemplate("method.dialectical.graph") вместо METHOD_GRAPH[...]
    - serializeParts(parts) — serializeParts()
-   - groupPasses(defs, effectiveDeps) — как в исходнике
+   - groupPasses(defs) — как в исходнике: по одному разделу на проход
+     (последовательная генерация). effectiveDeps НЕ принимает: порядок
+     разделов определяется раньше — buildDynamicOrder (беседа 1.1)
    - patchPromptsWithSecCtx(defs, secCtx) — patchPromptsWithSecCtx()
 
 Ключевое изменение: buildSectionDefs в исходнике содержит ~500 строк захардкоженных 
@@ -580,9 +587,9 @@ buildSectionDefs, serializeParts, baseCtx, buildQualityReinforcement, groupPasse
 
 **Последующие запросы:**
 - «Протестируй baseCtx: результат НЕ содержит строку ВЫБРАННЫЕ РАЗДЕЛЫ (убрана). Содержит: ЗЕРНО, ФИЛОСОФЫ/КОНЦЕПЦИИ, МЕТОД, УРОВЕНЬ, ГЛУБИНА, КОНТЕКСТ (если есть). Для мета-синтеза: РЕЖИМ МЕТА-СИНТЕЗ + блок контекста концепций.»
-- «Протестируй buildSYS: вызови с params = { method: "dialectical", synthLevel: "comparative", depth: "standard", phil: ["Кант","Гегель"] } — результат содержит имена философов? Длина ~5000–8000 символов (как в исходнике)?»
+- «Протестируй buildSYS: вызови с params = { method: "dialectical", synthLevel: "comparative", depth: "standard", phil: ["Кант","Гегель"] } — результат содержит имена философов? Длина ~3200 символов (факт исходника: 3192 для этого набора параметров; критерий — байтовое равенство с buildSYS исходника)?»
 - «Протестируй buildSectionDefs: params с sections=["sum","graph","glossary","theses"] — возвращает 4 def-объекта? Каждый имеет key, num, title, prompt? prompt содержит текст из Registry (не пустой)?»
-- «Протестируй groupPasses: defs с 6 разделами, effectiveDeps где graph зависит от sum — sum и graph попадают в разные проходы (sum — раньше)?»
+- «Протестируй groupPasses: defs с 6 разделами (их порядок уже задан buildDynamicOrder, где graph зависит от sum) — по одному разделу на проход; sum и graph попадают в разные проходы (sum — раньше)?»
 - «Протестируй patchPromptsWithSecCtx: добавь secCtx = { graph: "Сделать акцент на этику" } — промпт graph содержит этот текст?»
 - «Протестируй baseCtx: результат содержит все параметры в правильном формате — метод, уровень, глубина, зерно, философы?»
 - «Edge case: buildSectionDefs для метода "creative" + уровня "generative" — все шаблоны найдены в Registry? Нет ли missing template ошибок?»

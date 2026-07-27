@@ -22,8 +22,16 @@ import { and, eq, max } from "drizzle-orm";
 
 import { closeDb, db, schema } from "../server/db/index.js";
 import { SEED_PROMPT_TEMPLATES } from "../server/config/prompt-templates.js";
+import { SEED_SECTION_TEMPLATES } from "../server/config/section-templates.js";
 
 const { promptTemplates } = schema;
+
+/**
+ * Беседа 1.2: к шаблонам 0.3 добавлены каркасы разделов section.{key}.*
+ * (server/config/section-templates.ts, генератор
+ * scripts/extract-section-templates.mjs) — закрытие TODO-3 беседы 0.3.
+ */
+const ALL_TEMPLATES = [...SEED_PROMPT_TEMPLATES, ...SEED_SECTION_TEMPLATES];
 
 interface Report {
   created: string[];
@@ -33,7 +41,7 @@ interface Report {
 }
 
 async function seedOne(
-  t: (typeof SEED_PROMPT_TEMPLATES)[number],
+  t: (typeof ALL_TEMPLATES)[number],
   report: Report,
 ): Promise<void> {
   const active = await db.query.promptTemplates.findFirst({
@@ -80,11 +88,12 @@ async function seedOne(
 
 async function main(): Promise<void> {
   console.log(
-    `Заполнение prompt_templates: ${SEED_PROMPT_TEMPLATES.length} шаблонов…`,
+    `Заполнение prompt_templates: ${ALL_TEMPLATES.length} шаблонов ` +
+      `(${SEED_PROMPT_TEMPLATES.length} из 0.3 + ${SEED_SECTION_TEMPLATES.length} section.* из 1.2)…`,
   );
   const report: Report = { created: [], updated: [], skipped: [], failed: [] };
 
-  for (const t of SEED_PROMPT_TEMPLATES) {
+  for (const t of ALL_TEMPLATES) {
     try {
       await seedOne(t, report);
     } catch (err) {

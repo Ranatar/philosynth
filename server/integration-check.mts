@@ -130,6 +130,45 @@ need(await import("./services/cost-estimator.js"), [
     errs.push("2f: реэкспорты engine из topo-sort не тождественны оригиналам");
 }
 
+// ── 2g. Модули беседы 1.2: prompt-builder, section-defs-builder, seed-конфиги ──
+need(await import("./services/prompt-builder.js"), [
+  "buildSYS","baseCtx","baseCtxStatic","baseCtxParents","setParentContextProvider",
+  "philNames","conceptNames","participantsForPrompt","eachParticipant","hasNoParticipants",
+  "mdText","sdText","buildQualityReinforcement","getStopSignal","STOP_SIGNAL_TEMPLATE_KEY",
+  "buildExtraTypesBlock","extraTypesBlockFrom","participantVars",
+  // реэкспорты кардинальности (те же функции shared):
+  "participantCardinality","participantWord","participantWordSg","hasConceptParticipants",
+], "services/prompt-builder");
+need(await import("./services/section-defs-builder.js"), [
+  "buildSectionDefs","serializeParts","groupPasses","patchPromptsWithSecCtx",
+  "parseGlossarySubsections","SUBSECTION_SUM_PORTRAIT","buildSubsectionMap","SEC_NAMES",
+], "services/section-defs-builder");
+need(await import("./config/section-templates.js"), ["SEED_SECTION_TEMPLATES"], "config/section-templates");
+need(await import("./config/subsection-map.js"), [
+  "SUBSECTION_MAP_BASE","SUBSECTION_MAP_GLOSSARY",
+  "SUBSECTION_CRITIQUE_NOVELTY","SUBSECTION_CRITIQUE_CHECK","SUM_PORTRAIT_VARIANTS",
+], "config/subsection-map");
+{
+  // Реэкспорты кардинальности — те же функции shared, не дубликаты
+  const pb12 = await import("./services/prompt-builder.js");
+  const card12 = await import("@philosynth/shared/utils/cardinality");
+  if (!Object.is(pb12.participantCardinality, card12.participantCardinality) ||
+      !Object.is(pb12.hasConceptParticipants, card12.hasConceptParticipants))
+    errs.push("2g: реэкспорты кардинальности prompt-builder не тождественны shared");
+  // SEC_NAMES ⊂ KEY_LABELS (беседа 1.2: значения обязаны совпадать)
+  const sdb12 = await import("./services/section-defs-builder.js");
+  const { KEY_LABELS: kl12 } = await import("@philosynth/shared/constants/section-labels");
+  for (const [k, v] of Object.entries(sdb12.SEC_NAMES))
+    if ((kl12 as Record<string, string>)[k] !== v)
+      errs.push(`2g: SEC_NAMES.${k}=«${v}» ≠ KEY_LABELS.${k}=«${(kl12 as Record<string, string>)[k]}»`);
+  // 146 section-шаблонов, ключи уникальны и с префиксом section.
+  const st12 = (await import("./config/section-templates.js")).SEED_SECTION_TEMPLATES;
+  const keys12 = st12.map((t) => t.key);
+  if (st12.length !== 146 || new Set(keys12).size !== st12.length ||
+      !keys12.every((k) => k.startsWith("section.")))
+    errs.push(`2g: SEED_SECTION_TEMPLATES: ${st12.length} шт., ожидали 146 уникальных section.*`);
+}
+
 // ── 3. Типовые (compile-time) модули: сам факт импорта проверяет пути ──
 import type { SynthesisFull, PausedState } from "@philosynth/shared/types/synthesis";
 import type { SectionFull } from "@philosynth/shared/types/section";
@@ -714,6 +753,121 @@ const _t25: (i: { deps: SectionDeps11; params: { depth: "standard" }; sysChars: 
     errs.push("5h: estimateCost на живых конфигах дал вырожденный результат");
 }
 
+// ── 4i. Контрактные проверки беседы 1.2 (prompt-builder/section-defs-builder) ──
+// Типовые совместимости с оценщиком 1.1 (компилятор — судья) + парсинг инвариантов.
+import {
+  buildSYS as bs12,
+  baseCtxStatic as bcs12,
+  type PromptParams as PP12,
+  type BuildSysOptions as BSO12,
+} from "./services/prompt-builder.js";
+import {
+  buildSectionDefs as bsd12,
+  groupPasses as gp12,
+  type SectionDefFull as SDF12,
+  type SectionParts as SP12,
+} from "./services/section-defs-builder.js";
+import type {
+  EstimateSectionDef as ESD12,
+  EstimateSectionParts as ESP12,
+} from "./services/cost-estimator.js";
+// async-сигнатуры соответствуют контрактам беседы 1.2
+const _t26: (p: Pick<PP12, "phil" | "lang">, o?: BSO12) => Promise<string> = bs12;
+const _t27: (p: PP12) => Promise<string> = bcs12;
+const _t28: (p: PP12) => Promise<SDF12[]> = bsd12;
+// parts билдера структурно совместимы со входами оценщика (NEXT-CONTEXT 1.1)
+const _t29 = (p: SP12): ESP12 => p;
+const _t30 = (d: SDF12): ESD12 => d;
+// groupPasses(defs) подаётся в estimateCost.passes без приведения типов
+const _t31 = (d: SDF12[]): ESD12[][] => gp12(d);
+{
+  const pbSrc = readFileSync(new URL("./services/prompt-builder.ts", import.meta.url), "utf8");
+  // Стоп-сигнал читается из Registry (отступление от «константы» 07 задокументировано),
+  // текст НЕ захардкожен в модуле
+  if (!/getTemplate\(STOP_SIGNAL_TEMPLATE_KEY\)/.test(pbSrc) || /ПРЕКРАТИ генерацию/.test(pbSrc))
+    errs.push("4i: стоп-сигнал должен читаться из Registry, без захардкоженного текста");
+  if (!/ОТСТУПЛЕНИЕ/.test(pbSrc))
+    errs.push("4i: отступление по STOP_SIGNAL не задокументировано в prompt-builder");
+  // Провайдер родительского блока — подключаемый, с TODO на 1.3/3.1
+  if (!/setParentContextProvider/.test(pbSrc) || !/1\.3/.test(pbSrc))
+    errs.push("4i: провайдер родительского контекста без разъёма/ссылки на 1.3");
+  // Тексты разделов — только из Registry: в билдере нет захардкоженных промптов
+  const sdbSrc = readFileSync(new URL("./services/section-defs-builder.ts", import.meta.url), "utf8");
+  if (/Составь §/.test(sdbSrc) || /ИСПОЛНИТЕЛЬНОЕ РЕЗЮМЕ СИНТЕЗА/.test(sdbSrc))
+    errs.push("4i: в section-defs-builder остались захардкоженные тексты промптов");
+  if (!/renderTemplate/.test(sdbSrc))
+    errs.push("4i: section-defs-builder не использует renderTemplate Registry");
+  // Посевы расширены артефактами 1.2
+  const spSrc = readFileSync(new URL("../scripts/seed-prompts.ts", import.meta.url), "utf8");
+  if (!/SEED_SECTION_TEMPLATES/.test(spSrc))
+    errs.push("4i: seed-prompts не сеет SEED_SECTION_TEMPLATES");
+  const scSrc = readFileSync(new URL("../scripts/seed-configs.ts", import.meta.url), "utf8");
+  if (!/"subsection_map"/.test(scSrc))
+    errs.push("4i: seed-configs не сеет subsection_map");
+  // Генератор шаблонов подключён скриптом, файл помечен как сгенерированный
+  const pkg12 = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as
+    { scripts?: Record<string, string> };
+  if (pkg12.scripts?.["extract:sections"] !== "node scripts/extract-section-templates.mjs")
+    errs.push("4i: package.json без скрипта extract:sections");
+  const stSrc = readFileSync(new URL("./config/section-templates.ts", import.meta.url), "utf8");
+  if (!/СГЕНЕРИРОВАНО scripts\/extract-section-templates\.mjs/.test(stSrc))
+    errs.push("4i: section-templates.ts без баннера «СГЕНЕРИРОВАНО … НЕ ПРАВИТЬ»");
+}
+
+// ── 5i. Живой конвейер бесед 1.1+1.2 против посеянного Registry ──
+// buildSYS → baseCtxStatic → buildSectionDefs → groupPasses →
+// estimateCost(sysChars/baseStaticChars/passes) → patchPromptsWithSecCtx.
+// Байтовая сверка с исходником и детальные кейсы — smoke-12-request1.mjs /
+// test-12-requests2-8.mjs.
+{
+  const pb5i = await import("./services/prompt-builder.js");
+  const sdb5i = await import("./services/section-defs-builder.js");
+  const eng5i = await import("./services/synthesis-engine.js");
+  const cost5i = await import("./services/cost-estimator.js");
+
+  const p5i = {
+    seed: "Интеграция 1.2", phil: ["Кант", "Гегель"],
+    sec: ["graph", "theses"],
+    method: "dialectical", synthLevel: "comparative", depth: "standard",
+    generationOrder: "architectural", extGraphMetrics: false, ctx: "",
+  } as Parameters<typeof sdb5i.buildSectionDefs>[0];
+
+  const sys5i = await pb5i.buildSYS(p5i, {});
+  if (!(sys5i.length > 1000) || !sys5i.includes("Кант"))
+    errs.push("5i: buildSYS вырожден или без имён философов");
+  const static5i = await pb5i.baseCtxStatic(p5i);
+  if (!static5i.includes("ЗЕРНО КОНЦЕПЦИИ") || static5i.includes("ВЫБРАННЫЕ РАЗДЕЛЫ"))
+    errs.push("5i: baseCtxStatic без ЗЕРНА или с устаревшей строкой разделов");
+  const stop5i = await pb5i.getStopSignal();
+  if (!stop5i.startsWith("\n\nСТОП"))
+    errs.push("5i: stop_signal из Registry не начинается с «\\n\\nСТОП»");
+
+  const defs5i = await sdb5i.buildSectionDefs(p5i);
+  if (defs5i.length !== 3 || defs5i.map((d) => d.key).join(",") !== "sum,graph,theses")
+    errs.push(`5i: buildSectionDefs дал ${defs5i.map((d) => d.key).join(",")}`);
+  if (defs5i.some((d) => d.prompt.includes("{{") || !d.prompt.trim()))
+    errs.push("5i: в промптах разделов пусто или остались {{…}}");
+
+  const rd5i = await eng5i.resolveContextDeps(p5i);
+  const sub5i = await eng5i.getActiveSubstitutionMap("architectural");
+  const ed5i = eng5i.buildEffectiveDepsWith(["graph", "theses"], rd5i, sub5i);
+  const passes5i = sdb5i.groupPasses(defs5i);
+  const est5i = await cost5i.estimateCost({
+    params: { depth: "standard" },
+    passes: passes5i,
+    effectiveDeps: ed5i,
+    sysChars: sys5i.length,
+    baseStaticChars: static5i.length,
+  });
+  if (!(est5i.passes === 3 && est5i.inTokens > 0 && est5i.outTokens > 0))
+    errs.push("5i: estimateCost на реальных buildSYS/defs дал вырожденный результат");
+
+  sdb5i.patchPromptsWithSecCtx(defs5i, { graph: "Интеграционный акцент" });
+  const g5i = defs5i.find((d) => d.key === "graph");
+  if (!g5i?.prompt.includes("ДОПОЛНИТЕЛЬНЫЕ ТРЕБОВАНИЯ К ЭТОМУ РАЗДЕЛУ (от пользователя):\nИнтеграционный акцент"))
+    errs.push("5i: patchPromptsWithSecCtx не вписал secCtx в промпт graph");
+}
+
 // ── 5. Async-цепочки: реальный запрос через db и через sql ──
 import { db, sql, closeDb } from "./db/index.js";
 const viaRaw = await sql`SELECT 1 AS one`;
@@ -730,4 +884,4 @@ try { await sql`SELECT 1`; } catch { rejected = true; }
 if (!rejected) errs.push("await после closeDb не отклонился (пул не закрыт?)");
 
 if (errs.length) { console.error("ПРОБЛЕМЫ:\n" + errs.map(e => " - " + e).join("\n")); process.exit(1); }
-console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, приватность applyBudgetPressure с TODO(1.3), константы [7539] и топо-таблицы [6505/6520] дословно), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах); reject после closeDb)");
+console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, приватность applyBudgetPressure с TODO(1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb)");
