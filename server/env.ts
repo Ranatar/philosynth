@@ -41,6 +41,9 @@ export const env = {
     apiKey: process.env.ANTHROPIC_API_KEY ?? "",
     model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
     maxTokens: num("ANTHROPIC_MAX_TOKENS", 20_000),
+    /** База API (беседа 1.4): подмена в тестах (мок-SSE) и при прокси;
+     *  штатное значение — облако Anthropic. */
+    baseUrl: process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com",
   },
 
   /** AES-256 ключ шифрования пользовательских API-ключей (32 байта hex) */

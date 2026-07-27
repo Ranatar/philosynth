@@ -111,6 +111,8 @@ CREATE TABLE syntheses (
     -- kind 'plan': { stepIdx, totalSteps, failedOp, remainingOps, plan,
     --   regenCtx, addCtx, reason, reasonKind, timestamp }
     -- reasonKind: 'auth'|'billing'|'pre-stream'|'max-tokens'|'partial'|'stuck'|'user-abort'
+    --   |'context-error' (сбой ПОСТРОЕНИЯ контекста/промпта, outer catch
+    --   _runGenPassesFromIdx [~25842]; найдено беседой 1.4 — kind'ом стрима не является)
   version_base     INT NOT NULL DEFAULT 1,
   version_sub      INT NOT NULL DEFAULT 0,
   version_modes    INT NOT NULL DEFAULT 0,
@@ -393,6 +395,13 @@ CREATE INDEX idx_modes_key ON mode_results(synthesis_id, mode_key);
 ### 2.15. generation_log
 
 Аналог массива `genLog` из исходника.
+
+Служебная строка `section_key='_genCommon'`, `status='common'` (беседа 1.4):
+объект `genCommon` исходника (sysChars, baseChars, budgetMode,
+parentSpecBySection, conceptBlockSizes, …) хранится в `metadata` этой
+строки — отдельной колонки не требует; потребители — log-formatter (2.4)
+и экспорт промптов (4.2). Статусы строк генерации: 'streaming' (идёт) →
+'done'/'error'; 'common' — только у служебной строки.
 
 ```sql
 CREATE TABLE generation_log (

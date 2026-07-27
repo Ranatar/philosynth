@@ -14,6 +14,7 @@ import { closeRedis, connectRedis } from "./redis.js";
 import type { AuthEnv } from "./middleware/auth.js";
 import { rateLimiter } from "./middleware/rate-limiter.js";
 import { authRoutes } from "./routes/auth.js";
+import { synthesesRoutes } from "./routes/syntheses.js";
 import { connectionManager } from "./ws/connection-manager.js";
 import { registerWebSocket } from "./ws/handler.js";
 
@@ -56,6 +57,7 @@ app.get("/api/v1/health", async (c) => {
 
 app.use("/api/v1/*", rateLimiter());
 app.route("/api/v1/auth", authRoutes);
+app.route("/api/v1/syntheses", synthesesRoutes); // беседа 1.4
 
 /* ── WebSocket (auth до upgrade — внутри registerWebSocket) ──────────── */
 

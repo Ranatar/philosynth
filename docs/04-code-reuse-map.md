@@ -161,6 +161,9 @@
 | Функция | Что меняется | Целевой модуль |
 |---|---|---|
 | `streamResp()` → `_streamRespOnce()` | В исходнике streamResp — retry-обёртка (ретраится только kind=pre-stream; задержки 1с/3с/8с; _STREAM_STUCK_MS=45с) над `_streamRespOnce` с таксономией ошибок kind: auth/billing/pre-stream/max-tokens/partial/stuck/user-abort. Бэкенд повторяет эту модель: одна попытка + классификация → WebSocket | `server/services/streaming-manager.ts` |
+| `_classifyStreamError()`, `_pauseFriendlyMessage()` | Классификация обрыва и человекочитаемая причина паузы (v11) | `server/services/streaming-manager.ts` |
+| `parseSubsectionsFromHTML()`, `_augmentGenEntry()` (metadata генлога), `computeFullConceptBlockSizes()`, `buildParentSpecBySection()` | Трекинг подразделов в потоке; расширение записей generation_log | `server/services/generation-service.ts` |
+| Извлечение тезисов/глоссария в гранулярные таблицы | Прародителей в исходнике НЕТ (там только компактные extract* для контекста) — парсеры построены по структурам таблиц из промптов Registry (беседа 1.4) | `server/services/element-parser.ts` |
 | — | Клиент получает дельты через WebSocket и рендерит HTML | `client/hooks/useStreamingGeneration.ts` |
 
 ### 2.4. Каскадная перегенерация (confirm → план)
@@ -173,7 +176,7 @@
 | `executeSubsectionRegen()` | Серия confirm() → предрассчитанный план с downstream-шагами | `server/services/plan-executor.ts` |
 | `regenerateSection()` | DOM-манипуляции → запись в БД + WebSocket-стриминг | `server/services/generation-service.ts` |
 | Pause/Resume (спец.: 01 §4.12): `resumeGeneration()`, `_resumeFromSubsection()`, `_runGenPassesFromIdx()`, `_computeGenPauseEstimates()`, `_logPauseEvent()` | pausedState → персистентное хранение; модалка → React; действия fill-missing-subs/retry/skip/stop с оценками стоимости | `server/services/pause-resume-service.ts` + `client/components/PauseModal.tsx` |
-| `updateDocTitleFromName()` | Авто-заголовок из раздела «name» → PATCH syntheses.title после section_done | `server/services/generation-service.ts` |
+| `updateDocTitleFromName()` | Авто-заголовок из раздела «name» → PATCH syntheses.title после section_done. ЛАТЕНТНЫЙ БАГ исходника [11886]: классы \w в регекспе префиксов не матчат кириллицу в JS — срезание префиксов было мёртвым кодом; порт (беседа 1.4) несёт задокументированный FIX \w → [а-яё] | `server/services/generation-service.ts` |
 | `_autoAddCurrentDocToPool()` | Свежий синтез автоматически предлагается участником мета-синтеза | `client/components/pool/ConceptPool.tsx` |
 | `regenerateSubsection()` | Аналогично | там же |
 

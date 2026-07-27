@@ -69,10 +69,10 @@ npm run typecheck:scripts
 ```
 
 `check:integration` расширяется секциями по мере бесед (сейчас покрывает
-0.1–0.6 и 1.1–1.3); живые секции требуют поднятых PG и Redis и засеянных
+0.1–0.6 и 1.1–1.4); живые секции требуют поднятых PG и Redis и засеянных
 prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.3 закрыты
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.4 закрыты
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -133,8 +133,18 @@ prompt_templates, synthesis_configs и каталогов таксономии.
   (селективный родительский контекст, 4-слойные карты из Registry);
   utils/html-parser — единственная точка входа linkedom.
 
-Не сделано (Фаза 1+): streaming и pause/resume, оркестрация генерации,
-парсеры графа и элементов, страницы синтеза/каталога/графа, каскады и
-план редактирования, мета-синтез, режимы, экспорт/импорт, billing.
-Следующая по графу 07 — беседа 1.4 (критический путь: в ней сходятся
-1.2 и 1.3) либо 2.1 параллельно.
+- **1.4 — streaming + оркестрация генерации.** streaming-manager (порт
+  _streamRespOnce: SSE, классификация auth/billing/pre-stream/max-tokens/
+  partial/stuck/user-abort, stuck-таймер 45с, reconnect-буфер в Redis);
+  generation-service (порт generateDoc/_runGenPassesFromIdx: проходы,
+  контексты в context_log, паузы с pausedState, ретраи pre-stream 1с/3с/8с,
+  genCommon в генлоге, авто-заголовок из «name»); graph-parser и
+  element-parser (гранулярные таблицы); POST /syntheses; WS
+  subscribe_generation/cancel + resume-протокол §3.3. Сквозной тест с
+  мок-SSE Claude API: test-14-requests2-8.mjs 46/46 ✓.
+
+Не сделано (Фаза 1+): pause/resume-действия (1.4b), страницы
+синтеза/каталога/графа, каскады и план редактирования, мета-синтез,
+режимы, экспорт/импорт, billing.
+Следующая по графу 07 — беседа 1.4b (Pause/Resume) либо 1.5 (форма и
+прогресс) / 2.1 (cascade-analyzer) параллельно.

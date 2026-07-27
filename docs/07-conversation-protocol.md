@@ -1,5 +1,11 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-07-27 (итоги беседы 1.4)**: сигнатура onDelta с инкрементом;
+> _rebuildNodeColors/_rebuildEdgeStyles отнесены к клиенту (1.7); в 02 §2.3
+> reasonKind += 'context-error'; в 04 §2.3 добавлены портированные функции
+> 1.4 и FIX \w-бага updateDocTitleFromName [11886]; в 02 §2.15 — служебная
+> строка '_genCommon'.
+>
 > **Ревизия 2026-07-22**: протокол приведён к исходнику 26 024 стр. (v11):
 > свободный синтез в валидации, модель стриминга _streamRespOnce, новая
 > беседа 1.4b (Pause/Resume), parent-context в 1.2/1.3/3.1, Advisor v2 в 1.1.
@@ -728,7 +734,9 @@ grep -n 'function generateDoc' philosynth.html | head -1  # найти нача�
      a. POST к Claude API с stream: true
      b. Парсинг SSE (content_block_delta → text)
      c. Буферизация HTML
-     d. Вызов onDelta(deltaHtml, totalChars) для каждого чанка
+     d. Вызов onDelta(delta, totalChars, htmlSoFar) для каждого чанка
+        (исходник передавал (length, html); серверу для stream_delta §3.2
+        нужен ИНКРЕМЕНТ — сигнатура расширена, зафиксировано беседой 1.4)
      e. Возврат usage (input_tokens, output_tokens)
      f. При ошибке: сохранение partial result в Redis
    - getStreamState(synthesisId, sectionKey): из Redis
@@ -759,8 +767,10 @@ grep -n 'function generateDoc' philosynth.html | head -1  # найти нача�
    - saveGraphToDb(synthesisId, parsedGraph) → INSERT в categories, category_edges
    Порт из parseTopology() и parseGraph(),
    но парсинг через linkedom вместо browser DOM.
-   v10: парсинг поддерживает расширенные столбцы (extGraphMetrics);
-   после парсинга вызываются _rebuildNodeColors/_rebuildEdgeStyles.
+   v10: парсинг поддерживает расширенные столбцы (extGraphMetrics).
+   _rebuildNodeColors/_rebuildEdgeStyles — КЛИЕНТСКИЕ динамические палитры
+   (04 §1.7 → client/components/graph/graph-utils.ts, беседа 1.7); на
+   сервере не вызываются (сверено беседой 1.4).
 
 5. server/services/element-parser.ts:
    - parseThesesFromHTML(html) → Thesis[]

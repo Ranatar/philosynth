@@ -39,6 +39,10 @@ export type ParentContextSchema = "selective-v1" | "monolithic";
 /* ── Пауза (v11, 01-arch §4.12) ──────────────────────────────────────── */
 
 /** Таксономия причин обрыва стрима (err.kind из _streamRespOnce) */
+/* 'context-error' — reasonKind паузы при сбое ПОСТРОЕНИЯ контекста/промпта
+ * (outer catch _runGenPassesFromIdx [philosynth.html ~25842]), а не kind
+ * ошибки стрима. В перечне 02-data-model §2.3 отсутствует — дыра доков,
+ * зафиксирована беседой 1.4 (закрыть патчем доков в завершение беседы). */
 export type PauseReasonKind =
   | "auth"
   | "billing"
@@ -46,7 +50,8 @@ export type PauseReasonKind =
   | "max-tokens"
   | "partial"
   | "stuck"
-  | "user-abort";
+  | "user-abort"
+  | "context-error";
 
 /** syntheses.paused_state, kind === "gen" — прервана основная генерация */
 export interface PausedStateGen {

@@ -209,6 +209,38 @@ need(await import("./utils/html-parser.js"), [
     errs.push("2h: capsule:full должен обрабатываться ДО гейта наличия раздела");
 }
 
+// ── 2i. Модули беседы 1.4: streaming-manager, generation-service, graph-parser,
+//        element-parser, ws/stream-state, routes/syntheses ──
+need(await import("./services/streaming-manager.js"), [
+  "streamSection","classifyStreamError","pauseFriendlyMessage","StreamError",
+  "getStreamState","clearStreamState",
+], "services/streaming-manager");
+need(await import("./services/generation-service.js"), [
+  "generateSynthesis","cancelGeneration","isGenerationActive","assertCanStartGeneration",
+  "registerParentContextProvider","parseSubsectionsFromHTML","buildPromptSkeleton",
+  "extractTitleFromNameHtml","computeFullConceptBlockSizes","buildParentSpecBySection",
+  "GenerationError",
+], "services/generation-service");
+need(await import("./services/graph-parser.js"), [
+  "parseGraphFromHTML","parseGraphFromElement","parseTopology","saveGraphToDb","hasGraph",
+], "services/graph-parser");
+need(await import("./services/element-parser.js"), [
+  "parseThesesFromHTML","parseGlossaryFromHTML","saveElementsToDb",
+], "services/element-parser");
+need(await import("./ws/stream-state.js"), [
+  "saveStreamState","getStreamState","clearStreamState",
+], "ws/stream-state");
+need(await import("./routes/syntheses.js"), ["synthesesRoutes"], "routes/syntheses");
+{
+  // Реэкспорты stream-state из streaming-manager (07: get/clearStreamState
+  // числятся в streaming-manager) — ТЕ ЖЕ функции, не копии.
+  const sm2i = await import("./services/streaming-manager.js");
+  const ss2i = await import("./ws/stream-state.js");
+  if (!Object.is(sm2i.getStreamState, ss2i.getStreamState) ||
+      !Object.is(sm2i.clearStreamState, ss2i.clearStreamState))
+    errs.push("2i: реэкспорты get/clearStreamState не тождественны реализации ws/stream-state");
+}
+
 // ── 3. Типовые (compile-time) модули: сам факт импорта проверяет пути ──
 import type { SynthesisFull, PausedState } from "@philosynth/shared/types/synthesis";
 import type { SectionFull } from "@philosynth/shared/types/section";
@@ -1018,6 +1050,87 @@ const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "cr
     errs.push("4j: гейт наличия раздела в extractContextFragment не сохранён");
 }
 
+// ── 4k. Контрактные проверки беседы 1.4 (streaming/generation/парсеры) ──
+{
+  const sm4k = await import("./services/streaming-manager.js");
+  const gs4k = await import("./services/generation-service.js");
+  const gp4k = await import("./services/graph-parser.js");
+  type StreamUsage14 = import("./services/streaming-manager.js").StreamUsage;
+  type ParsedGraph14 = import("./services/graph-parser.js").ParsedGraph;
+  type SaveGraphResult14 = import("./services/graph-parser.js").SaveGraphResult;
+  type ParsedThesis14 = import("./services/element-parser.js").ParsedThesis;
+  type ParsedGlossaryTerm14 = import("./services/element-parser.js").ParsedGlossaryTerm;
+  type PauseReasonKind14 = import("@philosynth/shared/types/synthesis").PauseReasonKind;
+  type StreamErrorKind14 = import("./services/streaming-manager.js").StreamErrorKind;
+
+  // Async/sync-сигнатуры (compile-time, сквозная серия _t51+)
+  const _t51: (
+    sid: string, key: string, p: string, sys: string, k: string,
+  ) => Promise<StreamUsage14> = (sid, key, p, sys, k) => sm4k.streamSection(sid, key, p, sys, k);
+  const _t52: (sid: string, uid: string) => Promise<void> = (sid, uid) =>
+    gs4k.generateSynthesis(sid, uid);
+  const _t53: (html: string) => ParsedGraph14 = (h) => gp4k.parseGraphFromHTML(h);
+  const _t54: (sid: string, g: ParsedGraph14) => Promise<SaveGraphResult14> = (sid, g) =>
+    gp4k.saveGraphToDb(sid, g);
+  // Черновики парсеров совместимы со строками insert соответствующих таблиц
+  const _t55: (sid: string, t: ParsedThesis14) => typeof schema.theses.$inferInsert =
+    (sid, t) => ({ synthesisId: sid, ...t });
+  const _t56: (sid: string, g: ParsedGlossaryTerm14) => typeof schema.glossaryTerms.$inferInsert =
+    (sid, g) => ({ synthesisId: sid, ...g });
+  // Таксономия: kinds стрима ⊂ PauseReasonKind; 'context-error' — только паузы
+  const _t57: PauseReasonKind14 = "context-error";
+  const _t58: (k: StreamErrorKind14) => PauseReasonKind14 = (k) => k;
+  void _t51; void _t52; void _t53; void _t54; void _t55; void _t56; void _t57; void _t58;
+
+  const strip4k = (s: string): string =>
+    s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const smSrc = strip4k(readFileSync(new URL("./services/streaming-manager.ts", import.meta.url), "utf8"));
+  const gsSrc = strip4k(readFileSync(new URL("./services/generation-service.ts", import.meta.url), "utf8"));
+  const rsSrc = strip4k(readFileSync(new URL("./routes/syntheses.ts", import.meta.url), "utf8"));
+  const whSrc = strip4k(readFileSync(new URL("./ws/handler.ts", import.meta.url), "utf8"));
+
+  // База API — только из env (тестируемость/BYO-прокси), без хардкода облака
+  if (!smSrc.includes("${env.anthropic.baseUrl}/v1/messages") ||
+      smSrc.includes("api.anthropic.com"))
+    errs.push("4k: URL API должен браться из env.anthropic.baseUrl (без хардкода)");
+  // Модель v11: ретраится ТОЛЬКО pre-stream, задержки из env
+  if (!gsSrc.includes('e.kind !== "pre-stream"') ||
+      !gsSrc.includes("env.streaming.retryDelays") || /\[1000,\s*3000/.test(gsSrc))
+    errs.push("4k: ретраи должны быть только pre-stream с задержками из env.streaming.retryDelays");
+  // Гонка двойного старта: слот резервируется ДО первого await (фикс 1.4)
+  const setIdx4k = gsSrc.indexOf("activeRuns.set(synthesisId, run)");
+  const loadIdx4k = gsSrc.indexOf("await loadSynthesis(synthesisId)");
+  if (setIdx4k === -1 || loadIdx4k === -1 || setIdx4k > loadIdx4k)
+    errs.push("4k: activeRuns.set обязан стоять ДО await loadSynthesis (гонка двойного старта)");
+  // Цены — из cost-estimator, не литералами
+  if (!/import \{[^}]*PRICE_IN[^}]*\} from "\.\/cost-estimator\.js"/.test(gsSrc) ||
+      /3 \/ 1e6|15 \/ 1e6/.test(gsSrc))
+    errs.push("4k: цены должны импортироваться из cost-estimator (PRICE_IN/PRICE_OUT)");
+  // Каркас промпта прохода — дословный scaffold исходника [12160]
+  if (!gsSrc.includes("ЗАДАНИЕ: составь ТОЛЬКО следующие разделы (строго в указанном порядке, без добавления других):"))
+    errs.push("4k: scaffold промпта прохода разошёлся с исходником");
+  // genCommon персистится служебной строкой генлога (решение 1.4)
+  if (!gsSrc.includes('"_genCommon"') || !gsSrc.includes('"common"'))
+    errs.push("4k: genCommon должен персиститься строкой generation_log (_genCommon/common)");
+  // §3.1: user-abort финализируется БЕЗ pausedState
+  if (!gsSrc.includes('e.kind === "user-abort"'))
+    errs.push("4k: ветка user-abort (финализация без pausedState, §3.1) не найдена");
+  // DOM-слой изолирован: linkedom не импортируется модулями 1.4 напрямую
+  for (const [nm, src] of [["streaming-manager", smSrc], ["generation-service", gsSrc]] as const) {
+    if (/from "linkedom"/.test(src)) errs.push(`4k: ${nm} не должен импортировать linkedom напрямую`);
+  }
+  const gpSrc4k = strip4k(readFileSync(new URL("./services/graph-parser.ts", import.meta.url), "utf8"));
+  const epSrc4k = strip4k(readFileSync(new URL("./services/element-parser.ts", import.meta.url), "utf8"));
+  if (/from "linkedom"/.test(gpSrc4k) || /from "linkedom"/.test(epSrc4k))
+    errs.push("4k: парсеры обязаны идти через utils/html-parser, не linkedom напрямую");
+  // Роут POST /syntheses: валидация разделов по SEC_NAMES, статус generating
+  if (!rsSrc.includes("Object.keys(SEC_NAMES)") || !rsSrc.includes('status: "generating"'))
+    errs.push("4k: POST /syntheses должен валидировать разделы по SEC_NAMES и стартовать в 'generating'");
+  // Reconnect §3.3: handler шлёт type:"resume" с накопленным буфером
+  if (!whSrc.includes('type: "resume"') || !whSrc.includes("htmlSoFar"))
+    errs.push("4k: handler обязан реализовывать resume-протокол §3.3");
+}
+
 // ── 5j. Живой конвейер беседы 1.3 против БД (ДО секции 5, закрывающей пул) ──
 // resolveContextDeps → buildEffectiveDeps → buildDynamicOrder →
 // buildContextForSection на реальных sections/categories.
@@ -1111,6 +1224,94 @@ const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "cr
   }
 }
 
+// ── 5k. Живые смоуки беседы 1.4 против БД/Redis (ДО секции 5) ──
+// Замена графа/элементов идемпотентна (нет 23505), stream-state круговой,
+// предохранители генерации. Полный цикл с моком API — test-14-requests2-8.mjs.
+{
+  const gp5k = await import("./services/graph-parser.js");
+  const ep5k = await import("./services/element-parser.js");
+  const ss5k = await import("./ws/stream-state.js");
+  const gs5k = await import("./services/generation-service.js");
+  const { db: db5k } = await import("./db/index.js");
+  const sch5k = await import("./db/schema.js");
+  const { eq: eq5k } = await import("drizzle-orm");
+  const { env: env5k } = await import("./env.js");
+  // lazyConnect + enableOfflineQueue=false: без явного connect первая
+  // команда реджектится и fail-open прячет её — подключаем явно.
+  await (await import("./redis.js")).connectRedis();
+
+  const u5k = (
+    await db5k.insert(sch5k.users)
+      .values({ email: `ic14-${Date.now()}@example.org`, passwordHash: "x" })
+      .returning({ id: sch5k.users.id })
+  )[0]!.id;
+
+  try {
+    const s5k = (
+      await db5k.insert(sch5k.syntheses)
+        .values({ userId: u5k, seed: "интеграция 1.4", depth: "overview" })
+        .returning({ id: sch5k.syntheses.id })
+    )[0]!.id;
+
+    // Замена графа — дважды подряд (двойной вызов не должен падать 23505)
+    const graphHtml5k =
+      '<div data-section="Таблица категорий"><table class="doc-table"><tbody>' +
+      "<tr><td>Свобода</td><td>Онтологическая</td><td>опр</td><td>0.9</td><td>0.8</td><td>Кант</td></tr>" +
+      "<tr><td>Дух</td><td>Онтологическая</td><td>опр</td><td>0.8</td><td>0.7</td><td>Гегель</td></tr>" +
+      "</tbody></table></div>" +
+      '<div data-section="Таблица связей"><table class="doc-table"><tbody>' +
+      "<tr><td>Свобода</td><td>снимается</td><td>Дух</td><td>диалектическая</td><td>двунаправленная</td><td>0.9</td></tr>" +
+      "</tbody></table></div>" +
+      '<div data-section="Топология графа"><div data-section="Топологическая таблица">' +
+      '<table class="doc-table"><tbody><tr><td>Свобода</td><td>I — Ядро</td><td>центральная</td><td>тезис</td></tr>' +
+      "</tbody></table></div></div>";
+    const parsed5k = gp5k.parseGraphFromHTML(graphHtml5k);
+    if (parsed5k.nodes.length !== 2 || parsed5k.edges.length !== 1)
+      errs.push("5k: parseGraphFromHTML не распарсил фикстуру");
+    const save1 = await gp5k.saveGraphToDb(s5k, parsed5k);
+    const save2 = await gp5k.saveGraphToDb(s5k, parsed5k); // замена, не дубль
+    if (save2.categoriesInserted !== save1.categoriesInserted ||
+        save2.clustersInserted !== save1.clustersInserted)
+      errs.push("5k: повторный saveGraphToDb должен давать идентичную замену");
+    if (!(await gp5k.hasGraph(s5k))) errs.push("5k: hasGraph после сохранения = false");
+
+    // Замена элементов — дважды
+    const th5k = [{ thesisNum: 1, formulation: "Тезис.", justification: "",
+      thesisType: "ontological" as const, noveltyDegree: "высокая", relatedCategories: ["Свобода"] }];
+    await ep5k.saveElementsToDb(s5k, "theses", { theses: th5k });
+    const r2 = await ep5k.saveElementsToDb(s5k, "theses", { theses: th5k });
+    if (r2.thesesInserted !== 1) errs.push("5k: повторный saveElementsToDb — не замена");
+
+    // stream-state: запись → чтение (по разделу и по указателю) → очистка
+    await ss5k.saveStreamState({ synthesisId: s5k, sectionKey: "sum",
+      htmlSoFar: "<p>частично</p>", charsSoFar: 16, status: "streaming",
+      updatedAt: new Date().toISOString() });
+    const byKey5k = await ss5k.getStreamState(s5k, "sum");
+    const byPtr5k = await ss5k.getStreamState(s5k);
+    if (byKey5k?.htmlSoFar !== "<p>частично</p>" || byPtr5k?.sectionKey !== "sum")
+      errs.push("5k: stream-state не читается по разделу/указателю");
+    await ss5k.clearStreamState(s5k);
+    if ((await ss5k.getStreamState(s5k)) !== null)
+      errs.push("5k: clearStreamState не очистил буфер");
+
+    // Предохранители генерации
+    if (gs5k.isGenerationActive(s5k)) errs.push("5k: ложно-активная генерация");
+    if (gs5k.cancelGeneration(s5k, u5k) !== false)
+      errs.push("5k: cancelGeneration без активного цикла обязан вернуть false");
+    if (!env5k.anthropic.apiKey) {
+      try {
+        gs5k.assertCanStartGeneration(u5k);
+        errs.push("5k: без API-ключа assertCanStartGeneration обязан бросить API_KEY_MISSING");
+      } catch (e) {
+        if (!(e instanceof gs5k.GenerationError) || e.code !== "API_KEY_MISSING")
+          errs.push("5k: неверный код ошибки предпроверки: " + String(e));
+      }
+    }
+  } finally {
+    await db5k.delete(sch5k.users).where(eq5k(sch5k.users.id, u5k)); // CASCADE подчистит
+  }
+}
+
 // ── 5. Async-цепочки: реальный запрос через db и через sql ──
 import { db, sql, closeDb } from "./db/index.js";
 const viaRaw = await sql`SELECT 1 AS one`;
@@ -1127,4 +1328,4 @@ try { await sql`SELECT 1`; } catch { rejected = true; }
 if (!rejected) errs.push("await после closeDb не отклонился (пул не закрыт?)");
 
 if (errs.length) { console.error("ПРОБЛЕМЫ:\n" + errs.map(e => " - " + e).join("\n")); process.exit(1); }
-console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb)");
+console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb) + 2i/4k/5k 1.4 (6 модулей streaming-manager/generation-service/graph-parser/element-parser/stream-state/routes-syntheses, реэкспорты stream-state тождественны; контракты: baseUrl из env, ретраи только pre-stream из env, activeRuns.set до await (гонка), цены из cost-estimator, scaffold дословно, _genCommon/common, user-abort без pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3; живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная замена, stream-state круговой по разделу и указателю, предохранители cancelGeneration/assertCanStartGeneration)");

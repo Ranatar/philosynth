@@ -1145,8 +1145,11 @@ serializeParts вынесен из строки baseCtx в отдельную с
 3. **TODO(3.1)**: наполнение полей концепций-родителей
    (importConceptAsParticipant), conceptContextBlockFull/Selective.
 4. **TODO(2.4)**: context-quality.ts по новой формулировке 07/F.
-5. `.env.example` числится в 05-file-structure, но в репозитории его нет —
-   мелкая дыра, не закрывалась (создавать не в этой беседе).
+5. ~~`.env.example` числится в 05-file-structure, но в репозитории его нет~~
+   ЗАКРЫТО ниже в этой же главе (сопутствующие правки второй волны):
+   файл создан. Аудит 1.4 дополнил его тремя недостающими переменными
+   (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STREAM_RETRY_DELAYS) —
+   итого все 19 переменных server/env.ts покрыты.
 
 ## Патч доков по итогам 1.3
 
@@ -1227,3 +1230,189 @@ skip×18):
 
 Итог патча `scripts/patch-docs-conv13.py`: **21 правка**, повторный прогон
 skip×21.
+
+# Беседа 1.4 — итоги (streaming-manager / generation-service)
+
+> Зафиксировано по завершении беседы 1.4. Модули: server/services/
+> streaming-manager.ts, generation-service.ts, graph-parser.ts,
+> element-parser.ts, server/ws/stream-state.ts, server/routes/syntheses.ts.
+> Запросы 2–8 — одним заходом: test-14-requests2-8.mjs 46/46 ✓ (живой
+> сервер + мок-SSE Claude API); регресс зелёный (typecheck, audit,
+> INTEGRATION OK += 2i/4k/5k, smoke-13 92/92, test-13 90/90).
+
+## Созданные/изменённые файлы
+
+- `server/ws/stream-state.ts` — Redis reconnect-буфер: ключ раздела
+  `stream_state:{id}:{key}` + указатель `stream_state:{id}` (совмещает
+  формы 01 §4.4 и 03 §3.3), TTL 3600, fail-open как rate-limiter.
+- `server/services/streaming-manager.ts` — порт _streamRespOnce [12463]
+  (одна попытка SSE), classifyStreamError [12429], stuck-таймер через
+  AbortController (45с), троттлированная запись буфера в Redis (1с),
+  stop_reason max_tokens → StreamError с реально потраченным usage,
+  pauseFriendlyMessage [24653]; URL — `${env.anthropic.baseUrl}/v1/messages`.
+- `server/services/generation-service.ts` — порт generateDoc [11897] /
+  _runGenPassesFromIdx [25573]: реестр activeRuns (лимит 3/пользователя),
+  ретраи ТОЛЬКО pre-stream (env.streaming.retryDelays), паузы с
+  PausedStateGen + pause_marker, user-abort → финализация БЕЗ pausedState
+  (03 §3.1), outer catch → 'context-error'; CtxLogDraft ПИШЕТСЯ в
+  context_log (закрыт TODO(1.4) беседы 1.3); genCommon — служебной строкой
+  generation_log ('_genCommon'/'common'); registerParentContextProvider
+  (стаб до 3.1); порты parseSubsectionsFromHTML [9795],
+  buildPromptSkeleton [8506], extractTitleFromNameHtml [11871] (FIX
+  \w-бага), computeFullConceptBlockSizes [10302], buildParentSpecBySection
+  [10399]; export assertCanStartGeneration (предпроверки для POST).
+- `server/services/graph-parser.ts` — порт parseTopology [12696] /
+  parseGraph [12925] через html-parser; saveGraphToDb — транзакционная
+  ЗАМЕНА (categories/category_edges/cluster_labels), рёбра с концами вне
+  таблицы категорий → warnings (FK), has_reflexive денормализован по
+  направлению рёбер; _rebuildNodeColors/EdgeStyles — клиент (1.7).
+- `server/services/element-parser.ts` — прародителей НЕТ: парсеры по
+  структурам таблиц промптов Registry (тезисы — «Сводная таблица»,
+  justification best-effort по <strong>; глоссарий — первый th «термин»
+  [8027], extraColumns под фактическими заголовками thead, termCategory
+  best-effort по категорийным подразделам); saveElementsToDb — замена.
+- `server/routes/syntheses.ts` — POST /syntheses (03 §2.2): валидация с
+  details (разделы по SEC_NAMES; v11 — оба списка участников пусты →
+  обязателен seed; participants type='synthesis' → VALIDATION_ERROR до
+  3.1), sectionOrder=["sum",...sections], генеалогия philosophers →
+  synthesis_lineage, предпроверки ДО insert, фоновый запуск; сбой старта →
+  status='error' + stream_error. Остальные роуты §2.2 — 1.6/4.3.
+- `server/ws/handler.ts` — subscribe_generation (подписка/запуск с
+  проверкой владения и статуса), cancel → cancelGeneration; handleResume
+  §3.3 (?resume= → {type:"resume", sectionKey, htmlSoFar, charsSoFar};
+  буфера нет → ready→generation_complete / paused→generation_paused).
+- `server/env.ts` — anthropic.baseUrl (ANTHROPIC_BASE_URL: мок в тестах,
+  прокси BYO-Key); .env.example дополнен (+ ранее недостающие
+  STRIPE_*, STREAM_RETRY_DELAYS — итого все 19 переменных).
+- `packages/shared/types/synthesis.ts` — PauseReasonKind += 'context-error'.
+- `server/integration-check.mts` — += 2i (6 модулей, тождественность
+  реэкспортов stream-state), 4k (_t51–_t58; парсинг: baseUrl из env,
+  ретраи только pre-stream, activeRuns.set ДО await, цены из
+  cost-estimator, scaffold дословно, '_genCommon', user-abort без
+  pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3),
+  5k (живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная
+  замена без 23505, stream-state круговой, предохранители; ЯВНЫЙ
+  connectRedis — см. грабли).
+- `scripts/patch-docs-conv14.py` — идемпотентный патч (10 правок).
+- Тесты: `test-14-requests2-8.mjs` (46/46; мок-SSE + child-сервер),
+  `server/smoke-1.4.mts` (8 блоков чистых функций без БД).
+
+## Адаптации DOM/DOC_STATE → сервис (решения беседы)
+
+1. onDelta расширен до (delta, totalChars, htmlSoFar) — серверу нужен
+   ИНКРЕМЕНТ для stream_delta §3.2 (исходник передавал length+html).
+2. PausedStateGen — по shared-типам 0.1 (timestamp: number,
+   partialSubsections: string[] имена) вопреки исходнику (ISO-строка,
+   объекты); chars восстановимы из metadata.subsections генлога.
+3. genEntry: insert status='streaming' → update по завершении (виден при
+   reconnect); metadata несёт sys + promptSkeleton (экспорт 4.2) +
+   expectedSubsections/subsections + поля _augmentGenEntry.
+4. Свежий createDbContextSource на КАЖДЫЙ проход — мемоизация не должна
+   прятать только что сохранённые разделы.
+5. Капсула копируется в syntheses.capsule_html, строка sections
+   СОХРАНЯЕТСЯ (гранулярность/перегенерация; адаптация против
+   removeCapsuleFromDocBodies).
+6. user-abort: pausedState НЕ создаётся, финализация по правилам stop
+   (§3.1 [663]); user_action_marker в генлоге.
+7. POST запускает генерацию в фоне; subscribe_generation — подписка или
+   рестарт (после падения сервера); дельты идут по userId на все
+   соединения пользователя.
+8. API-ключ: env.anthropic.apiKey (TODO(6.1) BYO-Key через api-key-service).
+9. _autoAddCurrentDocToPool: на сервере тривиально (синтез уже в БД);
+   UX — ConceptPool.tsx (3.2). Валидации-confirm'ы формы — клиент (1.5).
+
+## Ревью по карте 04 (§2.3, §1.7, доли §2.4/§2.5/§2.6)
+
+- §2.3 портировано ПОЛНОСТЬЮ: streamResp→_streamRespOnce ✓ (модель
+  1:1: одна попытка + классификация; ретраи уровнем выше);
+  + добавлены в карту патчем 14/D: _classifyStreamError,
+  _pauseFriendlyMessage, parseSubsectionsFromHTML, _augmentGenEntry,
+  computeFullConceptBlockSizes, buildParentSpecBySection, element-parser.
+- §1.7 (серверная доля): parseTopology ✓, parseGraph ✓ (все FIX'ы и
+  console.warn исходника), normalizeName/Type — импорт из shared (0.1) ✓;
+  клиентское (_rebuildNodeColors, showEdgePanel, getStructuralMarkers,
+  legendFilter) — беседа 1.7.
+- §2.4 (доля 1.4): updateDocTitleFromName ✓ [176] (с FIX \w-бага),
+  _logPauseEvent ✓ (pause_marker-строки; числится в 1.4b — создание пауз
+  готово, ДЕЙСТВИЯ возобновления — 1.4b); _computeGenPauseEstimates —
+  1.4b (estimates:{} в generation_paused). regenerateSection [174] — 2.2.
+- §2.5/§2.6: genCommon.conceptBlockSizes ✓ [203] (пустой до 3.1),
+  buildPromptSkeleton ✓ [204] (пишется в metadata генлога).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **1.4b (pause-resume)**: generation-service.ts (реестр activeRuns,
+  runGeneration-цикл — _resumeFromSubsection стартует с passIdx;
+  pausedState/pause_marker уже пишутся), streaming-manager.ts,
+  ws/handler.ts (заглушки resume_generation/resume_plan),
+  shared PausedStateGen. Реализовать: _computeGenPauseEstimates,
+  действия fill-missing-subs/retry/skip/stop, resume_marker.
+- **1.5 (форма/прогресс, клиент)**: routes/syntheses.ts (контракт POST),
+  ws-протокол фактический (stream_delta с периодическим totalHtml каждые
+  25 дельт, subsection_found, section_done с html, resume) — образец
+  клиента в test-14 (wsConnect/waitFor).
+- **1.6 (просмотр/каталог)**: routes/syntheses.ts (добавлять GET/PATCH/
+  DELETE в этот же файл), sections/htmlContent + capsuleHtml.
+- **2.2 (plan-executor/regeneration)**: generation-service.ts (upsertSection,
+  жизненный цикл genEntry, source='edit'/'cascade'), streaming-manager.
+- **2.4 (логи)**: структура строк generation_log (метаданные
+  expectedSubsections/subsections/promptSkeleton/sys/budgetMode/
+  parentOverheadChars; служебная '_genCommon') + context_log из 1.4.
+- **3.1 (meta-synthesis)**: registerParentContextProvider — ЗАМЕНИТЬ стаб
+  на conceptContextBlockFull/Selective; conceptBlockSizes/
+  parentSpecBySection получают реальных участников.
+- **4.2 (экспорт промптов)**: metadata.sys + metadata.promptSkeleton
+  генлога — реконструкция без повторной сборки.
+- **6.1 (BYO-Key)**: env.anthropic.baseUrl — точка для прокси; ключ
+  пользователя вместо env.anthropic.apiKey (TODO(6.1) в двух местах).
+
+## Знания/грабли, добытые в 1.4
+
+1. **ГОНКА ДВОЙНОГО СТАРТА**: реестры-предохранители в async-коде
+   резервировать ДО первой точки переключения. activeRuns.set стоял после
+   await loadSynthesis — POST-запуск и subscribe_generation в этом окне
+   оба проходили has()-проверку → два параллельных цикла (симптом: 23505
+   на cluster_labels от двойного saveGraphToDb). Проверка — 4k.
+2. lazyConnect + enableOfflineQueue=false: без явного connectRedis ПЕРВАЯ
+   команда реджектится, fail-open прячет сбой (5k ловил null из
+   stream-state). В скриптах/секциях — явный await connectRedis().
+3. AbortError из sleep между ретраями обязан классифицироваться как
+   user-abort (classifyStreamError), а не «неизвестное → pre-stream».
+4. \w в JS-регекспах НЕ матчит кириллицу — латентный баг исходника
+   [11886] (срезание префиксов заголовка было мёртвым кодом); в портах
+   кириллических регекспов писать [а-яё] + /i.
+5. Мок-SSE: короткий контент завершается раньше точки обрыва/reconnect —
+   сценарии SLOW/PARTIAL требуют контента среднего размера.
+6. ReadableStreamReadResult отсутствует в серверном lib TS — типизировать
+   { done, value? } вручную.
+7. Тестовый паттерн «живой сервер»: child tsx index.ts + мок-SSE +
+   Node 22 global WebSocket; сценарии мока управляются маркерами в seed
+   (метки попадают в промпт) — не требует пересборки окружения.
+
+## Открытые TODO после 1.4
+
+1. TODO(1.4b): _computeGenPauseEstimates (estimates:{} в
+   generation_paused); действия resume_generation (fill-missing-subs/
+   retry/skip/stop); resume_marker; заглушки start_regen/start_mode/
+   execute_plan/confirm_step/resume_plan в handler.
+2. TODO(3.1): реальный провайдер родительского контекста (замена стаба
+   registerParentContextProvider); участники-концепции в
+   conceptBlockSizes/parentSpecBySection/parentFieldsUsed.
+3. TODO(6.1): BYO-Key (ключ пользователя вместо env; baseUrl-прокси).
+4. TODO(2.1) из 1.3 остаётся: canonicalSubsectionKey.
+5. Роуты §2.2 кроме POST (GET-списки, GET/:id, PATCH, DELETE, duplicate,
+   import) — беседы 1.6/4.3.
+
+## Патч доков по итогам 1.4
+
+`scripts/patch-docs-conv14.py` — идемпотентный (10 правок, повторный
+прогон skip×10): 14/A 02 §2.3 reasonKind += 'context-error'; 14/B 07
+_rebuildNodeColors/EdgeStyles — клиент (1.7); 14/C 07 onDelta с
+инкрементом; 14/D 04 §2.3 += портированные функции 1.4 (в карте
+отсутствовали); 14/E 04 FIX \w-бага updateDocTitleFromName [11886];
+14/F 02 §2.15 служебная строка '_genCommon'; 14/G 07 шапка-ревизия;
+14/H README (статус 1.1–1.4, блок 1.4, покрытие, «не сделано»,
+следующая — 1.4b либо 1.5/2.1). Обратная сверка: все правки —
+документация догоняет код 1.4; отставших артефактов прежних бесед нет
+(Exclude<PauseReasonKind,'user-abort'> включил 'context-error'
+автоматически, компиляция чиста).
