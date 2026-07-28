@@ -1,5 +1,8 @@
 # PhiloSynth Service — Спецификация
 
+> **Ревизия 2026-07-29 (беседа 1.5)**: клиентская форма/прогресс;
+> эндпоинты /syntheses/estimate и /syntheses/advice; код
+> NO_PARTICIPANTS_SEED_REQUIRED в POST /syntheses.
 > **Ревизия 2026-07-22**: спецификация дополнена под подсистемы v11 —
 > pause/resume, свободный синтез (0 участников), keepFullBudget,
 > селективный родительский контекст. Спецификации — 01-architecture, §4.12–4.15.
@@ -226,9 +229,31 @@ POST   /syntheses              { seed, philosophers?: string[], sections: string
                                  context?, sectionContexts?: Record<string, string>,
                                  lang?, participants?: ParticipantInput[] }
                                 // v11: philosophers и participants опциональны —
-                                // оба пусты = свободный синтез (обязателен seed)
+                                // оба пусты = свободный синтез (обязателен seed;
+                                //   иначе 400 NO_PARTICIPANTS_SEED_REQUIRED, §4.3)
                                 → { id: string, status: "generating" }
                                 // Генерация начинается, клиент подключается по WebSocket
+
+POST   /syntheses/estimate     тело = телу POST /syntheses (беседа 1.5)
+                                → { estimate: { inTokens, outTokens, cost, passes } }
+                                // Оценка БЕЗ создания записей: сервер зеркалит
+                                // конвейер генерации (resolveContextDeps →
+                                // buildEffectiveDeps → buildDynamicOrder →
+                                // buildSectionDefs → groupPasses → buildSYS/
+                                // baseCtxStatic → estimateCost). Требование G3
+                                // §1.3; из вилки протокола «сервер или клиентская
+                                // копия» выбран сервер — копия дрейфовала бы от
+                                // Registry (fragment_share/context_budget).
+
+POST   /syntheses/advice       { sections: string[], method, synthLevel,
+                                 generationOrder? }                (беседа 1.5)
+                                → { entry: CompatEntry+{icon,title} | null,
+                                    advice: { warnings, recommendations,
+                                              substitutions } }
+                                // Advisor v2 + Section Dependency Warnings
+                                // (01 §4.15 п.1–2): getCompatEntryByKey +
+                                // computeSectionAdvice; icon/title считает
+                                // сервер, CSS-классы чипов — клиент.
 
 GET    /syntheses/:id          → { synthesis: SynthesisFull }
 

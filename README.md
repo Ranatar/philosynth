@@ -68,11 +68,13 @@ npm run check:integration -w server     # импорты/контракты/жи
 npm run typecheck:scripts
 ```
 
-`check:integration` расширяется секциями по мере бесед (сейчас покрывает
-0.1–0.6 и 1.1–1.4b); живые секции требуют поднятых PG и Redis и засеянных
+`check:integration` расширяется секциями по мере бесед — 1.5 добавила
+4m/5m: клиент-модули формы/прогресса, контракты и живые /estimate и
+/advice (сейчас покрывает
+0.1–0.6 и 1.1–1.5); живые секции требуют поднятых PG и Redis и засеянных
 prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.4b закрыты
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.5 закрыты
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -155,10 +157,23 @@ prompt_templates, synthesis_configs и каталогов таксономии.
   сверка промптов), tests/test-14b-requests2-6.mjs 56/56 ✓
   (max-tokens/billing/персистентность через рестарт/stop/edge cases).
 
-Не сделано (Фаза 1+): страницы синтеза/каталога/графа, каскады и план
+Беседа 1.5 (форма + прогресс, клиент): SynthesisForm со всеми полями и
+валидацией v11 (свободный синтез без seed → NO_PARTICIPANTS_SEED_REQUIRED),
+PhilosopherPicker (эпохи), SectionPicker (secCtx, extGraphMetrics),
+CostEstimate → POST /syntheses/estimate (серверное зеркало конвейера
+оценки), CompatAdvisor + SectionWarnings → POST /syntheses/advice,
+GenerationProgress (◯/⟳/✓/⚠, живой счётчик), useStreamingGeneration
+(?resume= §3.3), интеграция PauseModal в CreateSynthesisPage.
+Тесты: tests/test-15-requests2-7.mjs 40/40 ✓ (браузерные, puppeteer;
+БД-ассерты гранулярного парсинга внутри теста).
+
+Не сделано (Фаза 1+): страницы синтеза/каталога/графа (1.6),
+Unified Concept Pool + secSynthReady + превью keepFullBudget (1.5b),
+applyReplacement и точный confirm деградации skip (2.x), каскады и план
 редактирования (plan-executor — снимет RESUME_INVALID с resume_plan
 retry/skip_step), мета-синтез, режимы, экспорт/импорт, billing,
 BYO-Key (6.1 — ввод ключа в auth-модалке).
-Следующая по графу 07 — беседа 1.5 (форма и прогресс; интеграция
-PauseModal) либо 2.1 (cascade-analyzer) / 2.2 (regeneration +
-plan-executor) параллельно.
+Следующая по графу 07 — беседа 1.6 (страница синтеза + каталог;
+закроет TODO(1.6): pausedState из GET /syntheses/:id) либо параллельно
+1.5b (Unified Concept Pool) / 2.1 (cascade-analyzer) / 2.2 (regeneration
++ plan-executor).

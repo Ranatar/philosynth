@@ -1268,7 +1268,7 @@ skip×21.
   направлению рёбер; _rebuildNodeColors/EdgeStyles — клиент (1.7).
 - `server/services/element-parser.ts` — прародителей НЕТ: парсеры по
   структурам таблиц промптов Registry (тезисы — «Сводная таблица»,
-  justification best-effort по <strong>; глоссарий — первый th «термин»
+  justification best-effort по `<strong>`; глоссарий — первый th «термин»
   [8027], extraColumns под фактическими заголовками thead, termCategory
   best-effort по категорийным подразделам); saveElementsToDb — замена.
 - `server/routes/syntheses.ts` — POST /syntheses (03 §2.2): валидация с
@@ -1580,3 +1580,132 @@ retry/skip_step до plan-executor'а (2.2) отвечает RESUME_INVALID;
 [25358]; 14b/D 01 §4.12 п.6 — auth-рендерер сервиса без формы ввода
 ключа до 6.1; 14b/E ревизии шапок; 14b/F README (статус, блок 1.4b,
 «не сделано», следующая беседа).
+
+---
+
+# Беседа 1.5 — форма создания + прогресс (клиент) [ЗАКРЫТА]
+
+## Созданные/изменённые файлы
+
+- `client/src/api/syntheses.ts` — createSynthesis / estimateSynthesis /
+  getSynthesis (контракт §2.2; РОУТ GET — беседа 1.6) /
+  fetchSynthesisAdvice; типы SynthesisEstimate (≡ FullCostEstimate),
+  CompatEntryDto (+icon/title с сервера), SectionAdviceDto.
+- `client/src/components/synthesis/`:
+  - `SynthesisForm.tsx` — все поля (опции селектов дословно из исходника),
+    язык с веткой «Другой…» (initLangUI, 01 §4.15 п.6), дефолт-секции
+    graph/glossary/theses/history/name/critique, валидация v11
+    (0 участников → зерно обязательно; 0 секций → ошибка), дебаунс-совет
+    400 мс (updateCompatAdvisor→updateSectionWarnings), условный
+    keepFullBudget (виден только при conceptParticipants — пул 1.5b);
+  - `PhilosopherPicker.tsx` — PHILOSOPHER_EPOCHS, счётчик, 2 колонки
+    на мобильных;
+  - `SectionPicker.tsx` — порядок/метки SECTION_CHECKBOX_IDS/SEC_ID_TO_KEY,
+    secCtx-поля по кнопке «+», extGraphMetrics sync с графом;
+    secSynthReady отложен к 1.5b/3.2 (принадлежит пулу);
+  - `CostEstimate.tsx` — POST /syntheses/estimate, дебаунс 600 мс,
+    сбой → «оценка недоступна» (не блокирует форму);
+  - `CompatAdvisor.tsx` — панель data-severity, сворачивание, чипы
+    (зеркало chipClassForRating в Tailwind-токенах); applyReplacement —
+    TODO (кнопки замен, entry.replacements уже приходит);
+  - `SectionWarnings.tsx` — три бокса ⚠/💡/⇄ из items {icon,text,severity};
+  - `GenerationProgress.tsx` — шаги ◯/⟳/✓/⚠, счётчик символов, число
+    подразделов, PauseBadge, «⏹ Остановить».
+- `client/src/hooks/useStreamingGeneration.ts` — поверх useWebSocket (0.4);
+  соединение сразу с `?resume={id}` (handleResume §3.3 кроет и первый
+  заход, и реконнект), subscribe_generation на каждом open; состояние:
+  sections/complete/totalUsage/pause/error; resumeGeneration/resumePlan/
+  cancel.
+- `client/src/pages/CreateSynthesisPage.tsx` — заглушка 0.4 заменена;
+  PauseModal/PauseBadge интегрированы (TODO(1.5) из 1.4b закрыт);
+  confirm деградации при skip; redirect на /synthesis/:id через 1.2 с
+  после generation_complete.
+- `server/routes/syntheses.ts` += POST /syntheses/estimate (зеркало
+  конвейера generation-service: resolve→effective→order→defs→passes→
+  buildSYS/baseCtxStatic→estimateCost, БЕЗ записей в БД; из вилки 07
+  «сервер или клиентская копия» выбран СЕРВЕР — копия дрейфовала бы от
+  Registry) и POST /syntheses/advice (getCompatEntryByKey +
+  computeSectionAdvice; icon/title считает сервер, CSS-чипы — клиент,
+  как решено в главе 1.1); POST /syntheses: свободный синтез без seed
+  теперь отвечает кодом NO_PARTICIPANTS_SEED_REQUIRED (03 §4.3; ранее —
+  общий VALIDATION_ERROR; ожидание test-14 R2 обновлено).
+- `tests/test-15-requests2-7.mjs` — 40 браузерных проверок (мок SSE +
+  реальный сервер :3000 + vite :5199 + puppeteer/системный Chromium),
+  с БД-ассертами гранулярного парсинга ВНУТРИ теста
+  (categories=10/edges=18/terms=10/theses=6).
+
+## Адаптации DOM/DOC_STATE → сервис (решения беседы)
+
+1. pausedState для PauseModal собирается из WS generation_paused +
+   локального прогресса (passIdx/completedPasses/sectionLabel из
+   done-шагов; genParams={} — возобновление серверное). Полный источник —
+   GET /syntheses/:id, TODO(1.6) переключить.
+2. Confirm деградации при skip [25686] — обобщённый текст без списка
+   затронутых: точный расчёт требует resolvedDeps/substitution_map с
+   сервера (эндпоинт-кандидат; advice уже рядом — расширить при 1.6/2.1).
+3. Confirm «Остановить» скорректирован против исходника [24681]:
+   cancel по §3.1 финализирует как stop БЕЗ паузы.
+4. kind='plan' в потоке создания не возникает до 2.2 — минимальный
+   PausedStatePlan собран на будущее; onResumePlan на странице —
+   заглушка с warn (planId у формы нет).
+5. Шаги прогресса предзаполняются ["sum", ...sections] из формы;
+   сервер может изменить порядок (buildDynamicOrder) — шаги дозаводятся
+   по сообщениям.
+6. renderFullBudgetPreview/onKeepFullBudgetChange (превью веса
+   родителей) — вместе с пулом (1.5b/3.2): без концепций превью пусто.
+
+## Ревью по карте 04 (доля 1.5)
+
+- §3 «Непереносимое»: форма/чекбоксы/прогресс-панель → SynthesisForm/
+  PhilosopherPicker/SectionPicker/GenerationProgress ✓; submitBtn-механика/
+  _rebuildProgressPanelForResume/_ensureDocBodyContainers — React-состояние ✓.
+- §1.2: updateCompatAdvisor/toggleCompatPanel → CompatAdvisor.tsx ✓
+  (toggle = collapse); updateSectionWarnings → SectionWarnings.tsx +
+  серверный computeSectionAdvice (1.1) ✓; applyReplacement — НЕ портирован
+  (TODO: кнопки «Рекомендуемые замены»; данные replacements уже в entry).
+- Pause/Resume (строка §2.4): интеграция PauseModal/PauseBadge в
+  страницы ✓ (TODO(1.5) закрыт).
+- initLangUI/onLangSelect/saveLang (01 §4.15 п.6) ✓ — select + custom.
+- estimateCost UI (§1.3) ✓ через серверный /estimate.
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **1.5b (пул)**: SynthesisForm.tsx (пропс conceptParticipants — точка
+  встраивания пула; keepFullBudget уже условен), api/syntheses.ts
+  (participants в CreateSynthesisInput).
+- **1.6 (просмотр/каталог)**: useStreamingGeneration.ts + PauseModal
+  (страница синтеза должна подписываться так же и брать pausedState из
+  GET /syntheses/:id — закрыть адаптацию 1), api/syntheses.ts
+  (getSynthesis уже готов).
+- **2.1/2.2**: точный confirm skip — расширение /advice списком
+  затронутых при пропуске (адаптация 2).
+- **2.3 (EditModal)**: CompatAdvisor/SectionWarnings как образец
+  серверных советов + клиентского рендера.
+
+## Знания/грабли, добытые в 1.5
+
+1. Песочница: фоновый запуск (nohup/setsid + периодический опрос) НЕ
+   работает — вызовы bash с длинным sleep возвращают −1, лог не
+   материализуется, процесс сиротеет; весь прогон укладывать в ОДИН
+   вызов (~165 с лимит); мок ускорять (45 мс/чанк).
+2. innerText отдаёт текст ПОСЛЕ CSS text-transform (uppercase-заголовки
+   эпох) — маркеры ожидания puppeteer сверять по textContent.
+3. Сниффинг промпта в моке — только от lastIndexOf("ЗАДАНИЕ"): контекст
+   предыдущих разделов выше по промпту содержит те же маркеры; хвост
+   фиксированной длины тоже ломается (задание графа длиннее 4000).
+4. parseGraph/element-parser требуют table class="doc-table" — мок без
+   классов даёт ТИХИЕ нули в гранулярных таблицах; страховка — БД-ассерты
+   внутри браузерного теста.
+5. «Ложные» ошибки консоли dev-клиента: 403 fonts.googleapis (egress),
+   401 /auth/me до логина (StrictMode).
+6. vite dev на нестандартном порту: CLIENT_ORIGIN сервера выставлять
+   на фактический origin браузера.
+
+## Открытые TODO после 1.5
+
+- TODO(1.5b): пул концепций в форме; secSynthReady; превью keepFullBudget.
+- TODO(1.6): pausedState/estimates из GET /syntheses/:id вместо сборки
+  из WS-сообщения; SynthesisPage вместо заглушки.
+- TODO(2.x): applyReplacement (кнопки замен CompatAdvisor); точный
+  confirm деградации при skip.
+- Прочие TODO прежних бесед — без изменений.

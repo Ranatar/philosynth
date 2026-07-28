@@ -1,5 +1,8 @@
 # PhiloSynth Service — Карта переиспользования кода
 
+> **Ревизия 2026-07-29 (беседа 1.5)**: клиентская форма/прогресс;
+> эндпоинты /syntheses/estimate и /syntheses/advice; код
+> NO_PARTICIPANTS_SEED_REQUIRED в POST /syntheses.
 > **Ревизия 2026-07-22**: карта актуализирована по исходнику 26 024 стр.
 > Спецификации подсистем v11 — 01-architecture, §4.12–4.15.
 >
@@ -54,7 +57,7 @@
 |---|---|
 | `COMPAT_MATRIX_COMPACT`, `COMPAT_SEC_LABELS` (COMPAT_KEYS удалён) | `server/config/compat-matrix.ts` (→ БД) |
 | `computeSectionRating()` | `server/services/compat-advisor.ts` |
-| Advisor v2 (заменил computeMethodRating/computeOverallCompat/getCompatAdvice — их больше нет): `getCompatEntry()`, `getCompatEntryByKey()` (entry-модель `level:method` с severity), `iconForSeverity()`, `titleForSeverity()`, `chipClassForRating()`, `updateCompatAdvisor()` | `server/services/compat-advisor.ts` + `client/components/synthesis/CompatAdvisor.tsx` |
+| Advisor v2 (заменил computeMethodRating/computeOverallCompat/getCompatAdvice — их больше нет): `getCompatEntry()`, `getCompatEntryByKey()` (entry-модель `level:method` с severity), `iconForSeverity()`, `titleForSeverity()`, `chipClassForRating()`, `updateCompatAdvisor()` | `server/services/compat-advisor.ts` + `client/components/synthesis/CompatAdvisor.tsx` и `SectionWarnings.tsx` (боксы ⚠/💡/⇄; данные — POST /syntheses/advice, беседа 1.5); `applyReplacement()` — НЕ портирован, TODO 2.x (кнопки замен; replacements уже в entry) |
 | Section Dependency Warnings (живые предупреждения/рекомендации/подстановки в форме): `computeSectionWarnings()`, `updateSectionWarnings()` | там же + `client/components/synthesis/SectionWarnings.tsx` |
 
 ### 1.3. Оценка стоимости

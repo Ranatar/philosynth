@@ -6,6 +6,9 @@
 > 1.4 и FIX \w-бага updateDocTitleFromName [11886]; в 02 §2.15 — служебная
 > строка '_genCommon'.
 >
+> **Ревизия 2026-07-29 (беседа 1.5)**: клиентская форма/прогресс;
+> эндпоинты /syntheses/estimate и /syntheses/advice; код
+> NO_PARTICIPANTS_SEED_REQUIRED в POST /syntheses.
 > **Ревизия 2026-07-22**: протокол приведён к исходнику 26 024 стр. (v11):
 > свободный синтез в валидации, модель стриминга _streamRespOnce, новая
 > беседа 1.4b (Pause/Resume), parent-context в 1.2/1.3/3.1, Advisor v2 в 1.1.
@@ -849,6 +852,13 @@ generation-service.ts, ws/handler.ts, фрагмент исходника.
 ---
 
 ### Беседа 1.5: Форма создания + прогресс (клиент)
+
+> **По факту беседы 1.5**: сверх перечня первого запроса в этой же беседе
+> созданы `CompatAdvisor.tsx` и `SectionWarnings.tsx` (их требует тест 4)
+> и серверные `POST /syntheses/estimate` + `POST /syntheses/advice`
+> (03 §2.2). Из вилки «estimateCost на сервере (или клиентская копия)»
+> выбран СЕРВЕР. Код свободного синтеза без seed у POST /syntheses
+> приведён к §4.3 (NO_PARTICIPANTS_SEED_REQUIRED) — тест 5 ждёт его.
 
 **Контекст:**
 - `03-specification.md` (секция 1.3 Генерация)

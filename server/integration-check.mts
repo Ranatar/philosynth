@@ -1503,6 +1503,143 @@ const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "cr
   }
 }
 
+// ── 4m (беседа 1.5): форма/прогресс — клиент-модули + контракты роутов ──
+{
+  const cm = clientModule;
+  need(await cm("../client/src/api/syntheses.ts"),
+    ["createSynthesis", "estimateSynthesis", "getSynthesis", "fetchSynthesisAdvice"],
+    "client/api/syntheses");
+  for (const [f, exp] of [
+    ["SynthesisForm", "SynthesisForm"], ["PhilosopherPicker", "PhilosopherPicker"],
+    ["SectionPicker", "SectionPicker"], ["CostEstimate", "CostEstimate"],
+    ["CompatAdvisor", "CompatAdvisor"], ["SectionWarnings", "SectionWarnings"],
+    ["GenerationProgress", "GenerationProgress"],
+  ] as const) {
+    need(await cm(`../client/src/components/synthesis/${f}.tsx`), [exp], `client/synthesis/${f}`);
+  }
+  need(await cm("../client/src/hooks/useStreamingGeneration.ts"),
+    ["useStreamingGeneration"], "client/hooks/useStreamingGeneration");
+  need(await cm("../client/src/pages/CreateSynthesisPage.tsx"),
+    ["CreateSynthesisPage"], "client/pages/CreateSynthesisPage");
+
+  // Текстовые контракты (кросс-мировые типы статически не проверяемы — TS5097)
+  const fsm = await import("node:fs/promises");
+  const rd = (rel: string) => fsm.readFile(new URL(rel, import.meta.url), "utf8");
+  const routeSrc = await rd("./routes/syntheses.ts");
+  if (!routeSrc.includes('synthesesRoutes.post("/estimate", requireAuth'))
+    errs.push("4m: POST /syntheses/estimate без requireAuth либо не смонтирован");
+  if (!routeSrc.includes('synthesesRoutes.post("/advice", requireAuth'))
+    errs.push("4m: POST /syntheses/advice без requireAuth либо не смонтирован");
+  const estSlice = routeSrc.slice(routeSrc.indexOf('synthesesRoutes.post("/estimate"'));
+  const advSlice = routeSrc.slice(
+    routeSrc.indexOf('synthesesRoutes.post("/advice"'),
+    routeSrc.indexOf('synthesesRoutes.post("/estimate"'),
+  );
+  for (const [name, slice] of [["estimate", estSlice], ["advice", advSlice]] as const) {
+    if (/db\.(insert|update|delete)\(/.test(slice))
+      errs.push(`4m: ${name} пишет в БД — эндпоинт обязан быть чистым`);
+  }
+  for (const fn of ["resolveContextDeps", "buildEffectiveDeps", "buildDynamicOrder",
+    "buildSectionDefs", "groupPasses", "buildSYS", "estimateCost"]) {
+    if (!estSlice.includes(fn + "("))
+      errs.push(`4m: конвейер /estimate не зовёт ${fn} (зеркало generation-service)`);
+  }
+  if (!routeSrc.includes('"NO_PARTICIPANTS_SEED_REQUIRED"'))
+    errs.push("4m: код NO_PARTICIPANTS_SEED_REQUIRED (03 §4.3) не используется роутом");
+  const apiSrc = await rd("../client/src/api/syntheses.ts");
+  for (const path of ["/syntheses/estimate", "/syntheses/advice"]) {
+    if (!apiSrc.includes(`"${path}"`)) errs.push(`4m: client api не зовёт ${path}`);
+  }
+  for (const field of ["inTokens", "outTokens", "cost", "passes"]) {
+    if (!apiSrc.includes(field)) errs.push(`4m: SynthesisEstimate без поля ${field} (FullCostEstimate)`);
+  }
+  const pageSrc = await rd("../client/src/pages/CreateSynthesisPage.tsx");
+  if (!(pageSrc.includes('mode === "skip"') && pageSrc.includes("window.confirm")))
+    errs.push("4m: confirm деградации перед resume_generation(skip) не найден (адаптация 1.4b→1.5)");
+  const hookSrc = await rd("../client/src/hooks/useStreamingGeneration.ts");
+  if (!hookSrc.includes("?resume=")) errs.push("4m: useStreamingGeneration без ?resume= (§3.3)");
+  if (!hookSrc.includes('"subscribe_generation"')) errs.push("4m: хук не шлёт subscribe_generation");
+  const formSrc = await rd("../client/src/components/synthesis/SynthesisForm.tsx");
+  if (!formSrc.includes("хотя бы один раздел")) errs.push("4m: форма без валидации «0 секций»");
+  if (!formSrc.includes("conceptParticipants.length > 0"))
+    errs.push("4m: keepFullBudget не условен по концепциям пула");
+  if (!formSrc.includes("fetchSynthesisAdvice")) errs.push("4m: форма не тянет совет (advisor)");
+  for (const rel of ["../client/src/api/syntheses.ts", "../client/src/hooks/useStreamingGeneration.ts",
+    "../client/src/pages/CreateSynthesisPage.tsx"]) {
+    const src = await rd(rel);
+    if (/localStorage|sessionStorage/.test(src))
+      errs.push(`4m: browser storage запрещён (${rel})`);
+  }
+}
+
+// ── 5m (беседа 1.5): живые /estimate и /advice + код свободного синтеза ──
+{
+  const { Hono: Hono5m } = await import("hono");
+  const { synthesesRoutes: routes5m } = await import("./routes/syntheses.js");
+  const { db: db5m, schema: sch5m } = await import("./db/index.js");
+  const { eq: eq5m } = await import("drizzle-orm");
+  const authMod5m = await import("./middleware/auth.js");
+  const { env: env5m } = await import("./env.js");
+  const [u5m] = await db5m.insert(sch5m.users)
+    .values({ email: `i15-${Date.now()}@check.local`, passwordHash: await authMod5m.hashPassword("pw-15-check") })
+    .returning({ id: sch5m.users.id });
+  const uid5m = (u5m as { id: string }).id;
+  try {
+    const { token: tok5m } = await authMod5m.createSession(uid5m);
+    const cookie5m = `${env5m.session.cookieName}=${tok5m}`;
+    const app5m = new Hono5m();
+    app5m.route("/api/v1/syntheses", routes5m);
+    const post5m = (path: string, body: unknown, withAuth = true) =>
+      app5m.request(`http://local${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(withAuth ? { cookie: cookie5m } : {}) },
+        body: JSON.stringify(body),
+      });
+
+    const er = await post5m("/api/v1/syntheses/estimate", {
+      seed: "проверка", philosophers: ["Кант"], sections: ["graph", "glossary"],
+      method: "dialectical", depth: "standard", synthLevel: "comparative",
+    });
+    const ej = (await er.json()) as { estimate?: { cost: number; inTokens: number; outTokens: number; passes: number } };
+    if (er.status !== 200 || !ej.estimate) errs.push("5m: /estimate не вернул estimate: " + er.status);
+    else {
+      if (!(ej.estimate.cost > 0 && ej.estimate.inTokens > 0 && ej.estimate.outTokens > 0))
+        errs.push("5m: /estimate вернул нулевые оценки");
+      if (ej.estimate.passes !== 3) errs.push("5m: /estimate passes ≠ 3 (sum+graph+glossary): " + ej.estimate.passes);
+    }
+
+    const ar = await post5m("/api/v1/syntheses/advice", {
+      sections: ["evolution"], method: "creative", synthLevel: "comparative",
+    });
+    const aj = (await ar.json()) as {
+      entry?: { severity: string; icon: string; title: string } | null;
+      advice?: { warnings: { icon: string; text: string }[] };
+    };
+    if (ar.status !== 200 || !aj.advice) errs.push("5m: /advice не ответил: " + ar.status);
+    else {
+      if (aj.entry?.severity !== "stable" || aj.entry?.icon !== "★")
+        errs.push("5m: entry comparative:creative ≠ stable/★");
+      if (!aj.advice.warnings.some((w) => w.text.includes("Эволюция и перспективы")))
+        errs.push("5m: warnings не содержат зависимость evolution");
+    }
+
+    const noAuth = await post5m("/api/v1/syntheses/estimate", { sections: [] }, false);
+    if (noAuth.status !== 401) errs.push("5m: /estimate без сессии обязан отдавать 401");
+
+    const np = await post5m("/api/v1/syntheses", {
+      sections: ["glossary"], method: "dialectical", depth: "standard", synthLevel: "comparative",
+    });
+    const npj = (await np.json()) as { code?: string };
+    if (np.status !== 400 || npj.code !== "NO_PARTICIPANTS_SEED_REQUIRED")
+      errs.push(`5m: свободный синтез без seed → ожидался 400 NO_PARTICIPANTS_SEED_REQUIRED, получено ${np.status}/${npj.code}`);
+    const rows5m = await db5m.select({ id: sch5m.syntheses.id }).from(sch5m.syntheses)
+      .where(eq5m(sch5m.syntheses.userId, uid5m));
+    if (rows5m.length !== 0) errs.push("5m: отклонённый POST создал запись syntheses");
+  } finally {
+    await db5m.delete(sch5m.users).where(eq5m(sch5m.users.id, uid5m)); // CASCADE
+  }
+}
+
 // ── 5. Async-цепочки: реальный запрос через db и через sql ──
 import { db, sql, closeDb } from "./db/index.js";
 const viaRaw = await sql`SELECT 1 AS one`;
@@ -1522,4 +1659,4 @@ try { await sql`SELECT 1`; } catch { rejected = true; }
 if (!rejected) errs.push("await после closeDb не отклонился (пул не закрыт?)");
 
 if (errs.length) { console.error("ПРОБЛЕМЫ:\n" + errs.map(e => " - " + e).join("\n")); process.exit(1); }
-console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb) + 2i/4k/5k 1.4 (6 модулей streaming-manager/generation-service/graph-parser/element-parser/stream-state/routes-syntheses, реэкспорты stream-state тождественны; контракты: baseUrl из env, ретраи только pre-stream из env, activeRuns.set до await (гонка), цены из cost-estimator, scaffold дословно, _genCommon/common, user-abort без pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3; живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная замена, stream-state круговой по разделу и указателю, предохранители cancelGeneration/assertCanStartGeneration) + 2j/4l/5l 1.4b (pause-resume-service + порты serializeSubsectionRegen/extractPreambleConstraints в section-defs-builder и spliceSubsectionHtml/removeSubsectionHtml в html-parser + клиентский PauseModal (4 рендерера, fmtCost ≡ _fmtCost) + разъёмы generation-service; контракты: порог 250 и userNote «Заверши» дословно, runtime-guard режимов, провайдер estimates регистрируется импортом и питает обе точки generation_paused, метка [возобновление], resume_* диспетчеризованы, linkedom изолирован, 'resume' ∈ source; живьём: createPausedState → paused_state+pause_marker, computePauseEstimates из genParams (whole>0, skip=0, fill>0), RESUME_INVALID/FORBIDDEN, stop-финализация с resume_marker; фикс: closeRedis в teardown — event loop больше не висит)");
+console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb) + 2i/4k/5k 1.4 (6 модулей streaming-manager/generation-service/graph-parser/element-parser/stream-state/routes-syntheses, реэкспорты stream-state тождественны; контракты: baseUrl из env, ретраи только pre-stream из env, activeRuns.set до await (гонка), цены из cost-estimator, scaffold дословно, _genCommon/common, user-abort без pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3; живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная замена, stream-state круговой по разделу и указателю, предохранители cancelGeneration/assertCanStartGeneration) + 2j/4l/5l 1.4b (pause-resume-service + порты serializeSubsectionRegen/extractPreambleConstraints в section-defs-builder и spliceSubsectionHtml/removeSubsectionHtml в html-parser + клиентский PauseModal (4 рендерера, fmtCost ≡ _fmtCost) + разъёмы generation-service; контракты: порог 250 и userNote «Заверши» дословно, runtime-guard режимов, провайдер estimates регистрируется импортом и питает обе точки generation_paused, метка [возобновление], resume_* диспетчеризованы, linkedom изолирован, 'resume' ∈ source; живьём: createPausedState → paused_state+pause_marker, computePauseEstimates из genParams (whole>0, skip=0, fill>0), RESUME_INVALID/FORBIDDEN, stop-финализация с resume_marker; фикс: closeRedis в teardown — event loop больше не висит) + 4m/5m 1.5 (9 клиент-модулей формы/прогресса: api/syntheses + SynthesisForm/PhilosopherPicker/SectionPicker/CostEstimate/CompatAdvisor/SectionWarnings/GenerationProgress + useStreamingGeneration + CreateSynthesisPage; контракты: /estimate и /advice под requireAuth и без записей в БД, конвейер оценки зеркалит generation-service, NO_PARTICIPANTS_SEED_REQUIRED в коде роута, confirm перед skip, ?resume= и subscribe_generation в хуке, условный keepFullBudget, browser storage запрещён; живьём: estimate cost/in/out>0 passes=3, advice stable ★ + ⚠ evolution, 401 без сессии, свободный синтез без seed → 400 NO_PARTICIPANTS_SEED_REQUIRED без создания записи)");

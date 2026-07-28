@@ -306,8 +306,8 @@ async function main() {
   const lineage = await sql`SELECT parent_name FROM synthesis_lineage WHERE synthesis_id = ${curlBody.id} ORDER BY position`;
   ok(lineage.map((l) => l.parent_name).join(",") === "Кант,Гегель", "R2: генеалогия Кант,Гегель");
   const bad = await post(auth, { sections: ["sum"], method: "dialectical" });
-  ok(bad.status === 400 && bad.body.code === "VALIDATION_ERROR",
-    "R2: пустой seed без участников → 400 VALIDATION_ERROR");
+  ok(bad.status === 400 && bad.body.code === "NO_PARTICIPANTS_SEED_REQUIRED",
+    "R2: пустой seed без участников → 400 NO_PARTICIPANTS_SEED_REQUIRED (03 §4.3; код приведён беседой 1.5)");
 
   /* ── R3: полный цикл Кант+Гегель, sum/graph/glossary, overview ── */
   console.log("\n■ R3: полный цикл (WS: stream_delta → section_done ×3 → generation_complete)");
