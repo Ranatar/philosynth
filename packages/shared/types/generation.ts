@@ -22,7 +22,12 @@ export type GenerationSource =
   | "cascade"
   | "subsection_regen"
   | "mode"
-  | "mode_cascade";
+  | "mode_cascade"
+  /* 'resume' — строки генлога возобновлённой генерации (исходник
+   * _runGenPassesFromIdx [25573] пишет source:"resume"; в перечне
+   * 02-data-model §2.15 отсутствует — дыра доков, найдена беседой 1.4b,
+   * закрыть патчем доков в завершение беседы). */
+  | "resume";
 
 /** Строка generation_log (аналог genLog из исходника) */
 export interface GenLogEntry {

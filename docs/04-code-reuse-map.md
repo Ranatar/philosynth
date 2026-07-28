@@ -3,6 +3,11 @@
 > **Ревизия 2026-07-22**: карта актуализирована по исходнику 26 024 стр.
 > Спецификации подсистем v11 — 01-architecture, §4.12–4.15.
 >
+> **Правка 2026-07-28 (итоги 1.4b)**: строка Pause/Resume дополнена
+> фактическим размещением портов (serializeSubsectionRegen →
+> section-defs-builder; врезка подраздела → utils/html-parser) и
+> квирком [25358].
+>
 > **Правка 2026-07-27 (итоги 1.2)**: в §2.2 `serializeParts` вынесен в
 > отдельную строку с целевым модулем `section-defs-builder.ts`
 > (фактическое размещение: функция сериализует parts, которые строит
@@ -175,7 +180,9 @@
 | `executeEditPlan()` | confirm() → WebSocket confirm_step; последовательное исполнение на сервере; при обрыве — pausedState kind="plan" → `resumePlan()` | `server/services/plan-executor.ts` |
 | `executeSubsectionRegen()` | Серия confirm() → предрассчитанный план с downstream-шагами | `server/services/plan-executor.ts` |
 | `regenerateSection()` | DOM-манипуляции → запись в БД + WebSocket-стриминг | `server/services/generation-service.ts` |
-| Pause/Resume (спец.: 01 §4.12): `resumeGeneration()`, `_resumeFromSubsection()`, `_runGenPassesFromIdx()`, `_computeGenPauseEstimates()`, `_logPauseEvent()` | pausedState → персистентное хранение; модалка → React; действия fill-missing-subs/retry/skip/stop с оценками стоимости | `server/services/pause-resume-service.ts` + `client/components/PauseModal.tsx` |
+| Pause/Resume (спец.: 01 §4.12): `resumeGeneration()`, `_resumeFromSubsection()`, `_runGenPassesFromIdx()`, `_computeGenPauseEstimates()`, `_logPauseEvent()`, `_finalizeAfterStop_gen()`, `_continueAfterFilledSubs()`, `resumePlan()`, `showPauseModal()` + 4 рендерера + `_fmtCost()` | pausedState → персистентное хранение; модалка → React (управляется пропсами); действия fill-missing-subs/retry/skip/stop с оценками стоимости; `_runGenPassesFromIdx` — общий цикл `runGenerationPasses({startIdx, source})` в generation-service. Квирк исходника (1.4b): fallback «нет parts» [25358] зовёт `resumeGeneration('retry')` ПОСЛЕ `_clearPausedState()` — мёртвый путь; в порте retry-ветка инлайнится | `server/services/pause-resume-service.ts` + `client/components/synthesis/PauseModal.tsx` |
+| `serializeSubsectionRegen()` [10654], `extractPreambleConstraints()` [10727] (промпт перегенерации/доработки/продолжения ОДНОГО подраздела) | порт 1:1; живут рядом с `serializeParts` (§2.2) — сериализуют parts, которые строит `buildSectionDefs`; потребители: pause-resume-service (1.4b), regeneration/plan-executor (2.2) | `server/services/section-defs-builder.ts` |
+| DOM-механика замены подраздела из `regenerateSubsection` [20384–20444] (replaceWith/append, нечёткий поиск) | порт на строках html_content: `spliceSubsectionHtml()` / `removeSubsectionHtml()`; изоляция linkedom сохраняется | `server/utils/html-parser.ts` |
 | `updateDocTitleFromName()` | Авто-заголовок из раздела «name» → PATCH syntheses.title после section_done. ЛАТЕНТНЫЙ БАГ исходника [11886]: классы \w в регекспе префиксов не матчат кириллицу в JS — срезание префиксов было мёртвым кодом; порт (беседа 1.4) несёт задокументированный FIX \w → [а-яё] | `server/services/generation-service.ts` |
 | `_autoAddCurrentDocToPool()` | Свежий синтез автоматически предлагается участником мета-синтеза | `client/components/pool/ConceptPool.tsx` |
 | `regenerateSubsection()` | Аналогично | там же |

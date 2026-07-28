@@ -53,6 +53,7 @@ import type {
 } from "@philosynth/shared/types/synthesis";
 import type { CtxLogDraft } from "@philosynth/shared/types/generation";
 import type {
+  PauseEstimates,
   WsServerMessage,
 } from "@philosynth/shared/types/ws-messages";
 
@@ -137,6 +138,43 @@ export function registerParentContextProvider(): void {
     );
     return "";
   });
+}
+
+/* ══ Разъём провайдера оценок паузы (TODO 1.4 → 1.4b) ═════════════════ */
+
+export type PauseEstimatesProvider = (
+  synthesisId: string,
+  ps: PausedStateGen,
+) => Promise<PauseEstimates>;
+
+let pauseEstimatesProvider: PauseEstimatesProvider | null = null;
+
+/**
+ * Регистрация серверного аналога _computeGenPauseEstimates [24521]
+ * (pause-resume-service, беседа 1.4b; регистрация — побочный эффект его
+ * импорта через ws/handler). Без провайдера generation_paused несёт
+ * estimates:{} — деградация, а не ошибка. Разъём вместо прямого импорта:
+ * pause-resume-service сам импортирует generation-service (цикл ESM
+ * недопустим); прецедент — setParentContextProvider (1.2 → 1.4).
+ */
+export function setPauseEstimatesProvider(
+  fn: PauseEstimatesProvider | null,
+): void {
+  pauseEstimatesProvider = fn;
+}
+
+async function pauseEstimatesFor(
+  synthesisId: string,
+  ps: PausedStateGen,
+): Promise<PauseEstimates> {
+  if (!pauseEstimatesProvider) return {};
+  try {
+    return await pauseEstimatesProvider(synthesisId, ps);
+  } catch (e) {
+    // fail-open, как console.warn исходника [24660]
+    console.warn("_computeGenPauseEstimates error:", e);
+    return {};
+  }
 }
 
 /* ══ Реестр активных генераций ════════════════════════════════════════ */
@@ -422,15 +460,18 @@ const TOTAL_HTML_EVERY_N_DELTAS = 25;
 /** Троттлинг пересчёта подразделов в onDelta (как 300 мс исходника). */
 const SUBSECTION_SCAN_THROTTLE_MS = 300;
 
-type SynthesisRow = typeof syntheses.$inferSelect;
+export type SynthesisRow = typeof syntheses.$inferSelect;
 
-interface LoadedSynthesis {
+export interface LoadedSynthesis {
   row: SynthesisRow;
   philosophers: string[];
   secCtx: Record<string, string>;
 }
 
-async function loadSynthesis(synthesisId: string): Promise<LoadedSynthesis> {
+/** Экспортирована для pause-resume-service (беседа 1.4b). */
+export async function loadSynthesis(
+  synthesisId: string,
+): Promise<LoadedSynthesis> {
   const [row] = await db
     .select()
     .from(syntheses)
@@ -518,13 +559,29 @@ export function assertCanStartGeneration(userId: string): void {
  * GenerationError (вызывающий шлёт stream_error); обрывы стрима внутри
  * цикла — пауза (pausedState + generation_paused), не исключение.
  */
-export async function generateSynthesis(
+/** Ручка слота активной генерации (передаётся в цикл проходов). */
+export interface GenerationSlotHandle {
+  synthesisId: string;
+  userId: string;
+  /** Сигнал user-abort (WS cancel §3.1) */
+  signal: AbortSignal;
+}
+
+/**
+ * Резервация слота activeRuns + предпроверки + гарантированное
+ * освобождение. Слот ставится СИНХРОННО, до первого await: иначе
+ * POST-запуск и subscribe_generation, пришедший в окно loadSynthesis,
+ * оба проходят has()-проверку и стартуют ДВА параллельных цикла
+ * (грабля 1.4, тест R3: двойной saveGraphToDb → 23505 на cluster_labels).
+ * Экспортирована для pause-resume-service (беседа 1.4b): ветка
+ * fill-missing-subs стримит подразделы под тем же предохранителем,
+ * чтобы работал cancel.
+ */
+export async function withGenerationSlot(
   synthesisId: string,
   userId: string,
-  opts: GenerateSynthesisOptions = {},
+  fn: (handle: GenerationSlotHandle) => Promise<void>,
 ): Promise<void> {
-  registerParentContextProvider();
-
   if (activeRuns.has(synthesisId)) {
     throw new GenerationError(
       "GENERATION_IN_PROGRESS",
@@ -532,12 +589,6 @@ export async function generateSynthesis(
     );
   }
   assertCanStartGeneration(userId);
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
-
-  /* Слот резервируется СИНХРОННО, до первого await: иначе POST-запуск и
-     subscribe_generation, пришедший в окно loadSynthesis, оба проходят
-     has()-проверку и стартуют ДВА параллельных цикла (найдено тестом R3:
-     двойной saveGraphToDb → 23505 на cluster_labels). */
   const run: ActiveRun = {
     synthesisId,
     userId,
@@ -546,15 +597,62 @@ export async function generateSynthesis(
   };
   activeRuns.set(synthesisId, run);
   try {
+    await fn({ synthesisId, userId, signal: run.abort.signal });
+  } finally {
+    activeRuns.delete(synthesisId);
+  }
+}
+
+export async function generateSynthesis(
+  synthesisId: string,
+  userId: string,
+  opts: GenerateSynthesisOptions = {},
+): Promise<void> {
+  registerParentContextProvider();
+  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  await withGenerationSlot(synthesisId, userId, async (handle) => {
     const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
     if (row.userId !== userId) {
       throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
     }
     Object.assign(secCtx, opts.sectionContexts ?? {});
-    await runGeneration(run, row, philosophers, secCtx, apiKey);
-  } finally {
-    activeRuns.delete(synthesisId);
-  }
+    await runGenerationPasses(handle, row, philosophers, secCtx, apiKey);
+  });
+}
+
+export interface ResumeFromPassOptions {
+  /** secCtx из снапшота genParams: переопределения sectionContexts POST
+   *  для НЕдостигнутых проходов не персистентны в sections.sec_context */
+  sectionContexts?: Record<string, string> | undefined;
+}
+
+/**
+ * Возобновление цикла проходов с startIdx — доля resumeGeneration [25075]
+ * уровня «пересборка инфраструктуры + _runGenPassesFromIdx» (retry/skip и
+ * продолжение после догенерации подразделов; беседа 1.4b). Вызывающий
+ * (pause-resume-service) обязан ДО вызова: записать resume_marker,
+ * очистить pausedState и поставить status='generating' (аналог
+ * _clearPausedState [25141] — новая ошибка запишет НОВЫЙ pausedState).
+ */
+export async function resumeSynthesisFromPass(
+  synthesisId: string,
+  userId: string,
+  startIdx: number,
+  opts: ResumeFromPassOptions = {},
+): Promise<void> {
+  registerParentContextProvider();
+  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  await withGenerationSlot(synthesisId, userId, async (handle) => {
+    const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
+    if (row.userId !== userId) {
+      throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
+    }
+    Object.assign(secCtx, opts.sectionContexts ?? {});
+    await runGenerationPasses(handle, row, philosophers, secCtx, apiKey, {
+      startIdx,
+      source: "resume",
+    });
+  });
 }
 
 /** Параметры p в форме исходника из строки syntheses. */
@@ -583,14 +681,36 @@ function buildParams(
   };
 }
 
-async function runGeneration(
-  run: ActiveRun,
+export interface RunGenerationOptions {
+  /** С какого pass начинать: 0 — штатная генерация, passIdx — retry,
+   *  passIdx+1 — skip / продолжение после догенерации подразделов */
+  startIdx?: number | undefined;
+  /** source строк генлога (_runGenPassesFromIdx [25573]: 'init'|'resume';
+   *  в терминах 02 §2.15 — 'initial'|'resume') */
+  source?: "initial" | "resume" | undefined;
+}
+
+/**
+ * Цикл проходов (_runGenPassesFromIdx [25573]) — ЕДИНЫЙ для штатной
+ * генерации и возобновления; различаются только startIdx и source (при
+ * resume: метки « [возобновление]» в генлоге, _genCommon не дублируется).
+ * Экспортирован для pause-resume-service (беседа 1.4b): продолжение после
+ * fill-missing-subs идёт под уже занятым слотом (_continueAfterFilledSubs
+ * [25500]).
+ */
+export async function runGenerationPasses(
+  run: GenerationSlotHandle,
   row: SynthesisRow,
   philosophers: string[],
   secCtx: Record<string, string>,
   apiKey: string,
+  options: RunGenerationOptions = {},
 ): Promise<void> {
   const { synthesisId, userId } = run;
+  const startIdx = options.startIdx ?? 0;
+  const source = options.source ?? "initial";
+  const isResume = source === "resume";
+  const labelSuffix = isResume ? " [возобновление]" : "";
   const p = buildParams(row, philosophers, secCtx);
 
   /* ── Инфраструктура порядка [12078–12100] ── */
@@ -656,16 +776,32 @@ async function runGeneration(
     totalChars: commonChars,
     conceptBlockSizes: await computeFullConceptBlockSizes([]), // TODO(3.1)
   };
-  await db.insert(generationLog).values({
-    synthesisId,
-    sectionKey: "_genCommon",
-    sectionLabel: "Общие элементы",
-    logType: "generation",
-    source: "initial",
-    status: "common",
-    inputChars: commonChars,
-    metadata: { genCommon },
-  });
+  /* На возобновлении _genCommon обычно уже записан штатной генерацией —
+     не дублируем (аналог `if (!genCommon)` исходника [25563/1039]). */
+  const existingCommon = isResume
+    ? await db
+        .select({ id: generationLog.id })
+        .from(generationLog)
+        .where(
+          and(
+            eq(generationLog.synthesisId, synthesisId),
+            eq(generationLog.sectionKey, "_genCommon"),
+          ),
+        )
+        .limit(1)
+    : [];
+  if (existingCommon.length === 0) {
+    await db.insert(generationLog).values({
+      synthesisId,
+      sectionKey: "_genCommon",
+      sectionLabel: "Общие элементы",
+      logType: "generation",
+      source,
+      status: "common",
+      inputChars: commonChars,
+      metadata: { genCommon },
+    });
+  }
 
   let totalInputTokens = row.totalInputTokens;
   let totalOutputTokens = row.totalOutputTokens;
@@ -675,8 +811,8 @@ async function runGeneration(
   const subsecMapAll = await buildSubsectionMap(p);
   const retryDelays = env.streaming.retryDelays;
 
-  /* ── Цикл проходов (_runGenPassesFromIdx, startIdx=0, source='initial') ── */
-  for (let i = 0; i < passes.length; i++) {
+  /* ── Цикл проходов (_runGenPassesFromIdx [25573]) ── */
+  for (let i = startIdx; i < passes.length; i++) {
     const pass = passes[i] as SectionDefFull[];
     const passKey = (pass[0] as SectionDefFull).key;
     const sectionLabel = pass.map((d) => d.title).join(" + ");
@@ -755,9 +891,10 @@ async function runGeneration(
         .values({
           synthesisId,
           sectionKey: sectionKeyJoined,
-          sectionLabel,
+          // labelSuffix ' [возобновление]' — только в genEntry [25601]
+          sectionLabel: sectionLabel + labelSuffix,
           logType: "generation",
-          source: "initial",
+          source,
           status: "streaming",
           priorChars: prior.length,
           taskChars: sp.length,
@@ -839,7 +976,7 @@ async function runGeneration(
                 attemptHtml = htmlSoFar;
                 onDelta(delta, totalChars, htmlSoFar);
               },
-              { signal: run.abort.signal },
+              { signal: run.signal },
             );
             html = attemptHtml;
             break;
@@ -855,7 +992,7 @@ async function runGeneration(
                 e.message,
               );
               await clearStreamState(synthesisId, passKey);
-              await sleep(wait, run.abort.signal);
+              await sleep(wait, run.signal);
               continue;
             }
             throw e;
@@ -920,7 +1057,7 @@ async function runGeneration(
             sectionKey: sectionKeyJoined,
             sectionLabel,
             logType: "user_action_marker",
-            source: "initial",
+            source,
             status: "done",
             metadata: { action: "abort", context: "streamSection", passIdx: i },
           });
@@ -973,7 +1110,7 @@ async function runGeneration(
           sectionKey: sectionKeyJoined,
           sectionLabel,
           logType: "pause_marker",
-          source: "initial",
+          source,
           status: "done",
           metadata: {
             kind: "gen",
@@ -997,7 +1134,7 @@ async function runGeneration(
           isPartial,
           partialSubsections: doneSubs.map((s) => s.name),
           expectedSubsections: [...expectedSubs],
-          estimates: {}, // серверный _computeGenPauseEstimates — беседа 1.4b
+          estimates: await pauseEstimatesFor(synthesisId, pausedState),
         });
         return; // прерываем цикл
       }
@@ -1142,7 +1279,7 @@ async function runGeneration(
         sectionKey: sectionKeyJoined,
         sectionLabel,
         logType: "pause_marker",
-        source: "initial",
+        source,
         status: "done",
         metadata: {
           kind: "gen",
@@ -1160,7 +1297,7 @@ async function runGeneration(
         reasonKind: "context-error",
         reason,
         isPartial: false,
-        estimates: {},
+        estimates: await pauseEstimatesFor(synthesisId, pausedState),
       });
       return;
     }
@@ -1196,7 +1333,7 @@ function totalCostStr(inputTokens: number, outputTokens: number): string {
  * sectionOrder → фактический динамический порядок, статус 'ready',
  * pausedState → null (защита исходника [12296]), итоговый usage клиенту.
  */
-async function finalizeRun(
+export async function finalizeRun(
   synthesisId: string,
   userId: string,
   dynamicOrder: string[],

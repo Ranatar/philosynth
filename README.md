@@ -69,10 +69,10 @@ npm run typecheck:scripts
 ```
 
 `check:integration` расширяется секциями по мере бесед (сейчас покрывает
-0.1–0.6 и 1.1–1.4); живые секции требуют поднятых PG и Redis и засеянных
+0.1–0.6 и 1.1–1.4b); живые секции требуют поднятых PG и Redis и засеянных
 prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.4 закрыты
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.4b закрыты
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -143,8 +143,22 @@ prompt_templates, synthesis_configs и каталогов таксономии.
   subscribe_generation/cancel + resume-протокол §3.3. Сквозной тест с
   мок-SSE Claude API: test-14-requests2-8.mjs 46/46 ✓.
 
-Не сделано (Фаза 1+): pause/resume-действия (1.4b), страницы
-синтеза/каталога/графа, каскады и план редактирования, мета-синтез,
-режимы, экспорт/импорт, billing.
-Следующая по графу 07 — беседа 1.4b (Pause/Resume) либо 1.5 (форма и
-прогресс) / 2.1 (cascade-analyzer) параллельно.
+- **1.4b — pause/resume.** pause-resume-service (маркеры генлога,
+  pausedState с перегрузками gen/plan, оценки стоимости действий из
+  genParams + фактических размеров done-строк; resumeGeneration:
+  stop/retry/skip/fill-missing-subs с догенерацией только недостающих
+  подразделов — оборванный первым, порог продолжения 250 симв.,
+  готовые идут контекстом; resumePlan — каркас до 2.2); порты
+  serializeSubsectionRegen/extractPreambleConstraints и врезка
+  подраздела; WS resume_generation/resume_plan; клиентский PauseModal
+  (4 рендерера + бейдж). Тесты: smoke-1.4b.mts 27/27 ✓ (байтовая
+  сверка промптов), tests/test-14b-requests2-6.mjs 56/56 ✓
+  (max-tokens/billing/персистентность через рестарт/stop/edge cases).
+
+Не сделано (Фаза 1+): страницы синтеза/каталога/графа, каскады и план
+редактирования (plan-executor — снимет RESUME_INVALID с resume_plan
+retry/skip_step), мета-синтез, режимы, экспорт/импорт, billing,
+BYO-Key (6.1 — ввод ключа в auth-модалке).
+Следующая по графу 07 — беседа 1.5 (форма и прогресс; интеграция
+PauseModal) либо 2.1 (cascade-analyzer) / 2.2 (regeneration +
+plan-executor) параллельно.

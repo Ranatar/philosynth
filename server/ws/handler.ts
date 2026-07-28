@@ -11,8 +11,10 @@
  *
  * Беседа 1.4: subscribe_generation → запуск/подписка generateSynthesis
  * (generation-service), cancel → cancelGeneration (user-abort §3.1).
- * Остальные операции (start_regen, resume_*, execute_plan, …) — заглушки
- * до бесед 1.4b / 2.2 / 4.1.
+ * Беседа 1.4b: resume_generation / resume_plan → pause-resume-service
+ * (импорт которого регистрирует провайдер estimates для generation_paused).
+ * Остальные операции (start_regen, execute_plan, …) — заглушки до
+ * бесед 2.2 / 4.1.
  * Reconnect-протокол §3.3 (?resume= + stream_state в Redis) — запрос 6
  * беседы 1.4.
  */
@@ -20,7 +22,11 @@ import { createNodeWebSocket } from "@hono/node-ws";
 import type { Hono } from "hono";
 import type { UpgradeWebSocket, WSContext } from "hono/ws";
 
-import type { WsClientMessage } from "@philosynth/shared/types/ws-messages";
+import type {
+  ResumeGenerationMode,
+  ResumePlanMode,
+  WsClientMessage,
+} from "@philosynth/shared/types/ws-messages";
 
 import { eq } from "drizzle-orm";
 
@@ -38,6 +44,12 @@ import {
   GenerationError,
   isGenerationActive,
 } from "../services/generation-service.js";
+import {
+  computePauseEstimates,
+  PauseResumeError,
+  resumeGeneration,
+  resumePlan,
+} from "../services/pause-resume-service.js";
 import { connectionManager } from "./connection-manager.js";
 import { getStreamState } from "./stream-state.js";
 
@@ -205,9 +217,66 @@ async function handleResume(
         isPartial: ps.isPartial,
         partialSubsections: ps.partialSubsections,
         expectedSubsections: ps.expectedSubsections,
-        estimates: {}, // _computeGenPauseEstimates — беседа 1.4b
+        estimates: await computePauseEstimates(synthesisId, ps),
       });
     }
+  }
+}
+
+/**
+ * resume_generation / resume_plan (беседа 1.4b, 03-spec §3.1): действия
+ * возобновления. generation_resumed шлёт сам pause-resume-service после
+ * валидации; ошибки (RESUME_INVALID и др., §4.3) → stream_error
+ * recoverable:false с кодом в тексте.
+ */
+async function handleResumeGeneration(
+  ws: WSContext,
+  user: AuthUser,
+  synthesisId: string,
+  mode: ResumeGenerationMode,
+): Promise<void> {
+  try {
+    await resumeGeneration(synthesisId, user.id, mode);
+  } catch (err) {
+    const message =
+      err instanceof PauseResumeError || err instanceof GenerationError
+        ? `${err.code}: ${err.message}`
+        : err instanceof Error
+          ? err.message
+          : "Не удалось возобновить генерацию";
+    console.error(`[ws] resumeGeneration(${synthesisId}, ${mode}):`, err);
+    connectionManager.send(ws, {
+      type: "stream_error",
+      synthesisId,
+      error: message,
+      recoverable: false,
+    });
+  }
+}
+
+async function handleResumePlan(
+  ws: WSContext,
+  user: AuthUser,
+  synthesisId: string,
+  planId: string,
+  mode: ResumePlanMode,
+): Promise<void> {
+  try {
+    await resumePlan(synthesisId, planId, user.id, mode);
+  } catch (err) {
+    const message =
+      err instanceof PauseResumeError || err instanceof GenerationError
+        ? `${err.code}: ${err.message}`
+        : err instanceof Error
+          ? err.message
+          : "Не удалось возобновить план";
+    console.error(`[ws] resumePlan(${synthesisId}, ${mode}):`, err);
+    connectionManager.send(ws, {
+      type: "stream_error",
+      synthesisId,
+      error: message,
+      recoverable: false,
+    });
   }
 }
 
@@ -233,17 +302,24 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
       return;
     }
 
-    // Операции регенерации/планов/возобновления — беседы 1.4b, 2.2, 4.1
-    // (pause-resume-service, regeneration-service, plan-executor)
+    // Возобновление паузы (беседа 1.4b, 01-arch §4.12)
+    case "resume_generation":
+      void handleResumeGeneration(ws, user, msg.synthesisId, msg.mode);
+      return;
+
+    case "resume_plan":
+      void handleResumePlan(ws, user, msg.synthesisId, msg.planId, msg.mode);
+      return;
+
+    // Операции регенерации/планов/режимов — беседы 2.2, 4.1
+    // (regeneration-service, plan-executor, mode-service)
     case "start_regen":
     case "start_sub_regen":
     case "start_mode":
     case "execute_plan":
     case "confirm_step":
-    case "resume_generation":
-    case "resume_plan":
       console.warn(
-        `[ws] user=${user.id}: тип "${msg.type}" ещё не реализован (беседы 1.4b+)`,
+        `[ws] user=${user.id}: тип "${msg.type}" ещё не реализован (беседы 2.2/4.1)`,
       );
       return;
   }

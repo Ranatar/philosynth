@@ -241,6 +241,27 @@ need(await import("./routes/syntheses.js"), ["synthesesRoutes"], "routes/synthes
     errs.push("2i: реэкспорты get/clearStreamState не тождественны реализации ws/stream-state");
 }
 
+// ── 2j. Модули беседы 1.4b: pause-resume-service, порты в section-defs-builder
+//        и html-parser, клиентская модалка паузы ──
+{
+  need(await import("./services/pause-resume-service.js"), [
+    "logPauseEvent", "createPausedState", "computePauseEstimates",
+    "resumeGeneration", "resumePlan", "setPlanResumeExecutor", "PauseResumeError",
+  ], "services/pause-resume-service");
+  need(await import("./services/section-defs-builder.js"),
+    ["serializeSubsectionRegen", "extractPreambleConstraints"],
+    "section-defs-builder (порты [10654]/[10727], 1.4b)");
+  need(await import("./utils/html-parser.js"),
+    ["spliceSubsectionHtml", "removeSubsectionHtml"],
+    "html-parser (врезка подраздела, 1.4b)");
+  // Клиентский PauseModal — в 4l (clientModule объявляется ниже, в блоке 0.4)
+  // Разъёмы generation-service, добавленные 1.4b
+  need(await import("./services/generation-service.js"), [
+    "withGenerationSlot", "runGenerationPasses", "resumeSynthesisFromPass",
+    "loadSynthesis", "finalizeRun", "setPauseEstimatesProvider",
+  ], "generation-service (экспорты 1.4b)");
+}
+
 // ── 3. Типовые (compile-time) модули: сам факт импорта проверяет пути ──
 import type { SynthesisFull, PausedState } from "@philosynth/shared/types/synthesis";
 import type { SectionFull } from "@philosynth/shared/types/section";
@@ -1131,6 +1152,79 @@ const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "cr
     errs.push("4k: handler обязан реализовывать resume-протокол §3.3");
 }
 
+// ── 4l. Контрактные проверки беседы 1.4b (pause-resume) ──
+{
+  const pr4l = await import("./services/pause-resume-service.js");
+  const sd4l = await import("./services/section-defs-builder.js");
+  const sch4l = await import("./db/schema.js");
+  type ResumeGenMode14b = import("@philosynth/shared/types/ws-messages").ResumeGenerationMode;
+  type ResumePlanMode14b = import("@philosynth/shared/types/ws-messages").ResumePlanMode;
+  type PauseEstimates14b = import("@philosynth/shared/types/ws-messages").PauseEstimates;
+  type PausedStateGen14b = import("@philosynth/shared/types/synthesis").PausedStateGen;
+  type GenSource14b = import("@philosynth/shared/types/generation").GenerationSource;
+  type SectionParts14b = import("./services/section-defs-builder.js").SectionParts;
+  type SubsectionRegenOpts14b = import("./services/section-defs-builder.js").SubsectionRegenOpts;
+
+  // Сигнатуры и перечни (compile-time, сквозная серия _t59+)
+  const _t59: GenSource14b = "resume"; // дыра 02 §2.15 закрыта патчем 14b/A
+  const _t60: NonNullable<(typeof sch4l.generationLog.$inferInsert)["source"]> = "resume";
+  const _t61: (sid: string, uid: string, m: ResumeGenMode14b) => Promise<void> =
+    (s, u, m) => pr4l.resumeGeneration(s, u, m);
+  const _t62: (sid: string, pid: string, uid: string, m: ResumePlanMode14b) => Promise<void> =
+    (s, p, u, m) => pr4l.resumePlan(s, p, u, m);
+  const _t63: (sid: string, ps: PausedStateGen14b) => Promise<PauseEstimates14b> =
+    (s, ps) => pr4l.computePauseEstimates(s, ps);
+  const _t64: Record<ResumeGenMode14b, 1> = { "fill-missing-subs": 1, retry: 1, skip: 1, stop: 1 };
+  const _t65: Record<ResumePlanMode14b, 1> = { retry: 1, skip_step: 1, stop: 1 };
+  const _t66: (p: SectionParts14b, s: string, i: string, o?: SubsectionRegenOpts14b) => string =
+    (p, s, i, o) => sd4l.serializeSubsectionRegen(p, s, i, o);
+  void _t59; void _t60; void _t61; void _t62; void _t63; void _t64; void _t65; void _t66;
+
+  const strip4l = (s: string): string =>
+    s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const prSrc = strip4l(readFileSync(new URL("./services/pause-resume-service.ts", import.meta.url), "utf8"));
+  const gsSrc4l = strip4l(readFileSync(new URL("./services/generation-service.ts", import.meta.url), "utf8"));
+  const whSrc4l = strip4l(readFileSync(new URL("./ws/handler.ts", import.meta.url), "utf8"));
+  const pmSrc = readFileSync(new URL("../client/src/components/synthesis/PauseModal.tsx", import.meta.url), "utf8");
+
+  // Порог продолжения и userNote «Заверши» — дословно из исходника [25361/25412]
+  if (!prSrc.includes("RESUME_CONTINUE_THRESHOLD = 250"))
+    errs.push("4l: порог продолжения оборванного подраздела (250) разошёлся с исходником");
+  if (!prSrc.includes("ДОСЛОВНО и продолжи писать именно с того места"))
+    errs.push("4l: userNote режима продолжения разошёлся с _resumeFromSubsection");
+  // Runtime-guard «чужого mode» (03 §4.3): WS-строка не должна проваливаться в retry
+  if (!prSrc.includes('["fill-missing-subs", "retry", "skip", "stop"].includes(mode)') ||
+      !prSrc.includes('["retry", "skip_step", "stop"].includes(mode)'))
+    errs.push("4l: runtime-guard режимов возобновления не найден");
+  // Регистрация провайдера оценок — побочный эффект импорта (низ модуля)
+  if (!prSrc.includes("setPauseEstimatesProvider((synthesisId, ps)"))
+    errs.push("4l: провайдер estimates обязан регистрироваться при импорте pause-resume-service");
+  if ((gsSrc4l.match(/estimates: await pauseEstimatesFor\(/g) ?? []).length < 2)
+    errs.push("4l: обе точки generation_paused обязаны нести живые estimates");
+  // Метка возобновления — только в genEntry [25601]
+  if (!gsSrc4l.includes('" [возобновление]"'))
+    errs.push("4l: labelSuffix [возобновление] в генлоге не найден");
+  // handler: resume_* диспетчеризованы (не заглушки)
+  if (!whSrc4l.includes("handleResumeGeneration(ws, user") ||
+      !whSrc4l.includes("handleResumePlan(ws, user"))
+    errs.push("4l: resume_generation/resume_plan не диспетчеризованы в handler");
+  // DOM-мутации — только через html-parser (изоляция linkedom, правило 1.3)
+  if (/from "linkedom"/.test(prSrc))
+    errs.push("4l: pause-resume-service не должен импортировать linkedom напрямую");
+  // Клиентская модалка: 4 рендерера + бейдж, без browser storage
+  for (const nm of ["GenContent", "PlanContent", "BillingContent", "AuthContent", "PauseBadge"])
+    if (!pmSrc.includes(nm)) errs.push(`4l: в PauseModal отсутствует ${nm}`);
+  if (/localStorage|sessionStorage/.test(pmSrc))
+    errs.push("4l: PauseModal не должен использовать browser storage");
+  // Семантика fmtCost — опорные точки _fmtCost [24634] (байтовая сверка — smoke-1.4b)
+  const pmMod4l = await clientModule("../client/src/components/synthesis/PauseModal.tsx");
+  need(pmMod4l, ["PauseModal", "PauseBadge", "fmtCost"], "client/synthesis/PauseModal");
+  const pm4l = pmMod4l as { fmtCost: (c: number | null) => string };
+  if (pm4l.fmtCost(0) !== "$0" || pm4l.fmtCost(0.0042) !== "≈ 0.42¢" ||
+      pm4l.fmtCost(0.1234) !== "≈ $0.123" || pm4l.fmtCost(null) !== "")
+    errs.push("4l: fmtCost разошёлся с _fmtCost [24634]");
+}
+
 // ── 5j. Живой конвейер беседы 1.3 против БД (ДО секции 5, закрывающей пул) ──
 // resolveContextDeps → buildEffectiveDeps → buildDynamicOrder →
 // buildContextForSection на реальных sections/categories.
@@ -1312,12 +1406,112 @@ const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "cr
   }
 }
 
+// ── 5l. Живой pause/resume беседы 1.4b против БД (до закрытия пула) ──
+// createPausedState → paused_state + pause_marker; computePauseEstimates
+// на пересобранной из genParams инфраструктуре; валидации resumeGeneration
+// (чужой mode / чужой пользователь); stop-финализация с resume_marker.
+// Полные сценарии — tests/test-14b-requests2-6.mjs (56 ✓, живой сервер).
+{
+  const pr5l = await import("./services/pause-resume-service.js");
+  const { db: db5l } = await import("./db/index.js");
+  const sch5l = await import("./db/schema.js");
+  const { and: and5l, eq: eq5l } = await import("drizzle-orm");
+
+  const u5l = (
+    await db5l.insert(sch5l.users)
+      .values({ email: `ic14b-${Date.now()}@example.org`, passwordHash: "x" })
+      .returning({ id: sch5l.users.id })
+  )[0]!.id;
+  try {
+    const s5l = (
+      await db5l.insert(sch5l.syntheses)
+        .values({ userId: u5l, seed: "интеграция 1.4b", depth: "overview", status: "generating" })
+        .returning({ id: sch5l.syntheses.id })
+    )[0]!.id;
+
+    const genParams5l = {
+      seed: "интеграция 1.4b", phil: ["Кант"],
+      participants: [{ type: "philosopher", name: "Кант" }],
+      sec: [], method: "dialectical", synthLevel: "comparative",
+      depth: "overview", generationOrder: "architectural",
+      extGraphMetrics: false, ctx: "", lang: "Russian",
+      secCtx: {}, keepFullBudget: false,
+    };
+    const ps5l = await pr5l.createPausedState(s5l, "gen", {
+      passIdx: 0, sectionKeys: ["sum"], sectionLabel: "Резюме",
+      isPartial: true, reason: "интеграционная пауза", reasonKind: "partial",
+      partialSubsections: ["Цели и метод"],
+      expectedSubsections: ["Цели и метод", "Портрет каждого философа"],
+      completedPasses: [], genParams: genParams5l,
+    });
+    if (ps5l.kind !== "gen" || !(ps5l.timestamp > 0))
+      errs.push("5l: createPausedState не проставил kind/timestamp");
+    const [row5l] = await db5l.select().from(sch5l.syntheses).where(eq5l(sch5l.syntheses.id, s5l));
+    if (row5l?.status !== "paused" || row5l.pausedState?.kind !== "gen")
+      errs.push("5l: пауза не персистирована (status/paused_state)");
+    const mk5l = await db5l.select({ lt: sch5l.generationLog.logType })
+      .from(sch5l.generationLog)
+      .where(and5l(eq5l(sch5l.generationLog.synthesisId, s5l),
+        eq5l(sch5l.generationLog.logType, "pause_marker")));
+    if (mk5l.length !== 1) errs.push("5l: pause_marker не записан");
+
+    // Живые оценки: rebuildInfra из genParams (конфиги — из посеянного Registry)
+    const est5l = await pr5l.computePauseEstimates(s5l, ps5l);
+    if (!(typeof est5l.wholeSection === "number" && est5l.wholeSection > 0))
+      errs.push("5l: wholeSection не вычислен из genParams");
+    if (est5l.skipRemaining !== 0)
+      errs.push("5l: skipRemaining единственного pass обязан быть 0");
+    if (!(typeof est5l.fillMissingSubs === "number" && est5l.fillMissingSubs > 0))
+      errs.push("5l: fillMissingSubs по недостающим не вычислен");
+
+    // Валидации: чужой mode → RESUME_INVALID, чужой пользователь → FORBIDDEN
+    for (const [uid5l, mode5l, code5l] of [
+      [u5l, "bogus-mode", "RESUME_INVALID"],
+      ["00000000-0000-0000-0000-000000000000", "retry", "FORBIDDEN"],
+    ] as const) {
+      try {
+        await pr5l.resumeGeneration(s5l, uid5l, mode5l as never);
+        errs.push(`5l: resumeGeneration(${mode5l}) обязан бросить ${code5l}`);
+      } catch (e) {
+        if (!(e instanceof pr5l.PauseResumeError) || e.code !== code5l)
+          errs.push(`5l: ожидался ${code5l}, получено ${String(e)}`);
+      }
+    }
+
+    // stop: текущее состояние — финальное
+    await pr5l.resumeGeneration(s5l, u5l, "stop");
+    const [after5l] = await db5l.select().from(sch5l.syntheses).where(eq5l(sch5l.syntheses.id, s5l));
+    if (after5l?.status !== "ready" || after5l.pausedState !== null)
+      errs.push("5l: stop не финализировал синтез (ready + pausedState=null)");
+    const rmk5l = await db5l.select({ md: sch5l.generationLog.metadata })
+      .from(sch5l.generationLog)
+      .where(and5l(eq5l(sch5l.generationLog.synthesisId, s5l),
+        eq5l(sch5l.generationLog.logType, "resume_marker")));
+    if (rmk5l.length !== 1 || (rmk5l[0]?.md as { mode?: string } | null)?.mode !== "stop")
+      errs.push("5l: resume_marker(mode=stop) не записан");
+
+    // Повторный resume на ready → RESUME_INVALID (edge R6a)
+    try {
+      await pr5l.resumeGeneration(s5l, u5l, "retry");
+      errs.push("5l: resume на ready обязан бросить RESUME_INVALID");
+    } catch (e) {
+      if (!(e instanceof pr5l.PauseResumeError) || e.code !== "RESUME_INVALID")
+        errs.push("5l: ожидался RESUME_INVALID на ready: " + String(e));
+    }
+  } finally {
+    await db5l.delete(sch5l.users).where(eq5l(sch5l.users.id, u5l)); // CASCADE подчистит
+  }
+}
+
 // ── 5. Async-цепочки: реальный запрос через db и через sql ──
 import { db, sql, closeDb } from "./db/index.js";
 const viaRaw = await sql`SELECT 1 AS one`;
 if (viaRaw[0]?.one !== 1) errs.push("await sql: неожиданный результат");
 const viaDrizzle = await db.query.users.findMany({ limit: 1 });
 if (!Array.isArray(viaDrizzle)) errs.push("await db.query: не массив");
+// 1.4b: singleton Redis переоткрывался в 5k и держал event loop после
+// INTEGRATION OK (процесс не завершался сам) — закрываем явно
+await rClose();
 // closeDb возвращает Promise<void> и реально ждёт закрытия
 const p = closeDb();
 if (!(p instanceof Promise)) errs.push("closeDb не Promise");
@@ -1328,4 +1522,4 @@ try { await sql`SELECT 1`; } catch { rejected = true; }
 if (!rejected) errs.push("await после closeDb не отклонился (пул не закрыт?)");
 
 if (errs.length) { console.error("ПРОБЛЕМЫ:\n" + errs.map(e => " - " + e).join("\n")); process.exit(1); }
-console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb) + 2i/4k/5k 1.4 (6 модулей streaming-manager/generation-service/graph-parser/element-parser/stream-state/routes-syntheses, реэкспорты stream-state тождественны; контракты: baseUrl из env, ретраи только pre-stream из env, activeRuns.set до await (гонка), цены из cost-estimator, scaffold дословно, _genCommon/common, user-abort без pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3; живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная замена, stream-state круговой по разделу и указателю, предохранители cancelGeneration/assertCanStartGeneration)");
+console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb) + 2i/4k/5k 1.4 (6 модулей streaming-manager/generation-service/graph-parser/element-parser/stream-state/routes-syntheses, реэкспорты stream-state тождественны; контракты: baseUrl из env, ретраи только pre-stream из env, activeRuns.set до await (гонка), цены из cost-estimator, scaffold дословно, _genCommon/common, user-abort без pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3; живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная замена, stream-state круговой по разделу и указателю, предохранители cancelGeneration/assertCanStartGeneration) + 2j/4l/5l 1.4b (pause-resume-service + порты serializeSubsectionRegen/extractPreambleConstraints в section-defs-builder и spliceSubsectionHtml/removeSubsectionHtml в html-parser + клиентский PauseModal (4 рендерера, fmtCost ≡ _fmtCost) + разъёмы generation-service; контракты: порог 250 и userNote «Заверши» дословно, runtime-guard режимов, провайдер estimates регистрируется импортом и питает обе точки generation_paused, метка [возобновление], resume_* диспетчеризованы, linkedom изолирован, 'resume' ∈ source; живьём: createPausedState → paused_state+pause_marker, computePauseEstimates из genParams (whole>0, skip=0, fill>0), RESUME_INVALID/FORBIDDEN, stop-финализация с resume_marker; фикс: closeRedis в teardown — event loop больше не висит)");

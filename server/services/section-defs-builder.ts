@@ -1048,3 +1048,129 @@ export function groupPasses<T>(d: T[]): T[][] {
   for (let i = 0; i < d.length; i += 1) passes.push(d.slice(i, i + 1));
   return passes;
 }
+
+/* ── serializeSubsectionRegen [10654] (беседа 1.4b) ──────────────────── */
+
+/** Опции промпта подраздельной перегенерации (regenerateSubsection). */
+export interface SubsectionRegenOpts {
+  userNote?: string | undefined;
+  /** Текущее содержимое подраздела (режимы «Доработай»/«Заверши») */
+  currentContent?: string | null | undefined;
+  /** Продолжение с обрыва (fill-missing-subs, 01-arch §4.12) */
+  resumeFromInterruption?: boolean | undefined;
+}
+
+/**
+ * Порт extractPreambleConstraints(preamble) [10727]: строки преамбулы с
+ * жёсткими ограничениями (фолбэк, когда parts.preamble_short пуст).
+ */
+export function extractPreambleConstraints(preamble: string): string {
+  if (!preamble) return "";
+  const keywords = ["ОБЯЗАН", "КРИТИЧЕСК", "ЗАПРЕЩЕН", "СТРОГО", "ТРЕБОВАН"];
+  const lines = preamble.split("\n");
+  const constraints = lines.filter((line) => {
+    const upper = line.toUpperCase();
+    return keywords.some((kw) => upper.includes(kw));
+  });
+  if (constraints.length === 0) {
+    const sentences = preamble.split(/(?<=[.!?])\s+/);
+    return sentences.slice(0, 2).join(" ");
+  }
+  return constraints.join("\n");
+}
+
+/**
+ * Порт serializeSubsectionRegen(parts, subsectionName, intraSectionCtx,
+ * opts) [10654]: промпт перегенерации / доработки / продолжения ОДНОГО
+ * подраздела. Логика 1:1, включая режим продолжения с обрыва
+ * (resumeFromInterruption + currentContent → «Заверши» и блок
+ * «НАЧАЛЬНЫЙ ФРАГМЕНТ ПОДРАЗДЕЛА…»). Живёт здесь по прецеденту
+ * serializeParts (04 §2.2): сериализует parts, которые строит
+ * buildSectionDefs; потребители — pause-resume-service (1.4b),
+ * plan-executor/regeneration (2.2).
+ */
+export function serializeSubsectionRegen(
+  parts: SectionParts,
+  subsectionName: string,
+  intraSectionCtx: string,
+  opts: SubsectionRegenOpts = {},
+): string {
+  const items = parts.subsections;
+  const subIdx = items.findIndex((s) => s.name === subsectionName);
+  if (subIdx === -1) {
+    throw new Error("Подраздел «" + subsectionName + "» не найден в parts.");
+  }
+  const sub = items[subIdx] as SectionSubsectionPart;
+
+  // Краткая преамбула: только ключевые ограничения
+  const shortPreamble =
+    parts.preamble_short || extractPreambleConstraints(parts.preamble);
+
+  // Релевантные shared/bridge блоки:
+  // - shared: если перегенерируемый подраздел входит в scope
+  // - bridge: если перегенерируемый подраздел расположен после bridge
+  const contextBlocks: string[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i] as SectionSubsectionPart;
+    if (item.type === "shared") {
+      if (item.scope && item.scope.includes(subsectionName)) {
+        contextBlocks.push(item.body);
+      }
+    } else if (item.type === "bridge") {
+      if (i < subIdx) {
+        contextBlocks.push(item.body);
+      }
+    }
+  }
+
+  // note_after предыдущего подраздела может быть важен
+  const prevSub = subIdx > 0 ? (items[subIdx - 1] as SectionSubsectionPart) : null;
+  const prevNote =
+    prevSub && prevSub.name && prevSub.note_after
+      ? "\n\n" + prevSub.note_after
+      : "";
+
+  // Режим: перегенерация с нуля, доработка или продолжение с обрыва
+  const isRefine = !!opts.currentContent;
+  const isResumeContinue = isRefine && !!opts.resumeFromInterruption;
+  const verb = isResumeContinue
+    ? "Заверши"
+    : isRefine
+      ? "Доработай"
+      : "Перегенерируй";
+
+  let prompt = `${shortPreamble}`;
+
+  if (contextBlocks.length > 0) {
+    prompt += "\n\n" + contextBlocks.join("\n\n");
+  }
+
+  prompt += `\n\n${verb} ТОЛЬКО секцию:\n\n«${sub.name}»\n${sub.body}${prevNote}`;
+
+  if (opts.userNote) {
+    prompt += `\n\nДОПОЛНИТЕЛЬНАЯ ИНСТРУКЦИЯ ПОЛЬЗОВАТЕЛЯ:\n${opts.userNote}`;
+  }
+
+  if (opts.currentContent) {
+    const contentHeader = isResumeContinue
+      ? "НАЧАЛЬНЫЙ ФРАГМЕНТ ПОДРАЗДЕЛА, УЖЕ СГЕНЕРИРОВАННЫЙ ДО ОБРЫВА " +
+        "(сохрани дословно и продолжи с обрыва до полного объёма задания, " +
+        "ничего не переписывая):"
+      : "ТЕКУЩЕЕ СОДЕРЖИМОЕ ПОДРАЗДЕЛА (модифицируй согласно инструкции, не генерируй заново):";
+    prompt += `\n\n${contentHeader}\n"""\n${opts.currentContent}\n"""`;
+  }
+
+  if (intraSectionCtx) {
+    prompt += `\n\nКОНТЕКСТ ДРУГИХ ПОДРАЗДЕЛОВ ЭТОГО РАЗДЕЛА (не повторяй, только учитывай для согласованности):\n"""\n${intraSectionCtx}\n"""`;
+  }
+
+  prompt +=
+    "\n\n" +
+    (parts.postamble_short ||
+      'Отвечай ТОЛЬКО HTML этой одной секции — <div data-section="' +
+        sub.name +
+        '">...</div>.') +
+    "\nТребование к объёму: содержательный текст необходимого объёма в соответствии с заданием без упущений.";
+
+  return prompt;
+}

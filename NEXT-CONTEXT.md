@@ -1416,3 +1416,167 @@ _rebuildNodeColors/EdgeStyles — клиент (1.7); 14/C 07 onDelta с
 документация догоняет код 1.4; отставших артефактов прежних бесед нет
 (Exclude<PauseReasonKind,'user-abort'> включил 'context-error'
 автоматически, компиляция чиста).
+
+# Беседа 1.4b — итоги (pause-resume-service / PauseModal)
+
+> Зафиксировано по завершении беседы 1.4b. Модули: server/services/
+> pause-resume-service.ts, порты в section-defs-builder.ts / utils/
+> html-parser.ts, рефакторинг generation-service.ts, расширение
+> ws/handler.ts, client/src/components/synthesis/PauseModal.tsx.
+> Запросы 2–6 — одним заходом: tests/test-14b-requests2-6.mjs 56/56 ✓
+> (живой сервер + мок-SSE, паттерн test-14); регресс зелёный
+> (test-14 46/46, smoke-1.4b 27/27, typecheck, audit,
+> INTEGRATION OK += 2j/4l/5l).
+
+## Созданные/изменённые файлы
+
+- `server/services/pause-resume-service.ts` — центральный модуль беседы:
+  `logPauseEvent` [24504] (маркеры pause/resume/user_action в
+  generation_log), `createPausedState` (перегрузки gen/plan; timestamp
+  здесь), `computePauseEstimates` [24521] (rebuildInfra из genParams →
+  estimateCost isEdit + actualOutputChars из done-строк генлога;
+  estimateSubsectionCost по недостающим; streaming-подраздел — из
+  metadata.subsections последней error-строки; fail-open {}),
+  `resumeGeneration` [25075] (stop / retry / skip / fill-missing-subs;
+  runtime-guard «чужого mode» → RESUME_INVALID), `finalizeAfterStopGen`
+  [25405] (фолбэк на row.sectionOrder), `resumeFillMissingSubs`
+  (_resumeFromSubsection [25317] + _continueAfterFilledSubs [25500];
+  порог продолжения 250 симв., userNote «Заверши…» дословно),
+  `regenerateSubsectionForResume` (минимальный порт regenerateSubsection
+  [20236] с intra-ctxLog [20255]; TODO(2.2) объединить с полным),
+  `resumePlan` [25910] (каркас: валидация + resume_marker + stop;
+  retry/skip_step — разъём `setPlanResumeExecutor`, TODO(2.2)).
+  Регистрация провайдера оценок — побочный эффект импорта (низ модуля).
+- `server/services/generation-service.ts` — рефакторинг без изменения
+  поведения 1.4: `withGenerationSlot` (синхронная резервация слота
+  сохранена — грабля-гонка 1.4), `runGeneration` → export
+  `runGenerationPasses(handle, …, {startIdx, source})` (условный
+  _genCommon при resume, labelSuffix « [возобновление]» только в
+  genEntry), экспорты `loadSynthesis`/`finalizeRun`/
+  `resumeSynthesisFromPass`/`SynthesisRow`, разъём
+  `setPauseEstimatesProvider` (прецедент setParentContextProvider; без
+  цикла ESM), живые estimates в ОБЕИХ точках generation_paused.
+- `server/services/section-defs-builder.ts` += `serializeSubsectionRegen`
+  [10654] + `extractPreambleConstraints` [10727] (байтовая сверка с
+  исходником — smoke-1.4b, 12 кейсов). Живут здесь по прецеденту
+  serializeParts (04 §2.2): сериализуют parts, которые строит
+  buildSectionDefs.
+- `server/utils/html-parser.ts` += `spliceSubsectionHtml` /
+  `removeSubsectionHtml` (порт DOM-механики regenerateSubsection
+  [20384–20444] на строках html_content; изоляция linkedom сохранена).
+- `server/db/schema.ts` + `packages/shared/types/generation.ts`:
+  source += `'resume'` (пишется _runGenPassesFromIdx [25573]; дыра
+  02 §2.15 закрыта патчем 14b/A; text-колонка — миграции не требует).
+- `server/ws/handler.ts`: resume_generation / resume_plan →
+  pause-resume-service (ошибки → stream_error c «CODE: message»,
+  recoverable:false); handleResume (§3.3) отдаёт живые estimates;
+  импорт модуля регистрирует провайдер оценок.
+- `client/src/components/synthesis/PauseModal.tsx`: `PauseModal`
+  (пропсы open/pausedState/estimates/onResumeGeneration/onResumePlan/
+  onClose), 4 рендерера (gen partial/pre-stream, plan, billing, auth),
+  `PauseBadge`, `fmtCost` ≡ `_fmtCost` [24634]. Интеграция в страницы —
+  беседа 1.5.
+- `server/smoke-1.4b.mts` (27 ✓, без БД: vm-байтовая сверка промптов и
+  fmtCost + врезка подраздела), `tests/test-14b-requests2-6.mjs`
+  (56 ✓: мок-маркеры [MOCK:MAXTOK]/[MOCK:BILLGRAPH]/[MOCK:PARTIAL],
+  POST /control {billingOk}, /stats с записью sub-regen промптов).
+
+## Адаптации DOM/DOC_STATE → сервис (решения беседы)
+
+1. Оценки паузы: подмена DOC_STATE не нужна — «edit-режим»
+   estimateCost({sections}) исходника = isEdit + actualOutputChars из
+   последних done-строк generation_log.
+2. Обрывочный подраздел (status!=='done') восстанавливается из
+   metadata.subsections последней error-строки генлога (shared-тип
+   хранит только имена — решение 1.4); фолбэк — expected−partial.
+3. Confirm деградации зависимостей при skip [25686] — клиентское
+   подтверждение (1.5); серверный skip молчит.
+4. fill-missing-subs: минимальный внутренний
+   regenerateSubsectionForResume вместо полного regenerateSubsection
+   (принадлежит 2.2); intra-ctxLog type='intra-section' исходника →
+   восстановим по sectionKey 'раздел:подраздел' и префиксу 'intra:'.
+5. Очистка callout'ов [25378] не нужна: html_content хранит чистый
+   частичный HTML из reconnect-буфера (1.4).
+6. _resumeWithNewApiKey [24552] (ввод ключа в модалке) — TODO(6.1)
+   BYO-Key; auth-рендерер: «Повторить» после замены ключа на сервере.
+7. costHint [24801] опущен — те же числа несут кнопки.
+8. Totals при sub-regen — SQL-инкременты (::numeric).
+9. Квирк исходника: fallback «нет parts» [25358] зовёт
+   resumeGeneration('retry') ПОСЛЕ _clearPausedState — мёртвый путь;
+   в порте retry-ветка инлайнится (resumeRetryOrSkip).
+
+## Ревью по карте 04 (строка Pause/Resume)
+
+Строка «Pause/Resume (спец.: 01 §4.12)» покрывала подсистему суммарно —
+патчем 14b/C дополнена фактическим размещением портов
+(serializeSubsectionRegen/extractPreambleConstraints →
+section-defs-builder; врезка подраздела → utils/html-parser; клиентский
+путь → client/components/synthesis/PauseModal.tsx) и квирком [25358].
+Не портированы намеренно: _rebuildProgressPanelForResume /
+_ensureDocBodyContainers / submitBtn-механика — клиент (1.5);
+_resumeWithNewApiKey — 6.1.
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **1.5 (страницы синтеза)**: PauseModal.tsx (управляется пропсами; не
+  ходит в API сам), PauseBadge; подписка на
+  generation_paused/generation_resumed в useWebSocket; confirm
+  деградации зависимостей при skip [25686–25740] — реализовать на
+  клиенте перед отправкой resume_generation(skip).
+- **1.6 (GET /syntheses/:id)**: отдавать pausedState; estimates —
+  computePauseEstimates(id, ps) из pause-resume-service (fail-open {}).
+- **2.2 (regeneration / plan-executor)**: объединить
+  regenerateSubsectionForResume с полным regenerateSubsection [20236]
+  (перегенерация по кнопке, userNote из UI, режим «Доработай»);
+  реализовать исполнение шагов плана и зарегистрировать его в
+  setPlanResumeExecutor (retry/skip_step перестанут отвечать
+  RESUME_INVALID); плановые паузы — createPausedState(id, 'plan', …).
+- **4.2 (экспорт логов)**: маркеры pause_marker/resume_marker/
+  user_action_marker показываются в «Логе контекста», исключаются из
+  «Лога промптов» по log_type (02 §2.15).
+- **6.1 (BYO-Key)**: форма ввода ключа в auth-рендерере
+  (_resumeWithNewApiKey [24552]) + resumeGeneration после смены ключа.
+
+## Знания/грабли, добытые в 1.4b
+
+- Маркеры генлога несут status='done' — счёт done-строк раздела ОБЯЗАН
+  фильтровать log_type='generation' (иначе pause/resume_marker дают
+  ложные дубли).
+- waitFor теста по накопленным сообщениям берёт ПЕРВОЕ подходящее —
+  предикаты сужать по sectionKey, иначе ловится section_done до паузы.
+- pkill -f "строка" убивает собственную bash-команду, если паттерн есть
+  в её тексте; обход — символьный класс: pkill -f "tsx [i]ndex.ts".
+- Singleton Redis, переоткрытый секцией 5k integration-check, держал
+  event loop после INTEGRATION OK (процесс не завершался) — фикс:
+  closeRedis в teardown перед closeDb.
+- После сжатия контекста посреди захода: файл на диске — первоисточник;
+  аудит вести против кода (shared-типы, handler, дословные заголовки
+  промпта, эталонный формат мока), а не против конспекта.
+- parseClientMessage валидирует только type — mode из WS доходит до
+  сервиса строкой: runtime-guard режимов обязателен (без него «bogus»
+  проваливался в retry).
+- parseSubsectionsFromHTML возвращает canonical-имена из expected;
+  последний найденный див = 'streaming' (обрывочный див с chars>0
+  попадает в partialSubsections).
+
+## Открытые TODO после 1.4b
+
+- TODO(2.2): полный regenerateSubsection + plan-executor +
+  setPlanResumeExecutor (до этого resume_plan retry/skip_step →
+  RESUME_INVALID с пояснением).
+- TODO(1.5): интеграция PauseModal/PauseBadge в страницы; confirm
+  деградации при skip.
+- TODO(1.6): GET /syntheses/:id с pausedState + estimates.
+- TODO(6.1): BYO-Key + ввод ключа в auth-модалке.
+- Прочие TODO прежних бесед (3.1 провайдер родителей, 2.1
+  canonicalSubsectionKey) — без изменений.
+
+## Патч доков по итогам 1.4b
+
+scripts/patch-docs-conv14b.py (идемпотентный): 14b/A 02 §2.15
+source += 'resume'; 14b/B 03 §4.3 примечание — resume_plan
+retry/skip_step до plan-executor'а (2.2) отвечает RESUME_INVALID;
+14b/C 04 строка Pause/Resume — фактическое размещение портов + квирк
+[25358]; 14b/D 01 §4.12 п.6 — auth-рендерер сервиса без формы ввода
+ключа до 6.1; 14b/E ревизии шапок; 14b/F README (статус, блок 1.4b,
+«не сделано», следующая беседа).

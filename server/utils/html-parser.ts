@@ -205,3 +205,101 @@ function normalizeInnerText(text: string): string {
 export function innerTextTrimmed(el: HtmlElement | null | undefined): string {
   return innerText(el).trim();
 }
+
+/* ── Врезка подраздела в HTML раздела (беседа 1.4b) ──────────────────── */
+
+/**
+ * Минимум мутирующего DOM-API linkedom для врезки подраздела. Все
+ * мутации HTML разделов идут через этот модуль — изоляция linkedom
+ * (беседа 1.3) сохраняется.
+ */
+interface MutableElement {
+  getAttribute(name: string): string | null;
+  querySelector(selector: string): MutableElement | null;
+  querySelectorAll(selector: string): Iterable<MutableElement>;
+  insertAdjacentHTML(
+    position: "beforebegin" | "afterbegin" | "beforeend" | "afterend",
+    html: string,
+  ): void;
+  remove(): void;
+  readonly outerHTML: string;
+  readonly innerHTML: string;
+}
+
+function parseMutable(html: string): MutableElement {
+  const { document } = parseHTML(
+    `<!DOCTYPE html><html><body><div id="__ps_root">${html}</div></body></html>`,
+  );
+  const root = document.getElementById("__ps_root");
+  if (!root) {
+    throw new Error("html-parser: не удалось создать контейнер фрагмента");
+  }
+  return root as unknown as MutableElement;
+}
+
+/**
+ * Поиск подраздела: точное имя, затем нечёткое взаимное включение —
+ * порт поиска oldSubDiv в regenerateSubsection [20390–20402].
+ */
+function findMutableSubsection(
+  root: MutableElement,
+  name: string,
+): MutableElement | null {
+  const exact = root.querySelector(`[data-section="${name}"]`);
+  if (exact) return exact;
+  const lower = name.toLowerCase();
+  for (const sub of root.querySelectorAll("[data-section]")) {
+    const n = (sub.getAttribute("data-section") ?? "").toLowerCase();
+    if (n.includes(lower) || lower.includes(n)) return sub;
+  }
+  return null;
+}
+
+/**
+ * Замена подраздела результатом (пере)генерации — порт DOM-механики
+ * regenerateSubsection [20384–20444] на строках html_content:
+ *  - из сгенерированного HTML берётся <div data-section="…"> (точное имя,
+ *    иначе первый data-section, иначе весь HTML как есть — аналог ветки
+ *    «модель не обернула в data-section»);
+ *  - старый подраздел ищется точно, затем нечётко; найден → замена,
+ *    не найден → добавление в конец контейнера (аналог append в
+ *    .doc-content).
+ * Возвращает обновлённый HTML раздела.
+ */
+export function spliceSubsectionHtml(
+  sectionHtml: string,
+  subsectionName: string,
+  generatedHtml: string,
+): string {
+  const root = parseMutable(sectionHtml);
+  const gen = parseMutable(generatedHtml);
+  const newDiv =
+    gen.querySelector(`[data-section="${subsectionName}"]`) ??
+    gen.querySelector("[data-section]");
+  const newHtml = newDiv ? newDiv.outerHTML : generatedHtml;
+
+  const oldDiv = findMutableSubsection(root, subsectionName);
+  if (oldDiv) {
+    oldDiv.insertAdjacentHTML("beforebegin", newHtml);
+    oldDiv.remove();
+  } else {
+    root.insertAdjacentHTML("beforeend", newHtml);
+  }
+  return root.innerHTML;
+}
+
+/**
+ * Удаление подраздела (обрывочный div при возобновлении: частичный текст
+ * короче порога продолжения — порт obrivDiv.remove() из
+ * _resumeFromSubsection [25368–25376]).
+ */
+export function removeSubsectionHtml(
+  sectionHtml: string,
+  subsectionName: string,
+): { html: string; removed: boolean } {
+  const root = parseMutable(sectionHtml);
+  const div = findMutableSubsection(root, subsectionName);
+  if (!div) return { html: sectionHtml, removed: false };
+  div.remove();
+  return { html: root.innerHTML, removed: true };
+}

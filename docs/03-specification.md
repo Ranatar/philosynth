@@ -856,3 +856,10 @@ GENERATION_PAUSED   — генерация в pausedState; действия — 
 RESUME_INVALID      — resume_generation/resume_plan без pausedState или с чужим mode (v11)
 NO_PARTICIPANTS_SEED_REQUIRED — свободный синтез без seed (v11)
 ```
+
+> Примечание (беседа 1.4b): отдельного кода «операция ещё не
+> реализована» в протоколе нет — до появления plan-executor'а
+> (беседа 2.2) `resume_plan` с mode `retry`/`skip_step` отвечает
+> `RESUME_INVALID` с пояснением; ветка `stop` работает полностью.
+> «Чужой mode» из WS-сообщения также даёт `RESUME_INVALID`
+> (runtime-guard: parseClientMessage валидирует только `type`).

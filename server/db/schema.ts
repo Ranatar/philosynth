@@ -635,6 +635,10 @@ export const generationLog = pgTable(
         "subsection_regen",
         "mode",
         "mode_cascade",
+        /* 'resume' — возобновлённая генерация (исходник [25573]; дыра
+         * 02 §2.15, найдена беседой 1.4b). Колонка text — миграции не
+         * требует. */
+        "resume",
       ],
     })
       .notNull()

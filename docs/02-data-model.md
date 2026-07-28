@@ -415,6 +415,8 @@ CREATE TABLE generation_log (
     --   (маркеры показываются в «Логе контекста», исключаются из «Лога промптов»)
   source         TEXT NOT NULL DEFAULT 'initial',
     -- 'initial'|'edit'|'edit_add'|'cascade'|'subsection_regen'|'mode'|'mode_cascade'
+    --   |'resume' (строки возобновлённой генерации — _runGenPassesFromIdx
+    --   [25573] пишет source:'resume'; найдено беседой 1.4b)
   status         TEXT NOT NULL DEFAULT 'done',
   prior_chars    INT NOT NULL DEFAULT 0,
   task_chars     INT NOT NULL DEFAULT 0,

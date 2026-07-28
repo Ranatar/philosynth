@@ -456,7 +456,11 @@ modeRegen, modeRemove}, regenCtx, addCtx, reason, reasonKind, timestamp }`.
 - `_renderPauseContent_billing` [~24960] — «баланс API исчерпан», список
   завершённого, ссылка на console.anthropic.com/settings/billing,
   «ключ менять не нужно»
-- `_renderPauseContent_auth` [~24998] — истёкший ключ (контекст gen или plan)
+- `_renderPauseContent_auth` [~24998] — истёкший ключ (контекст gen или plan).
+  Примечание (1.4b): форма ввода нового ключа (`_resumeWithNewApiKey`
+  [~24552]) — беседа 6.1 (BYO-Key); до неё ключ серверный (env), и
+  auth-рендерер сервиса предлагает «Повторить» (после замены ключа на
+  сервере) / «Остановить»
 
 Бейдж паузы в шапке (`_showPauseBadge`), персистентный до разрешения.
 
