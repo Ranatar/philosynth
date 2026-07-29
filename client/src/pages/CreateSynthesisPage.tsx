@@ -33,6 +33,7 @@ import { SynthesisForm } from "../components/synthesis/SynthesisForm";
 import {
   useStreamingGeneration,
 } from "../hooks/useStreamingGeneration";
+import { usePoolStore } from "../stores/pool-store";
 
 const REDIRECT_DELAY_MS = 1200;
 
@@ -90,6 +91,10 @@ export function CreateSynthesisPage() {
   }, [pauseKey]);
 
   const handleSubmit = async (input: CreateSynthesisInput) => {
+    // Пул (1.5b): перед генерацией — refreshAllSynthParticipants [4940]
+    // + сброс индикатора просмотра (интеграция из беседы 1.5; снимок
+    // текущей — N/A: локальных правок в сервисе нет, см. pool-store)
+    usePoolStore.getState().prepareForGeneration();
     setSubmitting(true);
     setServerError(null);
     try {

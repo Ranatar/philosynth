@@ -279,6 +279,7 @@ philosynth-service/
 │   │   │   ├── auth-store.ts           # Zustand: user, session
 │   │   │   ├── synthesis-store.ts      # Zustand: текущий синтез, разделы, элементы
 │   │   │   ├── generation-store.ts     # Zustand: состояние генерации, стриминг
+│   │   │   ├── pool-store.ts           # Zustand: Unified Concept Pool (беседа 1.5b)
 │   │   │   └── ui-store.ts            # Zustand: модалки, sidebar, theme
 │   │   │
 │   │   ├── hooks/
@@ -360,7 +361,7 @@ philosynth-service/
 │   │   │   ├── pool/                        # Unified Concept Pool (v10)
 │   │   │   │   ├── ConceptPool.tsx          # Пул загруженных концепций
 │   │   │   │   ├── PoolCard.tsx             # Карточка концепции в пуле
-│   │   │   │   └── PoolSummary.tsx          # Саммари пула
+│   │   │   │   └── PoolSummary.tsx          # Саммари пула (1.5b: реализован строкой внутри ConceptPool.tsx — отдельный файл не понадобился)
 │   │   │   │
 │   │   │   ├── catalog/
 │   │   │   │   ├── SynthesisList.tsx       # Список карточек синтезов
@@ -377,7 +378,10 @@ philosynth-service/
 │   │   │       ├── LoadingSpinner.tsx
 │   │   │       └── ErrorBoundary.tsx
 │   │   │
+│   │   ├── vite-env.d.ts                   # Типы import.meta.env (появился в 1.5b)
+│   │   │
 │   │   └── utils/
+│   │       ├── concept-file.ts             # Парсинг концепт-файлов пула (1.5b, клиентские порты)
 │   │       ├── graph-physics.ts            # tick(), warmup() (tick(), warmup())
 │   │       ├── graph-geometry.ts           # nodeGeometry3D, mkSprite (nodeGeometry3D(), mkSprite())
 │   │       └── format.ts                  # Форматирование чисел, дат

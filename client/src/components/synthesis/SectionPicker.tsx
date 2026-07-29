@@ -10,9 +10,11 @@
  * (shared, дословно из исходника). Раздел sum чекбокса не имеет — он
  * обязателен и добавляется сервером первым в sectionOrder.
  *
- * «◈ Пригодность к дальнейшему синтезу» (secSynthReady) осознанно НЕ
- * портируется здесь: гарантия комплекта разделов для мета-синтеза —
- * вместе с Unified Concept Pool (беседа 1.5b/3.2).
+ * «◈ Пригодность к дальнейшему синтезу» (secSynthReady) добавлен беседой
+ * 1.5b (закрыт TODO(1.5b) главы 1.5 NEXT-CONTEXT): чекбокс + подсказка
+ * synthReadyHint [5116–5142]; автовключение SYNTH_READY_SECTIONS при
+ * включении делает SynthesisForm (владелец sections) — onSynthReadyChange.
+ * Подсказка про «Анализ названия» рендерится здесь: selected уже в пропсах.
  */
 import { useState } from "react";
 
@@ -25,6 +27,16 @@ import {
 
 export type PickableSectionKey = Exclude<SectionKey, "sum">;
 
+/** SYNTH_READY_SECTIONS [5114] — дословно */
+export const SYNTH_READY_SECTIONS: readonly PickableSectionKey[] = [
+  "graph",
+  "glossary",
+  "theses",
+  "dialogue",
+  "critique",
+  "capsule",
+];
+
 export interface SectionPickerProps {
   selected: readonly PickableSectionKey[];
   onChange: (next: PickableSectionKey[]) => void;
@@ -33,6 +45,9 @@ export interface SectionPickerProps {
   onSectionContextChange: (key: PickableSectionKey, value: string) => void;
   extGraphMetrics: boolean;
   onExtGraphMetricsChange: (value: boolean) => void;
+  /** ◈ Пригодность к дальнейшему синтезу (secSynthReady, беседа 1.5b) */
+  synthReady: boolean;
+  onSynthReadyChange: (checked: boolean) => void;
 }
 
 export function SectionPicker({
@@ -42,6 +57,8 @@ export function SectionPicker({
   onSectionContextChange,
   extGraphMetrics,
   onExtGraphMetricsChange,
+  synthReady,
+  onSynthReadyChange,
 }: SectionPickerProps) {
   const selectedSet = new Set(selected);
   /** Какие secCtx-поля раскрыты (аналог toggleSecCtx исходника) */
@@ -130,6 +147,36 @@ export function SectionPicker({
             </div>
           );
         })}
+      </div>
+
+      {/* ◈ Пригодность к дальнейшему синтезу (secSynthReady, 1.5b).
+          Включение гарантирует комплект разделов мета-синтеза —
+          автовключение делает форма (onSynthReadyChange [5116]) */}
+      <div className="mt-3 border-t border-rule pt-2">
+        <label className="flex cursor-pointer items-start gap-1.5 text-xs text-ink-mid hover:text-ink">
+          <input
+            type="checkbox"
+            checked={synthReady}
+            onChange={(e) => onSynthReadyChange(e.target.checked)}
+            className="mt-0.5 accent-[var(--gold)]"
+          />
+          <span>
+            ◈ Пригодность к дальнейшему синтезу
+            <span className="block font-mono text-[10px] leading-relaxed text-ink-dim">
+              Включает разделы, обязательные для использования концепции как
+              участника мета-синтеза (граф, глоссарий, тезисы, диалог,
+              критика, капсула).
+            </span>
+          </span>
+        </label>
+        {/* synthReadyHint [5580–5589]: совет про «Анализ названия» */}
+        {synthReady && !selectedSet.has("name") && (
+          <div className="ml-6 mt-1 font-mono text-[10px] leading-relaxed text-gold">
+            Совет: для качественной капсулы полезен раздел «Анализ названия».
+            Если он не выбран, задайте название вручную (кнопка ✎ в шапке)
+            после генерации.
+          </div>
+        )}
       </div>
     </div>
   );

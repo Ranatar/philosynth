@@ -211,7 +211,7 @@
 | `extractSections()` | Серверный DOM-парсер | там же |
 | `extractEmbeddedState()` | Без изменений | там же |
 | `buildDocStateFromImport()` | Вместо DOC_STATE → создание записей в БД | там же |
-| `importConceptAsParticipant()` | Чтение из БД вместо из DOM | `server/services/meta-synthesis-service.ts` |
+| `importConceptAsParticipant()` | Чтение из БД вместо из DOM | `server/services/meta-synthesis-service.ts` (3.1); клиентский порт файлового сценария 1:1 — `client/utils/concept-file.ts` (1.5b, genealogy=null до 3.1/3.2) |
 | `normalizeGenealogyNames()`, `isPlaceholderConceptName()`, `resolveConceptName()` | Санация имён генеалогии («[безымянная концепция]») — без изменений | `server/services/import-service.ts` |
 | `genCommon.conceptBlockSizes` | Размеры контекстных блоков концепций (v10, для реконструкции промптов) | `server/services/generation-service.ts` |
 | `buildPromptSkeleton()` | Скелет промпта пишется в genLog при генерации (реконструкция — fallback только для импортов) | `server/services/generation-service.ts` |
@@ -241,7 +241,7 @@
 | `openEditModal()`, `renderEditSections()` | `client/components/EditModal.tsx` |
 | UI подразделовой перегенерации | `client/components/SubsectionRegenPanel.tsx` |
 | `addSection()`, `deleteSection()`, `rebuildDbMapping()` | Серверные операции через API |
-| `parseConceptFile()`, `addToPool()`, `removeFromPool()`, `selectForViewing()`, `snapshotCurrentState()`, `restoreFromPoolSnapshot()`, `syncConceptParticipants()`, `refreshPoolParticipant()`, `renderPoolConcepts()`, `handlePoolFileImport()`, `handlePoolUrlImport()` | `client/components/pool/ConceptPool.tsx` (v10, НОВОЕ) |
+| `parseConceptFile()`, `addToPool()`, `removeFromPool()`, `selectForViewing()`, `snapshotCurrentState()`, `restoreFromPoolSnapshot()`, `syncConceptParticipants()`, `refreshPoolParticipant()`, `renderPoolConcepts()`, `handlePoolFileImport()`, `handlePoolUrlImport()` | `client/components/pool/ConceptPool.tsx`+`PoolCard.tsx`, `client/stores/pool-store.ts`, `client/utils/concept-file.ts` (беседа 1.5b ✓; snapshotCurrentState/restoreFromPoolSnapshot вырождены — локальных правок в сервисе нет, refreshPoolParticipant по ветке «rawHTML не менялся»; renamePoolConcept/toggleSynthParticipant/setPoolStatus там же) |
 | `syncFormFromImport()` | React state sync |
 | `renderGenealogyTree()` | `client/components/GenealogyTree.tsx` |
 | Mode modal UI | `client/components/ModeModal.tsx` |

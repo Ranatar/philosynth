@@ -14,8 +14,22 @@
  *  - с участниками без зерна → допускается.
  *
  * keepFullBudget (v11, 01 §4.13 ч.II п.5): чекбокс виден ТОЛЬКО при
- * концепциях-участниках в пуле. Unified Concept Pool — беседа 1.5b;
- * до неё conceptParticipants=[] и блок скрыт (условие уже рабочее).
+ * концепциях-участниках в пуле; под ним — превью бюджета
+ * (renderFullBudgetPreview [10456], порт — FullBudgetPreview ниже).
+ *
+ * Unified Concept Pool (беседа 1.5b): блок «Загруженные Концепции»
+ * встроен в форму; участники-концепции берутся из pool-store
+ * (пропс conceptParticipants беседы 1.5 заменён стором — пропс никем
+ * не передавался, точка встраивания реализована). Связка пул → форма:
+ *  - эффект по hasSynthConcepts включает secSynthReady + обязательные
+ *    разделы (React-адаптация DOM-части toggleSynthParticipant [4744]);
+ *  - при 0 ☑-концепций synthReady снимается (галочки разделов не
+ *    трогаем — [4760] «пользователь сам решит»).
+ *
+ * ОГРАНИЧЕНИЕ (план 1.5b, п. 4): сабмит с ☑-концепциями блокируется —
+ * файловые концепции не представимы в ParticipantInput ({type:'synthesis',
+ * synthesisId}), а сервер отклоняет type='synthesis' до беседы 3.1
+ * (мета-синтез) и серверного импорта файлов (4.3). TODO(3.1/4.3).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -24,11 +38,90 @@ import {
   fetchSynthesisAdvice,
   type SynthesisAdvice,
 } from "../../api/syntheses";
+import { usePoolStore } from "../../stores/pool-store";
+import { ConceptPool } from "../pool/ConceptPool";
 import { CompatAdvisor } from "./CompatAdvisor";
 import { CostEstimate } from "./CostEstimate";
 import { PhilosopherPicker } from "./PhilosopherPicker";
-import { SectionPicker, type PickableSectionKey } from "./SectionPicker";
+import {
+  SectionPicker,
+  SYNTH_READY_SECTIONS,
+  type PickableSectionKey,
+} from "./SectionPicker";
 import { SectionWarnings } from "./SectionWarnings";
+
+/** Клиентская копия CONTEXT_BUDGET [7529] — ТОЛЬКО для превью бюджета.
+ *  Канон живёт в Registry (config context_budget) и применяется сервером;
+ *  дрейф-риск задокументирован (план 1.5b, п. 6). Точная разница оценок
+ *  full vs shrink требует серверной поддержки концепций — TODO(3.1). */
+const CONTEXT_BUDGET_PREVIEW: Readonly<Record<string, number>> = {
+  overview: 24000,
+  standard: 48000,
+  deep: 72000,
+  exhaustive: 100000,
+};
+
+/** computeConceptOverhead [10133–10140] — дословно (клиентская копия для
+ *  превью; серверный канон — context-builder.ts) */
+function computeConceptOverheadPreview(
+  participants: readonly {
+    type: string;
+    capsule?: string;
+    graphNodes?: string;
+    glossaryCompact?: string;
+    thesesSummary?: string;
+    goals?: string;
+    tensions?: string;
+  }[],
+): number {
+  if (!participants) return 0;
+  return participants
+    .filter((x) => x && x.type === "concept")
+    .reduce(
+      (sum, c) =>
+        sum +
+        (c.capsule?.length || 0) +
+        (c.graphNodes?.length || 0) +
+        (c.glossaryCompact?.length || 0) +
+        (c.thesesSummary?.length || 0) +
+        (c.goals?.length || 0) +
+        (c.tensions?.length || 0),
+      0,
+    );
+}
+
+/** Порт renderFullBudgetPreview [10456–10520] (без estimate-diff —
+ *  TODO(3.1), см. комментарий у CONTEXT_BUDGET_PREVIEW) */
+function FullBudgetPreview({ depth }: { depth: string }) {
+  const conceptParticipants = usePoolStore((s) => s.conceptParticipants);
+  const N = conceptParticipants.length;
+  if (N === 0) return null;
+
+  const conceptChars = computeConceptOverheadPreview(conceptParticipants);
+  const rawBudget = CONTEXT_BUDGET_PREVIEW[depth] ?? 48000;
+  const shrunkBudget = Math.max(
+    rawBudget - conceptChars,
+    Math.floor(rawBudget * 0.4),
+  );
+
+  return (
+    <pre className="mt-2 whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-ink-dim">
+      {"Контекст родителей: " +
+        conceptChars.toLocaleString("ru") +
+        " симв. (" +
+        N +
+        ")\n" +
+        "При ужимании:       бюджет секций " +
+        shrunkBudget.toLocaleString("ru") +
+        " / " +
+        rawBudget.toLocaleString("ru") +
+        " симв.\n" +
+        "Без ужимания:       бюджет секций " +
+        rawBudget.toLocaleString("ru") +
+        " симв."}
+    </pre>
+  );
+}
 
 /* Опции — тексты дословно из селектов формы исходника */
 const METHOD_OPTIONS = [
@@ -86,17 +179,12 @@ export interface SynthesisFormProps {
   busy: boolean;
   /** Ошибка сервера (VALIDATION_ERROR и пр.) для показа у кнопки */
   serverError?: string | null | undefined;
-  /** Концепции-участники из Unified Concept Pool (беседа 1.5b);
-   *  пока пула нет — пусто, блок keepFullBudget скрыт */
-  conceptParticipants?: readonly { name: string }[] | undefined;
 }
 
-export function SynthesisForm({
-  onSubmit,
-  busy,
-  serverError,
-  conceptParticipants = [],
-}: SynthesisFormProps) {
+export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProps) {
+  /* Участники-концепции — из пула (беседа 1.5b; см. шапку) */
+  const conceptParticipants = usePoolStore((s) => s.conceptParticipants);
+  const setPoolStatus = usePoolStore((s) => s.setPoolStatus);
   const [seed, setSeed] = useState("");
   const [context, setContext] = useState("");
   const [philosophers, setPhilosophers] = useState<string[]>([]);
@@ -112,7 +200,48 @@ export function SynthesisForm({
   const [customLang, setCustomLang] = useState("");
   const [extGraphMetrics, setExtGraphMetrics] = useState(false);
   const [keepFullBudget, setKeepFullBudget] = useState(false);
+  const [synthReady, setSynthReady] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  /* onSynthReadyChange [5116–5142]: при включении — автовключить
+     SYNTH_READY_SECTIONS (подсказку про «name» рендерит SectionPicker;
+     updateSectionWarnings/updateCostEstimate — автоматически через deps) */
+  const handleSynthReadyChange = (checked: boolean) => {
+    setSynthReady(checked);
+    if (checked) {
+      setSections((prev) => {
+        const next = [...prev];
+        for (const key of SYNTH_READY_SECTIONS) {
+          if (!next.includes(key)) next.push(key);
+        }
+        return next;
+      });
+    }
+  };
+
+  /* Связка пул → форма (React-адаптация DOM-части toggleSynthParticipant
+     [4744–4763]): появились ☑-концепции — включаем synthReady + разделы
+     (со статусом пула [4750]); ☑-концепций не осталось — снимаем
+     synthReady (галочки разделов не трогаем) */
+  const hasSynthConcepts = conceptParticipants.length > 0;
+  const prevHasSynthRef = useRef(false);
+  useEffect(() => {
+    const prev = prevHasSynthRef.current;
+    prevHasSynthRef.current = hasSynthConcepts;
+    if (hasSynthConcepts && !prev && !synthReady) {
+      handleSynthReadyChange(true);
+      setPoolStatus(
+        "☑ Включены разделы, обязательные для мета-синтеза " +
+          "(граф, глоссарий, тезисы, диалог, критика, капсула)",
+        "ok",
+      );
+    } else if (!hasSynthConcepts && prev && synthReady) {
+      setSynthReady(false);
+    }
+    // handleSynthReadyChange/synthReady намеренно вне deps: реагируем
+    // только на ПЕРЕХОД hasSynthConcepts (ref), не на смену synthReady
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSynthConcepts]);
 
   const lang =
     langChoice === "__custom" ? customLang.trim() || "Russian" : langChoice;
@@ -201,6 +330,18 @@ export function SynthesisForm({
       );
       return;
     }
+    // Ограничение 1.5b (см. шапку): сервер примет концепции-участники
+    // после бесед 3.1 (мета-синтез) и 4.3 (импорт файлов в БД)
+    if (conceptParticipants.length > 0) {
+      setFormError(
+        "Мета-синтез с концепциями-участниками пока не поддержан сервером: " +
+          "файловые концепции нужно сначала импортировать в каталог " +
+          "(серверный импорт — в разработке), а генерацию с родительским " +
+          "контекстом добавит мета-синтез-сервис. Снимите ☑ с концепций " +
+          "в пуле, чтобы сгенерировать обычный синтез.",
+      );
+      return;
+    }
     setFormError(null);
     onSubmit(buildInput());
   };
@@ -230,6 +371,10 @@ export function SynthesisForm({
       </div>
 
       <PhilosopherPicker selected={philosophers} onChange={setPhilosophers} />
+
+      {/* Unified Concept Pool (беседа 1.5b): «Загруженные Концепции» —
+          пул заменяет старые блоки импорта/концептов исходника */}
+      <ConceptPool />
 
       {/* Метод / порядок / уровень / глубина / язык */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -352,6 +497,8 @@ export function SynthesisForm({
           }
           extGraphMetrics={extGraphMetrics}
           onExtGraphMetricsChange={setExtGraphMetrics}
+          synthReady={synthReady}
+          onSynthReadyChange={handleSynthReadyChange}
         />
         {/* Порядок исходника: боксы предупреждений, затем compat-панель */}
         <SectionWarnings advice={advice?.advice ?? null} />
@@ -379,6 +526,8 @@ export function SynthesisForm({
               </span>
             </span>
           </label>
+          {/* fullBudgetPreview (renderFullBudgetPreview [10456]) */}
+          <FullBudgetPreview depth={depth} />
         </div>
       )}
 

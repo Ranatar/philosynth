@@ -135,6 +135,9 @@
       }
 
 // ───── [poolIdx] philosynth.html строки 13081–13112 ─────
+// ⚠ ЛОЖНОЕ СРАБАТЫВАНИЕ extract-fragments: этот блок — dash-пул
+// СТИЛЕЙ РЁБЕР ГРАФА, к Unified Concept Pool отношения не имеет.
+// Оставлен для истории; НЕ портировать в рамках 1.5b.
         let poolIdx = 0;      // счётчик пула dash (только для типов без dash-сида)
         for (const stem of arr) {
           // ── Hue ──
@@ -599,4 +602,162 @@
           if (c.isSynthParticipant) refreshPoolParticipant(c);
         }
         syncConceptParticipants();
+      }
+
+// ═════ Дописано патчем 1.5b (дыра извлечения: функции заявлены в
+// первом запросе беседы, но во фрагмент не попали) ═════
+// ───── [toggleSynthParticipant] philosynth.html строки 4731–4771 ─────
+      function toggleSynthParticipant(id) {
+        const concept = _loadedConcepts.find(c => c.id === id);
+        if (!concept) return;
+
+        if (!concept.isSynthParticipant) {
+          // Включаем — проверяем пригодность
+          if (!concept.participant) {
+            alert("Концепция непригодна для мета-синтеза:\n" +
+                  (concept.participantError || "Неизвестная ошибка"));
+            return;
+          }
+          concept.isSynthParticipant = true;
+
+          // Автоматически включаем обязательные разделы для мета-синтеза
+          const synthReadyEl = document.getElementById("secSynthReady");
+          const hasSynthConcepts = _loadedConcepts.some(c => c.isSynthParticipant);
+          if (hasSynthConcepts && synthReadyEl && !synthReadyEl.checked) {
+            synthReadyEl.checked = true;
+            onSynthReadyChange(true);
+            setPoolStatus("☑ Включены разделы, обязательные для мета-синтеза " +
+                          "(граф, глоссарий, тезисы, диалог, критика, капсула)", "ok");
+          }
+        } else {
+          concept.isSynthParticipant = false;
+          // Если больше нет концепций для синтеза — снимаем synthReady
+          const remaining = _loadedConcepts.filter(c => c.isSynthParticipant).length;
+          if (remaining === 0) {
+            const synthReadyEl = document.getElementById("secSynthReady");
+            if (synthReadyEl && synthReadyEl.checked) {
+              synthReadyEl.checked = false;
+              // Не снимаем галочки разделов — пользователь сам решит
+              setPoolStatus("Мета-синтез отменён. Галочки разделов можно изменить вручную.", "");
+            }
+          }
+        }
+
+        syncConceptParticipants();
+        renderPoolConcepts();
+        updateSectionWarnings();
+        updateCostEstimate();
+      }
+
+// ───── [selectForViewing] philosynth.html строки 4776–4828 ─────
+      function selectForViewing(id) {
+        const concept = _loadedConcepts.find(c => c.id === id);
+        if (!concept) return;
+
+        // Если кликнули на уже выбранную — деселект
+        if (concept.isSelected) {
+          // Сохраняем снимок
+          if (DOC_STATE.ready) {
+            concept.snapshot = snapshotCurrentState();
+            refreshPoolParticipant(concept);
+          }
+          concept.isSelected = false;
+          _selectedConceptId = null;
+          const indicator = document.getElementById("importIndicator");
+          if (indicator) indicator.classList.remove("visible");
+          renderPoolConcepts();
+          return;
+        }
+
+        // Сохраняем снимок текущей выбранной концепции
+        if (_selectedConceptId) {
+          const prev = _loadedConcepts.find(c => c.id === _selectedConceptId);
+          if (prev) {
+            if (DOC_STATE.ready) {
+              prev.snapshot = snapshotCurrentState();
+              refreshPoolParticipant(prev);
+            }
+            prev.isSelected = false;
+          }
+        }
+
+        concept.isSelected = true;
+        _selectedConceptId = id;
+
+        // Загружаем
+        if (concept.snapshot) {
+          restoreFromPoolSnapshot(concept.snapshot, concept.filename);
+        } else {
+          importHTML(concept.rawHTML, concept.filename);
+        }
+
+        // Обновляем индикатор
+        const indicator = document.getElementById("importIndicator");
+        if (indicator) {
+          indicator.textContent = "◉ " + concept.name;
+          indicator.classList.add("visible");
+        }
+
+        // Восстанавливаем пул-состояние _conceptParticipants
+        syncConceptParticipants();
+        renderPoolConcepts();
+      }
+
+
+// ───── [snapshotCurrentState] philosynth.html строки 4833–4869 ─────
+      function snapshotCurrentState() {
+        // Сериализуем состояние (как в saveHTML)
+        const stateData = {
+          version: 2,
+          parentContextSchema: PARENT_CONTEXT_SCHEMA_ID,
+          parentContextSchemaVersion: PARENT_CONTEXT_SCHEMA_VERSION,
+          genLog: genLog.map(g => {
+            const { _sys, _promptSkeleton, ...rest } = g;
+            return rest;
+          }),
+          ctxLog,
+          genCommon,
+          params: DOC_STATE.params,
+          sectionOrder: DOC_STATE.sectionOrder,
+          editedSections: [...DOC_STATE.editedSections],
+          docVersion: DOC_STATE.docVersion,
+          participants: DOC_STATE.participants,
+          // Капсулы в state — дубль (они уже живут в HTML-дереве
+          // через renderGenealogyTree). Strip закрывает утечку на всех
+          // путях, включая снимок → импорт как участник, где
+          // restoreCapsulesFromHTML не вызывается.
+          genealogy: stripCapsulesFromGenealogy(DOC_STATE.genealogy),
+          capsuleHTML: DOC_STATE.capsuleHTML,
+          modes: DOC_STATE.modes,
+          structureSections: DOC_STATE.structureSections,
+        };
+
+        // Строим мини-HTML-документ
+        const docOutput = document.getElementById("docOutput");
+        const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' +
+          '<div id="docOutput">' + docOutput.innerHTML + '</div>' +
+          '<script type="application/json" id="philosynth-state">' +
+          JSON.stringify(stateData) +
+          '<\/script></body></html>';
+
+        return { html, filename: null };
+      }
+
+// ───── [syncConceptParticipants] philosynth.html строки 4881–4897 ─────
+      function syncConceptParticipants() {
+        const _prev = _conceptParticipants;
+        _conceptParticipants = _loadedConcepts
+          .filter(c => c.isSynthParticipant && c.participant)
+          .map(c => {
+            // Переносим generationOrder из объекта пула в participant, чтобы
+            // при построении genealogy для участников-концепций без собственной
+            // genealogy мы могли использовать известный порядок как fallback.
+            return c.generationOrder
+              ? { ...c.participant, generationOrder: c.generationOrder }
+              : c.participant;
+          });
+        // Показ/скрытие fullBudgetBlock при смене пула (ТЗ tz_budget_mode).
+        try {
+          if (typeof renderFullBudgetPreview === "function") renderFullBudgetPreview();
+        } catch (_) {}
       }

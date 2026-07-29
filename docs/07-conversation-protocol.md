@@ -922,6 +922,39 @@ grep -n 'body' philosynth.html | head -1  # найти начало, затем 
 
 ---
 
+> **По факту беседы 1.5b** (реализация принята, тесты 35/35 браузерных
+> + 38/38 смоук-сверок порта с исходником):
+> - Состояние пула — `client/stores/pool-store.ts` (Zustand; в перечне
+>   первого запроса не значился), DOM-парсинг — `client/utils/concept-file.ts`
+>   (клиентские порты 1:1: parseConceptFile, importConceptAsParticipant,
+>   extract-цепочка, fetchWithFallback+CORS-прокси; genealogy=null —
+>   reconstructGenealogy/restoreCapsulesFromHTML отложены к 3.1/3.2).
+> - **Снимки вырождены**: клиент сервиса не редактирует просматриваемую
+>   концепцию локально (правки — в БД, беседы 2.x), поэтому
+>   snapshotCurrentState/restoreFromPoolSnapshot НЕ портированы;
+>   refreshPoolParticipant идёт по ветке «rawHTML не менялся»; просмотр
+>   ◉ = read-only предпросмотр innerHTML #docOutput. Тест 2 читать как
+>   «переключи просмотр → предпросмотр и индикатор переключились»;
+>   тест 4 — как «prepareForGeneration (refreshAllSynthParticipants +
+>   сброс ◉) отработал до POST».
+> - Тест 3 читать как «☑ непригодной disabled + ⚠ с причиной, клик
+>   no-op»: alert-ветка toggleSynthParticipant [4738] из UI недостижима
+>   И В ИСХОДНИКЕ — чекбокс у непригодной рендерится disabled [5258].
+> - **Гейт мета-синтеза**: сабмит с ☑-концепциями блокируется формой с
+>   объяснением — файловые концепции не представимы в ParticipantInput
+>   ({type:'synthesis',synthesisId}), сервер отклоняет их до 3.1
+>   (meta-synthesis-service) и 4.3 (серверный импорт файлов).
+> - SectionPicker += secSynthReady (SYNTH_READY_SECTIONS дословно [5114],
+>   подсказка про «Анализ названия» [5580]); автовключение разделов —
+>   эффект SynthesisForm по переходу hasSynthConcepts (React-адаптация
+>   DOM-части toggleSynthParticipant [4744]); FullBudgetPreview — порт
+>   renderFullBudgetPreview [10456] с клиентской копией CONTEXT_BUDGET
+>   (помечена как дрейф-риск; estimate-diff — после 3.1).
+> - Фрагмент 1.5b-concept-pool.js дополнен 4 функциями, заявленными
+>   ниже, но не попавшими в извлечение; блок [poolIdx] в нём — ложное
+>   срабатывание (dash-пул стилей рёбер графа). Появился
+>   `client/src/vite-env.d.ts` (первый import.meta.env клиента).
+
 ### Беседа 1.5b: Unified Concept Pool (клиент)
 
 **Контекст:**
@@ -2697,6 +2730,7 @@ streaming-manager.
  │         │    └── 1.4 (streaming-manager, generation-service, graph-parser, element-parser)
  │         │         ├── 1.4b (pause-resume-service, PauseModal — v11)
  │         │         ├── 1.5 (SynthesisForm, GenerationProgress, SectionWarnings — клиент)
+ │         │         │    └── 1.5b (Unified Concept Pool: pool-store, concept-file — клиент)
  │         │         ├── 2.2 (plan-executor, regenerateSection/Subsection, addSection, deleteSection)
  │         │         │    └── 2.3 (EditModal, CascadePanel, EditPlanPanel — клиент)
  │         │         ├── 3.1 (meta-synthesis-service, lineage-service)
@@ -2713,6 +2747,7 @@ streaming-manager.
  │
  └── 0.4 (клиент каркас, роутинг, stores, api/client, useWebSocket)
       ├── 1.5 (форма + прогресс)
+      │    └── 1.5b (Unified Concept Pool)
       ├── 1.6 (DocumentView, CatalogPage)
       ├── 1.7 (Graph3D, Graph2D, GraphModal, NodePanel)
       ├── 2.3 (EditModal, CascadePanel)
