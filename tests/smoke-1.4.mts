@@ -9,19 +9,19 @@ import {
   classifyStreamError,
   pauseFriendlyMessage,
   StreamError,
-} from "./services/streaming-manager.js";
-import { parseGraphFromHTML } from "./services/graph-parser.js";
+} from "../server/services/streaming-manager.js";
+import { parseGraphFromHTML } from "../server/services/graph-parser.js";
 import {
   parseGlossaryFromHTML,
   parseThesesFromHTML,
-} from "./services/element-parser.js";
+} from "../server/services/element-parser.js";
 import {
   buildPromptSkeleton,
   extractTitleFromNameHtml,
   parseSubsectionsFromHTML,
-} from "./services/generation-service.js";
-import { closeDb } from "./db/index.js";
-import { closeRedis } from "./redis.js";
+} from "../server/services/generation-service.js";
+import { closeDb } from "../server/db/index.js";
+import { closeRedis } from "../server/redis.js";
 
 let n = 0;
 const ok = (name: string): void => {

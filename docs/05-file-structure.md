@@ -389,9 +389,23 @@ philosynth-service/
 │   └── public/
 │       └── favicon.svg
 │
-└── scripts/
-    ├── seed-prompts.ts                 # Начальное заполнение prompt_templates из исходника
-    ├── seed-configs.ts                 # Начальное заполнение synthesis_configs из исходника
-    ├── seed-taxonomy.ts                # Заполнение каталогов типов (18 категорий + 29 связей)
-    └── migrate-html-files.ts           # Массовый импорт HTML-файлов в БД
+├── scripts/
+│   ├── seed-prompts.ts                 # Начальное заполнение prompt_templates из исходника
+│   ├── seed-configs.ts                 # Начальное заполнение synthesis_configs из исходника
+│   ├── seed-taxonomy.ts                # Заполнение каталогов типов (18 категорий + 29 связей)
+│   ├── extract-seed-data.mjs           # vm-извлечение конфигов/промптов из исходника
+│   ├── extract-section-templates.mjs   # Генерация section.* шаблонов Registry
+│   ├── patch-docs-*.py                 # Идемпотентные патчи доков по итогам бесед (skip/fail-отчёт)
+│   ├── package.json                    # Маркер type=module
+│   ├── tsconfig.json                   # Типочек scripts/*.ts + tests/*.ts|*.mts (typecheck:scripts)
+│   └── migrate-html-files.ts           # Массовый импорт HTML-файлов в БД (Фаза 4)
+│
+└── tests/                              # ВСЕ тесты бесед; запуск из корня репо
+    ├── smoke-*.mjs / smoke-*.mts       # vm-смоуки байтовой сверки порта с исходником
+    ├── test-XX-*.mjs                   # API- и браузерные тесты запросов бесед (puppeteer)
+    ├── test-*-0.3b.ts                  # Регрессионные смоуки таксономии
+    └── package.json                    # Маркер type=module
 ```
+
+Workspace-регрессия `audit.mts` и `integration-check.mts` — в server/
+(npm-скрипты пакета + tsconfig.checks.json), не в tests/.

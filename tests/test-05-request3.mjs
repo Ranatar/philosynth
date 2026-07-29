@@ -13,8 +13,8 @@ import { createHash } from "node:crypto";
 
 import { Hono } from "hono";
 
-import { authRoutes } from "./server/routes/auth.ts";
-import { db, schema, closeDb } from "./server/db/index.ts";
+import { authRoutes } from "../server/routes/auth.ts";
+import { db, schema, closeDb } from "../server/db/index.ts";
 import { eq, inArray } from "drizzle-orm";
 
 const STAMP = Date.now();

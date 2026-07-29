@@ -14,10 +14,10 @@
 import assert from "node:assert/strict";
 
 const { resolveContextDeps } = await import(
-  "./server/services/synthesis-engine.ts"
+  "../server/services/synthesis-engine.ts"
 );
-const { closeDb } = await import("./server/db/index.js");
-const { closeRedis } = await import("./server/redis.js");
+const { closeDb } = await import("../server/db/index.js");
+const { closeRedis } = await import("../server/redis.js");
 
 let n = 0;
 const ok = (msg) => console.log(`  ✓ ${++n}. ${msg}`);

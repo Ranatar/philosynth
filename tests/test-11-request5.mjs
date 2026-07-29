@@ -12,9 +12,9 @@ const {
   getActiveSubstitutionMap,
   resolveContextDeps,
   buildEffectiveDepsWith,
-} = await import("./server/services/synthesis-engine.ts");
-const { closeDb } = await import("./server/db/index.js");
-const { closeRedis } = await import("./server/redis.js");
+} = await import("../server/services/synthesis-engine.ts");
+const { closeDb } = await import("../server/db/index.js");
+const { closeRedis } = await import("../server/redis.js");
 
 let n = 0;
 const ok = (msg) => console.log(`  ✓ ${++n}. ${msg}`);
@@ -102,7 +102,7 @@ try {
   // Не-заменитель → null: ключ выбираем программно (sum:goals, вопреки
   // интуиции, САМ является кандидатом q=1 в карте)
   const { ALL_CTX_KEYS } = await import(
-    "./packages/shared/constants/ctx-keys.ts"
+    "../packages/shared/constants/ctx-keys.ts"
   );
   const nonSub = ALL_CTX_KEYS.find((k) => !firstQ.has(k));
   assert.ok(nonSub, "существует ctx-ключ вне карты заменителей");

@@ -14,8 +14,8 @@
  */
 import { Hono } from "hono";
 
-import { authRoutes } from "./server/routes/auth.ts";
-import { db, schema, closeDb } from "./server/db/index.ts";
+import { authRoutes } from "../server/routes/auth.ts";
+import { db, schema, closeDb } from "../server/db/index.ts";
 import { eq } from "drizzle-orm";
 
 const EMAIL = `test-05-r4-${Date.now()}@example.com`;

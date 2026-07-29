@@ -30,11 +30,22 @@ client/            React-клиент: маршруты + Layout/Header/Sidebar,
                    api/client.ts, stores/auth-store.ts, hooks/useWebSocket.ts,
                    страницы Login/Register/Profile — рабочие, остальные —
                    заглушки (наполняются в Фазах 1+)
-scripts/           extract-seed-data.mjs, seed-prompts/-configs/-taxonomy,
-                   идемпотентные патч-скрипты доков, тесты 0.3b
+scripts/           эксплуатационные скрипты: extract-seed-data.mjs,
+                   extract-section-templates.mjs, seed-prompts/-configs/
+                   -taxonomy, идемпотентные патч-скрипты доков
+                   (patch-docs-*.py)
 docs/              7 проектных документов + fragments-for-conversations/
-tests/             браузерные/API-тесты бесед 0.4–0.6 (puppeteer / mini-Hono)
+tests/             ВСЕ тесты бесед (0.3b–1.5b): vm-смоуки байтовой сверки
+                   с исходником (smoke-*.mjs/.mts), API-тесты (mini-Hono),
+                   браузерные (puppeteer + системный Chromium). Запуск из
+                   корня репо: `node tests/<файл>` / `npx tsx tests/<файл>`.
+                   Типовое покрытие tests/*.ts и *.mts — через
+                   `npm run typecheck:scripts`
 ```
+
+Workspace-регрессия (`server/audit.mts`, `server/integration-check.mts`)
+намеренно живёт в server/ — это npm-скрипты пакета
+(`npm run audit / check:integration -w server`, tsconfig.checks.json).
 
 ## Быстрый старт
 
@@ -68,13 +79,15 @@ npm run check:integration -w server     # импорты/контракты/жи
 npm run typecheck:scripts
 ```
 
-`check:integration` расширяется секциями по мере бесед — 1.5 добавила
-4m/5m: клиент-модули формы/прогресса, контракты и живые /estimate и
-/advice (сейчас покрывает
-0.1–0.6 и 1.1–1.5); живые секции требуют поднятых PG и Redis и засеянных
+`check:integration` расширяется секциями по мере бесед — 1.5b добавила
+4n: модули пула (pool-store без snapshotCurrentState, concept-file,
+PoolCard/ConceptPool, SYNTH_READY_SECTIONS) и контракты (гейт
+мета-синтеза до 3.1/4.3, prepareForGeneration перед POST,
+CONTEXT_BUDGET_PREVIEW локализован). Сейчас покрывает 0.1–0.6 и
+1.1–1.5b; живые секции требуют поднятых PG и Redis и засеянных
 prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.5 закрыты
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.5b закрыты
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -167,13 +180,26 @@ GenerationProgress (◯/⟳/✓/⚠, живой счётчик), useStreamingGen
 Тесты: tests/test-15-requests2-7.mjs 40/40 ✓ (браузерные, puppeteer;
 БД-ассерты гранулярного парсинга внутри теста).
 
-Не сделано (Фаза 1+): страницы синтеза/каталога/графа (1.6),
-Unified Concept Pool + secSynthReady + превью keepFullBudget (1.5b),
+Беседа 1.5b (Unified Concept Pool, клиент): pool-store (Zustand:
+☑ участие в мета-синтезе / ◉ просмотр / derived conceptParticipants),
+concept-file.ts — клиентские порты 1:1 (parseConceptFile,
+importConceptAsParticipant, extract-цепочка, fetchWithFallback);
+ConceptPool + PoolCard в SynthesisForm, secSynthReady c автовключением
+обязательных разделов, FullBudgetPreview. Снимки вырождены (локальных
+правок в сервисе нет), просмотр ◉ — read-only предпросмотр; сабмит с
+☑-концепциями гейтится до 3.1/4.3. Тесты: смоук байтовой сверки 38/38 ✓
+(tests/smoke-15b-request1.mjs), браузерный 35/35 ✓
+(tests/test-15b-requests2-5.mjs). Доки пропатчены
+scripts/patch-docs-conv15b.py (11 правок, идемпотентно).
+
+Не сделано (Фаза 1+): страницы синтеза/каталога/графа (1.6, 1.7),
 applyReplacement и точный confirm деградации skip (2.x), каскады и план
 редактирования (plan-executor — снимет RESUME_INVALID с resume_plan
-retry/skip_step), мета-синтез, режимы, экспорт/импорт, billing,
-BYO-Key (6.1 — ввод ключа в auth-модалке).
+retry/skip_step), мета-синтез (3.1 — снимет гейт ☑-концепций в форме и
+даст estimate-diff превью бюджета), полный пул с деревом (3.2), режимы,
+экспорт/импорт (4.x — серверный parseConceptFile), billing, BYO-Key
+(6.1 — ввод ключа в auth-модалке).
 Следующая по графу 07 — беседа 1.6 (страница синтеза + каталог;
-закроет TODO(1.6): pausedState из GET /syntheses/:id) либо параллельно
-1.5b (Unified Concept Pool) / 2.1 (cascade-analyzer) / 2.2 (regeneration
-+ plan-executor).
+закроет TODO(1.6): pausedState из GET /syntheses/:id и полноценный
+просмотр импортированной концепции) либо параллельно 1.7 (граф) /
+2.1 (cascade-analyzer) / 3.1 (мета-синтез).

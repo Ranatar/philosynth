@@ -11,17 +11,17 @@ const {
   buildEffectiveDeps,
   buildEffectiveDepsWith,
   getActiveSubstitutionMap,
-} = await import("./server/services/synthesis-engine.ts");
+} = await import("../server/services/synthesis-engine.ts");
 const { computePredecessors, buildDynamicOrder, resolveCircularDeps } =
-  await import("./server/utils/topo-sort.ts");
+  await import("../server/utils/topo-sort.ts");
 const { computeSectionAdvice } = await import(
-  "./server/services/compat-advisor.ts"
+  "../server/services/compat-advisor.ts"
 );
 const { estimateCost, estimateModeCost } = await import(
-  "./server/services/cost-estimator.ts"
+  "../server/services/cost-estimator.ts"
 );
-const { closeDb } = await import("./server/db/index.js");
-const { closeRedis } = await import("./server/redis.js");
+const { closeDb } = await import("../server/db/index.js");
+const { closeRedis } = await import("../server/redis.js");
 
 let n = 0;
 const ok = (msg) => console.log(`  ✓ ${++n}. ${msg}`);

@@ -19,23 +19,23 @@
 
 import { eq } from "drizzle-orm";
 
-import { db, closeDb } from "./server/db/index.ts";
-import { closeRedis } from "./server/redis.ts";
-import * as schema from "./server/db/schema.ts";
-import { getConfig } from "./server/services/prompt-registry.ts";
+import { db, closeDb } from "../server/db/index.ts";
+import { closeRedis } from "../server/redis.ts";
+import * as schema from "../server/db/schema.ts";
+import { getConfig } from "../server/services/prompt-registry.ts";
 import {
   createDbContextSource,
   extractContextFragment,
   extractGraphNodesTable,
   extractGlossaryTable,
   extractSummaryGoals,
-} from "./server/services/context-extractor.ts";
-import { buildContextForSection } from "./server/services/context-builder.ts";
+} from "../server/services/context-extractor.ts";
+import { buildContextForSection } from "../server/services/context-builder.ts";
 import {
   resolveContextDeps,
   buildEffectiveDeps,
-} from "./server/services/synthesis-engine.ts";
-import { buildDynamicOrder } from "./server/utils/topo-sort.ts";
+} from "../server/services/synthesis-engine.ts";
+import { buildDynamicOrder } from "../server/utils/topo-sort.ts";
 
 let pass = 0;
 const fails = [];

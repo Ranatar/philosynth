@@ -25,14 +25,14 @@ import {
   baseCtx,
   buildSYS,
   setParentContextProvider,
-} from "./server/services/prompt-builder.ts";
+} from "../server/services/prompt-builder.ts";
 import {
   buildSectionDefs,
   groupPasses,
   patchPromptsWithSecCtx,
-} from "./server/services/section-defs-builder.ts";
-import { closeDb } from "./server/db/index.js";
-import { closeRedis } from "./server/redis.js";
+} from "../server/services/section-defs-builder.ts";
+import { closeDb } from "../server/db/index.js";
+import { closeRedis } from "../server/redis.js";
 
 let pass = 0, fail = 0;
 const ok = (label, cond, detail) => {

@@ -13,12 +13,12 @@ const {
   titleForSeverity,
   computeSectionWarnings,
   computeSectionAdvice,
-} = await import("./server/services/compat-advisor.ts");
+} = await import("../server/services/compat-advisor.ts");
 const { resolveContextDeps } = await import(
-  "./server/services/synthesis-engine.ts"
+  "../server/services/synthesis-engine.ts"
 );
-const { closeDb } = await import("./server/db/index.js");
-const { closeRedis } = await import("./server/redis.js");
+const { closeDb } = await import("../server/db/index.js");
+const { closeRedis } = await import("../server/redis.js");
 
 let n = 0;
 const ok = (msg) => console.log(`  ✓ ${++n}. ${msg}`);

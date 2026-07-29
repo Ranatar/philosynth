@@ -19,11 +19,11 @@ import {
   extractPreambleConstraints,
   serializeSubsectionRegen,
   type SectionParts,
-} from "./services/section-defs-builder.js";
+} from "../server/services/section-defs-builder.js";
 import {
   removeSubsectionHtml,
   spliceSubsectionHtml,
-} from "./utils/html-parser.js";
+} from "../server/utils/html-parser.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcPath = join(here, "..", "source", "philosynth.html");

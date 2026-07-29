@@ -23,11 +23,11 @@ import vm from "node:vm";
 import { parseHTML } from "linkedom";
 import { eq } from "drizzle-orm";
 
-import { db, closeDb } from "./server/db/index.ts";
-import { closeRedis } from "./server/redis.ts";
-import * as schema from "./server/db/schema.ts";
-import { parseFragment, innerText, innerTextTrimmed } from "./server/utils/html-parser.ts";
-import { truncateText, tableToText } from "./server/utils/text.ts";
+import { db, closeDb } from "../server/db/index.ts";
+import { closeRedis } from "../server/redis.ts";
+import * as schema from "../server/db/schema.ts";
+import { parseFragment, innerText, innerTextTrimmed } from "../server/utils/html-parser.ts";
+import { truncateText, tableToText } from "../server/utils/text.ts";
 import {
   createDbContextSource,
   extractContextFragment,
@@ -41,21 +41,21 @@ import {
   extractThesesSummary,
   extractSummaryGoals,
   extractSummaryTensions,
-} from "./server/services/context-extractor.ts";
+} from "../server/services/context-extractor.ts";
 import {
   applyBudgetPressure,
   computeConceptOverhead,
   parentOverheadForSection,
   buildContextForSection,
-} from "./server/services/context-builder.ts";
+} from "../server/services/context-builder.ts";
 import {
   resolveParentDeps,
   resolveParentDepsForSubsection,
   buildParentSpecForLog,
   validateParentDeps,
-} from "./server/services/parent-context.ts";
-import { resolveContextDeps, buildEffectiveDeps } from "./server/services/synthesis-engine.ts";
-import { buildDynamicOrder } from "./server/utils/topo-sort.ts";
+} from "../server/services/parent-context.ts";
+import { resolveContextDeps, buildEffectiveDeps } from "../server/services/synthesis-engine.ts";
+import { buildDynamicOrder } from "../server/utils/topo-sort.ts";
 
 let pass = 0;
 const fails = [];

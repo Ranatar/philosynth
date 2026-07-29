@@ -180,7 +180,7 @@ let serverLog = "";
 
 async function startServer() {
   serverProc = spawn("npx", ["tsx", "index.ts"], {
-    cwd: new URL("./server/", import.meta.url).pathname,
+    cwd: new URL("../server/", import.meta.url).pathname,
     env: {
       ...process.env,
       PORT: String(SERVER_PORT),

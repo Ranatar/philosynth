@@ -1866,3 +1866,52 @@ retry/skip_step до plan-executor'а (2.2) отвечает RESUME_INVALID;
 04 (фактические файлы пула; клиентский порт importConceptAsParticipant),
 фрагмент (ложный [poolIdx] помечен; дописаны 4 недостающие функции),
 эта глава. При переупаковке архивов скрипт оставлять.
+
+# Межбеседное обслуживание после 1.5b — раскладка тестов [ЗАКРЫТО]
+
+По запросу пользователя тесты/патчи сведены к единой раскладке; README
+актуализирован (беседа 1.5b, структура, регрессия).
+
+## Маппинг перемещений (старое → новое)
+
+- Корень репо → tests/: smoke-12-request1.mjs, smoke-13-request1.mjs,
+  test-11-request2…7.mjs, test-12-requests2-8.mjs,
+  test-13-requests2-7.mjs, test-14-requests2-8.mjs
+  (спецификаторы "./server/ → "../server/; test-11-request5 —
+  и "./packages/ → "../packages/).
+- scripts/ → tests/: test-custom-type-0.3b.ts, test-normalize-0.3b.ts
+  (импорты не менялись — та же глубина "../server/…").
+- server/ → tests/: smoke-1.4.mts, smoke-1.4b.mts ("./services|db|utils/
+  → "../server/…"; чтение исходника join(here,"..","source") валиден с
+  той же глубины).
+
+## Починенные ЛАТЕНТНЫЕ поломки (существовали до переезда)
+
+tests/test-05-request2/3/4.mjs и tests/test-06-request2-api.mjs
+импортировали "./server/…" — были незапускаемы со своего места
+(когда-то переехали в tests/ без правки путей). Починены; контрольный
+прогон test-05-request2 — 9/9 ✓.
+
+## Правила раскладки (для следующих бесед)
+
+- tests/ — ВСЕ тесты бесед; запуск из корня репо (CWD-зависимые
+  readFileSync("source/…") законны); файл-относительные импорты —
+  строго "../server/…", "../packages/…", "../client/…".
+- server/audit.mts + server/integration-check.mts — workspace-регрессия,
+  остаются в server/ (npm -w server, tsconfig.checks.json).
+- scripts/ — сиды, экстракторы, идемпотентные патчи доков.
+- tests/package.json (type=module) обязателен: без него tests/*.ts под
+  NodeNext — CommonJS (TS1295).
+- scripts/tsconfig.json типочекает scripts/*.ts + ../tests/*.ts +
+  ../tests/*.mts (jsx=react-jsx — smoke-1.4b.mts импортирует
+  PauseModal.tsx); закрыта дыра: smoke-1.4*.mts раньше не типочекались
+  нигде.
+
+## Верификация переезда
+
+typecheck + typecheck:scripts 0 ошибок; audit «расхождений не найдено»;
+INTEGRATION OK; перемещённые: smoke-1.4 8/8, smoke-1.4b 27/27,
+smoke-12 121/121, smoke-13 92/92, test-11-request2 9/9,
+test-normalize-0.3b OK, test-05-request2 9/9 (латентный);
+неперемещённые 1.5b: смоук 38/38, браузерный 35/35.
+Доки/README — scripts/patch-docs-repo-layout.py (идемпотентный).

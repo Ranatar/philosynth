@@ -10,10 +10,10 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
-import { buildSYS, buildQualityReinforcement, getStopSignal } from "./server/services/prompt-builder.ts";
-import { buildSectionDefs, buildSubsectionMap } from "./server/services/section-defs-builder.ts";
-import { closeDb } from "./server/db/index.js";
-import { closeRedis } from "./server/redis.js";
+import { buildSYS, buildQualityReinforcement, getStopSignal } from "../server/services/prompt-builder.ts";
+import { buildSectionDefs, buildSubsectionMap } from "../server/services/section-defs-builder.ts";
+import { closeDb } from "../server/db/index.js";
+import { closeRedis } from "../server/redis.js";
 
 const src = readFileSync("source/philosynth.html", "utf8").split("\n");
 const slice = (a, b) => src.slice(a - 1, b).join("\n");

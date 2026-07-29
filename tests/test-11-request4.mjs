@@ -10,14 +10,14 @@
 import assert from "node:assert/strict";
 
 const { estimateCost, mw, SECTION_OUTPUT_MULT } = await import(
-  "./server/services/cost-estimator.ts"
+  "../server/services/cost-estimator.ts"
 );
 const { resolveContextDeps, buildEffectiveDeps } = await import(
-  "./server/services/synthesis-engine.ts"
+  "../server/services/synthesis-engine.ts"
 );
-const { buildDynamicOrder } = await import("./server/utils/topo-sort.ts");
-const { closeDb } = await import("./server/db/index.js");
-const { closeRedis } = await import("./server/redis.js");
+const { buildDynamicOrder } = await import("../server/utils/topo-sort.ts");
+const { closeDb } = await import("../server/db/index.js");
+const { closeRedis } = await import("../server/redis.js");
 
 let n = 0;
 const ok = (msg) => console.log(`  ✓ ${++n}. ${msg}`);
