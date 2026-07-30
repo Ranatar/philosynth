@@ -79,7 +79,11 @@ philosynth-service/
 │   │   ├── auth.ts                     # POST /auth/register, /login, /logout, GET /me
 │   │   ├── syntheses.ts                # CRUD /syntheses, /syntheses/:id
 │   │   ├── sections.ts                 # GET /syntheses/:id/sections, /:key, /:key/context
+│   │   │                               # (создаёт беседа 1.6 — до 2026-07-30
+│   │   │                               #  модуль не был назначен ни одной беседе)
 │   │   ├── elements.ts                 # GET/PATCH categories, theses, glossary
+│   │   │                               # GET /categories — беседа 1.6 (нужен 1.7),
+│   │   │                               # остальное (PATCH, theses, glossary) — 5.1
 │   │   ├── transforms.ts               # POST transform graph-to-theses / theses-to-graph, history, rollback
 │   │   ├── taxonomy.ts                 # GET/POST category-types, relationship-types, normalize
 │   │   ├── enrichment.ts               # POST enrich/category, enrich/edge, justify-characteristic
@@ -88,10 +92,15 @@ philosynth-service/
 │   │   ├── modes.ts                    # POST run, GET results, DELETE
 │   │   ├── lineage.ts                  # GET ancestors, descendants, search
 │   │   ├── prompts.ts                  # Admin: CRUD prompt_templates, synthesis_configs
+│   │   │                               # (создаёт беседа 6.1 — до 2026-07-30
+│   │   │                               #  модуль не был назначен ни одной беседе;
+│   │   │                               #  клиентский api/prompts.ts — 6.2)
 │   │   ├── billing.ts                  # API keys, topup, transactions, usage
 │   │   ├── export.ts                   # GET /export/html, /mmd, /png, /json, /md
 │   │   ├── import.ts                   # POST /syntheses/import
 │   │   └── logs.ts                     # GET /logs/generation, /context, /formatted
+│   │                                   # (создаёт беседа 2.4; /logs/prompts —
+│   │                                   #  без skeleton-fallback до 4.2)
 │   │
 │   ├── services/
 │   │   ├── synthesis-engine.ts         # resolveContextDeps, buildEffectiveDeps,
@@ -266,7 +275,8 @@ philosynth-service/
 │   │   │   ├── client.ts               # fetch-обёртка с auth, error handling
 │   │   │   ├── syntheses.ts            # API-функции для /syntheses
 │   │   │   ├── sections.ts
-│   │   │   ├── elements.ts
+│   │   │   ├── elements.ts             # создаёт беседа 1.7 (getCategories),
+│   │   │   │                           # расширяет 5.2
 │   │   │   ├── generation.ts
 │   │   │   ├── plans.ts
 │   │   │   ├── modes.ts
@@ -366,7 +376,9 @@ philosynth-service/
 │   │   │   ├── catalog/
 │   │   │   │   ├── SynthesisList.tsx       # Список карточек синтезов
 │   │   │   │   ├── SynthesisCard.tsx       # Карточка синтеза в каталоге
-│   │   │   │   └── CatalogFilters.tsx      # Фильтры и поиск
+│   │   │   │   └── CatalogFilters.tsx      # Фильтры и поиск (C5 — Фаза 2;
+│   │   │   │                               #  в беседе 1.6b не создаётся,
+│   │   │   │                               #  поиск живёт в CatalogPage)
 │   │   │   │
 │   │   │   ├── logs/
 │   │   │   │   ├── ContextLogViewer.tsx    # Модальное окно лога
@@ -375,7 +387,8 @@ philosynth-service/
 │   │   │   └── shared/
 │   │   │       ├── Button.tsx
 │   │   │       ├── Modal.tsx
-│   │   │       ├── LoadingSpinner.tsx
+│   │   │       ├── LoadingSpinner.tsx      # первый потребитель — 1.6b
+│   │   │       │                           # (status='generating', загрузка)
 │   │   │       └── ErrorBoundary.tsx
 │   │   │
 │   │   ├── vite-env.d.ts                   # Типы import.meta.env (появился в 1.5b)

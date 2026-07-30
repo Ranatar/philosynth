@@ -203,6 +203,12 @@ POST   /auth/password-change   { currentPassword, newPassword }
                                 // пользователя инвалидируются, текущая живёт.
 
 POST   /auth/password-reset/request  { email }              // A2a, Фаза 3
+                                // ВНИМАНИЕ: «Фаза 3» здесь — фаза
+                                // ПРОДУКТА (таблица возможностей §1),
+                                // а не беседа протокола 07. Беседы под
+                                // сброс пароля в 07 нет ни одной —
+                                // при выходе за MVP её нужно завести
+                                // отдельно (аудит 2026-07-30).
                                 → { ok: true }              // всегда ok (анти-enumeration)
 POST   /auth/password-reset/confirm  { token, newPassword } // A2a, Фаза 3
                                 → { ok: true }
@@ -217,7 +223,7 @@ POST   /auth/password-reset/confirm  { token, newPassword } // A2a, Фаза 3
 ```
 GET    /syntheses              ?page=1&limit=20&sort=createdAt&order=desc
                                &status=ready&method=dialectical&search=...
-                                → { items: Synthesis[], total: number }
+                                → { items: SynthesisPreview[], total: number }
 
 GET    /syntheses/public       ?page=1&limit=20&search=...&philosopher=Кант
                                 → { items: SynthesisPreview[], total: number }
@@ -256,13 +262,25 @@ POST   /syntheses/advice       { sections: string[], method, synthLevel,
                                 // сервер, CSS-классы чипов — клиент.
 
 GET    /syntheses/:id          → { synthesis: SynthesisFull }
+                                // Доступ: владелец ИЛИ is_public = true
+                                // (каталог «Публичные» ведёт на чужой
+                                // /synthesis/:id). Иначе 403 FORBIDDEN;
+                                // несуществующий id → 404 NOT_FOUND.
+                                // Реализация — беседа 1.6 (сервер).
 
 DELETE /syntheses/:id          → { ok: true }
+                                // Только владелец (иначе 403).
 
 PATCH  /syntheses/:id          { title?, isPublic? }
                                 → { synthesis: SynthesisFull }
+                                // Только владелец. Единственный способ
+                                // опубликовать синтез — без него вкладка
+                                // «Публичные» недостижима из UI.
 
 POST   /syntheses/:id/duplicate → { id: string }
+                                // Реализация — беседа 1.6 (сервер).
+                                // До аудита 2026-07-30 эндпоинт не был
+                                // упомянут в протоколе 07 ни разу.
 
 POST   /syntheses/import       multipart/form-data: file (HTML)
                                 → { id: string, warnings: ImportWarning[] }
@@ -285,7 +303,18 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
   keepFullBudget: boolean;              // v11
   parentContextSchema: string;          // v11: 'selective-v1' | 'monolithic'
   pausedState: PausedState | null;      // v11: см. 02-data-model (syntheses.paused_state)
+  pauseEstimates: PauseEstimates | null; // v11: оценки действий паузы —
+                                        // computePauseEstimates(id, ps)
+                                        // из pause-resume-service (1.4b),
+                                        // fail-open {}; null при pausedState
+                                        // = null. В NEXT-CONTEXT (гл. 1.4b)
+                                        // поле названо просто estimates —
+                                        // здесь развёрнуто, чтобы не путать
+                                        // с оценкой стоимости /estimate
   isPublic: boolean;
+  docNum: string;                       // «PS-NNNN-XXXX» — заполняется при
+                                        // создании записи (формат исходника
+                                        // [12110]); шапка документа
   sectionOrder: string[];
   version: { base: number, sub: number, modes: number, modeRegen: number };
   structureSections: string[] | null;  // v10: снимок sectionOrder
@@ -312,6 +341,10 @@ GET    /syntheses/:id/sections/:key
                                 → { section: SectionFull }
 
 GET    /syntheses/:id/sections/:key/context
+                                // Реализация — беседа 1.6 (сервер),
+                                // вместе с остальным routes/sections.ts.
+                                // Потребитель — поле контекста в
+                                // EditSectionCard (беседа 2.3).
                                 → { contextText: string, budget: number,
                                     rawBaseBudget: number, totalUsed: number,
                                     budgetMode: 'full'|'shrink',
@@ -342,7 +375,14 @@ GET    /syntheses/:id/sections/:key/context
   contextQualityScore: number | null;  // v11: getSectionContextQuality
                                        // (01 §4.15 п.3) — 0–100 либо null,
                                        // если ctxLog по разделу отсутствует;
-                                       // цветной бейдж в Edit Modal
+                                       // цветной бейдж в Edit Modal.
+                                       // ДО беседы 2.4 (context-quality.ts
+                                       // ещё не создан) роут отдаёт null —
+                                       // TODO(2.4)
+  subsections: string[];               // имена data-section внутри HTML —
+                                       // нужны TableOfContents (беседа 1.6b)
+                                       // для якорей второго уровня;
+                                       // parseSubsectionsFromHTML (1.4)
   updatedAt: string;
 }
 ```
@@ -366,6 +406,12 @@ GET    /syntheses/:id/sections/:key/context
 GET    /syntheses/:id/categories
                                 → { categories: Category[], edges: CategoryEdge[],
                                     clusters: ClusterLabel[], topology: TopologyInfo }
+                                // Доступ: владелец ИЛИ is_public = true.
+                                // Реализация — беседа 1.6 (сервер): граф
+                                // нужен клиентской беседе 1.7, а остальной
+                                // routes/elements.ts (PATCH категорий,
+                                // связей, тезисов, глоссария) остаётся
+                                // беседе 5.1 в Фазе 5.
 
 GET    /syntheses/:id/categories/:catId
                                 → { category: Category }

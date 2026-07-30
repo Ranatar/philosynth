@@ -109,18 +109,31 @@
 **1.6. Просмотр документа (клиент)**
 - `SynthesisPage.tsx`: загрузка данных, рендер
 - `DocumentView.tsx`, `DocumentHeader.tsx`, `SectionView.tsx`, `TableOfContents.tsx`
-- `GET /syntheses/:id`, `GET /syntheses/:id/sections`
+- `DocumentFooter.tsx`; CSS документа из исходника → `globals.css`
+- `GET /syntheses/:id`, `GET /syntheses/:id/sections` (+ `server/routes/sections.ts`)
+
+> **Соответствие протоколу (2026-07-30):** нумерация 06 и 07 в Фазе 1
+> совпадает не везде. В 07 задачи 1.6 (просмотр) и 1.8 (каталог) этого
+> документа объединены в клиентскую беседу **1.6b**, а весь серверный
+> транспорт чтения (роуты syntheses, sections, categories) вынесен в
+> отдельную беседу **1.6**. Кроме того: 06 §1.1 ≈ беседы 07 1.1+1.2,
+> 06 §1.3 ≈ 07 1.4+1.4b; бесед 1.4b и 1.5b в 06 нет вовсе.
+> Источник истины по составу беседы — 07.
 
 **1.7. Граф категорий (клиент)**
 - `GraphModal.tsx`, `Graph3D.tsx`, `Graph2D.tsx`
 - `NodePanel.tsx`, `GraphLegend.tsx`
 - `graph-utils.ts` (typeColor, edgeTypeStyle, _rebuildNodeColors, _rebuildEdgeStyles, showEdgePanel, getStructuralMarkers, clearLegendFilter — v10: динамические палитры)
 - `graph-physics.ts` (tick, warmup)
-- `GET /syntheses/:id/categories`
+- `client/api/elements.ts` (getCategories) — модуль создаётся здесь
+- зависимости: three@0.128.x, d3@^7.8.5 (+ типы) — в client/package.json их нет
+- `GET /syntheses/:id/categories` — роут делает серверная беседа 07 §1.6,
+  а не эта: прежде он рождался только в 5.1, через две фазы после графа
 
-**1.8. Каталог (клиент)**
+**1.8. Каталог (клиент)** — в протоколе 07 выполняется внутри беседы 1.6b
 - `CatalogPage.tsx`, `SynthesisList.tsx`, `SynthesisCard.tsx`
-- `GET /syntheses` (свои), `GET /syntheses/public`
+- `GET /syntheses` (свои), `GET /syntheses/public`, `PATCH /syntheses/:id`
+  (публикация — без неё вкладка «Публичные» недостижима из UI)
 
 **1.9. Биллинг: BYO-Key**
 - `api-key-service.ts`: шифрование, хранение, проксирование

@@ -242,6 +242,12 @@
 | UI подразделовой перегенерации | `client/components/SubsectionRegenPanel.tsx` |
 | `addSection()`, `deleteSection()`, `rebuildDbMapping()` | Серверные операции через API |
 | `parseConceptFile()`, `addToPool()`, `removeFromPool()`, `selectForViewing()`, `snapshotCurrentState()`, `restoreFromPoolSnapshot()`, `syncConceptParticipants()`, `refreshPoolParticipant()`, `renderPoolConcepts()`, `handlePoolFileImport()`, `handlePoolUrlImport()` | `client/components/pool/ConceptPool.tsx`+`PoolCard.tsx`, `client/stores/pool-store.ts`, `client/utils/concept-file.ts` (беседа 1.5b ✓; snapshotCurrentState/restoreFromPoolSnapshot вырождены — локальных правок в сервисе нет, refreshPoolParticipant по ветке «rawHTML не менялся»; renamePoolConcept/toggleSynthParticipant/setPoolStatus там же) |
+| `buildTableOfContents()` [11621] — якоря `#sec-{key}` / `#subsec-{key}-{slug}`, кнопки ⏫, пропуск `capsule` | `client/components/document/TableOfContents.tsx` (беседа 1.6b) |
+| `makeHeaderDisclosure()` / `buildDocHeaderExtras()` [11599/11613], заполнение шапки [12110–12144] (docNum, дата, ML/DL/SL, три ветки подзаголовка) | `client/components/document/DocumentHeader.tsx` (1.6b); docNum генерирует сервер в беседе 1.6 |
+| `updateCapsuleInHeader()` [11773] + `removeCapsuleFromDocBodies()` [11822] — капсула живёт в шапке, а не среди тел | `DocumentHeader.tsx` + исключение ключа `capsule` в `DocumentView.tsx` (1.6b) |
+| `updateFooterCost()` [5671] — «Токены: … · Стоимость: $X.XXXX (N¢)» | `client/components/document/DocumentFooter.tsx` (1.6b); значение берётся из `syntheses.total_cost_usd`, НЕ пересчитывается по ставкам |
+| CSS документа [476–929, 3304–3319]: `.doc-header`, `#docTOC`, `.doc-section`, `.doc-content`, `.doc-table`, `.callout*`, `.risk*`, `.doc-footer` | `client/src/globals.css` (1.6b) — обязательны для рендера html_content через dangerouslySetInnerHTML |
+| graph-STATE [4389–4413]: `G`, `roleMode`, `legendFilter`, `clusterVisible`, `clearLegendFilter()` | `client/components/graph/graph-utils.ts` (1.7) — лежит ВНЕ основного фрагмента 1.7-graph-viz.js |
 | `syncFormFromImport()` | React state sync |
 | `renderGenealogyTree()` | `client/components/GenealogyTree.tsx` |
 | Mode modal UI | `client/components/ModeModal.tsx` |

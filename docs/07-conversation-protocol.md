@@ -19,6 +19,20 @@
 > useWebSocket; чек CSS-переменных 0.4 приведён к исходнику; в 5.3 добавлен
 > routes/taxonomy.ts (дыра 0.3b).
 >
+> **Правки 2026-07-30 (аудит перед клиентскими беседами)**: проверены
+> все 32 беседы. Беседа 1.6 расщеплена на серверную 1.6 и клиентскую
+> 1.6b; 1.7 стала чисто клиентской, GET /categories перенесён из 5.1
+> в 1.6. Назначены владельцы бесхозных модулей: routes/sections.ts и
+> /sections/:key/context (1.6), routes/prompts.ts (6.1). Сняты
+> инверсии 2.3←2.4 и 2.4←4.2. Пункт 1 беседы 3.2 переписан как
+> дополнение пула, созданного в 1.5b. Исправлена нумерация в 2.4 и
+> 6.1. Три идемпотентных скрипта: patch-docs-conv16-pre.py,
+> patch-docs-conv23-pre.py, patch-docs-conv46-pre.py.
+>
+> Попутно узаконено фактическое: эндпоинты `POST /syntheses/estimate`
+> и `POST /syntheses/advice` реализованы беседой 1.5 (03 §2.2 это
+> фиксирует, протокол — не фиксировал).
+>
 > **Правка 2026-07-24 (итоги 0.5)**: добавлена беседа 0.6 (PATCH /auth/me +
 > ProfilePage) — закрытие дыры A3 «отображаемое имя» и клиентского UI
 > смены пароля; ветка в графе §11.
@@ -93,6 +107,12 @@
 
 Ручное извлечение по grep-командам бесед автоматизировано:
 `python3 scripts/extract-fragments.py philosynth.html fragments/`
+> **ВНИМАНИЕ (2026-07-30):** скрипта `scripts/extract-fragments.py` в
+> репозитории НЕТ, хотя шапки всех фрагментов на него ссылаются.
+> Пока он не восстановлен, недостающие комплекты извлекаются вручную
+> из `source/philosynth.html` по диапазонам (образцы — блоки
+> «Извлечение» бесед 1.6b и 1.7). Восстановление скрипта — задача
+> эксплуатации, не беседа протокола.
 генерирует по файлу на беседу (fragments/1.1-synthesis-engine.js и т.д.)
 с заголовками-диапазонами строк оригинала. При обновлении исходника —
 перегенерировать. grep-команды в беседах остаются документацией того,
@@ -1026,49 +1046,231 @@ handlePoolFileImport, handlePoolUrlImport, toggleSynthParticipant.
 
 ---
 
-### Беседа 1.6: Просмотр документа + каталог
+### Беседа 1.6: Транспорт чтения (сервер) — синтезы, разделы, граф
+
+> Разделение (2026-07-30): прежняя беседа «Просмотр документа + каталог»
+> расщеплена на серверную 1.6 и клиентскую 1.6b. Причины: разные
+> харнессы тестов (mini-Hono + живой PG против puppeteer + vite),
+> почти непересекающиеся комплекты вложений, риск сжатия контекста в
+> одном заходе. Прецедент — пара 0.5 (сервер) / 0.6 (клиент).
 
 **Контекст:**
-- `03-specification.md` (секции 1.2, 1.4)
+- `03-specification.md` (секции 2.2 Syntheses, 2.3 Sections, 2.4 Elements)
+- `02-data-model.md` (syntheses, sections, categories, category_edges,
+  cluster_labels, synthesis_lineage)
+- Из предыдущих бесед: `server/routes/syntheses.ts` (1.4/1.5),
+  `server/services/pause-resume-service.ts` (1.4b — `computePauseEstimates`),
+  `server/services/context-extractor.ts` (1.4 — `parseSubsectionsFromHTML`),
+  `server/ws/handler.ts` (1.4/1.4b), `server/db/schema.ts`
+- Исходник: нужен ровно один кусок — формат номера документа [12110]
+
+**Извлечение:**
+```bash
+sed -n '12110,12115p' source/philosynth.html   # docNum «PS-NNNN-XXXX»
+```
+
+**Первый запрос:**
+```
+Достраиваю REST-слой чтения: без него клиентские беседы 1.6b и 1.7
+нечем наполнить.
+
+Создай / расширь:
+1. Расширение server/routes/syntheses.ts (03 §2.2):
+   - GET    /syntheses         ?page&limit&sort&order&status&method&search
+                               → { items: SynthesisPreview[], total }
+   - GET    /syntheses/public  ?page&limit&search&philosopher
+                               → { items: SynthesisPreview[], total }
+   - GET    /syntheses/:id     → { synthesis: SynthesisFull }
+                                 с pausedState и pauseEstimates
+                                 (computePauseEstimates, fail-open {})
+   - PATCH  /syntheses/:id     { title?, isPublic? }  — только владелец
+   - DELETE /syntheses/:id                            — только владелец
+
+2. server/routes/sections.ts (03 §2.3) — модуль есть в 05, но не
+   создавался ни одной беседой:
+   - GET /syntheses/:id/sections       → { sections: SectionSummary[] }
+   - GET /syntheses/:id/sections/:key  → { section: SectionFull }
+   - GET /syntheses/:id/sections/:key/context
+       → последняя запись context_log по разделу (03 §2.3).
+     Нужен полю контекста в EditSectionCard (2.3). В первой
+     редакции предпатча было сказано «остаётся беседам 2.3/2.4» —
+     это оказалось допущением: ни 2.3, ни 2.4 его не создают.
+
+3. server/routes/elements.ts — ТОЛЬКО чтение графа (03 §2.4):
+   - GET /syntheses/:id/categories
+       → { categories, edges, clusters, topology }
+   PATCH-часть (categories/:catId, edges/:edgeId, theses, glossary)
+   в этой беседе НЕ делается — она остаётся беседе 5.1.
+
+4. POST /syntheses — заполнять doc_num при создании записи.
+   Формат исходника [12110]:
+   "PS-" + rand(1000..9999) + "-" + Date.now().toString(36).toUpperCase().slice(-4)
+
+5. server/ws/handler.ts — режим «только подписка»:
+   сейчас subscribe_generation при status='generating' без активного
+   прогона ЗАПУСКАЕТ generateSynthesis. Страница просмотра (1.6b)
+   не должна перезапускать генерацию — нужен явный флаг подписки
+   без запуска либо отдельное сообщение.
+
+6. Снимок структуры документа: заполнять syntheses.structure_sections
+   при создании записи (копия sectionOrder). Колонка есть в схеме и
+   в 02, но во всём server/ в неё нет НИ ОДНОЙ записи — без этого
+   карточка «Структура документа устарела» (беседа 2.3) всегда
+   попадает в ветку «актуальность не определена». Обновление снимка
+   после исполнения плана — беседа 2.2.
+
+7. POST /syntheses/:id/duplicate → { id: string } (03 §2.2):
+   эндпоинт не был упомянут в 07 нигде (аудит 2026-07-30). Отдан этой
+   беседе как владельцу routes/syntheses.ts. Копия синтеза со всеми
+   разделами и элементами, новый doc_num, title += « (копия)»,
+   is_public = false, запись в synthesis_lineage не создаётся —
+   это копия, а не потомок.
+
+8. Разбор маркеров TODO(1.6) в коде: их девять, и после разделения
+   беседы они адресуют несуществующую беседу. Серверные закрыть здесь,
+   клиентские переадресовать в TODO(1.6b), не оставляя ни одного
+   TODO(1.6) в дереве.
+
+9. Монтирование новых роутов в server/index.ts.
+```
+
+**Решения, зафиксированные до беседы (аудит 2026-07-30):**
+- **Доступ:** GET /:id, /:id/sections, /:id/categories — владелец ИЛИ
+  `is_public = true` (каталог «Публичные» ведёт на чужой синтез);
+  иначе 403 FORBIDDEN, несуществующий id — 404 NOT_FOUND (03 §4.3).
+  PATCH и DELETE — только владелец.
+- **`contextQualityScore` до беседы 2.4 всегда `null`**:
+  `context-quality.ts` (getSectionContextQuality) назначен 2.4, которая
+  идёт позже; в роуте — `TODO(2.4)`.
+- **`subsections`** в SectionSummary заполняются
+  `parseSubsectionsFromHTML` (1.4) — нужны TableOfContents в 1.6b.
+- **Стоимость** отдаётся из `syntheses.total_cost_usd`; роут ничего не
+  пересчитывает по ставкам моделей.
+- **Поиск серверный** (`?search=`, под него в схеме gin_trgm_ops по
+  `title`); клиент фильтрует только уже загруженную страницу.
+- **`capsule`** остаётся отдельным разделом в `sections` И полем
+  `capsule_html`; роут ничего не вырезает — исключение ключа при
+  рендере делает клиент (1.6b).
+
+**Последующие запросы:**
+- «Протестируй GET /syntheses: создай через POST два синтеза, запроси список → оба в items, total=2, сортировка по createdAt desc по умолчанию. Проверь ?search= (частичное совпадение title), ?status=, ?method=, ?page=&limit=»
+- «Протестируй GET /syntheses/:id: возвращает SynthesisFull с sectionOrder, docNum, философами из synthesis_lineage, capsuleHtml, totalCostUsd. Для приостановленного синтеза — pausedState и pauseEstimates; для обычного — null»
+- «Протестируй доступ: чужой непубличный синтез → 403 FORBIDDEN; после PATCH { isPublic: true } тот же GET от другого пользователя → 200; несуществующий id → 404 NOT_FOUND. То же для /sections и /categories»
+- «Протестируй GET /syntheses/:id/sections: список SectionSummary в порядке sectionOrder, subsections заполнены из HTML, contextQualityScore = null (TODO(2.4)). GET /sections/:key возвращает SectionFull с htmlContent»
+- «Протестируй GET /syntheses/:id/categories: categories с v10-метриками (clarity, breadth, depthScore, applicability, historicalSignificance, innovationDegree), edges с certainty/historicalSupport/logicalNecessity/contextDependency, clusters из cluster_labels, topology с ролями»
+- «Протестируй doc_num: после POST /syntheses поле заполнено по маске PS-NNNN-XXXX и не пустое; у двух синтезов номера различаются»
+- «Протестируй WS: для синтеза со status='generating' подписка в режиме просмотра НЕ приводит к вызову generateSynthesis, но события стриминга доходят»
+- «Edge case: GET /syntheses?page=99 → пустой items, total корректен. GET /sections для синтеза без разделов → пустой массив, не 404. GET /categories для синтеза без графа → пустые массивы, topology с пустыми объектами»
+
+**Завершение беседы:**
+- «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
+- «Добавь секции в scripts/check-integration (по образцу предыдущих бесед) для новых роутов»
+- «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
+- «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
+
+---
+
+### Беседа 1.6b: Просмотр документа + каталог (клиент)
+
+**Контекст:**
+- `03-specification.md` (секции 1.2, 1.4, 2.2, 2.3)
+- `01-architecture.md` (§4.15 п.4–5: автодобавление в пул; шапка
+  документа — раскрывающиеся поля, авто-заголовок из «name», капсула)
 - `05-file-structure.md` (document/, catalog/)
-- `client/api/`, `client/stores/`
-- Исходник: **НЕ НУЖЕН** (визуализация документа — новый React-код)
+- Из предыдущих бесед: роуты чтения из 1.6,
+  `client/src/hooks/useStreamingGeneration.ts` и
+  `client/src/components/synthesis/PauseModal.tsx` (1.5/1.4b — нужны для
+  edge case «status=generating»), `client/api/`, `client/stores/`
+- Исходник: **НУЖЕН для документа** (каталога в standalone-файле нет —
+  для CatalogPage/SynthesisCard исходник действительно не нужен).
+  Фрагмент: `docs/fragments-for-conversations/1.6-document-view.js`
+
+**Извлечение (диапазоны выверены аудитом 2026-07-30):**
+```bash
+# CSS документа: шапка, #docTOC, тела разделов, .doc-table, .callout,
+# .risk, футер, actions-bar (дальше, с 931, начинается граф-модалка 1.7)
+sed -n '476,929p'     source/philosynth.html
+sed -n '3304,3319p'   source/philosynth.html   # .doc-title-edit-btn
+# Разметка-эталон: output-wrap + #docOutput (шапка, #docBodies, футер)
+sed -n '4134,4220p'   source/philosynth.html
+# JS-блок «HELPER: раскрывающиеся поля шапки и разделов» целиком:
+# makeHeaderDisclosure, buildDocHeaderExtras, buildTableOfContents,
+# extractCapsuleText, updateCapsuleInHeader, removeCapsuleFromDocBodies,
+# makeSectionCtxDisclosure, editDocTitle, updateDocTitleFromName
+sed -n '11594,11892p' source/philosynth.html
+# Заполнение шапки при старте: дата, ML/DL/SL, три ветки docSubtitle
+sed -n '12110,12144p' source/philosynth.html
+sed -n '5671,5683p'   source/philosynth.html   # updateFooterCost
+```
+НЕ портировать: `rebuildDbMapping` [5686] и всю индексацию `db{N}` /
+`DOC_STATE.sectionDbIdx` — в React разделы адресуются по `key`;
+`.output-wrap` (видимостью управляет маршрут).
 
 **Первый запрос:**
 ```
 Создаю страницу просмотра синтеза и каталог.
 
+Прикреплён фрагмент исходника (1.6-document-view.js): CSS документа,
+разметка-эталон шапки и футера, buildTableOfContents, шапка с
+раскрывающимися полями, капсула, updateFooterCost.
+
 Создай:
-1. client/pages/SynthesisPage.tsx:
-   - Загрузка синтеза по ID
+1. Перенос CSS документа в client/src/globals.css:
+   .doc-header/.doc-title/.doc-subtitle/.doc-meta-*, #docTOC/.toc-*,
+   .doc-section/.section-num/.section-title/.doc-content/.doc-table/
+   .callout*/.risk*, .doc-footer/.validity-stamp, .actions-bar.
+   Без них рендер html_content разваливается: после 0.4 в globals.css
+   только палитра.
+
+2. client/pages/SynthesisPage.tsx:
+   - Загрузка синтеза по ID (GET /syntheses/:id из беседы 1.6)
    - Рендер DocumentView
 
-2. client/components/document/:
-   - DocumentView.tsx: рендер HTML-контента разделов (dangerouslySetInnerHTML)
-   - DocumentHeader.tsx: номер, участники, метод, капсула
-   - SectionView.tsx: один раздел с заголовком и контентом
-   - TableOfContents.tsx: якоря по разделам
-   - DocumentFooter.tsx: стоимость, токены
+3. client/components/document/:
+   - DocumentView.tsx: рендер HTML-контента разделов (dangerouslySetInnerHTML),
+     ключ `capsule` исключается — капсула живёт в шапке
+   - DocumentHeader.tsx: номер (docNum), участники, метод, капсула,
+     раскрывающиеся поля (buildDocHeaderExtras)
+   - SectionView.tsx: обёртка с якорем #sec-{key} и кнопкой ⏫.
+     Свой заголовок НЕ рисует: html_content хранит весь
+     <div class="doc-section"> вместе с section-num и section-title
+   - TableOfContents.tsx: якоря #sec-{key} и #subsec-{key}-{slug}
+     (порт buildTableOfContents; подразделы из SectionSummary.subsections)
+   - DocumentFooter.tsx: токены и стоимость — значение
+     synthesis.totalCostUsd как есть, без пересчёта по ставкам
 
-3. client/pages/CatalogPage.tsx:
-   - Вкладки: «Мои» / «Публичные»
-   - Поиск по названию
-   
-4. client/components/catalog/:
+4. client/pages/CatalogPage.tsx:
+   - Вкладки: «Мои» (GET /syntheses) / «Публичные» (GET /syntheses/public)
+   - Поиск (параметр ?search=, серверный)
+   - Переключатель публикации через PATCH /syntheses/:id { isPublic }
+
+5. client/components/catalog/:
    - SynthesisList.tsx
    - SynthesisCard.tsx: превью (название, метод, уровень, философы, дата)
 
-5. client/api/sections.ts: getSections()
-6. client/stores/synthesis-store.ts (Zustand): текущий синтез
+6. client/api/sections.ts: getSections(), getSection()
+7. client/stores/synthesis-store.ts (Zustand): текущий синтез, разделы
+
+8. SynthesisPage при status='generating' — подписка на WS через
+   useStreamingGeneration (1.5) в режиме «только просмотр»:
+   открытие страницы не должно запускать генерацию заново
+   (режим добавлен в ws/handler в беседе 1.6).
+
+9. Проверить, что после беседы 1.6b в дереве не осталось маркеров
+   TODO(1.6): серверные закрывает беседа 1.6, клиентские переадресуются
+   в TODO(1.6b) и закрываются здесь (аудит 2026-07-30 насчитал девять
+   маркеров до разделения беседы).
 ```
 
 **Последующие запросы:**
 - «Протестируй SynthesisPage: открой /synthesis/:id для ранее созданного синтеза → DocumentHeader показывает номер, метод, уровень, философов? DocumentView рендерит HTML всех разделов? TableOfContents содержит якоря на каждый раздел?»
-- «Протестируй навигацию: клик на элемент TableOfContents → плавная прокрутка к разделу. Кнопка "↑ Наверх" → прокрутка к началу»
-- «Протестируй CatalogPage: вкладка "Мои" → список синтезов текущего пользователя (GET /syntheses). Вкладка "Публичные" → синтезы с is_public=true (GET /syntheses/public). Поиск по названию фильтрует в реальном времени»
+- «Протестируй CSS: таблицы в разделах отрисованы стилем .doc-table (рамки, зебра), callout'ы цветными блоками, .risk-метки окрашены. Сравни с исходником визуально»
+- «Протестируй навигацию: клик на элемент TableOfContents → плавная прокрутка к разделу; якоря подразделов работают. Кнопка ⏫ в заголовке раздела → возврат к оглавлению»
+- «Протестируй капсулу: она показана в шапке документа и НЕ продублирована среди тел разделов»
+- «Протестируй CatalogPage: вкладка "Мои" → список синтезов текущего пользователя. Опубликуй синтез (PATCH /syntheses/:id { isPublic: true }) → он появляется во вкладке "Публичные". Поиск уходит на сервер параметром ?search=»
 - «Протестируй SynthesisCard: отображает название, метод×уровень, список философов (через запятую), дату создания. Клик → навигация на /synthesis/:id»
-- «Протестируй DocumentFooter: показывает суммарные токены (input + output) и стоимость в формате "$X.XXXX". Данные совпадают с synthesis.totalCostUsd?»
-- «Edge case: SynthesisPage для синтеза со status="generating" — показывает индикатор загрузки или подключается к WebSocket для стриминга, а не пустой документ. SynthesisPage для несуществующего ID — 404-страница»
+- «Протестируй DocumentFooter: показывает суммарные токены (input + output) и стоимость в формате "$X.XXXX" — ровно значение synthesis.totalCostUsd, без пересчёта по ставкам модели»
+- «Edge case: SynthesisPage для синтеза со status="generating" — показывает индикатор загрузки или подключается к WebSocket для стриминга, а не пустой документ; проверь, что открытие страницы НЕ запускает генерацию заново. Несуществующий ID — 404-страница; чужой непубличный синтез — 403»
 
 **Завершение беседы:**
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
@@ -1077,21 +1279,38 @@ handlePoolFileImport, handlePoolUrlImport, toggleSynthParticipant.
 
 ---
 
-### Беседа 1.7: Граф категорий (3D + 2D)
+### Беседа 1.7: Граф категорий, 3D + 2D (клиент)
+
+> Разделение (2026-07-30): беседа стала чисто клиентской. Роут
+> `GET /syntheses/:id/categories` перенесён в серверную беседу 1.6 —
+> прежде он рождался только в 5.1 (Фаза 5), то есть страницу графа
+> нечем было наполнить через две фазы после её создания.
 
 **Контекст:**
 - `04-code-reuse-map.md` (секция 3 — непереносимое, graph/)
 - `05-file-structure.md` (graph/)
-- `client/api/elements.ts`
+- `03-specification.md` (секция 2.4 — GET /syntheses/:id/categories)
+- Из предыдущих бесед: `shared/types/graph.ts` (Category, CategoryEdge,
+  ClusterLabel, TopologyInfo, GraphData — готовы), роут categories из
+  беседы 1.6, `client/pages/SynthesisPage.tsx` из 1.6b (хозяин модалки —
+  кнопка графа живёт в actions-bar над документом)
 - Исходник: вся визуализация графа (TC … build2D) (ВСЯ визуализация графа)
 
 **Извлечение — здесь нужен большой фрагмент:**
 ```bash
-# Извлечь вся визуализация графа (TC … build2D)
-# v11: const TC удалён; граф-блок целиком — баннеры GRAPH MODAL…MMD EXPORT:
+# Основной фрагмент готов: 1.7-graph-viz.js [12990–16366] — внутри всё,
+# что перечисляет первый запрос (graph-utils, build3D/build2D, панели,
+# легенда, физика, геометрия).
 grep -n 'GRAPH MODAL\|MMD EXPORT' philosynth.html | tail -3
 grep -n 'function build3D\|function build2D' philosynth.html
+# ВНЕ основного фрагмента (аудит 2026-07-30) — объявление graph-STATE:
+# G, roleMode, legendFilter, clusterVisible, clearLegendFilter.
+# Вынесено отдельным файлом 1.7-graph-state-extras.js:
+sed -n '4389,4413p' source/philosynth.html
 ```
+> Границей извлечения служит баннер `MMD EXPORT`, поэтому `exportMMD`
+> [16370] и соседние экспортёры в фрагмент НЕ входят — и не должны:
+> они принадлежат беседе 4.2 (серверные `services/export/*`).
 
 **Первый запрос:**
 ```
@@ -1101,6 +1320,12 @@ grep -n 'function build3D\|function build2D' philosynth.html
 typeColor, edgeTypeStyle, showNodePanel, buildLegend, и все вспомогательные функции.
 
 Создай:
+0. Зависимости клиента (client/package.json) — их НЕТ после 0.4:
+   three@0.128.x (исходник рассчитан на r128) + @types/three,
+   d3@^7.8.5 + @types/d3. Исходник грузил обе библиотеки тегами
+   <script> с cdnjs — в React-клиенте нужны npm-пакеты; CDN в
+   песочнице закрыт egress-прокси, тесты через него не пройдут.
+
 1. client/components/graph/graph-utils.ts:
    - `_TC_HUE_SEEDS`, `_EC_HUE_SEEDS`, `_EC_DASH_SEEDS`, CPAL (динамические палитры)
    - `_rebuildNodeColors()`, `_rebuildEdgeStyles()` — заполняют `_nodeColorMap`/`_edgeStyleMap` (v10)
@@ -1132,7 +1357,11 @@ typeColor, edgeTypeStyle, showNodePanel, buildLegend, и все вспомога
 
 6. client/components/graph/GraphModal.tsx:
    - Вкладки 3D/2D
-   - Кнопки экспорта (MMD, PNG, JSON)
+   - Кнопки экспорта (MMD, PNG, JSON) — ЗАГЛУШКИ с TODO(4.2):
+     exportMMD/exportPNG/exportJSON реализуются как серверные сервисы
+     в беседе 4.2 (services/export/*) и в фрагмент 1.7 не входят
+     (обрыв на 16366, exportMMD с 16370). Здесь — только разметка
+     кнопок и обработчики-заглушки
    - Toggle кластеров, toggle роль
 
 7. client/components/graph/NodePanel.tsx:
@@ -1148,6 +1377,11 @@ typeColor, edgeTypeStyle, showNodePanel, buildLegend, и все вспомога
      тип, направление (→/↔/↺), сила (бар), описание,
      расширенные метрики связи (certEdge, innovDeg, histSupport, logNec, ctxDep),
      блоки обоих узлов (с метриками и кластерами)
+
+10. client/api/elements.ts — модуль создаётся ЗДЕСЬ (в контексте
+    беседы он числился готовым, но не создавался никем; беседа 5.2
+    говорит о нём «расширение»):
+    - getCategories(synthesisId) → { categories, edges, clusters, topology }
 
 Дополнительные задачи:
 - getStructuralMarkers(name): возвращает МАССИВ маркеров (core, generative,
@@ -1167,7 +1401,8 @@ typeColor, edgeTypeStyle, showNodePanel, buildLegend, и все вспомога
 - «Протестируй NodePanel: клик на узел → панель справа с определением, метриками (центральность, определённость), ролями (structural + procedural), списком входящих/исходящих/рефлексивных связей. Повторный клик — снятие выделения»
 - «Протестируй кластеры: кнопка Toggle Clusters → торические кольца (3D) / пунктирные окружности (2D) появляются/скрываются. Wireframe-эллипсоиды кластеров (3D) / convex hull (2D) позиционируются правильно? Спрайты-метки кластеров видны?»
 - «Протестируй hover+select: навести на узел → подсветка + соседние узлы подсвечены, остальные dimmed. Клик — фиксация выделения. Клик на пустое место — сброс. Тултип с именем и типом при hover»
-- «Edge case: граф с 1 узлом (без рёбер) — рендерится без ошибок. Граф с рефлексивной связью — петля отображается. Мобильный touch: pinch-zoom, single-touch orbit, tap для select»
+- «Edge case: граф с 1 узлом (без рёбер) — рендерится без ошибок. Граф без категорий вообще (пустые массивы из GET /categories) — модалка показывает пустое состояние, не падает. Граф с рефлексивной связью — петля отображается. Чужой публичный синтез — граф открывается, чужой непубличный — 403»
+- «Мобильный touch: pinch-zoom, single-touch orbit, tap для select. В puppeteer это Input.dispatchTouchEvent через CDP — если харнесс не тянет, зафиксируй как ручную проверку и вынеси в TODO, не имитируй тест мышью»
 
 **Завершение беседы:**
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
@@ -1270,6 +1505,13 @@ recalcEditPlan … updateLiveCascade: recalcEditPlan, updateLiveCascade).
 
 ### Беседа 2.2: Plan Executor + Regeneration (бэкенд)
 
+> **Долг, переадресованный сюда (аудит 2026-07-30):** в
+> `client/src/components/synthesis/PauseModal.tsx` висит открытый
+> `TODO(1.5)` — «confirm деградации зависимостей при skip» [25686]:
+> сейчас skip отправляется без подтверждения, потому что сервер не
+> спрашивает. Беседа 1.5 закрыта, подтверждение по смыслу серверное —
+> реализовать здесь и переименовать маркер в `TODO(2.2)` либо снять.
+
 **Контекст:**
 - `01-architecture.md` (секции 4.4 Streaming, 4.5 Edit Planner)
 - `03-specification.md` (секция 3 WebSocket: plan_updated, plan_step_started, plan_step_done)
@@ -1352,6 +1594,15 @@ deleteSection, addSection).
 5. server/routes/generation.ts:
    - POST /syntheses/:id/regenerate/:sectionKey
    - POST /syntheses/:id/regenerate-subsection
+
+6. setPlanResumeExecutor — регистрация исполнителя планов в
+   pause-resume-service (долг TODO(2.2) главы 1.4b; до аудита
+   2026-07-31 в протоколе не значился):
+   сейчас resume_plan с retry / skip_step отдаёт RESUME_INVALID с
+   пояснением, потому что исполнителя некому вызвать. После
+   plan-executor.ts (пункт 2) зарегистрировать его и убрать заглушку;
+   проверить, что пауза внутри исполнения плана возобновляется, а не
+   только пауза внутри генерации раздела.
 ```
 
 **Последующие запросы:**
@@ -1371,10 +1622,17 @@ deleteSection, addSection).
 ### Беседа 2.3: Edit Modal + Cascade Panel (клиент)
 
 **Контекст:**
-- `03-specification.md` (секции 1.5 Редактирование, 2.6 Edit Plans, 3.2 WebSocket)
+- `03-specification.md` (секции 1.5 Редактирование, 2.3 Sections, 2.6 Edit Plans, 3.2 WebSocket)
 - `05-file-structure.md` (секция client/components/edit/)
-- Из предыдущих бесед: `shared/types/edit-plan.ts`, `shared/types/ws-messages.ts`, `client/hooks/useWebSocket.ts`, `client/stores/synthesis-store.ts`, `client/api/client.ts`
+- Из предыдущих бесед: `shared/types/edit-plan.ts`, `shared/types/ws-messages.ts`, `client/hooks/useWebSocket.ts`, `client/stores/synthesis-store.ts` (из 1.6b), `client/api/client.ts`, `server/routes/plans.ts` (2.1 + 2.2), `server/routes/sections.ts` (1.6 — GET /sections и /:key/context)
+- Из 1.6b: `SynthesisPage.tsx`, `SectionView.tsx` — модалка открывается поверх страницы синтеза
 - Исходник: openEditModal … подразделовая перегенерация UI (**только** как визуальный референс UI)
+
+> **Транспорт готов** (аудит 2026-07-30): `server/routes/plans.ts`
+> создаёт беседа 2.1 и расширяет 2.2; `POST /syntheses/:id/regenerate-subsection`
+> и WS-сообщения `regen_subsection` описаны в 03 §2.3/§3.2 и реализуются
+> беседой 2.2. В отличие от 1.6/1.7, здесь клиентская беседа стоит
+> после своего сервера — ничего дописывать не нужно.
 
 **Извлечение:**
 ```bash
@@ -1408,8 +1666,13 @@ grep -n 'function openEditModal' philosynth.html | head -1  # найти нач�
 3. client/components/edit/EditSectionCard.tsx:
    - Карточка одного раздела
    - Чекбоксы перегенерации/удаления (взаимоисключающие)
-   - Поле контекста (скрыто, разворачивается)
+   - Поле контекста (скрыто, разворачивается; GET /sections/:key/context)
    - Индикатор: "✓ изменён" если раздел был отредактирован
+   - Бейдж качества контекста (contextQualityScore, ≥90 зелёный):
+     ВНИМАНИЕ — до беседы 2.4 (context-quality.ts) роут отдаёт null.
+     Компонент обязан корректно рисовать состояние «нет оценки»
+     (бейдж скрыт либо нейтрально-серый), а не считать null нулём.
+     Цветовую шкалу вводит 2.4; здесь — только место под неё.
 
 4. client/components/edit/SubsectionRegenPanel.tsx:
    - Список подразделов текущего раздела
@@ -1428,8 +1691,14 @@ grep -n 'function openEditModal' philosynth.html | head -1  # найти нач�
 
    Карточка «Структура документа устарела»:
    - В EditModal, над списком разделов
-   - Сравнение DOC_STATE.structureSections с DOC_STATE.sectionOrder
+   - Сравнение syntheses.structureSections с sectionOrder
+     (в исходнике — DOC_STATE.structureSections против DOC_STATE.sectionOrder)
    - Если null (старый файл) → «актуальность не определена, рекомендуется обновить»
+   - Снимок структуры заполняет беседа 1.6 (при создании синтеза) и
+     обновляет 2.2 (после исполнения плана). До аудита 2026-07-30
+     колонка не заполнялась НИКЕМ, и карточка всегда попадала бы в
+     ветку null — если 1.6 снимок не сделала, оставить только эту ветку
+     и завести TODO, не изобретая клиентский суррогат снимка.
    - Кнопка «Обновить» → regenStructureFromEditModal()
    - При перегенерации графа: чекбокс extGraphMetrics (DOC_STATE.params.extGraphMetrics)
 
@@ -1466,8 +1735,14 @@ grep -n 'function openEditModal' philosynth.html | head -1  # найти нач�
 **Контекст:**
 - `02-data-model.md` (таблицы generation_log, context_log)
 - `04-code-reuse-map.md` (секция 2.7 — mode-service, log-formatter)
-- Из предыдущих бесед: `server/db/schema.ts`, `shared/types/generation.ts`, `client/api/client.ts`
+- `03-specification.md` (секции 2.3 Sections, 2.5 Logs)
+- Из предыдущих бесед: `server/db/schema.ts`, `shared/types/generation.ts`, `client/api/client.ts`, `client/components/document/DocumentFooter.tsx` (из 1.6b — в него добавляется кнопка лога), `server/routes/sections.ts` (1.6)
 - Исходник: formatCtxLog + colorizeLog (вся система логов)
+
+> **Порядок (аудит 2026-07-30):** беседу 2.4 стоит вести ПЕРЕД 2.3.
+> `context-quality.ts` создаётся здесь, а бейдж качества контекста
+> нужен уже в `EditSectionCard` (2.3) — см. §11. Если порядок
+> сохраняется прежним, 2.3 рисует состояние «нет оценки» по `null`.
 
 **Извлечение:**
 ```bash
@@ -1504,25 +1779,34 @@ refreshCtxLogIfOpen, viewCtxLog, downloadPrompts.
      (аналог downloadPrompts/formatPromptsForExport, formatPromptsForExport())
      v10: `formatPromptsForExport` использует `reconstructSkeleton()` как fallback
      для записей без `_promptSkeleton` (импортированные файлы).
+     ВНИМАНИЕ (аудит 2026-07-30): `server/services/prompt-reconstruction.ts`
+     с `reconstructSkeleton()` создаётся беседой 4.2 — на полторы фазы
+     позже. Здесь fallback НЕ реализуется: записи без `_promptSkeleton`
+     помечаются «промпт недоступен (импортированная запись)», ставится
+     TODO(4.2), а подключение реконструкции делает сама 4.2.
      Регулярки парсинга обновлены: добавлены маркеры `КОНТЕКСТ ДРУГИХ`,
      `Перегенерируй ТОЛЬКО`, `КОНТЕКСТ КОНЦЕПЦИЙ-УЧАСТНИКОВ`.
 
-3. client/components/logs/colorize-log.ts:
+4. client/components/logs/colorize-log.ts:
    - colorizeLog(plainText): клиентская раскраска.
      Порт colorizeLog(). Паттерны: ═══ заголовки, ✓/✗/◦/◌ записи контекста,
      ВХОД/ВЫХОД метки, стоимость, процент бюджета.
      Цветовая палитра: gold, blue, green, red, dim, violet — как в исходнике.
 
-4. client/components/logs/ContextLogViewer.tsx:
+5. client/components/logs/ContextLogViewer.tsx:
    - Модальное окно: кнопка открытия в DocumentFooter
    - Загрузка GET /logs/formatted
    - Рендер HTML (dangerouslySetInnerHTML для colorized)
    - Кнопка "Копировать" (plain text)
    - Кнопка "Скачать промпты"
    - Информация: количество разделов, строк
-   - Live-обновление при открытом окне во время генерации (WebSocket)
+   - Live-обновление при открытом окне во время генерации:
+     перезапрос GET /logs/formatted по УЖЕ СУЩЕСТВУЮЩИМ событиям
+     завершения раздела (см. §3.2). Отдельных WS-сообщений про лог
+     в shared/types/ws-messages.ts нет и заводить их не нужно —
+     иначе клиент разойдётся с сервером (аудит 2026-07-30)
 
-5. Интеграция: добавить кнопку "◈ Лог" в DocumentFooter.tsx
+6. Интеграция: добавить кнопку "◈ Лог" в DocumentFooter.tsx (из 1.6b)
 ```
 
 **Последующие запросы:**
@@ -1636,6 +1920,24 @@ checkGenealogyOverlaps, collectPhilosopherAncestors, reconstructGenealogy).
    - POST /syntheses: принимать participants: ParticipantInput[],
      валидировать через validateConceptForMetaSynthesis,
      передавать в generateSynthesis.
+
+6. Долги журнала, адресованные этой беседе (аудит 2026-07-31 — в
+   протоколе они не значились, хотя в NEXT-CONTEXT адресованы 3.1):
+   - registerParentContextProvider: заменить стаб, зарегистрированный
+     беседой 1.4, настоящим провайдером родительского контекста
+     (TODO(3.1) главы 1.4). Пока стоит заглушка, parent-context
+     отдаёт пустоту, и мета-синтез собирает промпт без родителей.
+   - Наполнение parentFieldsUsed, conceptBlockSizes и
+     parentSpecBySection реальными значениями (TODO(3.1) главы 1.4;
+     parentFieldsUsed до сих пор упоминался только в беседе 1.3).
+   - Серверная поддержка участников-концепций: приём type="synthesis"
+     в participants. Это снимает гейт мета-синтеза, поставленный
+     беседой 1.5b в SynthesisForm — клиентская половина снятия
+     вписана в беседу 3.2, серверная делается здесь. Без этой пары
+     форма продолжит блокировать сабмит с ☑-концепциями.
+   - Данные для estimate-diff в FullBudgetPreview (TODO(3.1) главы
+     1.5b): оценка с учётом участников-концепций; отрисовка разницы —
+     беседа 3.2.
 ```
 
 **Последующие запросы:**
@@ -1655,9 +1957,12 @@ checkGenealogyOverlaps, collectPhilosopherAncestors, reconstructGenealogy).
 ### Беседа 3.2: Concept Participants + Genealogy Tree (клиент)
 
 **Контекст:**
-- `03-specification.md` (секции 1.6 Мета-синтез, 2.8 Lineage)
+- `03-specification.md` (секции 1.6 Мета-синтез, 2.2 Syntheses, 2.8 Lineage)
 - `05-file-structure.md` (synthesis/, lineage/)
-- Из предыдущих бесед: `shared/types/lineage.ts`, `client/api/client.ts`, `client/stores/synthesis-store.ts`, `client/components/synthesis/SynthesisForm.tsx` (из 1.5)
+- Из предыдущих бесед: `shared/types/lineage.ts`, `client/api/client.ts`, `client/stores/synthesis-store.ts` (из 1.6b), `client/components/synthesis/SynthesisForm.tsx` (из 1.5)
+- **Из 1.5b (ЗАКРЫТА):** `client/components/pool/ConceptPool.tsx`, `PoolCard.tsx`, `client/stores/pool-store.ts`, `client/utils/concept-file.ts` — пул уже существует
+- Из 1.6b: `SynthesisPage.tsx`, `CatalogPage.tsx`, `SynthesisCard.tsx` — точки интеграции пунктов 4–5
+- Из 3.1: `server/routes/lineage.ts` (ancestors / descendants / search) — транспорт готов
 - Исходник: renderGenealogyTree() (renderGenealogyTree — **визуальный** референс)
 
 **Извлечение:**
@@ -1676,18 +1981,32 @@ grep -n 'function renderGenealogyTree' philosynth.html | head -1  # найти �
 > **v10**: `ConceptParticipants.tsx` как отдельный компонент заменён **Unified Concept Pool**.
 > Пул (`client/components/pool/ConceptPool.tsx`) объединяет загрузку, просмотр (◉) и выбор
 > для мета-синтеза (☑). API пула: `addToPool`, `renamePoolConcept`, `removeFromPool`,
-> `toggleSynthParticipant`, `selectForViewing`, `snapshotCurrentState`.
+> `toggleSynthParticipant`, `selectForViewing`.
 > Перед генерацией вызывается `refreshAllSynthParticipants()`.
+>
+> **По факту 1.5b (беседа ЗАКРЫТА):** пул уже реализован — `ConceptPool.tsx`,
+> `PoolCard.tsx`, `pool-store.ts`, `concept-file.ts` лежат в репозитории.
+> `snapshotCurrentState` намеренно НЕ портирован: локальных правок концепции
+> в сервисе нет, снимок вырождается (см. шапку `pool-store.ts` и главу 1.5b
+> в NEXT-CONTEXT). Требовать его здесь нельзя — это противоречие внутри 07,
+> снятое аудитом 2026-07-30.
 
 Создай:
-1. client/components/pool/ConceptPool.tsx (v10, заменяет ConceptParticipants.tsx):
-   - Пул загруженных концепций в SynthesisForm
-   - Кнопки «+ Загрузить из файла» и «+ Загрузить по URL»
-   - Карточка концепции: чекбокс ☑ (мета-синтез), радио ◉ (просмотр),
-     имя, метод×уровень, источники контекста, кнопки ✎/✕
-   - Проверка пригодности при включении в синтез (toggleSynthParticipant)
-   - Снимок/восстановление при переключении просмотра (snapshotCurrentState/restoreFromPoolSnapshot)
-   - Предупреждения о генеалогических пересечениях
+1. ДОПОЛНЕНИЕ существующего пула (создан беседой 1.5b — заново НЕ создавать):
+   уже есть: загрузка из файла и по URL, карточка с ☑/◉/✎/✕, проверка
+   пригодности (toggleSynthParticipant), просмотр (selectForViewing),
+   refreshAllSynthParticipants перед генерацией, блокировка сабмита
+   с ☑-концепциями до появления серверной поддержки мета-синтеза.
+   Добавить здесь:
+   - Предупреждения о генеалогических пересечениях (пересечение предков
+     выбранных ☑-концепций — по GET /syntheses/:id/lineage/ancestors)
+   - Снятие блокировки сабмита, если 3.1 уже принимает участников-концепции
+   - Порт `reconstructGenealogy` (отложен в 1.5b с пометкой TODO(3.1/3.2)) —
+     без него дерево для импортированной концепции не строится;
+   - Порт `restoreCapsulesFromHTML`: журнал 1.5b адресует его ЭТОЙ
+     беседе (TODO(3.2)). Второй предпатч ошибочно отложил его до 4.3 —
+     исправлено аудитом 2026-07-31. За беседой 4.3 остаётся серверный
+     импорт файлов, а не восстановление капсул в клиентском пуле.
 
 2. client/components/lineage/GenealogyTree.tsx:
    - CSS org-chart (как в исходнике: .gen-tree, .gen-card, .gen-phil)
@@ -1707,11 +2026,27 @@ grep -n 'function renderGenealogyTree' philosynth.html | head -1  # найти �
    - Ссылки на родительские концепции (кликабельные)
    
 5. Интеграция с CatalogPage.tsx:
-   - Фильтр "Потомки концепции X"
+   - Фильтр "Потомки концепции X" — через GET /syntheses/:id/lineage/descendants
+     (в 03 §2.2 у GET /syntheses такого параметра нет и добавлять его
+      не нужно: список потомков приходит отдельным запросом, каталог
+      лишь отображает пересечение — аудит 2026-07-30)
    - В карточке синтеза: badge "мета-синтез" если есть parent_synthesis_id
 
 6. client/api/lineage.ts:
    - getAncestors(id, depth), getDescendants(id, depth), searchByPhilosophers(names)
+
+7. Долги SynthesisForm, оставшиеся без адресата (аудит 2026-07-31):
+   - updateCompatAdvisor / toggleCompatPanel / applyReplacement —
+     кнопки применения замен в CompatAdvisor. Заведены беседой 1.1,
+     адресованы 1.5, в 1.5 не сделаны и переадресованы в «TODO(2.x)»
+     БЕЗ номера беседы; в протоколе не упоминались ни разу. Отданы
+     сюда как единственной непроведённой беседе, которая правит
+     SynthesisForm.tsx. Сервер (POST /syntheses/advice) готов с 1.5 —
+     нужна только клиентская часть: панель, кнопка применения и
+     пересчёт выбранных разделов.
+   - estimate-diff в FullBudgetPreview (TODO(3.1) главы 1.5b):
+     отрисовка разницы оценки с участниками-концепциями и без.
+     Данные приходят из беседы 3.1.
 ```
 
 **Последующие запросы:**
@@ -2074,6 +2409,11 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
    - GET /syntheses/:id/categories → список с edges, clusters, topology
    - GET /syntheses/:id/categories/:catId → одна категория
    - PATCH /syntheses/:id/categories/:catId → updateCategory
+   - PATCH /syntheses/:id/edges/:edgeId → updateEdge
+     (добавлен в 03 §2.4 в v10, но в этом списке отсутствовал —
+      аудит 2026-07-30; поля: description, edgeType, direction,
+      strength, certainty, historicalSupport, logicalNecessity,
+      innovationDegree, contextDependency)
    - GET /syntheses/:id/theses → список
    - PATCH /syntheses/:id/theses/:thesisId → updateThesis
    - GET /syntheses/:id/glossary → список
@@ -2101,7 +2441,7 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 **Контекст:**
 - `03-specification.md` (секция 2.4 Elements API)
 - `05-file-structure.md` (edit/ElementEditor.tsx)
-- Из предыдущих бесед: `shared/types/graph.ts`, `shared/types/elements.ts`, `client/components/graph/NodePanel.tsx` (из 1.7), `client/components/document/SectionView.tsx` (из 1.6), `client/api/elements.ts`
+- Из предыдущих бесед: `shared/types/graph.ts`, `shared/types/elements.ts`, `client/components/graph/NodePanel.tsx` (из 1.7), `client/components/document/SectionView.tsx` (из 1.6b), `client/api/elements.ts` (из 1.7)
 - Исходник: НЕ НУЖЕН
 
 **Первый запрос:**
@@ -2326,7 +2666,7 @@ element-enrichment.ts, element-taxonomy.ts, ElementEditor.tsx, NodePanel.tsx.
 - `02-data-model.md` (таблица representation_transforms)
 - `03-specification.md` (секция 2.15 Transforms API, требования RT1–RT5)
 - Из предыдущих бесед: `server/services/graph-parser.ts` (из 1.4), `server/services/element-parser.ts` (из 1.4), `server/services/element-taxonomy.ts` (из 0.3b), `server/services/streaming-manager.ts` (из 1.4), `server/services/prompt-registry.ts` (из 0.3), `server/db/schema.ts`
-- Клиентские: `client/components/graph/GraphModal.tsx` (из 1.7), `client/components/document/SectionView.tsx` (из 1.6)
+- Клиентские: `client/components/graph/GraphModal.tsx` (из 1.7), `client/components/document/SectionView.tsx` (из 1.6b)
 - Исходник: НЕ НУЖЕН (полностью новая функциональность)
 
 **Первый запрос:**
@@ -2483,6 +2823,13 @@ streaming-manager.
    - getTransactionHistory(userId, pagination)
 
 3. server/middleware/billing-check.ts:
+   > **Ретрофит (аудит 2026-07-30):** middleware оборачивает роуты
+   > генерации, СОЗДАННЫЕ РАНЬШЕ — POST /syntheses (1.4), POST
+   > /syntheses/:id/plans/:planId/execute (2.2), POST
+   > /syntheses/:id/regenerate-subsection (2.2), WS-запуск генерации
+   > (ws/handler, 1.4/1.6). То есть беседа правит код закрытых бесед;
+   > это единственный такой случай в протоколе. Перед началом свериться
+   > с фактическим списком роутов в server/index.ts, а не со списком ниже.
    - Middleware для routes генерации:
      a. Определяет режим биллинга (приоритет):
         1. BYO-Key (active api_key) → mode: "byo", apiKey из расшифровки
@@ -2512,12 +2859,26 @@ streaming-manager.
      customer.subscription.updated → обновить status/period,
      customer.subscription.deleted → status = "canceled"
 
-4. Расширение server/services/streaming-manager.ts:
+5. Расширение server/services/streaming-manager.ts:
    - В streamSection: после получения usage от Claude,
      если billingMode === "service" → вызвать chargeUsage
    - Записать в api_usage независимо от режима
 
-5. server/routes/billing.ts:
+6. server/routes/prompts.ts (03 §2.9 Prompts + §2.11 Configs):
+   Модуль числится в 05 («Admin: CRUD prompt_templates, synthesis_configs»),
+   но до аудита 2026-07-30 не создавался НИ ОДНОЙ беседой — без него
+   AdminPromptsPage из 6.2 не с чем разговаривать.
+   - GET   /prompts                 → список шаблонов (key, version, isActive)
+   - GET   /prompts/:key/versions   → история версий шаблона
+   - POST  /prompts/:key            { body } → новая версия-черновик
+   - POST  /prompts/:key/activate   { version } → активация версии
+   - GET   /configs                 → synthesis_configs
+   - PUT   /configs/:key            { value } → обновление конфига
+   Все — только для role === 'admin' (middleware из 0.2).
+   Сброс кэша prompt-registry (0.3) после активации — обязателен,
+   иначе генерация продолжит брать старый шаблон.
+
+7. server/routes/billing.ts:
    - POST /billing/api-key { key } → storeApiKey
    - DELETE /billing/api-key/:id → deleteApiKey
    - GET /billing/api-key → listApiKeys
@@ -2526,7 +2887,7 @@ streaming-manager.
    - GET /billing/transactions?page&limit → getTransactionHistory
    - GET /billing/usage?from&to&synthesisId → getUsageHistory
 
-6. server/utils/crypto.ts:
+8. server/utils/crypto.ts:
    - encrypt(plaintext, key): AES-256-GCM
    - decrypt(ciphertext, iv, tag, key): AES-256-GCM
 ```
@@ -2617,6 +2978,15 @@ streaming-manager.
    - listConfigs, updateConfig
 
 5. Защита роута: AdminPromptsPage доступна только для role === 'admin'
+
+6. Форма ввода API-ключа в auth-модалке (долг TODO(6.1) главы 1.4b —
+   задача клиентская, но была адресована серверной беседе 6.1; аудит
+   2026-07-31):
+   в client/src/components/synthesis/PauseModal.tsx auth-рендерер
+   сейчас предлагает только «Повторить» (после замены ключа на
+   сервере) и «Остановить» — порт _resumeWithNewApiKey [25028]
+   опущен. После BYO-Key из 6.1 ключ становится пользовательским,
+   и форму можно показать прямо в модалке паузы.
 ```
 
 **Последующие запросы:**
@@ -2696,6 +3066,11 @@ streaming-manager.
 
 ## 10. Контрольный чек-лист для каждой беседы
 
+> **Добавлено 2026-07-31:** завершая беседу, внеси каждый оставленный
+> долг в §12 «Реестр открытых долгов» с ЯВНЫМ номером беседы-адресата,
+> а закрытый — вычеркни оттуда. Записи только в главе NEXT-CONTEXT
+> недостаточно: именно так семь долгов потеряли адресата.
+
 Перед началом:
 - [ ] Определил задачи беседы (из 06-dev-strategy.md)
 - [ ] Определил нужные фрагменты исходника (из 04-code-reuse-map.md)
@@ -2748,20 +3123,27 @@ streaming-manager.
  └── 0.4 (клиент каркас, роутинг, stores, api/client, useWebSocket)
       ├── 1.5 (форма + прогресс)
       │    └── 1.5b (Unified Concept Pool)
-      ├── 1.6 (DocumentView, CatalogPage)
-      ├── 1.7 (Graph3D, Graph2D, GraphModal, NodePanel)
+      ├── 1.6b (DocumentView, CatalogPage) ← требует также 1.6 (роуты чтения)
+      ├── 1.7 (Graph3D, Graph2D, GraphModal, NodePanel) ← требует также
+      │        1.6 (GET /categories) и 1.6b (SynthesisPage — хозяин модалки)
       ├── 2.3 (EditModal, CascadePanel)
       ├── 2.4 (ContextLogViewer, colorize-log)
       ├── 3.2 (ConceptPool + GenealogyTree, v10)
       ├── 5.2 (ElementEditor, CategoryEditor, VersionHistory)
       └── 6.2 (BillingPage, AdminPromptsPage)
 
+1.6 (роуты чтения: syntheses, sections, categories) ← 1.4 (данные, WS) + 1.4b (pausedState/pauseEstimates)
+2.3 (EditModal поверх страницы синтеза) ← 2.1 + 2.2 (планы) + 1.6b (SynthesisPage, SectionView, synthesis-store) + 1.6 (/sections/:key/context)
+2.4 (ContextLogViewer, кнопка в футере) ← 1.6b (DocumentFooter); fallback промптов — только после 4.2 (prompt-reconstruction)
+3.2 (пул + генеалогия) ← 1.5b (пул уже создан) + 3.1 (routes/lineage.ts) + 1.6b (SynthesisPage, CatalogPage, SynthesisCard)
+1.6b (просмотр документа и каталог) ← 0.4 + 1.6 (роуты) + 1.5 (useStreamingGeneration, PauseModal)
+1.7 (граф) ← 0.4 + 1.6 (GET /categories) + 1.6b (SynthesisPage)
 2.3 (бейдж качества контекста на карточке раздела) ← 2.4 (context-quality.ts, getSectionContextQuality)
 5.1 (element-editor, element-versioning) ← 0.1 (schema) + 2.1 (cascade-analyzer)
 5.3 (element-enrichment) ← 5.1 + 0.3b (taxonomy) + 1.4 (streaming-manager)
 5.4 (CharacteristicSlider, EnrichmentPanel, TaxonomySelector) ← 5.3 + 5.2 + 1.7 (NodePanel)
-5.5 (representation-transformer, TransformPanel) ← 1.4 (graph-parser, streaming) + 0.3b (taxonomy) + 1.7 (GraphModal) + 1.6 (SectionView)
-5.2 (ElementEditor UI) ← 5.1 + 1.7 (NodePanel) + 1.6 (SectionView)
+5.5 (representation-transformer, TransformPanel) ← 1.4 (graph-parser, streaming) + 0.3b (taxonomy) + 1.7 (GraphModal) + 1.6b (SectionView)
+5.2 (ElementEditor UI) ← 5.1 + 1.7 (NodePanel) + 1.6b (SectionView)
 6.1 (billing-service, api-key-service) ← 0.1 (schema) + 0.2 (auth) + 1.4 (streaming-manager)
 6.2 (BillingPage, AdminPromptsPage) ← 6.1 + 0.4 (клиент каркас)
 ```
@@ -2772,9 +3154,56 @@ streaming-manager.
 - Беседы на одном уровне можно вести параллельно (если два человека работают)
 
 **Критический путь (самая длинная цепочка):**
-0.1 → 0.3 → 1.1 → 1.2 → 1.4 → 2.2 → 2.3
+0.1 → 0.3 → 1.1 → 1.2 → 1.4 → 2.2 → 2.4 → 2.3
+  (2.4 перед 2.3: context-quality.ts нужен бейджу в EditSectionCard —
+   иначе 2.3 работает по null; аудит 2026-07-30)
 
 **Параллелизуемые ветки:**
 - После 1.4: беседы 1.5, 3.1, 4.1, 4.2, 4.3 можно вести параллельно
-- После 0.4: беседы 1.5, 1.6, 1.7 можно вести параллельно
+- После 0.4: беседы 1.5 и 1.6 можно вести параллельно (1.6 серверная,
+  от клиента не зависит). 1.6b и 1.7 — только после 1.6; 1.7 удобнее
+  после 1.6b, потому что кнопка графа живёт в actions-bar документа
 - Фазы 5 и 6 независимы друг от друга
+
+---
+
+## 12. Реестр открытых долгов
+
+Заведён аудитом 2026-07-31. До него адреса долгов жили только в семи
+главах `NEXT-CONTEXT.md` (разделы «Открытые TODO после X»), и потерю
+адресата не ловила ни одна проверка: долг заводится в одной беседе,
+адресуется другой, та его не делает и переадресует дальше — на втором
+шаге адрес размывается («TODO(2.x)») или исчезает.
+
+**Правило:** беседа, оставляющая долг, обязана внести строку СЮДА, а не
+только в свою главу журнала. Беседа, закрывающая долг, вычёркивает
+строку. Адрес без номера беседы («2.x», «позже», «когда появится») не
+допускается — если адресата нет, долг остаётся за текущей беседой.
+
+| Долг | Адресат | Заведён | Состояние |
+|---|---|---|---|
+| `canonicalSubsectionKey` — каноникализация ключей подразделов | 2.1 | 1.3 | в тексте 2.1 |
+| `estimateCascadeWaveCost` / `formatWaveCost` | 2.1 | 1.1 | в тексте 2.1 |
+| `setPlanResumeExecutor` — регистрация исполнителя планов | 2.2 | 1.4b | внесён 2026-07-31 |
+| Полный `regenerateSubsection` + plan-executor | 2.2 | 1.4b | в тексте 2.2 |
+| `confirm` деградации зависимостей при skip | 2.2 | 1.4b (адресовался 1.5) | внесён 2026-07-30 |
+| Бейдж качества контекста (`contextQualityScore`) | 2.3 ← 2.4 | 1.3 | инверсия снята 2026-07-30 |
+| `context-quality.ts` / `getSectionContextQuality` | 2.4 | 1.3 | в тексте 2.4 |
+| `registerParentContextProvider` — реальный провайдер | 3.1 | 1.4 | внесён 2026-07-31 |
+| `parentFieldsUsed` / `conceptBlockSizes` / `parentSpecBySection` | 3.1 | 1.4 | внесён 2026-07-31 |
+| Серверные участники-концепции (снятие гейта мета-синтеза) | 3.1 + 3.2 | 1.5b | внесён 2026-07-31 |
+| Данные для `estimate-diff` | 3.1 | 1.5b | внесён 2026-07-31 |
+| `reconstructGenealogy` | 3.2 | 1.5b | в тексте 3.2 |
+| `restoreCapsulesFromHTML` | 3.2 | 1.5b | адрес восстановлен 2026-07-31 |
+| `applyReplacement` / `updateCompatAdvisor` / `toggleCompatPanel` | 3.2 | 1.1 (адресовался 1.5, затем «2.x») | внесён 2026-07-31 |
+| Отрисовка `estimate-diff` в `FullBudgetPreview` | 3.2 | 1.5b | внесён 2026-07-31 |
+| Серверный импорт концепт-файлов | 4.3 | 1.5b | в тексте 4.3 |
+| `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 → 2.4 | 2.4 | инверсия снята 2026-07-30 |
+| BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | в тексте 6.1 |
+| Форма ввода ключа в auth-модалке `PauseModal` | 6.2 | 1.4b (адресовался 6.1) | внесён 2026-07-31 |
+| Маркеры `TODO(1.6)` — развести между 1.6 и 1.6b | 1.6 + 1.6b | разделение беседы | внесён 2026-07-30 |
+
+Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,
+помечено в 03 §2.1; `POST /syntheses/estimate` и `/advice` — реализованы
+беседой 1.5, зафиксировано записью ревизии.
+
