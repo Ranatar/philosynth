@@ -1,23 +1,13 @@
-// Фрагменты philosynth.html (26 024 стр., ревизия 2026-07)
-// для беседы 1.6b — просмотр документа (каталог — новый код).
+// Фрагмент philosynth.html (26025 строк) — собран
+// scripts/extract-by-name.py по спецификации 1.6-document-view.spec.
 //
-// ВНИМАНИЕ: извлечено scripts/patch-docs-conv16-pre.py, а НЕ
-// extract-fragments.py — того скрипта в репозитории нет. Диапазоны
-// выверены аудитом 2026-07-30; при обновлении исходника перепроверить.
-//
-// НЕ входит намеренно: rebuildDbMapping [5686] и индексация db{N} /
-// DOC_STATE.sectionDbIdx (в React разделы адресуются по key);
-// .output-wrap (видимостью управляет маршрут); граф-модалка (1.7).
+// Номера строк ниже — РЕЗУЛЬТАТ поиска по именам, а не входные
+// данные: при правке исходника достаточно перезапустить сборку,
+// спецификация не устаревает. Имена берутся из
+// docs/04-code-reuse-map.md.
 
-
-// ───── [CSS документа: шапка, #docTOC, тела разделов, .doc-table, .callout, .risk, футер, actions-bar]
-// philosynth.html строки 476–929 ─────
-      .output-wrap {
-        display: none;
-      }
-      .output-wrap.visible {
-        display: block;
-      }
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 482–488 ─────
       .doc-header {
         background: var(--blue-corp);
         color: #fff;
@@ -25,6 +15,9 @@
         position: relative;
         overflow: hidden;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 489–497 ─────
       .doc-header::before {
         content: "";
         position: absolute;
@@ -34,6 +27,9 @@
         width: 300px;
         background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.04) 100%);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 498–505 ─────
       .doc-type {
         font-family: var(--mono);
         font-size: 9px;
@@ -42,6 +38,9 @@
         color: rgba(255, 255, 255, 0.5);
         margin-bottom: 10px;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 506–512 ─────
       .doc-title {
         font-family: var(--serif);
         font-size: 30px;
@@ -49,12 +48,18 @@
         line-height: 1.2;
         margin-bottom: 8px;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 513–518 ─────
       .doc-subtitle {
         font-size: 13px;
         color: rgba(255, 255, 255, 0.65);
         font-style: italic;
         margin-bottom: 24px;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 519–526 ─────
       .doc-meta-grid {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
@@ -63,9 +68,15 @@
         border-top: 1px solid rgba(255, 255, 255, 0.15);
         padding-top: 20px;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 527–529 ─────
       .doc-meta-item {
         padding: 0 20px 0 0;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 530–538 ─────
       .doc-meta-key {
         font-family: var(--mono);
         font-size: 8px;
@@ -75,15 +86,24 @@
         display: block;
         margin-bottom: 3px;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 539–544 ─────
       .doc-meta-val {
         font-family: var(--mono);
         font-size: 12px;
         color: rgba(255, 255, 255, 0.9);
         display: block;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 545–547 ─────
       .doc-meta-val.gold {
         color: var(--gold-light);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 548–553 ─────
       .doc-body {
         background: var(--paper);
         border: 1px solid var(--rule);
@@ -91,11 +111,178 @@
         padding: 0;
       }
 
-      /* ── TABLE OF CONTENTS ── */
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 625–628 ─────
+      .doc-section {
+        border-bottom: 1px solid var(--rule);
+        padding: 32px 48px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 629–631 ─────
+      .doc-section:last-child {
+        border-bottom: none;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 649–653 ─────
+      .doc-content {
+        font-size: 13px;
+        line-height: 1.85;
+        color: var(--ink-mid);
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 654–662 ─────
+      .doc-content h4 {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--ink);
+        margin: 20px 0 8px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 663–671 ─────
+      .doc-content h5 {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--ink-mid);
+        margin: 16px 0 6px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 672–674 ─────
+      .doc-content div[data-section] {
+        margin: 16px 0;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 675–677 ─────
+      .doc-content p {
+        margin-bottom: 12px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 679–684 ─────
+      .doc-content ol {
+        margin: 8px 0 14px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 685–687 ─────
+      .doc-content li {
+        line-height: 1.7;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 688–691 ─────
+      .doc-content strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 692–696 ─────
+      .doc-content em {
+        color: var(--red);
+        font-style: normal;
+        font-weight: 500;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 697–702 ─────
+      .doc-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 14px 0;
+        font-size: 12px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 703–713 ─────
+      .doc-table th {
+        background: var(--blue-corp);
+        color: #fff;
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        padding: 9px 14px;
+        text-align: left;
+        font-weight: 500;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 714–720 ─────
+      .doc-table td {
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--rule);
+        vertical-align: top;
+        color: var(--ink-mid);
+        line-height: 1.6;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 721–723 ─────
+      .doc-table tr:nth-child(even) td {
+        background: var(--off);
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 724–726 ─────
+      .doc-table tr:hover td {
+        background: var(--blue-light);
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 855–862 ─────
+      .doc-footer {
+        background: var(--off);
+        border-top: 1px solid var(--rule);
+        padding: 16px 48px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 863–869 ─────
+      .doc-footer-left {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--ink-dim);
+        letter-spacing: 1px;
+        line-height: 1.8;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.doc-
+// philosynth.html строки 870–876 ─────
+      .doc-footer-right {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--ink-dim);
+        text-align: right;
+        line-height: 1.8;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:#docTOC
+// philosynth.html строки 556–559 ─────
       #docTOC {
         border-bottom: 2px solid var(--gold) !important;
         border-top: none;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:#docTOC
+// philosynth.html строки 560–576 ─────
       #docTOC summary {
         padding: 10px 48px;
         cursor: pointer;
@@ -113,39 +300,83 @@
         background: var(--paper);
         border-bottom: 1px solid var(--rule);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:#docTOC
+// philosynth.html строки 577–577 ─────
       #docTOC summary::-webkit-details-marker { display: none; }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:#docTOC
+// philosynth.html строки 578–582 ─────
       #docTOC .toc-arrow {
         font-size: 7px;
         transition: transform 0.2s;
         display: inline-block;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:#docTOC
+// philosynth.html строки 583–585 ─────
       #docTOC[open] .toc-arrow {
         transform: rotate(90deg);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:#docTOC
+// philosynth.html строки 607–609 ─────
+      #docTOC a:hover {
+        text-decoration: underline;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.toc-
+// philosynth.html строки 578–582 ─────
+      #docTOC .toc-arrow {
+        font-size: 7px;
+        transition: transform 0.2s;
+        display: inline-block;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.toc-
+// philosynth.html строки 583–585 ─────
+      #docTOC[open] .toc-arrow {
+        transform: rotate(90deg);
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.toc-
+// philosynth.html строки 586–589 ─────
       .toc-body {
         padding: 20px 48px;
         background: var(--paper);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.toc-
+// philosynth.html строки 590–592 ─────
       .toc-section-link {
         margin: 4px 0;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.toc-
+// philosynth.html строки 593–597 ─────
       .toc-section-link a {
         color: var(--blue-corp);
         text-decoration: none;
         font-weight: 500;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.toc-
+// philosynth.html строки 598–602 ─────
       .toc-sub-link {
         margin: 2px 0;
         padding-left: 24px;
         font-size: 12px;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.toc-
+// philosynth.html строки 603–606 ─────
       .toc-sub-link a {
         color: var(--ink-dim);
         text-decoration: none;
       }
-      #docTOC a:hover {
-        text-decoration: underline;
-      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.toc-
+// philosynth.html строки 610–619 ─────
       .toc-back-btn {
         display: inline-block;
         font-size: 10px;
@@ -156,18 +387,16 @@
         transition: opacity 0.15s;
         vertical-align: middle;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.toc-
+// philosynth.html строки 620–623 ─────
       .toc-back-btn:hover {
         opacity: 1;
         color: var(--blue-corp);
       }
 
-      .doc-section {
-        border-bottom: 1px solid var(--rule);
-        padding: 32px 48px;
-      }
-      .doc-section:last-child {
-        border-bottom: none;
-      }
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.section-
+// philosynth.html строки 632–639 ─────
       .section-num {
         font-family: var(--mono);
         font-size: 9px;
@@ -176,6 +405,9 @@
         color: var(--ink-dim);
         margin-bottom: 4px;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.section-
+// philosynth.html строки 640–648 ─────
       .section-title {
         font-family: var(--serif);
         font-size: 20px;
@@ -185,84 +417,9 @@
         padding-bottom: 12px;
         border-bottom: 1px solid var(--rule);
       }
-      .doc-content {
-        font-size: 13px;
-        line-height: 1.85;
-        color: var(--ink-mid);
-      }
-      .doc-content h4 {
-        font-family: var(--mono);
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        color: var(--ink);
-        margin: 20px 0 8px;
-      }
-      .doc-content h5 {
-        font-family: var(--mono);
-        font-size: 10px;
-        font-weight: 500;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--ink-mid);
-        margin: 16px 0 6px;
-      }
-      .doc-content div[data-section] {
-        margin: 16px 0;
-      }
-      .doc-content p {
-        margin-bottom: 12px;
-      }
-      .doc-content ul,
-      .doc-content ol {
-        margin: 8px 0 14px 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
-      .doc-content li {
-        line-height: 1.7;
-      }
-      .doc-content strong {
-        color: var(--ink);
-        font-weight: 600;
-      }
-      .doc-content em {
-        color: var(--red);
-        font-style: normal;
-        font-weight: 500;
-      }
-      .doc-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 14px 0;
-        font-size: 12px;
-      }
-      .doc-table th {
-        background: var(--blue-corp);
-        color: #fff;
-        font-family: var(--mono);
-        font-size: 9px;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        padding: 9px 14px;
-        text-align: left;
-        font-weight: 500;
-      }
-      .doc-table td {
-        padding: 9px 14px;
-        border-bottom: 1px solid var(--rule);
-        vertical-align: top;
-        color: var(--ink-mid);
-        line-height: 1.6;
-      }
-      .doc-table tr:nth-child(even) td {
-        background: var(--off);
-      }
-      .doc-table tr:hover td {
-        background: var(--blue-light);
-      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.callout
+// philosynth.html строки 727–733 ─────
       .callout {
         border-left: 3px solid;
         padding: 12px 16px;
@@ -270,21 +427,33 @@
         font-size: 12px;
         line-height: 1.7;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.callout
+// philosynth.html строки 734–738 ─────
       .callout.warning {
         border-color: var(--red);
         background: #fff5f5;
         color: var(--red);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.callout
+// philosynth.html строки 739–743 ─────
       .callout.note {
         border-color: var(--blue-corp);
         background: var(--blue-light);
         color: var(--blue-corp);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.callout
+// philosynth.html строки 744–748 ─────
       .callout.gold {
         border-color: var(--gold);
         background: #fffbee;
         color: var(--gold);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.callout
+// philosynth.html строки 749–757 ─────
       .callout-label {
         font-family: var(--mono);
         font-size: 9px;
@@ -294,38 +463,9 @@
         display: block;
         margin-bottom: 5px;
       }
-      .sig-block {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 40px;
-        margin-top: 24px;
-      }
-      .sig-party-name {
-        font-family: var(--serif);
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--blue-corp);
-        margin-bottom: 3px;
-      }
-      .sig-party-role {
-        font-family: var(--mono);
-        font-size: 9px;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--ink-dim);
-        margin-bottom: 20px;
-      }
-      .sig-line {
-        border-bottom: 1px solid var(--ink);
-        height: 40px;
-        margin-bottom: 4px;
-      }
-      .sig-label {
-        font-family: var(--mono);
-        font-size: 9px;
-        color: var(--ink-dim);
-        letter-spacing: 1px;
-      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.risk
+// philosynth.html строки 790–798 ─────
       .risk {
         display: inline-block;
         padding: 1px 8px;
@@ -335,84 +475,33 @@
         letter-spacing: 1px;
         text-transform: uppercase;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.risk
+// philosynth.html строки 799–803 ─────
       .risk.high {
         background: #fff0f0;
         color: var(--red);
         border: 1px solid var(--red);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.risk
+// philosynth.html строки 804–808 ─────
       .risk.medium {
         background: #fffbee;
         color: var(--gold);
         border: 1px solid var(--gold);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.risk
+// philosynth.html строки 809–813 ─────
       .risk.low {
         background: #f0fff4;
         color: var(--green-check);
         border: 1px solid var(--green-check);
       }
-      /* GRAPH NODE / EDGE BOXES */
-      .graph-node {
-        display: inline-block;
-        padding: 3px 10px;
-        font-family: var(--mono);
-        font-size: 11px;
-        font-weight: 500;
-        border: 1px solid var(--blue-corp);
-        background: var(--blue-light);
-        color: var(--blue-corp);
-        margin: 2px;
-      }
-      .graph-edge {
-        display: inline-block;
-        padding: 2px 8px;
-        font-family: var(--mono);
-        font-size: 10px;
-        border: 1px solid var(--gold);
-        background: #fffbee;
-        color: var(--gold);
-        margin: 2px;
-      }
 
-      .stream-cursor {
-        display: inline-block;
-        width: 2px;
-        height: 14px;
-        background: var(--blue-corp);
-        vertical-align: middle;
-        margin-left: 2px;
-        animation: blink-cursor 0.7s infinite;
-      }
-      @keyframes blink-cursor {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0;
-        }
-      }
-      .doc-footer {
-        background: var(--off);
-        border-top: 1px solid var(--rule);
-        padding: 16px 48px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .doc-footer-left {
-        font-family: var(--mono);
-        font-size: 9px;
-        color: var(--ink-dim);
-        letter-spacing: 1px;
-        line-height: 1.8;
-      }
-      .doc-footer-right {
-        font-family: var(--mono);
-        font-size: 9px;
-        color: var(--ink-dim);
-        text-align: right;
-        line-height: 1.8;
-      }
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.validity-stamp
+// philosynth.html строки 877–886 ─────
       .validity-stamp {
         font-family: var(--serif);
         font-size: 12px;
@@ -423,6 +512,21 @@
         transform: rotate(-2deg);
         display: inline-block;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.stream-cursor
+// philosynth.html строки 837–845 ─────
+      .stream-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 14px;
+        background: var(--blue-corp);
+        vertical-align: middle;
+        margin-left: 2px;
+        animation: blink-cursor 0.7s infinite;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.actions-bar
+// philosynth.html строки 887–893 ─────
       .actions-bar {
         display: flex;
         justify-content: space-between;
@@ -430,11 +534,17 @@
         padding: 16px 0;
         margin-bottom: 8px;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.actions-bar
+// philosynth.html строки 894–898 ─────
       .actions-bar-btns {
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.action-btn
+// philosynth.html строки 899–911 ─────
       .action-btn {
         font-family: var(--mono);
         font-size: 10px;
@@ -448,18 +558,30 @@
         color: var(--ink-mid);
         transition: all 0.15s;
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.action-btn
+// philosynth.html строки 912–915 ─────
       .action-btn:hover {
         border-color: var(--blue-corp);
         color: var(--blue-corp);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.action-btn
+// philosynth.html строки 916–920 ─────
       .action-btn.primary {
         background: var(--blue-corp);
         color: #fff;
         border-color: var(--blue-corp);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.action-btn
+// philosynth.html строки 921–923 ─────
       .action-btn.primary:hover {
         background: var(--blue-mid);
       }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.action-btn
+// philosynth.html строки 924–929 ─────
       .action-btn.gold-btn {
         background: var(--gold);
         color: var(--ink);
@@ -467,8 +589,82 @@
         font-weight: 600;
       }
 
-// ───── [.doc-title-edit-btn]
-// philosynth.html строки 3304–3319 ─────
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.sig-
+// philosynth.html строки 758–763 ─────
+      .sig-block {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        margin-top: 24px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.sig-
+// philosynth.html строки 764–770 ─────
+      .sig-party-name {
+        font-family: var(--serif);
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--blue-corp);
+        margin-bottom: 3px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.sig-
+// philosynth.html строки 771–778 ─────
+      .sig-party-role {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+        margin-bottom: 20px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.sig-
+// philosynth.html строки 779–783 ─────
+      .sig-line {
+        border-bottom: 1px solid var(--ink);
+        height: 40px;
+        margin-bottom: 4px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.sig-
+// philosynth.html строки 784–789 ─────
+      .sig-label {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--ink-dim);
+        letter-spacing: 1px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.graph-node
+// philosynth.html строки 815–825 ─────
+      .graph-node {
+        display: inline-block;
+        padding: 3px 10px;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        border: 1px solid var(--blue-corp);
+        background: var(--blue-light);
+        color: var(--blue-corp);
+        margin: 2px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css*:.graph-edge
+// philosynth.html строки 826–835 ─────
+      .graph-edge {
+        display: inline-block;
+        padding: 2px 8px;
+        font-family: var(--mono);
+        font-size: 10px;
+        border: 1px solid var(--gold);
+        background: #fffbee;
+        color: var(--gold);
+        margin: 2px;
+      }
+
+// ───── CSS документа (область: от .output-wrap до баннера граф-модалки) · css:.doc-title-edit-btn
+// philosynth.html строки 3304–3315 ─────
       .doc-title-edit-btn {
         background: none;
         border: 1px solid transparent;
@@ -481,48 +677,9 @@
         vertical-align: middle;
         transition: opacity 0.2s;
       }
-      .doc-title-edit-btn:hover {
-        opacity: 1;
-        border-color: var(--gold);
-      }
 
-// ───── [Разметка-эталон: output-wrap + #docOutput (шапка, #docBodies, футер)]
-// philosynth.html строки 4134–4220 ─────
-      <div class="output-wrap" id="outputWrap">
-        <div class="actions-bar">
-          <div
-            style="
-              font-family: var(--mono);
-              font-size: 10px;
-              color: var(--ink-dim);
-              letter-spacing: 1px;
-            "
-          >
-            ДОКУМЕНТ СГЕНЕРИРОВАН
-            <span class="import-indicator" id="importIndicator"></span>
-          </div>
-          <div class="actions-bar-btns">
-            <button
-              class="action-btn gold-btn"
-              id="btnGraph"
-              onclick="openGraph()"
-              style="display: none"
-            >
-              3D/2D Граф
-            </button>
-            <button class="action-btn" onclick="window.print()">Распечатать</button>
-            <button class="action-btn" onclick="viewRawHTML()">Raw HTML</button>
-            <button class="action-btn" onclick="viewCtxLog()">Лог контекста</button>
-            <button class="action-btn gold-btn" id="btnEdit" onclick="openEditModal()">Изменить</button>
-            <button class="action-btn" id="btnAdversarial" onclick="openModeModal('adversarial')" style="display:none">⚔ Оппонент</button>
-            <button class="action-btn" id="btnTranslator" onclick="openModeModal('translator')" style="display:none">🔄 Переводчик</button>
-            <button class="action-btn" id="btnTimeSlice" onclick="openModeModal('timeslice')" style="display:none">⏳ Временной срез</button>
-            <button class="action-btn" onclick="saveHTML()">Сохранить HTML</button>
-            <button class="action-btn" onclick="saveMD()">Сохранить MD</button>
-            <button class="action-btn" onclick="resetForm()">Новый Синтез</button>
-            <button class="action-btn primary" onclick="copyDoc()">Скопировать</button>
-          </div>
-        </div>
+// ───── Разметка-эталон документа · html:#docOutput
+// philosynth.html строки 4169–4219 ─────
         <div id="docOutput">
           <div class="doc-header">
             <div class="doc-type">PhiloSynth Pro™ · Синтез Философской Концепции</div>
@@ -574,31 +731,9 @@
             </div>
           </div>
         </div>
-      </div>
 
-// ───── [updateFooterCost — формат строки стоимости в футере]
-// philosynth.html строки 5671–5683 ─────
-      /** Обновляет текст стоимости в футере после перегенерации */
-      function updateFooterCost() {
-        const costIn = totalInputTokens * 3 / 1e6;
-        const costOut = totalOutputTokens * 15 / 1e6;
-        const costTotal = costIn + costOut;
-        const el = document.getElementById("footerCost");
-        if (el) {
-          el.textContent =
-            "Токены: " + totalInputTokens.toLocaleString("ru") + " вх. + " +
-            totalOutputTokens.toLocaleString("ru") + " вых. · Стоимость: $" +
-            costTotal.toFixed(4) + " (" + (costTotal * 100).toFixed(2) + "¢)";
-        }
-      }
-
-// ───── [HELPER: раскрывающиеся поля шапки и разделов — makeHeaderDisclosure, buildDocHeaderExtras, buildTableOfContents, extractCapsuleText, restoreCapsulesFromHTML, updateCapsuleInHeader, removeCapsuleFromDocBodies, makeSectionCtxDisclosure, editDocTitle, updateDocTitleFromName]
-// philosynth.html строки 11594–11892 ─────
-      // ════════════════════════════════════════
-      // HELPER: раскрывающиеся поля шапки и разделов
-      // ════════════════════════════════════════
-
-      /** Создаёт <details> для шапки документа (светлый текст на тёмном фоне) */
+// ───── Шапка, оглавление, капсула, футер · js:makeHeaderDisclosure
+// philosynth.html строки 11599–11610 ─────
       function makeHeaderDisclosure(label, text) {
         const details = document.createElement("details");
         details.className = "header-disclosure";
@@ -612,7 +747,8 @@
         return details;
       }
 
-      /** Заполняет контейнер docHeaderExtras раскрывающимися полями зерна и контекста */
+// ───── Шапка, оглавление, капсула, футер · js:buildDocHeaderExtras
+// philosynth.html строки 11613–11619 ─────
       function buildDocHeaderExtras(seed, ctx) {
         const container = document.getElementById("docHeaderExtras");
         if (!container) return;
@@ -620,6 +756,9 @@
         if (seed) container.appendChild(makeHeaderDisclosure("Зерно концепции", seed));
         if (ctx)  container.appendChild(makeHeaderDisclosure("Дополнительный контекст", ctx));
       }
+
+// ───── Шапка, оглавление, капсула, футер · js:buildTableOfContents
+// philosynth.html строки 11620–11711 ─────
 
       function buildTableOfContents() {
         const db = document.getElementById("docBodies");
@@ -713,13 +852,8 @@
         }
       }
 
-      /**
-       * Извлекает чистый текст капсулы из HTML-строки.
-       * Убирает заголовок <h4>, слово «Капсула» в начале, нормализует переносы.
-       *
-       * @param {string} capsuleHTML — innerHTML контейнера капсулы (DOC_STATE.capsuleHTML и т.п.)
-       * @returns {string} — чистый текст
-       */
+// ───── Шапка, оглавление, капсула, футер · js:extractCapsuleText
+// philosynth.html строки 11720–11739 ─────
       function extractCapsuleText(capsuleHTML) {
         if (!capsuleHTML) return "";
         const tmp = document.createElement("div");
@@ -741,10 +875,8 @@
           .trim();
       }
 
-      /**
-       * Извлекает капсулы из отрендеренного HTML генеалогического дерева
-       * и записывает их обратно в узлы genealogy.
-       */
+// ───── Шапка, оглавление, капсула, футер · js:restoreCapsulesFromHTML
+// philosynth.html строки 11745–11770 ─────
       function restoreCapsulesFromHTML(node, doc) {
         if (!node || node.type === "philosopher") return;
 
@@ -772,7 +904,8 @@
         if (node.participants) node.participants.forEach(fill);
       }
 
-      /** Добавляет или обновляет капсулу в шапке документа */
+// ───── Шапка, оглавление, капсула, футер · js:updateCapsuleInHeader
+// philosynth.html строки 11773–11796 ─────
       function updateCapsuleInHeader() {
         const container = document.getElementById("docHeaderExtras");
         if (!container || !DOC_STATE.capsuleHTML) return;
@@ -798,30 +931,8 @@
         container.appendChild(details);
       }
 
-      /** Показывает кнопки режимов, если капсула сгенерирована, иначе скрывает */
-      function updateModeButtons() {
-        const hasCapsule = DOC_STATE.sectionOrder.includes("capsule") && DOC_STATE.capsuleHTML;
-        const d = hasCapsule ? "" : "none";
-        for (const id of ["btnAdversarial", "btnTranslator", "btnTimeSlice"]) {
-          const el = document.getElementById(id);
-          if (!el) continue;
-          el.style.display = d;
-          // Показать кол-во результатов, если есть
-          if (hasCapsule) {
-            const modeKey = { btnAdversarial: "adversarial", btnTranslator: "translator", btnTimeSlice: "timeslice" }[id];
-            const count = (DOC_STATE.modes[modeKey] || []).length;
-            if (count > 0) {
-              el.textContent = el.textContent.replace(/\s*\(\d+\)$/, "") + " (" + count + ")";
-            }
-          }
-        }
-      }
-
-      /**
-       * Удаляет DOM-контейнер капсулы из #docBodies после копирования в шапку.
-       * Капсула живёт только в шапке (header-disclosure-capsule) и в DOC_STATE.capsuleHTML.
-       * В #docBodies как отдельный раздел она не отображается.
-       */
+// ───── Шапка, оглавление, капсула, футер · js:removeCapsuleFromDocBodies
+// philosynth.html строки 11822–11829 ─────
       function removeCapsuleFromDocBodies() {
         const idx = DOC_STATE.sectionDbIdx["capsule"];
         if (idx == null) return;
@@ -831,7 +942,8 @@
         rebuildDbMapping();
       }
 
-      /** Создаёт <details> для вставки доп. контекста в начало раздела документа */
+// ───── Шапка, оглавление, капсула, футер · js:makeSectionCtxDisclosure
+// philosynth.html строки 11832–11843 ─────
       function makeSectionCtxDisclosure(text) {
         const details = document.createElement("details");
         details.className = "sec-disclosure";
@@ -844,6 +956,9 @@
         details.appendChild(body);
         return details;
       }
+
+// ───── Шапка, оглавление, капсула, футер · js:editDocTitle
+// philosynth.html строки 11844–11868 ─────
 
       function editDocTitle() {
         const el = document.getElementById("docTitle");
@@ -870,7 +985,8 @@
         }
       }
 
-      /** Ищет итоговое название в сгенерированном разделе "name" и обновляет docTitle */
+// ───── Шапка, оглавление, капсула, футер · js:updateDocTitleFromName
+// philosynth.html строки 11871–11892 ─────
       function updateDocTitleFromName(nameContainer) {
         const divs = nameContainer.querySelectorAll("div[data-section]");
         let recSection = null;
@@ -894,7 +1010,22 @@
         }
       }
 
-// ───── [Заполнение шапки при старте генерации: docNum, дата, ML/DL/SL, три ветки подзаголовка, footerPhil]
+// ───── Шапка, оглавление, капсула, футер · js:updateFooterCost
+// philosynth.html строки 5672–5683 ─────
+      function updateFooterCost() {
+        const costIn = totalInputTokens * 3 / 1e6;
+        const costOut = totalOutputTokens * 15 / 1e6;
+        const costTotal = costIn + costOut;
+        const el = document.getElementById("footerCost");
+        if (el) {
+          el.textContent =
+            "Токены: " + totalInputTokens.toLocaleString("ru") + " вх. + " +
+            totalOutputTokens.toLocaleString("ru") + " вых. · Стоимость: $" +
+            costTotal.toFixed(4) + " (" + (costTotal * 100).toFixed(2) + "¢)";
+        }
+      }
+
+// ───── три ветки docSubtitle, footerPhil · lines:12110-12144
 // philosynth.html строки 12110–12144 ─────
         const docNum =
           "PS-" +
@@ -931,3 +1062,41 @@
         document.getElementById("footerPhil").textContent = hasNoParticipants(p)
           ? "свободный синтез"
           : (p.phil || []).join(", ");
+
+// ───── Панель действий над документом (разметка) · lines:4134-4168
+// philosynth.html строки 4134–4168 ─────
+      <div class="output-wrap" id="outputWrap">
+        <div class="actions-bar">
+          <div
+            style="
+              font-family: var(--mono);
+              font-size: 10px;
+              color: var(--ink-dim);
+              letter-spacing: 1px;
+            "
+          >
+            ДОКУМЕНТ СГЕНЕРИРОВАН
+            <span class="import-indicator" id="importIndicator"></span>
+          </div>
+          <div class="actions-bar-btns">
+            <button
+              class="action-btn gold-btn"
+              id="btnGraph"
+              onclick="openGraph()"
+              style="display: none"
+            >
+              3D/2D Граф
+            </button>
+            <button class="action-btn" onclick="window.print()">Распечатать</button>
+            <button class="action-btn" onclick="viewRawHTML()">Raw HTML</button>
+            <button class="action-btn" onclick="viewCtxLog()">Лог контекста</button>
+            <button class="action-btn gold-btn" id="btnEdit" onclick="openEditModal()">Изменить</button>
+            <button class="action-btn" id="btnAdversarial" onclick="openModeModal('adversarial')" style="display:none">⚔ Оппонент</button>
+            <button class="action-btn" id="btnTranslator" onclick="openModeModal('translator')" style="display:none">🔄 Переводчик</button>
+            <button class="action-btn" id="btnTimeSlice" onclick="openModeModal('timeslice')" style="display:none">⏳ Временной срез</button>
+            <button class="action-btn" onclick="saveHTML()">Сохранить HTML</button>
+            <button class="action-btn" onclick="saveMD()">Сохранить MD</button>
+            <button class="action-btn" onclick="resetForm()">Новый Синтез</button>
+            <button class="action-btn primary" onclick="copyDoc()">Скопировать</button>
+          </div>
+        </div>

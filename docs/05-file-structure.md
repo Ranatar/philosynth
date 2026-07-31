@@ -403,6 +403,10 @@ philosynth-service/
 │       └── favicon.svg
 │
 ├── scripts/
+│   ├── extract-by-name.py              # сборка фрагментов исходника ПО ИМЕНАМ
+│   │                                   # из 04-code-reuse-map (замена утраченного
+│   │                                   # extract-fragments.py); спецификации —
+│   │                                   # docs/fragments-for-conversations/*.spec
 │   ├── seed-prompts.ts                 # Начальное заполнение prompt_templates из исходника
 │   ├── seed-configs.ts                 # Начальное заполнение synthesis_configs из исходника
 │   ├── seed-taxonomy.ts                # Заполнение каталогов типов (18 категорий + 29 связей)

@@ -992,6 +992,13 @@ def build_fragments() -> None:
     lines = src.read_text(encoding="utf-8").split("\n")
     for spec in FRAGMENTS:
         tag = spec["tag"]
+        # Если рядом лежит .spec — фрагмент собирается по ИМЕНАМ
+        # (scripts/extract-by-name.py, пятый предпатч), и диапазонная
+        # сборка ниже отключается: иначе два скрипта переписывали бы
+        # один файл по очереди.
+        if Path(spec["path"]).with_suffix(".spec").exists():
+            skipped.append(tag + " (есть .spec — сборка по именам)")
+            continue
         parts = [HEADER_TMPL % (spec["title"], spec["note"])]
         bad = False
         for label, a, b in spec["ranges"]:

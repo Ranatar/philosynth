@@ -107,12 +107,30 @@
 
 Ручное извлечение по grep-командам бесед автоматизировано:
 `python3 scripts/extract-fragments.py philosynth.html fragments/`
-> **ВНИМАНИЕ (2026-07-30):** скрипта `scripts/extract-fragments.py` в
-> репозитории НЕТ, хотя шапки всех фрагментов на него ссылаются.
-> Пока он не восстановлен, недостающие комплекты извлекаются вручную
-> из `source/philosynth.html` по диапазонам (образцы — блоки
-> «Извлечение» бесед 1.6b и 1.7). Восстановление скрипта — задача
-> эксплуатации, не беседа протокола.
+> **ЗАМЕНЁН (2026-07-31):** скрипта `scripts/extract-fragments.py` в
+> репозитории нет (шапки старых фрагментов на него ещё ссылаются —
+> это исторический след). Вместо него —
+> **`scripts/extract-by-name.py`**: он ищет объявления ПО ИМЕНАМ из
+> карты `04-code-reuse-map.md` и сам вычисляет границы по балансу
+> скобок, поэтому спецификация не устаревает при правке исходника, а
+> номера строк появляются в готовом фрагменте как результат поиска.
+>
+> ```bash
+> python3 scripts/extract-by-name.py ПУТЬ.spec [-o ФАЙЛ] [--check]
+> ```
+> Виды целей: `js:имяФункции`, `var:ИМЯ`, `css:.селектор`,
+> `css*:.префикс` (все правила с префиксом), `html:#id`,
+> `scope:начало..конец` (сузить область поиска двумя якорями),
+> `lines:A-B` (только там, где именованного якоря нет).
+> Образцы спецификаций — `docs/fragments-for-conversations/*.spec`.
+>
+> Старые фрагменты, нарезанные по баннерам, остаются как есть: их
+> имеет смысл пересобирать по мере надобности, а не разом.
+>
+> (Прежняя пометка «**ВНИМАНИЕ (2026-07-30):** скрипта
+> `scripts/extract-fragments.py` в репозитории НЕТ» снята этим патчем;
+> строка сохранена, чтобы повторный прогон patch-docs-conv16-pre.py
+> не вписал её заново.)
 генерирует по файлу на беседу (fragments/1.1-synthesis-engine.js и т.д.)
 с заголовками-диапазонами строк оригинала. При обновлении исходника —
 перегенерировать. grep-команды в беседах остаются документацией того,
@@ -1185,23 +1203,29 @@ sed -n '12110,12115p' source/philosynth.html   # docNum «PS-NNNN-XXXX»
   для CatalogPage/SynthesisCard исходник действительно не нужен).
   Фрагмент: `docs/fragments-for-conversations/1.6-document-view.js`
 
-**Извлечение (диапазоны выверены аудитом 2026-07-30):**
+**Извлечение (по именам из карты 04, а не по номерам строк):**
 ```bash
-# CSS документа: шапка, #docTOC, тела разделов, .doc-table, .callout,
-# .risk, футер, actions-bar (дальше, с 931, начинается граф-модалка 1.7)
-sed -n '476,929p'     source/philosynth.html
-sed -n '3304,3319p'   source/philosynth.html   # .doc-title-edit-btn
-# Разметка-эталон: output-wrap + #docOutput (шапка, #docBodies, футер)
-sed -n '4134,4220p'   source/philosynth.html
-# JS-блок «HELPER: раскрывающиеся поля шапки и разделов» целиком:
-# makeHeaderDisclosure, buildDocHeaderExtras, buildTableOfContents,
-# extractCapsuleText, updateCapsuleInHeader, removeCapsuleFromDocBodies,
-# makeSectionCtxDisclosure, editDocTitle, updateDocTitleFromName
-sed -n '11594,11892p' source/philosynth.html
-# Заполнение шапки при старте: дата, ML/DL/SL, три ветки docSubtitle
-sed -n '12110,12144p' source/philosynth.html
-sed -n '5671,5683p'   source/philosynth.html   # updateFooterCost
+python3 scripts/extract-by-name.py \
+  docs/fragments-for-conversations/1.6-document-view.spec
 ```
+Спецификация перечисляет ИМЕНА: CSS-селекторы документа (`.doc-*`,
+`#docTOC`, `.toc-*`, `.section-*`, `.callout*`, `.risk*`,
+`.validity-stamp`, `.actions-bar`, `.action-btn`), разметку `#docOutput`
+и функции `makeHeaderDisclosure`, `buildDocHeaderExtras`,
+`buildTableOfContents`, `extractCapsuleText`, `restoreCapsulesFromHTML`,
+`updateCapsuleInHeader`, `removeCapsuleFromDocBodies`,
+`makeSectionCtxDisclosure`, `editDocTitle`, `updateDocTitleFromName`,
+`updateFooterCost`. Границы вычисляет сборщик; номера строк попадают в
+готовый фрагмент как результат поиска и не требуют сопровождения.
+
+Два остаточных диапазона в спецификации помечены отдельно и стареют:
+заполнение шапки при старте генерации и разметка панели действий —
+последовательности операторов без именованных якорей. При расхождении
+искать по содержимому (`docNum` начинается с «PS-»; панель действий
+содержит кнопки экспорта).
+
+`--check` показывает, что и где нашлось, ничего не записывая: полезно
+после любой правки исходника.
 НЕ портировать: `rebuildDbMapping` [5686] и всю индексацию `db{N}` /
 `DOC_STATE.sectionDbIdx` — в React разделы адресуются по `key`;
 `.output-wrap` (видимостью управляет маршрут).
@@ -1305,8 +1329,9 @@ grep -n 'GRAPH MODAL\|MMD EXPORT' philosynth.html | tail -3
 grep -n 'function build3D\|function build2D' philosynth.html
 # ВНЕ основного фрагмента (аудит 2026-07-30) — объявление graph-STATE:
 # G, roleMode, legendFilter, clusterVisible, clearLegendFilter.
-# Вынесено отдельным файлом 1.7-graph-state-extras.js:
-sed -n '4389,4413p' source/philosynth.html
+# Собирается по именам, без номеров строк:
+python3 scripts/extract-by-name.py \
+  docs/fragments-for-conversations/1.7-graph-state-extras.spec
 ```
 > Границей извлечения служит баннер `MMD EXPORT`, поэтому `exportMMD`
 > [16370] и соседние экспортёры в фрагмент НЕ входят — и не должны:
@@ -3066,6 +3091,14 @@ streaming-manager.
 
 ## 10. Контрольный чек-лист для каждой беседы
 
+> **Добавлено 2026-07-31 (ссылки на исходник):** ссылайся на ИМЕНА
+> функций, констант и селекторов — так, как они перечислены в
+> `04-code-reuse-map.md`. Фиксированный диапазон строк допустим
+> только там, где именованного якоря нет (последовательность
+> операторов, разметка без id), и должен быть помечен как
+> устаревающий. Исходный протокол так и написан: 33 блока
+> извлечения по `grep -n` против одного диапазона.
+>
 > **Добавлено 2026-07-31:** завершая беседу, внеси каждый оставленный
 > долг в §12 «Реестр открытых долгов» с ЯВНЫМ номером беседы-адресата,
 > а закрытый — вычеркни оттуда. Записи только в главе NEXT-CONTEXT
