@@ -35,17 +35,24 @@ skipped = 0
 failed = 0
 
 
-def patch(path: Path, old: str, new: str, label: str, marker: str | None = None) -> None:
+def patch(path: Path, old: str, new: str, label: str, marker: str | None = None,
+          optional: bool = False) -> None:
     """Заменяет old → new; идемпотентность — по marker (или new) в тексте.
 
     Урок 16pre: если новый текст неуникален, маркер задавать явно
-    многострочным блоком.
+    многострочным блоком. optional=True — правка-переходник между
+    промежуточными состояниями: отсутствие И old, И marker — законный
+    skip (состояние уже минуло), а не FAIL.
     """
     global applied, skipped, failed
     text = path.read_text(encoding="utf-8")
     probe = marker if marker is not None else new
     if probe in text:
         print(f"  skip  {label}")
+        skipped += 1
+        return
+    if optional and old not in text:
+        print(f"  skip  {label} (переходное состояние не встретилось)")
         skipped += 1
         return
     if text.count(old) != 1:
@@ -334,6 +341,101 @@ patch(
     "серверный транспорт готов в 1.6), applyReplacement (3.2) и точный\n"
     "confirm деградации skip (2.2), каскады и план",
     "16/R README «Не сделано»",
+)
+
+# ── 16/S: README — убрать буллет 1.6 из верха раздела статуса ────────────
+# (16/J вставлял описание 1.6 буллетом ПЕРЕД 0.1 — вразрез с хронологией
+# и форматом раздела; правильный формат — абзац после 1.5b, см. 16/T)
+patch(
+    README,
+    "## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.6 закрыты\n"
+    "\n"
+    "- **1.6 — транспорт чтения (сервер).** GET/PATCH/DELETE `/syntheses`\n"
+    "  (+`/public`, `/:id/duplicate`), новый `routes/sections.ts` (включая\n"
+    "  живой `/:key/context`), GET-часть `routes/elements.ts` (граф для 1.7),\n"
+    "  `doc_num` [12110] и снимок `structure_sections` в POST, режим «только\n"
+    "  подписка» (`viewOnly`) в WS; shared += pauseEstimates/subsections/\n"
+    "  viewOnly; маркеры TODO(1.6) разведены (клиентские → TODO(1.6b)).\n"
+    "  Тесты: `tests/test-16-requests2-9.mjs` (84 ✓ ×3), регрессия +=\n"
+    "  2k/4o/5n.\n"
+    "\n"
+    "- **0.1 — скелет монорепо + БД.**",
+    "## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.6 закрыты\n"
+    "\n"
+    "- **0.1 — скелет монорепо + БД.**",
+    "16/S README буллет 1.6 убран из верха",
+    marker="закрыты\n\n- **0.1 — скелет монорепо + БД.**",
+)
+
+# ── 16/T: README — абзац про 1.6 в стиле и на месте 1.5/1.5b ─────────────
+patch(
+    README,
+    "Не сделано (Фаза 1+): страницы синтеза/каталога/графа (1.6b, 1.7 —",
+    "Беседа 1.6 (транспорт чтения, сервер): GET/PATCH/DELETE /syntheses\n"
+    "(+ /public с ?philosopher=; POST /:id/duplicate — копия с ремапом id\n"
+    "рёбер и генеалогией родителей, без lineage-связи с оригиналом и без\n"
+    "логов), новый routes/sections.ts — список в порядке sectionOrder с\n"
+    "subsections из HTML и живой /:key/context (buildContextForSection),\n"
+    "GET-часть routes/elements.ts (GraphData + topology — транспорт графа\n"
+    "для 1.7), doc_num [12110] и снимок structure_sections в POST, режим\n"
+    "«только подписка» (viewOnly) в subscribe_generation; shared +=\n"
+    "pauseEstimates/subsections/viewOnly; маркеры TODO(1.6) разведены\n"
+    "(клиентские → TODO(1.6b)). Тесты: tests/test-16-requests2-9.mjs\n"
+    "84/84 ✓ ×3 (живой сервер + мок-SSE Claude API; списки/доступ/sections/\n"
+    "categories/doc_num/WS viewOnly/edge cases), регрессия += 2k/4o/5n.\n"
+    "Доки пропатчены scripts/patch-docs-conv16.py (идемпотентный\n"
+    "apply/skip-скрипт; дорабатывался и после закрытия беседы).\n"
+    "\n"
+    "Не сделано (Фаза 1+): страницы синтеза/каталога/графа (1.6b, 1.7 —",
+    "16/T README абзац 1.6 после 1.5b",
+    marker="Беседа 1.6 (транспорт чтения, сервер): GET/PATCH/DELETE",
+)
+
+# ── 16/U: README — хвост абзаца 1.6 без самоподсчёта (переходник 19→) ────
+# (16/T первоначально вписал «19 правок»; фиксированное число ломалось
+# каждой доработкой патча — регресс самоподсчёта оборван нейтральной
+# формулировкой; переходники optional: их состояние могло уже минуть)
+NEUTRAL_TAIL = (
+    "Доки пропатчены scripts/patch-docs-conv16.py (идемпотентный\n"
+    "apply/skip-скрипт; дорабатывался и после закрытия беседы)."
+)
+patch(
+    README,
+    "Доки пропатчены scripts/patch-docs-conv16.py (19 правок, идемпотентно).",
+    NEUTRAL_TAIL,
+    "16/U README хвост без числа (из «19»)",
+    marker="идемпотентный\napply/skip-скрипт",
+    optional=True,
+)
+
+# ── 16/W: README — тот же переходник из состояния «22 правки» ────────────
+patch(
+    README,
+    "Доки пропатчены scripts/patch-docs-conv16.py (22 правки, идемпотентно).",
+    NEUTRAL_TAIL,
+    "16/W README хвост без числа (из «22»)",
+    marker="идемпотентный\napply/skip-скрипт",
+    optional=True,
+)
+
+# ── 16/V: 03 §2.2 — семантика и пределы параметров списков/PATCH ─────────
+# (найдено ревью после закрытия беседы: контракты жили только в коде и
+# NEXT-CONTEXT; 03 перечислял параметры без семантики)
+patch(
+    P03,
+    "GET    /syntheses/public       ?page=1&limit=20&search=...&philosopher=Кант\n"
+    "                                → { items: SynthesisPreview[], total: number }",
+    "GET    /syntheses/public       ?page=1&limit=20&search=...&philosopher=Кант\n"
+    "                                → { items: SynthesisPreview[], total: number }\n"
+    "// Семантика параметров (беседа 1.6): sort ∈ createdAt|updatedAt|title|\n"
+    "// method|status (иное молча → createdAt), order ∈ asc|desc (default\n"
+    "// desc), limit 1..100 (default 20), page ≥ 1; search — подстрока title\n"
+    "// без учёта регистра (ILIKE %…%, gin_trgm); philosopher — ТОЧНОЕ имя в\n"
+    "// генеалогии (как §2.8); невалидные status/method → 400\n"
+    "// VALIDATION_ERROR. PATCH title: trim, непустая, ≤ 300 символов.\n"
+    "// Не-UUID в /:id повсюду → 404 (guard до запроса к PG, иначе 22P02).",
+    "16/V 03 §2.2 семантика параметров списков",
+    marker="// Семантика параметров (беседа 1.6): sort",
 )
 
 print(f"\nИтого: applied={applied}, skip={skipped}, fail={failed}")

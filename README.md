@@ -93,15 +93,6 @@ CONTEXT_BUDGET_PREVIEW локализован); 1.6 — 2k/4o/5n: роуты ч�
 
 ## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.6 закрыты
 
-- **1.6 — транспорт чтения (сервер).** GET/PATCH/DELETE `/syntheses`
-  (+`/public`, `/:id/duplicate`), новый `routes/sections.ts` (включая
-  живой `/:key/context`), GET-часть `routes/elements.ts` (граф для 1.7),
-  `doc_num` [12110] и снимок `structure_sections` в POST, режим «только
-  подписка» (`viewOnly`) в WS; shared += pauseEstimates/subsections/
-  viewOnly; маркеры TODO(1.6) разведены (клиентские → TODO(1.6b)).
-  Тесты: `tests/test-16-requests2-9.mjs` (84 ✓ ×3), регрессия +=
-  2k/4o/5n.
-
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
   всеми v10/v11-полями (ext_graph_metrics, structure_sections, clarity …
@@ -204,6 +195,21 @@ ConceptPool + PoolCard в SynthesisForm, secSynthReady c автовключен�
 (tests/smoke-15b-request1.mjs), браузерный 35/35 ✓
 (tests/test-15b-requests2-5.mjs). Доки пропатчены
 scripts/patch-docs-conv15b.py (11 правок, идемпотентно).
+
+Беседа 1.6 (транспорт чтения, сервер): GET/PATCH/DELETE /syntheses
+(+ /public с ?philosopher=; POST /:id/duplicate — копия с ремапом id
+рёбер и генеалогией родителей, без lineage-связи с оригиналом и без
+логов), новый routes/sections.ts — список в порядке sectionOrder с
+subsections из HTML и живой /:key/context (buildContextForSection),
+GET-часть routes/elements.ts (GraphData + topology — транспорт графа
+для 1.7), doc_num [12110] и снимок structure_sections в POST, режим
+«только подписка» (viewOnly) в subscribe_generation; shared +=
+pauseEstimates/subsections/viewOnly; маркеры TODO(1.6) разведены
+(клиентские → TODO(1.6b)). Тесты: tests/test-16-requests2-9.mjs
+84/84 ✓ ×3 (живой сервер + мок-SSE Claude API; списки/доступ/sections/
+categories/doc_num/WS viewOnly/edge cases), регрессия += 2k/4o/5n.
+Доки пропатчены scripts/patch-docs-conv16.py (идемпотентный
+apply/skip-скрипт; дорабатывался и после закрытия беседы).
 
 Не сделано (Фаза 1+): страницы синтеза/каталога/графа (1.6b, 1.7 —
 серверный транспорт готов в 1.6), applyReplacement (3.2) и точный

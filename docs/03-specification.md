@@ -227,6 +227,13 @@ GET    /syntheses              ?page=1&limit=20&sort=createdAt&order=desc
 
 GET    /syntheses/public       ?page=1&limit=20&search=...&philosopher=Кант
                                 → { items: SynthesisPreview[], total: number }
+// Семантика параметров (беседа 1.6): sort ∈ createdAt|updatedAt|title|
+// method|status (иное молча → createdAt), order ∈ asc|desc (default
+// desc), limit 1..100 (default 20), page ≥ 1; search — подстрока title
+// без учёта регистра (ILIKE %…%, gin_trgm); philosopher — ТОЧНОЕ имя в
+// генеалогии (как §2.8); невалидные status/method → 400
+// VALIDATION_ERROR. PATCH title: trim, непустая, ≤ 300 символов.
+// Не-UUID в /:id повсюду → 404 (guard до запроса к PG, иначе 22P02).
 
 POST   /syntheses              { seed, philosophers?: string[], sections: string[],
                                  method, depth, synthLevel, generationOrder?,
