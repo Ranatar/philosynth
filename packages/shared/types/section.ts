@@ -23,6 +23,9 @@ export interface SectionSummary {
   /** Качество контекста генерации (getSectionContextQuality, v11) —
    *  score 0–100 или null, если ctxLog по разделу отсутствует */
   contextQualityScore: number | null;
+  /** Имена data-section внутри HTML — якоря второго уровня для
+   *  TableOfContents (беседа 1.6b); parseSubsectionsFromHTML (1.4) */
+  subsections: string[];
   updatedAt: string;
 }
 

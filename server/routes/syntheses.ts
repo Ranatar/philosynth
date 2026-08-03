@@ -7,8 +7,11 @@
  * клиент подключается по WebSocket (subscribe_generation привяжет стрим,
  * но дельты и так идут по userId через connection-manager).
  *
- * Остальные роуты §2.2 (GET-списки, GET/:id, PATCH, DELETE, duplicate,
- * import) — будущие беседы (1.6 каталог/просмотр, 4.3 импорт).
+ * Беседа 1.6 (транспорт чтения, сервер) добавила: GET / (список своих),
+ * GET /public, GET /:id (SynthesisFull + pausedState + pauseEstimates),
+ * PATCH /:id, DELETE /:id, POST /:id/duplicate; POST / заполняет doc_num
+ * (формат исходника [12110]) и снимок structure_sections. Из роутов §2.2
+ * не реализован только POST /syntheses/import — беседа 4.3.
  *
  * Решения:
  *  - v11: philosophers И participants опциональны; оба пусты — свободный
@@ -34,6 +37,7 @@ import {
   assertCanStartGeneration,
   generateSynthesis,
   GenerationError,
+  isGenerationActive,
 } from "../services/generation-service.js";
 import {
   buildSectionDefs,
@@ -61,7 +65,35 @@ import {
 } from "../services/synthesis-engine.js";
 import { buildDynamicOrder } from "../utils/topo-sort.js";
 import { connectionManager } from "../ws/connection-manager.js";
-import { eq } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  exists,
+  ilike,
+  inArray,
+} from "drizzle-orm";
+
+import {
+  categories,
+  categoryEdges,
+  clusterLabels,
+  dialogueTurns,
+  glossaryTerms,
+  sections,
+  theses,
+} from "../db/schema.js";
+import {
+  computePauseEstimates,
+} from "../services/pause-resume-service.js";
+import type {
+  PausedState,
+  SynthesisFull,
+  SynthesisPreview,
+} from "@philosynth/shared/types/synthesis";
+import type { PauseEstimates } from "@philosynth/shared/types/ws-messages";
 
 /* ── Допустимые значения (зеркало enum'ов схемы 02) ──────────────────── */
 
@@ -95,6 +127,213 @@ interface PostBody {
 
 const isStrArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((x) => typeof x === "string");
+
+/* ── Helpers беседы 1.6 (транспорт чтения) ───────────────────────────── */
+
+/**
+ * Номер документа — формат исходника [12110]:
+ * "PS-" + rand(1000..9999) + "-" + Date.now().toString(36).toUpperCase().slice(-4)
+ */
+export function makeDocNum(): string {
+  return (
+    "PS-" +
+    Math.floor(Math.random() * 9000 + 1000) +
+    "-" +
+    Date.now().toString(36).toUpperCase().slice(-4)
+  );
+}
+
+/** Невалидный UUID до запроса к PG (иначе 22P02) → трактуем как 404. */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (v: string): boolean => UUID_RE.test(v);
+
+/** Строка syntheses целиком (типизированный select * ). */
+type SynthesisRow = typeof syntheses.$inferSelect;
+
+/**
+ * Загрузка синтеза + проверка доступа на ЧТЕНИЕ (решение аудита
+ * 2026-07-30): владелец ИЛИ is_public = true; несуществующий/невалидный
+ * id → 'notfound', чужой непубличный → 'forbidden'.
+ * Используется и роутами sections.ts / elements.ts (беседа 1.6).
+ */
+export async function loadSynthesisForRead(
+  id: string,
+  userId: string,
+): Promise<
+  | { access: "ok"; row: SynthesisRow }
+  | { access: "notfound" }
+  | { access: "forbidden" }
+> {
+  if (!isUuid(id)) return { access: "notfound" };
+  const [row] = await db
+    .select()
+    .from(syntheses)
+    .where(eq(syntheses.id, id))
+    .limit(1);
+  if (!row) return { access: "notfound" };
+  if (row.userId !== userId && !row.isPublic) return { access: "forbidden" };
+  return { access: "ok", row };
+}
+
+/** Единые JSON-ответы отказа доступа (03 §4.3). */
+export const notFoundJson = {
+  error: "Синтез не найден",
+  code: "NOT_FOUND",
+} as const;
+export const forbiddenJson = {
+  error: "Нет доступа к синтезу",
+  code: "FORBIDDEN",
+} as const;
+
+/** Превью капсулы для карточки каталога: HTML → плоский текст, 200 симв. */
+function capsulePreviewOf(capsuleHtml: string): string {
+  return capsuleHtml
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
+/** Философы-родители по списку синтезов (для превью каталога). */
+async function loadPhilosophersFor(
+  ids: string[],
+): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (ids.length === 0) return map;
+  const rows = await db
+    .select({
+      synthesisId: synthesisLineage.synthesisId,
+      parentName: synthesisLineage.parentName,
+    })
+    .from(synthesisLineage)
+    .where(
+      and(
+        inArray(synthesisLineage.synthesisId, ids),
+        eq(synthesisLineage.parentType, "philosopher"),
+      ),
+    )
+    .orderBy(asc(synthesisLineage.position));
+  for (const r of rows) {
+    if (!r.parentName) continue;
+    const list = map.get(r.synthesisId) ?? [];
+    list.push(r.parentName);
+    map.set(r.synthesisId, list);
+  }
+  return map;
+}
+
+function toPreview(
+  row: SynthesisRow,
+  philosophers: string[],
+): SynthesisPreview {
+  return {
+    id: row.id,
+    title: row.title,
+    method: row.method,
+    synthLevel: row.synthLevel,
+    depth: row.depth,
+    status: row.status,
+    isPublic: row.isPublic,
+    philosophers,
+    capsulePreview: capsulePreviewOf(row.capsuleHtml),
+    totalCostUsd: Number.parseFloat(row.totalCostUsd ?? "0") || 0,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * SynthesisFull (03 §2.2): строка + генеалогия + pauseEstimates.
+ * Оценки паузы — только для kind='gen' (computePauseEstimates, 1.4b,
+ * fail-open {}); kind='plan' → {}; pausedState=null → null.
+ */
+async function buildSynthesisFull(row: SynthesisRow): Promise<SynthesisFull> {
+  const lineageRows = await db
+    .select()
+    .from(synthesisLineage)
+    .where(eq(synthesisLineage.synthesisId, row.id))
+    .orderBy(asc(synthesisLineage.position));
+
+  const philosophers = lineageRows
+    .filter((r) => r.parentType === "philosopher" && r.parentName)
+    .map((r) => r.parentName as string);
+
+  const parentIds = lineageRows
+    .filter((r) => r.parentType === "synthesis" && r.parentSynthesisId)
+    .map((r) => r.parentSynthesisId as string);
+  const parentSyntheses =
+    parentIds.length > 0
+      ? (
+          await db
+            .select({ id: syntheses.id, title: syntheses.title })
+            .from(syntheses)
+            .where(inArray(syntheses.id, parentIds))
+        ).sort((a, b) => parentIds.indexOf(a.id) - parentIds.indexOf(b.id))
+      : [];
+
+  const childSyntheses = await db
+    .select({ id: syntheses.id, title: syntheses.title })
+    .from(syntheses)
+    .where(
+      exists(
+        db
+          .select({ one: synthesisLineage.id })
+          .from(synthesisLineage)
+          .where(
+            and(
+              eq(synthesisLineage.parentSynthesisId, row.id),
+              eq(synthesisLineage.synthesisId, syntheses.id),
+            ),
+          ),
+      ),
+    );
+
+  const ps = (row.pausedState ?? null) as PausedState | null;
+  let pauseEstimates: PauseEstimates | null = null;
+  if (ps) {
+    pauseEstimates =
+      ps.kind === "gen" ? await computePauseEstimates(row.id, ps) : {};
+  }
+
+  return {
+    id: row.id,
+    title: row.title,
+    seed: row.seed,
+    method: row.method,
+    synthLevel: row.synthLevel,
+    depth: row.depth,
+    generationOrder: row.generationOrder,
+    extGraphMetrics: row.extGraphMetrics,
+    context: row.context,
+    lang: row.lang,
+    status: row.status,
+    keepFullBudget: row.keepFullBudget,
+    parentContextSchema:
+      row.parentContextSchema as SynthesisFull["parentContextSchema"],
+    pausedState: ps,
+    pauseEstimates,
+    isPublic: row.isPublic,
+    docNum: row.docNum,
+    sectionOrder: row.sectionOrder,
+    version: {
+      base: row.versionBase,
+      sub: row.versionSub,
+      modes: row.versionModes,
+      modeRegen: row.versionModeRegen,
+    },
+    structureSections: row.structureSections ?? null,
+    capsuleHtml: row.capsuleHtml,
+    totalInputTokens: row.totalInputTokens,
+    totalOutputTokens: row.totalOutputTokens,
+    totalCostUsd: Number.parseFloat(row.totalCostUsd ?? "0") || 0,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    philosophers,
+    parentSyntheses,
+    childSyntheses,
+  };
+}
 
 export const synthesesRoutes = new Hono<AuthEnv>();
 
@@ -234,6 +473,13 @@ synthesesRoutes.post("/", requireAuth, async (c) => {
         ? { lang: body.lang.trim() }
         : {}),
       sectionOrder: ["sum", ...sections],
+      // Пункт 4 запроса 1.6: doc_num по формату исходника [12110]
+      docNum: makeDocNum(),
+      // Пункт 6 запроса 1.6: снимок структуры документа при создании —
+      // без него карточка «Структура документа устарела» (беседа 2.3)
+      // всегда в ветке «актуальность не определена». Обновление снимка
+      // после исполнения плана — беседа 2.2.
+      structureSections: ["sum", ...sections],
       status: "generating",
     })
     .returning({ id: syntheses.id });
@@ -494,4 +740,493 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
       500,
     );
   }
+});
+
+/* ═══ Беседа 1.6: транспорт чтения (03 §2.2) ═══════════════════════════
+   Порядок регистрации важен: GET /public — ДО GET /:id (оба матчат
+   GET /syntheses/public; Hono отдаёт приоритет более раннему). */
+
+const SORT_COLUMNS = {
+  createdAt: syntheses.createdAt,
+  updatedAt: syntheses.updatedAt,
+  title: syntheses.title,
+  method: syntheses.method,
+  status: syntheses.status,
+} as const;
+type SortKey = keyof typeof SORT_COLUMNS;
+
+/** Общий разбор query-параметров списков (страница/лимит/сортировка). */
+function parseListQuery(q: Record<string, string | undefined>): {
+  page: number;
+  limit: number;
+  sortKey: SortKey;
+  orderDesc: boolean;
+} {
+  const pageRaw = Number.parseInt(q.page ?? "1", 10);
+  const limitRaw = Number.parseInt(q.limit ?? "20", 10);
+  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? pageRaw : 1;
+  const limit =
+    Number.isFinite(limitRaw) && limitRaw >= 1 ? Math.min(limitRaw, 100) : 20;
+  const sortKey: SortKey =
+    q.sort && q.sort in SORT_COLUMNS ? (q.sort as SortKey) : "createdAt";
+  const orderDesc = (q.order ?? "desc") !== "asc";
+  return { page, limit, sortKey, orderDesc };
+}
+
+/* ── GET /syntheses — список своих (C1) ──────────────────────────────── */
+
+synthesesRoutes.get("/", requireAuth, async (c) => {
+  const user = c.get("user");
+  const q = c.req.query();
+  const { page, limit, sortKey, orderDesc } = parseListQuery(q);
+
+  const conds = [eq(syntheses.userId, user.id)];
+  if (q.status) {
+    if (
+      !["draft", "generating", "paused", "ready", "error"].includes(q.status)
+    ) {
+      return c.json(
+        {
+          error: "Невалидные параметры",
+          code: "VALIDATION_ERROR",
+          details: { status: "draft|generating|paused|ready|error" },
+        },
+        400,
+      );
+    }
+    conds.push(eq(syntheses.status, q.status as SynthesisRow["status"]));
+  }
+  if (q.method) {
+    if (!METHODS.has(q.method)) {
+      return c.json(
+        {
+          error: "Невалидные параметры",
+          code: "VALIDATION_ERROR",
+          details: { method: "неизвестный метод" },
+        },
+        400,
+      );
+    }
+    conds.push(eq(syntheses.method, q.method as SynthesisRow["method"]));
+  }
+  if (q.search) {
+    // Поиск серверный (решение аудита 2026-07-30): частичное совпадение
+    // title; в схеме под это gin_trgm_ops (ILIKE '%…%' использует индекс)
+    conds.push(ilike(syntheses.title, `%${q.search}%`));
+  }
+  const where = and(...conds);
+
+  const sortCol = SORT_COLUMNS[sortKey];
+  const rows = await db
+    .select()
+    .from(syntheses)
+    .where(where)
+    .orderBy(orderDesc ? desc(sortCol) : asc(sortCol))
+    .limit(limit)
+    .offset((page - 1) * limit);
+  const [totalRow] = await db
+    .select({ value: count() })
+    .from(syntheses)
+    .where(where);
+  const total = Number(totalRow?.value ?? 0);
+
+  const philMap = await loadPhilosophersFor(rows.map((r) => r.id));
+  const items = rows.map((r) => toPreview(r, philMap.get(r.id) ?? []));
+  return c.json({ items, total });
+});
+
+/* ── GET /syntheses/public — публичный каталог (C2) ──────────────────── */
+
+synthesesRoutes.get("/public", requireAuth, async (c) => {
+  const q = c.req.query();
+  const { page, limit, sortKey, orderDesc } = parseListQuery(q);
+
+  const conds = [eq(syntheses.isPublic, true)];
+  if (q.search) conds.push(ilike(syntheses.title, `%${q.search}%`));
+  if (q.philosopher) {
+    // Точное имя философа в генеалогии (как в §2.8 lineage/search)
+    conds.push(
+      exists(
+        db
+          .select({ one: synthesisLineage.id })
+          .from(synthesisLineage)
+          .where(
+            and(
+              eq(synthesisLineage.synthesisId, syntheses.id),
+              eq(synthesisLineage.parentType, "philosopher"),
+              eq(synthesisLineage.parentName, q.philosopher),
+            ),
+          ),
+      ),
+    );
+  }
+  const where = and(...conds);
+
+  const sortCol = SORT_COLUMNS[sortKey];
+  const rows = await db
+    .select()
+    .from(syntheses)
+    .where(where)
+    .orderBy(orderDesc ? desc(sortCol) : asc(sortCol))
+    .limit(limit)
+    .offset((page - 1) * limit);
+  const [totalRow] = await db
+    .select({ value: count() })
+    .from(syntheses)
+    .where(where);
+  const total = Number(totalRow?.value ?? 0);
+
+  const philMap = await loadPhilosophersFor(rows.map((r) => r.id));
+  const items = rows.map((r) => toPreview(r, philMap.get(r.id) ?? []));
+  return c.json({ items, total });
+});
+
+/* ── GET /syntheses/:id — SynthesisFull (владелец ИЛИ публичный) ─────── */
+
+synthesesRoutes.get("/:id", requireAuth, async (c) => {
+  const user = c.get("user");
+  const res = await loadSynthesisForRead(c.req.param("id"), user.id);
+  if (res.access === "notfound") return c.json(notFoundJson, 404);
+  if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  return c.json({ synthesis: await buildSynthesisFull(res.row) });
+});
+
+/* ── PATCH /syntheses/:id { title?, isPublic? } — только владелец ────── */
+
+synthesesRoutes.patch("/:id", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  if (!isUuid(id)) return c.json(notFoundJson, 404);
+
+  let body: { title?: unknown; isPublic?: unknown };
+  try {
+    body = (await c.req.json()) as typeof body;
+  } catch {
+    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+  }
+
+  const details: Record<string, string> = {};
+  const patch: Partial<typeof syntheses.$inferInsert> = {};
+  if (body.title !== undefined) {
+    if (typeof body.title !== "string" || !body.title.trim()) {
+      details.title = "непустая строка";
+    } else if (body.title.trim().length > 300) {
+      details.title = "не длиннее 300 символов";
+    } else {
+      patch.title = body.title.trim();
+    }
+  }
+  if (body.isPublic !== undefined) {
+    if (typeof body.isPublic !== "boolean") details.isPublic = "boolean";
+    else patch.isPublic = body.isPublic;
+  }
+  if (Object.keys(details).length > 0) {
+    return c.json(
+      { error: "Невалидные параметры", code: "VALIDATION_ERROR", details },
+      400,
+    );
+  }
+  if (Object.keys(patch).length === 0) {
+    return c.json(
+      {
+        error: "Нужно хотя бы одно из полей title, isPublic",
+        code: "VALIDATION_ERROR",
+        details: { body: "title? | isPublic?" },
+      },
+      400,
+    );
+  }
+
+  const [row] = await db
+    .select()
+    .from(syntheses)
+    .where(eq(syntheses.id, id))
+    .limit(1);
+  if (!row) return c.json(notFoundJson, 404);
+  if (row.userId !== user.id) return c.json(forbiddenJson, 403);
+
+  const [updated] = await db
+    .update(syntheses)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(syntheses.id, id))
+    .returning();
+  return c.json({
+    synthesis: await buildSynthesisFull(updated as SynthesisRow),
+  });
+});
+
+/* ── DELETE /syntheses/:id — только владелец ─────────────────────────── */
+
+synthesesRoutes.delete("/:id", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  if (!isUuid(id)) return c.json(notFoundJson, 404);
+
+  const [row] = await db
+    .select({ userId: syntheses.userId })
+    .from(syntheses)
+    .where(eq(syntheses.id, id))
+    .limit(1);
+  if (!row) return c.json(notFoundJson, 404);
+  if (row.userId !== user.id) return c.json(forbiddenJson, 403);
+
+  // Активную генерацию копить в удалённой строке нельзя
+  if (isGenerationActive(id)) {
+    return c.json(
+      {
+        error: "Генерация ещё идёт — остановите её перед удалением",
+        code: "GENERATION_IN_PROGRESS",
+      },
+      409,
+    );
+  }
+
+  await db.delete(syntheses).where(eq(syntheses.id, id));
+  // CASCADE снимает sections/элементы/логи/lineage; parent_synthesis_id
+  // у потомков — SET NULL (схема 02 §2.4)
+  return c.json({ ok: true });
+});
+
+/* ── POST /syntheses/:id/duplicate (пункт 7 запроса 1.6; 03 §2.2) ────── */
+
+synthesesRoutes.post("/:id/duplicate", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  if (!isUuid(id)) return c.json(notFoundJson, 404);
+
+  const [row] = await db
+    .select()
+    .from(syntheses)
+    .where(eq(syntheses.id, id))
+    .limit(1);
+  if (!row) return c.json(notFoundJson, 404);
+  // Решение беседы: duplicate — только владелец (как PATCH/DELETE);
+  // «форк» чужого публичного синтеза протоколом не оговорён.
+  if (row.userId !== user.id) return c.json(forbiddenJson, 403);
+  if (row.status === "generating" || isGenerationActive(id)) {
+    return c.json(
+      {
+        error: "Синтез ещё генерируется — дождитесь завершения",
+        code: "GENERATION_IN_PROGRESS",
+      },
+      409,
+    );
+  }
+
+  const newId = await db.transaction(async (tx) => {
+    /* Копия строки syntheses: новый doc_num, title += « (копия)»,
+       is_public = false (пункт 7). Контент и статистика копируются;
+       pausedState копируется (genParams не привязаны к id — resume
+       у копии работоспособен). Логи generation_log/context_log НЕ
+       копируются: это история генерации оригинала, а не контент. */
+    const [inserted] = await tx
+      .insert(syntheses)
+      .values({
+        userId: user.id,
+        seed: row.seed,
+        method: row.method,
+        synthLevel: row.synthLevel,
+        depth: row.depth,
+        generationOrder: row.generationOrder,
+        extGraphMetrics: row.extGraphMetrics,
+        keepFullBudget: row.keepFullBudget,
+        context: row.context,
+        lang: row.lang,
+        title: `${row.title} (копия)`,
+        docNum: makeDocNum(),
+        status: row.status,
+        isPublic: false,
+        sectionOrder: row.sectionOrder,
+        structureSections: row.structureSections ?? null,
+        parentContextSchema: row.parentContextSchema,
+        pausedState: (row.pausedState ?? null) as PausedState | null,
+        versionBase: row.versionBase,
+        versionSub: row.versionSub,
+        versionModes: row.versionModes,
+        versionModeRegen: row.versionModeRegen,
+        capsuleHtml: row.capsuleHtml,
+        totalInputTokens: row.totalInputTokens,
+        totalOutputTokens: row.totalOutputTokens,
+        totalCostUsd: row.totalCostUsd,
+      })
+      .returning({ id: syntheses.id });
+    const copyId = (inserted as { id: string }).id;
+
+    /* Генеалогия: копируются РОДИТЕЛИ оригинала (философы и концепции) —
+       у копии та же генеалогия содержания. Связь «копия → оригинал» НЕ
+       создаётся: это копия, а не потомок (пункт 7). */
+    const lineageRows = await tx
+      .select()
+      .from(synthesisLineage)
+      .where(eq(synthesisLineage.synthesisId, id))
+      .orderBy(asc(synthesisLineage.position));
+    if (lineageRows.length > 0) {
+      await tx.insert(synthesisLineage).values(
+        lineageRows.map((r) => ({
+          synthesisId: copyId,
+          parentType: r.parentType,
+          parentName: r.parentName,
+          parentSynthesisId: r.parentSynthesisId,
+          position: r.position,
+        })),
+      );
+    }
+
+    /* Разделы */
+    const sectionRows = await tx
+      .select()
+      .from(sections)
+      .where(eq(sections.synthesisId, id));
+    if (sectionRows.length > 0) {
+      await tx.insert(sections).values(
+        sectionRows.map((s) => ({
+          synthesisId: copyId,
+          key: s.key,
+          sectionNum: s.sectionNum,
+          title: s.title,
+          htmlContent: s.htmlContent,
+          secContext: s.secContext,
+          isEdited: s.isEdited,
+        })),
+      );
+    }
+
+    /* Категории — с ремапом id для рёбер (returning сохраняет порядок
+       values, маппинг старый id → новый по индексу) */
+    const catRows = await tx
+      .select()
+      .from(categories)
+      .where(eq(categories.synthesisId, id))
+      .orderBy(asc(categories.position));
+    const idMap = new Map<string, string>();
+    if (catRows.length > 0) {
+      const insertedCats = await tx
+        .insert(categories)
+        .values(
+          catRows.map((cat) => ({
+            synthesisId: copyId,
+            name: cat.name,
+            type: cat.type,
+            definition: cat.definition,
+            centrality: cat.centrality,
+            certainty: cat.certainty,
+            historicalSignificance: cat.historicalSignificance,
+            innovationDegree: cat.innovationDegree,
+            clarity: cat.clarity,
+            breadth: cat.breadth,
+            depthScore: cat.depthScore,
+            applicability: cat.applicability,
+            typeCatalogId: cat.typeCatalogId,
+            origin: cat.origin,
+            clusterIndices: cat.clusterIndices,
+            structuralRoles: cat.structuralRoles,
+            proceduralRoles: cat.proceduralRoles,
+            hasReflexive: cat.hasReflexive,
+            position: cat.position,
+            source: cat.source,
+          })),
+        )
+        .returning({ id: categories.id });
+      insertedCats.forEach((ins, i) => {
+        idMap.set((catRows[i] as { id: string }).id, ins.id);
+      });
+    }
+
+    /* Рёбра (только те, чьи концы отремаплены) */
+    const edgeRows = await tx
+      .select()
+      .from(categoryEdges)
+      .where(eq(categoryEdges.synthesisId, id))
+      .orderBy(asc(categoryEdges.position));
+    const remapped = edgeRows
+      .filter((e) => idMap.has(e.sourceId) && idMap.has(e.targetId))
+      .map((e) => ({
+        synthesisId: copyId,
+        sourceId: idMap.get(e.sourceId) as string,
+        targetId: idMap.get(e.targetId) as string,
+        description: e.description,
+        edgeType: e.edgeType,
+        direction: e.direction,
+        strength: e.strength,
+        certainty: e.certainty,
+        historicalSupport: e.historicalSupport,
+        logicalNecessity: e.logicalNecessity,
+        innovationDegree: e.innovationDegree,
+        contextDependency: e.contextDependency,
+        typeCatalogId: e.typeCatalogId,
+        position: e.position,
+        sourceOrigin: e.sourceOrigin,
+      }));
+    if (remapped.length > 0) await tx.insert(categoryEdges).values(remapped);
+
+    /* Кластеры, тезисы, глоссарий, диалог */
+    const clusterRows = await tx
+      .select()
+      .from(clusterLabels)
+      .where(eq(clusterLabels.synthesisId, id));
+    if (clusterRows.length > 0) {
+      await tx.insert(clusterLabels).values(
+        clusterRows.map((cl) => ({
+          synthesisId: copyId,
+          clusterIndex: cl.clusterIndex,
+          label: cl.label,
+        })),
+      );
+    }
+    const thesisRows = await tx
+      .select()
+      .from(theses)
+      .where(eq(theses.synthesisId, id));
+    if (thesisRows.length > 0) {
+      await tx.insert(theses).values(
+        thesisRows.map((t) => ({
+          synthesisId: copyId,
+          thesisNum: t.thesisNum,
+          formulation: t.formulation,
+          justification: t.justification,
+          thesisType: t.thesisType,
+          noveltyDegree: t.noveltyDegree,
+          relatedCategories: t.relatedCategories,
+          source: t.source,
+        })),
+      );
+    }
+    const termRows = await tx
+      .select()
+      .from(glossaryTerms)
+      .where(eq(glossaryTerms.synthesisId, id));
+    if (termRows.length > 0) {
+      await tx.insert(glossaryTerms).values(
+        termRows.map((g) => ({
+          synthesisId: copyId,
+          term: g.term,
+          definition: g.definition,
+          extraColumns: g.extraColumns,
+          termCategory: g.termCategory,
+          source: g.source,
+          position: g.position,
+        })),
+      );
+    }
+    const turnRows = await tx
+      .select()
+      .from(dialogueTurns)
+      .where(eq(dialogueTurns.synthesisId, id));
+    if (turnRows.length > 0) {
+      await tx.insert(dialogueTurns).values(
+        turnRows.map((d) => ({
+          synthesisId: copyId,
+          partNumber: d.partNumber,
+          turnNumber: d.turnNumber,
+          speaker: d.speaker,
+          content: d.content,
+          newConcepts: d.newConcepts,
+        })),
+      );
+    }
+
+    return copyId;
+  });
+
+  return c.json({ id: newId }, 201);
 });

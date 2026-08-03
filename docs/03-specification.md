@@ -270,6 +270,8 @@ GET    /syntheses/:id          → { synthesis: SynthesisFull }
 
 DELETE /syntheses/:id          → { ok: true }
                                 // Только владелец (иначе 403).
+                                // Активная генерация → 409
+                                // GENERATION_IN_PROGRESS (беседа 1.6).
 
 PATCH  /syntheses/:id          { title?, isPublic? }
                                 → { synthesis: SynthesisFull }
@@ -281,6 +283,14 @@ POST   /syntheses/:id/duplicate → { id: string }
                                 // Реализация — беседа 1.6 (сервер).
                                 // До аудита 2026-07-30 эндпоинт не был
                                 // упомянут в протоколе 07 ни разу.
+                                // Решения 1.6: доступ — только владелец;
+                                // новый doc_num, title += « (копия)»,
+                                // is_public=false; копируются разделы,
+                                // элементы (ремап id рёбер) и генеалогия
+                                // РОДИТЕЛЕЙ; lineage-связи «копия →
+                                // оригинал» нет (копия, не потомок);
+                                // логи не копируются; активная
+                                // генерация → 409 GENERATION_IN_PROGRESS.
 
 POST   /syntheses/import       multipart/form-data: file (HTML)
                                 → { id: string, warnings: ImportWarning[] }
@@ -705,7 +715,12 @@ Endpoint: `wss://host/ws?token={sessionToken}`
 
 ```typescript
 // Запуск генерации нового синтеза (после POST /syntheses)
-{ type: "subscribe_generation", synthesisId: string }
+{ type: "subscribe_generation", synthesisId: string,
+  viewOnly?: boolean }
+// viewOnly (беседа 1.6): «только подписка» — страница просмотра (1.6b)
+// не запускает generateSynthesis при status='generating' без активного
+// прогона; события активного прогона доходят и так (доставка по userId).
+// Без флага — прежнее поведение (запуск после POST /syntheses).
 
 // Запуск перегенерации одного раздела
 { type: "start_regen", synthesisId: string, sectionKey: string, context?: string }
@@ -867,6 +882,13 @@ Endpoint: `wss://host/ws?token={sessionToken}`
 - Максимум 3 одновременных генерации на пользователя
 - Максимум 60 WebSocket-сообщений в минуту от клиента
 - При превышении: `{ type: "error", code: "RATE_LIMIT", retryAfter: number }`
+
+> Примечание (наблюдение беседы 1.6): HTTP-лимитер middleware (0.2)
+> фактически ключуется по IP и для аутентифицированных запросов —
+> requireAuth срабатывает в роутах ПОСЛЕ него, поэтому identity на
+> момент подсчёта всегда IP. «Per-user» HTTP-лимитирование потребует
+> переноса подсчёта после auth (кандидат в Фазу 6 вместе с
+> billing-check).
 
 ---
 

@@ -6,8 +6,8 @@
  *    клиент подключается по WebSocket — useStreamingGeneration);
  *  - estimateSynthesis → POST /syntheses/estimate (беседа 1.5; серверный
  *    estimateCost по конвейеру 1.1/1.2 — потребитель CostEstimate.tsx);
- *  - getSynthesis → GET /syntheses/:id — контракт §2.2 известен, РОУТ
- *    появится в беседе 1.6 (до неё вызов вернёт NOT_FOUND-подобный ответ).
+ *  - getSynthesis → GET /syntheses/:id — роут реализован серверной
+ *    беседой 1.6 (SynthesisFull с pausedState и pauseEstimates).
  */
 import type { ParticipantInput } from "@philosynth/shared/types/lineage";
 import type { SynthesisFull } from "@philosynth/shared/types/synthesis";

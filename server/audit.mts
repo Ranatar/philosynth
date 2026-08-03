@@ -37,7 +37,9 @@ interface Pair {
 const PAIRS: Pair[] = [
   { table: "syntheses", file: "synthesis.ts", iface: "SynthesisFull",
     schemaOnly: ["userId", "versionBase", "versionSub", "versionModes", "versionModeRegen"],
-    typeOnly: ["version", "philosophers", "parentSyntheses", "childSyntheses"] },
+    typeOnly: ["version", "philosophers", "parentSyntheses", "childSyntheses",
+      // 1.6: оценки паузы вычисляются computePauseEstimates (1.4b), не колонка
+      "pauseEstimates"] },
   { table: "sections", file: "section.ts", iface: "SectionFull",
     schemaOnly: ["id", "synthesisId", "createdAt", "updatedAt"],
     typeOnly: ["subsections"], renamed: { secContext: "secContext" } },

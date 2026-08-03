@@ -13,8 +13,9 @@
  *  - pausedState для PauseModal собирается ИЗ WS-сообщения
  *    generation_paused + локального прогресса (passIdx/completedPasses/
  *    sectionLabel восстановимы из done-шагов; genParams клиенту не нужны —
- *    возобновление серверное). Полный syntheses.paused_state отдаст
- *    GET /syntheses/:id (беседа 1.6) — TODO(1.6) переключить источник.
+ *    возобновление серверное). Полный syntheses.paused_state отдаёт
+ *    GET /syntheses/:id (реализован серверной беседой 1.6) —
+ *    TODO(1.6b) переключить источник на странице просмотра.
  *  - kind='plan' до plan-executor'а (2.2) в этом потоке не возникает;
  *    ветка собирает минимальный PausedStatePlan на будущее.
  *  - cancel (§3.1): user-abort финализирует частичное по правилам stop

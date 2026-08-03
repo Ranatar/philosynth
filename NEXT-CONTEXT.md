@@ -2347,3 +2347,119 @@ lines:A-B            только там, где именованного яко
 следующий естественный шаг, если решите переводить комплекты на имена
 целиком.
 
+
+---
+
+# Беседа 1.6 — транспорт чтения (сервер) [ЗАКРЫТА]
+
+## Созданные/изменённые файлы
+
+- `server/routes/syntheses.ts` (расширение): GET `/` (page/limit/sort/order/
+  status/method/search; whitelist сортировок createdAt/updatedAt/title/
+  method/status; ilike `%…%` по title — использует gin_trgm), GET `/public`
+  (+ `?philosopher=` точным именем через EXISTS по lineage), GET `/:id`
+  (SynthesisFull + pausedState + pauseEstimates), PATCH `/:id`
+  {title?,isPublic?} (владелец; title trim/непустой/≤300), DELETE `/:id`
+  (владелец; активная генерация → 409), POST `/:id/duplicate`; POST `/`
+  += `docNum: makeDocNum()` [12110] и `structureSections: ["sum",...]`.
+  Экспортированы helpers для соседних роутов: `loadSynthesisForRead`
+  (владелец ИЛИ is_public → ok/notfound/forbidden; не-UUID → notfound без
+  22P02), `makeDocNum`, `isUuid`, `notFoundJson`, `forbiddenJson`.
+- `server/routes/sections.ts` (НОВЫЙ): GET `/:id/sections` (порядок
+  sectionOrder, чужие ключи в хвост по sectionNum; contextQualityScore=null
+  TODO(2.4); subsections через parseSubsectionsFromHTML с expected из
+  самого HTML), GET `/:id/sections/:key` (SectionFull), GET
+  `/:id/sections/:key/context` — ЖИВОЙ buildContextForSection (p из
+  строки+lineage; ctxLog=null → нулевой превью; сбой → 500 fail-safe).
+- `server/routes/elements.ts` (НОВЫЙ): только GET `/:id/categories` →
+  GraphData; topology: роли-объединение в порядке появления,
+  hasReflexiveEdges по рёбрам ИЛИ флагу категорий. PATCH-часть — 5.1.
+- `server/ws/handler.ts`: `viewOnly` в subscribe_generation — подписка без
+  запуска generateSynthesis (ветка ДО запуска; без флага — поведение 1.4).
+- `server/index.ts`: sectionsRoutes/elementsRoutes под /api/v1/syntheses
+  (после synthesesRoutes; внутри syntheses GET /public строго ДО /:id).
+- shared: `SynthesisFull.pauseEstimates: PauseEstimates|null`,
+  `SectionSummary.subsections: string[]`,
+  `WsSubscribeGeneration.viewOnly?: boolean`.
+- `server/audit.mts`: typeOnly syntheses += pauseEstimates (вычисляемое).
+- `server/integration-check.mts`: секции 2k/4o/5n (+4m: срез /estimate
+  ограничен началом блока 1.6 — duplicate ниже ложно срабатывал).
+- Клиент (пункт 8): 8 маркеров «1.6» переадресованы в 1.6b/2.1
+  (useStreamingGeneration, ConceptPool, api/syntheses, CreateSynthesisPage,
+  CatalogPage×2, SynthesisPage×2); grep TODO\(1.6\) по дереву = 0
+  (страховка — walker в 4o).
+- `tests/test-16-requests2-9.mjs`: 84 проверки ×3 прогона (R2–R9 +
+  [extra] duplicate и /:key/context).
+- `scripts/patch-docs-conv16.py`: 11 правок (прогон 2 — skip×11).
+
+## Адаптации/решения беседы
+
+1. `/:key/context` — живой расчёт вместо «последней записи context_log»
+   (07): contextText в context_log НЕ хранится; ответ = CtxLogDraft (03
+   §2.3 соблюдён дословно). Правка 07 — 16/B.
+2. `subsections`: expected для parseSubsectionsFromHTML — из самого HTML
+   (buildSubsectionMap тянет Registry+params; TOC нужны фактические якоря).
+3. `duplicate`: только владелец; генеалогия РОДИТЕЛЕЙ копируется,
+   lineage-связи с оригиналом нет; логи не копируются; pausedState
+   копируется (genParams id-независимы); generating → 409.
+4. viewOnly-флаг вместо отдельного WS-сообщения (обратная совместимость).
+5. parseSubsectionsFromHTML в 07 числился в context-extractor — фактически
+   generation-service (правка 16/A).
+
+## Ревью по карте 04 (доля 1.6)
+
+- Портирован единственный фрагмент исходника — формула docNum из
+  заполнения шапки [12110] (строка §3 «docNum генерирует сервер в беседе
+  1.6» ✓); остальная шапка [12110–12144] — клиент, 1.6b.
+- Всё прочее — «новое» по §4 (routes/*.ts: в исходнике нет бэкенда);
+  переиспользованы порты прежних бесед: parseSubsectionsFromHTML (1.4),
+  buildContextForSection (1.3), computePauseEstimates (1.4b),
+  resolveContextDeps/buildEffectiveDeps (1.1).
+- Непортированных функций карты за беседой не осталось.
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **1.6b (просмотр/каталог)**: routes/syntheses.ts + routes/sections.ts
+  (контракты ответов), shared/types synthesis/section/ws-messages,
+  client/api/syntheses.ts (getSynthesis готов), useStreamingGeneration +
+  PauseModal (переключить источник pausedState на GET /:id — TODO(1.6b)),
+  использование viewOnly при подписке страницы просмотра; исключение
+  ключа capsule при рендере — клиентское.
+- **1.7 (граф)**: routes/elements.ts (контракт GraphData),
+  shared/types/graph.ts.
+- **2.2 (plan-executor)**: обновление structure_sections после исполнения
+  плана (снимок при создании уже пишется — 1.6).
+- **2.3 (EditModal)**: контракт SectionContextPreview
+  (/sections/:key/context) — поле контекста в EditSectionCard.
+- **2.4 (context-quality)**: заменить `contextQualityScore: null` в
+  routes/sections.ts на getSectionContextQuality (метка TODO(2.4) в коде).
+- **4.3 (импорт)**: POST /syntheses/import — последний нереализованный
+  эндпоинт §2.2; транзакция duplicate — референс копирования с ремапом id.
+- **6.x**: наблюдение — HTTP-лимитер фактически per-IP (примечание в 03
+  §3.4); перенос подсчёта после auth — кандидат в Фазу 6.
+
+## Знания/грабли, добытые в 1.6
+
+1. SIGTERM npx-обёртке НЕ убивает node-ребёнка tsx — сирота держит порт, и
+   следующий тестовый прогон молча работает о ЧУЖОЙ сервер. Лечение:
+   spawn(process.execPath, ["--import","tsx","index.ts"]) — процесс и есть
+   сервер (SIGKILL ему), плюс преflight «health уже отвечает → стоп».
+2. HTTP-лимитер (0.2) ключуется по IP даже у аутентифицированных
+   (requireAuth в роутах ПОСЛЕ middleware): окно 60/мин на общем 127.0.0.1
+   выбивало соседние тестовые прогоны 429-ми, маскируясь под 403/500.
+   В тестовом env поднимать RATE_LIMIT_HTTP_PER_MINUTE.
+3. Hono: GET /public и GET /:id оба матчат /syntheses/public — приоритет у
+   зарегистрированного раньше; порядок регистрации закреплён проверкой 4o.
+4. Старые «до конца файла» срезы integration-check ломаются при дописывании
+   роутов в тот же файл (4m ловил duplicate как «запись из estimate») —
+   срезы ограничивать якорем следующего блока.
+5. drizzle: returning() сохраняет порядок values — ремап id категорий для
+   рёбер по индексу корректен.
+
+## Открытые TODO после 1.6
+
+- TODO(2.4): contextQualityScore в routes/sections.ts (единственный
+  серверный маркер беседы).
+- TODO(1.6b): клиентские — источник pausedState из GET /:id, наполнение
+  SynthesisPage/CatalogPage, исключение capsule при рендере.
+- Прочие TODO прежних бесед — без изменений (реестр 07 §12).

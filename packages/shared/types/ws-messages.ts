@@ -38,6 +38,11 @@ export interface PauseEstimates {
 export interface WsSubscribeGeneration {
   type: "subscribe_generation";
   synthesisId: string;
+  /** Беседа 1.6: режим «только подписка» — страница просмотра (1.6b)
+   *  подписывается на события стриминга, НЕ запуская generateSynthesis
+   *  при status='generating' без активного прогона. Отсутствие флага =
+   *  прежнее поведение (запуск после POST /syntheses, беседа 1.4). */
+  viewOnly?: boolean;
 }
 
 export interface WsStartRegen {

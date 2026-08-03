@@ -15,6 +15,8 @@ import type { AuthEnv } from "./middleware/auth.js";
 import { rateLimiter } from "./middleware/rate-limiter.js";
 import { authRoutes } from "./routes/auth.js";
 import { synthesesRoutes } from "./routes/syntheses.js";
+import { sectionsRoutes } from "./routes/sections.js";
+import { elementsRoutes } from "./routes/elements.js";
 import { connectionManager } from "./ws/connection-manager.js";
 import { registerWebSocket } from "./ws/handler.js";
 
@@ -57,7 +59,9 @@ app.get("/api/v1/health", async (c) => {
 
 app.use("/api/v1/*", rateLimiter());
 app.route("/api/v1/auth", authRoutes);
-app.route("/api/v1/syntheses", synthesesRoutes); // беседа 1.4
+app.route("/api/v1/syntheses", synthesesRoutes); // беседа 1.4 + 1.6
+app.route("/api/v1/syntheses", sectionsRoutes); // беседа 1.6 (03 §2.3)
+app.route("/api/v1/syntheses", elementsRoutes); // беседа 1.6 (03 §2.4, GET)
 
 /* ── WebSocket (auth до upgrade — внутри registerWebSocket) ──────────── */
 

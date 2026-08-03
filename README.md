@@ -87,7 +87,16 @@ CONTEXT_BUDGET_PREVIEW локализован). Сейчас покрывает 
 1.1–1.5b; живые секции требуют поднятых PG и Redis и засеянных
 prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.5b закрыты
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.6 закрыты
+
+- **1.6 — транспорт чтения (сервер).** GET/PATCH/DELETE `/syntheses`
+  (+`/public`, `/:id/duplicate`), новый `routes/sections.ts` (включая
+  живой `/:key/context`), GET-часть `routes/elements.ts` (граф для 1.7),
+  `doc_num` [12110] и снимок `structure_sections` в POST, режим «только
+  подписка» (`viewOnly`) в WS; shared += pauseEstimates/subsections/
+  viewOnly; маркеры TODO(1.6) разведены (клиентские → TODO(1.6b)).
+  Тесты: `tests/test-16-requests2-9.mjs` (84 ✓ ×3), регрессия +=
+  2k/4o/5n.
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -199,12 +208,10 @@ retry/skip_step), мета-синтез (3.1 — снимет гейт ☑-ко�
 даст estimate-diff превью бюджета), полный пул с деревом (3.2), режимы,
 экспорт/импорт (4.x — серверный parseConceptFile), billing, BYO-Key
 (6.1 — ввод ключа в auth-модалке).
-Следующая по графу 07 — беседа 1.6, **серверная**: транспорт чтения
-(GET/PATCH/DELETE `/syntheses`, `routes/sections.ts`, GET
-`/syntheses/:id/categories`, заполнение `doc_num`, режим «только
-подписка» для WS). За ней клиентские 1.6b (просмотр документа +
-каталог; закроет TODO(1.6) — pausedState из GET /syntheses/:id) и 1.7
-(граф). Параллельно серверной 1.6 можно вести 1.5 / 2.1 / 3.1.
+Следующие по графу 07 — клиентские беседы 1.6b (просмотр документа +
+каталог; закроет TODO(1.6b), включая pausedState из GET /syntheses/:id)
+и 1.7 (граф; транспорт GET `/categories` готов в 1.6). Параллельно
+можно вести 2.1 / 3.1.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

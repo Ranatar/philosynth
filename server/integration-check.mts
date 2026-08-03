@@ -1530,7 +1530,13 @@ const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "cr
     errs.push("4m: POST /syntheses/estimate без requireAuth либо не смонтирован");
   if (!routeSrc.includes('synthesesRoutes.post("/advice", requireAuth'))
     errs.push("4m: POST /syntheses/advice без requireAuth либо не смонтирован");
-  const estSlice = routeSrc.slice(routeSrc.indexOf('synthesesRoutes.post("/estimate"'));
+  // 1.6: срез /estimate ограничен началом блока роутов чтения — иначе
+  // duplicate/DELETE ниже по файлу ложно срабатывали как «запись из estimate»
+  const estEnd = routeSrc.indexOf("Беседа 1.6: транспорт чтения");
+  const estSlice = routeSrc.slice(
+    routeSrc.indexOf('synthesesRoutes.post("/estimate"'),
+    estEnd === -1 ? undefined : estEnd,
+  );
   const advSlice = routeSrc.slice(
     routeSrc.indexOf('synthesesRoutes.post("/advice"'),
     routeSrc.indexOf('synthesesRoutes.post("/estimate"'),
@@ -1640,6 +1646,235 @@ const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "cr
   }
 }
 
+// ── 2k. Модули беседы 1.6: routes/sections, routes/elements, расширение syntheses ──
+{
+  need(await import("./routes/sections.js"), ["sectionsRoutes"], "routes/sections (1.6)");
+  need(await import("./routes/elements.js"), ["elementsRoutes"], "routes/elements (1.6, только GET)");
+  const rt2k = await import("./routes/syntheses.js");
+  need(rt2k, ["synthesesRoutes", "loadSynthesisForRead", "makeDocNum", "isUuid",
+    "notFoundJson", "forbiddenJson"], "routes/syntheses (расширение 1.6)");
+  const dn2k = rt2k.makeDocNum();
+  if (!/^PS-\d{4}-[0-9A-Z]{4}$/.test(dn2k))
+    errs.push("2k: makeDocNum вне маски PS-NNNN-XXXX ([12110]): " + dn2k);
+  if (rt2k.isUuid("not-a-uuid") || !rt2k.isUuid("00000000-0000-4000-8000-000000000000"))
+    errs.push("2k: isUuid неверно классифицирует");
+  // Типовые присваивания (арность/асинхронность под tsc)
+  const _t70: (id: string, userId: string) => Promise<
+    { access: "ok"; row: unknown } | { access: "notfound" } | { access: "forbidden" }
+  > = rt2k.loadSynthesisForRead;
+  const _t71: () => string = rt2k.makeDocNum;
+  const _t72: (v: string) => boolean = rt2k.isUuid;
+}
+
+// ── 4o. Контрактные проверки беседы 1.6 (транспорт чтения) ──
+{
+  const fsm = await import("node:fs/promises");
+  const rd = (rel: string) => fsm.readFile(new URL(rel, import.meta.url), "utf8");
+
+  const rs = await rd("./routes/syntheses.ts");
+  // Порядок регистрации Hono: GET /public строго ДО GET /:id
+  const iPub = rs.indexOf('synthesesRoutes.get("/public"');
+  const iById = rs.indexOf('synthesesRoutes.get("/:id"');
+  if (iPub === -1 || iById === -1 || iPub > iById)
+    errs.push("4o: GET /public обязан регистрироваться ДО GET /:id (оба матчат /syntheses/public)");
+  // Формула docNum [12110] дословно + заполнение в POST
+  if (!rs.includes("Math.floor(Math.random() * 9000 + 1000)") ||
+      !rs.includes("Date.now().toString(36).toUpperCase().slice(-4)"))
+    errs.push("4o: makeDocNum не по формуле исходника [12110]");
+  if (!rs.includes("docNum: makeDocNum()")) errs.push("4o: POST не заполняет doc_num (пункт 4)");
+  if (!rs.includes('structureSections: ["sum", ...sections]'))
+    errs.push("4o: POST без снимка structure_sections (пункт 6)");
+  // requireAuth на всех новых роутах
+  for (const sig of ['synthesesRoutes.get("/", requireAuth',
+    'synthesesRoutes.get("/public", requireAuth', 'synthesesRoutes.get("/:id", requireAuth',
+    'synthesesRoutes.patch("/:id", requireAuth', 'synthesesRoutes.delete("/:id", requireAuth',
+    'synthesesRoutes.post("/:id/duplicate", requireAuth']) {
+    if (!rs.includes(sig)) errs.push(`4o: роут без requireAuth либо не найден: ${sig}`);
+  }
+  // duplicate: генеалогия родителей переносится, связи с оригиналом и логов нет
+  const dupSlice = rs.slice(rs.indexOf('"/:id/duplicate"'));
+  if (!dupSlice.includes("parentSynthesisId: r.parentSynthesisId"))
+    errs.push("4o: duplicate не переносит генеалогию родителей");
+  if (/insert\((?:generationLog|contextLog)\)/.test(dupSlice))
+    errs.push("4o: duplicate копирует логи (история, не контент)");
+  if (!dupSlice.includes("GENERATION_IN_PROGRESS"))
+    errs.push("4o: duplicate без отказа при активной генерации");
+
+  const sec = await rd("./routes/sections.ts");
+  if (!sec.includes("TODO(2.4)")) errs.push("4o: contextQualityScore=null без метки TODO(2.4)");
+  if (!sec.includes("parseSubsectionsFromHTML"))
+    errs.push("4o: subsections не через порт 1.4 (generation-service)");
+  if (!sec.includes("buildContextForSection"))
+    errs.push("4o: /:key/context не через живой buildContextForSection (03 §2.3)");
+  if (!sec.includes("loadSynthesisForRead")) errs.push("4o: sections без общей проверки доступа");
+
+  const el = await rd("./routes/elements.ts");
+  if (/elementsRoutes\.(patch|post|put|delete)\(/.test(el))
+    errs.push("4o: elements.ts содержит не-GET роуты (PATCH-часть — беседа 5.1)");
+  if (!el.includes("loadSynthesisForRead")) errs.push("4o: elements без общей проверки доступа");
+
+  const wh = await rd("./ws/handler.ts");
+  const hs = wh.slice(wh.indexOf("async function handleSubscribeGeneration"));
+  const iView = hs.indexOf("if (viewOnly)");
+  const iGen = hs.indexOf("generateSynthesis(");
+  if (iView === -1 || iGen === -1 || iView > iGen)
+    errs.push("4o: ветка viewOnly обязана стоять ДО запуска generateSynthesis (пункт 5)");
+
+  const ix = await rd("./index.ts");
+  for (const m of ["sectionsRoutes", "elementsRoutes"]) {
+    if (!ix.includes(m)) errs.push(`4o: ${m} не смонтирован в index.ts (пункт 9)`);
+  }
+
+  // Shared-типы дополнены под 03 §2.2/§2.3/§3.1
+  if (!(await rd("../packages/shared/types/synthesis.ts")).includes("pauseEstimates: PauseEstimates | null"))
+    errs.push("4o: SynthesisFull без pauseEstimates");
+  if (!(await rd("../packages/shared/types/section.ts")).includes("subsections: string[]"))
+    errs.push("4o: SectionSummary без subsections");
+  if (!(await rd("../packages/shared/types/ws-messages.ts")).includes("viewOnly?: boolean"))
+    errs.push("4o: WsSubscribeGeneration без viewOnly");
+
+  // Маркеров TODO(1.6) в дереве не осталось (пункт 8; клиентские → TODO(1.6b))
+  const pathMod = await import("node:path");
+  async function walk4o(dir: string): Promise<string[]> {
+    const out: string[] = [];
+    for (const e of await fsm.readdir(dir, { withFileTypes: true })) {
+      if (e.name === "node_modules" || e.name === "dist" || e.name.startsWith(".")) continue;
+      const p = pathMod.join(dir, e.name);
+      if (e.isDirectory()) out.push(...(await walk4o(p)));
+      else if (/\.(ts|tsx|mts|mjs)$/.test(e.name)) out.push(p);
+    }
+    return out;
+  }
+  const here4o = new URL(".", import.meta.url).pathname;
+  for (const root of [here4o, pathMod.join(here4o, "../client/src"),
+    pathMod.join(here4o, "../packages")]) {
+    for (const f of await walk4o(root)) {
+      if (f.endsWith("integration-check.mts")) continue;
+      if ((await fsm.readFile(f, "utf8")).includes("TODO(1.6)"))
+        errs.push(`4o: остался маркер TODO(1.6): ${f}`);
+    }
+  }
+}
+
+// ── 5n (беседа 1.6): живой транспорт чтения против БД (ДО секции 5) ──
+{
+  const { Hono: Hono5n } = await import("hono");
+  const rt5n = await import("./routes/syntheses.js");
+  const { sectionsRoutes: secR5n } = await import("./routes/sections.js");
+  const { elementsRoutes: elR5n } = await import("./routes/elements.js");
+  const { db: db5n, schema: sch5n } = await import("./db/index.js");
+  const { eq: eq5n } = await import("drizzle-orm");
+  const authMod5n = await import("./middleware/auth.js");
+  const { env: env5n } = await import("./env.js");
+
+  const [u5n] = await db5n.insert(sch5n.users)
+    .values({ email: `i16-${Date.now()}@check.local`, passwordHash: await authMod5n.hashPassword("pw-16-check") })
+    .returning({ id: sch5n.users.id });
+  const uid5n = (u5n as { id: string }).id;
+  try {
+    const { token: tok5n } = await authMod5n.createSession(uid5n);
+    const cookie5n = `${env5n.session.cookieName}=${tok5n}`;
+    const app5n = new Hono5n();
+    app5n.route("/api/v1/syntheses", rt5n.synthesesRoutes);
+    app5n.route("/api/v1/syntheses", secR5n);
+    app5n.route("/api/v1/syntheses", elR5n);
+    const req5n = async (method: string, path: string, body?: unknown) => {
+      const r = await app5n.request(`http://local/api/v1${path}`, {
+        method,
+        headers: { "content-type": "application/json", cookie: cookie5n },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      let j: unknown = null;
+      try { j = await r.json(); } catch { /* не-JSON */ }
+      return { status: r.status, body: j };
+    };
+
+    // Прямые вставки: ready-синтез + разделы + мини-граф с рефлексивным ребром
+    const [s5n] = await db5n.insert(sch5n.syntheses).values({
+      userId: uid5n, seed: "интеграционный синтез 1.6", status: "ready",
+      title: "Интеграционный синтез 1.6", docNum: rt5n.makeDocNum(),
+      sectionOrder: ["sum", "graph"], structureSections: ["sum", "graph"],
+    }).returning({ id: sch5n.syntheses.id });
+    const sid5n = (s5n as { id: string }).id;
+    await db5n.insert(sch5n.synthesisLineage).values({
+      synthesisId: sid5n, parentType: "philosopher", parentName: "Кант", position: 0,
+    });
+    await db5n.insert(sch5n.sections).values([
+      { synthesisId: sid5n, key: "sum", sectionNum: 1, title: "Резюме",
+        htmlContent: '<div data-section="Цели и задачи"><p>Цели.</p></div>' },
+      { synthesisId: sid5n, key: "graph", sectionNum: 2, title: "Граф",
+        htmlContent: '<div data-section="Узлы"><table class="doc-table"><tr><td>x</td></tr></table></div>' },
+    ]);
+    const cats5n = await db5n.insert(sch5n.categories).values([
+      { synthesisId: sid5n, name: "Опосредование", position: 0 },
+      { synthesisId: sid5n, name: "Тотальность", position: 1 },
+    ]).returning({ id: sch5n.categories.id });
+    await db5n.insert(sch5n.categoryEdges).values({
+      synthesisId: sid5n,
+      sourceId: (cats5n[0] as { id: string }).id,
+      targetId: (cats5n[0] as { id: string }).id,
+      direction: "рефлексивная", position: 0,
+    });
+    await db5n.insert(sch5n.clusterLabels).values({
+      synthesisId: sid5n, clusterIndex: 0, label: "I — Основания",
+    });
+
+    const list5n = await req5n("GET", "/syntheses");
+    const listBody5n = list5n.body as { items: { id: string }[] };
+    if (list5n.status !== 200 ||
+        !listBody5n.items?.some((s) => s.id === sid5n))
+      errs.push("5n: GET /syntheses не вернул вставленный синтез");
+    const full5n = ((await req5n("GET", `/syntheses/${sid5n}`)).body as {
+      synthesis: Record<string, unknown>;
+    }).synthesis;
+    if (!/^PS-\d{4}-[0-9A-Z]{4}$/.test(String(full5n?.docNum)))
+      errs.push("5n: docNum вне маски");
+    if ((full5n?.philosophers as string[])?.join() !== "Кант")
+      errs.push("5n: философы не из lineage");
+    if (full5n?.pausedState !== null || full5n?.pauseEstimates !== null)
+      errs.push("5n: у обычного синтеза pausedState/pauseEstimates обязаны быть null");
+    const secs5n = ((await req5n("GET", `/syntheses/${sid5n}/sections`)).body as {
+      sections: { key: string; subsections: string[]; contextQualityScore: unknown }[];
+    }).sections;
+    if (secs5n?.map((s) => s.key).join() !== "sum,graph")
+      errs.push("5n: /sections не в порядке sectionOrder");
+    if (!secs5n?.[1]?.subsections?.includes("Узлы"))
+      errs.push("5n: subsections не извлечены из HTML");
+    if (!secs5n?.every((s) => s.contextQualityScore === null))
+      errs.push("5n: contextQualityScore ≠ null (TODO(2.4))");
+    const g5n = (await req5n("GET", `/syntheses/${sid5n}/categories`)).body as {
+      categories: unknown[]; edges: unknown[];
+      topology: { hasReflexiveEdges: boolean };
+    };
+    if (g5n?.categories?.length !== 2 || g5n?.edges?.length !== 1)
+      errs.push("5n: /categories вернул не 2/1");
+    if (g5n?.topology?.hasReflexiveEdges !== true)
+      errs.push("5n: hasReflexiveEdges не увидел рефлексивное ребро");
+    const patched5n = await req5n("PATCH", `/syntheses/${sid5n}`, { isPublic: true });
+    const patchedBody5n = patched5n.body as { synthesis?: { isPublic: boolean } };
+    if (patched5n.status !== 200 || patchedBody5n.synthesis?.isPublic !== true)
+      errs.push("5n: PATCH isPublic не сработал");
+    const dup5n = await req5n("POST", `/syntheses/${sid5n}/duplicate`);
+    const copyId5n = (dup5n.body as { id?: string })?.id;
+    if (dup5n.status !== 201 || !copyId5n) errs.push("5n: duplicate не вернул id");
+    else {
+      const copyFull5n = ((await req5n("GET", `/syntheses/${copyId5n}`)).body as {
+        synthesis: Record<string, unknown>;
+      }).synthesis;
+      if (!String(copyFull5n?.title).endsWith(" (копия)") || copyFull5n?.isPublic !== false)
+        errs.push("5n: копия без « (копия)» либо публична");
+      if ((copyFull5n?.parentSyntheses as { id: string }[])?.some((s) => s.id === sid5n))
+        errs.push("5n: у копии появилась lineage-связь с оригиналом");
+      const del5n = await req5n("DELETE", `/syntheses/${copyId5n}`);
+      if (del5n.status !== 200) errs.push("5n: DELETE копии не 200");
+      if ((await req5n("GET", `/syntheses/${copyId5n}`)).status !== 404)
+        errs.push("5n: копия жива после DELETE");
+    }
+  } finally {
+    await db5n.delete(sch5n.users).where(eq5n(sch5n.users.id, uid5n)); // CASCADE
+  }
+}
+
 // ── 5. Async-цепочки: реальный запрос через db и через sql ──
 import { db, sql, closeDb } from "./db/index.js";
 const viaRaw = await sql`SELECT 1 AS one`;
@@ -1704,4 +1939,4 @@ if (!rejected) errs.push("await после closeDb не отклонился (п
 }
 
 if (errs.length) { console.error("ПРОБЛЕМЫ:\n" + errs.map(e => " - " + e).join("\n")); process.exit(1); }
-console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb) + 2i/4k/5k 1.4 (6 модулей streaming-manager/generation-service/graph-parser/element-parser/stream-state/routes-syntheses, реэкспорты stream-state тождественны; контракты: baseUrl из env, ретраи только pre-stream из env, activeRuns.set до await (гонка), цены из cost-estimator, scaffold дословно, _genCommon/common, user-abort без pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3; живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная замена, stream-state круговой по разделу и указателю, предохранители cancelGeneration/assertCanStartGeneration) + 2j/4l/5l 1.4b (pause-resume-service + порты serializeSubsectionRegen/extractPreambleConstraints в section-defs-builder и spliceSubsectionHtml/removeSubsectionHtml в html-parser + клиентский PauseModal (4 рендерера, fmtCost ≡ _fmtCost) + разъёмы generation-service; контракты: порог 250 и userNote «Заверши» дословно, runtime-guard режимов, провайдер estimates регистрируется импортом и питает обе точки generation_paused, метка [возобновление], resume_* диспетчеризованы, linkedom изолирован, 'resume' ∈ source; живьём: createPausedState → paused_state+pause_marker, computePauseEstimates из genParams (whole>0, skip=0, fill>0), RESUME_INVALID/FORBIDDEN, stop-финализация с resume_marker; фикс: closeRedis в teardown — event loop больше не висит) + 4m/5m 1.5 (9 клиент-модулей формы/прогресса: api/syntheses + SynthesisForm/PhilosopherPicker/SectionPicker/CostEstimate/CompatAdvisor/SectionWarnings/GenerationProgress + useStreamingGeneration + CreateSynthesisPage; контракты: /estimate и /advice под requireAuth и без записей в БД, конвейер оценки зеркалит generation-service, NO_PARTICIPANTS_SEED_REQUIRED в коде роута, confirm перед skip, ?resume= и subscribe_generation в хуке, условный keepFullBudget, browser storage запрещён; живьём: estimate cost/in/out>0 passes=3, advice stable ★ + ⚠ evolution, 401 без сессии, свободный синтез без seed → 400 NO_PARTICIPANTS_SEED_REQUIRED без создания записи) + 4n 1.5b (пул: pool-store 9 действий без snapshotCurrentState (снимки вырождены), concept-file 16 экспортов, PoolCard/ConceptPool, SYNTH_READY_SECTIONS из SectionPicker; контракты: форма читает пул из стора и монтирует ConceptPool, сабмит с ☑-концепциями гейтится до 3.1/4.3, CONTEXT_BUDGET_PREVIEW локализован, prepareForGeneration перед POST, genealogy=null помечен TODO(3.1/3.2), browser storage запрещён)");
+console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb) + 2i/4k/5k 1.4 (6 модулей streaming-manager/generation-service/graph-parser/element-parser/stream-state/routes-syntheses, реэкспорты stream-state тождественны; контракты: baseUrl из env, ретраи только pre-stream из env, activeRuns.set до await (гонка), цены из cost-estimator, scaffold дословно, _genCommon/common, user-abort без pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3; живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная замена, stream-state круговой по разделу и указателю, предохранители cancelGeneration/assertCanStartGeneration) + 2j/4l/5l 1.4b (pause-resume-service + порты serializeSubsectionRegen/extractPreambleConstraints в section-defs-builder и spliceSubsectionHtml/removeSubsectionHtml в html-parser + клиентский PauseModal (4 рендерера, fmtCost ≡ _fmtCost) + разъёмы generation-service; контракты: порог 250 и userNote «Заверши» дословно, runtime-guard режимов, провайдер estimates регистрируется импортом и питает обе точки generation_paused, метка [возобновление], resume_* диспетчеризованы, linkedom изолирован, 'resume' ∈ source; живьём: createPausedState → paused_state+pause_marker, computePauseEstimates из genParams (whole>0, skip=0, fill>0), RESUME_INVALID/FORBIDDEN, stop-финализация с resume_marker; фикс: closeRedis в teardown — event loop больше не висит) + 4m/5m 1.5 (9 клиент-модулей формы/прогресса: api/syntheses + SynthesisForm/PhilosopherPicker/SectionPicker/CostEstimate/CompatAdvisor/SectionWarnings/GenerationProgress + useStreamingGeneration + CreateSynthesisPage; контракты: /estimate и /advice под requireAuth и без записей в БД, конвейер оценки зеркалит generation-service, NO_PARTICIPANTS_SEED_REQUIRED в коде роута, confirm перед skip, ?resume= и subscribe_generation в хуке, условный keepFullBudget, browser storage запрещён; живьём: estimate cost/in/out>0 passes=3, advice stable ★ + ⚠ evolution, 401 без сессии, свободный синтез без seed → 400 NO_PARTICIPANTS_SEED_REQUIRED без создания записи) + 4n 1.5b (пул: pool-store 9 действий без snapshotCurrentState (снимки вырождены), concept-file 16 экспортов, PoolCard/ConceptPool, SYNTH_READY_SECTIONS из SectionPicker; контракты: форма читает пул из стора и монтирует ConceptPool, сабмит с ☑-концепциями гейтится до 3.1/4.3, CONTEXT_BUDGET_PREVIEW локализован, prepareForGeneration перед POST, genealogy=null помечен TODO(3.1/3.2), browser storage запрещён) + 2k/4o/5n 1.6 (транспорт чтения: routes/sections + routes/elements(GET) + расширение routes/syntheses, makeDocNum [12110] дословно, /public ДО /:id, requireAuth всюду, duplicate переносит генеалогию родителей без связи с оригиналом и без логов, viewOnly ДО запуска генерации, shared += pauseEstimates/subsections/viewOnly, маркеров TODO(1.6) в дереве нет; живьём: список/SynthesisFull(null-пауза)/sections в порядке sectionOrder с subsections из HTML/categories с hasReflexiveEdges/PATCH isPublic/duplicate без lineage-связи/DELETE+404)");

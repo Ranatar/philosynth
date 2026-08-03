@@ -1,5 +1,12 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-08-02 (итоги беседы 1.6)**: транспорт чтения закрыт;
+> parseSubsectionsFromHTML отнесён к generation-service; /:key/context —
+> живой buildContextForSection; блок «По факту 1.6» (viewOnly,
+> subsections из HTML, решения duplicate/DELETE); §12 — серверные
+> маркеры TODO(1.6) закрыты. В 03: viewOnly в §3.1, решения
+> duplicate/DELETE в §2.2, примечание per-IP в §3.4.
+
 > **Правки 2026-07-27 (итоги беседы 1.4)**: сигнатура onDelta с инкрементом;
 > _rebuildNodeColors/_rebuildEdgeStyles отнесены к клиенту (1.7); в 02 §2.3
 > reasonKind += 'context-error'; в 04 §2.3 добавлены портированные функции
@@ -1078,7 +1085,9 @@ handlePoolFileImport, handlePoolUrlImport, toggleSynthParticipant.
   cluster_labels, synthesis_lineage)
 - Из предыдущих бесед: `server/routes/syntheses.ts` (1.4/1.5),
   `server/services/pause-resume-service.ts` (1.4b — `computePauseEstimates`),
-  `server/services/context-extractor.ts` (1.4 — `parseSubsectionsFromHTML`),
+  `server/services/generation-service.ts` (1.4 — `parseSubsectionsFromHTML`;
+  до 2026-08-02 здесь ошибочно значился context-extractor.ts — функция
+  живёт в generation-service, сверено беседой 1.6),
   `server/ws/handler.ts` (1.4/1.4b), `server/db/schema.ts`
 - Исходник: нужен ровно один кусок — формат номера документа [12110]
 
@@ -1109,7 +1118,10 @@ sed -n '12110,12115p' source/philosynth.html   # docNum «PS-NNNN-XXXX»
    - GET /syntheses/:id/sections       → { sections: SectionSummary[] }
    - GET /syntheses/:id/sections/:key  → { section: SectionFull }
    - GET /syntheses/:id/sections/:key/context
-       → последняя запись context_log по разделу (03 §2.3).
+       → живой расчёт buildContextForSection (1.3): 03 §2.3 требует
+         contextText, которого context_log НЕ хранит; поля ответа =
+         CtxLogDraft билдера (формулировка «последняя запись
+         context_log» была неточной — правка 2026-08-02).
      Нужен полю контекста в EditSectionCard (2.3). В первой
      редакции предпатча было сказано «остаётся беседам 2.3/2.4» —
      это оказалось допущением: ни 2.3, ни 2.4 его не создают.
@@ -1185,6 +1197,35 @@ sed -n '12110,12115p' source/philosynth.html   # docNum «PS-NNNN-XXXX»
 - «Добавь секции в scripts/check-integration (по образцу предыдущих бесед) для новых роутов»
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
+
+**По факту 1.6 (2026-08-02, беседа закрыта):**
+- Все 9 пунктов запроса 1 выполнены; тесты 2–9 — одним заходом
+  (`tests/test-16-requests2-9.mjs`, 84 проверки ×3 прогона), харнесс
+  единый: живой сервер + мок-SSE (mini-Hono для части A не понадобился —
+  сервер всё равно нужен моку и WS).
+- Режим «только подписка» (пункт 5) реализован флагом
+  `viewOnly?: boolean` в `subscribe_generation` (03 §3.1); без флага —
+  прежнее поведение 1.4.
+- `subsections` в SectionSummary/SectionFull: expected-список для
+  `parseSubsectionsFromHTML` выводится из самого HTML (уникальные
+  `data-section` в порядке появления) — `buildSubsectionMap` тянет
+  Registry+params, а TOC (1.6b) нужны ФАКТИЧЕСКИЕ якоря.
+- `POST /:id/duplicate`: доступ — только владелец (как PATCH/DELETE);
+  копируются разделы/категории (ремап id рёбер)/кластеры/тезисы/
+  глоссарий/диалог и генеалогия РОДИТЕЛЕЙ; lineage-связь «копия →
+  оригинал» не создаётся; логи generation_log/context_log не копируются
+  (история, не контент); активная генерация → 409 GENERATION_IN_PROGRESS.
+- `DELETE /:id` при активной генерации → 409 (решение беседы).
+- Формулировка теста «создай два синтеза → total=2» адаптирована: в
+  списке также прямые вставки (paused/generating) — проверялся
+  фактический total.
+- Shared дополнен: `SynthesisFull.pauseEstimates`,
+  `SectionSummary.subsections`, `WsSubscribeGeneration.viewOnly`;
+  audit.mts: `pauseEstimates` в typeOnly (вычисляемое поле).
+- Грабли харнесса: SIGTERM npx-обёртке не убивает node-ребёнка tsx
+  (сирота держит порт; лечение — `node --import tsx` + преflight
+  занятости порта); HTTP-лимитер ключуется по IP, окно общее между
+  прогонами (лечение — поднять RATE_LIMIT_HTTP_PER_MINUTE в env теста).
 
 ---
 
@@ -3234,7 +3275,7 @@ streaming-manager.
 | `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 → 2.4 | 2.4 | инверсия снята 2026-07-30 |
 | BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | в тексте 6.1 |
 | Форма ввода ключа в auth-модалке `PauseModal` | 6.2 | 1.4b (адресовался 6.1) | внесён 2026-07-31 |
-| Маркеры `TODO(1.6)` — развести между 1.6 и 1.6b | 1.6 + 1.6b | разделение беседы | внесён 2026-07-30 |
+| Маркеры `TODO(1.6)` — развести между 1.6 и 1.6b | 1.6 + 1.6b | разделение беседы | серверные закрыты 1.6 (2026-08-02), клиентские переадресованы в TODO(1.6b) — закрывает 1.6b |
 
 Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,
 помечено в 03 §2.1; `POST /syntheses/estimate` и `/advice` — реализованы

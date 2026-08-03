@@ -97,11 +97,18 @@ function parseClientMessage(data: unknown): WsClientMessage | null {
  *    paused — возобновление через resume_generation, беседа 1.4b).
  * Доставка накопленного htmlSoFar при reconnect (?resume=, §3.3) —
  * запрос 6 этой беседы.
+ *
+ * Беседа 1.6 (пункт 5): режим «только подписка» — viewOnly=true.
+ * Страница просмотра (1.6b) подписывается на события, НЕ запуская
+ * generateSynthesis при status='generating' без активного прогона
+ * (иначе открытие страницы перезапускало бы генерацию). События
+ * активного прогона доходят и так — по userId.
  */
 async function handleSubscribeGeneration(
   ws: WSContext,
   user: AuthUser,
   synthesisId: string,
+  viewOnly = false,
 ): Promise<void> {
   if (isGenerationActive(synthesisId)) return; // уже подписан по userId
 
@@ -132,6 +139,18 @@ async function handleSubscribeGeneration(
     console.log(
       `[ws] user=${user.id}: subscribe_generation ${synthesisId} в статусе ` +
         `"${row.status}" — стрим не запускается`,
+    );
+    return;
+  }
+
+  if (viewOnly) {
+    // Беседа 1.6: только подписка — generateSynthesis НЕ запускается.
+    // Если активный прогон есть, его события уже доставляются по userId;
+    // если нет (строка зависла в 'generating') — просмотр не должен его
+    // воскрешать, это делает штатный subscribe_generation без флага.
+    console.log(
+      `[ws] user=${user.id}: subscribe_generation ${synthesisId} viewOnly — ` +
+        `подписка без запуска генерации`,
     );
     return;
   }
@@ -287,7 +306,12 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
       return;
 
     case "subscribe_generation":
-      void handleSubscribeGeneration(ws, user, msg.synthesisId);
+      void handleSubscribeGeneration(
+        ws,
+        user,
+        msg.synthesisId,
+        msg.viewOnly === true,
+      );
       return;
 
     case "cancel": {

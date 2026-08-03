@@ -5,6 +5,7 @@
  */
 
 import type { ParticipantInput } from "./lineage.js";
+import type { PauseEstimates } from "./ws-messages.js";
 
 /* ── Перечисления параметров (enum-колонки syntheses) ─────────────────── */
 
@@ -149,6 +150,10 @@ export interface SynthesisFull {
   parentContextSchema: ParentContextSchema;
   /** v11: syntheses.paused_state */
   pausedState: PausedState | null;
+  /** v11: оценки действий паузы — computePauseEstimates(id, ps) из
+   *  pause-resume-service (1.4b), fail-open {}; null при pausedState=null.
+   *  Не путать с оценкой стоимости /estimate (03 §2.2, беседа 1.6). */
+  pauseEstimates: PauseEstimates | null;
   isPublic: boolean;
   docNum: string;
   sectionOrder: string[];
