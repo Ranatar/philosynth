@@ -36,7 +36,7 @@ scripts/           эксплуатационные скрипты: extract-seed
                    -taxonomy, идемпотентные патч-скрипты доков
                    (patch-docs-*.py)
 docs/              7 проектных документов + fragments-for-conversations/
-tests/             ВСЕ тесты бесед (0.3b–1.6): vm-смоуки байтовой сверки
+tests/             ВСЕ тесты бесед (0.3b–1.6b): vm-смоуки байтовой сверки
                    с исходником (smoke-*.mjs/.mts), API-тесты (mini-Hono),
                    браузерные (puppeteer + системный Chromium). Запуск из
                    корня репо: `node tests/<файл>` / `npx tsx tests/<файл>`.
@@ -91,7 +91,7 @@ CONTEXT_BUDGET_PREVIEW локализован); 1.6 — 2k/4o/5n: роуты ч�
 покрывает 0.1–0.6 и 1.1–1.6; живые секции требуют поднятых PG и Redis
 и засеянных prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.6 закрыты
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.6b закрыты
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -211,8 +211,22 @@ categories/doc_num/WS viewOnly/edge cases), регрессия += 2k/4o/5n.
 Доки пропатчены scripts/patch-docs-conv16.py (идемпотентный
 apply/skip-скрипт; дорабатывался и после закрытия беседы).
 
-Не сделано (Фаза 1+): страницы синтеза/каталога/графа (1.6b, 1.7 —
-серверный транспорт готов в 1.6), applyReplacement (3.2) и точный
+Беседа 1.6b (просмотр документа + каталог, клиент): CSS документа
+целиком в globals.css (+найденная дыра спеки — disclosure-CSS шапки),
+document/ ×5 (DocumentView без capsule, DocumentHeader с
+disclosures/капсулой/✎→PATCH, SectionView с обогащением HTML-строки —
+enrichSectionHtml через DOMParser: пострендер-вставки в
+dangerouslySetInnerHTML стираются при hash-навигации, ГРАБЛЯ беседы, —
+TableOfContents с якорями подразделов, DocumentFooter ровно из
+totalCostUsd), catalog/ ×2 + CatalogPage (вкладки, серверный ?search=,
+PATCH isPublic), synthesis-store, api/sections, viewOnly-подписка
+страницы просмотра (pausedState из GET /:id, дотяжка разделов по
+section_done). Тесты: tests/test-16b-requests2-9.mjs 63/63 ✓ ×3
+(браузерный харнесс, данные прямыми вставками), регрессия += 4p.
+Доки пропатчены scripts/patch-docs-conv16b.py.
+
+Не сделано (Фаза 1+): страница графа (1.7 — серверный транспорт готов
+в 1.6), applyReplacement (3.2) и точный
 confirm деградации skip (2.2), каскады и план
 редактирования (plan-executor — снимет RESUME_INVALID с resume_plan
 retry/skip_step), мета-синтез (3.1 — снимет гейт ☑-концепций в форме и

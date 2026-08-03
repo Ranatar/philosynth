@@ -16,6 +16,10 @@ css*:.validity-stamp
 css*:.stream-cursor
 css*:.actions-bar
 css*:.action-btn
+# disclosure-CSS шапки и разделов [2114–2226] — дыра спеки, найдена
+# беседой 1.6b: DocumentHeader без этих стилей нечитаем
+css*:.header-disclosure
+css*:.sec-disclosure
 # legacy — нужны только импортированным документам (беседа 4.3),
 # текущие промпты этих классов не порождают
 css*:.sig-

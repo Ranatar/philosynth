@@ -1,5 +1,13 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-08-03 (итоги беседы 1.6b)**: просмотр документа +
+> каталог закрыты (63 ✓ ×3); блок «По факту 1.6b» (грабля
+> dangerouslySetInnerHTML + hash-навигация → enrichSectionHtml,
+> дыра спеки disclosure-CSS, SynthesisFull без userId, снапшот-пауза
+> без модалки, минимальный actions-bar); §12 — маркеры TODO(1.6b)
+> закрыты, внесён долг makeSectionCtxDisclosure → 2.3; spec фрагмента
+> дополнен disclosure-CSS.
+
 > **Правки 2026-08-02 (итоги беседы 1.6)**: транспорт чтения закрыт;
 > parseSubsectionsFromHTML отнесён к generation-service; /:key/context —
 > живой buildContextForSection; блок «По факту 1.6» (viewOnly,
@@ -1342,6 +1350,51 @@ python3 scripts/extract-by-name.py \
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
 
+**По факту 1.6b (2026-08-03, беседа закрыта):**
+- Все 9 пунктов запроса 1 выполнены; тесты 2–9 — одним заходом
+  (`tests/test-16b-requests2-9.mjs`, 63 проверки ×3 прогона):
+  puppeteer поверх живого сервера + vite; данные — прямыми вставками
+  в БД (мок Claude нужен только счётчиком для edge case «generating
+  не перезапускается»: 0 вызовов, generation_log не растёт).
+- ГРАБЛЯ (пойман тестом R4): пострендер-вставки в DOM под
+  dangerouslySetInnerHTML стираются — hash-навигация (клик по
+  TOC-ссылке) дёргает location → ре-рендер → React пере-применяет
+  innerHTML, а эффект с неизменными deps не перезапускается.
+  Решение: SectionView обогащает САМУ HTML-строку до рендера
+  (`enrichSectionHtml`, DOMParser в useMemo) — якоря `#subsec-*` и
+  кнопки ⏫ живут в `__html`, терять нечего. Закреплено регрессией 4p
+  (useEffect в SectionView запрещён).
+- Дыра спеки фрагмента: disclosure-CSS (.header-disclosure* /
+  .sec-disclosure, [2114–2226]) не входил в 1.6-document-view.spec,
+  а DocumentHeader без него нечитаем — портирован, spec дополнен.
+- `SynthesisFull` не несёт userId → владение клиенту заранее
+  неизвестно: ✎ (editDocTitle → prompt + PATCH title) и переключатель
+  публикации работают оптимистично, 403 → алерт «только владелец».
+- Пауза на странице просмотра: снапшот из GET /:id НЕ навязывает
+  модалку (доступна по бейджу в GenerationProgress); живая WS-пауза
+  текущего прогона открывает её сама и перекрывает снапшот.
+- actions-bar — функциональный минимум («Распечатать» + статус);
+  кнопки графа/Изменить/лога/экспорта/режимов появятся в
+  1.7/2.3/2.4/4.2/4.1 — мёртвых заглушек не рисуем.
+- Заход на страницу в середине генерации: разделы, уже лежащие в БД,
+  помечаются done в прогрессе; по section_done готовые разделы
+  дотягиваются транспортом чтения (reloadSections), по
+  generation_complete перечитывается весь синтез.
+- `makeSectionCtxDisclosure` из фрагмента НЕ портирован: секционный
+  контекст в документе не показывается до EditModal — долг → 2.3
+  (§12); `restoreCapsulesFromHTML` — прежний долг 3.2.
+- Футер: стоимость — РОВНО `totalCostUsd` (решение 1.6 соблюдено;
+  квирк updateFooterCost 3/15 $/M не перенесён, регрессия 4p).
+- Грабли харнесса (в копилку 0.4): (1) после smooth-scroll ассерт
+  |top|<ε неверен — последний раздел упирается в низ документа,
+  проверять «в viewport»; (2) сверки текста под
+  text-transform: uppercase — только textContent (innerText отдаёт
+  трансформированный, грабля 1.5 повторилась на disclosures);
+  (3) keep-alive-сокеты мок-сервера держат event loop в finally —
+  итог печатать до cleanup, race-таймауты на close, process.exit;
+  (4) кэш puppeteer в песочнице пуст — системный
+  /opt/google/chrome/chrome (грабля 0.6 повторилась).
+
 ---
 
 ### Беседа 1.7: Граф категорий, 3D + 2D (клиент)
@@ -1691,7 +1744,9 @@ deleteSection, addSection).
 - `03-specification.md` (секции 1.5 Редактирование, 2.3 Sections, 2.6 Edit Plans, 3.2 WebSocket)
 - `05-file-structure.md` (секция client/components/edit/)
 - Из предыдущих бесед: `shared/types/edit-plan.ts`, `shared/types/ws-messages.ts`, `client/hooks/useWebSocket.ts`, `client/stores/synthesis-store.ts` (из 1.6b), `client/api/client.ts`, `server/routes/plans.ts` (2.1 + 2.2), `server/routes/sections.ts` (1.6 — GET /sections и /:key/context)
-- Из 1.6b: `SynthesisPage.tsx`, `SectionView.tsx` — модалка открывается поверх страницы синтеза
+- Из 1.6b: `SynthesisPage.tsx`, `SectionView.tsx` — модалка открывается поверх страницы синтеза; долг 1.6b:
+  `makeSectionCtxDisclosure` (disclosure секционного контекста —
+  sec_context уже в SectionFull) портируется здесь (§12)
 - Исходник: openEditModal … подразделовая перегенерация UI (**только** как визуальный референс UI)
 
 > **Транспорт готов** (аудит 2026-07-30): `server/routes/plans.ts`
@@ -3277,7 +3332,7 @@ streaming-manager.
 | Форма ввода ключа в auth-модалке `PauseModal` | 6.2 | 1.4b (адресовался 6.1) | внесён 2026-07-31 |
 | Подстановка `contextQualityScore` в GET /sections (сейчас null, метка TODO(2.4) в routes/sections.ts) | 2.4 | 1.6 | внесён 2026-08-02 |
 | Per-user HTTP-лимитирование (подсчёт после auth; сейчас фактически per-IP — 03 §3.4) | 6.1 | 1.6 | внесён 2026-08-02 |
-| Маркеры `TODO(1.6b)` (источник pausedState из GET /:id, наполнение SynthesisPage/CatalogPage, исключение capsule при рендере) | 1.6b | разделение беседы (серверная половина закрыта 1.6, 2026-08-02) | внесён 2026-07-30 |
+| `makeSectionCtxDisclosure` — disclosure секционного контекста в документе (sec_context отдаётся в SectionFull, UI не показывает) | 2.3 | 1.6b | внесён 2026-08-03 |
 
 Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,
 помечено в 03 §2.1; `POST /syntheses/estimate` и `/advice` — реализованы

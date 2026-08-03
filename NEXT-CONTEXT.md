@@ -2467,3 +2467,148 @@ lines:A-B            только там, где именованного яко
 - TODO(1.6b): клиентские — источник pausedState из GET /:id, наполнение
   SynthesisPage/CatalogPage, исключение capsule при рендере.
 - Прочие TODO прежних бесед — без изменений (реестр 07 §12).
+
+# Беседа 1.6b — просмотр документа + каталог (клиент) [ЗАКРЫТА]
+
+## Созданные/изменённые файлы
+
+- `client/src/globals.css` (расширение): весь CSS документа из фрагмента
+  [482–929, 3304] — .doc-header/.doc-title/.doc-subtitle/.doc-meta-*,
+  #docTOC/.toc-*, .doc-section/.section-num/.section-title/.doc-content,
+  .doc-table (зебра/рамки), .callout warning/note/gold, .risk*,
+  .doc-footer/.validity-stamp, .stream-cursor (+blink-cursor),
+  .actions-bar/.action-btn, legacy .sig-*/.graph-node/.graph-edge (для
+  импорта 4.3), .doc-title-edit-btn; дубль `#docTOC .toc-arrow` исходника
+  схлопнут; + `scroll-behavior: smooth` (плавные якоря). ДЫРА СПЕКИ:
+  disclosure-CSS `.header-disclosure*`/`.sec-disclosure` [2114–2226] не
+  входил в 1.6-document-view.spec — портирован, spec дополнен (16b/D).
+- `client/src/components/document/` (НОВАЯ, ×5):
+  - `DocumentView.tsx`: сборка Header→(TOC+разделы)→Footer в порядке
+    sectionOrder; ключ `capsule` исключается (removeCapsuleFromDocBodies);
+    разделы вне sectionOrder дорисовываются в хвост.
+  - `DocumentHeader.tsx`: docNum, дата ru-RU, ML/DL/SL, три ветки
+    подзаголовка [12126]; disclosures «Зерно концепции»/«Дополнительный
+    контекст»/капсула (gold, open по умолчанию) — makeHeaderDisclosure/
+    buildDocHeaderExtras/updateCapsuleInHeader декларативно;
+    extractCapsuleText — реюз порта 1.5b (utils/concept-file); ✎ — порт
+    editDocTitle: prompt() + PATCH title, 403 → алерт (SynthesisFull не
+    несёт userId — владение клиенту заранее неизвестно).
+  - `SectionView.tsx`: .doc-body + якорь #sec-{key} +
+    dangerouslySetInnerHTML; `enrichSectionHtml` (ЭКСПОРТ) вносит якоря
+    #subsec-{key}-{slug} и кнопки ⏫ В САМУ HTML-строку до рендера
+    (DOMParser в useMemo) — вторая половина buildTableOfContents
+    [11655–11710]. useEffect для вставок ЗАПРЕЩЁН (грабля ниже, регрессия
+    4p). db{N}/rebuildDbMapping не портированы (адресация по key).
+  - `TableOfContents.tsx`: порт buildTableOfContents [11621] — слуг
+    `subsectionSlugId` (регексп `[^a-zA-Zа-яА-ЯёЁ0-9]` → `_`, ЭКСПОРТ —
+    SectionView переиспользует), <2 видимых разделов → null, KEY_LABELS,
+    подразделы из ФАКТИЧЕСКИХ SectionSummary.subsections (сервер 1.6).
+  - `DocumentFooter.tsx`: порт updateFooterCost — «Токены: N вх. + M вых.
+    · Стоимость: $X.XXXX (Y.YY¢)» РОВНО из totalCostUsd (квирк 3/15 $/M
+    исходника не перенесён — решение 1.6, регрессия 4p); сессия = docNum;
+    validity-stamp только при status='ready'.
+- `client/src/components/catalog/` (НОВАЯ, ×2): `SynthesisCard.tsx`
+  (название, ML×SL, философы или «свободный синтез», дата, статус,
+  капсула-превью; кнопка Опубликовать/Скрыть с preventDefault+
+  stopPropagation внутри Link), `SynthesisList.tsx` (пустые состояния).
+- `client/src/components/shared/LoadingSpinner.tsx` (НОВЫЙ; 05: первый
+  потребитель — 1.6b).
+- `client/src/pages/SynthesisPage.tsx` (заглушка 0.4 заменена): загрузка
+  через synthesis-store; NOT_FOUND → 404-состояние, FORBIDDEN → 403;
+  viewOnly-подписка useStreamingGeneration при generating/paused;
+  pausedState = stream.pause ?? synthesis.pausedState (снапшот из
+  GET /:id — маркер 1.6b закрыт); снапшот-пауза НЕ навязывает модалку
+  (по бейджу), живая WS-пауза открывает сама; по section_done — дотяжка
+  reloadSections (единый источник контента — БД через REST, не WS-html);
+  по complete/resumed — полный reload; разделы из БД при заходе в
+  середине генерации помечаются done в прогрессе; actions-bar — минимум
+  («Распечатать» + статус), кнопки графа/Изменить/лога/экспорта/режимов
+  появятся в 1.7/2.3/2.4/4.2/4.1 без заглушек.
+- `client/src/pages/CatalogPage.tsx` (заглушка 0.4 заменена): вкладки
+  Мои (GET /syntheses) / Публичные (GET /syntheses/public), СЕРВЕРНЫЙ
+  ?search= (дебаунс 400 мс, reqSeq против гонок), пагинация limit 20,
+  переключатель публикации PATCH { isPublic } только на «Мои».
+- `client/src/api/sections.ts` (НОВЫЙ): getSections(), getSection().
+- `client/src/api/syntheses.ts` (расширение): listSyntheses,
+  listPublicSyntheses, updateSynthesis (PATCH title/isPublic).
+- `client/src/stores/synthesis-store.ts` (НОВЫЙ, Zustand): SynthesisFull
+  + summaries + полные разделы (дотяжка getSection по ключам БЕЗ capsule),
+  loadSeq против гонок StrictMode, reloadSections/applySynthesis/clear.
+- `client/src/hooks/useStreamingGeneration.ts`: опция `viewOnly`
+  (условный спред — exactOptionalPropertyTypes) → subscribe_generation.
+- `tests/test-16b-requests2-9.mjs`: 63 проверки ×3 прогона (R2–R9).
+- `server/integration-check.mts`: блок 4p (модули + контракты + walker
+  «TODO(1.6b)=0» + запрет useEffect в SectionView).
+- `scripts/patch-docs-conv16b.py`: 9 правок, идемпотентный; контроль —
+  applied=9 → чистый skip ×2 на чистой git-копии.
+
+## Адаптации/решения беседы
+
+1. ГЛАВНАЯ ГРАБЛЯ: пострендер-вставки в DOM под dangerouslySetInnerHTML
+   стираются при hash-навигации (клик по TOC-ссылке → location →
+   ре-рендер → React пере-применяет innerHTML; эффект с неизменными deps
+   не перезапускается). Решение — обогащение HTML-строки до рендера.
+2. Дыра спеки фрагмента: disclosure-CSS не входил в spec (закрыто 16b/D).
+3. SynthesisFull без userId → кнопки владельца оптимистичны, 403 → алерт.
+4. Снапшот-пауза из БД не навязывает модалку; живая WS-пауза перекрывает.
+5. actions-bar сведён к функциональному минимуму (без мёртвых заглушек).
+6. makeSectionCtxDisclosure НЕ портирован — долг → 2.3 (§12);
+   restoreCapsulesFromHTML — прежний долг 3.2.
+
+## Ревью по карте 04 (доля 1.6b)
+
+- Портированы: buildTableOfContents [11621] ОБЕ половины (TOC +
+  enrichSectionHtml), makeHeaderDisclosure/buildDocHeaderExtras
+  [11599/11613] + заполнение шапки [12110–12144] (docNum — с сервера),
+  updateCapsuleInHeader [11773] + removeCapsuleFromDocBodies [11822]
+  (декларативно: шапка + исключение ключа), updateFooterCost [5671]
+  (без квирка ставок), editDocTitle, панель действий [4134–4168]
+  (минимум), весь CSS документа.
+- Реюз без нового порта: extractCapsuleText (1.5b, concept-file).
+- Не долг 1.6b: updateDocTitleFromName — сервер (порт 1.4, FIX \w);
+  restoreCapsulesFromHTML — 3.2; rebuildDbMapping/db{N}/.output-wrap —
+  запрещены протоколом (в коде отсутствуют).
+- Единственный оставленный долг: makeSectionCtxDisclosure → 2.3 (§12).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **1.7 (граф)**: `SynthesisPage.tsx` (actions-bar — сюда встаёт кнопка
+  графа), `client/api/client.ts`; серверный контракт GraphData из 1.6.
+- **2.3 (EditModal)**: `SynthesisPage.tsx` (хозяин модалки),
+  `SectionView.tsx` (enrichSectionHtml — правки HTML разделов),
+  `synthesis-store.ts` (reloadSections после сохранения); долг
+  makeSectionCtxDisclosure (sec_context уже в SectionFull).
+- **2.4 (лог/quality)**: `DocumentFooter.tsx` (кнопка «◈ Лог»).
+- **3.2 (генеалогия/пул)**: `SynthesisPage.tsx`, `CatalogPage.tsx`,
+  `SynthesisCard.tsx`, `synthesis-store.ts` — точки интеграции пунктов
+  4–5 беседы 3.2.
+- **4.1/4.2 (режимы/экспорт)**: actions-bar SynthesisPage.
+- **4.3 (импорт)**: legacy-CSS .sig-*/.graph-node/.graph-edge уже в
+  globals.css.
+
+## Знания/грабли, добытые в 1.6b (в копилку 0.4)
+
+1. dangerouslySetInnerHTML: НЕ мутировать содержимое пострендер —
+   React владеет узлом и пере-применяет innerHTML при любом ре-рендере
+   с «новой» строкой; обогащать строку до рендера (DOMParser + useMemo).
+2. После smooth-scroll ассерт |top|<ε неверен: последний раздел
+   упирается в низ документа (top=504 при y=1299) — проверять
+   «элемент в viewport» + рост scrollY.
+3. text-transform: uppercase — сверки ТОЛЬКО по textContent (innerText
+   отдаёт трансформированный текст; грабля 1.5 повторилась на summary
+   disclosures).
+4. Keep-alive-сокеты мок-сервера держат event loop в finally: итог
+   печатать ДО cleanup, race-таймауты на browser.close/sql.end,
+   mock.closeAllConnections(), явный process.exit.
+5. Кэш puppeteer в песочнице пуст (грабля 0.6 повторяется) — системный
+   /opt/google/chrome/chrome.
+6. npm install может падать ECONNRESET посреди reify — транзиентно,
+   повтор с --prefer-offline добирает из кэша.
+
+## Открытые TODO после 1.6b
+
+- makeSectionCtxDisclosure → 2.3 (внесён в §12).
+- Кнопки actions-bar — плановые интеграции 1.7/2.3/2.4/4.1/4.2 (не долг).
+- onResumePlan на странице просмотра — console.warn до plan-executor 2.2
+  (как в 1.5; долг 2.2 в §12 прежний).
+- Прочие TODO прежних бесед — без изменений (реестр 07 §12).

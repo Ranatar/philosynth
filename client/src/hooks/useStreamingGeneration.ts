@@ -14,8 +14,13 @@
  *    generation_paused + локального прогресса (passIdx/completedPasses/
  *    sectionLabel восстановимы из done-шагов; genParams клиенту не нужны —
  *    возобновление серверное). Полный syntheses.paused_state отдаёт
- *    GET /syntheses/:id (реализован серверной беседой 1.6) —
- *    TODO(1.6b) переключить источник на странице просмотра.
+ *    GET /syntheses/:id — на странице просмотра (SynthesisPage, 1.6b)
+ *    он и служит источником; WS-пауза его лишь перекрывает по ходу
+ *    прогона (маркер 1.6b закрыт беседой 1.6b).
+ *  - viewOnly (беседа 1.6): страница просмотра подписывается с флагом
+ *    viewOnly: true — subscribe_generation НЕ запускает generateSynthesis
+ *    при status='generating' без активного прогона; события активного
+ *    прогона доходят и так (доставка по userId).
  *  - kind='plan' до plan-executor'а (2.2) в этом потоке не возникает;
  *    ветка собирает минимальный PausedStatePlan на будущее.
  *  - cancel (§3.1): user-abort финализирует частичное по правилам stop
@@ -62,6 +67,9 @@ export interface UseStreamingGenerationOptions {
    *  предзаполняет шаги ◯; сервер может изменить порядок
    *  (buildDynamicOrder) — шаги пересортируются по мере сообщений */
   expectedSections?: readonly string[] | undefined;
+  /** Режим «только подписка» (беседа 1.6, WsSubscribeGeneration.viewOnly):
+   *  не запускать генерацию при подписке — страница просмотра (1.6b) */
+  viewOnly?: boolean | undefined;
   onComplete?: ((totalUsage: TokenUsage) => void) | undefined;
 }
 
@@ -108,7 +116,7 @@ function seedState(expected: readonly string[] | undefined): SectionState {
 export function useStreamingGeneration(
   options: UseStreamingGenerationOptions,
 ): UseStreamingGenerationResult {
-  const { synthesisId, expectedSections, onComplete } = options;
+  const { synthesisId, expectedSections, viewOnly, onComplete } = options;
 
   const [state, setState] = useState<SectionState>(() =>
     seedState(expectedSections),
@@ -312,12 +320,17 @@ export function useStreamingGeneration(
     onMessage: handleMessage,
   });
 
-  // Подписка (или рестарт после падения сервера) — на каждом открытии
+  // Подписка (или рестарт после падения сервера) — на каждом открытии;
+  // viewOnly: true — страница просмотра, генерация НЕ запускается (1.6)
   useEffect(() => {
     if (wsStatus === "open" && synthesisId) {
-      send({ type: "subscribe_generation", synthesisId });
+      send({
+        type: "subscribe_generation",
+        synthesisId,
+        ...(viewOnly ? { viewOnly: true } : {}),
+      });
     }
-  }, [wsStatus, synthesisId, send]);
+  }, [wsStatus, synthesisId, viewOnly, send]);
 
   const resumeGeneration = useCallback(
     (mode: ResumeGenerationMode) => {
