@@ -21,7 +21,8 @@ packages/shared/   общий код клиента и сервера: constants
                    labels, ctx-keys, methods, cardinality), types (11 файлов),
                    utils
 server/            Hono-бэкенд: db/schema.ts (28 таблиц), middleware
-                   (auth, admin, rate-limiter), routes/auth.ts, ws/
+                   (auth, admin, rate-limiter), routes/ (auth,
+                   syntheses, sections, elements), ws/
                    (handler + connection-manager), services/
                    (prompt-registry, element-taxonomy), config/ (12 модулей
                    извлечённых конфигов), redis.ts;
@@ -35,7 +36,7 @@ scripts/           эксплуатационные скрипты: extract-seed
                    -taxonomy, идемпотентные патч-скрипты доков
                    (patch-docs-*.py)
 docs/              7 проектных документов + fragments-for-conversations/
-tests/             ВСЕ тесты бесед (0.3b–1.5b): vm-смоуки байтовой сверки
+tests/             ВСЕ тесты бесед (0.3b–1.6): vm-смоуки байтовой сверки
                    с исходником (smoke-*.mjs/.mts), API-тесты (mini-Hono),
                    браузерные (puppeteer + системный Chromium). Запуск из
                    корня репо: `node tests/<файл>` / `npx tsx tests/<файл>`.
@@ -83,9 +84,12 @@ npm run typecheck:scripts
 4n: модули пула (pool-store без snapshotCurrentState, concept-file,
 PoolCard/ConceptPool, SYNTH_READY_SECTIONS) и контракты (гейт
 мета-синтеза до 3.1/4.3, prepareForGeneration перед POST,
-CONTEXT_BUDGET_PREVIEW локализован). Сейчас покрывает 0.1–0.6 и
-1.1–1.5b; живые секции требуют поднятых PG и Redis и засеянных
-prompt_templates, synthesis_configs и каталогов таксономии.
+CONTEXT_BUDGET_PREVIEW локализован); 1.6 — 2k/4o/5n: роуты чтения
+(makeDocNum [12110], /public ДО /:id, duplicate без lineage-связи и
+логов, viewOnly ДО запуска генерации, walker «TODO(1.6)=0», живой цикл
+список→Full→sections→categories→PATCH→duplicate→DELETE). Сейчас
+покрывает 0.1–0.6 и 1.1–1.6; живые секции требуют поднятых PG и Redis
+и засеянных prompt_templates, synthesis_configs и каталогов таксономии.
 
 ## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.6 закрыты
 
@@ -201,8 +205,9 @@ ConceptPool + PoolCard в SynthesisForm, secSynthReady c автовключен�
 (tests/test-15b-requests2-5.mjs). Доки пропатчены
 scripts/patch-docs-conv15b.py (11 правок, идемпотентно).
 
-Не сделано (Фаза 1+): страницы синтеза/каталога/графа (1.6, 1.7),
-applyReplacement и точный confirm деградации skip (2.x), каскады и план
+Не сделано (Фаза 1+): страницы синтеза/каталога/графа (1.6b, 1.7 —
+серверный транспорт готов в 1.6), applyReplacement (3.2) и точный
+confirm деградации skip (2.2), каскады и план
 редактирования (plan-executor — снимет RESUME_INVALID с resume_plan
 retry/skip_step), мета-синтез (3.1 — снимет гейт ☑-концепций в форме и
 даст estimate-diff превью бюджета), полный пул с деревом (3.2), режимы,
