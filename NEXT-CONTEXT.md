@@ -2612,3 +2612,153 @@ lines:A-B            только там, где именованного яко
 - onResumePlan на странице просмотра — console.warn до plan-executor 2.2
   (как в 1.5; долг 2.2 в §12 прежний).
 - Прочие TODO прежних бесед — без изменений (реестр 07 §12).
+
+
+# Беседа 1.7 — визуализация графа (клиент): журнал
+
+## Созданные/изменённые файлы (беседа 1.7)
+
+- `client/src/components/graph/graph-utils.ts` (816 строк) — G-состояние,
+  buildGFromGraphData (адаптер GraphData→G), динамические палитры
+  (_rebuildNodeColors/_rebuildEdgeStyles, сиды _TC_HUE_SEEDS/_EC_*),
+  typeColor/typeColorHex/edgeTypeStyle, getStructuralMarkers (МАССИВ),
+  nodeSymbolPath, clearLegendFilter/legendFilter, типы GNode/GEdge/
+  PanelCallbacks/PanelNodeData/PanelLink/LegendFilter/RoleLayer.
+- `client/src/components/graph/Graph3D.tsx` (1777) — buildGraph3D/
+  disposeGraph3D: сцена three r128, формы по ролям, drag/orbit/zoom,
+  тултипы узлов И рёбер, hover/select, кластеры (эллипсоиды+кольца+
+  спрайты), тач (pinch/orbit/tap), фильтр легенды.
+- `client/src/components/graph/Graph2D.tsx` (1063) — buildGraph2D:
+  d3-force, SVG-маркеры (3 на цвет), формы nodeSymbolPath, рефлексивные
+  дуги, hull/метки/кольца кластеров, drag, hover-glow, диммирование.
+- `client/src/components/graph/{NodePanel,EdgePanel,GraphLegend,GraphModal}.tsx`
+  — панели (в т.ч. секция РАСШИРЕННЫЕ при extGraphMetrics), легенда с
+  фильтрацией, модалка (вкладки 3D/2D, toggle кластеров, экспорт-заглушки).
+- `client/src/utils/graph-physics.ts` (warmup/tick; warmup принимает
+  узлы ПАРАМЕТРОМ — в исходнике [782] читал глобальный G.nodes),
+  `client/src/utils/graph-geometry.ts` (nodeGeometry3D, mkSprite — по 05).
+- `client/src/api/elements.ts` — getCategories (модуль создан ЗДЕСЬ,
+  см. протокол 1.7 п.10; 5.2 его расширяет).
+- `client/src/pages/SynthesisPage.tsx` — кнопка «◈ Граф» (disabled при
+  загрузке) перед «Распечатать», handleOpenGraph→getCategories→GraphModal
+  (catch не открывает модалку), проброс extGraphMetrics.
+- `client/src/globals.css` — порт CSS исходника [931–1374] (.gm-*,
+  .node-*, .edge-*, .cluster-*) + медиа-адаптация легенды (см. решения).
+- `server/integration-check.mts` — секция 4q (беседа 1.7): рантайм-импорт
+  10 клиентских графовых модулей (need-экспорты) + текстовые контракты
+  (сиды hue, fuzzy typeColor 1:1, roleMode=procedural, warmup параметром,
+  passive:false, raise(), edge-arc, TODO(4.2), «◈ Граф»+extGraphMetrics,
+  CSS-комплект + медиа-легенда + анти-грабля «*/ в комментарии», запрет
+  browser storage); финальная строка INTEGRATION OK дополнена.
+- `tests/test-17-requests2-9.mjs` — объединённый тест запросов 2–9
+  (84 ✓ / 0 ✗, два прогона подряд). Запуск: pkill-чистка ОТДЕЛЬНЫМ
+  вызовом → `service postgresql start; redis-server --daemonize yes;
+  npx tsx tests/test-17-requests2-9.mjs` одним вызовом. Сознательно .mjs:
+  tests/*.mts попадает под typecheck:scripts (NodeNext), клиентские
+  bundler-импорты его сломают; tsx позволяет импорт TS из .mjs.
+
+## Адаптации/решения беседы 1.7
+
+(а) ДЫРА КОМПЛЕКТА: CSS графа [931–1374] исходника не входил ни в один
+    фрагмент/спеку 1.7 (1.7-graph-viz.js резался по баннерам, спека
+    graph-state-extras — машинная, var:/js:) — портирован в globals.css
+    напрямую из исходника.
+(б) Пустой граф открывает модалку с пустым состоянием «Нет данных
+    графа» (протокол R8) вместо alert исходника.
+(в) nodeGeometry3D/mkSprite — в utils/graph-geometry.ts (по 05), не в
+    компоненте.
+(г) Панели подключены через интерфейс PanelCallbacks (onShowNode/
+    onShowEdge/onHidePanel) — React-состояние вместо DOM-инъекций.
+(д) touchend легенды исходника не портирован — на тач-устройствах
+    браузер синтезирует click, легенда фильтрует им.
+(е) МЕДИА-АДАПТАЦИЯ ЛЕГЕНДЫ (ОТКЛОНЕНИЕ от исходника, обоснование —
+    протокольный запрос 9): на ≤600px легенда богатого графа (12 типов
+    узлов + 8 рёбер) накрывала ВЕСЬ канвас (elementFromPoint===.gm-legend
+    по всей площади) — pinch/orbit/tap физически не достигали canvas.
+    @media (max-width:600px): .gm-legend max-width 44vw, max-height 38%.
+    Десктоп не тронут (пиксель-в-пиксель с исходником).
+(ж) Квирк исходника (порт 1:1, typeColor [556]:
+    lp.includes(k)||k.includes(lp)): подстрочные типы делят цвет —
+    «логическая» ⊂ «онтологическая» → цвет онтологической.
+(з) Неточность протокола R3: hex #e74c3c/#3498db — статическая палитра
+    TC ДОРЕВИЗИИ v10; динамические палитры дают hue по сидам
+    (онтологическ→215, эпистемологическ→145) — тест сверяет hue сидов.
+
+## Ревью по карте 04 (доля 1.7)
+
+Карта §1.7 (v10-строки): _rebuildNodeColors/_rebuildEdgeStyles ✓
+graph-utils; showEdgePanel ✓ EdgePanel.tsx; getStructuralMarkers
+(массив) ✓ graph-utils; clearLegendFilter/legendFilter ✓
+graph-utils+GraphModal; normalizeName/normalizeType — shared (порт
+прежних бесед), потребляются. Карта §3: build3D ✓ Graph3D.tsx,
+build2D ✓ Graph2D.tsx, buildLegend/switchView/openGraph/closeGraph ✓
+GraphModal.tsx, палитры+showNodePanel/showEdgePanel ✓ React-компоненты.
+Пути §3 «client/components/{Graph3D,Graph2D,GraphModal}.tsx» приведены
+к подпапке graph/ патчем conv17 (унификация с §1.7 и фактом).
+Заглушек в комплекте одна группа: экспорт MMD/PNG/JSON — TODO(4.2)
+(внесено в §12).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- 5.2 (Element Editor UI): `shared/types/graph.ts`,
+  `client/src/api/elements.ts` (расширяется PATCH-функциями),
+  `client/src/components/graph/NodePanel.tsx`.
+- 5.4 (Характеристики/Обогащение/Таксономия UI):
+  `client/src/components/graph/NodePanel.tsx` (интеграция слайдеров).
+- 5.5 (Representation Transformer): `client/src/components/graph/GraphModal.tsx`
+  (+ graph-utils.ts при работе с G-состоянием).
+- 2.3 (Edit Modal): знание — SynthesisPage передаёт extGraphMetrics в
+  GraphModal из syntheses.ext_graph_metrics; чекбокс перегенерации 2.3
+  пишет тот же флаг.
+- 4.2 (Экспорт): `client/src/components/graph/GraphModal.tsx` — кнопки
+  MMD/PNG/JSON с метками TODO(4.2) (реализация — серверные
+  services/export/*).
+
+## Знания/грабли, добытые в 1.7 (в копилку 0.4)
+
+1. CSS-грабля: `*/` в ТЕКСТЕ комментария (глоб «.gm-export-*/»)
+   закрывает комментарий досрочно — браузер склеивает остаток в
+   невалидный селектор и съедает следующее правило (.gm-overlay терял
+   position:fixed → канвас 476×48). Прод-сборку случайно спасал cssnano.
+   Вторая ловушка: фикс по index('*/') нашёл ТО ЖЕ раннее закрытие и
+   оставил хвост старого баннера с теми же симптомами.
+2. pkill-самострел: `pkill -f "[v]ite"` в одном bash-вызове с heredoc,
+   содержащим «vite» плоско, убивает СОБСТВЕННЫЙ шелл (rc=-1, пустой
+   вывод). Чистку сирот — отдельным вызовом от любых скриптов.
+3. npx-обёртка vite при SIGKILL оставляет vite-сироту — спавнить
+   `node ../node_modules/vite/bin/vite.js` (бинарь в КОРНЕВОМ
+   node_modules; client/node_modules пуст — воркспейс).
+4. d3 `.raise()` в hover переставляет .node-g в конец DOM — nth-порядок
+   узлов ВРЁТ после любого hover/drag; адресация по `g.__data__.name`.
+5. Заголовки панелей капсятся CSS-ом (text-transform) — innerText отдаёт
+   визуальный регистр (родня грабли 1.5): сверки через toUpperCase().
+6. У РЁБЕР 3D тоже тултип (desc+[тип], БЕЗ имён узлов) — «охоту» на
+   узлы фильтровать по списку имён.
+7. Клик/tap по хитбоксу ребра НЕ ставит isOrbit (поведение порта) —
+   orbit-жест начинать из заведомо пустой точки (elementFromPoint ===
+   canvas И тултип после move не зажёгся).
+8. Раскладка-«кольцо»: при zoom 150 узлы разлетаются к краям канваса,
+   центр бывает пуст — сетку охоты строить ОТНОСИТЕЛЬНОЙ (доли rect до
+   ±0.4), не абсолютными пикселями.
+9. CDP Input.dispatchTouchEvent работает (headless shell +
+   --enable-unsafe-swiftshader): двухточечный touchStart Chrome
+   разбивает на touchstart:1+touchstart:2 (пинчу не мешает); touchEnd с
+   пустым touchPoints корректен (все точки отпущены).
+10. Шпион touch-событий — на document с capture и логом e.target.tagName:
+    мгновенно вскрывает перекрытия (события шли @SPAN/@DIV легенды).
+11. Фоновая страница браузера: bringToFront + флаги
+    --disable-background-timer-throttling /
+    --disable-backgrounding-occluded-windows /
+    --disable-renderer-backgrounding; rAF-диагностика — счётчик кадров
+    за 500мс.
+12. Сценарный catch со стеком ОБЯЗАТЕЛЕН до finally с process.exit —
+    иначе исключение сценария глотается молча.
+
+## Открытые TODO после 1.7
+
+- Экспорт графа MMD/PNG/JSON → 4.2 (внесён в §12; метки TODO(4.2) в
+  GraphModal.tsx).
+- Кандидаты (не долги): React.lazy для GraphModal (чанк 993 KB,
+  warning сборки); сворачивание легенды на мобильном (после
+  медиа-фикса жесты работают, но легенда обрезана до 38% высоты).
+- Прочие TODO прежних бесед — без изменений (реестр 07 §12).

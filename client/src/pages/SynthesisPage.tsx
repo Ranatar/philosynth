@@ -15,19 +15,25 @@
  *   GET /syntheses/:id (закрытие маркера 1.6b «источник pausedState»);
  *   живая WS-пауза текущего прогона перекрывает снапшот из БД.
  * - Минимальный actions-bar (разметка [4134–4168]): «ДОКУМЕНТ
- *   СГЕНЕРИРОВАН» + «Распечатать»; остальные кнопки (граф — 1.7,
- *   Изменить — 2.3, лог — 2.4, экспорт — 4.2, режимы — 4.1) появятся
- *   в своих беседах — заглушек с мёртвыми обработчиками не рисуем.
+ *   СГЕНЕРИРОВАН» + «◈ Граф» (беседа 1.7: GET /categories по клику →
+ *   GraphModal; пустой граф открывает модалку с пустым состоянием) +
+ *   «Распечатать»; остальные кнопки (Изменить — 2.3, лог — 2.4,
+ *   экспорт — 4.2, режимы — 4.1) появятся в своих беседах — заглушек
+ *   с мёртвыми обработчиками не рисуем.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
+import { getCategories } from "../api/elements";
 import { DocumentView } from "../components/document/DocumentView";
+import GraphModal from "../components/graph/GraphModal";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
 import { GenerationProgress } from "../components/synthesis/GenerationProgress";
 import { PauseModal } from "../components/synthesis/PauseModal";
 import { useStreamingGeneration } from "../hooks/useStreamingGeneration";
 import { useSynthesisStore } from "../stores/synthesis-store";
+
+import type { GraphData } from "@philosynth/shared/types/graph";
 
 export function SynthesisPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +48,26 @@ export function SynthesisPage() {
   const clear = useSynthesisStore((s) => s.clear);
 
   const [pauseModalOpen, setPauseModalOpen] = useState(false);
+
+  // Беседа 1.7: граф категорий — данные грузятся по клику на кнопку
+  const [graphOpen, setGraphOpen] = useState(false);
+  const [graphData, setGraphData] = useState<GraphData | null>(null);
+  const [graphLoading, setGraphLoading] = useState(false);
+
+  const handleOpenGraph = async () => {
+    if (!id || graphLoading) return;
+    setGraphLoading(true);
+    try {
+      const data = await getCategories(id);
+      setGraphData(data);
+      setGraphOpen(true); // пустой граф тоже открывает модалку (пустое состояние)
+    } catch {
+      // 403/404/сеть — модалку не открываем; страница уже показала доступ
+      setGraphData(null);
+    } finally {
+      setGraphLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (id) void load(id);
@@ -174,6 +200,14 @@ export function SynthesisPage() {
           <button
             type="button"
             className="action-btn"
+            onClick={() => void handleOpenGraph()}
+            disabled={graphLoading}
+          >
+            {graphLoading ? "Загрузка…" : "◈ Граф"}
+          </button>
+          <button
+            type="button"
+            className="action-btn"
             onClick={() => window.print()}
           >
             Распечатать
@@ -216,6 +250,14 @@ export function SynthesisPage() {
           console.warn("resume_plan из SynthesisPage не поддержан:", mode);
         }}
         onClose={() => setPauseModalOpen(false)}
+      />
+
+      {/* Беседа 1.7: модалка графа категорий */}
+      <GraphModal
+        open={graphOpen}
+        data={graphData}
+        extGraphMetrics={synthesis.extGraphMetrics}
+        onClose={() => setGraphOpen(false)}
       />
     </div>
   );

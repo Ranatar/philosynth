@@ -235,9 +235,9 @@
 | `STATE` (DOM-рефы, глобальные переменные) | Zustand store |
 | `generateDoc()`, `_runGenPassesFromIdx()` (бывш. go(); единый цикл штатной генерации и возобновления) — DOM-оркестрация | React + WebSocket hooks; серверная оркестрация — generation-service |
 | Динамические палитры (`_nodeColorMap`, `_edgeStyleMap`, `_TC_HUE_SEEDS`, `_EC_HUE_SEEDS`, `_EC_DASH_SEEDS`, `CPAL`), `showNodePanel()`, `showEdgePanel()` | React-компоненты GraphViewer, NodePanel, EdgePanel |
-| `build3D()` — Three.js (вся 3D-логика) | `client/components/Graph3D.tsx` (React-обёртка) |
-| `build2D()` — D3.js (вся 2D-логика) | `client/components/Graph2D.tsx` (React-обёртка) |
-| `buildLegend()`, `switchView()`, `openGraph()`, `closeGraph()`, `clearLegendFilter()` | `client/components/GraphModal.tsx` |
+| `build3D()` — Three.js (вся 3D-логика) | `client/components/graph/Graph3D.tsx` (React-обёртка) |
+| `build2D()` — D3.js (вся 2D-логика) | `client/components/graph/Graph2D.tsx` (React-обёртка) |
+| `buildLegend()`, `switchView()`, `openGraph()`, `closeGraph()`, `clearLegendFilter()` | `client/components/graph/GraphModal.tsx` |
 | `openEditModal()`, `renderEditSections()` | `client/components/EditModal.tsx` |
 | UI подразделовой перегенерации | `client/components/SubsectionRegenPanel.tsx` |
 | `addSection()`, `deleteSection()`, `rebuildDbMapping()` | Серверные операции через API |

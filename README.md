@@ -36,7 +36,7 @@ scripts/           эксплуатационные скрипты: extract-seed
                    -taxonomy, идемпотентные патч-скрипты доков
                    (patch-docs-*.py)
 docs/              7 проектных документов + fragments-for-conversations/
-tests/             ВСЕ тесты бесед (0.3b–1.6b): vm-смоуки байтовой сверки
+tests/             ВСЕ тесты бесед (0.3b–1.7): vm-смоуки байтовой сверки
                    с исходником (smoke-*.mjs/.mts), API-тесты (mini-Hono),
                    браузерные (puppeteer + системный Chromium). Запуск из
                    корня репо: `node tests/<файл>` / `npx tsx tests/<файл>`.
@@ -91,7 +91,7 @@ CONTEXT_BUDGET_PREVIEW локализован); 1.6 — 2k/4o/5n: роуты ч�
 покрывает 0.1–0.6 и 1.1–1.6; живые секции требуют поднятых PG и Redis
 и засеянных prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.6b закрыты
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.7 закрыты
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -225,18 +225,31 @@ section_done). Тесты: tests/test-16b-requests2-9.mjs 63/63 ✓ ×3
 (браузерный харнесс, данные прямыми вставками), регрессия += 4p.
 Доки пропатчены scripts/patch-docs-conv16b.py.
 
-Не сделано (Фаза 1+): страница графа (1.7 — серверный транспорт готов
-в 1.6), applyReplacement (3.2) и точный
+Беседа 1.7 (визуализация графа, клиент): components/graph/ ×7
+(graph-utils с динамическими палитрами и адаптером
+buildGFromGraphData, Graph3D — three r128: формы по ролям,
+drag/orbit/zoom/тач, Graph2D — d3-force: SVG-маркеры,
+рефлексивные дуги, hull кластеров, NodePanel с секцией РАСШИРЕННЫЕ,
+EdgePanel, GraphLegend с фильтрацией, GraphModal с вкладками 3D/2D),
+utils/graph-{physics,geometry}, api/elements (getCategories),
+кнопка «◈ Граф» в SynthesisPage, CSS графа целиком в globals.css
+(+медиа-адаптация легенды ≤600px — отклонение по требованию
+мобильного теста R9). Тесты: tests/test-17-requests2-9.mjs
+84/84 ✓ ×2 (модульные формы/палитры через tsx-импорт клиентских
+модулей + браузерные 3D/2D/панели/кластеры/hover/edge cases +
+честный CDP-touch: pinch/orbit/tap). Экспорт MMD/PNG/JSON —
+заглушки TODO(4.2). Доки пропатчены scripts/patch-docs-conv17.py.
+
+Не сделано (Фаза 2+): applyReplacement (3.2) и точный
 confirm деградации skip (2.2), каскады и план
 редактирования (plan-executor — снимет RESUME_INVALID с resume_plan
 retry/skip_step), мета-синтез (3.1 — снимет гейт ☑-концепций в форме и
 даст estimate-diff превью бюджета), полный пул с деревом (3.2), режимы,
 экспорт/импорт (4.x — серверный parseConceptFile), billing, BYO-Key
 (6.1 — ввод ключа в auth-модалке).
-Следующие по графу 07 — клиентские беседы 1.6b (просмотр документа +
-каталог; закроет TODO(1.6b), включая pausedState из GET /syntheses/:id)
-и 1.7 (граф; транспорт GET `/categories` готов в 1.6). Параллельно
-можно вести 2.1 / 3.1.
+Фаза 1 закрыта целиком (1.1–1.7). Следующие по графу 07 — беседы
+Фазы 2 (2.1 каскады → 2.2 plan-executor → 2.3 Edit Modal);
+параллельно можно вести 3.1 (мета-синтез).
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

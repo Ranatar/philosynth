@@ -788,3 +788,470 @@
   background: var(--white);
   border-top: 1px solid var(--blue-corp);
 }
+
+/* GRAPH MODAL (беседа 1.7) — порт CSS исходника, строки 931-1374:
+   gm-overlay, gm-header, gm-btn, gm-export, gm-body, gm-legend, gm-view,
+   gm-info-panel и gm-panel (панели узла и связи), стили 2D (node, edge-line).
+   ДЫРА КОМПЛЕКТА: диапазон не входил ни в один фрагмент или спеку 1.7 —
+   зафиксировать патчем доков на завершении беседы (аналог disclosure-CSS 1.6b).
+   NB: внутри комментария нельзя писать глобы вида gm-export-звёздочка-слэш —
+   последовательность звёздочка+слэш закрывает комментарий досрочно и
+   браузер съедает следующее правило (гм-оверлей терял position:fixed). */
+
+
+/* ── GRAPH MODAL ── */
+.gm-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 5, 10, 0.92);
+  z-index: 9999;
+  flex-direction: column;
+}
+.gm-overlay.visible {
+  display: flex;
+}
+.gm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: var(--blue-corp);
+  flex-shrink: 0;
+}
+.gm-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.gm-actions {
+  display: flex;
+  gap: 8px;
+}
+.gm-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 5px 12px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+.gm-btn:hover {
+  border-color: #fff;
+  color: #fff;
+}
+.gm-btn.active {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.gm-btn.close:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+.gm-btn.gold {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--ink);
+  font-weight: 600;
+}
+.gm-export-wrap {
+  position: relative;
+}
+.gm-export-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--blue-corp);
+  border: 1px solid rgba(255,255,255,.25);
+  z-index: 50;
+  min-width: 130px;
+}
+.gm-export-wrap.open .gm-export-menu {
+  display: block;
+}
+.gm-export-item {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.7);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  transition: all .12s;
+}
+.gm-export-item:hover {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+}
+.gm-tabs {
+  display: flex;
+  gap: 4px;
+  margin-right: 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  padding-right: 16px;
+}
+.gm-body {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+.gm-body canvas,
+.gm-body > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.gm-legend {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  max-height: calc(100% - 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: auto;
+}
+.gm-legend::-webkit-scrollbar { width: 4px; }
+/* Мобильная пригодность (ОТКЛОНЕНИЕ от исходника, требование R9 протокола):
+   на узких экранах легенда с богатым графом (12 типов узлов + 8 рёбер)
+   вырастала на весь канвас и перехватывала ВСЕ жесты — pinch/orbit/tap
+   не достигали canvas (elementFromPoint === .gm-legend по всей площади).
+   Ограничиваем её узкой полосой снизу-слева; десктоп не затронут. */
+@media (max-width: 600px) {
+  .gm-legend {
+    max-width: 44vw;
+    max-height: 38%;
+    font-size: 9px;
+    padding: 8px 10px;
+  }
+}
+.gm-legend::-webkit-scrollbar-track { background: transparent; }
+.gm-legend::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
+.gm-legend-sec {
+  color: rgba(255,255,255,.45);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  margin-bottom: 5px;
+}
+.gm-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.7;
+}
+.gm-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.gm-legend-hint {
+  margin-top: 3px;
+  color: rgba(255,255,255,.28);
+  font-size: 9px;
+  line-height: 1.6;
+}
+.gm-legend-clickable {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.gm-legend-clickable:hover {
+  background: rgba(255,255,255,.08);
+}
+.gm-legend-clickable.active {
+  background: rgba(255,255,255,.15);
+}
+.gm-view {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+.gm-view.active {
+  display: block;
+}
+.gm-info-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: 280px;
+  background: rgba(8, 8, 18, 0.92);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 4px;
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 10.5px;
+  color: rgba(255,255,255,.72);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px;
+  box-sizing: border-box;
+  line-height: 1.55;
+  backdrop-filter: blur(6px);
+  /* Изначально скрыта — появляется как slide-in справа */
+  opacity: 0;
+  transform: translateX(12px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.gm-info-panel.visible {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+/* тонкий скроллбар */
+.gm-info-panel::-webkit-scrollbar { width: 4px; }
+.gm-info-panel::-webkit-scrollbar-track { background: transparent; }
+.gm-info-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
+/* ── Шапка ──────────────────────────────────────────────────────────────── */
+.gm-panel-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.gm-panel-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.gm-panel-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+  flex: 1;
+  word-break: break-word;
+}
+.gm-panel-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.3);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.gm-panel-close:hover { color: rgba(255,255,255,.8); }
+/* ── Бейджи: тип + кластер ───────────────────────────────────────────────── */
+.gm-panel-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 7px;
+}
+.gm-panel-badge {
+  border: 1px solid;
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+}
+/* ── Роли ────────────────────────────────────────────────────────────────── */
+.gm-panel-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 9px;
+}
+.gm-role-tag {
+  background: rgba(255,255,255,.07);
+  border-radius: 2px;
+  padding: 2px 6px;
+  font-size: 9px;
+  color: rgba(255,255,255,.55);
+  letter-spacing: 0.3px;
+}
+.gm-panel-role-group { 
+  display:flex; 
+  flex-wrap:wrap; 
+  align-items:center; 
+  gap:4px; 
+  margin-bottom:2px 
+}
+.gm-panel-role-group-label {
+  font-size:9px; 
+  letter-spacing:.5px; 
+  text-transform:uppercase;
+  color:rgba(255,255,255,.35); 
+  margin-right:4px;
+}
+/* ── Определение ──────────────────────────────────────────────────────────── */
+.gm-panel-def {
+  color: rgba(255,255,255,.65);
+  margin-bottom: 9px;
+  font-size: 10px;
+  line-height: 1.6;
+  border-left: 2px solid rgba(255,255,255,.1);
+  padding-left: 8px;
+}
+/* ── Происхождение / генеалогия ──────────────────────────────────────────── */
+.gm-panel-orig {
+  background: rgba(255,255,255,.04);
+  border-radius: 3px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+.gm-panel-orig-label {
+  font-size: 8.5px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,.35);
+  margin-bottom: 4px;
+}
+.gm-panel-orig-text {
+  font-size: 10px;
+  line-height: 1.6;
+  color: rgba(255,255,255,.58);
+}
+/* ── Метрики (полосы) ─────────────────────────────────────────────────────── */
+.gm-panel-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.gm-panel-metric {
+  display: grid;
+  grid-template-columns: 90px 1fr 30px;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  color: rgba(255,255,255,.4);
+}
+.gm-panel-bar {
+  height: 4px;
+  background: rgba(255,255,255,.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.gm-panel-bar > div {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+/* ── Метки секций связей ─────────────────────────────────────────────────── */
+.gm-panel-el-label {
+  font-size: 8.5px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,.3);
+  margin: 10px 0 5px;
+  text-transform: uppercase;
+}
+/* ── Строка связи ────────────────────────────────────────────────────────── */
+.gm-panel-edge {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 7px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.gm-panel-edge:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.gm-panel-edge-arrow {
+  color: rgba(255,255,255,.3);
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.gm-panel-edge-name {
+  font-size: 10px;
+  color: rgba(255,255,255,.8);
+  line-height: 1.35;
+}
+.gm-panel-edge-meta {
+  font-size: 9px;
+  color: rgba(255,255,255,.35);
+  margin-top: 1px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* ── Панель связи: блоки узлов-концов ─────────────────────────────────── */
+.gm-panel-ep-divider {
+    height: 1px;
+    background: rgba(255,255,255,.08);
+    margin: 10px 0;
+}
+.gm-panel-ep-block {
+    margin-bottom: 4px;
+}
+.gm-panel-ep-label {
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.3);
+    margin-bottom: 4px;
+}
+.gm-panel-ep-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+}
+.gm-panel-ep-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.3;
+    word-break: break-word;
+}
+.gm-panel-ep-missing {
+    font-size: 9px;
+    color: rgba(255,255,255,.25);
+    font-style: italic;
+}
+
+/* D3 2D graph styles */
+.gm-view svg {
+  background: #0a0a14;
+}
+.gm-view .node-circle {
+  cursor: grab;
+  stroke-width: 2;
+}
+.gm-view .node-circle:hover {
+  stroke: #fff;
+}
+.gm-view .node-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  fill: #c8c0b0;
+  pointer-events: none;
+}
+.gm-view .edge-line {
+  stroke-linecap: round;
+}
