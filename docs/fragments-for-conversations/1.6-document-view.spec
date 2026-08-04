@@ -16,10 +16,6 @@ css*:.validity-stamp
 css*:.stream-cursor
 css*:.actions-bar
 css*:.action-btn
-# disclosure-CSS шапки и разделов [2114–2226] — дыра спеки, найдена
-# беседой 1.6b: DocumentHeader без этих стилей нечитаем
-css*:.header-disclosure
-css*:.sec-disclosure
 # legacy — нужны только импортированным документам (беседа 4.3),
 # текущие промпты этих классов не порождают
 css*:.sig-
@@ -27,6 +23,15 @@ css*:.graph-node
 css*:.graph-edge
 scope:all
 css:.doc-title-edit-btn
+## Disclosure-CSS шапки и разделов
+# disclosure-CSS шапки и разделов [2114–2226] — дыра спеки, найдена
+# беседой 1.6b: DocumentHeader без этих стилей нечитаем.
+# ВНИМАНИЕ: эти правила лежат ВНЕ области .output-wrap…GRAPH MODAL,
+# поэтому идут после scope:all. Пока они стояли внутри области,
+# сборщик их не находил и молча отказывался писать фрагмент —
+# правка беседы 1.6b была внесена в спеку, но не действовала.
+css*:.header-disclosure
+css*:.sec-disclosure
 
 ## Разметка-эталон документа
 html:#docOutput

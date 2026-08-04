@@ -1,7 +1,13 @@
-// Фрагменты philosynth.html (26 024 стр., ревизия 2026-07) для беседы 2.1-cascade-planner
-// Сгенерировано extract-fragments.py; при обновлении исходника — перегенерировать.
+// Фрагмент philosynth.html (26025 строк) — собран
+// scripts/extract-by-name.py по спецификации 2.1-cascade-planner.spec.
+//
+// Номера строк ниже — РЕЗУЛЬТАТ поиска по именам, а не входные
+// данные: при правке исходника достаточно перезапустить сборку,
+// спецификация не устаревает. Имена берутся из
+// docs/04-code-reuse-map.md.
 
-// ───── [computeDependents] philosynth.html строки 5473–5487 ─────
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:computeDependents
+// philosynth.html строки 5473–5487 ─────
       function computeDependents(effectiveDeps) {
         const preds = computePredecessors(effectiveDeps);
         const dependents = {};
@@ -18,7 +24,8 @@
         return dependents;
       }
 
-// ───── [getIntraDependents] philosynth.html строки 9566–9600 ─────
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:getIntraDependents
+// philosynth.html строки 9566–9600 ─────
       function getIntraDependents(sectionKey, subsectionName) {
         const deps = INTRA_DEPS[sectionKey] || {};
         const result = new Set();
@@ -55,7 +62,8 @@
         return [...result];
       }
 
-// ───── [getCrossSecDependents] philosynth.html строки 9767–9785 ─────
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:getCrossSecDependents
+// philosynth.html строки 9767–9785 ─────
       function getCrossSecDependents(sectionKey, subsectionName) {
         const canonName = canonicalSubsectionKey(sectionKey, subsectionName);
         const ctxKeys = (SUBSECTION_TO_CTX_KEYS[sectionKey] || {})[canonName] || [];
@@ -76,7 +84,160 @@
         return result;
       }
 
-// ───── [buildCtxKeyConsumers] philosynth.html строки 9690–9735 ─────
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:getAffectedModes
+// philosynth.html строки 22814–22867 ─────
+      function getAffectedModes(changedSections, changedSubsections) {
+        const affected = [];
+
+        for (const [modeKey, results] of Object.entries(DOC_STATE.modes || {})) {
+          if (!Array.isArray(results)) continue;
+          const deps = getEffectiveModeDeps(modeKey, DOC_STATE.params);
+          if (!deps) continue;
+          const config = MODE_CONFIG[modeKey];
+          const allCtxKeys = [...(deps.required || []), ...(deps.optional || [])];
+
+          for (let i = 0; i < results.length; i++) {
+            if (!results[i]?.html) continue;
+            let found = false;
+
+            // Проверяем разделы
+            for (const ctxKey of allCtxKeys) {
+              const src = sourceOf(ctxKey);
+              if (changedSections.includes(src)) {
+                affected.push({
+                  modeKey,
+                  index: i,
+                  param: results[i].param,
+                  title: (config?.title || modeKey) + " · " + results[i].param,
+                  reason: "Изменён раздел «" + (KEY_LABELS[src] || src) + "» (контекст: " + (CTX_LABELS[ctxKey] || ctxKey) + ")",
+                });
+                found = true;
+                break;
+              }
+            }
+
+            // Проверяем подразделы (через SUBSECTION_TO_CTX_KEYS)
+            if (!found && changedSubsections) {
+              for (const subId of changedSubsections) {
+                const [secKey, subName] = subId.split(":");
+                const canonSub = canonicalSubsectionKey(secKey, subName);
+                const ctxKeys = (SUBSECTION_TO_CTX_KEYS[secKey] || {})[canonSub] || [];
+                const overlap = ctxKeys.filter(k => allCtxKeys.includes(k));
+                if (overlap.length > 0) {
+                  affected.push({
+                    modeKey,
+                    index: i,
+                    param: results[i].param,
+                    title: (config?.title || modeKey) + " · " + results[i].param,
+                    reason: "Изменён подраздел «" + subName + "» в «" + (KEY_LABELS[secKey] || secKey) + "»",
+                  });
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        return affected;
+      }
+
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:sortInTopoOrder
+// philosynth.html строки 20482–20486 ─────
+      function sortInTopoOrder(keys) {
+        const orderMap = {};
+        DOC_STATE.sectionOrder.forEach((k, i) => { orderMap[k] = i; });
+        return [...keys].sort((a, b) => (orderMap[a] ?? 999) - (orderMap[b] ?? 999));
+      }
+
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:buildPlanOrder
+// philosynth.html строки 20495–20578 ─────
+      function buildPlanOrder(plan) {
+        const p = DOC_STATE.params;
+        if (!p) return [
+          ...plan.add.map(k => ({ key: k, action: "add" })),
+          ...plan.regen.map(k => ({ key: k, action: "regen" })),
+        ];
+
+        // ── 1. Будущий набор разделов (после удалений + добавлений) ──
+        const removeSet = new Set(plan.remove);
+        const futureSections = [
+          ...DOC_STATE.sectionOrder.filter(k => k !== "sum" && !removeSet.has(k)),
+          ...plan.add,
+        ];
+
+        // ── 2. Граф зависимостей для будущего состояния ──
+        const futureParams = { ...p, sec: futureSections };
+        const futureResolved = resolveContextDeps(futureParams);
+        const futureEffDeps = buildEffectiveDeps(
+          futureSections, futureResolved,
+          p.generationOrder
+        );
+
+        // ── 3. Predecessors — для каждого раздела: от кого он зависит ──
+        const preds = computePredecessors(futureEffDeps);
+
+        // ── 4. Множество операций плана ──
+        const planSet = new Set([...plan.add, ...plan.regen]);
+        const addSet = new Set(plan.add);
+
+        // ── 5. Топосорт (Кан) только среди операций плана ──
+        // Учитываем только зависимости ВНУТРИ плана
+        const inDegree = {};
+        const adjList = {};
+        for (const key of planSet) {
+          inDegree[key] = 0;
+          adjList[key] = [];
+        }
+        for (const key of planSet) {
+          const predSet = preds[key] || new Set();
+          for (const pred of predSet) {
+            if (planSet.has(pred) && pred !== key) {
+              adjList[pred].push(key);
+              inDegree[key]++;
+            }
+          }
+        }
+
+        // Вторичная сортировка по каноническому порядку
+        const TOPO = (p.generationOrder === "genetic")
+          ? SECTION_TOPO_ORDER_GENETIC
+          : SECTION_TOPO_ORDER_ARCHITECTURAL;
+
+        const queue = [...planSet]
+          .filter(k => inDegree[k] === 0)
+          .sort((a, b) => (TOPO[a] ?? 99) - (TOPO[b] ?? 99));
+        const order = [];
+
+        while (queue.length) {
+          const node = queue.shift();
+          order.push({
+            key: node,
+            action: addSet.has(node) ? "add" : "regen",
+          });
+          for (const succ of (adjList[node] || []).sort((a, b) =>
+            (TOPO[a] ?? 99) - (TOPO[b] ?? 99)
+          )) {
+            inDegree[succ]--;
+            if (inDegree[succ] === 0) {
+              const pos = queue.findIndex(q => (TOPO[q] ?? 99) > (TOPO[succ] ?? 99));
+              if (pos === -1) queue.push(succ);
+              else queue.splice(pos, 0, succ);
+            }
+          }
+        }
+
+        // Цикл: если что-то не вошло (циклическая зависимость) — добавляем в конец
+        for (const key of planSet) {
+          if (!order.some(o => o.key === key)) {
+            order.push({ key, action: addSet.has(key) ? "add" : "regen" });
+          }
+        }
+
+        return order;
+      }
+
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:buildCtxKeyConsumers
+// philosynth.html строки 9690–9735 ─────
       function buildCtxKeyConsumers() {
         const consumers = {};
         // Используем актуальные зависимости (учитывают generationOrder, level, method)
@@ -124,7 +285,8 @@
         return consumers;
       }
 
-// ───── [canonicalSubsectionKey] philosynth.html строки 9753–9759 ─────
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:canonicalSubsectionKey
+// philosynth.html строки 9753–9759 ─────
       function canonicalSubsectionKey(sectionKey, subsectionName) {
         if (sectionKey === "sum" &&
             _SUM_PORTRAIT_VARIANTS.has(subsectionName)) {
@@ -133,7 +295,8 @@
         return subsectionName;
       }
 
-// ───── [buildFactualDepsMap] philosynth.html строки 5501–5536 ─────
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:buildFactualDepsMap
+// philosynth.html строки 5501–5536 ─────
       function buildFactualDepsMap(log) {
         if (!log || !log.length) return {};
 
@@ -171,7 +334,8 @@
         return map;
       }
 
-// ───── [computeFactualDependents] philosynth.html строки 5544–5565 ─────
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:computeFactualDependents
+// philosynth.html строки 5544–5565 ─────
       function computeFactualDependents(factualDeps) {
         const result = {};
 
@@ -195,39 +359,8 @@
         return result;
       }
 
-// ───── [recalcEditPlan] philosynth.html строки 19053–19082 ─────
-      function recalcEditPlan() {
-        const plan = { regen: [], remove: [], add: [] };
-        const order = DOC_STATE.sectionOrder.filter(k => k !== "sum");
-
-        for (const key of order) {
-          if (document.getElementById("editRegen-" + key)?.checked) plan.regen.push(key);
-          if (document.getElementById("editDelete-" + key)?.checked) plan.remove.push(key);
-        }
-        const available = typeof getAvailableSectionsToAdd === "function"
-          ? getAvailableSectionsToAdd() : [];
-        for (const key of available) {
-          if (document.getElementById("editAdd-" + key)?.checked) plan.add.push(key);
-        }
-
-        // ── Режимы ──
-        plan.modeRegen = [];
-        plan.modeRemove = [];
-        for (const [modeKey, results] of Object.entries(DOC_STATE.modes || {})) {
-          if (!Array.isArray(results)) continue;
-          for (let i = 0; i < results.length; i++) {
-            if (document.getElementById(`editRegenMode-${modeKey}-${i}`)?.checked)
-              plan.modeRegen.push([modeKey, i]);
-            if (document.getElementById(`editDeleteMode-${modeKey}-${i}`)?.checked)
-              plan.modeRemove.push([modeKey, i]);
-          }
-        }
-
-        _editPlan = plan;
-        updateEditPlanUI();
-      }
-
-// ───── [updateLiveCascade] philosynth.html строки 19139–19505 ─────
+// ───── Каскадный анализ (server/services/cascade-analyzer.ts) · js:updateLiveCascade
+// philosynth.html строки 19139–19505 ─────
       function updateLiveCascade(plan) {
         const panel = document.getElementById("cascadePanel");
         const titleEl = document.getElementById("cascadeTitle");
@@ -596,104 +729,77 @@
         panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
 
-// ───── [buildPlanOrder] philosynth.html строки 20495–20578 ─────
-      function buildPlanOrder(plan) {
-        const p = DOC_STATE.params;
-        if (!p) return [
-          ...plan.add.map(k => ({ key: k, action: "add" })),
-          ...plan.regen.map(k => ({ key: k, action: "regen" })),
-        ];
-
-        // ── 1. Будущий набор разделов (после удалений + добавлений) ──
-        const removeSet = new Set(plan.remove);
-        const futureSections = [
-          ...DOC_STATE.sectionOrder.filter(k => k !== "sum" && !removeSet.has(k)),
-          ...plan.add,
-        ];
-
-        // ── 2. Граф зависимостей для будущего состояния ──
-        const futureParams = { ...p, sec: futureSections };
-        const futureResolved = resolveContextDeps(futureParams);
-        const futureEffDeps = buildEffectiveDeps(
-          futureSections, futureResolved,
-          p.generationOrder
-        );
-
-        // ── 3. Predecessors — для каждого раздела: от кого он зависит ──
-        const preds = computePredecessors(futureEffDeps);
-
-        // ── 4. Множество операций плана ──
-        const planSet = new Set([...plan.add, ...plan.regen]);
-        const addSet = new Set(plan.add);
-
-        // ── 5. Топосорт (Кан) только среди операций плана ──
-        // Учитываем только зависимости ВНУТРИ плана
-        const inDegree = {};
-        const adjList = {};
-        for (const key of planSet) {
-          inDegree[key] = 0;
-          adjList[key] = [];
-        }
-        for (const key of planSet) {
-          const predSet = preds[key] || new Set();
-          for (const pred of predSet) {
-            if (planSet.has(pred) && pred !== key) {
-              adjList[pred].push(key);
-              inDegree[key]++;
-            }
-          }
-        }
-
-        // Вторичная сортировка по каноническому порядку
-        const TOPO = (p.generationOrder === "genetic")
-          ? SECTION_TOPO_ORDER_GENETIC
-          : SECTION_TOPO_ORDER_ARCHITECTURAL;
-
-        const queue = [...planSet]
-          .filter(k => inDegree[k] === 0)
-          .sort((a, b) => (TOPO[a] ?? 99) - (TOPO[b] ?? 99));
-        const order = [];
-
-        while (queue.length) {
-          const node = queue.shift();
-          order.push({
-            key: node,
-            action: addSet.has(node) ? "add" : "regen",
-          });
-          for (const succ of (adjList[node] || []).sort((a, b) =>
-            (TOPO[a] ?? 99) - (TOPO[b] ?? 99)
-          )) {
-            inDegree[succ]--;
-            if (inDegree[succ] === 0) {
-              const pos = queue.findIndex(q => (TOPO[q] ?? 99) > (TOPO[succ] ?? 99));
-              if (pos === -1) queue.push(succ);
-              else queue.splice(pos, 0, succ);
-            }
-          }
-        }
-
-        // Цикл: если что-то не вошло (циклическая зависимость) — добавляем в конец
-        for (const key of planSet) {
-          if (!order.some(o => o.key === key)) {
-            order.push({ key, action: addSet.has(key) ? "add" : "regen" });
-          }
-        }
-
-        return order;
+// ───── Реэкспорт из 1.1 — не портируется заново, нужен для сверки сигнатуры · js:sourceOf
+// philosynth.html строки 6410–6412 ─────
+      function sourceOf(ctxKey) {
+        return ctxKey.split(":")[0];
       }
 
-// ───── [computeSectionWarnings] philosynth.html строки 6616–6629 ─────
-      function computeSectionWarnings(resolvedDeps) {
-        const warnings = {};
-        for (const [sec, deps] of Object.entries(resolvedDeps)) {
-          const secId = "sec" + sec.charAt(0).toUpperCase() + sec.slice(1);
-          const needs = [...new Set(
-            deps.required
-              .map(k => sourceOf(k))
-              .filter(src => src !== "sum")
-              .map(src => "sec" + src.charAt(0).toUpperCase() + src.slice(1))
-          )];
-          warnings[secId] = { needs, label: SECTION_LABELS[secId] ?? sec };
+// ───── Планирование правки (server/services/edit-planner.ts) · js:recalcEditPlan
+// philosynth.html строки 19053–19082 ─────
+      function recalcEditPlan() {
+        const plan = { regen: [], remove: [], add: [] };
+        const order = DOC_STATE.sectionOrder.filter(k => k !== "sum");
+
+        for (const key of order) {
+          if (document.getElementById("editRegen-" + key)?.checked) plan.regen.push(key);
+          if (document.getElementById("editDelete-" + key)?.checked) plan.remove.push(key);
         }
-        return warnings;
+        const available = typeof getAvailableSectionsToAdd === "function"
+          ? getAvailableSectionsToAdd() : [];
+        for (const key of available) {
+          if (document.getElementById("editAdd-" + key)?.checked) plan.add.push(key);
+        }
+
+        // ── Режимы ──
+        plan.modeRegen = [];
+        plan.modeRemove = [];
+        for (const [modeKey, results] of Object.entries(DOC_STATE.modes || {})) {
+          if (!Array.isArray(results)) continue;
+          for (let i = 0; i < results.length; i++) {
+            if (document.getElementById(`editRegenMode-${modeKey}-${i}`)?.checked)
+              plan.modeRegen.push([modeKey, i]);
+            if (document.getElementById(`editDeleteMode-${modeKey}-${i}`)?.checked)
+              plan.modeRemove.push([modeKey, i]);
+          }
+        }
+
+        _editPlan = plan;
+        updateEditPlanUI();
       }
+
+// ───── (отложены из 1.1 сознательно — требуют каскадного анализа) · js:estimateCascadeWaveCost
+// philosynth.html строки 7912–7925 ─────
+      function estimateCascadeWaveCost(entries) {
+        let totalCost = 0;
+        let items = 0;
+        for (const d of entries) {
+          if (d.subsection && d.section !== "capsule") {
+            const est = estimateSubsectionCost(d.section, d.subsection);
+            if (est) { totalCost += est.cost; items++; }
+          } else {
+            const est = estimateCost({ sections: [d.section] });
+            if (est) { totalCost += est.cost; items++; }
+          }
+        }
+        return items > 0 ? { cost: totalCost, items } : null;
+      }
+
+// ───── (отложены из 1.1 сознательно — требуют каскадного анализа) · js:formatWaveCost
+// philosynth.html строки 7928–7932 ─────
+      function formatWaveCost(est) {
+        if (!est) return "";
+        return "\nОценка стоимости: ≈ $" + est.cost.toFixed(4) +
+          " (" + (est.cost * 100).toFixed(2) + "¢), " + est.items + " запр.";
+      }
+
+// ───── updateLiveCascade без неё нечитаем · html:#cascadePanel
+// philosynth.html строки 4302–4309 ─────
+          <div class="cascade-panel" id="cascadePanel">
+            <div class="cascade-title">
+              <span>⚡</span>
+              <span id="cascadeTitle">Каскад зависимостей</span>
+            </div>
+            <div class="cascade-desc" id="cascadeDesc"></div>
+            <div class="cascade-list" id="cascadeList"></div>
+          </div>

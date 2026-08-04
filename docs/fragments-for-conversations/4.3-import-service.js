@@ -1,7 +1,13 @@
-// Фрагменты philosynth.html (26 024 стр., ревизия 2026-07) для беседы 4.3-import-service
-// Сгенерировано extract-fragments.py; при обновлении исходника — перегенерировать.
+// Фрагмент philosynth.html (26025 строк) — собран
+// scripts/extract-by-name.py по спецификации 4.3-import-service.spec.
+//
+// Номера строк ниже — РЕЗУЛЬТАТ поиска по именам, а не входные
+// данные: при правке исходника достаточно перезапустить сборку,
+// спецификация не устаревает. Имена берутся из
+// docs/04-code-reuse-map.md.
 
-// ───── [importHTML] philosynth.html строки 21282–21351 ─────
+// ───── Разбор импортируемого файла · js:importHTML
+// philosynth.html строки 21282–21351 ─────
       function importHTML(htmlString, filename) {
         // ── 1. Парсинг HTML ──
         const parser = new DOMParser();
@@ -73,7 +79,8 @@
           "состояние:", embeddedState ? "восстановлено" : "реконструировано");
       }
 
-// ───── [extractMetadata] philosynth.html строки 21356–21407 ─────
+// ───── Разбор импортируемого файла · js:extractMetadata
+// philosynth.html строки 21356–21407 ─────
       function extractMetadata(doc) {
         const getText = (id) => {
           const el = doc.getElementById(id);
@@ -127,7 +134,123 @@
         };
       }
 
-// ───── [extractEmbeddedState] philosynth.html строки 21534–21543 ─────
+// ───── Разбор импортируемого файла · js:validateImportMeta
+// philosynth.html строки 21416–21478 ─────
+      function validateImportMeta(meta, embeddedState) {
+        const warnings = [];
+
+        if (!meta.phil || meta.phil.length === 0) {
+          warnings.push({
+            field: "phil",
+            message: "Список философов не найден. Перегенерация разделов невозможна без него.",
+            critical: true,
+          });
+        }
+        /*
+        if (!meta.seed) {
+          warnings.push({
+            field: "seed",
+            message: "Зерно концепции не найдено. Его можно добавить, но тогда документ придётся перегенерировать весь заново.",
+            critical: false,
+          });
+        }
+        */
+        // method / synthLevel / depth — проверяем, был ли fallback
+        const methodDisplay = meta._raw?.methodDisplay || "";
+        const depthDisplay = meta._raw?.depthDisplay || "";
+        const synthDisplay = meta._raw?.synthDisplay || "";
+
+        if (!methodDisplay || !REVERSE_ML[methodDisplay]) {
+          warnings.push({
+            field: "method",
+            message: `Метод синтеза не распознан (найдено: «${methodDisplay || "—"}»). Подставлен «Диалектический» по умолчанию.`,
+            critical: false,
+          });
+        }
+
+        if (!depthDisplay || !REVERSE_DL[depthDisplay]) {
+          warnings.push({
+            field: "depth",
+            message: `Глубина не распознана (найдено: «${depthDisplay || "—"}»). Подставлена «Стандартная» по умолчанию.`,
+            critical: false,
+          });
+        }
+
+        if (!synthDisplay || !REVERSE_SL[synthDisplay]) {
+          warnings.push({
+            field: "synthLevel",
+            message: `Уровень синтеза не распознан (найдено: «${synthDisplay || "—"}»). Подставлен «Сравнительный» по умолчанию.`,
+            critical: false,
+          });
+        }
+
+        if (!meta.ctx) {
+          // Не критично — контекст опционален
+        }
+
+        if (!embeddedState) {
+          warnings.push({
+            field: "log",
+            message: "Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. " +
+              "Лог начнёт накапливаться заново при редактировании.",
+            critical: false,
+          });
+        }
+
+        return warnings;
+      }
+
+// ───── Разбор импортируемого файла · js:extractSections
+// philosynth.html строки 21484–21529 ─────
+      function extractSections(doc) {
+        const sections = [];
+
+        // Ищем все .doc-body контейнеры внутри #docBodies (или потомки #docOutput)
+        const docBodies = doc.getElementById("docBodies") || doc.getElementById("docOutput");
+        if (!docBodies) return sections;
+
+        // Контейнеры могут быть .doc-body или непосредственно .doc-section
+        const sectionEls = docBodies.querySelectorAll(".doc-section");
+
+        sectionEls.forEach((secEl) => {
+          const numText = secEl.querySelector(".section-num")?.textContent?.trim() || "";
+          const titleText = secEl.querySelector(".section-title")?.textContent?.trim() || "";
+          const numMatch = numText.match(/§\s*(\d+)/);
+          const num = numMatch ? parseInt(numMatch[1], 10) : 0;
+
+          const key = titleToKey(titleText);
+          if (!key) {
+            console.warn("Импорт: не удалось определить ключ для раздела «" + titleText + "» — пропущен.");
+            return;
+          }
+
+          // Извлекаем доп. контекст раздела (если есть <details class="sec-disclosure">)
+          let secCtx = "";
+          // Ищем в родительском .doc-body
+          const parentBody = secEl.closest(".doc-body") || secEl.parentElement;
+          if (parentBody) {
+            const disc = parentBody.querySelector("details.sec-disclosure");
+            if (disc) {
+              secCtx = disc.querySelector(".disclosure-body")?.textContent?.trim() || "";
+            }
+          }
+
+          // HTML всего контейнера (.doc-body), включая disclosure
+          const containerHTML = parentBody
+            ? parentBody.innerHTML
+            : secEl.outerHTML;
+
+          sections.push({ key, num, title: titleText, html: containerHTML, secCtx });
+        });
+
+        // Сортируем по номеру §
+        sections.sort((a, b) => a.num - b.num);
+
+        return sections;
+      }
+
+// ───── Разбор импортируемого файла · js:extractEmbeddedState
+// philosynth.html строки 21534–21543 ─────
       function extractEmbeddedState(doc) {
         const stateEl = doc.getElementById("philosynth-state");
         if (!stateEl) return null;
@@ -139,7 +262,117 @@
         }
       }
 
-// ───── [buildDocStateFromImport] philosynth.html строки 21661–21863 ─────
+// ───── Разбор импортируемого файла · js:extractModesFromHTML
+// philosynth.html строки 21550–21586 ─────
+      function extractModesFromHTML(doc) {
+        const modes = {};
+        
+        // Формат 1 (новый, §5): данные в <script> как DOC_STATE.modes = {...}
+        const scripts = doc.querySelectorAll("script");
+        for (const s of scripts) {
+          const match = s.textContent.match(/DOC_STATE\s*=\s*\{\s*modes:\s*(\{[\s\S]*?\})\s*\}/);
+          if (match) {
+            try {
+              const parsed = JSON.parse(match[1]);
+              for (const [key, results] of Object.entries(parsed)) {
+                modes[key] = Array.isArray(results) ? results : [];
+              }
+              return modes;
+            } catch (e) { console.warn("Не удалось распарсить DOC_STATE.modes:", e); }
+          }
+        }
+        
+        // Формат 2 (§3+§5): <div class="philosynth-mode"> или <details class="philosynth-mode"> с data-атрибутами
+        const details = doc.querySelectorAll(".philosynth-mode[data-mode-key]");
+        for (const det of details) {
+          const key = det.getAttribute("data-mode-key");
+          if (!key) continue;
+          if (!modes[key]) modes[key] = [];
+          const body = det.querySelector(".philosynth-mode-body");
+          modes[key].push({
+            html: body ? body.innerHTML : det.innerHTML,
+            param: det.getAttribute("data-mode-param") || "",
+            timestamp: det.getAttribute("data-mode-timestamp") || "",
+          });
+        }
+        if (Object.keys(modes).length > 0) return modes;
+        
+        // Формат 3 (старый): обычные <details> без атрибутов — не парсятся,
+        // данные берутся из JSON-состояния в buildDocStateFromImport
+        return modes;
+      }
+
+// ───── Восстановление состояния · js:populateFromImport
+// philosynth.html строки 21591–21656 ─────
+      function populateFromImport(importedDocOutput, meta, sections, embeddedState, filename) {
+        // ── Шапка документа ──
+        document.getElementById("docTitle").textContent =
+          importedDocOutput.querySelector("#docTitle")?.textContent || "Импортированный документ";
+        document.getElementById("docSubtitle").textContent =
+          importedDocOutput.querySelector("#docSubtitle")?.textContent || "—";
+        document.getElementById("docNum").textContent = meta.docNum || "IMPORT";
+        document.getElementById("docDate").textContent =
+          importedDocOutput.querySelector("#docDate")?.textContent || new Date().toLocaleDateString("ru-RU");
+        document.getElementById("docMethod").textContent = ML[meta.method] || meta.method;
+        document.getElementById("docDepth").textContent = DL[meta.depth] || meta.depth;
+        document.getElementById("docSynthLevel").textContent = SL[meta.synthLevel] || meta.synthLevel;
+
+        // Зерно и контекст в шапке
+        buildDocHeaderExtras(meta.seed, meta.ctx);
+
+        // ── Тело документа ──
+        const db = document.getElementById("docBodies");
+        db.innerHTML = "";
+
+        sections.forEach((sec, i) => {
+          const container = document.createElement("div");
+          container.className = "doc-body";
+          container.id = "db" + i;
+          container.setAttribute("data-section-key", sec.key);
+          if (i > 0) container.style.borderTop = "none";
+          container.innerHTML = sec.html;
+          db.appendChild(container);
+        });
+
+        // ── Футер ──
+        document.getElementById("footerPhil").textContent = meta.phil.join(", ");
+        document.getElementById("sessionId").textContent = meta.docNum || "IMPORT";
+        document.getElementById("docFooter").style.display = "flex";
+
+        // Стоимость из встроенного состояния
+        if (embeddedState?.genLog) {
+          const totals = embeddedState.genLog.reduce((a, g) => ({
+            inT: a.inT + (g.inputTokens || 0),
+            outT: a.outT + (g.outputTokens || 0),
+            cost: a.cost + (g.cost || 0),
+          }), { inT: 0, outT: 0, cost: 0 });
+          totalInputTokens = totals.inT;
+          totalOutputTokens = totals.outT;
+        } else {
+          totalInputTokens = 0;
+          totalOutputTokens = 0;
+        }
+        updateFooterCost();
+
+        // ── Синхронизируем форму ввода ──
+        syncFormFromImport(meta, sections, embeddedState);
+
+        // ── Индикатор импорта ──
+        const indicator = document.getElementById("importIndicator");
+        if (indicator) {
+          indicator.textContent = "↑ ИМПОРТ" + (filename ? ": " + filename : "");
+          indicator.classList.add("visible");
+        }
+
+        // ── Показываем документ ──
+        document.getElementById("outputWrap").classList.add("visible");
+        document.getElementById("progressPanel").classList.remove("visible");
+        document.getElementById("outputWrap")
+          .scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+// ───── Восстановление состояния · js:buildDocStateFromImport
+// philosynth.html строки 21661–21863 ─────
       function buildDocStateFromImport(meta, sections, embeddedState, doc) {
         resetDocState();
 
@@ -344,7 +577,8 @@
         setTimeout(buildTableOfContents, 100);
       }
 
-// ───── [restoreCapsulesFromHTML] philosynth.html строки 11745–11770 ─────
+// ───── Восстановление состояния · js:restoreCapsulesFromHTML
+// philosynth.html строки 11745–11770 ─────
       function restoreCapsulesFromHTML(node, doc) {
         if (!node || node.type === "philosopher") return;
 
@@ -372,7 +606,8 @@
         if (node.participants) node.participants.forEach(fill);
       }
 
-// ───── [updateSchemaBadgeInHeader] philosynth.html строки 10421–10445 ─────
+// ───── Восстановление состояния · js:updateSchemaBadgeInHeader
+// philosynth.html строки 10421–10445 ─────
       function updateSchemaBadgeInHeader(schemaId) {
         const container = document.getElementById("docHeaderExtras");
         if (!container) return;
@@ -399,7 +634,8 @@
         container.appendChild(span);
       }
 
-// ───── [normalizeGenealogyNames] philosynth.html строки 22298–22315 ─────
+// ───── Восстановление состояния · js:normalizeGenealogyNames
+// philosynth.html строки 22298–22315 ─────
       function normalizeGenealogyNames(node, fallbackName) {
         if (!node) return null;
         if (node.type === "philosopher") return { ...node };
@@ -417,4 +653,207 @@
           );
         }
         return copy;
+      }
+
+// ───── Восстановление состояния · js:refreshSumDef
+// philosynth.html строки 5808–5820 ─────
+      function refreshSumDef() {
+        const p = DOC_STATE.params;
+        if (!p || !DOC_STATE.sectionDefs["sum"]) return;
+        const fullP = { ...p, sec: DOC_STATE.sectionOrder.filter(k => k !== "sum") };
+        const allDefs = buildSectionDefs(fullP);
+        patchPromptsWithSecCtx(allDefs, fullP.secCtx || {});
+        const newSumDef = allDefs.find(d => d.key === "sum");
+        if (newSumDef) {
+          // Сохраняем номер из текущего состояния
+          newSumDef.num = DOC_STATE.sectionDefs["sum"].num;
+          DOC_STATE.sectionDefs["sum"] = newSumDef;
+        }
+      }
+
+// ───── Восстановление состояния · js:resolveConceptName
+// philosynth.html строки 22248–22286 ─────
+      function resolveConceptName(doc) {
+        const titleEl = (doc && doc.getElementById)
+          ? doc.getElementById("docTitle")
+          : document.getElementById("docTitle");
+        const rawTitle = titleEl?.textContent?.trim() || "";
+        if (!isPlaceholderConceptName(rawTitle)) return rawTitle;
+
+        // Ищем секцию «name» и внутри — раздел «итогов/рекоменд», как
+        // делает updateDocTitleFromName. Источник — DOM импортируемого doc.
+        const scope = doc || document;
+        // Секции помечены data-section-key
+        let nameContainer = null;
+        const bodyEls = scope.querySelectorAll?.(".doc-body[data-section-key]");
+        if (bodyEls) {
+          for (const el of bodyEls) {
+            const keys = (el.getAttribute("data-section-key") || "").split("+");
+            if (keys.includes("name")) { nameContainer = el; break; }
+          }
+        }
+        if (!nameContainer) return null;
+
+        const divs = nameContainer.querySelectorAll("div[data-section]");
+        let recSection = null;
+        for (const div of divs) {
+          const sec = (div.getAttribute("data-section") || "").toLowerCase();
+          if (sec.includes("итогов") || sec.includes("рекоменд")) { recSection = div; break; }
+        }
+        const strong = recSection
+          ? recSection.querySelector("strong")
+          : nameContainer.querySelector("strong");
+        let nameText = strong?.textContent?.trim() || "";
+        if (!nameText) return null;
+        nameText = nameText
+          .replace(/^(?:итогов\w+\s+рекомендаци\w*|рекомендуем\w+\s+названи\w*|названи\w+\s*концепци\w*)\s*[:：]\s*/i, "")
+          .replace(/^[«""]|[»""]$/g, "")
+          .split(/\s*[:：]\s*/)[0]
+          .trim();
+        return nameText || null;
+      }
+
+// ───── Загрузка через Unified Concept Pool (клиентские точки входа, 1.5b) · js:handlePoolFileImport
+// philosynth.html строки 4948–4977 ─────
+
+      function handlePoolFileImport(input) {
+        const files = Array.from(input.files || []);
+        input.value = "";
+        let loaded = 0, errors = 0;
+
+        for (const file of files) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const entry = parseConceptFile(reader.result, file.name);
+              if (addToPool(entry)) loaded++;
+            } catch (err) {
+              errors++;
+              console.error("Ошибка импорта «" + file.name + "»:", err);
+              setPoolStatus("⚠ " + file.name + ": " + err.message, "err");
+            }
+            // Итог после всех файлов
+            if (loaded + errors === files.length && loaded > 0) {
+              setPoolStatus("✓ Загружено: " + loaded +
+                (errors ? ", ошибок: " + errors : ""), loaded ? "ok" : "err");
+            }
+          };
+          reader.onerror = () => {
+            errors++;
+            setPoolStatus("⚠ Не удалось прочитать: " + file.name, "err");
+          };
+          reader.readAsText(file);
+        }
+      }
+
+// ───── Загрузка через Unified Concept Pool (клиентские точки входа, 1.5b) · js:handlePoolUrlImport
+// philosynth.html строки 4978–5007 ─────
+
+      async function handlePoolUrlImport() {
+        const input = document.getElementById("poolUrlInput");
+        const rawUrl = input?.value?.trim();
+        if (!rawUrl) { setPoolStatus("⚠ Введите URL", "err"); return; }
+
+        let url;
+        try {
+          url = new URL(rawUrl);
+          if (!["http:", "https:"].includes(url.protocol)) throw new Error();
+        } catch {
+          setPoolStatus("⚠ Некорректный URL", "err"); return;
+        }
+
+        setPoolStatus("Загрузка...", "");
+        const filename = url.pathname.split("/").pop() || "import.html";
+
+        try {
+          const htmlString = await fetchWithFallback(url.href,
+            document.getElementById("poolStatus"));
+          if (!htmlString || !htmlString.includes("<"))
+            throw new Error("Ответ не содержит HTML.");
+          const entry = parseConceptFile(htmlString, filename);
+          addToPool(entry);
+          setPoolStatus("✓ Загружено: " + filename, "ok");
+          input.value = "";
+        } catch (err) {
+          setPoolStatus("⚠ " + err.message, "err");
+        }
+      }
+
+// ───── Индикатор импортированного документа · css*:.import-
+// philosynth.html строки 2631–2641 ─────
+      .import-indicator {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--violet);
+        background: var(--violet-light);
+        border: 1px solid rgba(107, 0, 170, 0.25);
+        padding: 3px 10px;
+        display: none;
+      }
+
+// ───── Индикатор импортированного документа · css*:.import-
+// philosynth.html строки 2642–2644 ─────
+      .import-indicator.visible {
+        display: inline-block;
+      }
+
+// ───── Индикатор импортированного документа · css*:.import-
+// philosynth.html строки 2647–2657 ─────
+      .import-url-input {
+        flex: 1;
+        border: 1px solid var(--rule-strong);
+        background: var(--white);
+        padding: 7px 12px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink);
+        outline: none;
+        transition: border-color 0.15s;
+      }
+
+// ───── Индикатор импортированного документа · css*:.import-
+// philosynth.html строки 2658–2661 ─────
+      .import-url-input:focus {
+        border-color: var(--violet);
+        box-shadow: 0 0 0 3px rgba(107, 0, 170, 0.08);
+      }
+
+// ───── Индикатор импортированного документа · css*:.import-
+// philosynth.html строки 2662–2665 ─────
+      .import-url-input::placeholder {
+        color: var(--ink-dim);
+        font-size: 11px;
+      }
+
+// ───── Индикатор импортированного документа · css*:.import-
+// philosynth.html строки 2666–2679 ─────
+      .import-url-btn {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        background: transparent;
+        border: 1px solid var(--rule-strong);
+        padding: 8px 16px;
+        cursor: pointer;
+        color: var(--ink-mid);
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+
+// ───── Индикатор импортированного документа · css*:.import-
+// philosynth.html строки 2680–2683 ─────
+      .import-url-btn:hover {
+        border-color: var(--violet);
+        color: var(--violet);
+      }
+
+// ───── Индикатор импортированного документа · css*:.import-
+// philosynth.html строки 2684–2687 ─────
+      .import-url-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
       }

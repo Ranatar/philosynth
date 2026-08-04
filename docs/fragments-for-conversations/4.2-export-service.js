@@ -1,382 +1,398 @@
-// Фрагменты philosynth.html (26 024 стр., ревизия 2026-07) для беседы 4.2-export-service
-// Сгенерировано extract-fragments.py; при обновлении исходника — перегенерировать.
+// Фрагмент philosynth.html (26025 строк) — собран
+// scripts/extract-by-name.py по спецификации 4.2-export-service.spec.
+//
+// Номера строк ниже — РЕЗУЛЬТАТ поиска по именам, а не входные
+// данные: при правке исходника достаточно перезапустить сборку,
+// спецификация не устаревает. Имена берутся из
+// docs/04-code-reuse-map.md.
 
-// ───── [auditCSS] philosynth.html строки 17836–18002 ─────
-      function auditCSS(cssText, contentToCheck) {
- 
-        // ── 1. Парсер CSS ──────────────────────────────────────────────
-        // Нужен только чтобы найти границы правил.
-        // Возвращает плоское дерево: rule / keyframes / at-cond / at-block / at-simple / comment
-        function parseCSS(css) {
-          let i = 0;
-          const len = css.length;
-       
-          function readComment() {
-            let s = '/*'; i += 2;
-            while (i < len - 1) {
-              if (css[i] === '*' && css[i+1] === '/') { s += '*/'; i += 2; return s; }
-              s += css[i++];
-            }
-            return s;
+// ───── Экспорт документа · js:saveHTML
+// philosynth.html строки 18002–18192 ─────
+
+      function saveHTML() {
+
+        // Базовое имя файла фиксируется на момент сохранения (без расширения)
+        const filenameBase = getDocFilename("html").replace(/\.html$/, "");
+
+        // Граф-секция: модаль + сериализованные функции
+        const graphSection = buildGraphExportSection(G, filenameBase);
+
+        // Кнопки графа — вставляем в начало раздела db{graphBodyIdx},
+        // чтобы они стояли непосредственно перед таблицами графа
+        let docHTML = document.getElementById("docOutput").innerHTML;
+        if (G.nodes.length > 0 && graphBodyIdx >= 0) {
+          // Удаляем старые кнопки графа (от предыдущих сохранений)
+          docHTML = docHTML.replace(
+            /<div[^>]*>\s*<button[^>]*onclick="openGraph\(\)"[^>]*>[^<]*<\/button>\s*<\/div>/g,
+            ""
+          );
+
+          const graphBtnHTML =
+            `<div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 0 8px">` +
+            `<button class="action-btn gold-btn" onclick="openGraph()">▦ Граф категорий</button>` +
+            `</div>`;
+          const marker = `id="db${graphBodyIdx}"`;
+          const markerPos = docHTML.indexOf(marker);
+          if (markerPos !== -1) {
+            const closeAngle = docHTML.indexOf(">", markerPos);
+            docHTML =
+              docHTML.slice(0, closeAngle + 1) +
+              graphBtnHTML +
+              docHTML.slice(closeAngle + 1);
           }
-       
-          function readUntil(stops) {
-            let s = '';
-            while (i < len) {
-              if (css[i] === '/' && css[i+1] === '*') { readComment(); continue; }
-              if (stops.indexOf(css[i]) !== -1) return s;
-              s += css[i++];
-            }
-            return s;
-          }
-       
-          function readBlock() {
-            let depth = 1, s = '';
-            while (i < len) {
-              if (css[i] === '/' && i+1 < len && css[i+1] === '*') { s += readComment(); continue; }
-              if (css[i] === '{') depth++;
-              if (css[i] === '}') { if (!--depth) { i++; return s; } }
-              s += css[i++];
-            }
-            return s;
-          }
-       
-          const rules = [];
-       
-          while (i < len) {
-            while (i < len && /\s/.test(css[i])) i++;
-            if (i >= len) break;
-       
-            if (css[i] === '/' && css[i+1] === '*') {
-              rules.push({ type: 'comment', raw: readComment() }); continue;
-            }
-       
-            if (css[i] === '@') {
-              i++;
-              let kw = '';
-              while (i < len && /[a-zA-Z-]/.test(css[i])) kw += css[i++];
-              while (i < len && /\s/.test(css[i])) i++;
-              const prelude = readUntil(['{', ';']).trim();
-       
-              if (i < len && css[i] === ';') {
-                i++;
-                rules.push({ type: 'at-simple', kw, prelude }); continue;
-              }
-              if (i < len && css[i] === '{') {
-                i++;
-                const body = readBlock();
-                if (/^(-\w+-)?keyframes$/.test(kw)) {
-                  rules.push({ type: 'keyframes', name: prelude, body });
-                } else if (kw === 'media' || kw === 'supports' || kw === 'layer') {
-                  rules.push({ type: 'at-cond', kw, prelude, inner: parseCSS(body) });
-                } else {
-                  rules.push({ type: 'at-block', kw, prelude, body });
+        }
+
+        // ── Режимы: вычисляем ДО CSS-аудита, чтобы стили не были удалены ──
+        const modesSection = buildModesExportSection();
+
+        // CSS-аудит: контент = всё что уйдёт в файл
+        const contentToCheck = docHTML + graphSection + (modesSection || "");
+
+        const rawCSS = Array.from(document.querySelectorAll("style"))
+          .map(function(s) { return s.textContent; })
+          .join("\n");
+
+        const styles = "<style>\n" + auditCSS(rawCSS, contentToCheck) + "\n</style>";
+
+        const tocEl = document.getElementById("docTOC");
+        if (tocEl) tocEl.remove();
+        document.querySelectorAll("#docBodies .toc-back-btn").forEach(el => el.remove());
+
+        const cleanParticipants = (DOC_STATE.participants || []).map(x => {
+          if (x.type === "philosopher") return x;
+          // Санитайзим x.genealogy: (а) strip капсул — закрываем асимметрию
+          // между корневым genealogy (который уже санитайзится ниже) и
+          // genealogy внутри participants; (б) normalize имён — обрезаем
+          // транзитивное распространение дефолта «Синтез Философской Концепции»
+          // в многоступенчатых синтезах. Оба шага не мутируют исходный объект.
+          const safeGenealogy = x.genealogy
+            ? normalizeGenealogyNames(
+                stripCapsulesFromGenealogy(x.genealogy),
+                x.name
+              )
+            : null;
+          return {
+            type: x.type, name: x.name, method: x.method,
+            synthLevel: x.synthLevel, seed: x.seed, genealogy: safeGenealogy,
+            // generationOrder сохраняем, чтобы он был доступен как fallback
+            // при построении genealogy в будущих метасинтезах (для случаев,
+            // когда у участника нет собственной genealogy-структуры).
+            generationOrder: x.generationOrder,
+            // НЕ включаем: capsule, goals, tensions, graphNodes, graphEdges,
+            //   dialogueConcepts, dialogueSynthesis, glossaryCompact, thesesSummary,
+            //   portraits
+            _filename: x._filename, _nodeCount: x._nodeCount, _thesesCount: x._thesesCount,
+          };
+        });
+
+        // ── Встраиваем состояние для импорта ──
+        let stateJSON = "";
+        try {
+          const stateData = {
+            version: 2,
+            parentContextSchema: PARENT_CONTEXT_SCHEMA_ID,
+            parentContextSchemaVersion: PARENT_CONTEXT_SCHEMA_VERSION,
+            genLog: genLog.map(g => {
+              const { _sys, _promptSkeleton, ...rest } = g;
+              return rest;
+            }),
+            ctxLog: ctxLog,
+            genCommon: genCommon,
+            params: DOC_STATE.ready ? DOC_STATE.params : null,
+            sectionOrder: DOC_STATE.ready ? DOC_STATE.sectionOrder : null,
+            editedSections: DOC_STATE.ready ? [...DOC_STATE.editedSections] : [],
+            docVersion: DOC_STATE.docVersion || 1,
+            participants: cleanParticipants,
+            genealogy: normalizeGenealogyNames(
+              stripCapsulesFromGenealogy(DOC_STATE.genealogy),
+              document.getElementById("docTitle")?.textContent?.trim()
+            ),
+            structureSections: DOC_STATE.structureSections || null,
+            pausedState: DOC_STATE.pausedState || null,
+          };
+          stateJSON = `\n<script type="application/json" id="philosynth-state">\n${JSON.stringify(stateData, null, 2)}\n<\/script>`;
+
+          // ── Видимый лог контекста ──
+          if (genLog.length > 0 || ctxLog.length > 0) {
+            // Сериализуем функции и константы — лог строится на лету из состояния
+            const logBundle = [
+              formatVersion,
+              formatCtxLog,
+              colorizeLog,
+            ].map(fn => fn.toString()).join("\n\n");
+          
+            const logConstants = [
+              ["CTX_LABELS", CTX_LABELS],
+              ["KEY_LABELS", KEY_LABELS],
+            ].map(([name, val]) => `var ${name} = ${JSON.stringify(val)};`)
+             .join("\n");
+          
+            stateJSON += `\n<details style="
+              max-width:1100px; margin:20px auto 0;
+              border:1px solid #d8d4cc; background:#1a1814;
+            ">
+              <summary style="
+                padding:10px 18px; cursor:pointer;
+                font-family:'IBM Plex Mono',monospace; font-size:10px;
+                letter-spacing:2px; text-transform:uppercase;
+                color:#8a8278; background:#f2f0eb;
+                list-style:none; display:flex; align-items:center; gap:6px;
+                user-select:none;
+              ">◈ Лог контекста и генерации</summary>
+              <div style="padding:20px; overflow-x:auto;">
+                <pre id="philosynth-log-raw" style="
+                  font-family:'IBM Plex Mono',monospace; font-size:11px;
+                  line-height:1.7; color:#c8c0b0; white-space:pre-wrap;
+                  word-break:break-all; margin:0;
+                "></pre>
+              </div>
+            </details>
+            <script>
+            (function(){
+              var stateEl = document.getElementById("philosynth-state");
+              if (!stateEl) return;
+              try {
+                var state = JSON.parse(stateEl.textContent);
+                var genLog = state.genLog || [];
+                var ctxLog = state.ctxLog || [];
+                var genCommon = state.genCommon || null;
+                var DOC_STATE = { docVersion: state.docVersion || 1 };
+          
+                ${logConstants}
+                ${logBundle}
+          
+                var el = document.getElementById("philosynth-log-raw");
+                if (el) {
+                  var plain = formatCtxLog();
+                  if (plain && plain.indexOf("Лог пуст") === -1) {
+                    el.innerHTML = colorizeLog(plain);
+                  } else {
+                    el.style.color = "#8a8278";
+                    el.textContent = plain;
+                  }
                 }
+              } catch(e) {
+                console.warn("Не удалось восстановить лог:", e);
+                var el = document.getElementById("philosynth-log-raw");
+                if (el) el.textContent = "Ошибка восстановления лога: " + e.message;
               }
-              continue;
+            })();
+            <\/script>`;
+          }
+        } catch (e) {
+          console.warn("Не удалось сериализовать состояние:", e);
+        }
+
+        // ── Режимы: модальное окно с вкладками ──
+        //if (modesSection) stateJSON += modesSection;
+
+        const docLang = DOC_STATE.params?.lang || GEN_LANG || "Russian";
+        const htmlLang = docLang === "Russian" ? "ru" :
+          GEN_LANG === "English" ? "en" :
+          GEN_LANG === "German" ? "de" :
+          GEN_LANG === "French" ? "fr" :
+          GEN_LANG === "Spanish" ? "es" :
+          GEN_LANG === "Chinese" ? "zh" :
+          GEN_LANG === "Japanese" ? "ja" :
+          GEN_LANG === "Latin" ? "la" : "en";
+        const html = `<!DOCTYPE html><html lang="${htmlLang}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${document.getElementById("docTitle").textContent}</title><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">${styles}<style>body{background:#f2f0eb;padding:32px}#docOutput{max-width:1100px;margin:0 auto}</style></head><body><div id="docOutput">${modesSection}${docHTML}</div>${graphSection}${stateJSON}</body></html>`;
+        downloadFile(html, getDocFilename("html"), "text/html");
+        buildTableOfContents();
+      }
+
+// ───── Экспорт документа · js:saveMD
+// philosynth.html строки 18197–18208 ─────
+      function saveMD() {
+        const lines = [];
+        lines.push(`# ${document.getElementById("docTitle").textContent}`);
+        lines.push(`\n> ${document.getElementById("docSubtitle").textContent}`);
+        lines.push(
+          `\n---\n\n| Параметр | Значение |\n|---|---|\n| Документ № | ${document.getElementById("docNum").textContent} |\n| Дата | ${document.getElementById("docDate").textContent} |\n| Метод | ${document.getElementById("docMethod").textContent} |\n| Глубина | ${document.getElementById("docDepth").textContent} |\n\n---\n`,
+        );
+        const db = document.getElementById("docBodies");
+        if (db) db.querySelectorAll(".doc-section").forEach((sec) => lines.push(sec2md(sec)));
+        lines.push(`\n---\n*PhiloSynth Pro™ · Документ сгенерирован Claude AI*`);
+        downloadFile(lines.join("\n"), getDocFilename("md"), "text/markdown");
+      }
+
+// ───── Экспорт документа · js:saveLang
+// philosynth.html строки 5844–5861 ─────
+
+      function saveLang() {
+        const sel = document.getElementById("langSelect").value;
+        if (sel === "__custom") {
+          const c = document.getElementById("customLangInput").value.trim();
+          if (!c) {
+            document.getElementById("langStatus").textContent = "⚠ Введите название языка";
+            document.getElementById("langStatus").style.color = "var(--red)";
+            return;
+          }
+          GEN_LANG = c;
+        } else {
+          GEN_LANG = sel;
+        }
+        localStorage.setItem("ps_gen_lang", GEN_LANG);
+        document.getElementById("langStatus").textContent = "✓ Язык генерации: " + GEN_LANG;
+        document.getElementById("langStatus").style.color = "var(--green-check)";
+      }
+
+// ───── Экспорт документа · js:getDocFilename
+// philosynth.html строки 17477–17529 ─────
+
+      function getDocFilename(ext) {
+        const num = document.getElementById("docNum")?.textContent?.trim() || "synthesis";
+
+        // ── Участники ──
+        const isMeta = DOC_STATE.participants?.some(x => x.type === "concept")
+                    || _conceptParticipants?.length > 0;
+
+        let namePart;
+        if (isMeta) {
+          const title = document.getElementById("docTitle")?.textContent?.trim();
+          if (title && title !== "Синтез Философской Концепции") {
+            namePart = transliterate(title).slice(0, 60);
+          } else {
+            const participants = DOC_STATE.participants || [
+              ...getPhil().map(() => ({ type: "philosopher" })),
+              ..._conceptParticipants.map(() => ({ type: "concept" })),
+            ];
+            const pc = participants.filter(x => x.type === "concept").length;
+            const pp = participants.filter(x => x.type === "philosopher").length;
+            namePart = "meta-" + pc + "c" + (pp > 0 ? pp + "p" : "");
+          }
+        } else {
+          const phil = DOC_STATE.ready && DOC_STATE.params?.phil
+            ? DOC_STATE.params.phil : getPhil();
+          namePart = phil.map(p => PHIL_FILENAME[p] || p).join("-");
+        }
+
+        // ── Параметры синтеза ──
+        const p = DOC_STATE.ready ? DOC_STATE.params : null;
+        const method = p?.method || document.getElementById("synthesisMethod")?.value || "";
+        const level  = p?.synthLevel || document.getElementById("synthesisLevel")?.value || "";
+        const order  = p?.generationOrder || document.getElementById("generationOrder")?.value || "";
+        const depth  = p?.depth || document.getElementById("depthLevel")?.value || ""; 
+
+        const paramCode = [
+          METHOD_CODE[method] || "",
+          LEVEL_CODE[level] || "",
+          ORDER_CODE[order] || "",
+          DEPTH_CODE[depth] || "",
+        ].filter(Boolean).join("");
+
+        // ── Версия ──
+        const verStr = formatVersionFilename(DOC_STATE.docVersion);
+        const ver = verStr !== "v1" ? "-" + verStr : "";
+
+        // ── Сборка ──
+        // PS-3950-G9OL-Kant-Heidegger-hm-t-2-v3-2m4-1.html
+        const docLang = DOC_STATE.params?.lang || GEN_LANG || "Russian";
+        const langSuffix = docLang === "Russian" ? "" : "-" + (docLang.slice(0, 2).toLowerCase());
+        const parts = [num, namePart, paramCode].filter(Boolean);
+        return parts.join("-") + ver + langSuffix + (ext ? "." + ext : "");
+      }
+
+// ───── Markdown-конвертация · js:sec2md
+// philosynth.html строки 18209–18220 ─────
+
+      function sec2md(sec) {
+        const parts = [];
+        const num = sec.querySelector(".section-num")?.textContent?.trim() || "";
+        const title = sec.querySelector(".section-title")?.textContent?.trim() || "";
+        if (num || title) parts.push(`## ${num}${num && title ? " — " : ""}${title}`);
+        const ct = sec.querySelector(".doc-content");
+        if (ct) parts.push(node2md(ct));
+        const sig = sec.querySelector(".sig-block");
+        if (sig) parts.push(sig2md(sig));
+        return parts.join("\n\n");
+      }
+
+// ───── Markdown-конвертация · js:node2md
+// philosynth.html строки 18221–18249 ─────
+
+      function node2md(node) {
+        const p = [];
+        node.childNodes.forEach((c) => {
+          if (c.nodeType === 3) {
+            const t = c.textContent.trim();
+            if (t) p.push(t);
+          } else if (c.nodeType === 1) {
+            const tag = c.tagName.toLowerCase();
+            if (tag === "h4") p.push(`\n### ${c.textContent.trim()}`);
+            else if (tag === "p") p.push(inline2md(c));
+            else if (tag === "ul") {
+              c.querySelectorAll("li").forEach((li) => p.push(`- ${inline2md(li)}`));
+            } else if (tag === "ol") {
+              let n = 1;
+              c.querySelectorAll("li").forEach((li) => p.push(`${n++}. ${inline2md(li)}`));
+            } else if (tag === "table") p.push(table2md(c));
+            else if (c.classList?.contains("callout")) {
+              const lb = c.querySelector(".callout-label")?.textContent?.trim() || "";
+              const tx = c.innerText.replace(lb, "").trim();
+              p.push(`> **${lb}** ${tx}`);
+            } else {
+              const inner = node2md(c);
+              if (inner.trim()) p.push(inner);
             }
-       
-            const selector = readUntil(['{', '}']).trim();
-            if (i >= len) break;
-            if (css[i] === '}') { i++; continue; }
-            i++;
-            const body = readBlock();
-            if (selector) rules.push({ type: 'rule', selector, body });
           }
-       
-          return rules;
-        }
-       
-        // ── 2. Консервативная проверка «точно не используется» ────────
-        //
-        // Используем indexOf по сырой строке контента — это намеренно
-        // избыточно: если «foo» встречается где угодно (даже в комментарии
-        // или строковом литерале JS), правило НЕ удаляется.
-        // Это цена безопасности: лишние стили лучше, чем сломанные.
-       
-        function classesFromSelector(sel) {
-          const out = [];
-          const re = /\.(-?[a-zA-Z_][a-zA-Z0-9_-]*)/g;
-          let m;
-          while ((m = re.exec(sel)) !== null) out.push(m[1]);
-          return out;
-        }
-       
-        function definitelyUnused(r) {
-          // Комментарии, @font-face, @import, @charset и т.п. — никогда не удаляем
-          if (r.type === 'comment')   return false;
-          if (r.type === 'at-simple') return false;
-          if (r.type === 'at-block')  return false;
-       
-          // @keyframes: удаляем только если имя анимации нигде не встречается
-          if (r.type === 'keyframes') {
-            return contentToCheck.indexOf(r.name) === -1;
-          }
-       
-          // @media / @supports: удаляем только если ВСЕ вложенные правила точно не нужны
-          if (r.type === 'at-cond') {
-            return r.inner.length > 0 && r.inner.every(definitelyUnused);
-          }
-       
-          if (r.type === 'rule') {
-            const sel = r.selector;
-       
-            // Глобальные и элементные — никогда не удаляем
-            if (/^(\*|:root|html|body)(\s*[,{]|$)/.test(sel)) return false;
-       
-            const classes = classesFromSelector(sel);
-       
-            // Нет класс-селекторов → элементный / атрибутный / псевдо → оставляем
-            if (classes.length === 0) return false;
-       
-            // Удаляем только если НИ ОДИН класс не найден как подстрока
-            return classes.every(function(c) {
-              return contentToCheck.indexOf(c) === -1;
-            });
-          }
-       
-          // Неизвестный тип — оставляем
-          return false;
-        }
-       
-        // ── 3. Сериализация с удалением «точно ненужных» ──────────────
-        function serializeRules(rules, indent) {
-          indent = indent || '';
-          const parts = [];
-       
-          rules.forEach(function(r) {
-            // Удаляем только если УВЕРЕНЫ
-            if (definitelyUnused(r)) return;
-       
-            if (r.type === 'comment')   { parts.push(r.raw); return; }
-            if (r.type === 'at-simple') { parts.push('@' + r.kw + ' ' + r.prelude + ';'); return; }
-            if (r.type === 'rule')      { parts.push(r.selector + ' {' + r.body + '}'); return; }
-            if (r.type === 'keyframes') { parts.push('@keyframes ' + r.name + ' {' + r.body + '}'); return; }
-            if (r.type === 'at-block')  { parts.push('@' + r.kw + ' ' + r.prelude + ' {' + r.body + '}'); return; }
-       
-            if (r.type === 'at-cond') {
-              // Фильтруем вложенные, но только если внутри что-то осталось
-              const inner = serializeRules(r.inner, indent + '  ');
-              if (inner.trim())
-                parts.push('@' + r.kw + ' ' + r.prelude + ' {\n' + inner + '\n' + indent + '}');
-              return;
-            }
-          });
-       
-          return parts.map(function(p) { return indent + p; }).join('\n');
-        }
-       
-        return serializeRules(parseCSS(cssText), '');
+        });
+        return p.join("\n\n");
       }
 
-// ───── [buildGraphExportSection] philosynth.html строки 17679–17834 ─────
-      function buildGraphExportSection(graphData, filenameBase) {
-        if (!graphData || !graphData.nodes || !graphData.nodes.length) return "";
- 
-        // ── 1. Клонируем модальное окно из DOM, очищаем динамическое состояние ──
-        const overlayEl = document.getElementById("gmOverlay");
-        if (!overlayEl) return "";
-        const clone = overlayEl.cloneNode(true);
-        clone.classList.remove("visible");
-        // Убираем canvas Three.js если был открыт 3D-вид
-        const oldCanvas = clone.querySelector("canvas");
-        if (oldCanvas) oldCanvas.remove();
-        // Очищаем содержимое 2D-вида (D3 SVG) — будет перестроено при открытии
-        const v2 = clone.querySelector("#view2d");
-        if (v2) v2.innerHTML = "";
-        // Сбрасываем активные табы на 3D (дефолт при открытии openGraph)
-        const t3 = clone.querySelector("#tab3d");
-        const t2 = clone.querySelector("#tab2d");
-        const vw3 = clone.querySelector("#view3d");
-        const vw2 = clone.querySelector("#view2d");
-        if (t3) { t3.classList.add("active");  }
-        if (t2) { t2.classList.remove("active"); }
-        if (vw3) { vw3.classList.add("active"); }
-        if (vw2) { vw2.classList.remove("active"); }
-        // Очищаем легенду — будет перестроена функцией buildLegend
-        const leg = clone.querySelector("#gmLegend");
-        if (leg) leg.innerHTML = "";
-        const modalHTML = clone.outerHTML;
- 
-        // ── 2. Сериализуем все функции графа через .toString() ──
-        // Порядок важен: хелперы — перед потребителями.
-        const fnBundle = [
-          normalizeName,
-          normalizeType,
-          parseTopology,
-          parseGraph,
-           _hexToHSL,
-          _hslToHex,
-          _blendHex,
-          _rebuildNodeColors,
-          _rebuildEdgeStyles,
-          edgeTypeStyle,
-          showNodePanel,
-          showEdgePanel,
-          typeColor,
-          typeColorHex,
-          getTopRole,
-          getStructuralMarkers,
-          getStructuralMarker,
-          polyPath,
-          hexStarPath,
-          trapezoidPath,   
-          rectPath,              
-          nodeSymbolPath,
-          nodeGeometry3D,
-          tick,
-          warmup,
-          mkSprite,
-          getRolesFromLayer,
-          getRolesForMode,
-          getAllRoles,
-          applyClusters3D, 
-          applyClusters2D, 
-          toggleClusters,
-          clearLegendFilter,
-          build3D,
-          build2D,
-          buildLegend,
-          switchView,
-          openGraph,
-          closeGraph,
-          downloadFile,
-          toggleExportMenu,
-          closeExportMenu,
-          doExport,
-          exportMMD,
-          exportPNG,
-          exportJSON,
-        ]
-          .map((fn) => fn.toString())
-          .join("\n\n");
+// ───── Markdown-конвертация · js:inline2md
+// philosynth.html строки 18250–18264 ─────
 
-        const constBundle = [
-          ["_TC_HUE_SEEDS",      _TC_HUE_SEEDS],
-          ["_EC_HUE_SEEDS",      _EC_HUE_SEEDS],
-          ["_EC_DASH_SEEDS",     _EC_DASH_SEEDS],
-          ["CPAL",               CPAL],
-          ["PROCEDURAL_PRIORITY", PROCEDURAL_PRIORITY],
-          ["STRUCTURAL_PRIORITY", STRUCTURAL_PRIORITY],
-        ].map(([name, val]) => `const ${name} = ${JSON.stringify(val)};`).join("\n");
- 
-        // ── 3. Собираем самодостаточный скрипт ──
-        // getDocFilename фиксируется по базовому имени на момент сохранения.
-        // Все функции экспортируются в window, чтобы работали onclick-атрибуты
-        // внутри клонированного модального HTML.
-
-        const initScript = `
-(function () {
-
-  ${constBundle}
-
-  var _nodeColorMap = new Map();
-  var _edgeStyleMap = new Map();
-  var G = {
-          nodes: [], edges: [],
-          topology: { clusters: {}, roles: { structural: {}, procedural: {} }, clusterLabels: [] }
-        };
-  var anim3d = null;
-  var renderer3d = null;
-  var scene3d = null;
-  var sim2d = null;
-  var resizeObs3d = null;
-  var clusterVisible   = false;
-  var roleMode         = "procedural";
-  var clusterObjects3d = null;   
-  var clusterObjects2d = null;
-  var graphAPI3d       = null;
-  var graphAPI2d       = null;
-  var currentViewMode  = "3d";
-  var legendFilter     = null;
-
-  document.addEventListener('DOMContentLoaded', function () {
-    var ct = document.getElementById('docOutput') || document.body;
-    var parsed = parseGraph(ct);
-    if (parsed.nodes.length) G = parsed;
-  });
-
-  document.addEventListener("click", function(e) {
-    const wrap = document.getElementById("exportWrap");
-    if (wrap && !wrap.contains(e.target)) closeExportMenu();
-  });
- 
-  function getDocFilename(ext) {
-    return ${JSON.stringify(filenameBase)} + (ext ? "." + ext : "");
-  }
- 
-  ${fnBundle}
- 
-  // Экспорт в глобальную область для onclick-атрибутов клонированного модала
-  window.openGraph   = openGraph;
-  window.closeGraph  = closeGraph;
-  window.switchView  = switchView;
-  window.toggleExportMenu = toggleExportMenu;
-  window.closeExportMenu  = closeExportMenu;
-  window.doExport         = doExport;
-  window.exportMMD   = exportMMD;
-  window.exportPNG   = exportPNG;
-  window.exportJSON  = exportJSON;
-  window.toggleClusters = toggleClusters;
-})();`;
- 
-        // ── 4. Кнопки-контролы встраиваются в saveHTML() в начало раздела графа ──
-        return `${modalHTML}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"><\/script>
-<script>${initScript}<\/script>`;
+      function inline2md(el) {
+        let r = "";
+        el.childNodes.forEach((c) => {
+          if (c.nodeType === 3) r += c.textContent;
+          else if (c.nodeType === 1) {
+            const t = c.tagName.toLowerCase();
+            if (t === "strong") r += `**${c.textContent}**`;
+            else if (t === "em") r += `*${c.textContent}*`;
+            else if (c.classList?.contains("risk")) r += `\`${c.textContent}\``;
+            else r += c.textContent;
+          }
+        });
+        return r.trim();
       }
 
-// ───── [exportJSON] philosynth.html строки 17266–17312 ─────
-      function exportJSON() {
-        if (!G.nodes.length) { alert("Нет графа."); return; }
+// ───── Markdown-конвертация · js:table2md
+// philosynth.html строки 18265–18282 ─────
 
-        const topo = G.topology || { clusters: {}, roles: { structural: {}, procedural: {} }, clusterLabels: [] };
-
-        const data = {
-          meta: {
-            format:    "PhiloSynth Graph",
-            version:   1,
-            exported:  new Date().toISOString(),
-            document:  document.getElementById("docNum")?.textContent?.trim() || null,
-            title:     document.getElementById("docTitle")?.textContent?.trim() || null,
-          },
-          nodes: G.nodes.map(n => ({
-            name:        n.name,
-            type:        n.type || null,
-            definition:  n.def  || null,
-            centrality:  n.cen  ?? 0.5,
-            certainty:   n.cert ?? 0.5,
-            origin:      n.orig || null,
-            roles: {
-              structural: [...(getRolesFromLayer("structural", n.name) || [])],
-              procedural: [...(getRolesFromLayer("procedural", n.name) || [])],
-            },
-            clusters: (topo.clusters?.[n.name] || []).map(idx => ({
-              index: idx,
-              label: topo.clusterLabels?.[idx] || null,
-            })),
-          })),
-          edges: G.edges.map(e => ({
-            source:      e.src,
-            target:      e.tgt,
-            type:        e.type  || null,
-            description: e.desc  || null,
-            direction:   e.dir   || null,
-            strength:    e.str   ?? 0.5,
-          })),
-          clusters: (topo.clusterLabels || []).map((label, idx) => ({
-            index:   idx,
-            label:   label,
-            members: G.nodes.filter(n => (topo.clusters?.[n.name] || []).includes(idx)).map(n => n.name),
-          })),
-        };
-
-        const json = JSON.stringify(data, null, 2);
-        downloadFile(json, getDocFilename("json"), "application/json");
+      function table2md(table) {
+        const rows = [];
+        const hs = Array.from(table.querySelectorAll("thead th")).map((th) =>
+          th.textContent.trim(),
+        );
+        if (hs.length) {
+          rows.push(`| ${hs.join(" | ")} |`);
+          rows.push(`| ${hs.map(() => "---").join(" | ")} |`);
+        }
+        table.querySelectorAll("tbody tr").forEach((tr) => {
+          const cs = Array.from(tr.querySelectorAll("td")).map((td) =>
+            (inline2md(td) || td.textContent.trim()).replace(/\|/g, "\\|"),
+          );
+          rows.push(`| ${cs.join(" | ")} |`);
+        });
+        return rows.join("\n");
       }
 
-// ───── [exportMMD] philosynth.html строки 16370–16591 ─────
+// ───── Markdown-конвертация · js:sig2md
+// philosynth.html строки 18283–18292 ─────
+
+      function sig2md(sig) {
+        return Array.from(sig.querySelectorAll(".sig-party"))
+          .map((p) => {
+            const n = p.querySelector(".sig-party-name")?.textContent?.trim() || "";
+            const r = p.querySelector(".sig-party-role")?.textContent?.trim() || "";
+            return `**${n}** *(${r})*\n\n_________________\n*Подпись / Дата*`;
+          })
+          .join("\n\n---\n\n");
+      }
+
+// ───── Экспорт графа и режимов · js:exportMMD
+// philosynth.html строки 16370–16590 ─────
       function exportMMD() {
         if (!G.nodes.length) {
           alert("Нет графа.");
@@ -599,7 +615,9 @@
         downloadFile(lines.join("\n"), getDocFilename("mmd"), "text/plain");
       }
 
-// ───── [exportPNG] philosynth.html строки 16592–17264 ─────
+// ───── Экспорт графа и режимов · js:exportPNG
+// philosynth.html строки 16591–17264 ─────
+
       function exportPNG() {
         if (!G.nodes.length) { alert("Нет графа."); return; }
 
@@ -1274,378 +1292,564 @@
         }, "image/png");
       }
 
-// ───── [getDocFilename] philosynth.html строки 17478–17529 ─────
-      function getDocFilename(ext) {
-        const num = document.getElementById("docNum")?.textContent?.trim() || "synthesis";
+// ───── Экспорт графа и режимов · js:exportJSON
+// philosynth.html строки 17265–17312 ─────
 
-        // ── Участники ──
-        const isMeta = DOC_STATE.participants?.some(x => x.type === "concept")
-                    || _conceptParticipants?.length > 0;
+      function exportJSON() {
+        if (!G.nodes.length) { alert("Нет графа."); return; }
 
-        let namePart;
-        if (isMeta) {
-          const title = document.getElementById("docTitle")?.textContent?.trim();
-          if (title && title !== "Синтез Философской Концепции") {
-            namePart = transliterate(title).slice(0, 60);
-          } else {
-            const participants = DOC_STATE.participants || [
-              ...getPhil().map(() => ({ type: "philosopher" })),
-              ..._conceptParticipants.map(() => ({ type: "concept" })),
-            ];
-            const pc = participants.filter(x => x.type === "concept").length;
-            const pp = participants.filter(x => x.type === "philosopher").length;
-            namePart = "meta-" + pc + "c" + (pp > 0 ? pp + "p" : "");
+        const topo = G.topology || { clusters: {}, roles: { structural: {}, procedural: {} }, clusterLabels: [] };
+
+        const data = {
+          meta: {
+            format:    "PhiloSynth Graph",
+            version:   1,
+            exported:  new Date().toISOString(),
+            document:  document.getElementById("docNum")?.textContent?.trim() || null,
+            title:     document.getElementById("docTitle")?.textContent?.trim() || null,
+          },
+          nodes: G.nodes.map(n => ({
+            name:        n.name,
+            type:        n.type || null,
+            definition:  n.def  || null,
+            centrality:  n.cen  ?? 0.5,
+            certainty:   n.cert ?? 0.5,
+            origin:      n.orig || null,
+            roles: {
+              structural: [...(getRolesFromLayer("structural", n.name) || [])],
+              procedural: [...(getRolesFromLayer("procedural", n.name) || [])],
+            },
+            clusters: (topo.clusters?.[n.name] || []).map(idx => ({
+              index: idx,
+              label: topo.clusterLabels?.[idx] || null,
+            })),
+          })),
+          edges: G.edges.map(e => ({
+            source:      e.src,
+            target:      e.tgt,
+            type:        e.type  || null,
+            description: e.desc  || null,
+            direction:   e.dir   || null,
+            strength:    e.str   ?? 0.5,
+          })),
+          clusters: (topo.clusterLabels || []).map((label, idx) => ({
+            index:   idx,
+            label:   label,
+            members: G.nodes.filter(n => (topo.clusters?.[n.name] || []).includes(idx)).map(n => n.name),
+          })),
+        };
+
+        const json = JSON.stringify(data, null, 2);
+        downloadFile(json, getDocFilename("json"), "application/json");
+      }
+
+// ───── Экспорт графа и режимов · js:buildGraphExportSection
+// philosynth.html строки 17679–17834 ─────
+      function buildGraphExportSection(graphData, filenameBase) {
+        if (!graphData || !graphData.nodes || !graphData.nodes.length) return "";
+ 
+        // ── 1. Клонируем модальное окно из DOM, очищаем динамическое состояние ──
+        const overlayEl = document.getElementById("gmOverlay");
+        if (!overlayEl) return "";
+        const clone = overlayEl.cloneNode(true);
+        clone.classList.remove("visible");
+        // Убираем canvas Three.js если был открыт 3D-вид
+        const oldCanvas = clone.querySelector("canvas");
+        if (oldCanvas) oldCanvas.remove();
+        // Очищаем содержимое 2D-вида (D3 SVG) — будет перестроено при открытии
+        const v2 = clone.querySelector("#view2d");
+        if (v2) v2.innerHTML = "";
+        // Сбрасываем активные табы на 3D (дефолт при открытии openGraph)
+        const t3 = clone.querySelector("#tab3d");
+        const t2 = clone.querySelector("#tab2d");
+        const vw3 = clone.querySelector("#view3d");
+        const vw2 = clone.querySelector("#view2d");
+        if (t3) { t3.classList.add("active");  }
+        if (t2) { t2.classList.remove("active"); }
+        if (vw3) { vw3.classList.add("active"); }
+        if (vw2) { vw2.classList.remove("active"); }
+        // Очищаем легенду — будет перестроена функцией buildLegend
+        const leg = clone.querySelector("#gmLegend");
+        if (leg) leg.innerHTML = "";
+        const modalHTML = clone.outerHTML;
+ 
+        // ── 2. Сериализуем все функции графа через .toString() ──
+        // Порядок важен: хелперы — перед потребителями.
+        const fnBundle = [
+          normalizeName,
+          normalizeType,
+          parseTopology,
+          parseGraph,
+           _hexToHSL,
+          _hslToHex,
+          _blendHex,
+          _rebuildNodeColors,
+          _rebuildEdgeStyles,
+          edgeTypeStyle,
+          showNodePanel,
+          showEdgePanel,
+          typeColor,
+          typeColorHex,
+          getTopRole,
+          getStructuralMarkers,
+          getStructuralMarker,
+          polyPath,
+          hexStarPath,
+          trapezoidPath,   
+          rectPath,              
+          nodeSymbolPath,
+          nodeGeometry3D,
+          tick,
+          warmup,
+          mkSprite,
+          getRolesFromLayer,
+          getRolesForMode,
+          getAllRoles,
+          applyClusters3D, 
+          applyClusters2D, 
+          toggleClusters,
+          clearLegendFilter,
+          build3D,
+          build2D,
+          buildLegend,
+          switchView,
+          openGraph,
+          closeGraph,
+          downloadFile,
+          toggleExportMenu,
+          closeExportMenu,
+          doExport,
+          exportMMD,
+          exportPNG,
+          exportJSON,
+        ]
+          .map((fn) => fn.toString())
+          .join("\n\n");
+
+        const constBundle = [
+          ["_TC_HUE_SEEDS",      _TC_HUE_SEEDS],
+          ["_EC_HUE_SEEDS",      _EC_HUE_SEEDS],
+          ["_EC_DASH_SEEDS",     _EC_DASH_SEEDS],
+          ["CPAL",               CPAL],
+          ["PROCEDURAL_PRIORITY", PROCEDURAL_PRIORITY],
+          ["STRUCTURAL_PRIORITY", STRUCTURAL_PRIORITY],
+        ].map(([name, val]) => `const ${name} = ${JSON.stringify(val)};`).join("\n");
+ 
+        // ── 3. Собираем самодостаточный скрипт ──
+        // getDocFilename фиксируется по базовому имени на момент сохранения.
+        // Все функции экспортируются в window, чтобы работали onclick-атрибуты
+        // внутри клонированного модального HTML.
+
+        const initScript = `
+(function () {
+
+  ${constBundle}
+
+  var _nodeColorMap = new Map();
+  var _edgeStyleMap = new Map();
+  var G = {
+          nodes: [], edges: [],
+          topology: { clusters: {}, roles: { structural: {}, procedural: {} }, clusterLabels: [] }
+        };
+  var anim3d = null;
+  var renderer3d = null;
+  var scene3d = null;
+  var sim2d = null;
+  var resizeObs3d = null;
+  var clusterVisible   = false;
+  var roleMode         = "procedural";
+  var clusterObjects3d = null;   
+  var clusterObjects2d = null;
+  var graphAPI3d       = null;
+  var graphAPI2d       = null;
+  var currentViewMode  = "3d";
+  var legendFilter     = null;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var ct = document.getElementById('docOutput') || document.body;
+    var parsed = parseGraph(ct);
+    if (parsed.nodes.length) G = parsed;
+  });
+
+  document.addEventListener("click", function(e) {
+    const wrap = document.getElementById("exportWrap");
+    if (wrap && !wrap.contains(e.target)) closeExportMenu();
+  });
+ 
+  function getDocFilename(ext) {
+    return ${JSON.stringify(filenameBase)} + (ext ? "." + ext : "");
+  }
+ 
+  ${fnBundle}
+ 
+  // Экспорт в глобальную область для onclick-атрибутов клонированного модала
+  window.openGraph   = openGraph;
+  window.closeGraph  = closeGraph;
+  window.switchView  = switchView;
+  window.toggleExportMenu = toggleExportMenu;
+  window.closeExportMenu  = closeExportMenu;
+  window.doExport         = doExport;
+  window.exportMMD   = exportMMD;
+  window.exportPNG   = exportPNG;
+  window.exportJSON  = exportJSON;
+  window.toggleClusters = toggleClusters;
+})();`;
+ 
+        // ── 4. Кнопки-контролы встраиваются в saveHTML() в начало раздела графа ──
+        return `${modalHTML}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"><\/script>
+<script>${initScript}<\/script>`;
+      }
+
+// ───── Экспорт графа и режимов · js:buildModesExportSection
+// philosynth.html строки 17535–17672 ─────
+      function buildModesExportSection() {
+        const allResults = Object.entries(DOC_STATE.modes || {})
+          .filter(([, results]) => Array.isArray(results) && results.some(r => r.html));
+        if (!allResults.length) return "";
+
+        // ── 1. Данные: <details> с HTML-контентом (скрытые — показываются через модалку) ──
+        let dataHTML = '<div id="philosynth-modes" style="display:none">';
+        for (const [key, results] of allResults) {
+          const title = MODE_CONFIG[key]?.title || key;
+          for (const r of results) {
+            if (!r.html) continue;
+            dataHTML += `<div class="philosynth-mode"
+                 data-mode-key="${esc(key)}"
+                 data-mode-title="${esc(title)}"
+                 data-mode-param="${esc(r.param)}"
+                 data-mode-timestamp="${esc(r.timestamp)}">
+              ${r.html}
+            </div>`;
           }
-        } else {
-          const phil = DOC_STATE.ready && DOC_STATE.params?.phil
-            ? DOC_STATE.params.phil : getPhil();
-          namePart = phil.map(p => PHIL_FILENAME[p] || p).join("-");
+        }
+        dataHTML += '</div>';
+
+        // ── 2. Кнопки открытия ──
+        const modeTitles = {};
+        let buttons = '<div style="max-width:1100px;margin:20px auto 0;display:flex;gap:8px;flex-wrap:wrap">';
+        for (const [key, results] of allResults) {
+          const title = MODE_CONFIG[key]?.title || key;
+          modeTitles[key] = title;
+          const count = results.filter(r => r.html).length;
+          buttons += `<button class="action-btn" style="border-color:var(--violet);color:var(--violet)"
+            onclick="openExportedMode('${esc(key)}')">${esc(title)} (${count})</button>`;
+        }
+        buttons += '</div>';
+
+        // ── 3. Модальное окно (клон, без поля ввода) ──
+        const overlayEl = document.getElementById("modeOverlay");
+        if (!overlayEl) return dataHTML + buttons;
+        const clone = overlayEl.cloneNode(true);
+        clone.classList.remove("visible");
+        clone.querySelector("#modeContent")?.replaceChildren();
+        clone.querySelector("#modeTabsBar")?.replaceChildren();
+        const paramsBlock = clone.querySelector(".mode-modal-params");
+        if (paramsBlock) paramsBlock.remove();
+        const modalHTML = clone.outerHTML;
+
+        // ── 4. Тонкий скрипт: читает данные из DOM, управляет модалкой ──
+        const script = `
+      (function() {
+        // Парсим данные из HTML
+        function loadModes() {
+          var modes = {};
+          var els = document.querySelectorAll("#philosynth-modes .philosynth-mode");
+          for (var i = 0; i < els.length; i++) {
+            var el = els[i];
+            var key = el.getAttribute("data-mode-key");
+            if (!modes[key]) modes[key] = [];
+            modes[key].push({
+              html:      el.innerHTML,
+              param:     el.getAttribute("data-mode-param") || "",
+              timestamp: el.getAttribute("data-mode-timestamp") || "",
+              title:     el.getAttribute("data-mode-title") || key,
+            });
+          }
+          return modes;
         }
 
-        // ── Параметры синтеза ──
-        const p = DOC_STATE.ready ? DOC_STATE.params : null;
-        const method = p?.method || document.getElementById("synthesisMethod")?.value || "";
-        const level  = p?.synthLevel || document.getElementById("synthesisLevel")?.value || "";
-        const order  = p?.generationOrder || document.getElementById("generationOrder")?.value || "";
-        const depth  = p?.depth || document.getElementById("depthLevel")?.value || ""; 
+        var _modes = null;
+        function getModes() {
+          if (!_modes) _modes = loadModes();
+          return _modes;
+        }
 
-        const paramCode = [
-          METHOD_CODE[method] || "",
-          LEVEL_CODE[level] || "",
-          ORDER_CODE[order] || "",
-          DEPTH_CODE[depth] || "",
-        ].filter(Boolean).join("");
+        function esc(s) {
+          return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+        }
+        function truncLabel(s, max) {
+          return s.length > max ? s.slice(0, max - 1) + "\\u2026" : s;
+        }
 
-        // ── Версия ──
-        const verStr = formatVersionFilename(DOC_STATE.docVersion);
-        const ver = verStr !== "v1" ? "-" + verStr : "";
+        // Вкладки
+        function buildTabs(key, results) {
+          var bar = document.getElementById("modeTabsBar");
+          if (!results || !results.length) { bar.style.display = "none"; bar.innerHTML = ""; return; }
+          bar.style.display = "flex";
+          bar.innerHTML = results.map(function(r, i) {
+            var label = truncLabel(r.param, 24);
+            var date = new Date(r.timestamp).toLocaleDateString("ru-RU");
+            return '<button class="mode-tab" data-index="' + i + '" ' +
+              'onclick="switchExpTab(\\'' + key + '\\',' + i + ')">' +
+              esc(label) + '<span class="mode-tab-date">' + date + '</span></button>';
+          }).join("");
+        }
 
-        // ── Сборка ──
-        // PS-3950-G9OL-Kant-Heidegger-hm-t-2-v3-2m4-1.html
-        const docLang = DOC_STATE.params?.lang || GEN_LANG || "Russian";
-        const langSuffix = docLang === "Russian" ? "" : "-" + (docLang.slice(0, 2).toLowerCase());
-        const parts = [num, namePart, paramCode].filter(Boolean);
-        return parts.join("-") + ver + langSuffix + (ext ? "." + ext : "");
-      }
-
-// ───── [inline2md] philosynth.html строки 18251–18264 ─────
-      function inline2md(el) {
-        let r = "";
-        el.childNodes.forEach((c) => {
-          if (c.nodeType === 3) r += c.textContent;
-          else if (c.nodeType === 1) {
-            const t = c.tagName.toLowerCase();
-            if (t === "strong") r += `**${c.textContent}**`;
-            else if (t === "em") r += `*${c.textContent}*`;
-            else if (c.classList?.contains("risk")) r += `\`${c.textContent}\``;
-            else r += c.textContent;
+        function switchTab(key, idx) {
+          var modes = getModes();
+          var results = modes[key];
+          if (!results || idx >= results.length) return;
+          var tabs = document.querySelectorAll("#modeTabsBar .mode-tab");
+          for (var i = 0; i < tabs.length; i++) {
+            tabs[i].classList.toggle("active", i === idx);
           }
-        });
-        return r.trim();
+          document.getElementById("modeContent").innerHTML = results[idx].html;
+          document.getElementById("modeInfo").textContent =
+            results[idx].param + " \\u00b7 " +
+            new Date(results[idx].timestamp).toLocaleString("ru-RU");
+        }
+
+        // Публичные функции
+        window.openExportedMode = function(key) {
+          var modes = getModes();
+          var results = modes[key] || [];
+          if (!results.length) return;
+          document.getElementById("modeTitle").textContent = results[0].title || key;
+          buildTabs(key, results);
+          switchTab(key, results.length - 1);
+          document.getElementById("modeOverlay").classList.add("visible");
+          document.body.style.overflow = "hidden";
+        };
+        window.switchExpTab = switchTab;
+        window.closeModeModal = function() {
+          document.getElementById("modeOverlay").classList.remove("visible");
+          document.body.style.overflow = "";
+        };
+        window.copyModeContent = function() {
+          var text = (document.getElementById("modeContent") || {}).innerText || "";
+          navigator.clipboard.writeText(text).then(function() {
+            var btn = document.querySelector("#modeOverlay .mode-modal-copy");
+            if (!btn) return;
+            var o = btn.textContent;
+            btn.textContent = "\\u2713 Скопировано";
+            setTimeout(function() { btn.textContent = o; }, 2000);
+          });
+        };
+      })();`;
+
+        return `${dataHTML}${buttons}${modalHTML}
+      <script>${script}<\/script>`;
       }
 
-// ───── [node2md] philosynth.html строки 18222–18249 ─────
-      function node2md(node) {
-        const p = [];
-        node.childNodes.forEach((c) => {
-          if (c.nodeType === 3) {
-            const t = c.textContent.trim();
-            if (t) p.push(t);
-          } else if (c.nodeType === 1) {
-            const tag = c.tagName.toLowerCase();
-            if (tag === "h4") p.push(`\n### ${c.textContent.trim()}`);
-            else if (tag === "p") p.push(inline2md(c));
-            else if (tag === "ul") {
-              c.querySelectorAll("li").forEach((li) => p.push(`- ${inline2md(li)}`));
-            } else if (tag === "ol") {
-              let n = 1;
-              c.querySelectorAll("li").forEach((li) => p.push(`${n++}. ${inline2md(li)}`));
-            } else if (tag === "table") p.push(table2md(c));
-            else if (c.classList?.contains("callout")) {
-              const lb = c.querySelector(".callout-label")?.textContent?.trim() || "";
-              const tx = c.innerText.replace(lb, "").trim();
-              p.push(`> **${lb}** ${tx}`);
-            } else {
-              const inner = node2md(c);
-              if (inner.trim()) p.push(inner);
+// ───── Чистка CSS перед вставкой в автономный HTML · js:auditCSS
+// philosynth.html строки 17835–18001 ─────
+
+      function auditCSS(cssText, contentToCheck) {
+ 
+        // ── 1. Парсер CSS ──────────────────────────────────────────────
+        // Нужен только чтобы найти границы правил.
+        // Возвращает плоское дерево: rule / keyframes / at-cond / at-block / at-simple / comment
+        function parseCSS(css) {
+          let i = 0;
+          const len = css.length;
+       
+          function readComment() {
+            let s = '/*'; i += 2;
+            while (i < len - 1) {
+              if (css[i] === '*' && css[i+1] === '/') { s += '*/'; i += 2; return s; }
+              s += css[i++];
             }
+            return s;
           }
-        });
-        return p.join("\n\n");
-      }
-
-// ───── [saveHTML] philosynth.html строки 18003–18192 ─────
-      function saveHTML() {
-
-        // Базовое имя файла фиксируется на момент сохранения (без расширения)
-        const filenameBase = getDocFilename("html").replace(/\.html$/, "");
-
-        // Граф-секция: модаль + сериализованные функции
-        const graphSection = buildGraphExportSection(G, filenameBase);
-
-        // Кнопки графа — вставляем в начало раздела db{graphBodyIdx},
-        // чтобы они стояли непосредственно перед таблицами графа
-        let docHTML = document.getElementById("docOutput").innerHTML;
-        if (G.nodes.length > 0 && graphBodyIdx >= 0) {
-          // Удаляем старые кнопки графа (от предыдущих сохранений)
-          docHTML = docHTML.replace(
-            /<div[^>]*>\s*<button[^>]*onclick="openGraph\(\)"[^>]*>[^<]*<\/button>\s*<\/div>/g,
-            ""
-          );
-
-          const graphBtnHTML =
-            `<div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 0 8px">` +
-            `<button class="action-btn gold-btn" onclick="openGraph()">▦ Граф категорий</button>` +
-            `</div>`;
-          const marker = `id="db${graphBodyIdx}"`;
-          const markerPos = docHTML.indexOf(marker);
-          if (markerPos !== -1) {
-            const closeAngle = docHTML.indexOf(">", markerPos);
-            docHTML =
-              docHTML.slice(0, closeAngle + 1) +
-              graphBtnHTML +
-              docHTML.slice(closeAngle + 1);
+       
+          function readUntil(stops) {
+            let s = '';
+            while (i < len) {
+              if (css[i] === '/' && css[i+1] === '*') { readComment(); continue; }
+              if (stops.indexOf(css[i]) !== -1) return s;
+              s += css[i++];
+            }
+            return s;
           }
-        }
-
-        // ── Режимы: вычисляем ДО CSS-аудита, чтобы стили не были удалены ──
-        const modesSection = buildModesExportSection();
-
-        // CSS-аудит: контент = всё что уйдёт в файл
-        const contentToCheck = docHTML + graphSection + (modesSection || "");
-
-        const rawCSS = Array.from(document.querySelectorAll("style"))
-          .map(function(s) { return s.textContent; })
-          .join("\n");
-
-        const styles = "<style>\n" + auditCSS(rawCSS, contentToCheck) + "\n</style>";
-
-        const tocEl = document.getElementById("docTOC");
-        if (tocEl) tocEl.remove();
-        document.querySelectorAll("#docBodies .toc-back-btn").forEach(el => el.remove());
-
-        const cleanParticipants = (DOC_STATE.participants || []).map(x => {
-          if (x.type === "philosopher") return x;
-          // Санитайзим x.genealogy: (а) strip капсул — закрываем асимметрию
-          // между корневым genealogy (который уже санитайзится ниже) и
-          // genealogy внутри participants; (б) normalize имён — обрезаем
-          // транзитивное распространение дефолта «Синтез Философской Концепции»
-          // в многоступенчатых синтезах. Оба шага не мутируют исходный объект.
-          const safeGenealogy = x.genealogy
-            ? normalizeGenealogyNames(
-                stripCapsulesFromGenealogy(x.genealogy),
-                x.name
-              )
-            : null;
-          return {
-            type: x.type, name: x.name, method: x.method,
-            synthLevel: x.synthLevel, seed: x.seed, genealogy: safeGenealogy,
-            // generationOrder сохраняем, чтобы он был доступен как fallback
-            // при построении genealogy в будущих метасинтезах (для случаев,
-            // когда у участника нет собственной genealogy-структуры).
-            generationOrder: x.generationOrder,
-            // НЕ включаем: capsule, goals, tensions, graphNodes, graphEdges,
-            //   dialogueConcepts, dialogueSynthesis, glossaryCompact, thesesSummary,
-            //   portraits
-            _filename: x._filename, _nodeCount: x._nodeCount, _thesesCount: x._thesesCount,
-          };
-        });
-
-        // ── Встраиваем состояние для импорта ──
-        let stateJSON = "";
-        try {
-          const stateData = {
-            version: 2,
-            parentContextSchema: PARENT_CONTEXT_SCHEMA_ID,
-            parentContextSchemaVersion: PARENT_CONTEXT_SCHEMA_VERSION,
-            genLog: genLog.map(g => {
-              const { _sys, _promptSkeleton, ...rest } = g;
-              return rest;
-            }),
-            ctxLog: ctxLog,
-            genCommon: genCommon,
-            params: DOC_STATE.ready ? DOC_STATE.params : null,
-            sectionOrder: DOC_STATE.ready ? DOC_STATE.sectionOrder : null,
-            editedSections: DOC_STATE.ready ? [...DOC_STATE.editedSections] : [],
-            docVersion: DOC_STATE.docVersion || 1,
-            participants: cleanParticipants,
-            genealogy: normalizeGenealogyNames(
-              stripCapsulesFromGenealogy(DOC_STATE.genealogy),
-              document.getElementById("docTitle")?.textContent?.trim()
-            ),
-            structureSections: DOC_STATE.structureSections || null,
-            pausedState: DOC_STATE.pausedState || null,
-          };
-          stateJSON = `\n<script type="application/json" id="philosynth-state">\n${JSON.stringify(stateData, null, 2)}\n<\/script>`;
-
-          // ── Видимый лог контекста ──
-          if (genLog.length > 0 || ctxLog.length > 0) {
-            // Сериализуем функции и константы — лог строится на лету из состояния
-            const logBundle = [
-              formatVersion,
-              formatCtxLog,
-              colorizeLog,
-            ].map(fn => fn.toString()).join("\n\n");
-          
-            const logConstants = [
-              ["CTX_LABELS", CTX_LABELS],
-              ["KEY_LABELS", KEY_LABELS],
-            ].map(([name, val]) => `var ${name} = ${JSON.stringify(val)};`)
-             .join("\n");
-          
-            stateJSON += `\n<details style="
-              max-width:1100px; margin:20px auto 0;
-              border:1px solid #d8d4cc; background:#1a1814;
-            ">
-              <summary style="
-                padding:10px 18px; cursor:pointer;
-                font-family:'IBM Plex Mono',monospace; font-size:10px;
-                letter-spacing:2px; text-transform:uppercase;
-                color:#8a8278; background:#f2f0eb;
-                list-style:none; display:flex; align-items:center; gap:6px;
-                user-select:none;
-              ">◈ Лог контекста и генерации</summary>
-              <div style="padding:20px; overflow-x:auto;">
-                <pre id="philosynth-log-raw" style="
-                  font-family:'IBM Plex Mono',monospace; font-size:11px;
-                  line-height:1.7; color:#c8c0b0; white-space:pre-wrap;
-                  word-break:break-all; margin:0;
-                "></pre>
-              </div>
-            </details>
-            <script>
-            (function(){
-              var stateEl = document.getElementById("philosynth-state");
-              if (!stateEl) return;
-              try {
-                var state = JSON.parse(stateEl.textContent);
-                var genLog = state.genLog || [];
-                var ctxLog = state.ctxLog || [];
-                var genCommon = state.genCommon || null;
-                var DOC_STATE = { docVersion: state.docVersion || 1 };
-          
-                ${logConstants}
-                ${logBundle}
-          
-                var el = document.getElementById("philosynth-log-raw");
-                if (el) {
-                  var plain = formatCtxLog();
-                  if (plain && plain.indexOf("Лог пуст") === -1) {
-                    el.innerHTML = colorizeLog(plain);
-                  } else {
-                    el.style.color = "#8a8278";
-                    el.textContent = plain;
-                  }
-                }
-              } catch(e) {
-                console.warn("Не удалось восстановить лог:", e);
-                var el = document.getElementById("philosynth-log-raw");
-                if (el) el.textContent = "Ошибка восстановления лога: " + e.message;
+       
+          function readBlock() {
+            let depth = 1, s = '';
+            while (i < len) {
+              if (css[i] === '/' && i+1 < len && css[i+1] === '*') { s += readComment(); continue; }
+              if (css[i] === '{') depth++;
+              if (css[i] === '}') { if (!--depth) { i++; return s; } }
+              s += css[i++];
+            }
+            return s;
+          }
+       
+          const rules = [];
+       
+          while (i < len) {
+            while (i < len && /\s/.test(css[i])) i++;
+            if (i >= len) break;
+       
+            if (css[i] === '/' && css[i+1] === '*') {
+              rules.push({ type: 'comment', raw: readComment() }); continue;
+            }
+       
+            if (css[i] === '@') {
+              i++;
+              let kw = '';
+              while (i < len && /[a-zA-Z-]/.test(css[i])) kw += css[i++];
+              while (i < len && /\s/.test(css[i])) i++;
+              const prelude = readUntil(['{', ';']).trim();
+       
+              if (i < len && css[i] === ';') {
+                i++;
+                rules.push({ type: 'at-simple', kw, prelude }); continue;
               }
-            })();
-            <\/script>`;
+              if (i < len && css[i] === '{') {
+                i++;
+                const body = readBlock();
+                if (/^(-\w+-)?keyframes$/.test(kw)) {
+                  rules.push({ type: 'keyframes', name: prelude, body });
+                } else if (kw === 'media' || kw === 'supports' || kw === 'layer') {
+                  rules.push({ type: 'at-cond', kw, prelude, inner: parseCSS(body) });
+                } else {
+                  rules.push({ type: 'at-block', kw, prelude, body });
+                }
+              }
+              continue;
+            }
+       
+            const selector = readUntil(['{', '}']).trim();
+            if (i >= len) break;
+            if (css[i] === '}') { i++; continue; }
+            i++;
+            const body = readBlock();
+            if (selector) rules.push({ type: 'rule', selector, body });
           }
-        } catch (e) {
-          console.warn("Не удалось сериализовать состояние:", e);
+       
+          return rules;
         }
-
-        // ── Режимы: модальное окно с вкладками ──
-        //if (modesSection) stateJSON += modesSection;
-
-        const docLang = DOC_STATE.params?.lang || GEN_LANG || "Russian";
-        const htmlLang = docLang === "Russian" ? "ru" :
-          GEN_LANG === "English" ? "en" :
-          GEN_LANG === "German" ? "de" :
-          GEN_LANG === "French" ? "fr" :
-          GEN_LANG === "Spanish" ? "es" :
-          GEN_LANG === "Chinese" ? "zh" :
-          GEN_LANG === "Japanese" ? "ja" :
-          GEN_LANG === "Latin" ? "la" : "en";
-        const html = `<!DOCTYPE html><html lang="${htmlLang}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${document.getElementById("docTitle").textContent}</title><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">${styles}<style>body{background:#f2f0eb;padding:32px}#docOutput{max-width:1100px;margin:0 auto}</style></head><body><div id="docOutput">${modesSection}${docHTML}</div>${graphSection}${stateJSON}</body></html>`;
-        downloadFile(html, getDocFilename("html"), "text/html");
-        buildTableOfContents();
+       
+        // ── 2. Консервативная проверка «точно не используется» ────────
+        //
+        // Используем indexOf по сырой строке контента — это намеренно
+        // избыточно: если «foo» встречается где угодно (даже в комментарии
+        // или строковом литерале JS), правило НЕ удаляется.
+        // Это цена безопасности: лишние стили лучше, чем сломанные.
+       
+        function classesFromSelector(sel) {
+          const out = [];
+          const re = /\.(-?[a-zA-Z_][a-zA-Z0-9_-]*)/g;
+          let m;
+          while ((m = re.exec(sel)) !== null) out.push(m[1]);
+          return out;
+        }
+       
+        function definitelyUnused(r) {
+          // Комментарии, @font-face, @import, @charset и т.п. — никогда не удаляем
+          if (r.type === 'comment')   return false;
+          if (r.type === 'at-simple') return false;
+          if (r.type === 'at-block')  return false;
+       
+          // @keyframes: удаляем только если имя анимации нигде не встречается
+          if (r.type === 'keyframes') {
+            return contentToCheck.indexOf(r.name) === -1;
+          }
+       
+          // @media / @supports: удаляем только если ВСЕ вложенные правила точно не нужны
+          if (r.type === 'at-cond') {
+            return r.inner.length > 0 && r.inner.every(definitelyUnused);
+          }
+       
+          if (r.type === 'rule') {
+            const sel = r.selector;
+       
+            // Глобальные и элементные — никогда не удаляем
+            if (/^(\*|:root|html|body)(\s*[,{]|$)/.test(sel)) return false;
+       
+            const classes = classesFromSelector(sel);
+       
+            // Нет класс-селекторов → элементный / атрибутный / псевдо → оставляем
+            if (classes.length === 0) return false;
+       
+            // Удаляем только если НИ ОДИН класс не найден как подстрока
+            return classes.every(function(c) {
+              return contentToCheck.indexOf(c) === -1;
+            });
+          }
+       
+          // Неизвестный тип — оставляем
+          return false;
+        }
+       
+        // ── 3. Сериализация с удалением «точно ненужных» ──────────────
+        function serializeRules(rules, indent) {
+          indent = indent || '';
+          const parts = [];
+       
+          rules.forEach(function(r) {
+            // Удаляем только если УВЕРЕНЫ
+            if (definitelyUnused(r)) return;
+       
+            if (r.type === 'comment')   { parts.push(r.raw); return; }
+            if (r.type === 'at-simple') { parts.push('@' + r.kw + ' ' + r.prelude + ';'); return; }
+            if (r.type === 'rule')      { parts.push(r.selector + ' {' + r.body + '}'); return; }
+            if (r.type === 'keyframes') { parts.push('@keyframes ' + r.name + ' {' + r.body + '}'); return; }
+            if (r.type === 'at-block')  { parts.push('@' + r.kw + ' ' + r.prelude + ' {' + r.body + '}'); return; }
+       
+            if (r.type === 'at-cond') {
+              // Фильтруем вложенные, но только если внутри что-то осталось
+              const inner = serializeRules(r.inner, indent + '  ');
+              if (inner.trim())
+                parts.push('@' + r.kw + ' ' + r.prelude + ' {\n' + inner + '\n' + indent + '}');
+              return;
+            }
+          });
+       
+          return parts.map(function(p) { return indent + p; }).join('\n');
+        }
+       
+        return serializeRules(parseCSS(cssText), '');
       }
 
-// ───── [saveLang] philosynth.html строки 5845–5861 ─────
-      function saveLang() {
-        const sel = document.getElementById("langSelect").value;
-        if (sel === "__custom") {
-          const c = document.getElementById("customLangInput").value.trim();
-          if (!c) {
-            document.getElementById("langStatus").textContent = "⚠ Введите название языка";
-            document.getElementById("langStatus").style.color = "var(--red)";
-            return;
-          }
-          GEN_LANG = c;
+// ───── под него TODO(4.2) · js:reconstructSkeleton
+// philosynth.html строки 24320–24351 ─────
+      function reconstructSkeleton(genEntry) {
+        const params = DOC_STATE.params || genCommon?._params;
+        if (!params) return null;
+
+        const key = genEntry.sectionKey;
+        const source = genEntry.source || "";
+
+        // Режимы — собственная структура промпта (без baseCtx)
+        if (key?.startsWith("mode:")) {
+          return reconstructSectionTask(genEntry, params);
+        }
+
+        // Все остальные: baseCtx + ctxMarkers + task + quality
+        const base = reconstructBaseCtxSkeleton(params, genCommon);
+
+        let ctx = "";
+        if (source === "subsection-regen" && key?.includes(":")) {
+          // Подразделовая перегенерация: inter-section по ключу раздела,
+          // intra-section по полному ключу (раздел:подраздел)
+          const secKey = key.split(":")[0];
+          const interCtx = reconstructCtxMarkers(secKey);
+          const intraCtx = reconstructCtxMarkers(key);
+          ctx = interCtx + intraCtx;
         } else {
-          GEN_LANG = sel;
+          ctx = reconstructCtxMarkers(key);
         }
-        localStorage.setItem("ps_gen_lang", GEN_LANG);
-        document.getElementById("langStatus").textContent = "✓ Язык генерации: " + GEN_LANG;
-        document.getElementById("langStatus").style.color = "var(--green-check)";
+
+        const task = reconstructSectionTask(genEntry, params);
+        const quality = "\n\n[ТРЕБОВАНИЯ К КАЧЕСТВУ: см. общие элементы]";
+
+        return "ПАРАМЕТРЫ СИНТЕЗА:\n" + base + ctx + "\n\n" + task + quality;
       }
 
-// ───── [saveMD] philosynth.html строки 18197–18208 ─────
-      function saveMD() {
-        const lines = [];
-        lines.push(`# ${document.getElementById("docTitle").textContent}`);
-        lines.push(`\n> ${document.getElementById("docSubtitle").textContent}`);
-        lines.push(
-          `\n---\n\n| Параметр | Значение |\n|---|---|\n| Документ № | ${document.getElementById("docNum").textContent} |\n| Дата | ${document.getElementById("docDate").textContent} |\n| Метод | ${document.getElementById("docMethod").textContent} |\n| Глубина | ${document.getElementById("docDepth").textContent} |\n\n---\n`,
-        );
-        const db = document.getElementById("docBodies");
-        if (db) db.querySelectorAll(".doc-section").forEach((sec) => lines.push(sec2md(sec)));
-        lines.push(`\n---\n*PhiloSynth Pro™ · Документ сгенерирован Claude AI*`);
-        downloadFile(lines.join("\n"), getDocFilename("md"), "text/markdown");
-      }
-
-// ───── [saved] philosynth.html строки 17019–17019 ─────
-            const saved = { px: n.px, py: n.py, cen: n.cen };
-
-// ───── [sec2md] philosynth.html строки 18210–18220 ─────
-      function sec2md(sec) {
-        const parts = [];
-        const num = sec.querySelector(".section-num")?.textContent?.trim() || "";
-        const title = sec.querySelector(".section-title")?.textContent?.trim() || "";
-        if (num || title) parts.push(`## ${num}${num && title ? " — " : ""}${title}`);
-        const ct = sec.querySelector(".doc-content");
-        if (ct) parts.push(node2md(ct));
-        const sig = sec.querySelector(".sig-block");
-        if (sig) parts.push(sig2md(sig));
-        return parts.join("\n\n");
-      }
-
-// ───── [sig2md] philosynth.html строки 18284–18292 ─────
-      function sig2md(sig) {
-        return Array.from(sig.querySelectorAll(".sig-party"))
-          .map((p) => {
-            const n = p.querySelector(".sig-party-name")?.textContent?.trim() || "";
-            const r = p.querySelector(".sig-party-role")?.textContent?.trim() || "";
-            return `**${n}** *(${r})*\n\n_________________\n*Подпись / Дата*`;
-          })
-          .join("\n\n---\n\n");
-      }
-
-// ───── [table2md] philosynth.html строки 18266–18282 ─────
-      function table2md(table) {
-        const rows = [];
-        const hs = Array.from(table.querySelectorAll("thead th")).map((th) =>
-          th.textContent.trim(),
-        );
-        if (hs.length) {
-          rows.push(`| ${hs.join(" | ")} |`);
-          rows.push(`| ${hs.map(() => "---").join(" | ")} |`);
-        }
-        table.querySelectorAll("tbody tr").forEach((tr) => {
-          const cs = Array.from(tr.querySelectorAll("td")).map((td) =>
-            (inline2md(td) || td.textContent.trim()).replace(/\|/g, "\\|"),
-          );
-          rows.push(`| ${cs.join(" | ")} |`);
-        });
-        return rows.join("\n");
-      }
-
-// ───── [reconstructBaseCtxSkeleton] philosynth.html строки 24149–24197 ─────
+// ───── под него TODO(4.2) · js:reconstructBaseCtxSkeleton
+// philosynth.html строки 24149–24197 ─────
       function reconstructBaseCtxSkeleton(params, gc) {
         if (!params) return "";
 
@@ -1696,7 +1900,8 @@
           conceptCtx;
       }
 
-// ───── [reconstructCtxMarkers] philosynth.html строки 24202–24239 ─────
+// ───── под него TODO(4.2) · js:reconstructCtxMarkers
+// philosynth.html строки 24202–24239 ─────
       function reconstructCtxMarkers(sectionKey) {
         const parts = [];
 
@@ -1736,49 +1941,8 @@
         return parts.length ? "\n\n" + parts.join("\n\n") : "";
       }
 
-// ───── [reconstructGenealogy] philosynth.html строки 22181–22220 ─────
-      function reconstructGenealogy(meta, embeddedState, doc) {
-        // Если в embedded state уже есть genealogy — используем
-        if (embeddedState?.genealogy) return embeddedState.genealogy;
-
-        // Иначе реконструируем из метаданных:
-        // Участники — философы из meta.phil
-        const participants = (meta.phil || []).map(name => ({
-          type: "philosopher",
-          name,
-        }));
-
-        // Настоящее имя: сначала docTitle, если дефолт — из раздела «name»,
-        // иначе явный плейсхолдер. Это защищает от транзитивного
-        // распространения «Синтез Философской Концепции» через многоступенчатый
-        // метасинтез.
-        const resolvedName = resolveConceptName(doc) || "[безымянная концепция]";
-
-        // Если в embedded state есть participants с концепциями — используем их
-        if (embeddedState?.participants) {
-          return {
-            type: "concept",
-            name: resolvedName,
-            method: meta.method,
-            synthLevel: meta.synthLevel,
-            seed: meta.seed || "",
-            participants: embeddedState.participants.map(p =>
-              p.type === "concept" ? p.genealogy || { type: "concept", name: p.name } : p
-            ),
-          };
-        }
-
-        return {
-          type: "concept",
-          name: resolvedName,
-          method: meta.method,
-          synthLevel: meta.synthLevel,
-          seed: meta.seed || "",
-          participants,
-        };
-      }
-
-// ───── [reconstructSectionTask] philosynth.html строки 24247–24314 ─────
+// ───── под него TODO(4.2) · js:reconstructSectionTask
+// philosynth.html строки 24247–24314 ─────
       function reconstructSectionTask(genEntry, params) {
         if (!params) return "";
 
@@ -1848,36 +2012,96 @@
           "(строго в указанном порядке, без добавления других):\n\n" + sp;
       }
 
-// ───── [reconstructSkeleton] philosynth.html строки 24320–24351 ─────
-      function reconstructSkeleton(genEntry) {
-        const params = DOC_STATE.params || genCommon?._params;
-        if (!params) return null;
+// ───── под него TODO(4.2) · js:reconstructGenealogy
+// philosynth.html строки 22181–22220 ─────
+      function reconstructGenealogy(meta, embeddedState, doc) {
+        // Если в embedded state уже есть genealogy — используем
+        if (embeddedState?.genealogy) return embeddedState.genealogy;
 
-        const key = genEntry.sectionKey;
-        const source = genEntry.source || "";
+        // Иначе реконструируем из метаданных:
+        // Участники — философы из meta.phil
+        const participants = (meta.phil || []).map(name => ({
+          type: "philosopher",
+          name,
+        }));
 
-        // Режимы — собственная структура промпта (без baseCtx)
-        if (key?.startsWith("mode:")) {
-          return reconstructSectionTask(genEntry, params);
+        // Настоящее имя: сначала docTitle, если дефолт — из раздела «name»,
+        // иначе явный плейсхолдер. Это защищает от транзитивного
+        // распространения «Синтез Философской Концепции» через многоступенчатый
+        // метасинтез.
+        const resolvedName = resolveConceptName(doc) || "[безымянная концепция]";
+
+        // Если в embedded state есть participants с концепциями — используем их
+        if (embeddedState?.participants) {
+          return {
+            type: "concept",
+            name: resolvedName,
+            method: meta.method,
+            synthLevel: meta.synthLevel,
+            seed: meta.seed || "",
+            participants: embeddedState.participants.map(p =>
+              p.type === "concept" ? p.genealogy || { type: "concept", name: p.name } : p
+            ),
+          };
         }
 
-        // Все остальные: baseCtx + ctxMarkers + task + quality
-        const base = reconstructBaseCtxSkeleton(params, genCommon);
+        return {
+          type: "concept",
+          name: resolvedName,
+          method: meta.method,
+          synthLevel: meta.synthLevel,
+          seed: meta.seed || "",
+          participants,
+        };
+      }
 
-        let ctx = "";
-        if (source === "subsection-regen" && key?.includes(":")) {
-          // Подразделовая перегенерация: inter-section по ключу раздела,
-          // intra-section по полному ключу (раздел:подраздел)
-          const secKey = key.split(":")[0];
-          const interCtx = reconstructCtxMarkers(secKey);
-          const intraCtx = reconstructCtxMarkers(key);
-          ctx = interCtx + intraCtx;
-        } else {
-          ctx = reconstructCtxMarkers(key);
-        }
+// ───── Меню экспорта графа (долг из 1.7: MMD/PNG/JSON — заглушка) · css*:.gm-export-
+// philosynth.html строки 994–996 ─────
+      .gm-export-wrap {
+        position: relative;
+      }
 
-        const task = reconstructSectionTask(genEntry, params);
-        const quality = "\n\n[ТРЕБОВАНИЯ К КАЧЕСТВУ: см. общие элементы]";
+// ───── Меню экспорта графа (долг из 1.7: MMD/PNG/JSON — заглушка) · css*:.gm-export-
+// philosynth.html строки 997–1007 ─────
+      .gm-export-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+        background: var(--blue-corp);
+        border: 1px solid rgba(255,255,255,.25);
+        z-index: 50;
+        min-width: 130px;
+      }
 
-        return "ПАРАМЕТРЫ СИНТЕЗА:\n" + base + ctx + "\n\n" + task + quality;
+// ───── Меню экспорта графа (долг из 1.7: MMD/PNG/JSON — заглушка) · css*:.gm-export-
+// philosynth.html строки 1008–1010 ─────
+      .gm-export-wrap.open .gm-export-menu {
+        display: block;
+      }
+
+// ───── Меню экспорта графа (долг из 1.7: MMD/PNG/JSON — заглушка) · css*:.gm-export-
+// philosynth.html строки 1011–1025 ─────
+      .gm-export-item {
+        display: block;
+        width: 100%;
+        padding: 7px 14px;
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,.7);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        text-align: left;
+        cursor: pointer;
+        transition: all .12s;
+      }
+
+// ───── Меню экспорта графа (долг из 1.7: MMD/PNG/JSON — заглушка) · css*:.gm-export-
+// philosynth.html строки 1026–1029 ─────
+      .gm-export-item:hover {
+        background: rgba(255,255,255,.12);
+        color: #fff;
       }

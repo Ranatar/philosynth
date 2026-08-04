@@ -561,6 +561,12 @@
   border-color: var(--blue-corp);
 }
 
+/* Пропущено при порте CSS документа в 1.6b, восстановлено по
+   исходнику [921–923] ретроспективной сверкой 2026-08-04. */
+.action-btn.primary:hover {
+  background: var(--blue-mid);
+}
+
 .action-btn.gold-btn {
   border-color: var(--gold);
   color: var(--gold);

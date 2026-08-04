@@ -57,22 +57,80 @@ def code_mask(text: str) -> list[bool]:
             for k in range(i, j):
                 mask[k] = False
             i = j
+        elif c == "/" and _is_regex_start(text, mask, i):
+            # Регулярное выражение: символьный класс /[{}]/ или /[a-z-]/
+            # иначе ломает подсчёт скобок и функция не извлекается
+            # (дефект, пойманный на auditCSS при сборке спеки 4.2).
+            j, in_class, eol = i + 1, False, text.find("\n", i)
+            eol = n if eol < 0 else eol
+            closed = False
+            while j < eol:
+                ch = text[j]
+                if ch == "\\":
+                    j += 2
+                    continue
+                if ch == "[":
+                    in_class = True
+                elif ch == "]":
+                    in_class = False
+                elif ch == "/" and not in_class:
+                    j += 1
+                    closed = True
+                    break
+                j += 1
+            if not closed:
+                i += 1
+                continue
+            for k in range(i, min(j, n)):
+                mask[k] = False
+            i = j
         elif c in "'\"`":
+            # Кавычка открывает строку только если строка закрывается:
+            # для ' и " — в пределах ОДНОЙ строки файла (перенос в JS
+            # допустим лишь после \\, чего в исходнике нет), для ` —
+            # где угодно. Без этого ограничения одиночная кавычка внутри
+            # регулярного выражения или апострофа в тексте уводит сканер
+            # на тысячи строк вперёд и всё, что дальше, перестаёт
+            # считаться кодом (дефект, пойманный при сборке спек фаз 2–4:
+            # молча терялось всё после ~строки 16650).
             quote, j = c, i + 1
-            while j < n:
+            limit = n if quote == "`" else (text.find("\n", i) + 1 or n)
+            closed = False
+            while j < limit:
                 if text[j] == "\\":
                     j += 2
                     continue
                 if text[j] == quote:
                     j += 1
+                    closed = True
                     break
                 j += 1
+            if not closed:
+                i += 1
+                continue
             for k in range(i, min(j, n)):
                 mask[k] = False
             i = j
         else:
             i += 1
     return mask
+
+
+
+def _is_regex_start(text: str, mask: list[bool], i: int) -> bool:
+    """True, если `/` в позиции i открывает регулярное выражение, а не деление."""
+    j = i - 1
+    while j >= 0 and text[j] in " \t":
+        j -= 1
+    if j < 0:
+        return False
+    prev = text[j]
+    if prev in "(,=:[!&|?{};+-*%~^\n":
+        return True
+    word = re.match(r"\w+$", text[max(0, j - 12):j + 1])
+    return bool(word) and word.group(0) in {
+        "return", "typeof", "case", "in", "of", "do", "else", "yield", "await",
+    }
 
 
 def match_block(text: str, mask: list[bool], start: int, opener: str = "{") -> int:
@@ -129,7 +187,14 @@ def find_js(text, mask, name, lo=0, hi=None):
         beg = m.start() + 1 if text[m.start()] == "\n" else m.start()
         if not mask[beg]:
             continue
-        end = match_block(text, mask, m.end() - 1, "{")
+        # Список параметров закрываем ОТДЕЛЬНО: значение по умолчанию
+        # вида `opts = {}` иначе принимается за тело функции и фрагмент
+        # обрывается на строке объявления (дефект, пойманный на
+        # addSection при сборке спеки 2.2).
+        after_params = match_block(text, mask, m.end() - 1, "(")
+        if after_params < 0:
+            continue
+        end = match_block(text, mask, after_params, "{")
         if end > 0:
             return beg, end
     return None

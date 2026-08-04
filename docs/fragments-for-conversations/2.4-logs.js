@@ -1,7 +1,14 @@
-// Фрагменты philosynth.html (26 024 стр., ревизия 2026-07) для беседы 2.4-logs
-// Сгенерировано extract-fragments.py; при обновлении исходника — перегенерировать.
+// Фрагмент philosynth.html (26025 строк) — собран
+// scripts/extract-by-name.py по спецификации 2.4-logs.spec.
+//
+// Номера строк ниже — РЕЗУЛЬТАТ поиска по именам, а не входные
+// данные: при правке исходника достаточно перезапустить сборку,
+// спецификация не устаревает. Имена берутся из
+// docs/04-code-reuse-map.md.
 
-// ───── [formatCtxLog] philosynth.html строки 23319–23727 ─────
+// ───── Форматирование лога (server/services/log-formatter.ts) · js:formatCtxLog
+// philosynth.html строки 23318–23727 ─────
+
         function formatCtxLog() {
           if (genLog.length === 0 && ctxLog.length === 0)
             return "Лог пуст. Сгенерируйте документ.";
@@ -412,7 +419,17 @@
           return lines.join("\n");
         }
 
-// ───── [colorizeLog] philosynth.html строки 23733–24087 ─────
+// ───── Форматирование лога (server/services/log-formatter.ts) · js:formatCtxLogHTML
+// philosynth.html строки 24090–24095 ─────
+      function formatCtxLogHTML() {
+        const plain = formatCtxLog();
+        if (plain === "Лог пуст. Сгенерируйте документ.")
+          return '<span style="color:#8a8278">' + plain + '</span>';
+        return colorizeLog(plain);
+      }
+
+// ───── Раскраска (client/components/logs/colorize-log.ts) · js:colorizeLog
+// philosynth.html строки 23733–24087 ─────
         function colorizeLog(text) {
           const e = t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -769,7 +786,75 @@
           }).join("\n");
         }
 
-// ───── [formatPromptsForExport] philosynth.html строки 24353–24478 ─────
+// ───── диапазонном комплекте их не было: срез обрывался на строке 24088 · js:viewCtxLog
+// philosynth.html строки 24096–24104 ─────
+
+      function viewCtxLog() {
+        document.getElementById("ctxLogContent").innerHTML = formatCtxLogHTML();
+        const plainText = formatCtxLog();
+        document.getElementById("ctxLogInfo").textContent =
+          genLog.length + " разделов · " + plainText.split("\n").length + " строк";
+        document.getElementById("ctxLogOverlay").classList.add("visible");
+        document.body.style.overflow = "hidden";
+      }
+
+// ───── диапазонном комплекте их не было: срез обрывался на строке 24088 · js:closeCtxLog
+// philosynth.html строки 24105–24109 ─────
+
+      function closeCtxLog() {
+        document.getElementById("ctxLogOverlay").classList.remove("visible");
+        document.body.style.overflow = "";
+      }
+
+// ───── диапазонном комплекте их не было: срез обрывался на строке 24088 · js:copyCtxLog
+// philosynth.html строки 24110–24118 ─────
+
+      function copyCtxLog() {
+        navigator.clipboard.writeText(formatCtxLog()).then(() => {
+          const b = document.querySelector("#ctxLogOverlay .raw-copy");
+          const o = b.textContent;
+          b.textContent = "\u2713 Скопировано";
+          setTimeout(() => (b.textContent = o), 2000);
+        });
+      }
+
+// ───── диапазонном комплекте их не было: срез обрывался на строке 24088 · js:refreshCtxLogIfOpen
+// philosynth.html строки 23306–23313 ─────
+      function refreshCtxLogIfOpen() {
+        const overlay = document.getElementById("ctxLogOverlay");
+        if (!overlay || !overlay.classList.contains("visible")) return;
+        document.getElementById("ctxLogContent").innerHTML = formatCtxLogHTML();
+        const plainText = formatCtxLog();
+        document.getElementById("ctxLogInfo").textContent =
+          genLog.length + " разделов · " + plainText.split("\n").length + " строк";
+      }
+
+// ───── диапазонном комплекте их не было: срез обрывался на строке 24088 · js:downloadPrompts
+// philosynth.html строки 24119–24138 ─────
+
+      function downloadPrompts() {
+        const text = formatPromptsForExport();
+        if (!text) {
+          alert("Нет сохранённых промптов. Сгенерируйте хотя бы один раздел.");
+          return;
+        }
+        const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const docNum = document.getElementById("docNum")?.textContent?.trim() || "PS";
+        const docTitle = document.getElementById("docTitle")?.textContent?.trim() || "";
+        const titleSlug = docTitle && docTitle !== "Синтез Философской Концепции"
+          ? "-" + transliterate(docTitle).slice(0, 40)
+          : "";
+        a.href = url;
+        a.download = docNum + titleSlug + "-prompts.md";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+// ───── Дамп промптов (GET /logs/prompts) · js:formatPromptsForExport
+// philosynth.html строки 24352–24478 ─────
+
       function formatPromptsForExport() {
         // Включаем все записи с _promptSkeleton ИЛИ с достаточными данными для реконструкции.
         // Исключаем служебные маркеры, не являющиеся запросами к API.
@@ -897,7 +982,8 @@
         return lines.join("\n");
       }
 
-// ───── [buildPromptSkeleton] philosynth.html строки 8506–8588 ─────
+// ───── Дамп промптов (GET /logs/prompts) · js:buildPromptSkeleton
+// philosynth.html строки 8506–8588 ─────
       function buildPromptSkeleton(fp) {
         // 1. Сворачиваем контекстные блоки разделов (### ...)
         let result = fp.replace(
@@ -982,7 +1068,8 @@
         return result;
       }
 
-// ───── [_logPauseEvent] philosynth.html строки 24500–24511 ─────
+// ───── Дамп промптов (GET /logs/prompts) · js:_logPauseEvent
+// philosynth.html строки 24500–24511 ─────
       function _logPauseEvent(type, data) {
         try {
           genLog.push({
@@ -996,239 +1083,160 @@
         }
       }
 
-// ───── [reconstructBaseCtxSkeleton] philosynth.html строки 24149–24197 ─────
-      function reconstructBaseCtxSkeleton(params, gc) {
-        if (!params) return "";
+// ───── Разметка и стили окна лога (ContextLogViewer) · html:#ctxLogOverlay
+// philosynth.html строки 4275–4291 ─────
+    <div class="raw-overlay" id="ctxLogOverlay" onclick="if (event.target === this) closeCtxLog();">
+      <div class="raw-modal" style="max-width: 1000px">
+        <div class="raw-modal-header">
+          <div class="raw-modal-title">◈ Лог Контекста</div>
+          <button class="raw-close" onclick="closeCtxLog()">✕ Закрыть</button>
+        </div>
+        <div class="raw-modal-body"><pre id="ctxLogContent" style="font-size: 12px; line-height: 1.6"></pre></div>
+        <div class="raw-modal-footer">
+          <div class="raw-info" id="ctxLogInfo">—</div>
+          <button class="raw-copy" onclick="downloadPrompts()"
+                  title="Скачать все промпты за сессию в файл .md">
+            ⤓ Скачать промпты
+          </button>
+          <button class="raw-copy" onclick="copyCtxLog()">Скопировать лог</button>
+        </div>
+      </div>
+    </div>
 
-        const p = params;
-        const phils = (p.participants || []).filter(x => x.type === "philosopher").map(x => x.name);
-        const concepts = (p.participants || []).filter(x => x.type === "concept").map(x => "«" + x.name + "»");
-
-        let participantsLine = "";
-        if (phils.length && concepts.length)
-          participantsLine = "ФИЛОСОФЫ: " + phils.join(", ") + "\nКОНЦЕПЦИИ-УЧАСТНИКИ: " + concepts.join(", ");
-        else if (phils.length)
-          participantsLine = "ФИЛОСОФЫ: " + phils.join(", ");
-        else if (concepts.length)
-          participantsLine = "КОНЦЕПЦИИ-УЧАСТНИКИ: " + concepts.join(", ");
-
-        const isMeta = concepts.length > 0;
-        const metaNote = isMeta
-          ? "\nРЕЖИМ: МЕТА-СИНТЕЗ. Среди участников есть ранее синтезированные " +
-            "концепции. Их контекст (капсула, категории, тезисы) приведён ниже. " +
-            "Обращайся с каждой концепцией-участником как с самостоятельной " +
-            "философской позицией, обладающей собственным категориальным аппаратом."
-          : "";
-
-        let conceptCtx = "";
-        if (isMeta) {
-          const sizes = gc?.conceptBlockSizes || [];
-          const markers = (p.participants || [])
-            .filter(x => x.type === "concept")
-            .map(c => {
-              const found = sizes.find(s => s.name === c.name);
-              const chars = found ? found.chars.toLocaleString("ru") : "?";
-              return "[контекст «" + c.name + "»: " + chars + " симв.]";
-            });
-          conceptCtx = "\n\nКОНТЕКСТ КОНЦЕПЦИЙ-УЧАСТНИКОВ СИНТЕЗА " +
-            "(каждая — результат предыдущего синтеза; обращайся с ней " +
-            "как с полноценной философской позицией, у которой есть " +
-            "собственные категории, тезисы и внутренняя логика):\n\"\"\"\n" +
-            markers.join("\n") + "\n\"\"\"";
-        }
-
-        return "ЗЕРНО КОНЦЕПЦИИ: «" + (p.seed || "") + "»\n" +
-          participantsLine + metaNote + "\n" +
-          "МЕТОД: " + (ML[p.method] || p.method) + " — " + (mdText(p, p.method) || "") + "\n" +
-          "УРОВЕНЬ СИНТЕЗА: " + (SL[p.synthLevel] || p.synthLevel) + " — " +
-          (sdText(p, p.synthLevel) || "") + "\n" +
-          "ГЛУБИНА: " + (DL[p.depth] || p.depth) +
-          (p.ctx ? "\nКОНТЕКСТ: " + p.ctx : "") +
-          conceptCtx;
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1376–1385 ─────
+      .raw-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 10, 15, 0.75);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
       }
 
-// ───── [reconstructCtxMarkers] philosynth.html строки 24202–24239 ─────
-      function reconstructCtxMarkers(sectionKey) {
-        const parts = [];
-
-        // Ищем все ctxLog-записи для этого ключа
-        const entries = ctxLog.filter(c => c.sectionKey === sectionKey);
-
-        for (const ctx of entries) {
-          if (!ctx.entries?.length) continue;
-
-          if (ctx.type === "intra-section") {
-            // Внутрисекционный контекст (для подразделовых перегенераций)
-            const markers = ctx.entries
-              .filter(e => e.status === "found")
-              .map(e => "[" + (e.key.replace("intra:", "")) + ": " +
-                (e.len || 0).toLocaleString("ru") + " симв.]");
-            if (markers.length) {
-              parts.push("КОНТЕКСТ ДРУГИХ ПОДРАЗДЕЛОВ ЭТОГО РАЗДЕЛА:\n\"\"\"\n" +
-                markers.join("\n") + "\n\"\"\"");
-            }
-          } else {
-            // Межсекционный контекст (стандартный)
-            const markers = ctx.entries
-              .filter(e => e.status === "found" || e.status === "truncated")
-              .map(e => {
-                const label = (typeof CTX_LABELS !== "undefined" ? CTX_LABELS[e.key] : null) || e.key;
-                const suffix = e.status === "truncated" ? " [обрезан]" : "";
-                return "[" + label + ": " + (e.len || 0).toLocaleString("ru") + " симв." + suffix + "]";
-              });
-            if (markers.length) {
-              parts.push("КОНТЕКСТ ИЗ ПРЕДЫДУЩИХ РАЗДЕЛОВ " +
-                "(используй термины, §§ и названия категорий; не повторяй содержание):\n\"\"\"\n" +
-                markers.join("\n") + "\n\"\"\"");
-            }
-          }
-        }
-
-        return parts.length ? "\n\n" + parts.join("\n\n") : "";
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1386–1388 ─────
+      .raw-overlay.visible {
+        display: flex;
       }
 
-// ───── [reconstructGenealogy] philosynth.html строки 22181–22220 ─────
-      function reconstructGenealogy(meta, embeddedState, doc) {
-        // Если в embedded state уже есть genealogy — используем
-        if (embeddedState?.genealogy) return embeddedState.genealogy;
-
-        // Иначе реконструируем из метаданных:
-        // Участники — философы из meta.phil
-        const participants = (meta.phil || []).map(name => ({
-          type: "philosopher",
-          name,
-        }));
-
-        // Настоящее имя: сначала docTitle, если дефолт — из раздела «name»,
-        // иначе явный плейсхолдер. Это защищает от транзитивного
-        // распространения «Синтез Философской Концепции» через многоступенчатый
-        // метасинтез.
-        const resolvedName = resolveConceptName(doc) || "[безымянная концепция]";
-
-        // Если в embedded state есть participants с концепциями — используем их
-        if (embeddedState?.participants) {
-          return {
-            type: "concept",
-            name: resolvedName,
-            method: meta.method,
-            synthLevel: meta.synthLevel,
-            seed: meta.seed || "",
-            participants: embeddedState.participants.map(p =>
-              p.type === "concept" ? p.genealogy || { type: "concept", name: p.name } : p
-            ),
-          };
-        }
-
-        return {
-          type: "concept",
-          name: resolvedName,
-          method: meta.method,
-          synthLevel: meta.synthLevel,
-          seed: meta.seed || "",
-          participants,
-        };
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1389–1398 ─────
+      .raw-modal {
+        background: var(--ink);
+        border: 1px solid var(--rule-strong);
+        border-top: 3px solid var(--gold);
+        width: 100%;
+        max-width: 900px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
       }
 
-// ───── [reconstructSectionTask] philosynth.html строки 24247–24314 ─────
-      function reconstructSectionTask(genEntry, params) {
-        if (!params) return "";
-
-        const key = genEntry.sectionKey;
-        const source = genEntry.source || "";
-
-        // Режимы — своя структура
-        if (key?.startsWith("mode:")) {
-          const modeKey = key.replace("mode:", "");
-          const config = typeof MODE_CONFIG !== "undefined" ? MODE_CONFIG[modeKey] : null;
-          if (!config) return "[режим " + modeKey + ": шаблон недоступен]";
-          const param = genEntry.modeParam || "?";
-          const ctxMarkers = reconstructCtxMarkers(key);
-          // Шаблон режима с маркерами вместо контекста
-          const template = config.buildPrompt(param,
-            ctxMarkers ? "\n" + ctxMarkers + "\n" : "[контекст: " + (genEntry.priorChars || 0).toLocaleString("ru") + " симв.]"
-          );
-          return template;
-        }
-
-        // Подразделовая перегенерация
-        if (source === "subsection-regen") {
-          const parts = key.split(":");
-          const secKey = parts[0];
-          const subName = parts.slice(1).join(":");
-
-          const allDefs = buildSectionDefs(params);
-          patchPromptsWithSecCtx(allDefs, params.secCtx || {});
-          const def = allDefs.find(d => d.key === secKey);
-          if (!def?.parts) return "[подраздел " + subName + ": определение недоступно]";
-
-          const sub = def.parts.subsections.find(s => s.name === subName);
-          if (!sub) return "[подраздел «" + subName + "» не найден]";
-
-          const lines = [];
-          lines.push(def.parts.preamble_short || "");
-          lines.push("Перегенерируй ТОЛЬКО секцию:\n\n«" + sub.name + "»\n" + sub.body);
-          if (genEntry.hasUserNote && genEntry.userNotePreview)
-            lines.push("ДОПОЛНИТЕЛЬНАЯ ИНСТРУКЦИЯ ПОЛЬЗОВАТЕЛЯ:\n" + genEntry.userNotePreview);
-          if (genEntry.hasCurrentContent)
-            lines.push("ТЕКУЩЕЕ СОДЕРЖИМОЕ ПОДРАЗДЕЛА: [" +
-              (genEntry.currentContentChars || 0).toLocaleString("ru") + " симв.]");
-          return lines.filter(Boolean).join("\n\n");
-        }
-
-        // Стандартные разделы (generation, edit, cascade, edit-add)
-        const sectionKeys = key.includes("+") ? key.split("+") : [key];
-
-        const allDefs = buildSectionDefs(params);
-        patchPromptsWithSecCtx(allDefs, params.secCtx || {});
-        const defsMap = Object.fromEntries(allDefs.map(d => [d.key, d]));
-
-        // Восстанавливаем номера из DOC_STATE если доступны
-        for (const k of sectionKeys) {
-          if (defsMap[k] && DOC_STATE.sectionDefs?.[k]?.num) {
-            defsMap[k].num = DOC_STATE.sectionDefs[k].num;
-          }
-        }
-
-        const sp = sectionKeys
-          .map(k => defsMap[k])
-          .filter(Boolean)
-          .map(d => "§ " + d.num + " — " + d.title.toUpperCase() + "\n" + d.prompt)
-          .join("\n\n");
-
-        return "ЗАДАНИЕ: составь ТОЛЬКО следующие разделы " +
-          "(строго в указанном порядке, без добавления других):\n\n" + sp;
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1399–1406 ─────
+      .raw-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        border-bottom: 1px solid #333;
+        flex-shrink: 0;
       }
 
-// ───── [reconstructSkeleton] philosynth.html строки 24320–24351 ─────
-      function reconstructSkeleton(genEntry) {
-        const params = DOC_STATE.params || genCommon?._params;
-        if (!params) return null;
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1407–1414 ─────
+      .raw-modal-title {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
 
-        const key = genEntry.sectionKey;
-        const source = genEntry.source || "";
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1415–1426 ─────
+      .raw-close {
+        font-family: var(--mono);
+        font-size: 11px;
+        background: transparent;
+        border: 1px solid #444;
+        color: #999;
+        padding: 6px 14px;
+        cursor: pointer;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        transition: all 0.15s;
+      }
 
-        // Режимы — собственная структура промпта (без baseCtx)
-        if (key?.startsWith("mode:")) {
-          return reconstructSectionTask(genEntry, params);
-        }
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1427–1430 ─────
+      .raw-close:hover {
+        border-color: var(--red);
+        color: var(--red);
+      }
 
-        // Все остальные: baseCtx + ctxMarkers + task + quality
-        const base = reconstructBaseCtxSkeleton(params, genCommon);
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1431–1435 ─────
+      .raw-modal-body {
+        overflow-y: auto;
+        flex: 1;
+        padding: 24px;
+      }
 
-        let ctx = "";
-        if (source === "subsection-regen" && key?.includes(":")) {
-          // Подразделовая перегенерация: inter-section по ключу раздела,
-          // intra-section по полному ключу (раздел:подраздел)
-          const secKey = key.split(":")[0];
-          const interCtx = reconstructCtxMarkers(secKey);
-          const intraCtx = reconstructCtxMarkers(key);
-          ctx = interCtx + intraCtx;
-        } else {
-          ctx = reconstructCtxMarkers(key);
-        }
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1436–1444 ─────
+      .raw-modal-body pre {
+        font-family: var(--mono);
+        font-size: 11px;
+        line-height: 1.7;
+        color: #c8c0b0;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 0;
+      }
 
-        const task = reconstructSectionTask(genEntry, params);
-        const quality = "\n\n[ТРЕБОВАНИЯ К КАЧЕСТВУ: см. общие элементы]";
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1445–1452 ─────
+      .raw-modal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        border-top: 1px solid #333;
+        flex-shrink: 0;
+      }
 
-        return "ПАРАМЕТРЫ СИНТЕЗА:\n" + base + ctx + "\n\n" + task + quality;
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1453–1458 ─────
+      .raw-info {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: #555;
+        letter-spacing: 1px;
+      }
+
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1459–1471 ─────
+      .raw-copy {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        background: var(--gold);
+        color: var(--ink);
+        border: none;
+        padding: 8px 20px;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+
+// ───── Разметка и стили окна лога (ContextLogViewer) · css*:.raw-
+// philosynth.html строки 1472–1474 ─────
+      .raw-copy:hover {
+        opacity: 0.85;
       }

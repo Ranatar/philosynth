@@ -678,6 +678,180 @@
         transition: opacity 0.2s;
       }
 
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2114–2117 ─────
+      .header-disclosure {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        margin-bottom: 0;
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2118–2132 ─────
+      .header-disclosure summary {
+        padding: 6px 14px;
+        cursor: pointer;
+        color: rgba(255, 255, 255, 0.55);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.06);
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        user-select: none;
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2133–2133 ─────
+      .header-disclosure summary::-webkit-details-marker { display: none; }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2134–2139 ─────
+      .header-disclosure summary::before {
+        content: "▶";
+        font-size: 7px;
+        transition: transform 0.2s;
+        display: inline-block;
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2140–2140 ─────
+      .header-disclosure[open] summary::before { transform: rotate(90deg); }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2141–2150 ─────
+      .header-disclosure .disclosure-body {
+        padding: 10px 14px;
+        font-size: 12px;
+        line-height: 1.7;
+        color: rgba(255, 255, 255, 0.75);
+        font-family: var(--sans);
+        white-space: pre-wrap;
+        background: rgba(0, 0, 0, 0.12);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2153–2156 ─────
+      .header-disclosure-capsule {
+        border: 1px solid var(--gold);
+        margin-bottom: 0;
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2157–2171 ─────
+      .header-disclosure-capsule summary {
+        padding: 6px 14px;
+        cursor: pointer;
+        color: var(--gold-light);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        background: rgba(184, 134, 11, 0.15);
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        user-select: none;
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2172–2172 ─────
+      .header-disclosure-capsule summary::-webkit-details-marker { display: none; }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2173–2178 ─────
+      .header-disclosure-capsule summary::before {
+        content: "▶";
+        font-size: 7px;
+        transition: transform 0.2s;
+        display: inline-block;
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2179–2179 ─────
+      .header-disclosure-capsule[open] summary::before { transform: rotate(90deg); }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 2180–2189 ─────
+      .header-disclosure-capsule .disclosure-body {
+        padding: 10px 14px;
+        font-size: 12px;
+        line-height: 1.7;
+        color: rgba(255, 255, 255, 0.80);
+        font-family: var(--sans);
+        white-space: pre-wrap;
+        background: rgba(184, 134, 11, 0.08);
+        border-top: 1px solid var(--gold);
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.header-disclosure
+// philosynth.html строки 21386–21391 ─────
+          headerExtras.querySelectorAll("details.header-disclosure").forEach(det => {
+            const summaryText = det.querySelector("summary")?.textContent?.trim()?.toLowerCase() || "";
+            const bodyText = det.querySelector(".disclosure-body")?.textContent?.trim() || "";
+            if (summaryText.includes("зерно")) seed = bodyText;
+            else if (summaryText.includes("контекст")) ctx = bodyText;
+          }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.sec-disclosure
+// philosynth.html строки 2192–2195 ─────
+      .sec-disclosure {
+        border: 1px solid var(--blue-corp);
+        margin-bottom: 12px;
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.sec-disclosure
+// philosynth.html строки 2196–2210 ─────
+      .sec-disclosure summary {
+        padding: 6px 14px;
+        cursor: pointer;
+        color: var(--blue-corp);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        background: var(--blue-light);
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        user-select: none;
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.sec-disclosure
+// philosynth.html строки 2211–2211 ─────
+      .sec-disclosure summary::-webkit-details-marker { display: none; }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.sec-disclosure
+// philosynth.html строки 2212–2217 ─────
+      .sec-disclosure summary::before {
+        content: "▶";
+        font-size: 7px;
+        transition: transform 0.2s;
+        display: inline-block;
+      }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.sec-disclosure
+// philosynth.html строки 2218–2218 ─────
+      .sec-disclosure[open] summary::before { transform: rotate(90deg); }
+
+// ───── Disclosure-CSS шапки и разделов · css*:.sec-disclosure
+// philosynth.html строки 2219–2228 ─────
+      .sec-disclosure .disclosure-body {
+        padding: 10px 14px;
+        font-size: 12px;
+        line-height: 1.7;
+        color: var(--ink-mid);
+        font-family: var(--sans);
+        white-space: pre-wrap;
+        background: var(--white);
+        border-top: 1px solid var(--blue-corp);
+      }
+
 // ───── Разметка-эталон документа · html:#docOutput
 // philosynth.html строки 4169–4219 ─────
         <div id="docOutput">
