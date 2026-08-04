@@ -1,5 +1,15 @@
 # PhiloSynth Service — Карта переиспользования кода
 
+> **Правка 2026-08-04 (сверка адресов)**: адреса приведены к фактическому размещению по итогам машинной сверки
+> `scripts/check-map-04.py` — она проверяет, объявлен ли каждый
+> идентификатор карты в названном ею модуле. Исправлены: `sourceOf`,
+> `buildSubsectionMap`, коды `METHOD_CODE`/`LEVEL_CODE`/`ORDER_CODE`/
+> `DEPTH_CODE`, `MODE_DEPS`, палитры графа (компонента `GraphViewer` не
+> создавалась), `buildLegend`, `updateSectionWarnings` (переименован в
+> `computeSectionAdvice`), `updateCompatAdvisor` (не портирован — долг
+> беседы 3.2). Все случаи — из уже закрытых бесед: код на месте,
+> неверен был только адрес.
+>
 > **Ревизия 2026-07-29 (беседа 1.5)**: клиентская форма/прогресс;
 > эндпоинты /syntheses/estimate и /syntheses/advice; код
 > NO_PARTICIPANTS_SEED_REQUIRED в POST /syntheses.
@@ -49,7 +59,9 @@
 | `computePredecessors()` | `server/utils/topo-sort.ts` |
 | `buildDynamicOrder()` (topologicalSort инлайнен внутрь, алгоритм Кана) | там же |
 | `resolveCircularDeps()` — итеративный разрыв циклов по слабейшему ребру: `findOneCycle()`, `getEdgeQuality()`, `removeEdge()`, `dfs()` | там же |
-| `computeDependents()`, `sourceOf()`, `getIntraDependents()`, `getCrossSecDependents()`, `buildSubsectionMap()`, `getAffectedModes()`, `sortInTopoOrder()`, `buildFactualDepsMap()`, `computeFactualDependents()`, `buildCtxKeyConsumers()` (гранулярный каскад: ключ → подразделы-потребители), `canonicalSubsectionKey()` (каноникализация портретных заголовков) | `server/services/cascade-analyzer.ts` |
+| `computeDependents()`, `getIntraDependents()`, `getCrossSecDependents()`, `getAffectedModes()`, `sortInTopoOrder()`, `buildFactualDepsMap()`, `computeFactualDependents()`, `buildCtxKeyConsumers()` (гранулярный каскад: ключ → подразделы-потребители), `canonicalSubsectionKey()` (каноникализация портретных заголовков) | `server/services/cascade-analyzer.ts` |
+| `sourceOf()` — ФАКТ (беседа 1.1): вынесен в utils-слой, cascade-analyzer импортирует оттуда | `server/utils/topo-sort.ts` |
+| `buildSubsectionMap()` — ФАКТ (беседа 1.2): строится из конфига `subsection_map` рядом с определениями разделов | `server/services/section-defs-builder.ts` |
 
 ### 1.2. Матрица совместимости
 
@@ -57,8 +69,8 @@
 |---|---|
 | `COMPAT_MATRIX_COMPACT`, `COMPAT_SEC_LABELS` (COMPAT_KEYS удалён) | `server/config/compat-matrix.ts` (→ БД) |
 | `computeSectionRating()` | `server/services/compat-advisor.ts` |
-| Advisor v2 (заменил computeMethodRating/computeOverallCompat/getCompatAdvice — их больше нет): `getCompatEntry()`, `getCompatEntryByKey()` (entry-модель `level:method` с severity), `iconForSeverity()`, `titleForSeverity()`, `chipClassForRating()`, `updateCompatAdvisor()` | `server/services/compat-advisor.ts` + `client/components/synthesis/CompatAdvisor.tsx` и `SectionWarnings.tsx` (боксы ⚠/💡/⇄; данные — POST /syntheses/advice, беседа 1.5); `applyReplacement()` — НЕ портирован, TODO 2.x (кнопки замен; replacements уже в entry) |
-| Section Dependency Warnings (живые предупреждения/рекомендации/подстановки в форме): `computeSectionWarnings()`, `updateSectionWarnings()` | там же + `client/components/synthesis/SectionWarnings.tsx` |
+| Advisor v2 (заменил computeMethodRating/computeOverallCompat/getCompatAdvice — их больше нет): `getCompatEntry()`, `getCompatEntryByKey()` (entry-модель `level:method` с severity), `iconForSeverity()`, `titleForSeverity()`, `chipClassForRating()` | `server/services/compat-advisor.ts` + `client/components/synthesis/CompatAdvisor.tsx` и `SectionWarnings.tsx` (боксы ⚠/💡/⇄; данные — POST /syntheses/advice, беседа 1.5); `applyReplacement()` и `updateCompatAdvisor()` — НЕ портированы, долг беседы 3.2 (§12 протокола 07): кнопки замен и перерисовка советника, replacements уже в entry |
+| Section Dependency Warnings (живые предупреждения/рекомендации/подстановки в форме): `computeSectionWarnings()`, `updateSectionWarnings()` → на сервере назван `computeSectionAdvice()` (ФАКТ, беседа 1.1: возвращает структуры `{icon,text,severity}` вместо правки DOM — под прежним именем в коде не искать) | там же + `client/components/synthesis/SectionWarnings.tsx` |
 
 ### 1.3. Оценка стоимости
 
@@ -89,7 +101,8 @@
 | `STATE` (списки философов — 106 позиций (+36 в v10), ML, SL, DL и т.д.) | `shared/constants/philosophers.ts` (106, сверено в беседе 0.1), `shared/constants/labels.ts` |
 | `_EXTRA_CATEGORY_TYPES`, `_EXTRA_EDGE_TYPES`, `_SYNTH_LEVEL_TYPE_PHRASING`, `_buildExtraTypesBlock()` | `server/config/extra-types.ts` (→ БД) (v10) |
 | `KEY_LABELS`, `SECTION_LABELS` | `shared/constants/section-labels.ts` |
-| `REVERSE_ML`, `REVERSE_DL`, `REVERSE_SL`, `METHOD_CODE`, `LEVEL_CODE`, `ORDER_CODE`, `DEPTH_CODE` | `shared/constants/labels.ts` |
+| `REVERSE_ML`, `REVERSE_DL`, `REVERSE_SL` | `shared/constants/labels.ts` |
+| `METHOD_CODE`, `LEVEL_CODE`, `ORDER_CODE`, `DEPTH_CODE` (односимвольные коды для имени файла; DEPTH — цифры, ORDER — заглавные) — ФАКТ (беседа 0.1) | `shared/constants/methods.ts` |
 
 ### 1.7. Парсинг графа
 
@@ -108,7 +121,8 @@
 | Функция | Целевой модуль |
 |---|---|
 | `PHIL_FILENAME` | `shared/constants/phil-filename.ts` |
-| `METHOD_CODE`, `LEVEL_CODE`, `transliterate()` | `shared/utils/transliterate.ts` |
+| `transliterate()` | `shared/utils/transliterate.ts` |
+| `METHOD_CODE`, `LEVEL_CODE` (используются при сборке имени файла) — ФАКТ (беседа 0.1) | `shared/constants/methods.ts` |
 | `getDocFilename()` | `server/services/export/filename.ts` |
 
 ---
@@ -135,7 +149,8 @@
 
 | Функция / объект | Целевой модуль сервиса |
 |---|---|
-| `MODE_DEPS`, `getEffectiveModeDeps()` | `server/services/mode-service.ts` (→ БД) |
+| `getEffectiveModeDeps()` | `server/services/mode-service.ts` (→ БД, беседа 4.1) |
+| `MODE_DEPS` — ФАКТ: посеян раньше владельца, лежит отдельным конфигом | `server/config/mode-deps.ts` |
 
 ## 2. Адаптируемое (логика сохраняется, источник данных меняется)
 
@@ -234,10 +249,12 @@
 | HTML-разметка (формы, модальные окна, layout) | React-компоненты |
 | `STATE` (DOM-рефы, глобальные переменные) | Zustand store |
 | `generateDoc()`, `_runGenPassesFromIdx()` (бывш. go(); единый цикл штатной генерации и возобновления) — DOM-оркестрация | React + WebSocket hooks; серверная оркестрация — generation-service |
-| Динамические палитры (`_nodeColorMap`, `_edgeStyleMap`, `_TC_HUE_SEEDS`, `_EC_HUE_SEEDS`, `_EC_DASH_SEEDS`, `CPAL`), `showNodePanel()`, `showEdgePanel()` | React-компоненты GraphViewer, NodePanel, EdgePanel |
+| Динамические палитры (`_nodeColorMap`, `_edgeStyleMap`, `_TC_HUE_SEEDS`, `_EC_HUE_SEEDS`, `_EC_DASH_SEEDS`, `CPAL`), `showNodePanel()`, `showEdgePanel()` | ФАКТ (беседа 1.7): палитры и сиды оттенков — `client/components/graph/graph-utils.ts`; представления — `Graph3D.tsx` и `Graph2D.tsx` (компонента `GraphViewer` не создавалась); панели — `NodePanel.tsx`, `EdgePanel.tsx` |
 | `build3D()` — Three.js (вся 3D-логика) | `client/components/graph/Graph3D.tsx` (React-обёртка) |
 | `build2D()` — D3.js (вся 2D-логика) | `client/components/graph/Graph2D.tsx` (React-обёртка) |
-| `buildLegend()`, `switchView()`, `openGraph()`, `closeGraph()`, `clearLegendFilter()` | `client/components/graph/GraphModal.tsx` |
+| `switchView()`, `openGraph()`, `closeGraph()` | `client/components/graph/GraphModal.tsx` |
+| `buildLegend()` — ФАКТ (беседа 1.7): вынесен в отдельный компонент | `client/components/graph/GraphLegend.tsx` |
+| `clearLegendFilter()` — ФАКТ (беседа 1.7): живёт рядом с состоянием графа | `client/components/graph/graph-utils.ts` |
 | `openEditModal()`, `renderEditSections()` | `client/components/EditModal.tsx` |
 | UI подразделовой перегенерации | `client/components/SubsectionRegenPanel.tsx` |
 | `addSection()`, `deleteSection()`, `rebuildDbMapping()` | Серверные операции через API |
