@@ -354,8 +354,9 @@ async function rebuildInfra(ps: PausedStateGen): Promise<RebuiltInfra | null> {
  * Фактические outputChars разделов — последние done-строки генлога
  * (edit-режим estimateCost({sections}) исходника читает фактические
  * размеры из DOC_STATE; серверный аналог — generation_log).
+ * Экспортирована для edit-planner (беседа 2.1, estimatePlanCost).
  */
-async function loadActualOutputChars(
+export async function loadActualOutputChars(
   synthesisId: string,
 ): Promise<Record<string, number>> {
   const rows = await db

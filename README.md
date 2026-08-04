@@ -36,7 +36,7 @@ scripts/           эксплуатационные скрипты: extract-seed
                    -taxonomy, идемпотентные патч-скрипты доков
                    (patch-docs-*.py)
 docs/              7 проектных документов + fragments-for-conversations/
-tests/             ВСЕ тесты бесед (0.3b–1.7): vm-смоуки байтовой сверки
+tests/             ВСЕ тесты бесед (0.3b–2.1): vm-смоуки байтовой сверки
                    с исходником (smoke-*.mjs/.mts), API-тесты (mini-Hono),
                    браузерные (puppeteer + системный Chromium). Запуск из
                    корня репо: `node tests/<файл>` / `npx tsx tests/<файл>`.
@@ -91,7 +91,7 @@ CONTEXT_BUDGET_PREVIEW локализован); 1.6 — 2k/4o/5n: роуты ч�
 покрывает 0.1–0.6 и 1.1–1.6; живые секции требуют поднятых PG и Redis
 и засеянных prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.7 закрыты
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.7 закрыты; Фаза 2 — беседа 2.1 закрыта
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -239,6 +239,18 @@ utils/graph-{physics,geometry}, api/elements (getCategories),
 модулей + браузерные 3D/2D/панели/кластеры/hover/edge cases +
 честный CDP-touch: pinch/orbit/tap). Экспорт MMD/PNG/JSON —
 заглушки TODO(4.2). Доки пропатчены scripts/patch-docs-conv17.py.
+
+Беседа 2.1 (каскадный анализ + планировщик, бэкенд):
+services/cascade-analyzer.ts (computeDependents, каноникализация с
+getCanonicalizer → закрыт TODO(2.1) в context-builder, intra/cross-sec
+зависимые, getAffectedModes, фактические зависимости из context_log,
+analyzeImpact = серверный updateLiveCascade), services/plan-order-builder.ts
+(buildPlanOrder v10), services/edit-planner.ts (планы edit_plans:
+создание/чтение/PATCH с пересборкой каскада/удаление, живая оценка
+estimatePlanCost), routes/plans.ts (03 §2.6; execute — беседа 2.2),
+wave-функции в cost-estimator (долг 1.1 закрыт). Тесты:
+tests/test-21-requests2-5.mjs 39/39 ✓ ×2 (сервис + HTTP; без браузера).
+Доки пропатчены scripts/patch-docs-conv21.py.
 
 Не сделано (Фаза 2+): applyReplacement (3.2) и точный
 confirm деградации skip (2.2), каскады и план

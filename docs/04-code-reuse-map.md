@@ -78,7 +78,7 @@
 |---|---|
 | `estimateCost()` | `server/services/cost-estimator.ts` |
 | `estimateSubsectionCost()`, `estimateModeCost()` | там же (беседа 1.1) |
-| `estimateCascadeWaveCost()`, `formatWaveCost()` | там же (портируются в беседе 2.1 — требуют cascade-analyzer) |
+| `estimateCascadeWaveCost()`, `formatWaveCost()` | там же — ФАКТ: портированы беседой 2.1 (потребовали каскадного анализа; потребитель — estimatePlanCost) |
 
 ### 1.4. Версионирование
 

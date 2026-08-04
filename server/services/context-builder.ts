@@ -57,6 +57,7 @@ import type { HtmlElement } from "../utils/html-parser.js";
 import { tableToText } from "../utils/text.js";
 import { innerTextTrimmed } from "../utils/html-parser.js";
 import { getConfig } from "./prompt-registry.js";
+import { getCanonicalizer } from "./cascade-analyzer.js";
 import { findSubstitute, getActiveSubstitutionMap } from "./synthesis-engine.js";
 import {
   createDbContextSource,
@@ -513,17 +514,19 @@ export { extractIntraSectionContext };
  * Адаптации:
  *  - INTRA_DEPS читается из Registry (конфиг intra_deps);
  *  - canonicalSubsectionKey [9753] принадлежит cascade-analyzer (беседа 2.1,
- *    04-map §1.1) — до её появления передаётся колбэком `canonicalize`;
- *    default — тождество. TODO(2.1): подставить настоящую каноникализацию
- *    портретных заголовков (иначе при кардинальности ≠ multi имена
- *    подразделов не совпадут с каноном INTRA_DEPS).
+ *    04-map §1.1) — принимается колбэком `canonicalize`; ЗАКРЫТО в 2.1:
+ *    default — настоящая каноникализация getCanonicalizer() из
+ *    cascade-analyzer (варианты портретного заголовка из Registry), а не
+ *    тождество: при кардинальности ≠ multi имена подразделов теперь
+ *    совпадают с каноном INTRA_DEPS и без явного колбэка.
  */
 export async function extractRelevantIntraSectionContext(
   container: HtmlElement,
   sectionKey: string,
   subsectionName: string,
-  canonicalize: (sectionKey: string, name: string) => string = (_k, n) => n,
+  canonicalize?: (sectionKey: string, name: string) => string,
 ): Promise<string> {
+  canonicalize ??= await getCanonicalizer();
   const intraDeps =
     await getConfig<Record<string, Record<string, string[]> | undefined>>(
       "intra_deps",

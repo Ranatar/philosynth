@@ -2762,3 +2762,161 @@ GraphModal.tsx, палитры+showNodePanel/showEdgePanel ✓ React-компо�
   warning сборки); сворачивание легенды на мобильном (после
   медиа-фикса жесты работают, но легенда обрезана до 38% высоты).
 - Прочие TODO прежних бесед — без изменений (реестр 07 §12).
+
+# Беседа 2.1 — Cascade Analyzer + Edit Planner (бэкенд) [ЗАКРЫТА]
+
+## Созданные/изменённые файлы (беседа 2.1)
+
+- `server/services/cascade-analyzer.ts` (~900 строк) — порты §1.1 карты:
+  computeDependents [5473]; canonicalSubsectionKey [9753] тремя формами
+  (чистое ядро canonicalSubsectionKeyWith(variants,…), async-обёртка,
+  getCanonicalizer() — СИНХРОННЫЙ колбэк с предзагруженными из Registry
+  вариантами sumPortraitVariants — для context-builder);
+  getIntraDependents [9566] (BFS по INTRA_DEPS из Registry, денормализация
+  портретных имён через buildSubsectionMap/SUBSECTION_SUM_PORTRAIT);
+  buildCtxKeyConsumers [9690]; getCrossSecDependents [9767]
+  (SUBSECTION_TO_CTX_KEYS из конфига subsection_ctx_keys);
+  getAffectedModes [22814] (reason-тексты дословно) + MODE_TITLES
+  (значения MODE_CONFIG [22579] дословно) + getEffectiveModeDepsFromConfig
+  [22558] (генетическая подмена graph-ключей; ОБА — TODO(4.1),
+  владелец mode-service); sortInTopoOrder [20482];
+  buildFactualDepsMap [5501] / computeFactualDependents [5544] (статусы
+  entries сервиса совпали с исходником — порт 1:1, источник — context_log
+  по createdAt ASC); analyzeImpact — РАСЧЁТНАЯ часть updateLiveCascade
+  [19139–19505] без DOM: downstream (B) по текущим effectiveDeps ПОСЛЕ
+  buildDynamicOrder (мутация как DOC_STATE), бенефициары добавлений по
+  будущим deps, весовые подсказки из factReverse (E1), upstream C1–C3
+  (жёсткие потери / активные подстановки с квирком «источник заменяемого
+  добавляется тем же планом» / рекомендации), затронутые режимы (E5,
+  changedSections без подразделов — как в исходнике). Реэкспорты
+  sourceOf (topo-sort, 1.1) и buildPlanOrder (plan-order-builder) —
+  соответствие карте 04 и тексту первого запроса.
+- `server/services/plan-order-builder.ts` — buildPlanOrder [20495] (v10):
+  Кан среди операций плана по predecessors БУДУЩЕГО состояния, вторичная
+  сортировка по SECTION_TOPO_ORDER_*, циклы в конец, ветка params=null
+  (add→regen) сохранена; async (Registry).
+- `server/services/edit-planner.ts` — PlanError (NOT_FOUND/FORBIDDEN/
+  VALIDATION_ERROR/PLAN_CONFLICT ← 03 §4.3); normalizeActions;
+  assembleSteps (порядок: delete разделов → add+regen единым
+  buildPlanOrder → delete результатов режимов → regen_mode);
+  createPlan/getPlan/updatePlan/deletePlan; estimatePlanCost (волна
+  estimateCascadeWaveCost с поставщиками поверх серверного
+  estimateCost isEdit + фактические размеры генлога — по образцу
+  computePauseEstimates 1.4b; regen_mode → estimateModeCost;
+  fail-open 0).
+- `server/services/cost-estimator.ts` += estimateCascadeWaveCost [7912]
+  (капсула-квирк сохранён) и formatWaveCost [7928] — долг 1.1 закрыт.
+- `server/routes/plans.ts` + монтирование в index.ts —
+  POST/GET/PATCH/DELETE /syntheses/:id/plans[/:planId] (03 §2.6),
+  owner-only, не-UUID → 404; execute НЕ реализован (беседа 2.2).
+- `server/services/context-builder.ts` — TODO(2.1) ЗАКРЫТ: параметр
+  canonicalize стал optional, default `??= await getCanonicalizer()`;
+  проверка 4j переписана с маркера TODO(2.1) на факт подключения.
+- `server/services/pause-resume-service.ts` — loadActualOutputChars
+  стал export (потребитель estimatePlanCost).
+- `server/integration-check.mts` — секции 2l (рантайм-импорты 2.1,
+  тождество реэкспортов, типовые присваивания), 4r (текстовые контракты:
+  PORTRAIT_CANON/MODE_TITLES дословно, анти-цикл loadSynthesisLocal,
+  TODO(4.1), reason-тексты, buildDynamicOrder над текущими deps, фильтры
+  [5501], ветка !p, капсула-квирк, формат волны, статусы
+  confirmed/pending, insert без estimatedCost, гейт draft/PLAN_CONFLICT,
+  isUuid, отсутствие execute, монтирование), 5o (живой планировщик:
+  analyzeImpact downstream, createPlan, updatePlan skip→каскад исчезает,
+  коды PlanError, deletePlan).
+- `tests/test-21-requests2-5.mjs` — запросы 2–5 протокола + HTTP-смоук
+  §2.6, 39 ✓ / 0 ✗ ×2. Браузер НЕ нужен (бэкенд-беседа).
+
+## Адаптации/решения беседы 2.1
+
+(а) estimatedCost НЕ хранится в edit_plans (02 §2.13 без колонки, 03
+    §4.2 поле есть) — вычисляется заново при create/GET/PATCH: оценка
+    всегда живая, расхождения схема↔спека нет.
+(б) Статусы шагов: явно выбранные пользователем — 'confirmed', каскадные
+    — 'pending' (workflow 01 §4.5 п.4: пользователь подтверждает/снимает).
+(в) Удаление результата режима: отдельного EditStepType нет (03 §4.2) —
+    type='delete' с target «modeKey:index» (различение по «:», как у
+    regen_mode).
+(г) remove+add одного раздела допустимы (паттерн «заменить», edge case 4
+    протокола); regen∩remove — VALIDATION_ERROR.
+(д) updatePlan пересобирает шаги ЦЕЛИКОМ от всех базовых действий
+    (снятые остаются skipped в плане), каскад — от НЕ-снятых; прежние
+    решения и контексты переносятся по ключу (type, target); каскадные
+    шаги, переставшие быть затронутыми, из плана уходят.
+(е) АНТИ-ЦИКЛ: cascade-analyzer грузит синтез локальным
+    loadSynthesisLocal, НЕ импортируя generation-service — иначе
+    статический цикл context-builder → cascade-analyzer →
+    generation-service → context-builder (getCanonicalizer в
+    context-builder появился при закрытии TODO(2.1)).
+(ж) canonicalSubsectionKey на сервере асинхронна (варианты из Registry);
+    для sync-потребителя (колбэк extractRelevantIntraSectionContext)
+    выдаётся getCanonicalizer() → синхронная функция с уже
+    загруженными вариантами.
+(з) analyzeImpact передаёт в getAffectedModes только changedSections
+    (regen∪remove∪add) — как updateLiveCascade E5; подразделы появятся
+    у executor'а (2.2).
+(и) Планы — owner-only во всех эндпоинтах (edit-операции), в отличие от
+    чтения синтеза (владелец ИЛИ isPublic). Создание плана при активной
+    генерации допустимо: PLAN_CONFLICT (03 §4.3) — про ИСПОЛНЕНИЕ,
+    гейт у executor'а 2.2.
+
+## Ревью по карте 04 (доля 2.1)
+
+§1.1: computeDependents/getIntraDependents/getCrossSecDependents/
+getAffectedModes/sortInTopoOrder/buildFactualDepsMap/
+computeFactualDependents/buildCtxKeyConsumers/canonicalSubsectionKey ✓
+cascade-analyzer.ts; sourceOf — реэкспорт факта 1.1 ✓;
+buildSubsectionMap — потребляется из факта 1.2 ✓. §1.3:
+estimateCascadeWaveCost/formatWaveCost ✓ cost-estimator (долг 1.1
+закрыт). §2.4 (доля 2.1): recalcEditPlan — серверная логика ✓
+edit-planner (UI-половина EditPlanPanel → 2.3, уже в карте);
+updateLiveCascade ✓ analyzeImpact. §4 «Новое»: plan-order-builder.ts ✓.
+check-map-04.py: 140 идентификаторов, 0 расхождений.
+Заглушек НЕТ; локальные порты с адресатом: MODE_TITLES +
+getEffectiveModeDepsFromConfig → mode-service (TODO(4.1), долг в §12).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- 2.2 (Plan Executor + Regeneration): `server/services/edit-planner.ts`
+  (шаги/статусы/carryOver — executor исполняет и переводит статусы),
+  `server/services/cascade-analyzer.ts` (analyzeImpact, getIntraDependents/
+  getCrossSecDependents для подраздельных каскадов),
+  `server/services/plan-order-builder.ts`, `server/routes/plans.ts`
+  (+ сюда ляжет POST /execute), `server/services/cost-estimator.ts`
+  (wave-функции), export loadActualOutputChars из pause-resume-service.
+- 2.3 (Edit Modal UI): `shared/types/edit-plan.ts`, контракты
+  routes/plans (§2.6), формат CascadeImpact из cascade-analyzer
+  (панель каскада #cascadePanel — клиентская отрисовка analyzeImpact).
+- 4.1 (mode-service): снять локальные порты из cascade-analyzer —
+  getEffectiveModeDepsFromConfig и MODE_TITLES заменить импортами
+  (метки TODO(4.1) в коде, долг в §12).
+
+## Знания/грабли, добытые в 2.1
+
+1. Статический цикл импортов ловится ДО рантайма прикидкой цепочки:
+   context-builder → cascade-analyzer → generation-service →
+   context-builder; лечение — локальный загрузчик вместо реюза
+   (см. адаптацию (е)); смоук импортов обязателен.
+2. excess-property: resolveContextDeps({ ...p, sec }) литералом не
+   компилируется (ContextDepsParams без sec) — заводить переменную
+   типа PromptParams.
+3. drizzle .values(list.map(...)) широкими литералами: logType/status
+   выводятся как string и не проходят enum-колонки — 'as const' на
+   литералах внутри map.
+4. Компакция контекста может пересоздать контейнер: PG/Redis и
+   node_modules пропадают — переустановка apt/npm, сиды заново;
+   код в репо цел (git status подтверждает).
+5. Cookie-auth: /auth/register возвращает ТОЛЬКО {user} (03 §2.1),
+   сессию даёт /auth/login (Set-Cookie); health — /api/v1/health.
+6. Тестовые фикстуры каскада: theses требует graph:nodes_compact/
+   graph:edges, dialogue — theses:summary (заменители: origin/
+   graph:nodes/dialogue:synthesis-self); минимальный синтез ["sum"]
+   даёт жёсткие потери, ["sum","graph"] — подстановку.
+
+## Открытые TODO после 2.1
+
+- getEffectiveModeDepsFromConfig + MODE_TITLES → 4.1 (внесён в §12;
+  метки TODO(4.1) в cascade-analyzer.ts).
+- execute/plan-executor → 2.2 (в тексте 2.2 и §12).
+- regen_subsection-шаги планов создаёт executor 2.2 (провайдер
+  estimateSubsection в estimatePlanCost уже готов).
+- Прочие TODO прежних бесед — без изменений (реестр 07 §12).

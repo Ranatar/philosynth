@@ -1,5 +1,16 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-08-04 (итоги беседы 2.1)**: каскадный анализ и
+> планировщик закрыты (39 ✓ ×2, сервис + HTTP §2.6); блок
+> «По факту 2.1» (estimatedCost не хранится — живая оценка;
+> статусы confirmed/pending; delete «modeKey:index»; полная
+> пересборка updatePlan с carryOver; анти-цикл loadSynthesisLocal;
+> async-каноникализация с getCanonicalizer()); §12 — долги
+> canonicalSubsectionKey и wave-функций закрыты (getCanonicalizer
+> в context-builder; estimateCascadeWaveCost/formatWaveCost в
+> cost-estimator), внесён долг локальных портов
+> режимов → 4.1; 04 §1.3 — пометка wave-функций переведена в факт.
+
 > **Правки 2026-08-04 (итоги беседы 1.7)**: визуализация графа
 > закрыта (84 ✓ ×2); блок «По факту 1.7» (дыра комплекта CSS,
 > медиа-адаптация легенды по требованию запроса 9, квирк fuzzy
@@ -1676,6 +1687,36 @@ recalcEditPlan … updateLiveCascade: recalcEditPlan, updateLiveCascade).
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
+
+**По факту 2.1 (2026-08-04):** беседа закрыта; запросы 2-5 — единым
+тестом `tests/test-21-requests2-5.mjs` (сервисный уровень + HTTP-смоук
+§2.6), 39 ✓ / 0 ✗ ×2; браузер не нужен. Интеграция — секции 2l/4r/5o
+в `server/integration-check.mts` (INTEGRATION OK живьём). Журнал —
+глава 2.1 `NEXT-CONTEXT.md`. Адаптации: (а) estimatedCost НЕ хранится
+в edit_plans (02 §2.13 без колонки; 03 §4.2 отдаёт поле) — вычисляется
+заново при create/GET/PATCH; (б) статусы шагов: пользовательские
+confirmed, каскадные pending (01 §4.5 п.4); (в) удаление результата
+режима — type='delete' с target «modeKey:index» (отдельного типа в 03
+§4.2 нет); (г) remove+add одного раздела допустимы («заменить», edge
+case 4), regen∩remove — VALIDATION_ERROR; (д) updatePlan пересобирает
+шаги целиком с переносом решений по (type, target), снятые базовые
+остаются skipped; (е) АНТИ-ЦИКЛ: cascade-analyzer грузит синтез
+локально (loadSynthesisLocal), не импортируя generation-service —
+иначе цикл через context-builder (getCanonicalizer появился там при
+закрытии TODO(2.1)); (ж) canonicalSubsectionKey на сервере асинхронна
+(варианты из Registry), sync-потребителям выдаётся getCanonicalizer();
+(з) планы owner-only; создание при активной генерации допустимо —
+PLAN_CONFLICT про исполнение (2.2); (и) buildPlanOrder живёт в
+plan-order-builder.ts (05), в cascade-analyzer — реэкспорт (как
+sourceOf). Локальные порты MODE_TITLES/getEffectiveModeDepsFromConfig —
+метки TODO(4.1), долг в §12. НЕТОЧНОСТЬ тестового запроса 3 выше:
+для dialogue `glossary:table` — лишь OPTIONAL-зависимость, поэтому
+«синтез без glossary» при наличии graph/theses жёстких потерь НЕ даёт
+(отсутствие glossary порождает C3-рекомендацию, не C1); тест закрывает
+намерение двумя фикстурами — ["sum"] (жёсткие потери graph:nodes_compact
+и theses:summary, где dialogue:synthesis отсечён как self-источник) и
+["sum","graph"] (theses:summary замещается graph:nodes — C2-подстановка
+вместо потери).
 
 ---
 
@@ -3379,8 +3420,7 @@ streaming-manager.
 
 | Долг | Адресат | Заведён | Состояние |
 |---|---|---|---|
-| `canonicalSubsectionKey` — каноникализация ключей подразделов | 2.1 | 1.3 | в тексте 2.1 |
-| `estimateCascadeWaveCost` / `formatWaveCost` | 2.1 | 1.1 | в тексте 2.1 |
+| `getEffectiveModeDepsFromConfig` / `MODE_TITLES` — локальные порты в cascade-analyzer; владелец `getEffectiveModeDeps`/`MODE_CONFIG` — mode-service (метки TODO(4.1) в коде) | 4.1 | 2.1 | внесён 2026-08-04 |
 | `setPlanResumeExecutor` — регистрация исполнителя планов | 2.2 | 1.4b | внесён 2026-07-31 |
 | Полный `regenerateSubsection` + plan-executor | 2.2 | 1.4b | в тексте 2.2 |
 | `confirm` деградации зависимостей при skip | 2.2 | 1.4b (адресовался 1.5) | внесён 2026-07-30 |

@@ -453,3 +453,77 @@ export async function estimateModeCost(
   const cost = inTokens * PRICE_IN + outTokens * PRICE_OUT;
   return { inTokens, outTokens, cost };
 }
+
+/* ── estimateCascadeWaveCost [7912] / formatWaveCost [7928] ──────────── */
+/* Беседа 2.1 (отложены из 1.1 сознательно — требуют каскадного анализа:
+   волна = список затронутых entries {section, subsection}). */
+
+/** Элемент каскадной волны: раздел либо подраздел раздела. */
+export interface CascadeWaveEntry {
+  section: string;
+  subsection?: string | null | undefined;
+}
+
+/** Суммарная оценка волны. */
+export interface WaveCost {
+  cost: number;
+  items: number;
+}
+
+/**
+ * Поставщики оценок для волны. В исходнике estimateCascadeWaveCost звал
+ * estimateCost({sections:[…]}) и estimateSubsectionCost(sec, sub) поверх
+ * DOC_STATE; серверные оценщики требуют развёрнутых входов (passes,
+ * effectiveDeps, sysChars, …) — их готовит вызывающий (edit-planner,
+ * по образцу computePauseEstimates из 1.4b) и отдаёт сюда замыканиями.
+ */
+export interface WaveCostEstimators {
+  estimateSection: (sectionKey: string) => Promise<CostEstimate | null>;
+  estimateSubsection: (
+    sectionKey: string,
+    subsectionName: string,
+  ) => Promise<CostEstimate | null>;
+}
+
+/**
+ * Порт estimateCascadeWaveCost(entries) [7912]: суммарная стоимость
+ * каскадной волны. Логика 1:1, включая квирк «подраздел капсулы
+ * оценивается как весь раздел» (d.section !== "capsule").
+ */
+export async function estimateCascadeWaveCost(
+  entries: CascadeWaveEntry[],
+  est: WaveCostEstimators,
+): Promise<WaveCost | null> {
+  let totalCost = 0;
+  let items = 0;
+  for (const d of entries) {
+    if (d.subsection && d.section !== "capsule") {
+      const sub = await est.estimateSubsection(d.section, d.subsection);
+      if (sub) {
+        totalCost += sub.cost;
+        items++;
+      }
+    } else {
+      const sec = await est.estimateSection(d.section);
+      if (sec) {
+        totalCost += sec.cost;
+        items++;
+      }
+    }
+  }
+  return items > 0 ? { cost: totalCost, items } : null;
+}
+
+/** Порт formatWaveCost(est) [7928] — 1:1. */
+export function formatWaveCost(est: WaveCost | null): string {
+  if (!est) return "";
+  return (
+    "\nОценка стоимости: ≈ $" +
+    est.cost.toFixed(4) +
+    " (" +
+    (est.cost * 100).toFixed(2) +
+    "¢), " +
+    est.items +
+    " запр."
+  );
+}
