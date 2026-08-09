@@ -15,7 +15,7 @@
  *    _continueAfterFilledSubs [25500]);
  *  - resumePlan [25910] — каркас: валидация, resume-marker, ветка stop;
  *    исполнение шагов retry/skip_step — разъём setPlanResumeExecutor
- *    (TODO(2.2): plan-executor).
+ *    (заполнен: plan-executor регистрируется в нём при импорте, 2.2).
  *
  * Адаптации DOM/DOC_STATE → сервис (задокументированные отступления):
  *  - подмена DOC_STATE в _computeGenPauseEstimates не нужна: серверный
@@ -29,13 +29,10 @@
  *  - confirm-диалог деградации зависимостей при skip [25686–25740] —
  *    клиентское подтверждение (PauseModal/1.5); серверная ветка skip
  *    пропускает без вопросов;
- *  - fill-missing-subs: regenerateSubsection принадлежит беседе 2.2 —
- *    здесь минимальный внутренний порт его серверной доли
- *    (regenerateSubsectionForResume): serializeSubsectionRegen (порт в
- *    section-defs-builder), intra-контекст 1.3, buildContextForSection с
- *    subsectionName, SYS outputMode='subsection', врезка результата в
- *    sections.html_content (spliceSubsectionHtml). TODO(2.2): объединить
- *    с полноценным regenerateSubsection plan-executor'а;
+ *  - fill-missing-subs: полный regenerateSubsection живёт в
+ *    generation-service (беседа 2.2; долг 1.4b «объединить минимальный
+ *    порт с полноценным» закрыт — локальная копия
+ *    regenerateSubsectionForResume вырезана, вызов делегируется);
  *  - очистка callout'ов «Генерация прервана» из DOM [25378–25386] не
  *    нужна: сервер хранит в html_content чистый частичный HTML из
  *    reconnect-буфера (решение 1.4), callout — клиентский рендер;
@@ -53,7 +50,7 @@
  * старте сервера, поэтому generation_paused из generation-service несёт
  * живые estimates; без импорта — деградация до {} (fail-open).
  */
-import { and, desc, eq, inArray, sql as dsql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import type {
   PausedState,
@@ -70,7 +67,6 @@ import type {
 
 import { db } from "../db/index.js";
 import {
-  contextLog,
   editPlans,
   generationLog,
   sections,
@@ -82,59 +78,40 @@ import {
   innerTextTrimmed,
   parseFragment,
   removeSubsectionHtml,
-  spliceSubsectionHtml,
-  type HtmlElement,
 } from "../utils/html-parser.js";
-import { tableToText } from "../utils/text.js";
 import { buildDynamicOrder } from "../utils/topo-sort.js";
 import { connectionManager } from "../ws/connection-manager.js";
-import { clearStreamState } from "../ws/stream-state.js";
 
+import { estimateCost, estimateSubsectionCost } from "./cost-estimator.js";
 import {
-  buildContextForSection,
-  extractRelevantIntraSectionContext,
-} from "./context-builder.js";
-import { createDbContextSource } from "./context-extractor.js";
-import {
-  estimateCost,
-  estimateSubsectionCost,
-  PRICE_IN,
-  PRICE_OUT,
-} from "./cost-estimator.js";
-import {
-  buildPromptSkeleton,
-  extractTitleFromNameHtml,
+  computeSkipDegrades,
   finalizeRun,
+  findSubsection,
   isGenerationActive,
   loadSynthesis,
   parseSubsectionsFromHTML,
+  regenerateSubsection,
   resumeSynthesisFromPass,
   runGenerationPasses,
   setPauseEstimatesProvider,
   withGenerationSlot,
-  type GenerationSlotHandle,
   type SynthesisRow,
 } from "./generation-service.js";
-import { parseGraphFromHTML, saveGraphToDb } from "./graph-parser.js";
 import {
-  baseCtxParents,
   baseCtxStatic,
   buildSYS,
-  hasConceptParticipants,
   type PromptParams,
 } from "./prompt-builder.js";
 import {
   buildSectionDefs,
   groupPasses,
   patchPromptsWithSecCtx,
-  serializeSubsectionRegen,
   type SectionDefFull,
 } from "./section-defs-builder.js";
 import {
   classifyStreamError,
   pauseFriendlyMessage,
   StreamError,
-  streamSection,
 } from "./streaming-manager.js";
 import { buildEffectiveDeps, resolveContextDeps } from "./synthesis-engine.js";
 
@@ -170,23 +147,6 @@ export class PauseResumeError extends Error {
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
   connectionManager.sendToUser(userId, msg);
 
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
-      return;
-    }
-    const t = setTimeout(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    const onAbort = (): void => {
-      clearTimeout(t);
-      reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
-    };
-    signal?.addEventListener("abort", onAbort, { once: true });
-  });
-}
 
 /** Параметры генерации из снапшота genParams (buildParams 1.4). */
 type GenParams = PromptParams & {
@@ -802,7 +762,9 @@ async function resumeFillMissingSubs(
           streamingContinueMode &&
           streamingSub !== null &&
           subName === streamingSub;
-        await regenerateSubsectionForResume(
+        // Полный regenerateSubsection (generation-service, беседа 2.2) —
+        // долг 1.4b «объединить с минимальным портом» закрыт.
+        await regenerateSubsection(
           handle,
           p,
           targetDef,
@@ -893,6 +855,9 @@ async function resumeFillMissingSubs(
         expectedSubsections: [...ps.expectedSubsections],
         completedPasses: ps.completedPasses,
         genParams: ps.genParams,
+        skipDegrades: computeSkipDegrades(
+          effectiveDeps, ps.sectionKeys, ps.completedPasses,
+        ),
         ...(e.kind === "max-tokens"
           ? { maxTokensUsed: e.maxTokensUsed || env.anthropic.maxTokens }
           : {}),
@@ -906,458 +871,11 @@ async function resumeFillMissingSubs(
         isPartial: newPs.isPartial,
         partialSubsections: newPs.partialSubsections,
         expectedSubsections: newPs.expectedSubsections,
+        skipDegrades: newPs.skipDegrades ?? [],
         estimates: await computePauseEstimates(synthesisId, newPs),
       });
     }
   });
-}
-
-/* ══ Минимальный порт regenerateSubsection [20236] ════════════════════ */
-
-/** Поиск подраздела: точное имя, затем нечёткое взаимное включение —
- *  порт oldSubDiv [20390–20402] (read-only сторона). */
-function findSubsection(
-  container: HtmlElement,
-  name: string,
-): HtmlElement | null {
-  const exact = container.querySelector(`[data-section="${name}"]`);
-  if (exact) return exact;
-  const lower = name.toLowerCase();
-  for (const sub of container.querySelectorAll("[data-section]")) {
-    const n = (sub.getAttribute("data-section") ?? "").toLowerCase();
-    if (n.includes(lower) || lower.includes(n)) return sub;
-  }
-  return null;
-}
-
-/** Порт extractSubsectionContent(container, subsectionName) [19950]:
- *  таблицы → tableToText, прочие дети — innerText. */
-function extractSubsectionContent(
-  container: HtmlElement,
-  subsectionName: string,
-): string | null {
-  const sec = container.querySelector(`[data-section="${subsectionName}"]`);
-  if (!sec) return null;
-  const parts: string[] = [];
-  for (const child of sec.children) {
-    if (child.tagName === "TABLE") {
-      parts.push(tableToText(child));
-    } else {
-      const t = innerTextTrimmed(child);
-      if (t) parts.push(t);
-    }
-  }
-  return parts.filter(Boolean).join("\n") || innerTextTrimmed(sec) || null;
-}
-
-/**
- * Порт поподраздельного ctxLog-логирования intra-контекста
- * [regenerateSubsection 20255–20310]: маркеры [Имя]\n; артефакты
- * truncateText («…сокращено…») и ложные срабатывания внутри содержимого
- * сливаются в предыдущую реальную запись (сверка с фактическими
- * data-section контейнера). Адаптация: type='intra-section' исходника
- * колонки не имеет — восстановим по sectionKey 'раздел:подраздел' и
- * префиксу 'intra:' у entries.
- */
-async function logIntraSectionContext(
-  synthesisId: string,
-  sectionKey: string,
-  subsectionName: string,
-  intraSectionCtx: string,
-  container: HtmlElement,
-): Promise<void> {
-  interface IntraPart {
-    name: string;
-    _start: number;
-    len: number;
-  }
-  const intraParts: IntraPart[] = [];
-  const regex = /\[([^\]]+)\]\n/g;
-  let m: RegExpExecArray | null;
-  while ((m = regex.exec(intraSectionCtx)) !== null) {
-    const prev = intraParts[intraParts.length - 1];
-    if (prev) prev.len = m.index - prev._start;
-    intraParts.push({ name: m[1] as string, _start: m.index, len: 0 });
-  }
-  const last = intraParts[intraParts.length - 1];
-  if (last) last.len = intraSectionCtx.length - last._start;
-
-  const realSubsectionNames = new Set<string>();
-  for (const el of container.querySelectorAll("[data-section]")) {
-    const n = el.getAttribute("data-section");
-    if (n !== null) realSubsectionNames.add(n);
-  }
-  const cleanParts: IntraPart[] = [];
-  for (const part of intraParts) {
-    if (realSubsectionNames.has(part.name)) {
-      cleanParts.push(part);
-    } else if (cleanParts.length > 0) {
-      (cleanParts[cleanParts.length - 1] as IntraPart).len += part.len;
-    }
-  }
-
-  const entries =
-    cleanParts.length > 0
-      ? cleanParts.map((part) => ({
-          key: "intra:" + part.name,
-          status: "found",
-          len: part.len,
-          priority: "required",
-        }))
-      : [
-          {
-            key: "intra:" + sectionKey,
-            status: "found",
-            len: intraSectionCtx.length,
-            priority: "required",
-          },
-        ];
-
-  await db.insert(contextLog).values({
-    synthesisId,
-    sectionKey: sectionKey + ":" + subsectionName,
-    budget: intraSectionCtx.length,
-    totalUsed: intraSectionCtx.length,
-    reqFound: entries.length,
-    reqTotal: entries.length,
-    optIncluded: 0,
-    optTotal: 0,
-    entries,
-  });
-}
-
-interface SubRegenOpts {
-  includeCurrentContent?: boolean | undefined;
-  resumeFromInterruption?: boolean | undefined;
-  userNote?: string | undefined;
-}
-
-/**
- * Минимальный серверный порт regenerateSubsection [20236] — доля, нужная
- * ветке fill-missing-subs (TODO(2.2): объединить с полным
- * regenerateSubsection plan-executor'а):
- *  1) intra-контекст (extractRelevantIntraSectionContext, 1.3) + его
- *     ctxLog-запись [20255];
- *  2) prior-контекст buildContextForSection с subsectionName (спец
- *     родителей — по PARENT_INTRA_DEPS) + запись CtxLogDraft;
- *  3) промпт serializeSubsectionRegen + SYS outputMode='subsection';
- *  4) genEntry source='subsection_regen': insert 'streaming' → update
- *     (решение 1.4 — виден при reconnect);
- *  5) стрим с ретраями pre-stream (модель streamResp [12642]);
- *  6) врезка результата в sections.html_content (spliceSubsectionHtml);
- *  7) side-effects раздела [20450–20454]: graph → saveGraphToDb,
- *     name → title (FIX \w-бага), capsule → syntheses.capsule_html;
- *  8) totals синтеза (SQL-инкременты).
- * WS: stream_delta в процессе, section_done с обновлённым html раздела
- * после врезки (адаптация: DOM-стриминга «на место старого подраздела»
- * на сервере нет — клиент получает дельты и итоговый раздел).
- */
-async function regenerateSubsectionForResume(
-  handle: GenerationSlotHandle,
-  p: GenParams,
-  def: SectionDefFull,
-  subsectionName: string,
-  effectiveDeps: DepsMap,
-  resolvedDeps: DepsMap,
-  opts: SubRegenOpts,
-): Promise<{ inputTokens: number; outputTokens: number }> {
-  const { synthesisId, userId } = handle;
-  const sectionKey = def.key;
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
-
-  const [secRow] = await db
-    .select({ htmlContent: sections.htmlContent })
-    .from(sections)
-    .where(
-      and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)),
-    )
-    .limit(1);
-  const sectionHtml = secRow?.htmlContent ?? "";
-  const container = parseFragment(sectionHtml);
-
-  /* ── 1. Контексты ── */
-  const intraSectionCtx = await extractRelevantIntraSectionContext(
-    container,
-    sectionKey,
-    subsectionName,
-  );
-  if (intraSectionCtx) {
-    await logIntraSectionContext(
-      synthesisId,
-      sectionKey,
-      subsectionName,
-      intraSectionCtx,
-      container,
-    );
-  }
-
-  const currentContent = opts.includeCurrentContent
-    ? extractSubsectionContent(container, subsectionName)
-    : null;
-
-  let priorCtx = "";
-  if (sectionKey !== "sum") {
-    try {
-      const built = await buildContextForSection(
-        sectionKey,
-        synthesisId,
-        p.depth,
-        effectiveDeps,
-        resolvedDeps,
-        {
-          source: createDbContextSource(synthesisId),
-          params: {
-            synthLevel: p.synthLevel,
-            method: p.method,
-            generationOrder: p.generationOrder,
-            keepFullBudget: p.keepFullBudget,
-          },
-          subsectionName,
-        },
-      );
-      priorCtx = built.text;
-      if (built.ctxLog) {
-        await db.insert(contextLog).values({
-          synthesisId,
-          sectionKey: built.ctxLog.sectionKey,
-          budget: built.ctxLog.budget,
-          totalUsed: built.ctxLog.totalUsed,
-          reqFound: built.ctxLog.reqFound,
-          reqTotal: built.ctxLog.reqTotal,
-          optIncluded: built.ctxLog.optIncluded,
-          optTotal: built.ctxLog.optTotal,
-          budgetMode: built.ctxLog.budgetMode,
-          parentOverhead: built.ctxLog.parentOverhead,
-          parentSpec: built.ctxLog.parentSpec,
-          entries: built.ctxLog.entries,
-        });
-      }
-    } catch (e) {
-      console.warn("Subsection regen context error:", e);
-    }
-  }
-
-  /* ── 2. Промпт [20338–20348] ── */
-  const subPrompt = serializeSubsectionRegen(
-    def.parts,
-    subsectionName,
-    intraSectionCtx,
-    {
-      userNote: opts.userNote ?? "",
-      currentContent,
-      resumeFromInterruption: !!opts.resumeFromInterruption,
-    },
-  );
-  const SYS = await buildSYS(p, { outputMode: "subsection" });
-  const partStatic = await baseCtxStatic(p);
-  const partParents = hasConceptParticipants(p)
-    ? await baseCtxParents(p, sectionKey, subsectionName)
-    : "";
-  const partBase = partStatic + partParents;
-  const fp = `ПАРАМЕТРЫ СИНТЕЗА:\n${partBase}${priorCtx}\n\n${subPrompt}`;
-
-  /* ── 3. GenLog [20352–20376] ── */
-  const [genEntry] = await db
-    .insert(generationLog)
-    .values({
-      synthesisId,
-      sectionKey: `${sectionKey}:${subsectionName}`,
-      sectionLabel: `${def.title} → ${subsectionName} [подраздел]`,
-      logType: "generation",
-      source: "subsection_regen",
-      status: "streaming",
-      priorChars: priorCtx.length,
-      taskChars: subPrompt.length,
-      inputChars: SYS.length + fp.length,
-      metadata: {
-        expectedSubsections: [subsectionName],
-        subsections: [],
-        promptSkeleton: buildPromptSkeleton(fp),
-        sys: SYS,
-        intraSectionChars: intraSectionCtx ? intraSectionCtx.length : 0,
-        hasUserNote: !!opts.userNote,
-        userNotePreview: opts.userNote
-          ? opts.userNote.slice(0, 120) +
-            (opts.userNote.length > 120 ? "…" : "")
-          : null,
-        hasCurrentContent: !!(opts.includeCurrentContent && currentContent),
-        currentContentChars: currentContent ? currentContent.length : 0,
-        // _augmentGenEntry [10384]:
-        budgetMode: p.keepFullBudget ? "full" : "shrink",
-        parentOverheadChars: partParents.length,
-      },
-    })
-    .returning({ id: generationLog.id });
-  const genEntryId = (genEntry as { id: string }).id;
-
-  /* ── 4. Стрим с ретраями pre-stream ── */
-  const streamKey = `${sectionKey}:${subsectionName}`;
-  try {
-    const retryDelays = env.streaming.retryDelays;
-    const maxAttempts = retryDelays.length + 1;
-    let usage: { inputTokens: number; outputTokens: number } | null = null;
-    let html = "";
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        let attemptHtml = "";
-        usage = await streamSection(
-          synthesisId,
-          streamKey,
-          fp,
-          SYS,
-          apiKey,
-          (delta, totalChars, htmlSoFar) => {
-            attemptHtml = htmlSoFar;
-            sendToUser(userId, {
-              type: "stream_delta",
-              synthesisId,
-              sectionKey,
-              delta,
-              totalChars,
-            });
-          },
-          { signal: handle.signal },
-        );
-        html = attemptHtml;
-        break;
-      } catch (err) {
-        const e = err as StreamError;
-        if (e.kind !== "pre-stream") throw e;
-        if (attempt < maxAttempts - 1) {
-          const wait = retryDelays[attempt] as number;
-          console.warn(
-            `subsection regen retry ${attempt + 1}/${maxAttempts - 1} in ${wait}ms:`,
-            e.message,
-          );
-          await clearStreamState(synthesisId, streamKey);
-          await sleep(wait, handle.signal);
-          continue;
-        }
-        throw e;
-      }
-    }
-    if (usage === null) {
-      throw new StreamError("неизвестная ошибка", "pre-stream");
-    }
-
-    /* ── 5. Фиксация genEntry + врезка [20426–20444] ── */
-    const cost = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
-    await db
-      .update(generationLog)
-      .set({
-        status: "done",
-        outputChars: html.length,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        costUsd: cost.toFixed(6),
-        metadata: dsql`metadata || ${JSON.stringify({
-          subsections: [
-            { name: subsectionName, chars: html.length, status: "done" },
-          ],
-        })}::jsonb`,
-      })
-      .where(eq(generationLog.id, genEntryId));
-
-    const newSectionHtml = spliceSubsectionHtml(
-      sectionHtml,
-      subsectionName,
-      html,
-    );
-    await db
-      .update(sections)
-      .set({ htmlContent: newSectionHtml, updatedAt: new Date() })
-      .where(
-        and(
-          eq(sections.synthesisId, synthesisId),
-          eq(sections.key, sectionKey),
-        ),
-      );
-
-    /* ── Totals синтеза (SQL-инкременты — устойчиво к параллельным
-          обновлениям других строк) ── */
-    await db
-      .update(syntheses)
-      .set({
-        totalInputTokens: dsql`${syntheses.totalInputTokens} + ${usage.inputTokens}`,
-        totalOutputTokens: dsql`${syntheses.totalOutputTokens} + ${usage.outputTokens}`,
-        totalCostUsd: dsql`${syntheses.totalCostUsd} + ${cost.toFixed(6)}::numeric`,
-        updatedAt: new Date(),
-      })
-      .where(eq(syntheses.id, synthesisId));
-
-    /* ── 6. Side-effects раздела [20450–20454] ── */
-    if (sectionKey === "graph") {
-      try {
-        const parsed = parseGraphFromHTML(newSectionHtml);
-        if (parsed.nodes.length > 0) {
-          const saved = await saveGraphToDb(synthesisId, parsed);
-          for (const w of saved.warnings) console.warn("Graph parse:", w);
-        }
-      } catch (e) {
-        console.warn("Graph parse:", e);
-      }
-    }
-    if (sectionKey === "name") {
-      const title = extractTitleFromNameHtml(newSectionHtml);
-      if (title) {
-        await db
-          .update(syntheses)
-          .set({ title, updatedAt: new Date() })
-          .where(eq(syntheses.id, synthesisId));
-      }
-    }
-    if (sectionKey === "capsule") {
-      await db
-        .update(syntheses)
-        .set({ capsuleHtml: newSectionHtml, updatedAt: new Date() })
-        .where(eq(syntheses.id, synthesisId));
-    }
-
-    await clearStreamState(synthesisId, streamKey);
-    sendToUser(userId, {
-      type: "section_done",
-      synthesisId,
-      sectionKey,
-      usage: {
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        costUsd: cost,
-      },
-      html: newSectionHtml,
-    });
-    return usage;
-  } catch (rawErr) {
-    /* Ошибка стрима: genEntry → error (usage max-tokens учитывается —
-       токены реально потрачены [20470]); пауза — уровнем выше. */
-    const e =
-      rawErr instanceof StreamError
-        ? rawErr
-        : classifyStreamError(rawErr, false);
-    const eUsage = e.usage ?? { inputTokens: 0, outputTokens: 0 };
-    const eCost = eUsage.inputTokens * PRICE_IN + eUsage.outputTokens * PRICE_OUT;
-    await db
-      .update(generationLog)
-      .set({
-        status: "error",
-        errorMessage: e.message,
-        inputTokens: eUsage.inputTokens,
-        outputTokens: eUsage.outputTokens,
-        costUsd: eCost.toFixed(6),
-      })
-      .where(eq(generationLog.id, genEntryId));
-    if (eUsage.inputTokens > 0 || eUsage.outputTokens > 0) {
-      await db
-        .update(syntheses)
-        .set({
-          totalInputTokens: dsql`${syntheses.totalInputTokens} + ${eUsage.inputTokens}`,
-          totalOutputTokens: dsql`${syntheses.totalOutputTokens} + ${eUsage.outputTokens}`,
-          totalCostUsd: dsql`${syntheses.totalCostUsd} + ${eCost.toFixed(6)}::numeric`,
-          updatedAt: new Date(),
-        })
-        .where(eq(syntheses.id, synthesisId));
-    }
-    throw e;
-  }
 }
 
 /* ══ resumePlan (kind='plan') [25910] ═════════════════════════════════ */

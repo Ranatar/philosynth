@@ -24,8 +24,10 @@
  *    [25028]) — TODO(6.1) BYO-Key; ключ серверный (env), из модалки его
  *    не сменить — предлагаются «Повторить» (после замены ключа на
  *    сервере) и «Остановить»;
- *  - confirm деградации зависимостей при skip [25686] — TODO(1.5):
- *    здесь skip отправляется без подтверждения (сервер не спрашивает).
+ *  - confirm деградации зависимостей при skip [25686] — реализовано в
+ *    2.2: сервер кладёт skipDegrades (потребители пропускаемых по
+ *    effectiveDeps, computeSkipDegrades) в pausedState и
+ *    generation_paused; модалка показывает window.confirm перед skip.
  *
  * Интеграция в страницы (SynthesisPage/GenerationProgress) — беседа 1.5:
  * компонент управляется пропсами и не ходит в API сам.
@@ -572,6 +574,32 @@ export function PauseModal({
 }: PauseModalProps) {
   if (!open || !ps) return null;
 
+  /* Confirm деградации при skip [25686] (беседа 2.2, долг §12):
+     сервер кладёт в pausedState/generation_paused список разделов,
+     строящихся на пропускаемом контенте (skipDegrades). */
+  const resumeGenConfirmed = (mode: ResumeGenerationMode): void => {
+    if (
+      mode === "skip" &&
+      ps.kind === "gen" &&
+      (ps.skipDegrades?.length ?? 0) > 0
+    ) {
+      const list = (ps.skipDegrades as string[]).join(", ");
+      // globalThis-аксессор вместо window: smoke-1.4b.mts импортирует
+      // модуль под scripts/tsconfig (lib ES2022 без DOM) — «window»
+      // там не существует как имя (грабля завершения 2.2)
+      const confirmFn = (
+        globalThis as { confirm?: (msg: string) => boolean }
+      ).confirm;
+      const sure =
+        confirmFn?.(
+          `На пропускаемом контенте строятся разделы: ${list}. ` +
+            "Их качество может деградировать. Всё равно пропустить?",
+        ) ?? true;
+      if (!sure) return;
+    }
+    onResumeGeneration(mode);
+  };
+
   // Диспетчеризация по reasonKind/kind [24735–24766]
   let title: string;
   let body: React.ReactNode;
@@ -579,7 +607,7 @@ export function PauseModal({
   if (ps.reasonKind === "billing" && ps.kind === "gen") {
     title = "💳 Баланс API исчерпан";
     body = <BillingContent ps={ps} />;
-    footer = <BillingFooter onResume={onResumeGeneration} />;
+    footer = <BillingFooter onResume={resumeGenConfirmed} />;
   } else if (ps.reasonKind === "auth") {
     title = "🔑 API-ключ недействителен";
     body = <AuthContent ps={ps} />;
@@ -596,7 +624,7 @@ export function PauseModal({
       : "⏸ Генерация не началась";
     body = <GenContent ps={ps} />;
     footer = (
-      <GenFooter ps={ps} estimates={estimates} onResume={onResumeGeneration} />
+      <GenFooter ps={ps} estimates={estimates} onResume={resumeGenConfirmed} />
     );
   } else if (ps.kind === "plan") {
     title = "⏸ План редактирования прерван";

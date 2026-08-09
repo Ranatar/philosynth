@@ -6,7 +6,11 @@
  *   PATCH  /syntheses/:id/plans/:planId  → { plan: EditPlan }
  *   DELETE /syntheses/:id/plans/:planId  → { ok: true }
  *
- * НЕ здесь: POST /plans/:planId/execute — plan-executor, беседа 2.2.
+ *   POST   /syntheses/:id/plans/:planId/execute → { ok: true } (2.2)
+ *
+ * Execute: sync-гейты (владение, draft, отсутствие активной генерации) —
+ * повтор проверок executePlan для честного HTTP-кода; исполнение — фоном,
+ * события по WebSocket (plan_step_started/…).
  *
  * Решения:
  *  - Планы — рабочий объект ВЛАДЕЛЬЦА синтеза (edit-операции): все
@@ -26,9 +30,14 @@ import {
   createPlan,
   deletePlan,
   getPlan,
+  loadPlanRow,
   updatePlan,
 } from "../services/edit-planner.js";
-import { GenerationError } from "../services/generation-service.js";
+import {
+  GenerationError,
+  isGenerationActive,
+} from "../services/generation-service.js";
+import { executePlan } from "../services/plan-executor.js";
 import { isUuid } from "./syntheses.js";
 
 import type { Context } from "hono";
@@ -144,4 +153,42 @@ plansRoutes.delete("/:id/plans/:planId", requireAuth, async (c) => {
   } catch (err) {
     return errJson(c, err);
   }
+});
+
+/* ── POST /syntheses/:id/plans/:planId/execute (беседа 2.2) ──────────── */
+
+plansRoutes.post("/:id/plans/:planId/execute", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const planId = c.req.param("planId");
+  if (!isUuid(id) || !isUuid(planId))
+    return c.json({ error: "План не найден", code: "NOT_FOUND" }, 404);
+
+  try {
+    // Синхронные гейты (те же, что в executePlan) — честный HTTP-код
+    const row = await loadPlanRow(id, planId, user.id);
+    if (row.status !== "draft") {
+      return c.json(
+        {
+          error: `План в статусе «${row.status}» нельзя исполнить`,
+          code: "PLAN_CONFLICT",
+        },
+        409,
+      );
+    }
+    if (isGenerationActive(id)) {
+      return c.json(
+        { error: "Генерация уже идёт", code: "PLAN_CONFLICT" },
+        409,
+      );
+    }
+  } catch (err) {
+    return errJson(c, err);
+  }
+
+  // Исполнение — фоном; прогресс и ошибки — по WebSocket
+  void executePlan(id, planId, user.id).catch((err) => {
+    console.error(`executePlan(${id}, ${planId}):`, err);
+  });
+  return c.json({ ok: true });
 });

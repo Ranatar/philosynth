@@ -257,7 +257,7 @@
 | `clearLegendFilter()` — ФАКТ (беседа 1.7): живёт рядом с состоянием графа | `client/components/graph/graph-utils.ts` |
 | `openEditModal()`, `renderEditSections()` | `client/components/EditModal.tsx` |
 | UI подразделовой перегенерации | `client/components/SubsectionRegenPanel.tsx` |
-| `addSection()`, `deleteSection()`, `rebuildDbMapping()` | Серверные операции через API |
+| `addSection()`, `deleteSection()`, `rebuildDbMapping()` | Серверные операции через API — ФАКТ (2.2): add/delete только через планы (§2.6), в §2.5 их эндпоинтов нет; `rebuildDbMapping` ВЫРОЖДЕН (db-индексы DOM → строки sections; перенумерация = `recalcSectionNumbers` + `renumberSectionRefs`) |
 | `parseConceptFile()`, `addToPool()`, `removeFromPool()`, `selectForViewing()`, `snapshotCurrentState()`, `restoreFromPoolSnapshot()`, `syncConceptParticipants()`, `refreshPoolParticipant()`, `renderPoolConcepts()`, `handlePoolFileImport()`, `handlePoolUrlImport()` | `client/components/pool/ConceptPool.tsx`+`PoolCard.tsx`, `client/stores/pool-store.ts`, `client/utils/concept-file.ts` (беседа 1.5b ✓; snapshotCurrentState/restoreFromPoolSnapshot вырождены — локальных правок в сервисе нет, refreshPoolParticipant по ветке «rawHTML не менялся»; renamePoolConcept/toggleSynthParticipant/setPoolStatus там же) |
 | `buildTableOfContents()` [11621] — якоря `#sec-{key}` / `#subsec-{key}-{slug}`, кнопки ⏫, пропуск `capsule` | `client/components/document/TableOfContents.tsx` (беседа 1.6b) |
 | `makeHeaderDisclosure()` / `buildDocHeaderExtras()` [11599/11613], заполнение шапки [12110–12144] (docNum, дата, ML/DL/SL, три ветки подзаголовка) | `client/components/document/DocumentHeader.tsx` (1.6b); docNum генерирует сервер в беседе 1.6 |
@@ -307,7 +307,7 @@
 | `server/utils/html-parser.ts` | Обёртка над linkedom: `parseFragment` (контейнер-аналог `generated[key]`) + `innerText` — ПРИБЛИЖЕНИЕ браузерного innerText (linkedom даёт свой ≈ textContent). Единственная точка входа linkedom (беседа 1.3) |
 | `server/services/plan-order-builder.ts` | `buildPlanOrder()` — единый топологический порядок add+regen (v10) |
 | Константа `STOP_SIGNAL` | Стоп-инструкция в конце каждого промпта раздела (v10) |
-| `server/services/structure-tracker.ts` | `refreshSumDef()`, `regenStructureFromEditModal()`, отслеживание `structureSections` (v10) |
+| `server/services/structure-tracker.ts` | `refreshSumDef()`, `regenStructureFromEditModal()`, отслеживание `structureSections` (v10) — ФАКТ (2.2): `refreshSumDef` упрощён (defs на сервере не персистятся и строятся заново из section_order); `regenStructureFromEditModal` — UI-половина (2.3), серверная часть = `startSubsectionRegeneration("sum", «Структура документа»)` |
 | `server/services/prompt-reconstruction.ts` | `reconstructBaseCtxSkeleton()`, `reconstructCtxMarkers()`, `reconstructSectionTask()`, `reconstructSkeleton()` (v10) |
 | `_EXTRA_CATEGORY_TYPES`, `_EXTRA_EDGE_TYPES`, `_buildExtraTypesBlock()` | Расширенные типы по методу/уровню (v10) |
 

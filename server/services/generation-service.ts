@@ -59,6 +59,9 @@ import type {
 
 import { db } from "../db/index.js";
 import {
+  categories,
+  categoryEdges,
+  clusterLabels,
   contextLog,
   generationLog,
   sections,
@@ -66,11 +69,23 @@ import {
   synthesisLineage,
 } from "../db/schema.js";
 import { env } from "../env.js";
-import { parseFragment } from "../utils/html-parser.js";
+import {
+  innerTextTrimmed,
+  parseFragment,
+  spliceSubsectionHtml,
+  type HtmlElement,
+} from "../utils/html-parser.js";
+import { tableToText } from "../utils/text.js";
+import type { DepsMap } from "../utils/deep-merge.js";
 import { connectionManager } from "../ws/connection-manager.js";
 import { clearStreamState, getStreamState } from "../ws/stream-state.js";
 
-import { buildContextForSection } from "./context-builder.js";
+import {
+  buildContextForSection,
+  extractRelevantIntraSectionContext,
+} from "./context-builder.js";
+import { computeDependents, getIntraDependents } from "./cascade-analyzer.js";
+import { updateStructureSections, STRUCTURE_SUBSECTION } from "./structure-tracker.js";
 import { createDbContextSource } from "./context-extractor.js";
 import { PRICE_IN, PRICE_OUT } from "./cost-estimator.js";
 import {
@@ -97,6 +112,7 @@ import {
   buildSubsectionMap,
   groupPasses,
   patchPromptsWithSecCtx,
+  serializeSubsectionRegen,
   type SectionDefFull,
 } from "./section-defs-builder.js";
 import {
@@ -105,7 +121,15 @@ import {
   StreamError,
   streamSection,
 } from "./streaming-manager.js";
-import { buildEffectiveDeps, resolveContextDeps } from "./synthesis-engine.js";
+import {
+  buildEffectiveDeps,
+  getActiveSubstitutionMap,
+  resolveContextDeps,
+} from "./synthesis-engine.js";
+import { sourceOf } from "../utils/topo-sort.js";
+import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
+import { CTX_LABELS } from "@philosynth/shared/constants/ctx-keys";
+import { PARENT_CONTEXT_SCHEMA_ID } from "../config/parent-deps.js";
 import { buildDynamicOrder } from "../utils/topo-sort.js";
 import { parseGraphFromHTML, saveGraphToDb } from "./graph-parser.js";
 import {
@@ -504,6 +528,7 @@ async function upsertSection(
   def: SectionDefFull,
   htmlContent: string,
   secContext: string,
+  isEdited = false, // 2.2: regenerateSection/addSection помечают раздел изменённым
 ): Promise<void> {
   await db
     .insert(sections)
@@ -514,7 +539,7 @@ async function upsertSection(
       title: def.title,
       htmlContent,
       secContext,
-      isEdited: false,
+      isEdited,
     })
     .onConflictDoUpdate({
       target: [sections.synthesisId, sections.key],
@@ -523,7 +548,7 @@ async function upsertSection(
         title: def.title,
         htmlContent,
         secContext,
-        isEdited: false,
+        isEdited,
         updatedAt: new Date(),
       },
     });
@@ -1089,6 +1114,9 @@ export async function runGenerationPasses(
           expectedSubsections: [...expectedSubs],
           completedPasses,
           genParams: { ...p, secCtx: { ...p.secCtx } },
+          skipDegrades: computeSkipDegrades(
+            effectiveDeps, pass.map((d) => d.key), completedPasses,
+          ),
           ...(e.kind === "max-tokens"
             ? { maxTokensUsed: e.maxTokensUsed || env.anthropic.maxTokens }
             : {}),
@@ -1134,6 +1162,7 @@ export async function runGenerationPasses(
           isPartial,
           partialSubsections: doneSubs.map((s) => s.name),
           expectedSubsections: [...expectedSubs],
+          skipDegrades: pausedState.skipDegrades ?? [],
           estimates: await pauseEstimatesFor(synthesisId, pausedState),
         });
         return; // прерываем цикл
@@ -1262,6 +1291,9 @@ export async function runGenerationPasses(
         expectedSubsections: [],
         completedPasses,
         genParams: { ...p, secCtx: { ...p.secCtx } },
+        skipDegrades: computeSkipDegrades(
+          effectiveDeps, pass.map((d) => d.key), completedPasses,
+        ),
       };
       await db
         .update(syntheses)
@@ -1297,6 +1329,7 @@ export async function runGenerationPasses(
         reasonKind: "context-error",
         reason,
         isPartial: false,
+        skipDegrades: pausedState.skipDegrades ?? [],
         estimates: await pauseEstimatesFor(synthesisId, pausedState),
       });
       return;
@@ -1380,4 +1413,1541 @@ export async function finalizeRun(
       costUsd: totalInputTokens * PRICE_IN + totalOutputTokens * PRICE_OUT,
     },
   });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Беседа 2.2 — Regeneration: порты regenerateSection [19971–20227],
+   regenerateSubsection [20236–20476], addSection [20922–21216],
+   deleteSection [20806–20899], buildDeletionReplacements [20759–20801],
+   getAvailableSectionsToAdd [20912], хелперы нумерации [5628–5790].
+
+   Адаптации DOM/DOC_STATE → сервис (задокументированные отступления):
+    - UI-блокировки/прогресс/карточки Edit Modal — клиент (2.3); здесь
+      WS-события stream_delta / section_done / stream_error;
+    - контейнеры db{i} → строки sections; «стриминг на место старого
+      подраздела» → врезка spliceSubsectionHtml в html_content (1.4b);
+    - confirm-диалоги («Структура устарела», каскад downstream) —
+      клиентские (2.3); сервер отдаёт данные (structure_sections,
+      analyzeImpact, affectedSubs) и подавляет их при opts.fromPlan,
+      как исходник;
+    - версия документа: executePlan бампает base/modeRegen (plan-executor),
+      standalone-перегенерация подраздела бампает version_sub [18811]
+      (startSubsectionRegeneration); ручная перегенерация раздела версию
+      НЕ меняет — паритет исходника;
+    - deleteSection синхронен и в исходнике не стримит — handle не нужен;
+      гранулярный граф (categories/edges/cluster_labels) при удалении
+      раздела graph вычищается (аналог G={} [20824]);
+    - renumberSectionRefs: TreeWalker по текстовым узлам → строковая
+      замена /§\s*(\d+)/ в html_content каждого раздела. ОТСТУПЛЕНИЕ:
+      замена задевает и вхождения внутри атрибутов/тегов, но «§ N» в
+      разметке Claude встречается только в тексте — риск принят и
+      зафиксирован;
+    - standalone-ошибка регенерации НЕ создаёт pausedState (паритет:
+      ручная перегенерация исходника глотает ошибку в карточке [20716]);
+      обрыв шага ПЛАНА → пауза kind='plan' — plan-executor (2.2).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/** ALL_SECTION_KEYS [20906] — дословно (без «sum»). */
+export const ALL_SECTION_KEYS = [
+  "graph", "glossary", "theses", "name", "history",
+  "origin", "practical", "dialogue", "evolution", "critique", "capsule",
+] as const;
+
+/** Порт getAvailableSectionsToAdd() [20912]: ключи, которых нет в документе. */
+export function getAvailableSectionsToAdd(
+  sectionOrder: readonly string[],
+): string[] {
+  const current = new Set(sectionOrder);
+  return ALL_SECTION_KEYS.filter((k) => !current.has(k));
+}
+
+/** Параметры генерации со secCtx (форма buildParams; keepFullBudget
+ *  опционален — совместимость с GenParams pause-resume-service). */
+export type GenParams = PromptParams & {
+  secCtx: Record<string, string>;
+  keepFullBudget?: boolean | undefined;
+};
+
+/* ── Инфраструктура порядка от ТЕКУЩЕГО состояния строки ────────────── */
+
+export interface EditInfra {
+  p: GenParams;
+  resolvedDeps: DepsMap;
+  effectiveDeps: DepsMap;
+  dynamicOrder: string[];
+  defs: SectionDefFull[];
+}
+
+/**
+ * resolveContextDeps → buildEffectiveDeps → buildDynamicOrder (мутация
+ * effectiveDeps сохранена — контекст строится по отмутированной карте,
+ * как DOC_STATE.effectiveDeps) → buildSectionDefs → patch. Номера defs
+ * НЕ перенумеровываются — фактические берутся из строк sections.
+ */
+export async function buildEditInfra(
+  row: SynthesisRow,
+  philosophers: string[],
+  secCtx: Record<string, string>,
+): Promise<EditInfra> {
+  const p = buildParams(row, philosophers, secCtx);
+  const resolvedDeps = await resolveContextDeps(p);
+  const effectiveDeps = await buildEffectiveDeps(
+    p.sec,
+    resolvedDeps,
+    p.generationOrder,
+  );
+  const dynamicOrder = buildDynamicOrder(
+    effectiveDeps,
+    p.sec,
+    resolvedDeps,
+    p.generationOrder,
+  );
+  const defs = await buildSectionDefs(p);
+  patchPromptsWithSecCtx(defs, p.secCtx);
+  return { p, resolvedDeps, effectiveDeps, dynamicOrder, defs };
+}
+
+/** genCommon при регенерации без штатной генерации [20570]: если
+ *  служебной строки '_genCommon' нет (напр., импорт) — создать. */
+async function ensureGenCommonForEdit(
+  synthesisId: string,
+  p: GenParams,
+  sectionKey: string,
+  sysChars: number,
+  baseChars: number,
+  parentsChars: number,
+): Promise<void> {
+  const [existing] = await db
+    .select({ id: generationLog.id })
+    .from(generationLog)
+    .where(
+      and(
+        eq(generationLog.synthesisId, synthesisId),
+        eq(generationLog.sectionKey, "_genCommon"),
+      ),
+    )
+    .limit(1);
+  if (existing) return;
+  const scaffoldLen = `ПАРАМЕТРЫ СИНТЕЗА:\n\n\nЗАДАНИЕ:...\n\n\n`.length;
+  await db.insert(generationLog).values({
+    synthesisId,
+    sectionKey: "_genCommon",
+    sectionLabel: "Общие элементы",
+    logType: "generation",
+    source: "edit",
+    status: "common",
+    inputChars: sysChars + baseChars + scaffoldLen,
+    metadata: {
+      genCommon: {
+        sysChars,
+        baseChars,
+        baseCharsWithoutConcepts: baseChars - parentsChars,
+        totalConceptOverhead: parentsChars,
+        budgetMode: p.keepFullBudget ? "full" : "shrink",
+        parentSpecBySection: await buildParentSpecBySection([], p, [sectionKey]),
+        rulesChars: 0,
+        qualityChars: 0,
+        scaffoldChars: scaffoldLen,
+        totalChars: sysChars + baseChars + scaffoldLen,
+        conceptBlockSizes: await computeFullConceptBlockSizes([]),
+      },
+    },
+  });
+}
+
+/** Общий стрим с ретраями pre-stream (модель streamResp [12642]). */
+async function streamWithRetries(
+  handle: GenerationSlotHandle,
+  streamKey: string,
+  fp: string,
+  SYS: string,
+  apiKey: string,
+  onDelta: (delta: string, totalChars: number, htmlSoFar: string) => void,
+): Promise<{ usage: { inputTokens: number; outputTokens: number }; html: string }> {
+  const retryDelays = env.streaming.retryDelays;
+  const maxAttempts = retryDelays.length + 1;
+  let usage: { inputTokens: number; outputTokens: number } | null = null;
+  let html = "";
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      let attemptHtml = "";
+      usage = await streamSection(
+        handle.synthesisId,
+        streamKey,
+        fp,
+        SYS,
+        apiKey,
+        (delta, totalChars, htmlSoFar) => {
+          attemptHtml = htmlSoFar;
+          onDelta(delta, totalChars, htmlSoFar);
+        },
+        { signal: handle.signal },
+      );
+      html = attemptHtml;
+      break;
+    } catch (err) {
+      const e = err as StreamError;
+      if (e.kind !== "pre-stream") throw e;
+      if (attempt < maxAttempts - 1) {
+        const wait = retryDelays[attempt] as number;
+        console.warn(
+          `regen retry ${attempt + 1}/${maxAttempts - 1} in ${wait}ms:`,
+          e.message,
+        );
+        await clearStreamState(handle.synthesisId, streamKey);
+        await sleep(wait, handle.signal);
+        continue;
+      }
+      throw e;
+    }
+  }
+  if (usage === null) throw new StreamError("неизвестная ошибка", "pre-stream");
+  return { usage, html };
+}
+
+/** Side-effects раздела [20450–20454, 20661–20684]: graph/name/capsule. */
+async function applySectionSideEffects(
+  synthesisId: string,
+  sectionKey: string,
+  html: string,
+): Promise<void> {
+  if (sectionKey === "graph") {
+    try {
+      const parsed = parseGraphFromHTML(html);
+      if (parsed.nodes.length > 0) {
+        const saved = await saveGraphToDb(synthesisId, parsed);
+        for (const w of saved.warnings) console.warn("Graph parse:", w);
+      }
+    } catch (e) {
+      console.warn("Graph re-parse after edit:", e);
+    }
+  }
+  if (sectionKey === "theses") {
+    try {
+      const parsedTheses = parseThesesFromHTML(html);
+      if (parsedTheses.length > 0)
+        await saveElementsToDb(synthesisId, "theses", { theses: parsedTheses });
+    } catch (e) {
+      console.warn("Theses parse:", e);
+    }
+  }
+  if (sectionKey === "glossary") {
+    try {
+      const parsedTerms = parseGlossaryFromHTML(html);
+      if (parsedTerms.length > 0)
+        await saveElementsToDb(synthesisId, "glossary", {
+          glossaryTerms: parsedTerms,
+        });
+    } catch (e) {
+      console.warn("Glossary parse:", e);
+    }
+  }
+  if (sectionKey === "name") {
+    const title = extractTitleFromNameHtml(html);
+    if (title) {
+      await db
+        .update(syntheses)
+        .set({ title, updatedAt: new Date() })
+        .where(eq(syntheses.id, synthesisId));
+    }
+  }
+  if (sectionKey === "capsule") {
+    // Адаптация 1.4: строка sections сохраняется тоже
+    await db
+      .update(syntheses)
+      .set({ capsuleHtml: html, updatedAt: new Date() })
+      .where(eq(syntheses.id, synthesisId));
+  }
+}
+
+/** SQL-инкременты totals (устойчиво к параллельным строкам; образец 1.4b). */
+async function bumpTotals(
+  synthesisId: string,
+  usage: { inputTokens: number; outputTokens: number },
+): Promise<void> {
+  if (usage.inputTokens === 0 && usage.outputTokens === 0) return;
+  const cost = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
+  await db
+    .update(syntheses)
+    .set({
+      totalInputTokens: dsql`${syntheses.totalInputTokens} + ${usage.inputTokens}`,
+      totalOutputTokens: dsql`${syntheses.totalOutputTokens} + ${usage.outputTokens}`,
+      totalCostUsd: dsql`${syntheses.totalCostUsd} + ${cost.toFixed(6)}::numeric`,
+      updatedAt: new Date(),
+    })
+    .where(eq(syntheses.id, synthesisId));
+}
+
+/** Confirm-данные деградации при skip [25686] (долг §12 → 2.2):
+ *  прямые потребители пропускаемых разделов по effectiveDeps
+ *  (computeDependents — паритет downstream updateLiveCascade), из ещё
+ *  не сгенерированных. Кладётся в PausedStateGen.skipDegrades и в
+ *  WS generation_paused — клиентский confirm в PauseModal. */
+export function computeSkipDegrades(
+  effectiveDeps: DepsMap,
+  interrupted: readonly string[],
+  completedPasses: readonly (readonly string[])[],
+): string[] {
+  const dependents = computeDependents(effectiveDeps);
+  const done = new Set(completedPasses.flat());
+  const skipped = new Set(interrupted);
+  const out = new Set<string>();
+  for (const k of interrupted) {
+    for (const d of dependents[k] ?? []) {
+      if (!done.has(d) && !skipped.has(d)) out.add(d);
+    }
+  }
+  return [...out];
+}
+
+/* ── regenerateSection [19971–20227] ─────────────────────────────────── */
+
+export interface RegenerateSectionOpts {
+  /** v10: вызов из плана — подавляет клиентские пост-шаги, ошибки
+   *  пробрасываются executor'у (пауза kind='plan') [20716] */
+  fromPlan?: boolean | undefined;
+}
+
+/**
+ * Порт regenerateSection(sectionKey, newCtx, opts): пересборка промпта
+ * одного раздела, стрим, сохранение, парсинг элементов, genLog/ctxLog.
+ * Ошибки стрима ПРОБРАСЫВАЮТСЯ всегда (адаптация: «глотание» при ручной
+ * перегенерации — на вызывающем: startSectionRegeneration шлёт
+ * stream_error; из плана — пауза у executor'а).
+ */
+export async function regenerateSection(
+  handle: GenerationSlotHandle,
+  sectionKey: string,
+  newCtx: string | null | undefined,
+  _opts: RegenerateSectionOpts = {},
+): Promise<{ inputTokens: number; outputTokens: number }> {
+  const { synthesisId, userId } = handle;
+  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  registerParentContextProvider();
+
+  const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
+  const sectionOrder: string[] = row.sectionOrder ?? [];
+  if (!sectionOrder.includes(sectionKey)) {
+    throw new GenerationError(
+      "VALIDATION_ERROR",
+      `Раздел «${sectionKey}» отсутствует в документе`,
+    );
+  }
+
+  // ── 2. Контекст раздела [20509]: newCtx ? set : delete ──
+  if (newCtx) secCtx[sectionKey] = newCtx;
+  else delete secCtx[sectionKey];
+  await db
+    .update(sections)
+    .set({ secContext: newCtx ?? "", updatedAt: new Date() })
+    .where(
+      and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)),
+    );
+
+  const infra = await buildEditInfra(row, philosophers, secCtx);
+  const { p, resolvedDeps, effectiveDeps } = infra;
+
+  // ТЗ selective-parent-context 10.2 [19984]: маркер миграции схемы
+  if (hasConceptParticipants(p) && row.parentContextSchema === "monolithic") {
+    await db.insert(generationLog).values({
+      synthesisId,
+      sectionKey,
+      sectionLabel: KEY_LABELS[sectionKey as keyof typeof KEY_LABELS] ?? sectionKey,
+      logType: "schema_migration_marker",
+      source: "edit",
+      status: "done",
+      metadata: {
+        fromSchema: "monolithic",
+        toSchema: PARENT_CONTEXT_SCHEMA_ID,
+      },
+    });
+    await db
+      .update(syntheses)
+      .set({ parentContextSchema: PARENT_CONTEXT_SCHEMA_ID, updatedAt: new Date() })
+      .where(eq(syntheses.id, synthesisId));
+  }
+
+  // ── 3. def раздела; номер — фактический из строки sections [20526] ──
+  const def = infra.defs.find((d) => d.key === sectionKey);
+  if (!def) {
+    throw new GenerationError(
+      "VALIDATION_ERROR",
+      `Раздел «${sectionKey}» не найден в определениях.`,
+    );
+  }
+  const [secRow] = await db
+    .select({ sectionNum: sections.sectionNum })
+    .from(sections)
+    .where(
+      and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)),
+    )
+    .limit(1);
+  if (secRow) def.num = secRow.sectionNum;
+
+  // ── 4. Контекст из предыдущих разделов [20539–20563] ──
+  let prior = "";
+  if (sectionKey !== "sum") {
+    try {
+      const built = await buildContextForSection(
+        sectionKey,
+        synthesisId,
+        p.depth,
+        effectiveDeps,
+        resolvedDeps,
+        {
+          source: createDbContextSource(synthesisId),
+          params: {
+            synthLevel: p.synthLevel,
+            method: p.method,
+            generationOrder: p.generationOrder,
+            keepFullBudget: p.keepFullBudget,
+          },
+        },
+      );
+      prior = built.text;
+      if (built.ctxLog) {
+        await db.insert(contextLog).values({
+          synthesisId,
+          sectionKey: built.ctxLog.sectionKey,
+          budget: built.ctxLog.budget,
+          totalUsed: built.ctxLog.totalUsed,
+          reqFound: built.ctxLog.reqFound,
+          reqTotal: built.ctxLog.reqTotal,
+          optIncluded: built.ctxLog.optIncluded,
+          optTotal: built.ctxLog.optTotal,
+          budgetMode: built.ctxLog.budgetMode,
+          parentOverhead: built.ctxLog.parentOverhead,
+          parentSpec: built.ctxLog.parentSpec,
+          entries: built.ctxLog.entries,
+        });
+      }
+    } catch (ctxErr) {
+      console.warn(
+        "Ошибка построения контекста при перегенерации",
+        sectionKey,
+        ctxErr,
+      );
+    }
+  }
+
+  // ── 5. Финальный промпт [20566–20587] ──
+  const SYS = await buildSYS(p);
+  const partStatic = await baseCtxStatic(p);
+  const partParents = hasConceptParticipants(p)
+    ? await baseCtxParents(p, sectionKey)
+    : "";
+  const partBase = partStatic + partParents;
+  await ensureGenCommonForEdit(
+    synthesisId, p, sectionKey, SYS.length, partBase.length, partParents.length,
+  );
+  const quality = await buildQualityReinforcement(p);
+  const stopSignal = await getStopSignal();
+  const sp = `§ ${def.num} — ${def.title.toUpperCase()}\n${def.prompt}`;
+  const fp = `ПАРАМЕТРЫ СИНТЕЗА:\n${partBase}${prior}\n\nЗАДАНИЕ: составь ТОЛЬКО следующие разделы (строго в указанном порядке, без добавления других):\n\n${sp}${quality}${stopSignal}`;
+
+  // ── 6. genEntry source='edit' [20594–20618] ──
+  const subsecMap = await buildSubsectionMap(p);
+  const expectedSubs = subsecMap[sectionKey] ?? [];
+  const [genEntry] = await db
+    .insert(generationLog)
+    .values({
+      synthesisId,
+      sectionKey,
+      sectionLabel: `${def.title} [перегенерация]`,
+      logType: "generation",
+      source: "edit",
+      status: "streaming",
+      priorChars: prior.length,
+      taskChars: sp.length,
+      inputChars: SYS.length + fp.length,
+      metadata: {
+        expectedSubsections: expectedSubs,
+        subsections: [],
+        promptSkeleton: buildPromptSkeleton(fp),
+        sys: SYS,
+        secCtxPreview: newCtx
+          ? newCtx.slice(0, 120) + (newCtx.length > 120 ? "…" : "")
+          : null,
+        secCtxChars: newCtx ? newCtx.length : 0,
+        budgetMode: p.keepFullBudget ? "full" : "shrink",
+        parentOverheadChars: partParents.length,
+      },
+    })
+    .returning({ id: generationLog.id });
+  const genEntryId = (genEntry as { id: string }).id;
+
+  // ── 7. Стрим [20620–20634] ──
+  let lastSubScan = 0;
+  let subsections: ParsedSubsection[] = [];
+  const onDelta = (delta: string, totalChars: number, htmlSoFar: string): void => {
+    sendToUser(userId, {
+      type: "stream_delta",
+      synthesisId,
+      sectionKey,
+      delta,
+      totalChars,
+    });
+    if (expectedSubs.length > 0) {
+      const now = Date.now();
+      if (now - lastSubScan > SUBSECTION_SCAN_THROTTLE_MS) {
+        lastSubScan = now;
+        subsections = parseSubsectionsFromHTML(htmlSoFar, expectedSubs);
+      }
+    }
+  };
+
+  try {
+    const { usage, html } = await streamWithRetries(
+      handle, sectionKey, fp, SYS, apiKey, onDelta,
+    );
+
+    // ── 8. Финализация genEntry [20636–20648] ──
+    if (expectedSubs.length > 0) {
+      subsections = parseSubsectionsFromHTML(html, expectedSubs);
+      subsections.forEach((s) => { s.status = "done"; });
+    }
+    const cost = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
+    await db
+      .update(generationLog)
+      .set({
+        status: "done",
+        outputChars: html.length,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        costUsd: cost.toFixed(6),
+        metadata: dsql`metadata || ${JSON.stringify({ subsections })}::jsonb`,
+      })
+      .where(eq(generationLog.id, genEntryId));
+
+    // ── 12. Раздел + editedSections [20676–20686] ──
+    await upsertSection(synthesisId, def, html, newCtx ?? "", true);
+    await bumpTotals(synthesisId, usage);
+    await applySectionSideEffects(synthesisId, sectionKey, html);
+
+    await clearStreamState(synthesisId, sectionKey);
+    sendToUser(userId, {
+      type: "section_done",
+      synthesisId,
+      sectionKey,
+      usage: {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        costUsd: cost,
+      },
+      html,
+    });
+    return usage;
+  } catch (rawErr) {
+    // [20705–20718]: genEntry → error; usage max-tokens учитывается
+    const e =
+      rawErr instanceof StreamError ? rawErr : classifyStreamError(rawErr, false);
+    const eUsage = e.usage ?? { inputTokens: 0, outputTokens: 0 };
+    const eCost = eUsage.inputTokens * PRICE_IN + eUsage.outputTokens * PRICE_OUT;
+    await db
+      .update(generationLog)
+      .set({
+        status: "error",
+        errorMessage: e.message,
+        inputTokens: eUsage.inputTokens,
+        outputTokens: eUsage.outputTokens,
+        costUsd: eCost.toFixed(6),
+      })
+      .where(eq(generationLog.id, genEntryId));
+    await bumpTotals(synthesisId, eUsage);
+    throw e;
+  }
+}
+
+/**
+ * Обёртка standalone-перегенерации (POST /regenerate, WS start_regen):
+ * собственный слот; ошибка стрима — stream_error клиенту, БЕЗ pausedState
+ * (паритет ручной перегенерации исходника [20716]).
+ */
+export async function startSectionRegeneration(
+  synthesisId: string,
+  userId: string,
+  sectionKey: string,
+  ctx?: string | null,
+): Promise<void> {
+  await withGenerationSlot(synthesisId, userId, async (handle) => {
+    try {
+      await regenerateSection(handle, sectionKey, ctx ?? null, {});
+    } catch (err) {
+      const message =
+        err instanceof StreamError || err instanceof GenerationError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : String(err);
+      console.error(`regenerateSection(${synthesisId}, ${sectionKey}):`, err);
+      sendToUser(userId, {
+        type: "stream_error",
+        synthesisId,
+        sectionKey,
+        error: message,
+        recoverable: false,
+      });
+    }
+  });
+}
+
+/* ── regenerateSubsection [20236–20476] (полный; долг 1.4b закрыт) ───── */
+
+export interface SubsectionRegenOpts {
+  includeCurrentContent?: boolean | undefined;
+  resumeFromInterruption?: boolean | undefined;
+  userNote?: string | undefined;
+}
+
+/** Поиск подраздела [20390–20402]: точное имя → нечёткое включение. */
+export function findSubsection(
+  container: HtmlElement,
+  name: string,
+): HtmlElement | null {
+  const exact = container.querySelector(`[data-section="${name}"]`);
+  if (exact) return exact;
+  const lower = name.toLowerCase();
+  for (const sub of container.querySelectorAll("[data-section]")) {
+    const n = (sub.getAttribute("data-section") ?? "").toLowerCase();
+    if (n.includes(lower) || lower.includes(n)) return sub;
+  }
+  return null;
+}
+
+/** Порт extractSubsectionContent [19950]: таблицы → tableToText,
+ *  прочие дети — innerText. */
+export function extractSubsectionContent(
+  container: HtmlElement,
+  subsectionName: string,
+): string | null {
+  const sec = container.querySelector(`[data-section="${subsectionName}"]`);
+  if (!sec) return null;
+  const parts: string[] = [];
+  for (const child of sec.children) {
+    if (child.tagName === "TABLE") {
+      parts.push(tableToText(child));
+    } else {
+      const t = innerTextTrimmed(child);
+      if (t) parts.push(t);
+    }
+  }
+  return parts.filter(Boolean).join("\n") || innerTextTrimmed(sec) || null;
+}
+
+/**
+ * Порт поподраздельного ctxLog-логирования intra-контекста [20255–20310]
+ * (перенос из pause-resume-service — объединение по долгу TODO(2.2)).
+ */
+async function logIntraSectionContext(
+  synthesisId: string,
+  sectionKey: string,
+  subsectionName: string,
+  intraSectionCtx: string,
+  container: HtmlElement,
+): Promise<void> {
+  interface IntraPart {
+    name: string;
+    _start: number;
+    len: number;
+  }
+  const intraParts: IntraPart[] = [];
+  const regex = /\[([^\]]+)\]\n/g;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(intraSectionCtx)) !== null) {
+    const prev = intraParts[intraParts.length - 1];
+    if (prev) prev.len = m.index - prev._start;
+    intraParts.push({ name: m[1] as string, _start: m.index, len: 0 });
+  }
+  const last = intraParts[intraParts.length - 1];
+  if (last) last.len = intraSectionCtx.length - last._start;
+
+  const realSubsectionNames = new Set<string>();
+  for (const el of container.querySelectorAll("[data-section]")) {
+    const n = el.getAttribute("data-section");
+    if (n !== null) realSubsectionNames.add(n);
+  }
+  const cleanParts: IntraPart[] = [];
+  for (const part of intraParts) {
+    if (realSubsectionNames.has(part.name)) {
+      cleanParts.push(part);
+    } else if (cleanParts.length > 0) {
+      (cleanParts[cleanParts.length - 1] as IntraPart).len += part.len;
+    }
+  }
+
+  const entries =
+    cleanParts.length > 0
+      ? cleanParts.map((part) => ({
+          key: "intra:" + part.name,
+          status: "found",
+          len: part.len,
+          priority: "required",
+        }))
+      : [
+          {
+            key: "intra:" + sectionKey,
+            status: "found",
+            len: intraSectionCtx.length,
+            priority: "required",
+          },
+        ];
+
+  await db.insert(contextLog).values({
+    synthesisId,
+    sectionKey: sectionKey + ":" + subsectionName,
+    budget: intraSectionCtx.length,
+    totalUsed: intraSectionCtx.length,
+    reqFound: entries.length,
+    reqTotal: entries.length,
+    optIncluded: 0,
+    optTotal: 0,
+    entries,
+  });
+}
+
+/**
+ * ПОЛНЫЙ порт regenerateSubsection [20236] (объединение с
+ * regenerateSubsectionForResume 1.4b — долг §12 закрыт): intra-контекст +
+ * его ctxLog [20255], prior-контекст с subsectionName, промпт
+ * serializeSubsectionRegen, SYS outputMode='subsection', genEntry
+ * source='subsection_regen', стрим с ретраями, врезка результата
+ * (spliceSubsectionHtml), side-effects раздела, totals, снимок
+ * structureSections при «Структура документа» [20461], editedSections
+ * [20445] → is_edited, возврат getIntraDependents для каскада [20475].
+ */
+export async function regenerateSubsection(
+  handle: GenerationSlotHandle,
+  p: GenParams,
+  def: SectionDefFull,
+  subsectionName: string,
+  effectiveDeps: DepsMap,
+  resolvedDeps: DepsMap,
+  opts: SubsectionRegenOpts = {},
+): Promise<{
+  usage: { inputTokens: number; outputTokens: number };
+  affectedSubs: string[];
+}> {
+  const { synthesisId, userId } = handle;
+  const sectionKey = def.key;
+  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  if (!def.parts) {
+    throw new GenerationError(
+      "VALIDATION_ERROR",
+      `Раздел «${sectionKey}» не имеет структурированных parts.`,
+    );
+  }
+
+  const [secRow] = await db
+    .select({ htmlContent: sections.htmlContent })
+    .from(sections)
+    .where(
+      and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)),
+    )
+    .limit(1);
+  const sectionHtml = secRow?.htmlContent ?? "";
+  const container = parseFragment(sectionHtml);
+
+  /* ── 1. Контексты ── */
+  const intraSectionCtx = await extractRelevantIntraSectionContext(
+    container,
+    sectionKey,
+    subsectionName,
+  );
+  if (intraSectionCtx) {
+    await logIntraSectionContext(
+      synthesisId, sectionKey, subsectionName, intraSectionCtx, container,
+    );
+  }
+
+  const currentContent = opts.includeCurrentContent
+    ? extractSubsectionContent(container, subsectionName)
+    : null;
+
+  let priorCtx = "";
+  if (sectionKey !== "sum") {
+    try {
+      const built = await buildContextForSection(
+        sectionKey,
+        synthesisId,
+        p.depth,
+        effectiveDeps,
+        resolvedDeps,
+        {
+          source: createDbContextSource(synthesisId),
+          params: {
+            synthLevel: p.synthLevel,
+            method: p.method,
+            generationOrder: p.generationOrder,
+            keepFullBudget: p.keepFullBudget,
+          },
+          subsectionName,
+        },
+      );
+      priorCtx = built.text;
+      if (built.ctxLog) {
+        await db.insert(contextLog).values({
+          synthesisId,
+          sectionKey: built.ctxLog.sectionKey,
+          budget: built.ctxLog.budget,
+          totalUsed: built.ctxLog.totalUsed,
+          reqFound: built.ctxLog.reqFound,
+          reqTotal: built.ctxLog.reqTotal,
+          optIncluded: built.ctxLog.optIncluded,
+          optTotal: built.ctxLog.optTotal,
+          budgetMode: built.ctxLog.budgetMode,
+          parentOverhead: built.ctxLog.parentOverhead,
+          parentSpec: built.ctxLog.parentSpec,
+          entries: built.ctxLog.entries,
+        });
+      }
+    } catch (e) {
+      console.warn("Subsection regen context error:", e);
+    }
+  }
+
+  /* ── 2. Промпт [20338–20348] ── */
+  const subPrompt = serializeSubsectionRegen(
+    def.parts,
+    subsectionName,
+    intraSectionCtx,
+    {
+      userNote: opts.userNote ?? "",
+      currentContent,
+      resumeFromInterruption: !!opts.resumeFromInterruption,
+    },
+  );
+  const SYS = await buildSYS(p, { outputMode: "subsection" });
+  const partStatic = await baseCtxStatic(p);
+  const partParents = hasConceptParticipants(p)
+    ? await baseCtxParents(p, sectionKey, subsectionName)
+    : "";
+  const partBase = partStatic + partParents;
+  const fp = `ПАРАМЕТРЫ СИНТЕЗА:\n${partBase}${priorCtx}\n\n${subPrompt}`;
+
+  /* ── 3. GenLog [20352–20376] ── */
+  const [genEntry] = await db
+    .insert(generationLog)
+    .values({
+      synthesisId,
+      sectionKey: `${sectionKey}:${subsectionName}`,
+      sectionLabel: `${def.title} → ${subsectionName} [подраздел]`,
+      logType: "generation",
+      source: "subsection_regen",
+      status: "streaming",
+      priorChars: priorCtx.length,
+      taskChars: subPrompt.length,
+      inputChars: SYS.length + fp.length,
+      metadata: {
+        expectedSubsections: [subsectionName],
+        subsections: [],
+        promptSkeleton: buildPromptSkeleton(fp),
+        sys: SYS,
+        intraSectionChars: intraSectionCtx ? intraSectionCtx.length : 0,
+        hasUserNote: !!opts.userNote,
+        userNotePreview: opts.userNote
+          ? opts.userNote.slice(0, 120) + (opts.userNote.length > 120 ? "…" : "")
+          : null,
+        hasCurrentContent: !!(opts.includeCurrentContent && currentContent),
+        currentContentChars: currentContent ? currentContent.length : 0,
+        budgetMode: p.keepFullBudget ? "full" : "shrink",
+        parentOverheadChars: partParents.length,
+      },
+    })
+    .returning({ id: generationLog.id });
+  const genEntryId = (genEntry as { id: string }).id;
+
+  /* ── 4. Стрим ── */
+  const streamKey = `${sectionKey}:${subsectionName}`;
+  try {
+    const { usage, html } = await streamWithRetries(
+      handle,
+      streamKey,
+      fp,
+      SYS,
+      apiKey,
+      (delta, totalChars) => {
+        sendToUser(userId, {
+          type: "stream_delta",
+          synthesisId,
+          sectionKey,
+          delta,
+          totalChars,
+        });
+      },
+    );
+
+    /* ── 5. Фиксация + врезка [20426–20444] ── */
+    const cost = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
+    await db
+      .update(generationLog)
+      .set({
+        status: "done",
+        outputChars: html.length,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        costUsd: cost.toFixed(6),
+        metadata: dsql`metadata || ${JSON.stringify({
+          subsections: [
+            { name: subsectionName, chars: html.length, status: "done" },
+          ],
+        })}::jsonb`,
+      })
+      .where(eq(generationLog.id, genEntryId));
+
+    const newSectionHtml = spliceSubsectionHtml(
+      sectionHtml, subsectionName, html,
+    );
+    await db
+      .update(sections)
+      .set({ htmlContent: newSectionHtml, isEdited: true, updatedAt: new Date() })
+      .where(
+        and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)),
+      );
+    await bumpTotals(synthesisId, usage);
+
+    /* ── 6. Side-effects [20450–20454] + снимок структуры [20461] ── */
+    await applySectionSideEffects(synthesisId, sectionKey, newSectionHtml);
+    if (sectionKey === "sum" && subsectionName === STRUCTURE_SUBSECTION) {
+      const [fresh] = await db
+        .select({ sectionOrder: syntheses.sectionOrder })
+        .from(syntheses)
+        .where(eq(syntheses.id, synthesisId))
+        .limit(1);
+      await updateStructureSections(synthesisId, fresh?.sectionOrder ?? []);
+    }
+
+    await clearStreamState(synthesisId, streamKey);
+    sendToUser(userId, {
+      type: "section_done",
+      synthesisId,
+      sectionKey,
+      usage: {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        costUsd: cost,
+      },
+      html: newSectionHtml,
+    });
+
+    /* ── 7. Зависимые для каскада [20475] ── */
+    let affectedSubs: string[] = [];
+    try {
+      affectedSubs = await getIntraDependents(p, sectionKey, subsectionName);
+    } catch (e) {
+      console.warn("getIntraDependents:", e);
+    }
+    return { usage, affectedSubs };
+  } catch (rawErr) {
+    const e =
+      rawErr instanceof StreamError ? rawErr : classifyStreamError(rawErr, false);
+    const eUsage = e.usage ?? { inputTokens: 0, outputTokens: 0 };
+    const eCost = eUsage.inputTokens * PRICE_IN + eUsage.outputTokens * PRICE_OUT;
+    await db
+      .update(generationLog)
+      .set({
+        status: "error",
+        errorMessage: e.message,
+        inputTokens: eUsage.inputTokens,
+        outputTokens: eUsage.outputTokens,
+        costUsd: eCost.toFixed(6),
+      })
+      .where(eq(generationLog.id, genEntryId));
+    await bumpTotals(synthesisId, eUsage);
+    throw e;
+  }
+}
+
+/**
+ * Исполнение подраздельной перегенерации под УЖЕ занятым слотом
+ * (plan-executor, каскад): пересборка infra от текущего состояния,
+ * поиск def с parts, вызов regenerateSubsection.
+ */
+export async function runSubsectionRegen(
+  handle: GenerationSlotHandle,
+  sectionKey: string,
+  subsectionName: string,
+  opts: SubsectionRegenOpts = {},
+): Promise<{
+  usage: { inputTokens: number; outputTokens: number };
+  affectedSubs: string[];
+}> {
+  const { row, philosophers, secCtx } = await loadSynthesis(handle.synthesisId);
+  const infra = await buildEditInfra(row, philosophers, secCtx);
+  const def = infra.defs.find((d) => d.key === sectionKey);
+  if (!def) {
+    throw new GenerationError(
+      "VALIDATION_ERROR",
+      `Раздел «${sectionKey}» не найден в определениях.`,
+    );
+  }
+  const [secRow] = await db
+    .select({ sectionNum: sections.sectionNum })
+    .from(sections)
+    .where(
+      and(
+        eq(sections.synthesisId, handle.synthesisId),
+        eq(sections.key, sectionKey),
+      ),
+    )
+    .limit(1);
+  if (secRow) def.num = secRow.sectionNum;
+  return regenerateSubsection(
+    handle,
+    infra.p,
+    def,
+    subsectionName,
+    infra.effectiveDeps,
+    infra.resolvedDeps,
+    opts,
+  );
+}
+
+/**
+ * Обёртка standalone-перегенерации подраздела (POST /regenerate-subsection,
+ * WS start_sub_regen): собственный слот + инкремент version_sub [18811]
+ * (executeSubsectionRegen); ошибка стрима — stream_error, БЕЗ pausedState.
+ */
+export async function startSubsectionRegeneration(
+  synthesisId: string,
+  userId: string,
+  sectionKey: string,
+  subsectionName: string,
+  opts: SubsectionRegenOpts = {},
+): Promise<void> {
+  await withGenerationSlot(synthesisId, userId, async (handle) => {
+    try {
+      await runSubsectionRegen(handle, sectionKey, subsectionName, opts);
+      await db
+        .update(syntheses)
+        .set({
+          versionSub: dsql`${syntheses.versionSub} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(syntheses.id, synthesisId));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(
+        `regenerateSubsection(${synthesisId}, ${sectionKey}:${subsectionName}):`,
+        err,
+      );
+      sendToUser(userId, {
+        type: "stream_error",
+        synthesisId,
+        sectionKey,
+        error: message,
+        recoverable: false,
+      });
+    }
+  });
+}
+
+/* ── Нумерация разделов [5730] + ссылки §N [5628] ────────────────────── */
+
+/**
+ * Порт recalcSectionNumbers(): номера = позиция в sectionOrder (1-based,
+ * включая «sum»). Обновляет sections.section_num, возвращает карту
+ * oldNum → newNum для перенумерации ссылок.
+ */
+async function recalcSectionNumbers(
+  synthesisId: string,
+  sectionOrder: readonly string[],
+): Promise<Record<number, number>> {
+  const rows = await db
+    .select({ key: sections.key, sectionNum: sections.sectionNum })
+    .from(sections)
+    .where(eq(sections.synthesisId, synthesisId));
+  const oldNums = new Map(rows.map((r) => [r.key, r.sectionNum]));
+  const renumberMap: Record<number, number> = {};
+  let num = 1;
+  for (const key of sectionOrder) {
+    if (!oldNums.has(key)) continue;
+    const oldNum = oldNums.get(key) as number;
+    if (oldNum !== num) {
+      renumberMap[oldNum] = num;
+      await db
+        .update(sections)
+        .set({ sectionNum: num, updatedAt: new Date() })
+        .where(
+          and(eq(sections.synthesisId, synthesisId), eq(sections.key, key)),
+        );
+    }
+    num += 1;
+  }
+  return renumberMap;
+}
+
+/**
+ * Порт renumberSectionRefs(renumberMap, deletedNums) [5628]: замена
+ * ссылок «§ N» в html_content каждого раздела (TreeWalker исходника →
+ * строковая замена; отступление задокументировано в шапке блока).
+ */
+async function renumberSectionRefs(
+  synthesisId: string,
+  renumberMap: Record<number, number>,
+  deletedNums: number[] = [],
+): Promise<void> {
+  const hasRenumber = Object.keys(renumberMap).length > 0;
+  const deletedSet = new Set(deletedNums);
+  if (!hasRenumber && deletedSet.size === 0) return;
+
+  const rows = await db
+    .select({ key: sections.key, htmlContent: sections.htmlContent })
+    .from(sections)
+    .where(eq(sections.synthesisId, synthesisId));
+  const regex = /§\s*(\d+)/g;
+  for (const rowSec of rows) {
+    const replaced = rowSec.htmlContent.replace(regex, (match, numStr: string) => {
+      const oldNum = Number.parseInt(numStr, 10);
+      if (deletedSet.has(oldNum)) return match + " [удалён]";
+      const newNum = renumberMap[oldNum];
+      if (newNum !== undefined && newNum !== oldNum) {
+        return match.replace(numStr, String(newNum));
+      }
+      return match;
+    });
+    if (replaced !== rowSec.htmlContent) {
+      await db
+        .update(sections)
+        .set({ htmlContent: replaced, updatedAt: new Date() })
+        .where(
+          and(eq(sections.synthesisId, synthesisId), eq(sections.key, rowSec.key)),
+        );
+    }
+  }
+}
+
+/* ── addSection [20922–21216] ────────────────────────────────────────── */
+
+/** Порт findInsertPosition(newKey) [5761]: индекс в sectionOrder, ПОСЛЕ
+ *  которого вставлять (по будущему динамическому порядку). */
+async function findInsertPosition(
+  row: SynthesisRow,
+  philosophers: string[],
+  secCtx: Record<string, string>,
+  newKey: string,
+): Promise<number> {
+  const sectionOrder: string[] = row.sectionOrder ?? [];
+  const currentSections = sectionOrder.filter((k) => k !== "sum");
+  const allSections = [...currentSections, newKey];
+  const p = buildParams(row, philosophers, secCtx);
+  const resolvedDeps = await resolveContextDeps(p);
+  const effDeps = await buildEffectiveDeps(
+    allSections, resolvedDeps, p.generationOrder,
+  );
+  const newOrder = buildDynamicOrder(
+    effDeps, allSections, resolvedDeps, p.generationOrder ?? "architectural",
+  );
+  const posInNew = newOrder.indexOf(newKey);
+  for (let i = posInNew - 1; i >= 0; i--) {
+    const prevKey = newOrder[i] as string;
+    const posInCurrent = sectionOrder.indexOf(prevKey);
+    if (posInCurrent !== -1) return posInCurrent;
+  }
+  return 0; // после sum
+}
+
+export interface AddSectionOpts {
+  /** v10: вызов из плана — подавляет пост-шаги (TOC/каскады — клиент) */
+  fromPlan?: boolean | undefined;
+}
+
+/**
+ * Порт addSection(sectionKey, newCtx, opts): позиция вставки по будущим
+ * зависимостям, обновление sectionOrder, перенумерация §§ и ссылок,
+ * контекст, стрим, сохранение, side-effects; при ошибке — откат
+ * [21253–21264]. Ошибки стрима пробрасываются (план — пауза executor'а).
+ */
+export async function addSection(
+  handle: GenerationSlotHandle,
+  sectionKey: string,
+  newCtx: string | null | undefined,
+  _opts: AddSectionOpts = {},
+): Promise<{ inputTokens: number; outputTokens: number }> {
+  const { synthesisId, userId } = handle;
+  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  registerParentContextProvider();
+
+  const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
+  const sectionOrder: string[] = [...(row.sectionOrder ?? [])];
+  if (sectionOrder.includes(sectionKey)) {
+    throw new GenerationError(
+      "VALIDATION_ERROR",
+      `Раздел «${sectionKey}» уже есть в документе`,
+    );
+  }
+  if (!(ALL_SECTION_KEYS as readonly string[]).includes(sectionKey)) {
+    throw new GenerationError(
+      "VALIDATION_ERROR",
+      `Неизвестный раздел «${sectionKey}»`,
+    );
+  }
+
+  /* ── 1–2. Позиция вставки + sectionOrder ── */
+  const insertAfterIdx = await findInsertPosition(
+    row, philosophers, secCtx, sectionKey,
+  );
+  sectionOrder.splice(insertAfterIdx + 1, 0, sectionKey);
+  await db
+    .update(syntheses)
+    .set({ sectionOrder, updatedAt: new Date() })
+    .where(eq(syntheses.id, synthesisId));
+
+  /* ── 3. Контекст ── */
+  if (newCtx) secCtx[sectionKey] = newCtx;
+
+  let inserted = false;
+  try {
+    /* ── 4–7. Инфраструктура с новым разделом; номер по позиции ── */
+    const rowWithNew: SynthesisRow = { ...row, sectionOrder };
+    const infra = await buildEditInfra(rowWithNew, philosophers, secCtx);
+    const { p, resolvedDeps, effectiveDeps } = infra;
+    const newDef = infra.defs.find((d) => d.key === sectionKey);
+    if (!newDef) {
+      throw new GenerationError(
+        "VALIDATION_ERROR",
+        `Раздел «${sectionKey}» не найден в определениях.`,
+      );
+    }
+    newDef.num = sectionOrder.indexOf(sectionKey) + 1;
+
+    /* ── 7–8. Перенумерация существующих + ссылки §N ── */
+    const renumberMap = await recalcSectionNumbers(synthesisId, sectionOrder);
+    await renumberSectionRefs(synthesisId, renumberMap);
+
+    /* ── 9. Контекст и промпт ── */
+    let prior = "";
+    if (sectionKey !== "sum") {
+      try {
+        const built = await buildContextForSection(
+          sectionKey,
+          synthesisId,
+          p.depth,
+          effectiveDeps,
+          resolvedDeps,
+          {
+            source: createDbContextSource(synthesisId),
+            params: {
+              synthLevel: p.synthLevel,
+              method: p.method,
+              generationOrder: p.generationOrder,
+              keepFullBudget: p.keepFullBudget,
+            },
+          },
+        );
+        prior = built.text;
+        if (built.ctxLog) {
+          await db.insert(contextLog).values({
+            synthesisId,
+            sectionKey: built.ctxLog.sectionKey,
+            budget: built.ctxLog.budget,
+            totalUsed: built.ctxLog.totalUsed,
+            reqFound: built.ctxLog.reqFound,
+            reqTotal: built.ctxLog.reqTotal,
+            optIncluded: built.ctxLog.optIncluded,
+            optTotal: built.ctxLog.optTotal,
+            budgetMode: built.ctxLog.budgetMode,
+            parentOverhead: built.ctxLog.parentOverhead,
+            parentSpec: built.ctxLog.parentSpec,
+            entries: built.ctxLog.entries,
+          });
+        }
+      } catch (ctxErr) {
+        console.warn("Ошибка контекста при добавлении раздела", sectionKey, ctxErr);
+      }
+    }
+
+    const SYS = await buildSYS(p);
+    const partStatic = await baseCtxStatic(p);
+    const partParents = hasConceptParticipants(p)
+      ? await baseCtxParents(p, sectionKey)
+      : "";
+    const partBase = partStatic + partParents;
+    await ensureGenCommonForEdit(
+      synthesisId, p, sectionKey, SYS.length, partBase.length, partParents.length,
+    );
+    const quality = await buildQualityReinforcement(p);
+    const stopSignal = await getStopSignal();
+    const sp = `§ ${newDef.num} — ${newDef.title.toUpperCase()}\n${newDef.prompt}`;
+    const fp = `ПАРАМЕТРЫ СИНТЕЗА:\n${partBase}${prior}\n\nЗАДАНИЕ: составь ТОЛЬКО следующие разделы (строго в указанном порядке, без добавления других):\n\n${sp}${quality}${stopSignal}`;
+
+    /* ── 10. GenLog source='edit_add' ── */
+    const subsecMap = await buildSubsectionMap(p);
+    const expectedSubs = subsecMap[sectionKey] ?? [];
+    const [genEntry] = await db
+      .insert(generationLog)
+      .values({
+        synthesisId,
+        sectionKey,
+        sectionLabel: `${newDef.title} [добавлен]`,
+        logType: "generation",
+        source: "edit_add",
+        status: "streaming",
+        priorChars: prior.length,
+        taskChars: sp.length,
+        inputChars: SYS.length + fp.length,
+        metadata: {
+          expectedSubsections: expectedSubs,
+          subsections: [],
+          promptSkeleton: buildPromptSkeleton(fp),
+          sys: SYS,
+          budgetMode: p.keepFullBudget ? "full" : "shrink",
+          parentOverheadChars: partParents.length,
+        },
+      })
+      .returning({ id: generationLog.id });
+    const genEntryId = (genEntry as { id: string }).id;
+
+    /* ── 11. Стрим ── */
+    let lastSubScan = 0;
+    let subsections: ParsedSubsection[] = [];
+    const { usage, html } = await streamWithRetries(
+      handle,
+      sectionKey,
+      fp,
+      SYS,
+      apiKey,
+      (delta, totalChars, htmlSoFar) => {
+        sendToUser(userId, {
+          type: "stream_delta",
+          synthesisId,
+          sectionKey,
+          delta,
+          totalChars,
+        });
+        if (expectedSubs.length > 0) {
+          const now = Date.now();
+          if (now - lastSubScan > SUBSECTION_SCAN_THROTTLE_MS) {
+            lastSubScan = now;
+            subsections = parseSubsectionsFromHTML(htmlSoFar, expectedSubs);
+          }
+        }
+      },
+    );
+
+    if (expectedSubs.length > 0) {
+      subsections = parseSubsectionsFromHTML(html, expectedSubs);
+      subsections.forEach((s) => { s.status = "done"; });
+    }
+    const cost = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
+    await db
+      .update(generationLog)
+      .set({
+        status: "done",
+        outputChars: html.length,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        costUsd: cost.toFixed(6),
+        metadata: dsql`metadata || ${JSON.stringify({ subsections })}::jsonb`,
+      })
+      .where(eq(generationLog.id, genEntryId));
+
+    /* ── 12–14. Раздел + side-effects (editedSections [21178]) ── */
+    await upsertSection(synthesisId, newDef, html, newCtx ?? "", true);
+    inserted = true;
+    await bumpTotals(synthesisId, usage);
+    await applySectionSideEffects(synthesisId, sectionKey, html);
+
+    await clearStreamState(synthesisId, sectionKey);
+    sendToUser(userId, {
+      type: "section_done",
+      synthesisId,
+      sectionKey,
+      usage: {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        costUsd: cost,
+      },
+      html,
+    });
+    return usage;
+  } catch (err) {
+    /* ── Откат [21253–21264] ── */
+    console.error("Ошибка добавления раздела:", sectionKey, err);
+    try {
+      const rollbackOrder = sectionOrder.filter((k) => k !== sectionKey);
+      await db
+        .update(syntheses)
+        .set({ sectionOrder: rollbackOrder, updatedAt: new Date() })
+        .where(eq(syntheses.id, synthesisId));
+      if (inserted) {
+        await db
+          .delete(sections)
+          .where(
+            and(
+              eq(sections.synthesisId, synthesisId),
+              eq(sections.key, sectionKey),
+            ),
+          );
+      }
+      const rollbackRenumber = await recalcSectionNumbers(
+        synthesisId, rollbackOrder,
+      );
+      await renumberSectionRefs(synthesisId, rollbackRenumber);
+    } catch (rollbackErr) {
+      console.warn("addSection rollback:", rollbackErr);
+    }
+    if (err instanceof StreamError) {
+      const eUsage = err.usage ?? { inputTokens: 0, outputTokens: 0 };
+      await bumpTotals(synthesisId, eUsage);
+    }
+    throw err;
+  }
+}
+
+/* ── deleteSection [20806–20899] ─────────────────────────────────────── */
+
+/**
+ * Порт deleteSection(sectionKey): deletion_marker в генлог [20845],
+ * удаление строки sections + из sectionOrder, перенумерация §§ и ссылок
+ * (с пометкой удалённого), side-effects: graph → очистка гранулярного
+ * графа (аналог G={} [20824]), name → заголовок по умолчанию [20860],
+ * capsule → capsule_html='' [20865]. Синхронна (без стрима).
+ * Предложения «обновить Структуру» — клиент (данные structure_sections).
+ */
+export async function deleteSection(
+  synthesisId: string,
+  sectionKey: string,
+): Promise<void> {
+  const [row] = await db
+    .select({ sectionOrder: syntheses.sectionOrder })
+    .from(syntheses)
+    .where(eq(syntheses.id, synthesisId))
+    .limit(1);
+  if (!row) throw new GenerationError("NOT_FOUND", "Синтез не найден");
+  const sectionOrder: string[] = row.sectionOrder ?? [];
+  if (sectionKey === "sum" || !sectionOrder.includes(sectionKey)) {
+    throw new GenerationError(
+      "VALIDATION_ERROR",
+      `Раздел «${sectionKey}» нельзя удалить`,
+    );
+  }
+
+  const [secRow] = await db
+    .select({ sectionNum: sections.sectionNum })
+    .from(sections)
+    .where(
+      and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)),
+    )
+    .limit(1);
+  const deletedNum = secRow?.sectionNum;
+
+  // ── Запись в лог [20845] ──
+  await db.insert(generationLog).values({
+    synthesisId,
+    sectionKey,
+    sectionLabel:
+      KEY_LABELS[sectionKey as keyof typeof KEY_LABELS] ?? sectionKey,
+    logType: "deletion_marker",
+    source: "edit",
+    status: "done",
+    metadata: { sectionNum: deletedNum ?? null },
+  });
+
+  // ── 2–3. Удаление строки + порядок ──
+  await db
+    .delete(sections)
+    .where(
+      and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)),
+    );
+  const newOrder = sectionOrder.filter((k) => k !== sectionKey);
+  await db
+    .update(syntheses)
+    .set({ sectionOrder: newOrder, updatedAt: new Date() })
+    .where(eq(syntheses.id, synthesisId));
+
+  // ── 5–6. Перенумерация + ссылки (с пометкой удалённого) ──
+  const renumberMap = await recalcSectionNumbers(synthesisId, newOrder);
+  await renumberSectionRefs(
+    synthesisId, renumberMap, deletedNum ? [deletedNum] : [],
+  );
+
+  // ── 8. Side-effects [20823–20866] ──
+  if (sectionKey === "graph") {
+    await db
+      .delete(categoryEdges)
+      .where(eq(categoryEdges.synthesisId, synthesisId));
+    await db.delete(categories).where(eq(categories.synthesisId, synthesisId));
+    await db
+      .delete(clusterLabels)
+      .where(eq(clusterLabels.synthesisId, synthesisId));
+  }
+  if (sectionKey === "name") {
+    await db
+      .update(syntheses)
+      .set({ title: "Синтез Философской Концепции", updatedAt: new Date() })
+      .where(eq(syntheses.id, synthesisId));
+  }
+  if (sectionKey === "capsule") {
+    await db
+      .update(syntheses)
+      .set({ capsuleHtml: "", updatedAt: new Date() })
+      .where(eq(syntheses.id, synthesisId));
+  }
+}
+
+/* ── buildDeletionReplacements [20759–20801] ─────────────────────────── */
+
+export interface DeletionReplacement {
+  key: string;
+  label: string;
+  reason: string;
+  quality: number;
+}
+
+/**
+ * Порт buildDeletionReplacements(deletedKey): какие ОТСУТСТВУЮЩИЕ в
+ * документе разделы могут заменить контекст удаляемого (по
+ * SUBSTITUTION_MAP). Потребитель — UI удаления (беседа 2.3).
+ */
+export async function buildDeletionReplacements(
+  deletedKey: string,
+  sectionOrder: readonly string[],
+  generationOrder: "architectural" | "genetic",
+): Promise<DeletionReplacement[]> {
+  const subMap = await getActiveSubstitutionMap(generationOrder);
+  const providedKeys = Object.keys(subMap).filter(
+    (k) => sourceOf(k) === deletedKey,
+  );
+  if (!providedKeys.length) return [];
+
+  const currentSections = new Set(sectionOrder);
+  const labels = KEY_LABELS as Record<string, string>;
+  const ctxLabels = CTX_LABELS as Record<string, string>;
+  const suggestions: Record<
+    string,
+    { key: string; label: string; reasons: string[]; maxQ: number }
+  > = {};
+
+  for (const ctxKey of providedKeys) {
+    const candidates = subMap[ctxKey] ?? [];
+    for (const { key: subKey, q } of candidates) {
+      const src = sourceOf(subKey);
+      if (currentSections.has(src)) continue;
+      if (src === deletedKey) continue;
+      if (!suggestions[src]) {
+        suggestions[src] = {
+          key: src,
+          label: labels[src] ?? src,
+          reasons: [],
+          maxQ: 0,
+        };
+      }
+      const s = suggestions[src] as {
+        key: string; label: string; reasons: string[]; maxQ: number;
+      };
+      s.reasons.push(
+        `${ctxLabels[subKey] ?? subKey} заменяет ${ctxLabels[ctxKey] ?? ctxKey}`,
+      );
+      s.maxQ = Math.max(s.maxQ, q);
+    }
+  }
+
+  return Object.values(suggestions)
+    .sort((a, b) => b.maxQ - a.maxQ)
+    .map((s) => ({
+      key: s.key,
+      label: s.label,
+      reason: s.reasons.slice(0, 2).join("; "),
+      quality: s.maxQ,
+    }));
 }

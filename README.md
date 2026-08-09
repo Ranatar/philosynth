@@ -36,7 +36,7 @@ scripts/           эксплуатационные скрипты: extract-seed
                    -taxonomy, идемпотентные патч-скрипты доков
                    (patch-docs-*.py)
 docs/              7 проектных документов + fragments-for-conversations/
-tests/             ВСЕ тесты бесед (0.3b–2.1): vm-смоуки байтовой сверки
+tests/             ВСЕ тесты бесед (0.3b–2.2): vm-смоуки байтовой сверки
                    с исходником (smoke-*.mjs/.mts), API-тесты (mini-Hono),
                    браузерные (puppeteer + системный Chromium). Запуск из
                    корня репо: `node tests/<файл>` / `npx tsx tests/<файл>`.
@@ -250,17 +250,29 @@ analyzeImpact = серверный updateLiveCascade), services/plan-order-build
 estimatePlanCost), routes/plans.ts (03 §2.6; execute — беседа 2.2),
 wave-функции в cost-estimator (долг 1.1 закрыт). Тесты:
 tests/test-21-requests2-5.mjs 39/39 ✓ ×2 (сервис + HTTP; без браузера).
+
+Беседа 2.2 (plan-executor + регенерация, бэкенд):
+services/plan-executor.ts (executePlan/confirmStep, версии, каскад после
+базовых шагов, пауза kind='plan', resume-разъём заполнен — RESUME_INVALID
+с resume_plan retry/skip_step снят, разъём setModeRegenerator до 4.1),
+services/structure-tracker.ts, расширение generation-service
+(regenerateSection/полный regenerateSubsection — долг 1.4b закрыт/
+addSection/deleteSection/перенумерация §§), routes/generation.ts (03
+§2.5) + POST execute в routes/plans, WS start_regen/start_sub_regen/
+execute_plan/confirm_step, confirm деградации при skip (skipDegrades +
+PauseModal). Тесты: tests/test-22-requests2-6.mjs 53/53 ✓ ×2 (живой
+сервер + мок-SSE; без браузера). Доки пропатчены
+scripts/patch-docs-conv22.py.
 Доки пропатчены scripts/patch-docs-conv21.py.
 
 Не сделано (Фаза 2+): applyReplacement (3.2) и точный
-confirm деградации skip (2.2), каскады и план
-редактирования (plan-executor — снимет RESUME_INVALID с resume_plan
-retry/skip_step), мета-синтез (3.1 — снимет гейт ☑-концепций в форме и
+UI планов/каскадов (2.3 Edit Modal;
+бэкенд-исполнение готово в 2.2), мета-синтез (3.1 — снимет гейт ☑-концепций в форме и
 даст estimate-diff превью бюджета), полный пул с деревом (3.2), режимы,
 экспорт/импорт (4.x — серверный parseConceptFile), billing, BYO-Key
 (6.1 — ввод ключа в auth-модалке).
-Фаза 1 закрыта целиком (1.1–1.7). Следующие по графу 07 — беседы
-Фазы 2 (2.1 каскады → 2.2 plan-executor → 2.3 Edit Modal);
+Фаза 1 закрыта целиком (1.1–1.7); в Фазе 2 закрыты 2.1 и 2.2.
+Следующие по графу 07 — 2.3 (Edit Modal) и 2.4 (лог контекста);
 параллельно можно вести 3.1 (мета-синтез).
 
 Перед этой связкой снят предпатч доков

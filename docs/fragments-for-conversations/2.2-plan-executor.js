@@ -468,7 +468,7 @@
 // philosynth.html строки 19579–19579 ─────
         let _planPollInterval = null;
 
-// ───── Операции над разделами (server/services/regeneration-service.ts) · js:regenerateSection
+// ───── Операции над разделами (server/services/generation-service.ts (расширение; факт 05/07)) · js:regenerateSection
 // philosynth.html строки 19971–20227 ─────
       async function regenerateSection(sectionKey, newCtx, opts = {}) {
         const p = DOC_STATE.params;
@@ -728,7 +728,7 @@
         }
       }
 
-// ───── Операции над разделами (server/services/regeneration-service.ts) · js:regenerateSubsection
+// ───── Операции над разделами (server/services/generation-service.ts (расширение; факт 05/07)) · js:regenerateSubsection
 // philosynth.html строки 20236–20476 ─────
       async function regenerateSubsection(sectionKey, subsectionName, opts = {}) {
         const p = DOC_STATE.params;
@@ -972,7 +972,7 @@
         }
       }
 
-// ───── Операции над разделами (server/services/regeneration-service.ts) · js:addSection
+// ───── Операции над разделами (server/services/generation-service.ts (расширение; факт 05/07)) · js:addSection
 // philosynth.html строки 20922–21216 ─────
       async function addSection(sectionKey, newCtx, opts = {}) {
         const p = DOC_STATE.params;
@@ -1270,7 +1270,7 @@
         }
       }
 
-// ───── Операции над разделами (server/services/regeneration-service.ts) · js:deleteSection
+// ───── Операции над разделами (server/services/generation-service.ts (расширение; факт 05/07)) · js:deleteSection
 // philosynth.html строки 20806–20899 ─────
       function deleteSection(sectionKey) {
         // ── 0. Запоминаем зависимые ДО удаления ──
@@ -1367,7 +1367,7 @@
         }
       }
 
-// ───── Операции над разделами (server/services/regeneration-service.ts) · js:buildDeletionReplacements
+// ───── Операции над разделами (server/services/generation-service.ts (расширение; факт 05/07)) · js:buildDeletionReplacements
 // philosynth.html строки 20759–20801 ─────
       function buildDeletionReplacements(deletedKey) {
         // Какие контекстные ключи предоставляет удаляемый раздел?
@@ -1413,7 +1413,7 @@
           }));
       }
 
-// ───── Операции над разделами (server/services/regeneration-service.ts) · js:getAvailableSectionsToAdd
+// ───── Операции над разделами (server/services/generation-service.ts (расширение; факт 05/07)) · js:getAvailableSectionsToAdd
 // philosynth.html строки 20912–20915 ─────
       function getAvailableSectionsToAdd() {
         const current = new Set(DOC_STATE.sectionOrder);

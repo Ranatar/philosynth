@@ -39,11 +39,17 @@ import {
   type AuthUser,
 } from "../middleware/auth.js";
 import {
+  GenerationError,
   cancelGeneration,
   generateSynthesis,
-  GenerationError,
   isGenerationActive,
+  startSectionRegeneration,
+  startSubsectionRegeneration,
 } from "../services/generation-service.js";
+// Импорт plan-executor регистрирует resume-разъём в pause-resume-service
+// (побочный эффект — образец провайдера оценок 1.4b)
+import { confirmStep, executePlan } from "../services/plan-executor.js";
+import { PlanError } from "../services/edit-planner.js";
 import {
   computePauseEstimates,
   PauseResumeError,
@@ -335,17 +341,89 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
       void handleResumePlan(ws, user, msg.synthesisId, msg.planId, msg.mode);
       return;
 
-    // Операции регенерации/планов/режимов — беседы 2.2, 4.1
-    // (regeneration-service, plan-executor, mode-service)
+    // Регенерация и планы — беседа 2.2 (generation-service, plan-executor)
     case "start_regen":
-    case "start_sub_regen":
-    case "start_mode":
-    case "execute_plan":
-    case "confirm_step":
-      console.warn(
-        `[ws] user=${user.id}: тип "${msg.type}" ещё не реализован (беседы 2.2/4.1)`,
+      void handleBackground(
+        ws, user, msg.synthesisId, undefined,
+        () => startSectionRegeneration(
+          msg.synthesisId, user.id, msg.sectionKey, msg.context ?? null,
+        ),
       );
       return;
+
+    case "start_sub_regen":
+      void handleBackground(
+        ws, user, msg.synthesisId, msg.sectionKey,
+        () => startSubsectionRegeneration(
+          msg.synthesisId, user.id, msg.sectionKey, msg.subsectionName,
+          {
+            ...(msg.userNote !== undefined ? { userNote: msg.userNote } : {}),
+            ...(msg.includeCurrentContent !== undefined
+              ? { includeCurrentContent: msg.includeCurrentContent }
+              : {}),
+          },
+        ),
+      );
+      return;
+
+    case "execute_plan":
+      void handleBackground(
+        ws, user, msg.synthesisId, undefined,
+        () => executePlan(msg.synthesisId, msg.planId, user.id),
+      );
+      return;
+
+    case "confirm_step":
+      // synthesisId в WsConfirmStep нет — confirmStep вернёт его из плана
+      void (async () => {
+        try {
+          await confirmStep(msg.planId, msg.stepIndex, user.id);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`[ws] confirm_step(${msg.planId}):`, err);
+          connectionManager.send(ws, {
+            type: "stream_error",
+            synthesisId: "",
+            error: message,
+            recoverable: err instanceof PlanError,
+          });
+        }
+      })();
+      return;
+
+    // Режимы — беседа 4.1 (mode-service)
+    case "start_mode":
+      console.warn(
+        `[ws] user=${user.id}: тип "${msg.type}" ещё не реализован (беседа 4.1)`,
+      );
+      return;
+  }
+}
+
+/**
+ * Общий фоновой запуск операций 2.2: ошибки ДО начала стрима (гейты
+ * PlanError/GenerationError и пр.) — stream_error клиенту; ошибки стрима
+ * внутри start*-обёрток уже обработаны (stream_error/пауза плана).
+ */
+async function handleBackground(
+  ws: WSContext,
+  user: AuthUser,
+  synthesisId: string,
+  sectionKey: string | undefined,
+  fn: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[ws] user=${user.id} synthesis=${synthesisId}:`, err);
+    connectionManager.send(ws, {
+      type: "stream_error",
+      synthesisId,
+      ...(sectionKey !== undefined ? { sectionKey } : {}),
+      error: message,
+      recoverable: false,
+    });
   }
 }
 

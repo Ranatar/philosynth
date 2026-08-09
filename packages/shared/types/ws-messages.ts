@@ -165,6 +165,9 @@ export interface WsGenerationPaused {
   isPartial: boolean;
   partialSubsections?: string[];
   expectedSubsections?: string[];
+  /** kind='gen': разделы, теряющие контекст пропускаемых при skip
+   *  (confirm деградации [25686], беседа 2.2) */
+  skipDegrades?: string[];
   estimates: PauseEstimates;
 }
 

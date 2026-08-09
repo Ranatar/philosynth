@@ -2920,3 +2920,203 @@ getEffectiveModeDepsFromConfig → mode-service (TODO(4.1), долг в §12).
 - regen_subsection-шаги планов создаёт executor 2.2 (провайдер
   estimateSubsection в estimatePlanCost уже готов).
 - Прочие TODO прежних бесед — без изменений (реестр 07 §12).
+
+# Беседа 2.2 — Plan Executor + Regeneration (бэкенд) [ЗАКРЫТА]
+
+> Первый запрос + все 5 тестовых (test-22-requests2-6.mjs, 53 ✓ ×2) +
+> завершение — одним заходом каждый блок, по командам пользователя.
+> Полный регресс зелёный: typecheck (все конфиги), audit,
+> check:integration (+= 2m/4s/5p), check-map-04 (0 расхождений), тест.
+
+## Созданные/изменённые файлы (беседа 2.2)
+
+- `server/services/generation-service.ts` (+~1500 строк) — блок 2.2:
+  regenerateSection [19971] (+ обёртка startSectionRegeneration: свой
+  слот, ошибка → stream_error БЕЗ pausedState — паритет ручной [20716]);
+  ПОЛНЫЙ regenerateSubsection [20236] (перенос минимального порта из
+  pause-resume — долг 1.4b «объединить» закрыт; + снимок
+  structureSections [20461], is_edited, возврат getIntraDependents
+  [20475]) + runSubsectionRegen (под чужим слотом, для executor'а) +
+  startSubsectionRegeneration (свой слот + version_sub+=1 [18811]);
+  addSection [20922] (findInsertPosition [5761] по будущему
+  динамическому порядку, откат [21253]); deleteSection [20806]
+  (deletion_marker, side-effects: graph → очистка categories/edges/
+  cluster_labels, name → заголовок по умолчанию, capsule → '');
+  recalcSectionNumbers [5730] + renumberSectionRefs [5628] (строковая
+  замена /§\s*(\d+)/ + « [удалён]»); buildDeletionReplacements [20759];
+  getAvailableSectionsToAdd + ALL_SECTION_KEYS [20906] дословно;
+  buildEditInfra (пересборка порядка от текущей строки, мутация
+  effectiveDeps сохранена); streamWithRetries / applySectionSideEffects /
+  bumpTotals (общие); ensureGenCommonForEdit [20570];
+  computeSkipDegrades (долг §12 «confirm при skip» — см. адаптацию (е));
+  upsertSection получил параметр isEdited.
+- `server/services/plan-executor.ts` (НОВЫЙ, ~660 строк) — executePlan
+  [19514]: гейты draft + isGenerationActive (PLAN_CONFLICT), version
+  bump [19595] + version_marker, исполнение confirmed-шагов под
+  generation-слотом (pending НЕ исполняются — ждут confirm_step), regen
+  отсутствующего раздела → skipped [20144], delete результата режима =
+  строка mode_results по (modeKey, createdAt-индекс), regen_mode через
+  разъём setModeRegenerator (TODO(4.1); без регистрации шаг → failed,
+  план ПРОДОЛЖАЕТСЯ — паритет modeErr), каскад ОДИН раз после базовых
+  шагов (analyzeImpact) → pending cascadeGenerated + plan_steps_added,
+  структурный пост-шаг regen_subsection «sum:Структура документа» при
+  add/delete; пауза kind='plan' [19770] (см. (г)); confirmStep —
+  немедленное исполнение pending-шага; resumePlanExecutor
+  (retry/skip_step) регистрируется в setPlanResumeExecutor ПОБОЧНЫМ
+  ЭФФЕКТОМ ИМПОРТА (низ модуля; импортёр — ws/handler) — долг §12 1.4b
+  закрыт.
+- `server/services/structure-tracker.ts` (НОВЫЙ) — refreshSumDef [5808]
+  (см. (б)), updateStructureSections [20461], isStructureOutdated
+  [18410], STRUCTURE_SUBSECTION; regenStructureFromEditModal — кнопка
+  UI (2.3), серверная часть = startSubsectionRegeneration("sum", …).
+- `server/services/pause-resume-service.ts` (1461 → ~990 строк) —
+  минимальный порт (regenerateSubsectionForResume + findSubsection +
+  extractSubsectionContent + logIntraSectionContext) ВЫРЕЗАН,
+  resumeFillMissingSubs делегирует полному regenerateSubsection;
+  новая пауза при догенерации несёт skipDegrades.
+- `server/ws/handler.ts` — start_regen / start_sub_regen / execute_plan /
+  confirm_step реализованы (общий handleBackground → stream_error при
+  ошибках гейтов); start_mode — заглушка 4.1; импорт plan-executor
+  регистрирует resume-разъём.
+- `server/routes/plans.ts` += POST /:id/plans/:planId/execute
+  (sync-гейты для честного HTTP-кода, исполнение фоном).
+- `server/routes/generation.ts` (НОВЫЙ, 03 §2.5) — POST
+  /:id/regenerate/:sectionKey {context?} и POST
+  /:id/regenerate-subsection; owner-only, не-UUID → 404, активная
+  генерация → 409 GENERATION_IN_PROGRESS; смонтирован в index.ts.
+- shared: `PausedStateGen` += skipDegrades?: string[];
+  `WsGenerationPaused` += skipDegrades?: string[].
+- клиент: `useStreamingGeneration` переносит skipDegrades из WS в
+  PausedStateGen; `PauseModal` — resumeGenConfirmed (window.confirm
+  деградации перед skip), маркер TODO(2.2) снят реализацией.
+- `server/integration-check.mts` — секции 2m (14 новых экспортов
+  generation-service + plan-executor + structure-tracker +
+  routes/generation, ALL_SECTION_KEYS дословно, чистые функции),
+  4s (текстовые контракты 2.2 — см. итоговую строку), 5p (живой
+  deleteSection против БД: порядок/перенумерация/«[удалён]»/
+  deletion_marker + buildDeletionReplacements на посеянном
+  substitution_map); ФИКС ДЕФЕКТА 2.1: финальный гейт errs стоял ДО
+  секции 4r — её ошибки копились вхолостую; гейт перенесён в конец,
+  проверка «execute отсутствует» перевёрнута.
+- `tests/test-22-requests2-6.mjs` — 5 тестовых запросов протокола,
+  53 ✓ ×2 (мок-SSE, живой сервер, WS). Браузер НЕ нужен (бэкенд).
+
+## Адаптации/решения беседы 2.2
+
+(а) Модель исполнения планов: executePlan исполняет ТОЛЬКО confirmed;
+    pending (каскадные/структурный) остаются в плане и исполняются
+    поштучно WS confirm_step (после — план done, когда pending нет).
+    Каскад пересчитывается ОДИН раз после базовых шагов — паритет
+    исходника [фрагмент 206–241]; буква 07 «после каждого шага» —
+    задокументированное отступление (патч 22/…).
+(б) refreshSumDef на сервере втрое проще исходника: sectionDefs не
+    персистятся, каждая (пере)генерация строит их из текущего
+    section_order — функция оставлена как явное соответствие карте 04
+    (свежий def «sum», keepNum параметром).
+(в) renumberSectionRefs: TreeWalker по текстовым узлам → строковая
+    замена /§\s*(\d+)/ по html_content всех разделов; риск задевания
+    атрибутов принят и задокументирован (в разметке Claude «§ N» —
+    только текст).
+(г) Пауза плана: user-abort СОЗДАЁТ pausedState kind='plan' (паритет
+    executeEditPlan; отдельный cancelPlan не нужен — WS cancel → abort
+    слота → пауза), но WS generation_paused при user-abort НЕ шлётся:
+    тип §3.2 исключает 'user-abort' из reasonKind — клиент берёт паузу
+    из GET /:id. Несостыковки 03 §3.1/§3.2 ↔ исходник — в патче доков.
+(д) regen_mode: mode-service появится в 4.1 — разъём setModeRegenerator;
+    до регистрации шаг → failed, план продолжается (паритет modeErr);
+    делегат получает handle — будущий regenerateModeSilent стримит под
+    тем же слотом.
+(е) skipDegrades (долг §12 «confirm деградации при skip», 1.4b→2.2):
+    computeSkipDegrades = прямые потребители пропускаемых разделов по
+    effectiveDeps (computeDependents) минус завершённые; кладётся в
+    PausedStateGen (переживает reload через GET /:id) и в
+    generation_paused; confirm — клиентский window.confirm в PauseModal.
+(ж) Standalone-перегенерация (роуты §2.5 / WS start_*) НЕ создаёт
+    pausedState при обрыве (stream_error; паритет ручной перегенерации
+    [20716]); версию бампает только план (base) и подраздельная
+    standalone-перегенерация (sub [18811]); ручная перегенерация
+    РАЗДЕЛА версию не меняет — как в исходнике.
+(з) addSection/deleteSection доступны ТОЛЬКО через планы (в 03 §2.5 их
+    эндпоинтов нет) — executor их и вызывает; deleteSection синхронен
+    (без стрима и слота).
+(и) capsule при регенерации: строка sections сохраняется + capsule_html
+    (адаптация 1.4 против removeCapsuleFromDocBodies распространена на
+    все пути 2.2).
+
+## Ревью по карте 04 (доля 2.2)
+
+§2.4: executeEditPlan ✓ plan-executor (confirm → confirm_step, обрыв →
+pausedState kind='plan' → resumePlan); executeSubsectionRegen ✓
+предрассчитанные regen_subsection-шаги + confirmStep (сама
+перегенерация — runSubsectionRegen в generation-service);
+regenerateSection/regenerateSubsection ✓ generation-service;
+serializeSubsectionRegen/extractPreambleConstraints — потребление факта
+1.4b ✓; DOM-механика замены — потребление spliceSubsectionHtml (1.4b) ✓.
+§2.5-таблица «Редактирование»: addSection/deleteSection ✓ (серверные
+операции через планы); rebuildDbMapping — ВЫРОЖДЕН на сервере
+(db-индексы DOM заменены строками sections; перенумерация =
+recalcSectionNumbers), зафиксировано патчем. §4 «Новое»:
+structure-tracker.ts ✓ (regenStructureFromEditModal — UI-половина 2.3).
+check-map-04: 140 идентификаторов, 0 расхождений. Заглушки: только
+разъём setModeRegenerator (TODO(4.1), долг §12); TODO(6.1) BYO-Key —
+давние, не 2.2.
+
+## Помодульно: что прикладывать в следующие беседы
+
+- 2.3 (Edit Modal + Cascade Panel, клиент): контракты routes/plans
+  (§2.6 + execute) и routes/generation (§2.5); WS plan_step_started/
+  plan_step_done/plan_steps_added/confirm_step; модель pending →
+  confirm_step (структурный шаг «sum:Структура документа» приходит
+  plan_steps_added'ом); buildDeletionReplacements и affectedSubs из
+  regenerateSubsection — данные для диалогов удаления/внутрисекционного
+  каскада; isStructureOutdated + structure_sections из GET /:id —
+  карточка «Структура устарела»; regenStructureFromEditModal = кнопка →
+  POST /regenerate-subsection {sum, Структура документа}.
+- 4.1 (mode-service): реализовать regenerateModeSilent и
+  зарегистрировать setModeRegenerator(fn) (plan-executor); снять
+  TODO(4.1); шаги regen_mode перестанут падать failed.
+- 4.2 (export/import): buildDocStateFromImport восстанавливает
+  structure_sections из embeddedState (упоминание в 2.2 п.1 было
+  преждевременным — правка 22/…); использовать updateStructureSections.
+- 3.1: schema-migration marker в regenerateSection уже портирован —
+  сработает при появлении участников-концепций.
+
+## Знания/грабли, добытые в 2.2
+
+1. ДЕФЕКТ integration-check (2.1): финальный гейт errs стоял ДО секции
+   4r — ошибки секции копились вхолостую, «execute отсутствует» не
+   ловилась. Правило: гейт — ПОСЛЕДНЯЯ строка перед INTEGRATION OK;
+   при дописывании секций в конец файла проверять их положение
+   относительно гейта И closeDb (живые секции — ДО закрытия пула).
+2. Грабля харнесса: waitFor ищет и по ИСТОРИИ сообщений — старый
+   section_done того же раздела удовлетворяет предикат нового ожидания,
+   а проверки БД бегут наперегонки с фоновой операцией. Лечение: срез
+   cA.messages.indexOf(m) >= seen + stream_error как альтернатива в
+   предикате. (Съела первый прогон: 47/52 выглядели как провал кода.)
+3. Текстовые контракты по исходникам с комментариями: проверка
+   «идентификатор вырезан» обязана strip'ать комментарии — шапка модуля
+   законно упоминает вырезанное (ложный провал 4s).
+4. WsGenerationPaused исключает 'user-abort' → пауза плана по user-abort
+   непередаваема по WS; PausedStatePlan.reasonKind — полный
+   PauseReasonKind. Клиент обязан уметь брать паузу из GET /:id.
+5. Каскад планов предвычисляется createPlan (2.1) → после исполнения
+   regen-плана plan_steps_added НЕ возникает (шаги уже в плане);
+   рождается только на пост-структурном шаге и новых downstream
+   (тестовый запрос R2 в 07 сформулирован до этой детали).
+6. Компакция контекста может пересоздать контейнер (повтор 2.1): PG
+   слетает МЕЖДУ заходами одного дня — перед каждым живым прогоном
+   service postgresql status/start.
+7. scripts/tsconfig.json ТРАНЗИТИВНО типочекает клиентские файлы: его
+   include захватывает ../tests/*.mts, а смоуки (smoke-1.4b.mts →
+   PauseModal) тянут компоненты — browser-API там компилируются под lib
+   ES2022 БЕЗ DOM. Правило: в компонентах, покрытых смоуками, браузерные
+   глобалы брать через типизированный globalThis-аксессор
+   ((globalThis as { confirm?: … }).confirm), не через window.
+
+## Открытые TODO после 2.2
+
+- setModeRegenerator → 4.1 (регистрация regenerateModeSilent; §12).
+- Внутрисекционный каскад по affectedSubs (regenerateSubsection
+  возвращает зависимые подразделы; предложение/исполнение — UI 2.3).
+- UI-половины: EditModal/CascadePanel/SubsectionRegenPanel/карточка
+  «Структура устарела» — беседа 2.3 (данные готовы).

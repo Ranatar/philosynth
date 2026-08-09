@@ -1,5 +1,19 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-08-09 (итоги беседы 2.2)**: plan-executor и
+> регенерация закрыты (53 ✓ ×2, живой сервер + мок-SSE); блок
+> «По факту 2.2»; текст 2.2 п.1 расклеен (deleteSection/пост-план/
+> regenStructureFromEditModal), buildDocStateFromImport помечен как
+> обязанность 4.2, дубль «d.» устранён, «plan_paused» заменён на
+> generation_paused kind="plan", разъём setModeRegenerator до 4.1,
+> неточность теста R2 (каскад предвычислен createPlan); §12 — долги
+> setPlanResumeExecutor / полного regenerateSubsection / confirm при
+> skip закрыты, внесены долги regenerateModeSilent → 4.1 и
+> внутрисекционного каскада → 2.3; 01 §4.5 — дубль «8.»; 03 §3.1/§3.2 —
+> уточнения cancel/generation_paused (kind='plan', skipDegrades);
+> 04 — факты rebuildDbMapping/refreshSumDef; заголовки фрагмента 2.2 —
+> regeneration-service → generation-service.
+>
 > **Правки 2026-08-04 (итоги беседы 2.1)**: каскадный анализ и
 > планировщик закрыты (39 ✓ ×2, сервис + HTTP §2.6); блок
 > «По факту 2.1» (estimatedCost не хранится — живая оценка;
@@ -1770,16 +1784,25 @@ deleteSection, addSection).
    - DOC_STATE.structureSections: снимок sectionOrder при генерации подраздела
    - При regenerateSubsection("sum", "Структура документа"):
      structureSections = [...sectionOrder]
-   - buildDocStateFromImport: восстанавливает structureSections из embeddedState
+   - buildDocStateFromImport: восстанавливает structureSections из
+     embeddedState (реализуется import-service, беседа 4.2 — там
+     обязанность прописана повторно; в 2.2 модуля импорта ещё нет)
+
+   - deleteSection(synthesisId, sectionKey):
+     Адаптация deleteSection(). Удаление из sections + sectionOrder,
+     перенумерация §§ и ссылок, запись deletion_marker в genLog.
 
    Пост-план (после всех шагов executePlan):
-   - Если добавлялись/удалялись разделы → предложить обновить «Структура документа»
+   - Если добавлялись/удалялись разделы → предложить обновить «Структура
+     документа» (по факту 2.2 — pending-шаг regen_subsection
+     «sum:Структура документа» + plan_steps_added; исполнение —
+     confirm_step)
    - Если добавлялись разделы → вычислить downstream, предложить каскад
-   - regenStructureFromEditModal(): кнопка в карточке «Структура устарела» Вставка в sectionOrder, перенумерация,
-     генерация, сохранение.
-   - deleteSection(synthesisId, sectionKey):
-     Адаптация deleteSection(). Удаление из sections + sectionOrder, 
-     перенумерация, запись deletion_marker в genLog.
+   - regenStructureFromEditModal(): кнопка в карточке «Структура
+     устарела» — клиент (беседа 2.3); серверная часть =
+     regenerateSubsection("sum", «Структура документа»). Хвост «Вставка
+     в sectionOrder, перенумерация, генерация, сохранение» относился к
+     addSection (сбой форматирования, поправлен 2.2).
 
 2. server/services/plan-executor.ts:
    - executePlan(planId):
@@ -1789,16 +1812,22 @@ deleteSection, addSection).
      d. Для каждого шага последовательно:
         - Отправляет plan_step_started через WebSocket
         - Исполняет: deleteSection / regenerateSection / addSection / 
-          regenerateSubsection / regenerateModeSilent
+          regenerateSubsection / regenerateModeSilent (mode-service —
+          беседа 4.1; до неё — разъём setModeRegenerator: без
+          регистрации шаг → failed, план продолжается — паритет modeErr)
         - Записывает result в шаг, отправляет plan_step_done
-     d. После каждого шага: пересчитывает каскад (cascade-analyzer),
-        если появились новые downstream — добавляет шаги, отправляет 
-        plan_steps_added через WebSocket
-     e. Обновляет synthesis.version, статус плана → "done"
+     e. После исполнения базовых шагов: пересчитывает каскад
+        (cascade-analyzer) — по факту 2.2 ОДИН раз, паритет исходника
+        («после каждого шага» 01 §4.5 п.8 — «может»); новые downstream →
+        pending-шаги, plan_steps_added через WebSocket
+     f. Обновляет synthesis.version, статус плана → "done"
    
    - cancelPlan(planId): прерывает исполнение
    - при обрыве шага (kind из таксономии стриминга): pausedState kind="plan"
-     → plan_paused; продолжение — resumePlan из pause-resume-service (1.4b)
+     → generation_paused kind="plan" (03 §3.2; отдельного plan_paused
+     нет; при user-abort сообщение не шлётся — тип исключает, клиент
+     берёт паузу из GET /:id); продолжение — resumePlan из
+     pause-resume-service (1.4b)
 
 3. Расширение server/ws/handler.ts:
    - Обработка execute_plan → запуск executePlan
@@ -1825,6 +1854,11 @@ deleteSection, addSection).
 **Последующие запросы:**
 - «Протестируй: создай синтез с 5 разделами, создай план regen=["graph"], запусти execute — проверь, что graph перегенерирован, genLog содержит запись, ctxLog обновлён»
 - «Протестируй каскад: regen=["graph"] → после исполнения, план должен предложить перегенерировать theses (если theses зависит от graph). Проверь plan_steps_added через WebSocket»
+  (по факту 2.2: каскад предвычисляется createPlan (2.1) — «предложение
+  theses» = pending-шаги уже в плане при создании, после исполнения
+  regen-плана НОВЫХ шагов не возникает и plan_steps_added для theses
+  невозможен по построению; живое plan_steps_added тест проверяет на
+  структурном пост-шаге add/delete-планов)
 - «Протестируй deleteSection: удали "history", проверь что sectionOrder обновлён, номера перенумерованы»
 - «Протестируй addSection: добавь "dialogue" к синтезу без dialogue, проверь позицию в sectionOrder и нумерацию»
 - «Edge case: regenerateSubsection — подраздел с INTRA_DEPS. Проверь, что extractRelevantIntraSectionContext возвращает только зависимые подразделы, а не все»
@@ -1833,6 +1867,25 @@ deleteSection, addSection).
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
+
+**По факту 2.2 (2026-08-09):** беседа закрыта; запросы 2-6 — единым
+тестом `tests/test-22-requests2-6.mjs` (живой сервер + мок-SSE + WS),
+53 ✓ / 0 ✗ ×2; браузер не нужен. Интеграция — секции 2m/4s/5p в
+`server/integration-check.mts`; там же исправлен ДЕФЕКТ 2.1 (финальный
+гейт errs стоял до секции 4r — её ошибки не проверялись; перенесён в
+конец). Журнал — глава 2.2 `NEXT-CONTEXT.md`. Адаптации: (а) executor
+исполняет только confirmed, pending исполняются поштучно confirm_step
+(после — done); (б) refreshSumDef на сервере упрощён (defs всегда
+строятся заново); (в) renumberSectionRefs — строковая замена §N вместо
+TreeWalker; (г) user-abort плана СОЗДАЁТ pausedState kind='plan'
+(паритет исходника; cancelPlan = WS cancel → abort слота), WS-сообщение
+при этом не шлётся; (д) разъём setModeRegenerator до 4.1; (е)
+confirm деградации при skip реализован данными skipDegrades
+(PausedStateGen + generation_paused) и window.confirm в PauseModal;
+(ж) standalone-перегенерация не создаёт pausedState (stream_error,
+паритет [20716]); (з) add/delete — только через планы; (и) спека
+фрагмента относила функции к regeneration-service.ts — фактический
+модуль generation-service.ts (05/07), заголовки фрагмента поправлены.
 
 ---
 
@@ -3421,9 +3474,8 @@ streaming-manager.
 | Долг | Адресат | Заведён | Состояние |
 |---|---|---|---|
 | `getEffectiveModeDepsFromConfig` / `MODE_TITLES` — локальные порты в cascade-analyzer; владелец `getEffectiveModeDeps`/`MODE_CONFIG` — mode-service (метки TODO(4.1) в коде) | 4.1 | 2.1 | внесён 2026-08-04 |
-| `setPlanResumeExecutor` — регистрация исполнителя планов | 2.2 | 1.4b | внесён 2026-07-31 |
-| Полный `regenerateSubsection` + plan-executor | 2.2 | 1.4b | в тексте 2.2 |
-| `confirm` деградации зависимостей при skip | 2.2 | 1.4b (адресовался 1.5) | внесён 2026-07-30 |
+| Регистрация `regenerateModeSilent` в разъём `setModeRegenerator` (plan-executor; до неё шаги regen_mode → failed, план продолжается) | 4.1 | 2.2 | внесён 2026-08-09 |
+| Внутрисекционный каскад по `affectedSubs` (regenerateSubsection возвращает зависимые подразделы; предложение/исполнение — UI) | 2.3 | 2.2 | внесён 2026-08-09 |
 | Бейдж качества контекста (`contextQualityScore`) | 2.3 ← 2.4 | 1.3 | инверсия снята 2026-07-30 |
 | `context-quality.ts` / `getSectionContextQuality` | 2.4 | 1.3 | в тексте 2.4 |
 | `registerParentContextProvider` — реальный провайдер | 3.1 | 1.4 | внесён 2026-07-31 |

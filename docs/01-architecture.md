@@ -293,8 +293,9 @@ interface EditStep {
 5. Пользователь нажимает ▶ → `POST /api/plans/{id}/execute`
 6. Сервер исполняет шаги в едином топологическом порядке (`buildPlanOrder`): добавления и перегенерации сортируются вместе по зависимостям, а не раздельно (v10)
 7. После всех шагов: предложение обновить «Структура документа» (если добавлялись/удалялись разделы) + каскад для downstream (v10)
-8. После каждого шага сервер может добавить новые шаги
-8. Клиент получает `plan_updated` и обновляет UI
+8. После каждого шага сервер может добавить новые шаги (по факту 2.2 —
+   один пересчёт после базовых шагов, паритет исходника)
+9. Клиент получает `plan_updated` и обновляет UI
 
 ### 4.6. Graph Service
 
@@ -506,7 +507,8 @@ pausedState, вызывает штатные estimateCost/estimateSubsectionCost
   переживает сессию, в отличие от reconnect-буфера.
 - WebSocket-протокол (03-spec §3): добавить сообщения generation_paused
   {kind, reasonKind, estimates}, resume_generation {mode},
-  plan_paused/resume_plan; серверный аналог _computeGenPauseEstimates.
+  generation_paused kind="plan" / resume_plan (отдельного plan_paused
+  нет — 03 §3.2); серверный аналог _computeGenPauseEstimates.
 - generation_log (02-data-model 2.15): log_type дополнить
   'pause_marker'|'resume_marker'|'user_action_marker'.
 - edit_plans.status 'paused' в docs УЖЕ предусмотрен — семантику наполняет

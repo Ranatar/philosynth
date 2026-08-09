@@ -71,6 +71,9 @@ export interface PausedStateGen {
    *  возобновление не зависит от состояния формы */
   genParams: Record<string, unknown>;
   maxTokensUsed?: number;
+  /** Разделы, теряющие контекст пропускаемых при skip-remaining
+   *  (confirm деградации [25686], беседа 2.2) */
+  skipDegrades?: string[];
 }
 
 /** syntheses.paused_state, kind === "plan" — прерван план редактирования */

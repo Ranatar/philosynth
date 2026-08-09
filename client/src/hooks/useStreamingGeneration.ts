@@ -217,6 +217,7 @@ export function useStreamingGeneration(
         expectedSubsections: msg.expectedSubsections ?? [],
         completedPasses: doneKeys.map((k) => [k]),
         genParams: {},
+        skipDegrades: msg.skipDegrades ?? [],
       };
       return gen;
     },

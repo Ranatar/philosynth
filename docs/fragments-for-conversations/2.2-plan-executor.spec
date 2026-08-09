@@ -8,7 +8,7 @@ js:executeEditPlan
 js:resumePlan
 var:_planPollInterval
 
-## Операции над разделами (server/services/regeneration-service.ts)
+## Операции над разделами (server/services/generation-service.ts (расширение; факт 05/07))
 js:regenerateSection
 js:regenerateSubsection
 js:addSection

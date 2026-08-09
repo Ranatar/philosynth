@@ -753,8 +753,10 @@ Endpoint: `wss://host/ws?token={sessionToken}`
 { type: "resume_plan", synthesisId: string, planId: string,
   mode: "retry" | "skip_step" | "stop" }
 
-// Отмена текущей операции (user-abort → pausedState не создаётся,
-// частичный результат финализируется по правилам stop)
+// Отмена текущей операции. Для ГЕНЕРАЦИИ user-abort → pausedState не
+// создаётся (частичный результат финализируется по правилам stop);
+// обрыв шага ПЛАНА — включая user-abort — СОЗДАЁТ pausedState
+// kind="plan" (паритет executeEditPlan; беседа 2.2)
 { type: "cancel", synthesisId: string }
 
 // Пинг (keep-alive)
@@ -800,8 +802,14 @@ Endpoint: `wss://host/ws?token={sessionToken}`
   isPartial: boolean,
   partialSubsections?: string[],
   expectedSubsections?: string[],
+  skipDegrades?: string[],   // kind='gen': разделы, теряющие контекст
+                             // пропускаемых при skip (confirm [25686], 2.2)
   estimates: { fillMissingSubs?: number, wholeSection?: number,
                skipRemaining?: number } }  // серверный аналог _computeGenPauseEstimates
+// kind='plan' (2.2): plan-полей сообщение не несёт — stepIdx/totalSteps/
+// failedOp клиент берёт из GET /syntheses/:id (pausedState); при
+// user-abort плана сообщение НЕ отправляется (reasonKind его исключает),
+// pausedState при этом создаётся
 
 // Возобновление принято
 { type: "generation_resumed",
