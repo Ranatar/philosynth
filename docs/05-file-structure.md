@@ -52,8 +52,10 @@ philosynth-service/
 │           ├── transliterate.ts        # transliterate() (transliterate())
 │           ├── normalize.ts            # normalizeName, normalizeType (normalizeName(), normalizeType())
 │           ├── escape.ts               # esc() — HTML-экранирование
-│           └── cardinality.ts          # participantCardinality, participantWord/Sg,
-│                                       # hasConceptParticipants (v11, 01 §4.14)
+│           ├── cardinality.ts          # participantCardinality, participantWord/Sg,
+│           │                           # hasConceptParticipants (v11, 01 §4.14)
+│           └── colorize-log.ts         # colorizeLog() — единая реализация (2.4;
+│                                       # клиент реэкспортирует)
 │
 ├── server/
 │   ├── package.json
@@ -278,6 +280,7 @@ philosynth-service/
 │   │   │   ├── elements.ts             # создаёт беседа 1.7 (getCategories),
 │   │   │   │                           # расширяет 5.2
 │   │   │   ├── generation.ts
+│   │   │   ├── logs.ts                 # GET /logs/* (беседа 2.4)
 │   │   │   ├── plans.ts
 │   │   │   ├── modes.ts
 │   │   │   ├── lineage.ts
@@ -382,7 +385,7 @@ philosynth-service/
 │   │   │   │
 │   │   │   ├── logs/
 │   │   │   │   ├── ContextLogViewer.tsx    # Модальное окно лога
-│   │   │   │   └── colorize-log.ts        # colorizeLog() (colorizeLog())
+│   │   │   │   └── colorize-log.ts        # реэкспорт shared/utils/colorize-log (2.4)
 │   │   │   │
 │   │   │   └── shared/
 │   │   │       ├── Button.tsx

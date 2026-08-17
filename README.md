@@ -36,7 +36,7 @@ scripts/           эксплуатационные скрипты: extract-seed
                    -taxonomy, идемпотентные патч-скрипты доков
                    (patch-docs-*.py)
 docs/              7 проектных документов + fragments-for-conversations/
-tests/             ВСЕ тесты бесед (0.3b–2.2): vm-смоуки байтовой сверки
+tests/             ВСЕ тесты бесед (0.3b–2.4): vm-смоуки байтовой сверки
                    с исходником (smoke-*.mjs/.mts), API-тесты (mini-Hono),
                    браузерные (puppeteer + системный Chromium). Запуск из
                    корня репо: `node tests/<файл>` / `npx tsx tests/<файл>`.
@@ -87,11 +87,14 @@ PoolCard/ConceptPool, SYNTH_READY_SECTIONS) и контракты (гейт
 CONTEXT_BUDGET_PREVIEW локализован); 1.6 — 2k/4o/5n: роуты чтения
 (makeDocNum [12110], /public ДО /:id, duplicate без lineage-связи и
 логов, viewOnly ДО запуска генерации, walker «TODO(1.6)=0», живой цикл
-список→Full→sections→categories→PATCH→duplicate→DELETE). Сейчас
-покрывает 0.1–0.6 и 1.1–1.6; живые секции требуют поднятых PG и Redis
+список→Full→sections→categories→PATCH→duplicate→DELETE); 2.4 —
+2n/4t/5q: лог контекста (shared colorize-log + тонкий реэкспорт,
+формула [5571] с краями живьём, постоянная viewOnly-подписка
+SynthesisPage, «TODO(2.4)»-walker). Сейчас покрывает 0.1–0.6,
+1.1–1.7, 2.1, 2.2 и 2.4; живые секции требуют поднятых PG и Redis
 и засеянных prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.7 закрыты; Фаза 2 — беседа 2.1 закрыта
+## Статус: Фаза 0 завершена; Фаза 1 — беседы 1.1–1.7 закрыты; Фаза 2 — беседы 2.1, 2.2 и 2.4 закрыты
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -265,14 +268,33 @@ PauseModal). Тесты: tests/test-22-requests2-6.mjs 53/53 ✓ ×2 (живой
 scripts/patch-docs-conv22.py.
 Доки пропатчены scripts/patch-docs-conv21.py.
 
+Беседа 2.4 (лог контекста и генерации; велась ПЕРЕД 2.3 — §11):
+packages/shared/utils/colorize-log.ts (единая раскраска, клиент —
+тонкий реэкспорт), services/log-formatter.ts (formatCtxLog [23318] /
+formatCtxLogHTML { text, html } / formatPromptsForExport [24353];
+genCommon из служебной строки '_genCommon', rawBaseBudget critique
+×1.5, записи без promptSkeleton помечаются — реконструкция TODO(4.2)),
+services/context-quality.ts (порт [5571] с краями + Map-выборка без
+N+1 — долг 1.3 закрыт, score живой в GET /sections — долг 1.6 закрыт),
+routes/logs.ts (4 GET-эндпоинта под requireAuth+loadSynthesisForRead),
+клиент api/logs.ts + ContextLogViewer (refreshKey, Blob-выгрузка
+промптов) + «◈ Лог» в DocumentFooter; интеграционные правки:
+metadata.version в version_marker (plan-executor), ПОСТОЯННАЯ
+viewOnly-подписка SynthesisPage (live-лог standalone-перегенерации).
+Тесты: tests/test-24-requests2-5.mjs 51/51 ✓ ×2 (живой сервер +
+мок-SSE + puppeteer: формат лога 3 разделов со сверкой чисел с БД,
+html-раскраска, браузерный live без перезагрузки, version/deletion-
+маркеры и /logs/prompts). Доки пропатчены scripts/patch-docs-conv24.py.
+
 Не сделано (Фаза 2+): applyReplacement (3.2) и точный
 UI планов/каскадов (2.3 Edit Modal;
 бэкенд-исполнение готово в 2.2), мета-синтез (3.1 — снимет гейт ☑-концепций в форме и
 даст estimate-diff превью бюджета), полный пул с деревом (3.2), режимы,
 экспорт/импорт (4.x — серверный parseConceptFile), billing, BYO-Key
 (6.1 — ввод ключа в auth-модалке).
-Фаза 1 закрыта целиком (1.1–1.7); в Фазе 2 закрыты 2.1 и 2.2.
-Следующие по графу 07 — 2.3 (Edit Modal) и 2.4 (лог контекста);
+Фаза 1 закрыта целиком (1.1–1.7); в Фазе 2 закрыты 2.1, 2.2 и 2.4
+(велась перед 2.3 — §11). Следующая по графу 07 — 2.3 (Edit Modal;
+бэкенд-исполнение и бейдж качества контекста готовы);
 параллельно можно вести 3.1 (мета-синтез).
 
 Перед этой связкой снят предпатч доков

@@ -26,6 +26,7 @@ import { useParams } from "react-router-dom";
 
 import { getCategories } from "../api/elements";
 import { DocumentView } from "../components/document/DocumentView";
+import { ContextLogViewer } from "../components/logs/ContextLogViewer";
 import GraphModal from "../components/graph/GraphModal";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
 import { GenerationProgress } from "../components/synthesis/GenerationProgress";
@@ -48,6 +49,8 @@ export function SynthesisPage() {
   const clear = useSynthesisStore((s) => s.clear);
 
   const [pauseModalOpen, setPauseModalOpen] = useState(false);
+  // Беседа 2.4: модалка лога контекста
+  const [logOpen, setLogOpen] = useState(false);
 
   // Беседа 1.7: граф категорий — данные грузятся по клику на кнопку
   const [graphOpen, setGraphOpen] = useState(false);
@@ -76,9 +79,14 @@ export function SynthesisPage() {
 
   const live = synthesis?.status === "generating" || synthesis?.status === "paused";
 
-  // П. 8: подписка «только просмотр» — viewOnly не запускает генерацию
+  // П. 8: подписка «только просмотр» — viewOnly не запускает генерацию.
+  // Беседа 2.4: подписка держится и при status='ready' — standalone-
+  // перегенерация (POST /regenerate/:key, 2.2) идёт под слотом БЕЗ смены
+  // статуса синтеза, и её section_done иначе не дошёл бы до страницы;
+  // события обновляют разделы (reloadSections ниже) и открытый лог
+  // (refreshKey) — аналог refreshCtxLogIfOpen исходника [23306]
   const stream = useStreamingGeneration({
-    synthesisId: live && id ? id : null,
+    synthesisId: id ?? null,
     expectedSections: synthesis?.sectionOrder,
     viewOnly: true,
     onComplete: () => {
@@ -237,7 +245,23 @@ export function SynthesisPage() {
         synthesis={synthesis}
         summaries={summaries}
         sections={sections}
+        onOpenLog={() => setLogOpen(true)}
       />
+
+      {/* Беседа 2.4: лог контекста. Live-обновление — refreshKey растёт по
+          УЖЕ существующим событиям завершения раздела (section_done через
+          doneCount, generation_complete через stream.complete); новых
+          WS-сообщений про лог нет (аудит 2026-07-30). */}
+      {id && (
+        <ContextLogViewer
+          open={logOpen}
+          synthesisId={id}
+          docNum={synthesis.docNum}
+          title={synthesis.title}
+          refreshKey={doneCount + (stream.complete ? 100000 : 0)}
+          onClose={() => setLogOpen(false)}
+        />
+      )}
 
       <PauseModal
         open={pauseModalOpen && paused}

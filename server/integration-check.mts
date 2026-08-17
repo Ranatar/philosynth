@@ -1737,7 +1737,10 @@ const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "cr
     errs.push("4o: duplicate без отказа при активной генерации");
 
   const sec = await rd("./routes/sections.ts");
-  if (!sec.includes("TODO(2.4)")) errs.push("4o: contextQualityScore=null без метки TODO(2.4)");
+  // 2.4: метка TODO(2.4) снята — оценка живая через getSectionContextQualityMap
+  if (/TODO\(2\.4\)(?! закрыт)/.test(sec)) errs.push("4o: незакрытая метка TODO(2.4) (context-quality живой с 2.4)");
+  if (!sec.includes("getSectionContextQualityMap"))
+    errs.push("4o: contextQualityScore не через getSectionContextQualityMap (2.4, без N+1)");
   if (!sec.includes("parseSubsectionsFromHTML"))
     errs.push("4o: subsections не через порт 1.4 (generation-service)");
   if (!sec.includes("buildContextForSection"))
@@ -1876,8 +1879,10 @@ const _t50: (d: CtxLogDraft13) => Omit<CtxLogEntry13, "id" | "synthesisId" | "cr
       errs.push("5n: /sections не в порядке sectionOrder");
     if (!secs5n?.[1]?.subsections?.includes("Узлы"))
       errs.push("5n: subsections не извлечены из HTML");
-    if (!secs5n?.every((s) => s.contextQualityScore === null))
-      errs.push("5n: contextQualityScore ≠ null (TODO(2.4))");
+    // 2.4: оценка живая; у синтеза 5n нет записей context_log → null законен,
+    // но контракт формы — number | null (не undefined)
+    if (!secs5n?.every((s) => s.contextQualityScore === null || typeof s.contextQualityScore === "number"))
+      errs.push("5n: contextQualityScore не number|null (2.4)");
     const g5n = (await req5n("GET", `/syntheses/${sid5n}/categories`)).body as {
       categories: unknown[]; edges: unknown[];
       topology: { hasReflexiveEdges: boolean };
@@ -2042,6 +2047,57 @@ if (!Array.isArray(viaDrizzle)) errs.push("await db.query: не массив");
     errs.push("5p: buildDeletionReplacements сломан");
   await db.delete(sch.syntheses).where(eq(sch.syntheses.id, sid));
   await db.delete(sch.users).where(eq(sch.users.id, (u as { id: string }).id));
+}
+
+// ── 5q (беседа 2.4): живые context-quality и log-formatter против БД (ДО закрытия пула) ──
+{
+  const cq = await import("./services/context-quality.js");
+  const lf = await import("./services/log-formatter.js");
+  const { db } = await import("./db/index.js");
+  const sch = await import("./db/schema.js");
+  const { eq } = await import("drizzle-orm");
+  const [u5q] = await db.insert(sch.users).values({
+    email: `iq5q-${Date.now()}@check.local`, passwordHash: "x", displayName: "5q",
+  }).returning();
+  const uid5q = (u5q as { id: string }).id;
+  const [s5q] = await db.insert(sch.syntheses).values({
+    userId: uid5q, title: "5q", docNum: "IQ-5Q", status: "ready",
+    params: { philosophers: ["Кант"] }, sectionOrder: ["sum"],
+  } as never).returning();
+  const sid5q = (s5q as { id: string }).id;
+  // Две записи одного раздела: last-win обязан взять вторую
+  await db.insert(sch.contextLog).values({
+    synthesisId: sid5q, sectionKey: "sum",
+    budget: 1000, totalUsed: 500, reqFound: 1, reqTotal: 2, entries: [],
+  } as never);
+  await new Promise((r) => setTimeout(r, 5));
+  await db.insert(sch.contextLog).values({
+    synthesisId: sid5q, sectionKey: "sum",
+    budget: 1000, totalUsed: 300, reqFound: 3, reqTotal: 4, entries: [],
+  } as never);
+  const q = await cq.getSectionContextQuality(sid5q, "sum");
+  // Формула [5571]: round(3/4×70 + min(1,300/1000)×30) = round(52.5+9) = 62 (пол-в-верх round)
+  if (q?.score !== Math.round((3 / 4) * 70 + (300 / 1000) * 30))
+    errs.push(`5q: last-win/формула сломаны (score=${q?.score})`);
+  // Края: reqTotal=0 → reqScore=1; budget=0 → usage=0 ⇒ 70+0
+  await db.insert(sch.contextLog).values({
+    synthesisId: sid5q, sectionKey: "graph",
+    budget: 0, totalUsed: 0, reqFound: 0, reqTotal: 0, entries: [],
+  } as never);
+  const qe = await cq.getSectionContextQuality(sid5q, "graph");
+  if (qe?.score !== 70) errs.push(`5q: края reqTotal=0/budget=0 не по исходнику (score=${qe?.score})`);
+  const qm = await cq.getSectionContextQualityMap(sid5q);
+  if (qm.get("sum")?.score !== q?.score || qm.get("graph")?.score !== 70)
+    errs.push("5q: Map-выборка расходится с поштучной");
+  if ((await cq.getSectionContextQuality(sid5q, "нет-такого")) !== null)
+    errs.push("5q: отсутствие записей раздела обязано давать null");
+  // Форматтер на синтезе без genLog: шапка есть, форма { text, html }
+  const fh = await lf.formatCtxLogHTML(sid5q);
+  if (typeof fh?.text !== "string" || typeof fh?.html !== "string" ||
+      !fh.text.includes("ЛОГ КОНТЕКСТА") || !fh.html.includes("<span"))
+    errs.push("5q: formatCtxLogHTML не { text, html } с шапкой и раскраской");
+  await db.delete(sch.syntheses).where(eq(sch.syntheses.id, sid5q));
+  await db.delete(sch.users).where(eq(sch.users.id, uid5q));
 }
 
 // 1.4b: singleton Redis переоткрывался в 5k и держал event loop после
@@ -2454,7 +2510,83 @@ if (!rejected) errs.push("await после closeDb не отклонился (п
 }
 
 
+// ── 2n (беседа 2.4): colorize-log (shared), log-formatter, context-quality, routes/logs ──
+need(await import("@philosynth/shared/utils/colorize-log"), ["colorizeLog"], "utils/colorize-log");
+need(await import("./services/log-formatter.js"),
+  ["formatCtxLog", "formatCtxLogHTML", "formatPromptsForExport"], "services/log-formatter");
+need(await import("./services/context-quality.js"),
+  ["getSectionContextQuality", "getSectionContextQualityMap"], "services/context-quality");
+need(await import("./routes/logs.js"), ["logsRoutes"], "routes/logs");
+
+// ── 4t (беседа 2.4): текстовые контракты лога контекста и генерации ──
+{
+  const fsr3 = await import("node:fs/promises");
+  const rdr3 = (p: string) => fsr3.readFile(new URL(p, import.meta.url), "utf8");
+  const lfSrc = await rdr3("./services/log-formatter.ts");
+  // genCommon — из служебной строки '_genCommon' (1.4), из цикла записей исключена
+  if (!lfSrc.includes('sectionKey === "_genCommon"') ||
+      !lfSrc.includes('sectionKey !== "_genCommon"'))
+    errs.push("4t: служебная строка _genCommon не выделена/не исключена из цикла");
+  // rawBaseBudget: ×1.5 только critique (восстановление сырого бюджета)
+  if (!/critique.*1\.5/.test(lfSrc))
+    errs.push("4t: восстановление rawBaseBudget (critique ×1.5) потеряно");
+  // Fallback-реконструкция промптов — НЕ здесь (4.2): пометка + TODO
+  if (!lfSrc.includes("промпт недоступен (импортированная") || !lfSrc.includes("TODO(4.2)"))
+    errs.push("4t: записи без promptSkeleton обязаны помечаться (реконструкция — 4.2)");
+  // Регулярки СРЕЗА параметров тождественны v10 [24410/24443]: два маркера;
+  // «КОНТЕКСТ КОНЦЕПЦИЙ-УЧАСТНИКОВ» — в регулярках СВЁРТКИ скелета
+  // (generation-service, порт [8546] беседы 1.4) — 07 смешивает оба места
+  for (const m of ["КОНТЕКСТ ДРУГИХ", "Перегенерируй ТОЛЬКО"])
+    if (!lfSrc.includes(m)) errs.push(`4t: маркер среза «${m}» потерян`);
+  if (!(await rdr3("./services/generation-service.ts")).includes("КОНТЕКСТ КОНЦЕПЦИЙ-УЧАСТНИКОВ"))
+    errs.push("4t: маркер свёртки «КОНТЕКСТ КОНЦЕПЦИЙ-УЧАСТНИКОВ» потерян [8546]");
+  // colorize-log: клиентский файл — тонкий реэкспорт единой shared-реализации
+  const clSrc = await rdr3("../client/src/components/logs/colorize-log.ts");
+  if (!clSrc.includes('export { colorizeLog } from "@philosynth/shared/utils/colorize-log"'))
+    errs.push("4t: клиентский colorize-log не реэкспорт shared (дублирование реализаций)");
+  // routes/logs: 4 эндпоинта, каждый под requireAuth; доступ через loadSynthesisForRead (1.6)
+  const rlSrc = await rdr3("./routes/logs.ts");
+  for (const ep of ["/:id/logs/generation", "/:id/logs/context", "/:id/logs/formatted", "/:id/logs/prompts"])
+    if (!rlSrc.includes(`"${ep}", requireAuth`))
+      errs.push(`4t: ${ep} отсутствует либо без requireAuth`);
+  if (!rlSrc.includes("loadSynthesisForRead"))
+    errs.push("4t: logs без общей проверки доступа (владелец ИЛИ публичный, 1.6)");
+  const ixSrc3 = await rdr3("./index.ts");
+  if (!ixSrc3.includes('app.route("/api/v1/syntheses", logsRoutes)'))
+    errs.push("4t: logsRoutes не смонтирован");
+  // plan-executor: version_marker несёт metadata.version (печать «ВЕРСИЯ vN»)
+  const peSrc3 = await rdr3("./services/plan-executor.ts");
+  if (!/version:\s*vrow\s*\?\s*formatVersion/.test(peSrc3))
+    errs.push("4t: version_marker без metadata.version — «ВЕРСИЯ vN» в логе останется без номера");
+  // Клиент: ContextLogViewer — html через dangerouslySetInnerHTML, перезапрос
+  // по refreshKey, download через Blob + transliterate (паритет имени файла)
+  const cvSrc = await rdr3("../client/src/components/logs/ContextLogViewer.tsx");
+  for (const m of ["dangerouslySetInnerHTML", "refreshKey", "transliterate", "Blob"])
+    if (!cvSrc.includes(m)) errs.push(`4t: ContextLogViewer без ${m}`);
+  if (/localStorage|sessionStorage/.test(cvSrc))
+    errs.push("4t: browser storage запрещён (ContextLogViewer)");
+  // DocumentFooter: кнопка «◈ Лог» строго за пропом onOpenLog
+  const dfSrc = await rdr3("../client/src/components/document/DocumentFooter.tsx");
+  if (!dfSrc.includes("onOpenLog") || !dfSrc.includes("◈ Лог"))
+    errs.push("4t: кнопка «◈ Лог» в DocumentFooter потеряна");
+  // SynthesisPage: viewOnly-подписка ВСЕГДА (фикс интеграционного бага
+  // тестов 2.4: standalone-regen не меняет status → без постоянной
+  // подписки live-обновление лога не работает; аналог refreshCtxLogIfOpen)
+  const spSrc = await rdr3("../client/src/pages/SynthesisPage.tsx");
+  if (!spSrc.includes("synthesisId: id ?? null") || !spSrc.includes("viewOnly: true"))
+    errs.push("4t: SynthesisPage без постоянной viewOnly-подписки (live-лог standalone-regen)");
+  if (!spSrc.includes("refreshKey"))
+    errs.push("4t: SynthesisPage не передаёт refreshKey в ContextLogViewer");
+  // globals.css: стили лога .raw-* портированы
+  const cssSrc = await rdr3("../client/src/globals.css");
+  if (!cssSrc.includes(".raw-overlay") || !cssSrc.includes(".raw-copy"))
+    errs.push("4t: стили .raw-* лога не портированы в globals.css");
+  // Меток TODO(2.4) в дереве не осталось
+  for (const p of ["./routes/sections.ts", "./services/log-formatter.ts"])
+    if (/TODO\(2\.4\)(?! закрыт)/.test(await rdr3(p))) errs.push(`4t: незакрытая метка TODO(2.4) в ${p}`);
+}
+
 // Единый финальный гейт (перенесён из-за дефекта 2.1 — см. выше)
 if (errs.length) { console.error("ПРОБЛЕМЫ:\n" + errs.map(e => " - " + e).join("\n")); process.exit(1); }
 
-console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb) + 2i/4k/5k 1.4 (6 модулей streaming-manager/generation-service/graph-parser/element-parser/stream-state/routes-syntheses, реэкспорты stream-state тождественны; контракты: baseUrl из env, ретраи только pre-stream из env, activeRuns.set до await (гонка), цены из cost-estimator, scaffold дословно, _genCommon/common, user-abort без pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3; живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная замена, stream-state круговой по разделу и указателю, предохранители cancelGeneration/assertCanStartGeneration) + 2j/4l/5l 1.4b (pause-resume-service + порты serializeSubsectionRegen/extractPreambleConstraints в section-defs-builder и spliceSubsectionHtml/removeSubsectionHtml в html-parser + клиентский PauseModal (4 рендерера, fmtCost ≡ _fmtCost) + разъёмы generation-service; контракты: порог 250 и userNote «Заверши» дословно, runtime-guard режимов, провайдер estimates регистрируется импортом и питает обе точки generation_paused, метка [возобновление], resume_* диспетчеризованы, linkedom изолирован, 'resume' ∈ source; живьём: createPausedState → paused_state+pause_marker, computePauseEstimates из genParams (whole>0, skip=0, fill>0), RESUME_INVALID/FORBIDDEN, stop-финализация с resume_marker; фикс: closeRedis в teardown — event loop больше не висит) + 4m/5m 1.5 (9 клиент-модулей формы/прогресса: api/syntheses + SynthesisForm/PhilosopherPicker/SectionPicker/CostEstimate/CompatAdvisor/SectionWarnings/GenerationProgress + useStreamingGeneration + CreateSynthesisPage; контракты: /estimate и /advice под requireAuth и без записей в БД, конвейер оценки зеркалит generation-service, NO_PARTICIPANTS_SEED_REQUIRED в коде роута, confirm перед skip, ?resume= и subscribe_generation в хуке, условный keepFullBudget, browser storage запрещён; живьём: estimate cost/in/out>0 passes=3, advice stable ★ + ⚠ evolution, 401 без сессии, свободный синтез без seed → 400 NO_PARTICIPANTS_SEED_REQUIRED без создания записи) + 4n 1.5b (пул: pool-store 9 действий без snapshotCurrentState (снимки вырождены), concept-file 16 экспортов, PoolCard/ConceptPool, SYNTH_READY_SECTIONS из SectionPicker; контракты: форма читает пул из стора и монтирует ConceptPool, сабмит с ☑-концепциями гейтится до 3.1/4.3, CONTEXT_BUDGET_PREVIEW локализован, prepareForGeneration перед POST, genealogy=null помечен TODO(3.1/3.2), browser storage запрещён) + 2k/4o/5n 1.6 (транспорт чтения: routes/sections + routes/elements(GET) + расширение routes/syntheses, makeDocNum [12110] дословно, /public ДО /:id, requireAuth всюду, duplicate переносит генеалогию родителей без связи с оригиналом и без логов, viewOnly ДО запуска генерации, shared += pauseEstimates/subsections/viewOnly, маркеров TODO(1.6) в дереве нет; живьём: список/SynthesisFull(null-пауза)/sections в порядке sectionOrder с subsections из HTML/categories с hasReflexiveEdges/PATCH isPublic/duplicate без lineage-связи/DELETE+404) + 4p 1.6b (просмотр/каталог: api/sections + synthesis-store + document×5 + catalog×2 + LoadingSpinner; контракты: SectionView обогащает HTML-СТРОКУ (enrichSectionHtml/DOMParser, БЕЗ useEffect — вставки эффектом стираются при hash-навигации), слуг-регексп и <2-порог TOC дословны, capsule исключён в TOC и DocumentView, extractCapsuleText реюз 1.5b, ✎→PATCH title, футер ровно totalCostUsd без ставок, страница просмотра viewOnly:true + pausedState из GET /:id + reloadSections + PauseModal, каталог с серверным ?search= и PATCH isPublic, условный viewOnly в хуке, browser storage запрещён, маркеров TODO(1.6b) в дереве нет; живьём: браузерный харнесс tests/test-16b-requests2-9.mjs — 63 проверки ×3 прогона) + 4q 1.7 (граф: 10 клиент-модулей (api/elements + graph-utils 16 экспортов + Graph3D/Graph2D (build/dispose) + 4 компонента + physics/geometry); контракты: сиды hue дословны, fuzzy typeColor 1:1 [556] (квирк подстрочных типов), roleMode=procedural, warmup узлами параметром, touch passive:false, тултип normalizeType, raise() в hover 2D, edge-arc петли, TODO(4.2) на экспорте (§12), «◈ Граф»+getCategories+extGraphMetrics в SynthesisPage, CSS графа в globals.css + медиа-легенда ≤600px + анти-грабля «*/ в комментарии», browser storage запрещён; браузерные смоуки — tests/test-17-requests2-9.mjs 84 ✓ ×2) + 2l/4r/5o 2.1 (cascade-analyzer 18 экспортов + edit-planner + plan-order-builder + routes/plans + wave-функции cost-estimator (долг 1.1 закрыт) + export loadActualOutputChars; реэкспорты sourceOf/buildPlanOrder тождественны; контракты: PORTRAIT_CANON и MODE_TITLES дословно, анти-цикл loadSynthesisLocal, TODO(4.1) на локальных портах режимов, reason-тексты, buildDynamicOrder над текущими deps, фильтры фактических деп [5501], ветка !p и вторичная сортировка buildPlanOrder, капсула-квирк и формат волны, статусы confirmed/pending, insert без estimatedCost (02 §2.13), гейт draft/PLAN_CONFLICT, isUuid, execute отсутствует (2.2), монтирование; живьём: analyzeImpact downstream, createPlan (confirmed+pending, порядок, оценка>0), updatePlan skip→каскад исчезает, PlanError VALIDATION_ERROR/FORBIDDEN/NOT_FOUND, deletePlan) + 2m/4s/5p 2.2 (plan-executor/structure-tracker/routes-generation + 14 новых экспортов generation-service; ALL_SECTION_KEYS [20906] дословно; контракты: is_edited при regen, снимок структуры [20461], version_sub [18811], регекс §N [5628] + «[удалён]», skipDegrades в трёх паузах + confirm в PauseModal (долг §12 закрыт), минимальный порт 1.4b вырезан, гейты executePlan, разъём setModeRegenerator (TODO(4.1)) с продолжением плана, пауза kind='plan' без WS при user-abort, структурный пост-шаг, регистрация setPlanResumeExecutor, ws-операции 2.2 + start_mode→4.1, execute-роут и generationRoutes смонтированы; живьём: deleteSection на БД — порядок/перенумерация/пометка [удалён]/deletion_marker, buildDeletionReplacements на посеянном substitution_map; ФИКС ревью 2.2: финальный гейт errs перенесён В КОНЕЦ — секция 4r стояла после гейта и не проверялась)");
+console.log("INTEGRATION OK: 11 value-модулей shared, 4 server-модуля 0.1 + 7 модулей 0.2 (auth/admin-only/routes/rate-limiter/ws×2/redis) + 13 модулей 0.3 (prompt-registry + 12 config) + 1 модуль 0.3b (element-taxonomy) + 5 модулей 1.1 (deep-merge/topo-sort/synthesis-engine/compat-advisor/cost-estimator, реэкспорты тождественны) + 4 модуля 1.2 (prompt-builder/section-defs-builder + section-templates 146 шт./subsection-map; SEC_NAMES≡KEY_LABELS, реэкспорты кардинальности тождественны) + 17 клиент-модулей 0.4+0.6 (api/store/useWebSocket/App/layout×3/pages×10), 11 файлов типов, 4+5+4+6 кросс-слойных совместимостей + 4e (AuthUser client↔server, ApiErrorCode⊇§4.3+серверные коды, маршруты App↔Sidebar↔протокол, BASE_URL↔монтирование, эндпоинты store↔routes) + 4h 1.1 (async-сигнатуры engine/advisor/estimator, перенос applyBudgetPressure в context-builder (1.3), константы [7539] и топо-таблицы [6505/6520] дословно) + 4j/5j 1.3 (async-сигнатуры context-builder/extractor/parent-context, CtxLogDraft⊇context_log, пол 40% и пороги бюджета дословно, DOM-слой изолирован в html-parser, живой конвейер на sections+categories) + 4i 1.2 (async-сигнатуры билдеров, parts/defs структурно совместимы со входами оценщика, стоп-сигнал из Registry без хардкода, разъём провайдера 1.3, тексты разделов только из Registry, посевы += SEED_SECTION_TEMPLATES/subsection_map, extract:sections, баннер генерата), async-цепочки (5e: auth-store против authRoutes через app.request на живой БД — register/login/logout/restore/NETWORK_ERROR (auth-жизненный цикл; registry: getTemplate/render/getConfig/NOT_FOUND/кэш-инвалидация; taxonomy: counts 18/29, normalizeType match/null-кейсы, валидация createCustomType, кэш-инвалидация — всё на живой БД+Redis; 4f/5f 0.5: контракт password-change (requireAuth, eq+ne-инвалидация, транзакция, общая PASSWORD_MIN_LENGTH) + живой цикл смены пароля (отказы без побочных эффектов, старый пароль мёртв, чужая сессия убита, текущая жива; 4g/5g 0.6: контракт профиля (PATCH /me, /profile в App+Header, skipUnauthorizedHandler объявлен и применён) + живой смоук PATCH displayName/пустая→null/101→400; 5h 1.1: живой конвейер resolveContextDeps→buildEffectiveDeps(подстановка)→buildDynamicOrder→getCompatEntryByKey→computeSectionAdvice→estimateCost на посеянных конфигах; 5i 1.1+1.2: сквозной конвейер buildSYS→baseCtxStatic→buildSectionDefs→groupPasses→estimateCost(sysChars/baseStaticChars/passes реальные)→patchPromptsWithSecCtx + stop_signal из Registry); reject после closeDb) + 2i/4k/5k 1.4 (6 модулей streaming-manager/generation-service/graph-parser/element-parser/stream-state/routes-syntheses, реэкспорты stream-state тождественны; контракты: baseUrl из env, ретраи только pre-stream из env, activeRuns.set до await (гонка), цены из cost-estimator, scaffold дословно, _genCommon/common, user-abort без pausedState, linkedom изолирован, POST по SEC_NAMES, resume §3.3; живьём: двойной saveGraphToDb/saveElementsToDb — идемпотентная замена, stream-state круговой по разделу и указателю, предохранители cancelGeneration/assertCanStartGeneration) + 2j/4l/5l 1.4b (pause-resume-service + порты serializeSubsectionRegen/extractPreambleConstraints в section-defs-builder и spliceSubsectionHtml/removeSubsectionHtml в html-parser + клиентский PauseModal (4 рендерера, fmtCost ≡ _fmtCost) + разъёмы generation-service; контракты: порог 250 и userNote «Заверши» дословно, runtime-guard режимов, провайдер estimates регистрируется импортом и питает обе точки generation_paused, метка [возобновление], resume_* диспетчеризованы, linkedom изолирован, 'resume' ∈ source; живьём: createPausedState → paused_state+pause_marker, computePauseEstimates из genParams (whole>0, skip=0, fill>0), RESUME_INVALID/FORBIDDEN, stop-финализация с resume_marker; фикс: closeRedis в teardown — event loop больше не висит) + 4m/5m 1.5 (9 клиент-модулей формы/прогресса: api/syntheses + SynthesisForm/PhilosopherPicker/SectionPicker/CostEstimate/CompatAdvisor/SectionWarnings/GenerationProgress + useStreamingGeneration + CreateSynthesisPage; контракты: /estimate и /advice под requireAuth и без записей в БД, конвейер оценки зеркалит generation-service, NO_PARTICIPANTS_SEED_REQUIRED в коде роута, confirm перед skip, ?resume= и subscribe_generation в хуке, условный keepFullBudget, browser storage запрещён; живьём: estimate cost/in/out>0 passes=3, advice stable ★ + ⚠ evolution, 401 без сессии, свободный синтез без seed → 400 NO_PARTICIPANTS_SEED_REQUIRED без создания записи) + 4n 1.5b (пул: pool-store 9 действий без snapshotCurrentState (снимки вырождены), concept-file 16 экспортов, PoolCard/ConceptPool, SYNTH_READY_SECTIONS из SectionPicker; контракты: форма читает пул из стора и монтирует ConceptPool, сабмит с ☑-концепциями гейтится до 3.1/4.3, CONTEXT_BUDGET_PREVIEW локализован, prepareForGeneration перед POST, genealogy=null помечен TODO(3.1/3.2), browser storage запрещён) + 2k/4o/5n 1.6 (транспорт чтения: routes/sections + routes/elements(GET) + расширение routes/syntheses, makeDocNum [12110] дословно, /public ДО /:id, requireAuth всюду, duplicate переносит генеалогию родителей без связи с оригиналом и без логов, viewOnly ДО запуска генерации, shared += pauseEstimates/subsections/viewOnly, маркеров TODO(1.6) в дереве нет; живьём: список/SynthesisFull(null-пауза)/sections в порядке sectionOrder с subsections из HTML/categories с hasReflexiveEdges/PATCH isPublic/duplicate без lineage-связи/DELETE+404) + 4p 1.6b (просмотр/каталог: api/sections + synthesis-store + document×5 + catalog×2 + LoadingSpinner; контракты: SectionView обогащает HTML-СТРОКУ (enrichSectionHtml/DOMParser, БЕЗ useEffect — вставки эффектом стираются при hash-навигации), слуг-регексп и <2-порог TOC дословны, capsule исключён в TOC и DocumentView, extractCapsuleText реюз 1.5b, ✎→PATCH title, футер ровно totalCostUsd без ставок, страница просмотра viewOnly:true + pausedState из GET /:id + reloadSections + PauseModal, каталог с серверным ?search= и PATCH isPublic, условный viewOnly в хуке, browser storage запрещён, маркеров TODO(1.6b) в дереве нет; живьём: браузерный харнесс tests/test-16b-requests2-9.mjs — 63 проверки ×3 прогона) + 4q 1.7 (граф: 10 клиент-модулей (api/elements + graph-utils 16 экспортов + Graph3D/Graph2D (build/dispose) + 4 компонента + physics/geometry); контракты: сиды hue дословны, fuzzy typeColor 1:1 [556] (квирк подстрочных типов), roleMode=procedural, warmup узлами параметром, touch passive:false, тултип normalizeType, raise() в hover 2D, edge-arc петли, TODO(4.2) на экспорте (§12), «◈ Граф»+getCategories+extGraphMetrics в SynthesisPage, CSS графа в globals.css + медиа-легенда ≤600px + анти-грабля «*/ в комментарии», browser storage запрещён; браузерные смоуки — tests/test-17-requests2-9.mjs 84 ✓ ×2) + 2l/4r/5o 2.1 (cascade-analyzer 18 экспортов + edit-planner + plan-order-builder + routes/plans + wave-функции cost-estimator (долг 1.1 закрыт) + export loadActualOutputChars; реэкспорты sourceOf/buildPlanOrder тождественны; контракты: PORTRAIT_CANON и MODE_TITLES дословно, анти-цикл loadSynthesisLocal, TODO(4.1) на локальных портах режимов, reason-тексты, buildDynamicOrder над текущими deps, фильтры фактических деп [5501], ветка !p и вторичная сортировка buildPlanOrder, капсула-квирк и формат волны, статусы confirmed/pending, insert без estimatedCost (02 §2.13), гейт draft/PLAN_CONFLICT, isUuid, execute отсутствует (2.2), монтирование; живьём: analyzeImpact downstream, createPlan (confirmed+pending, порядок, оценка>0), updatePlan skip→каскад исчезает, PlanError VALIDATION_ERROR/FORBIDDEN/NOT_FOUND, deletePlan) + 2m/4s/5p 2.2 (plan-executor/structure-tracker/routes-generation + 14 новых экспортов generation-service; ALL_SECTION_KEYS [20906] дословно; контракты: is_edited при regen, снимок структуры [20461], version_sub [18811], регекс §N [5628] + «[удалён]», skipDegrades в трёх паузах + confirm в PauseModal (долг §12 закрыт), минимальный порт 1.4b вырезан, гейты executePlan, разъём setModeRegenerator (TODO(4.1)) с продолжением плана, пауза kind='plan' без WS при user-abort, структурный пост-шаг, регистрация setPlanResumeExecutor, ws-операции 2.2 + start_mode→4.1, execute-роут и generationRoutes смонтированы; живьём: deleteSection на БД — порядок/перенумерация/пометка [удалён]/deletion_marker, buildDeletionReplacements на посеянном substitution_map; ФИКС ревью 2.2: финальный гейт errs перенесён В КОНЕЦ — секция 4r стояла после гейта и не проверялась) + 2n/4t/5q 2.4 (лог контекста и генерации: shared colorize-log (клиент — тонкий реэкспорт) + log-formatter + context-quality + routes/logs; контракты: _genCommon выделена и исключена из цикла, rawBaseBudget critique ×1.5, записи без promptSkeleton помечены (реконструкция — TODO(4.2)), маркеры парсинга v10, 4 эндпоинта под requireAuth + loadSynthesisForRead, logsRoutes смонтирован, version_marker несёт metadata.version, ContextLogViewer (dangerouslySetInnerHTML/refreshKey/Blob+transliterate), «◈ Лог» за onOpenLog, постоянная viewOnly-подписка SynthesisPage (live-лог standalone-regen), стили .raw-*, меток TODO(2.4) нет, 4o/5n перевёрнуты; живьём: формула [5571] и края reqTotal=0→70, last-win по created_at, Map ≡ поштучной, null без записей, formatCtxLogHTML { text, html } с шапкой; тесты — tests/test-24-requests2-5.mjs 51 ✓ ×2)");

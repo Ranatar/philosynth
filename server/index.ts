@@ -18,6 +18,7 @@ import { synthesesRoutes } from "./routes/syntheses.js";
 import { sectionsRoutes } from "./routes/sections.js";
 import { elementsRoutes } from "./routes/elements.js";
 import { generationRoutes } from "./routes/generation.js";
+import { logsRoutes } from "./routes/logs.js";
 import { plansRoutes } from "./routes/plans.js";
 import { connectionManager } from "./ws/connection-manager.js";
 import { registerWebSocket } from "./ws/handler.js";
@@ -66,6 +67,7 @@ app.route("/api/v1/syntheses", sectionsRoutes); // беседа 1.6 (03 §2.3)
 app.route("/api/v1/syntheses", elementsRoutes); // беседа 1.6 (03 §2.4, GET)
 app.route("/api/v1/syntheses", plansRoutes); // беседы 2.1–2.2 (03 §2.6)
 app.route("/api/v1/syntheses", generationRoutes); // беседа 2.2 (03 §2.5)
+app.route("/api/v1/syntheses", logsRoutes); // беседа 2.4 (03 §2.12)
 
 /* ── WebSocket (auth до upgrade — внутри registerWebSocket) ──────────── */
 

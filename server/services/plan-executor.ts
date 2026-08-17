@@ -73,6 +73,7 @@ import { STRUCTURE_SUBSECTION } from "./structure-tracker.js";
 import { classifyStreamError, StreamError } from "./streaming-manager.js";
 
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
+import { formatVersion } from "@philosynth/shared/utils/version";
 import type {
   EditStep,
   StepResult,
@@ -261,6 +262,20 @@ async function bumpVersionsForPlan(
     })
     .where(eq(syntheses.id, synthesisId));
 
+  // Беседа 2.4: строка версии для маркера (formatCtxLog печатает
+  // «ВЕРСИЯ vN» — исходник [23414]; без сохранённого значения номер
+  // в логе опускался бы)
+  const [vrow] = await db
+    .select({
+      versionBase: syntheses.versionBase,
+      versionSub: syntheses.versionSub,
+      versionModes: syntheses.versionModes,
+      versionModeRegen: syntheses.versionModeRegen,
+    })
+    .from(syntheses)
+    .where(eq(syntheses.id, synthesisId))
+    .limit(1);
+
   const actions = active.map((s) => {
     const label = s.target.includes(":")
       ? s.target
@@ -278,6 +293,15 @@ async function bumpVersionsForPlan(
       actions,
       hasSectionChanges,
       modeRegenCount,
+      // Беседа 2.4: печать «ВЕРСИЯ vN» в formatCtxLog
+      version: vrow
+        ? formatVersion({
+            base: vrow.versionBase,
+            sub: vrow.versionSub,
+            modes: vrow.versionModes,
+            modeRegen: vrow.versionModeRegen,
+          })
+        : null,
     },
   });
 }

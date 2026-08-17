@@ -10,14 +10,20 @@
  * по захардкоженным 3/15 $/M) намеренно не переносится.
  *
  * Сессия исходника = docNum (sessionId в [12140] заполняется docNum).
+ *
+ * Беседа 2.4: кнопка «◈ Лог» (открывает ContextLogViewer). Модалка
+ * живёт у родителя (SynthesisPage — там события live-обновления),
+ * футер получает только onOpenLog; без пропа кнопка не рендерится.
  */
 import type { SynthesisFull } from "@philosynth/shared/types/synthesis";
 
 export interface DocumentFooterProps {
   synthesis: SynthesisFull;
+  /** Беседа 2.4: открыть модалку лога контекста */
+  onOpenLog?: (() => void) | undefined;
 }
 
-export function DocumentFooter({ synthesis }: DocumentFooterProps) {
+export function DocumentFooter({ synthesis, onOpenLog }: DocumentFooterProps) {
   const cost = synthesis.totalCostUsd;
   const footerPhil =
     synthesis.philosophers.length === 0 &&
@@ -41,6 +47,19 @@ export function DocumentFooter({ synthesis }: DocumentFooterProps) {
         </span>
       </div>
       <div className="doc-footer-right">
+        {onOpenLog && (
+          <>
+            <button
+              type="button"
+              className="raw-copy"
+              onClick={onOpenLog}
+              title="Лог контекста и генерации"
+            >
+              ◈ Лог
+            </button>
+            <br />
+          </>
+        )}
         {synthesis.status === "ready" && (
           <>
             <div className="validity-stamp">СИНТЕЗ ЗАВЕРШЁН</div>

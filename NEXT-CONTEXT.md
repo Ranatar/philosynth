@@ -3120,3 +3120,98 @@ check-map-04: 140 идентификаторов, 0 расхождений. За
   возвращает зависимые подразделы; предложение/исполнение — UI 2.3).
 - UI-половины: EditModal/CascadePanel/SubsectionRegenPanel/карточка
   «Структура устарела» — беседа 2.3 (данные готовы).
+
+# Беседа 2.4 — Лог контекста и генерации [ЗАКРЫТА]
+
+> Закрыта 2026-08-17. Тесты: tests/test-24-requests2-5.mjs — 51 ✓ ×2
+> (R1 формат лога 3 разделов со сверкой чисел с БД; R2 html-раскраска
+> живьём + синтетика ◦/◌; R3 браузерный live через puppeteer;
+> R4 version/deletion-маркеры + /logs/prompts). Доки пропатчены
+> scripts/patch-docs-conv24.py (13 правок). Велась ПЕРЕД 2.3 (§11).
+
+## Что создано
+
+- `packages/shared/utils/colorize-log.ts` — ЕДИНАЯ реализация
+  colorizeLog [23733–24087] (нужна серверу для `/logs/formatted` и
+  клиенту); `client/components/logs/colorize-log.ts` — тонкий реэкспорт.
+- `server/services/context-quality.ts` — порт [5571] дословно
+  (края: reqTotal=0 → reqScore=1; budget=0 → usage=0) +
+  getSectionContextQualityMap одной выборкой (GET /sections без N+1);
+  last-win по created_at; подраздельные записи «key:Подраздел» остаются
+  под составными ключами.
+- `server/services/log-formatter.ts` — formatCtxLog [23318] /
+  formatCtxLogHTML [24090] (форма { text, html } — 03 §2.12) /
+  formatPromptsForExport [24353]; genCommon из служебной строки
+  '_genCommon' (в цикл записей не входит); rawBaseBudget восстановлен
+  = context_budget[depth] × (critique ? 1.5) fail-open; intra-ключ =
+  sectionKey с «:» кроме mode:; source-адаптация subsection_regen /
+  cascade / mode_cascade; reconstructSkeleton НЕ реализован — записи
+  без metadata.promptSkeleton помечаются «промпт недоступен
+  (импортированная запись)», TODO(4.2).
+- `server/routes/logs.ts` — 4 эндпоинта GET /:id/logs/{generation,
+  context,formatted,prompts}; requireAuth + loadSynthesisForRead (1.6:
+  владелец ИЛИ публичный); смонтирован в index.ts.
+- Клиент: `api/logs.ts`; `components/logs/ContextLogViewer.tsx`
+  (перезапрос /logs/formatted по refreshKey; «N разделов · M строк» по
+  тексту; download промптов Blob docNum+transliterate(title));
+  кнопка «◈ Лог» в DocumentFooter (строго за пропом onOpenLog);
+  стили .raw-* в globals.css (порт [1376–1474], display у React).
+
+## Интеграционные правки чужих модулей
+
+1. `plan-executor.ts` (2.2): bumpVersionsForPlan пишет
+   metadata.version = formatVersion(...) — иначе «ВЕРСИЯ vN» в логе
+   без номера. actions-строки маркера («тип: метка») группируются
+   форматтером в Перегенерировано/Удалено/Добавлено.
+2. `routes/sections.ts` (1.6): contextQualityScore через
+   getSectionContextQualityMap — TODO(2.4) закрыт.
+3. `SynthesisPage.tsx` (1.6b/1.7): ПОСТОЯННАЯ viewOnly-подписка
+   (synthesisId: id ?? null, live-условие снято) — БАГ, найденный
+   тестами: standalone POST /regenerate/:key не меняет status синтеза,
+   условная подписка не открывала WS и live-обновление лога молчало.
+   Аналог refreshCtxLogIfOpen [23306].
+
+## Помодульно: что прикладывать в следующие беседы
+
+- 2.3 (Edit Modal, клиент): `server/services/context-quality.ts` —
+  score уже в GET /sections (бейдж ≥90 зелёный на EditSectionCard);
+  `ContextLogViewer.tsx` как образец модалки поверх refreshKey.
+- 4.2 (export/import): log-formatter TODO(4.2) ×2 — подключить
+  reconstructSkeleton в скелет и в срез ПАРАМЕТРОВ
+  formatPromptsForExport; снятие пометки «промпт недоступен».
+- 4.1 (mode-service): лог уже форматирует записи mode: (intra-ключ
+  и суффикс « [режим]») — новых правок форматтера не ждём.
+
+## Знания/грабли, добытые в 2.4
+
+1. Заголовки блоков лога — реестровые section_label из genLog
+   (суффикс « [перегенерация]»), НЕ KEY_LABELS; KEY_LABELS — только
+   в actions version-marker'а. Тестам брать label из БД.
+2. Порядок блоков лога хронологический: ВЕРСИЯ → УДАЛЁН →
+   перегенерированный раздел — delete-шаги плана исполняются раньше
+   regen (порядок v10, assembleSteps 2.1). Ожидание «regen раньше
+   delete» — выдумка, стоившая прогона.
+3. Standalone-перегенерация завершается section_done БЕЗ
+   generation_complete; WsPlanStepDone несёт { planId, stepIndex,
+   result } без объекта шага — ожидания строить на plan_updated +
+   контроле по БД.
+4. Маркер «КОНТЕКСТ КОНЦЕПЦИЙ-УЧАСТНИКОВ» — в регулярках СВЁРТКИ
+   скелета [8546] (generation-service, 1.4), а НЕ в срезе параметров
+   v10 [24410/24443]; формулировка 07 смешивала оба места (исправлена).
+5. ГРАБЛЯ БД: TRUNCATE users CASCADE каскадом сносит
+   prompt_templates/каталоги (FK created_by) — чистить только
+   TRUNCATE syntheses CASCADE.
+6. ГРАБЛЯ хоста: сироты vite/tsx держат порты — pkill -9 -f "[v]ite"
+   / "[t]sx" перед прогоном; после простоя контейнера postgres/redis
+   мертвы (service postgresql start; redis-server --daemonize yes),
+   БД и сиды при этом живы.
+7. Дежурная грабля контрактных проверок (повтор 2.2 п.3): ассерты
+   «метка снята» обязаны отличать незакрытые TODO(2.4) от исторических
+   комментариев «TODO(2.4) закрыт» — регулярка с (?! закрыт).
+
+## Открытые TODO после 2.4
+
+- reconstructSkeleton + reconstructBaseCtxSkeleton → 4.2 (лог-скелеты
+  импортированных записей; TODO(4.2) ×2 в log-formatter).
+- UI-половины редактирования (Edit Modal / Cascade Panel) — беседа 2.3;
+  context-quality готов, бейдж рисовать по score из GET /sections.

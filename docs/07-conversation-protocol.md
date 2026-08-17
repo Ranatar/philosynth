@@ -2006,8 +2006,8 @@ grep -n 'function openEditModal' philosynth.html | head -1  # найти нач�
 
 **Контекст:**
 - `02-data-model.md` (таблицы generation_log, context_log)
-- `04-code-reuse-map.md` (секция 2.7 — mode-service, log-formatter)
-- `03-specification.md` (секции 2.3 Sections, 2.5 Logs)
+- `04-code-reuse-map.md` (секция 2.7 — mode-service; formatCtxLog/colorizeLog — таблица §3)
+- `03-specification.md` (секции 2.3 Sections, 2.12 Context Log)
 - Из предыдущих бесед: `server/db/schema.ts`, `shared/types/generation.ts`, `client/api/client.ts`, `client/components/document/DocumentFooter.tsx` (из 1.6b — в него добавляется кнопка лога), `server/routes/sections.ts` (1.6)
 - Исходник: formatCtxLog + colorizeLog (вся система логов)
 
@@ -2038,9 +2038,11 @@ refreshCtxLogIfOpen, viewCtxLog, downloadPrompts.
      Адаптация: genCommon загружается из отдельного поля или вычисляется.
    - formatCtxLogHTML(synthesisId):
      Возвращает { text: string, html: string } — plain + colorized
+     (адаптация: `formatCtxLogHTML` исходника [24090] возвращал только
+     html; text добавлен формой 03 §2.12)
 
 2. server/services/context-quality.ts (04 §2.1, 01-arch §4.15 п.3; модуль не создавался ни одной беседой — дыра, найденная в 1.3):
-   - getSectionContextQuality(synthesisId, sectionKey) — по ПОСЛЕДНЕЙ записи context_log раздела: score = round(reqFound/reqTotal × 70 + min(1, totalUsed/budget) × 30) и issues («Отсутствовали обязательные: …», «N контекст(ов) пропущено из-за бюджета», «N контекст(ов) обрезано», «N подстановок(ки)»);
+   - getSectionContextQuality(synthesisId, sectionKey) — по ПОСЛЕДНЕЙ записи context_log раздела: score = round(reqFound/reqTotal × 70 + min(1, totalUsed/budget) × 30) (края — порт [5571]: reqTotal=0 → reqScore=1; budget=0 → usage=0) и issues («Отсутствовали обязательные: …», «N контекст(ов) пропущено из-за бюджета», «N контекст(ов) обрезано», «N подстановок(ки)»);
    - score отдаётся в GET /syntheses/:id/sections → цветной бейдж качества на карточке раздела в Edit Modal (EditSectionCard.tsx, беседа 2.3: ≥90 зелёный). Беседа 2.3 зависит от этого модуля — см. §11.
 
 3. server/routes/logs.ts:
@@ -2056,8 +2058,11 @@ refreshCtxLogIfOpen, viewCtxLog, downloadPrompts.
      позже. Здесь fallback НЕ реализуется: записи без `_promptSkeleton`
      помечаются «промпт недоступен (импортированная запись)», ставится
      TODO(4.2), а подключение реконструкции делает сама 4.2.
-     Регулярки парсинга обновлены: добавлены маркеры `КОНТЕКСТ ДРУГИХ`,
-     `Перегенерируй ТОЛЬКО`, `КОНТЕКСТ КОНЦЕПЦИЙ-УЧАСТНИКОВ`.
+     Регулярки СРЕЗА параметров v10 [24410/24443] несут маркеры
+     `КОНТЕКСТ ДРУГИХ` и `Перегенерируй ТОЛЬКО`; маркер
+     `КОНТЕКСТ КОНЦЕПЦИЙ-УЧАСТНИКОВ` — в регулярках СВЁРТКИ скелета
+     [8546], портированных generation-service ещё беседой 1.4
+     (уточнение 24/тесты: прежняя формулировка смешивала оба места).
 
 4. client/components/logs/colorize-log.ts:
    - colorizeLog(plainText): клиентская раскраска.
@@ -2086,6 +2091,22 @@ refreshCtxLogIfOpen, viewCtxLog, downloadPrompts.
 - «Проверь colorizeLog: строки с ✓ должны быть зелёные, ✗ — красные, ◦ — золотые, бюджеты — dim»
 - «Протестируй live-обновление: открой лог, запусти перегенерацию раздела — лог должен обновляться в реальном времени»
 - «Проверь форматирование: version-marker, deletion-marker — корректно отображаются»
+
+> **Итоги тестов (2026-08-17, tests/test-24-requests2-5.mjs, 51 ✓ ×2):**
+> 1) заголовки блоков лога — реестровые `section_label` из genLog
+> (у перегенерации суффикс « [перегенерация]»), НЕ `KEY_LABELS`;
+> `KEY_LABELS` — только в `actions` version-marker'а; 2) live-обновление
+> потребовало ПОСТОЯННОЙ viewOnly-подписки в `SynthesisPage`
+> (standalone `POST /regenerate/:key` не меняет `status` синтеза —
+> условная подписка не открывала WS; аналог `refreshCtxLogIfOpen`
+> [23306]); 3) standalone-перегенерация завершается `section_done` без
+> `generation_complete`; 4) `WsPlanStepDone` несёт
+> `{ planId, stepIndex, result }` без объекта шага — ожидания строить
+> на `plan_updated` + контроле по БД; 5) порядок блоков хронологический:
+> ВЕРСИЯ → УДАЛЁН → перегенерированный раздел (delete-шаги плана
+> исполняются раньше regen — порядок v10, edit-planner 2.1);
+> 6) интеграционная правка 2.2: `bumpVersionsForPlan` пишет
+> `metadata.version` (иначе «ВЕРСИЯ vN» печатается без номера).
 
 **Завершение беседы:**
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
@@ -3476,8 +3497,7 @@ streaming-manager.
 | `getEffectiveModeDepsFromConfig` / `MODE_TITLES` — локальные порты в cascade-analyzer; владелец `getEffectiveModeDeps`/`MODE_CONFIG` — mode-service (метки TODO(4.1) в коде) | 4.1 | 2.1 | внесён 2026-08-04 |
 | Регистрация `regenerateModeSilent` в разъём `setModeRegenerator` (plan-executor; до неё шаги regen_mode → failed, план продолжается) | 4.1 | 2.2 | внесён 2026-08-09 |
 | Внутрисекционный каскад по `affectedSubs` (regenerateSubsection возвращает зависимые подразделы; предложение/исполнение — UI) | 2.3 | 2.2 | внесён 2026-08-09 |
-| Бейдж качества контекста (`contextQualityScore`) | 2.3 ← 2.4 | 1.3 | инверсия снята 2026-07-30 |
-| `context-quality.ts` / `getSectionContextQuality` | 2.4 | 1.3 | в тексте 2.4 |
+| Бейдж качества контекста (`contextQualityScore`) | 2.3 | 1.3 | серверная половина закрыта 2.4 (2026-08-17): score живой в GET /sections; осталась UI-половина (EditSectionCard) |
 | `registerParentContextProvider` — реальный провайдер | 3.1 | 1.4 | внесён 2026-07-31 |
 | `parentFieldsUsed` / `conceptBlockSizes` / `parentSpecBySection` | 3.1 | 1.4 | внесён 2026-07-31 |
 | Серверные участники-концепции (снятие гейта мета-синтеза) | 3.1 + 3.2 | 1.5b | внесён 2026-07-31 |
@@ -3487,10 +3507,9 @@ streaming-manager.
 | `applyReplacement` / `updateCompatAdvisor` / `toggleCompatPanel` | 3.2 | 1.1 (адресовался 1.5, затем «2.x») | внесён 2026-07-31 |
 | Отрисовка `estimate-diff` в `FullBudgetPreview` | 3.2 | 1.5b | внесён 2026-07-31 |
 | Серверный импорт концепт-файлов | 4.3 | 1.5b | в тексте 4.3 |
-| `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 → 2.4 | 2.4 | инверсия снята 2026-07-30 |
+| `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 | 2.4 | 2.4 закрыта 2026-08-17: TODO(4.2) ×2 в log-formatter, записи без promptSkeleton помечаются «промпт недоступен» |
 | BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | в тексте 6.1 |
 | Форма ввода ключа в auth-модалке `PauseModal` | 6.2 | 1.4b (адресовался 6.1) | внесён 2026-07-31 |
-| Подстановка `contextQualityScore` в GET /sections (сейчас null, метка TODO(2.4) в routes/sections.ts) | 2.4 | 1.6 | внесён 2026-08-02 |
 | Per-user HTTP-лимитирование (подсчёт после auth; сейчас фактически per-IP — 03 §3.4) | 6.1 | 1.6 | внесён 2026-08-02 |
 | `makeSectionCtxDisclosure` — disclosure секционного контекста в документе (sec_context отдаётся в SectionFull, UI не показывает) | 2.3 | 1.6b | внесён 2026-08-03 |
 | Экспорт графа MMD/PNG/JSON (кнопки GraphModal — заглушки, метки TODO(4.2) в GraphModal.tsx; серверные services/export/*) | 4.2 | 1.7 | внесён 2026-08-04 |

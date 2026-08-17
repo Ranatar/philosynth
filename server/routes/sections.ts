@@ -11,8 +11,9 @@
  *    routes/syntheses.ts); 403 FORBIDDEN / 404 NOT_FOUND по §4.3.
  *  - Список — в порядке sectionOrder; ключи вне sectionOrder (не должно
  *    случаться, страховка) — в хвосте по sectionNum.
- *  - contextQualityScore = null до беседы 2.4 (context-quality.ts /
- *    getSectionContextQuality ещё не созданы) — TODO(2.4).
+ *  - contextQualityScore: заполняется getSectionContextQualityMap
+ *    (context-quality.ts, беседа 2.4 — TODO(2.4) закрыт); null — по
+ *    разделу нет записей context_log (например, импорт).
  *  - subsections — имена data-section внутри HTML. Заполняются через
  *    parseSubsectionsFromHTML (1.4); та требует expected-список, а
  *    buildSubsectionMap тянет Registry+params — TOC (1.6b) нужны
@@ -34,6 +35,7 @@ import { db } from "../db/index.js";
 import { sections, synthesisLineage } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
+import { getSectionContextQualityMap } from "../services/context-quality.js";
 import { buildContextForSection } from "../services/context-builder.js";
 import {
   buildEffectiveDeps,
@@ -104,13 +106,15 @@ sectionsRoutes.get("/:id/sections", requireAuth, async (c) => {
     .where(eq(sections.synthesisId, res.row.id));
   const ordered = sortBySectionOrder(rows, res.row.sectionOrder);
 
+  // Беседа 2.4: TODO(2.4) закрыт — качество контекста одной выборкой
+  const quality = await getSectionContextQualityMap(res.row.id);
   const list: SectionSummary[] = ordered.map((s) => ({
     key: s.key,
     sectionNum: s.sectionNum,
     title: s.title,
     isEdited: s.isEdited,
     htmlChars: s.htmlContent.length,
-    contextQualityScore: null, // TODO(2.4): getSectionContextQuality
+    contextQualityScore: quality.get(s.key)?.score ?? null,
     subsections: listSubsections(s.htmlContent),
     updatedAt: s.updatedAt.toISOString(),
   }));

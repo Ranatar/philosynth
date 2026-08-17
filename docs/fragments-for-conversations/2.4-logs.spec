@@ -2,6 +2,9 @@
 # Сборка: python3 scripts/extract-by-name.py \
 #           docs/fragments-for-conversations/2.4-logs.spec
 
+## Качество контекста (server/services/context-quality.ts)
+js:getSectionContextQuality
+
 ## Форматирование лога (server/services/log-formatter.ts)
 js:formatCtxLog
 js:formatCtxLogHTML

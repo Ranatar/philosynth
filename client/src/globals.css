@@ -1261,3 +1261,107 @@
 .gm-view .edge-line {
   stroke-linecap: round;
 }
+
+
+/* ── Беседа 2.4: окно лога контекста (.raw-*) — порт [1376–1474].
+   Отличие от исходника: display управляет React (компонент не
+   рендерится закрытым), класс .visible сохранён для паритета. ── */
+.raw-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.75);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+.raw-overlay.visible {
+  display: flex;
+}
+.raw-modal {
+  background: var(--ink);
+  border: 1px solid var(--rule-strong);
+  border-top: 3px solid var(--gold);
+  width: 100%;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.raw-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+.raw-modal-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.raw-close {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid #444;
+  color: #999;
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+.raw-close:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+.raw-modal-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 24px;
+}
+.raw-modal-body pre {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: #c8c0b0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+.raw-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-top: 1px solid #333;
+  flex-shrink: 0;
+}
+.raw-info {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: #555;
+  letter-spacing: 1px;
+}
+.raw-copy {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.raw-copy:hover {
+  opacity: 0.85;
+}

@@ -23,12 +23,15 @@ export interface DocumentViewProps {
   summaries: readonly SectionSummary[];
   /** Полные разделы с htmlContent */
   sections: readonly SectionFull[];
+  /** Беседа 2.4: кнопка «◈ Лог» в футере */
+  onOpenLog?: (() => void) | undefined;
 }
 
 export function DocumentView({
   synthesis,
   summaries,
   sections,
+  onOpenLog,
 }: DocumentViewProps) {
   const byKey = new Map(
     sections.filter((s) => s.key !== "capsule").map((s) => [s.key, s]),
@@ -55,7 +58,7 @@ export function DocumentView({
           <SectionView key={section.key} section={section} />
         ))}
       </div>
-      <DocumentFooter synthesis={synthesis} />
+      <DocumentFooter synthesis={synthesis} onOpenLog={onOpenLog} />
     </div>
   );
 }

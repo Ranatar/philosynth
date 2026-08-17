@@ -624,6 +624,9 @@ GET    /syntheses/:id/export/md     → text/markdown
 GET    /syntheses/:id/logs/generation  → { entries: GenerationLogEntry[] }
 GET    /syntheses/:id/logs/context     → { entries: ContextLogEntry[] }
 GET    /syntheses/:id/logs/formatted   → { text: string, html: string }
+GET    /syntheses/:id/logs/prompts     → { text: string | null } — дамп
+                                         промптов (07 2.4; аналог
+                                         downloadPrompts исходника)
                                        // Аналог formatCtxLog() и colorizeLog()
 ```
 

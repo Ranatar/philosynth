@@ -270,8 +270,8 @@
 | Mode modal UI | `client/components/ModeModal.tsx` |
 | DOMContentLoaded listeners, checkbox sync | React lifecycle |
 | `refreshCtxLogIfOpen()` | React state subscription |
-| `formatCtxLog()` | `server/services/log-formatter.ts` (серверная) + `client/components/ContextLogViewer.tsx` |
-| `colorizeLog()` | `client/utils/colorize-log.ts` (клиентская) |
+| `formatCtxLog()` | `server/services/log-formatter.ts` (серверная) + `client/components/logs/ContextLogViewer.tsx`; адаптация 2.4: `formatCtxLogHTML` исходника [24090] возвращал только html — форма `{ text, html }` задана 03 §2.12 |
+| `colorizeLog()` | `packages/shared/utils/colorize-log.ts` (единая: нужна серверу для `/logs/formatted` и клиенту) + `client/components/logs/colorize-log.ts` (тонкий реэкспорт; 2.4) |
 
 ---
 
