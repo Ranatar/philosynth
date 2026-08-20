@@ -90,11 +90,13 @@ CONTEXT_BUDGET_PREVIEW локализован); 1.6 — 2k/4o/5n: роуты ч�
 список→Full→sections→categories→PATCH→duplicate→DELETE); 2.4 —
 2n/4t/5q: лог контекста (shared colorize-log + тонкий реэкспорт,
 формула [5571] с краями живьём, постоянная viewOnly-подписка
-SynthesisPage, «TODO(2.4)»-walker). Сейчас покрывает 0.1–0.6,
-1.1–1.7 и 2.1–2.4 целиком; живые секции требуют поднятых PG и Redis
+SynthesisPage, «TODO(2.4)»-walker); 3.1 — 2p/4v/5r: мета-синтез
+(модули, провайдер вместо стаба, квирк Full-блока, живые CTE
+генеалогии и Selective-блок). Сейчас покрывает 0.1–0.6, 1.1–1.7,
+2.1–2.4 и 3.1 целиком; живые секции требуют поднятых PG и Redis
 и засеянных prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фазы 0–2 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3)
+## Статус: Фазы 0–2 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3); Фаза 3 — беседа 3.1 закрыта
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -307,9 +309,33 @@ hooks/useEditPlan.ts (свой WS, plan_updated — источник стату�
 клиента (цикл ремаунтов от store.load + ref-дедупликация терминального
 статуса). Доки пропатчены scripts/patch-docs-conv23.py.
 
-Не сделано (Фаза 2+): applyReplacement (3.2), мета-синтез (3.1 — снимет
-гейт ☑-концепций в форме и
-даст estimate-diff превью бюджета), полный пул с деревом (3.2), режимы
+- **3.1 — Meta-Synthesis + Lineage (бэкенд).**
+  services/meta-synthesis-service.ts (loadConceptContext — 10 полей
+  через extractContextFragment, validateConceptForMetaSynthesis,
+  checkGenealogyOverlaps с текстами 1:1, collectPhilosopherAncestors/
+  isAncestor на CTE, conceptContextBlockFull [квирк: без portraits/
+  graphEdges] / Selective, провайдер buildMetaParentContext),
+  services/lineage-service.ts (getAncestors/getDescendants/
+  searchByPhilosophers с HAVING-пересечением/createLineageRecords),
+  routes/lineage.ts (§2.8: ancestors/descendants под
+  loadSynthesisForRead + pruneInvisible приватных поддеревьев,
+  /lineage/search по видимым). Интеграция: стаб провайдера 1.4
+  заменён (долг §12), buildParams сливает концепции и выставляет
+  флаг isMetaSynthesis, загрузка участников ВНУТРИ
+  runGenerationPasses/buildEditInfra (сигнатуры прежние — pause-
+  resume/планы/перегенерации получили мета-контекст без правок),
+  POST принимает type='synthesis' (+ аддитивное warnings M3),
+  /estimate с весом родителей (estimate-diff), /:key/context с
+  участниками; стык 2.2↔3.1: миграция схемы переводит и p (первая
+  перегенерация шла бы по монолиту). Тесты: scripts/smoke-31.ts
+  28 ✓ + scripts/test-31-requests2-4.ts 16 ✓ ×2 (живой конвейер
+  промпта: обе капсулы в baseCtx). Доки пропатчены
+  scripts/patch-docs-conv31.py.
+
+Не сделано (Фаза 2+): applyReplacement (3.2), клиентская половина
+мета-синтеза (3.2: снятие гейта ☑-концепций в SynthesisForm и
+отрисовка estimate-diff; сервер готов с 3.1), полный пул с деревом
+(3.2), режимы
 (4.1 — карточки результатов в EditModal и каскад режимов подраздельной
 панели ждут routes/modes), экспорт/импорт (4.x — серверный
 parseConceptFile), billing, BYO-Key (6.1 — ввод ключа в auth-модалке).

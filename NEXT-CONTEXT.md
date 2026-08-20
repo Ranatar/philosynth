@@ -3340,3 +3340,109 @@ check-map-04: 140 идентификаторов, 0 расхождений. За
 - Любая клиентская беседа: tests/test-23-requests2-5.mjs — образец
   браузерного харнесса с моком генерации, WS-инструментовкой и
   регистронезависимыми сверками.
+
+# Беседа 3.1 — Meta-Synthesis + Lineage (бэкенд) [ЗАКРЫТА]
+
+Закрыта 2026-08-20. Смоук scripts/smoke-31.ts 28 ✓; тесты протокола
+scripts/test-31-requests2-4.ts 16 ✓ ×2; integration-check += 2p/4v/5r;
+audit чист; typecheck server/checks/client — 0. Доки пропатчены
+scripts/patch-docs-conv31.py (ревизионная заметка в шапке 07 — полный
+список рассогласований).
+
+## Что создано
+
+- `server/services/meta-synthesis-service.ts` — loadConceptContext
+  (10 полей через extractContextFragment: capsule:full, sum:goals/
+  portraits/tensions, graph:nodes_top/edges, dialogue:new_concepts/
+  synthesis, glossary:table, theses:summary; сбой фрагмента → "" с
+  warn), loadConceptParticipants (lineage parent_type='synthesis' по
+  position; SET NULL пропускается), validateConceptForMetaSynthesis
+  (required + «graph или dialogue» строкой + capsule_html; warnings —
+  вместо confirm исходника), unsuitableConceptMessage [22040],
+  collectPhilosopherAncestors (АДАПТАЦИЯ: CTE вместо обхода объекта
+  genealogy), isAncestor, checkGenealogyOverlaps (тексты [22475/22492]
+  дословно), conceptContextBlockFull (КВИРК исходника: без portraits и
+  graphEdges), conceptContextBlockSelective (spec через
+  resolveParentDeps/explicitSpec; Registry-карты полей),
+  buildMetaParentContext — провайдер: 'monolithic' → Full, иначе
+  Selective + resolveParentDepsForSubsection при subsectionName.
+- `server/services/lineage-service.ts` — getAncestors (дерево, корень
+  depth 0 — сам синтез), getDescendants (CTE вниз; имя descendants —
+  `desc` зарезервировано SQL), searchByPhilosophers (CTE пар
+  root×философ + HAVING COUNT(DISTINCT)=n, транзитивно),
+  createLineageRecords (сквозные позиции); clampDepth 1..10; циклы в
+  данных гасятся path-Set. Доступ НЕ проверяет — слой роутов.
+- `server/routes/lineage.ts` — ДВА роутера: lineageRoutes
+  (/:id/lineage/ancestors|descendants под requireAuth +
+  loadSynthesisForRead; потомки — pruneInvisible: чужой приватный узел
+  отсекается С поддеревом) и lineageSearchRoutes (/search?philosopher=…
+  ×N; пусто → 400; только видимые; превью через экспортированные
+  toPreview/loadPhilosophersFor из routes/syntheses).
+
+## Интеграционные правки
+
+- generation-service: стаб registerParentContextProvider ЗАМЕНЁН
+  (долг §12); GenParams += conceptParticipants/parentContextSchema;
+  buildParams (ЭКСПОРТИРОВАН) сливает участников и выставляет ФЛАГ
+  isMetaSynthesis (hasConceptParticipants — флаг, не подсчёт);
+  loadConceptParticipants вызывается ВНУТРИ runGenerationPasses и
+  buildEditInfra — сигнатуры прежние, pause-resume (1.4b), планы (2.1/
+  2.2), перегенерации и роуты получили мета-контекст без правок;
+  genCommon (parentSpecBySection/conceptBlockSizes) и parentFieldsUsed
+  наполнены; participants во всех 4 buildContextForSection (давление
+  бюджета 01 §4.13 ч. II); стык 2.2↔3.1: после маркера миграции схемы
+  p.parentContextSchema тоже переводится — иначе первая перегенерация
+  шла бы по монолиту.
+- routes/syntheses: POST принимает {type:'synthesis', synthesisId} —
+  доступ (403), пригодность (400 + unsuitableConceptMessage +
+  details.missing), дубликаты → 400; генеалогия через
+  createLineageRecords (философы, затем концепции); ответ POST +=
+  аддитивное warnings (M3 — контракт §2.2 не имел места);
+  /estimate: участники-концепции + предвычисленный overheadBySection →
+  синхронный колбэк parentOverheadForSection в estimateCost;
+  недоступные id молча пропускаются (оценка — не гейт).
+- routes/sections /:key/context: += participants (пометка «до 3.1»
+  закрыта — превью считает давление родителей как живая генерация).
+- index.ts: смонтированы оба роутера (/api/v1/syntheses + /api/v1/lineage).
+
+## Знания/грабли, добытые в 3.1
+
+- Контравариантность провайдера: интерфейс без индекс-подписи не
+  присваивается ConceptParticipant — ConceptBlockParams.participants
+  объявлен нестрогой формой {type; name?}, сужение isConceptParticipant
+  + каст; поля читать только через parentFieldValue.
+- `desc` — зарезервированное слово: CTE потомков зовётся descendants.
+- Колонка `position` в raw SQL работает (col_name_keyword PG).
+- postgres.js: список значений в IN — `IN ${sql(uniq)}`.
+- Экстрактор capsule:full ОТРЕЗАЕТ ведущее слово «Капсула» — ассерты
+  писать по телу капсулы.
+- baseCtx без sectionKey → провайдер с key="" → warn + минимум capsule
+  (штатный fallback [10274]); живой конвейер всегда передаёт ключ.
+- Смоуки в общей БД: изоляция уникальным суффиксом имён (TAG), иначе
+  searchByPhilosophers «находит лишнее» из прошлых прогонов.
+- Модуль redis — server/redis.ts; в finally смоуков closeDb И closeRedis.
+
+## Ревью по карте 04
+
+§1.10 (conceptContextBlock* → meta-synthesis-service) и §2.6
+(importConceptAsParticipant → чтение из БД) — совпали; в §1.10 добавлена
+строка генеалогических функций (патч). reconstructGenealogy /
+restoreCapsulesFromHTML — клиентские, 3.2 (§12 без изменений).
+
+## Открытые TODO после 3.1
+
+- Клиентская половина мета-синтеза → 3.2: снятие гейта SynthesisForm
+  (сабмит с ☑-концепциями), отрисовка estimate-diff в FullBudgetPreview
+  (сервер отдаёт обе оценки), панель генеалогии поверх routes/lineage.
+- Браузерных тестов в 3.1 нет (бэкенд); харнесс-образец для 3.2 —
+  tests/test-23-requests2-5.mjs.
+
+## Помодульно: что прикладывать в 3.2
+
+- services/meta-synthesis-service.ts + routes/lineage.ts (контракты
+  ответов), shared/types/lineage.ts;
+- клиент: SynthesisForm/pool-store/concept-file (1.5b) — гейт и
+  prepareForGeneration; FullBudgetPreview (estimate-diff);
+- ответ POST /syntheses с warnings — рисовать подтверждение как
+  confirm исходника [22052].
+

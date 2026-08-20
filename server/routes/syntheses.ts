@@ -32,6 +32,16 @@ import { Hono } from "hono";
 
 import { db } from "../db/index.js";
 import { syntheses, synthesisLineage } from "../db/schema.js";
+import {
+  checkGenealogyOverlaps,
+  loadConceptContext,
+  unsuitableConceptMessage,
+  validateConceptForMetaSynthesis,
+  type OverlapParticipant,
+} from "../services/meta-synthesis-service.js";
+import { createLineageRecords } from "../services/lineage-service.js";
+import { parentOverheadForSection } from "../services/context-builder.js";
+import { normalizeSectionKey } from "../services/parent-context.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import {
   assertCanStartGeneration,
@@ -195,8 +205,9 @@ function capsulePreviewOf(capsuleHtml: string): string {
     .slice(0, 200);
 }
 
-/** Философы-родители по списку синтезов (для превью каталога). */
-async function loadPhilosophersFor(
+/** Философы-родители по списку синтезов (для превью каталога;
+ *  экспорт — для /lineage/search, беседа 3.1). */
+export async function loadPhilosophersFor(
   ids: string[],
 ): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>();
@@ -223,7 +234,8 @@ async function loadPhilosophersFor(
   return map;
 }
 
-function toPreview(
+/** Экспорт — для /lineage/search (беседа 3.1). */
+export function toPreview(
   row: SynthesisRow,
   philosophers: string[],
 ): SynthesisPreview {
@@ -361,8 +373,10 @@ synthesesRoutes.post("/", requireAuth, async (c) => {
       : null;
   if (philosophers === null) details.philosophers = "массив строк";
 
-  // v11: participants (мета-синтез). Тип "synthesis" — беседа 3.1.
+  // v11: participants (мета-синтез) — тип "synthesis" ПРИНИМАЕТСЯ
+  // (беседа 3.1: серверная половина снятия гейта 1.5b; клиент — 3.2).
   let participantPhilosophers: string[] = [];
+  const conceptIds: string[] = [];
   if (body.participants !== undefined) {
     if (!Array.isArray(body.participants)) {
       details.participants = "массив ParticipantInput";
@@ -371,11 +385,15 @@ synthesesRoutes.post("/", requireAuth, async (c) => {
         if (p && p.type === "philosopher" && typeof p.name === "string") {
           participantPhilosophers.push(p.name.trim());
         } else if (p && p.type === "synthesis") {
-          details.participants =
-            "участники типа synthesis (мета-синтез) — ещё не поддерживаются (беседа 3.1)";
-          break;
+          if (typeof p.synthesisId !== "string" || !isUuid(p.synthesisId)) {
+            details.participants =
+              "участник synthesis требует synthesisId (UUID)";
+            break;
+          }
+          conceptIds.push(p.synthesisId);
         } else {
-          details.participants = "элементы {type:'philosopher', name}";
+          details.participants =
+            "элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}";
           break;
         }
       }
@@ -390,7 +408,7 @@ synthesesRoutes.post("/", requireAuth, async (c) => {
   // Код ошибки — по 03 §4.3: NO_PARTICIPANTS_SEED_REQUIRED (беседа 1.5:
   // до неё роут отдавал общий VALIDATION_ERROR — код приведён к спеке)
   let noParticipantsSeedMissing = false;
-  if (allPhilosophers.length === 0 && !seed) {
+  if (allPhilosophers.length === 0 && conceptIds.length === 0 && !seed) {
     noParticipantsSeedMissing = true;
     details.seed = "обязателен при пустых philosophers/participants";
   }
@@ -444,6 +462,76 @@ synthesesRoutes.post("/", requireAuth, async (c) => {
     );
   }
 
+  /* ── Участники-концепции (беседа 3.1; M1–M3 §1.6): доступ (владелец
+        ИЛИ публичный — паритет каталога) и пригодность
+        (validateConceptForMetaSynthesis: sum/glossary/theses/critique,
+        graph|dialogue, capsule). Дубликаты id отклоняются. ── */
+  const overlapParticipants: OverlapParticipant[] = allPhilosophers.map(
+    (name) => ({ type: "philosopher", name }),
+  );
+  if (conceptIds.length > 0) {
+    if (new Set(conceptIds).size !== conceptIds.length) {
+      return c.json(
+        {
+          error: "Невалидные параметры синтеза",
+          code: "VALIDATION_ERROR",
+          details: { participants: "участники-концепции не должны повторяться" },
+        },
+        400,
+      );
+    }
+    for (const cid of conceptIds) {
+      const access = await loadSynthesisForRead(cid, user.id);
+      if (access.access === "notfound") {
+        return c.json(
+          {
+            error: "Невалидные параметры синтеза",
+            code: "VALIDATION_ERROR",
+            details: { participants: `концепция ${cid} не найдена` },
+          },
+          400,
+        );
+      }
+      if (access.access === "forbidden") {
+        return c.json(
+          {
+            error: "Нет доступа к концепции-участнику",
+            code: "FORBIDDEN",
+            details: { participants: cid },
+          },
+          403,
+        );
+      }
+      const check = await validateConceptForMetaSynthesis(cid);
+      if (!check.valid) {
+        return c.json(
+          {
+            error: "Концепция-участник непригодна для мета-синтеза",
+            code: "VALIDATION_ERROR",
+            details: {
+              participants: unsuitableConceptMessage(
+                access.row.title,
+                check.missing,
+              ),
+              missing: check.missing.join(", "),
+            },
+          },
+          400,
+        );
+      }
+      overlapParticipants.push({
+        type: "synthesis",
+        synthesisId: cid,
+        name: access.row.title,
+      });
+    }
+  }
+  // M3: генеалогические пересечения — НЕ блокируют (confirm исходника
+  // [22052] жил на клиенте); предупреждения уходят в ответ POST
+  // (аддитивное поле warnings — дыра 03 §2.2, в патч доков).
+  const genealogyWarnings =
+    conceptIds.length > 0 ? await checkGenealogyOverlaps(overlapParticipants) : [];
+
   /* ── Предпроверки старта ДО создания строки ── */
   try {
     assertCanStartGeneration(user.id);
@@ -485,16 +573,18 @@ synthesesRoutes.post("/", requireAuth, async (c) => {
     .returning({ id: syntheses.id });
   const synthesisId = (row as { id: string }).id;
 
-  if (allPhilosophers.length > 0) {
-    await db.insert(synthesisLineage).values(
-      allPhilosophers.map((name, position) => ({
-        synthesisId,
-        parentType: "philosopher" as const,
-        parentName: name,
-        position,
-      })),
-    );
-  }
+  // Генеалогия: философы, затем концепции (сквозные позиции) —
+  // createLineageRecords (lineage-service, беседа 3.1)
+  await createLineageRecords(synthesisId, [
+    ...allPhilosophers.map((name) => ({
+      type: "philosopher" as const,
+      name,
+    })),
+    ...conceptIds.map((cid) => ({
+      type: "synthesis" as const,
+      synthesisId: cid,
+    })),
+  ]);
 
   /* ── Запуск генерации в фоне (§2.2: «Генерация начинается, клиент
         подключается по WebSocket») ── */
@@ -519,7 +609,16 @@ synthesesRoutes.post("/", requireAuth, async (c) => {
     },
   );
 
-  return c.json({ id: synthesisId, status: "generating" as const }, 201);
+  return c.json(
+    {
+      id: synthesisId,
+      status: "generating" as const,
+      // Беседа 3.1 (M3): неблокирующие предупреждения генеалогических
+      // пересечений — аддитивно к контракту §2.2 (в патч доков)
+      ...(genealogyWarnings.length > 0 ? { warnings: genealogyWarnings } : {}),
+    },
+    201,
+  );
 });
 
 /* ── POST /syntheses/advice (беседа 1.5; Advisor v2 + Section Dependency
@@ -603,6 +702,7 @@ synthesesRoutes.post("/advice", requireAuth, async (c) => {
    протокол 07 (беседа 1.5, п. 5) допускает «estimateCost на сервере». */
 
 synthesesRoutes.post("/estimate", requireAuth, async (c) => {
+  const user = c.get("user");
   let body: PostBody;
   try {
     body = (await c.req.json()) as PostBody;
@@ -616,12 +716,23 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
   const phil = isStrArray(body.philosophers)
     ? body.philosophers.map((s) => s.trim()).filter(Boolean)
     : [];
-  // Участники-концепции — беседа 3.1; для оценки принимаем только философов
+  // Участники-концепции принимаются (беседа 3.1) — данные для
+  // estimate-diff FullBudgetPreview: клиент зовёт /estimate с концепциями
+  // и без, разницу рисует беседа 3.2. Недоступные/несуществующие id для
+  // оценки молча пропускаются (оценка — вспомогательная, не гейт).
   const participantPhilosophers: string[] = [];
+  const estimateConceptIds: string[] = [];
   if (Array.isArray(body.participants)) {
     for (const p of body.participants as Array<Record<string, unknown>>) {
       if (p && p.type === "philosopher" && typeof p.name === "string") {
         participantPhilosophers.push(p.name.trim());
+      } else if (
+        p &&
+        p.type === "synthesis" &&
+        typeof p.synthesisId === "string" &&
+        isUuid(p.synthesisId)
+      ) {
+        estimateConceptIds.push(p.synthesisId);
       }
     }
   }
@@ -664,14 +775,30 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
       ? (body.sectionContexts as Record<string, string>)
       : undefined;
 
+  // Участники-концепции с полями (для веса родителей в оценке)
+  const estimateConcepts = [];
+  for (const cid of [...new Set(estimateConceptIds)]) {
+    const access = await loadSynthesisForRead(cid, user.id);
+    if (access.access !== "ok") continue; // см. комментарий выше
+    try {
+      estimateConcepts.push(await loadConceptContext(cid));
+    } catch (err) {
+      console.warn("[syntheses] estimate: loadConceptContext:", err);
+    }
+  }
+
   // Конвейер 1.1/1.2 — как runGenerationPasses [12078–12183], без БД-записей
   const p = {
     seed,
     phil: allPhil,
-    participants: allPhil.map((name) => ({
-      type: "philosopher" as const,
-      name,
-    })),
+    participants: [
+      ...allPhil.map((name) => ({
+        type: "philosopher" as const,
+        name,
+      })),
+      ...estimateConcepts,
+    ],
+    isMetaSynthesis: estimateConcepts.length > 0,
     sec: sections,
     method: method as Parameters<typeof buildSectionDefs>[0]["method"],
     synthLevel:
@@ -712,10 +839,26 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
 
     const SYS = await buildSYS(p);
     // Ориентир 1.1: baseCtxStatic при концепциях-участниках, иначе полный
-    // baseCtx; до 3.1 концепций нет — обе ветки эквивалентны (parents = "")
+    // baseCtx (с 3.1 ветки различаются: родителей считает
+    // parentOverheadForSection ниже, а не baseCtx)
     const baseStatic = hasConceptParticipants(p)
       ? await baseCtxStatic(p)
       : await baseCtx(p);
+
+    // 3.1: вес родительского контекста по разделам (01 §4.13 ч. II) —
+    // предвычисляем (estimateCost ждёт синхронный колбэк)
+    const overheadBySection: Record<string, number> = {};
+    if (estimateConcepts.length > 0) {
+      for (const key of dynamicOrder) {
+        overheadBySection[key] = await parentOverheadForSection(
+          estimateConcepts,
+          key,
+          p.generationOrder,
+          p.synthLevel,
+          p.method,
+        );
+      }
+    }
 
     const est = await estimateCost({
       params: {
@@ -729,6 +872,8 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
       effectiveDeps,
       sysChars: SYS.length,
       baseStaticChars: baseStatic.length,
+      parentOverheadForSection: (sectionKey) =>
+        overheadBySection[normalizeSectionKey(sectionKey)] ?? 0,
     });
 
     return c.json({ estimate: est });

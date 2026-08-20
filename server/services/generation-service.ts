@@ -40,7 +40,7 @@
  *  - setParentContextProvider (разъём 1.2): регистрируется здесь при
  *    старте генерационного слоя; реализация селективного блока
  *    (conceptContextBlockFull/Selective) — meta-synthesis-service (3.1),
- *    до неё провайдер честно возвращает "" с предупреждением TODO(3.1).
+ *    беседа 3.1 заменила стаб настоящим (buildMetaParentContext).
  */
 import { and, eq, sql as dsql } from "drizzle-orm";
 
@@ -127,6 +127,11 @@ import {
   resolveContextDeps,
 } from "./synthesis-engine.js";
 import { sourceOf } from "../utils/topo-sort.js";
+import {
+  buildMetaParentContext,
+  loadConceptParticipants,
+  type ConceptParticipantFull,
+} from "./meta-synthesis-service.js";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import { CTX_LABELS } from "@philosynth/shared/constants/ctx-keys";
 import { PARENT_CONTEXT_SCHEMA_ID } from "../config/parent-deps.js";
@@ -144,24 +149,19 @@ let providerRegistered = false;
 
 /**
  * Регистрация провайдера baseCtxParents при старте генерационного слоя
- * (NEXT-CONTEXT 1.2/1.3: «регистрация — 1.4»). Реализация селективного
- * блока — беседа 3.1; до неё провайдер возвращает "" с предупреждением,
- * фиксируя подключённый разъём.
+ * (NEXT-CONTEXT 1.2/1.3: «регистрация — 1.4»). Стаб беседы 1.4 ЗАМЕНЁН
+ * настоящим провайдером (беседа 3.1, долг §12): buildMetaParentContext —
+ * conceptContextBlockFull (schema 'monolithic', legacy до миграции) либо
+ * conceptContextBlockSelective (+intra-spec подраздела) из
+ * meta-synthesis-service. Поля участников наполняет buildParams
+ * (loadConceptParticipants из synthesis_lineage).
  */
 export function registerParentContextProvider(): void {
   if (providerRegistered) return;
   providerRegistered = true;
-  setParentContextProvider((p, sectionKey, subsectionName) => {
-    void sectionKey;
-    void subsectionName;
-    if (!hasConceptParticipants(p)) return "";
-    console.warn(
-      "[generation-service] селективный блок родительского контекста — " +
-        "TODO(3.1) conceptContextBlockFull/Selective (meta-synthesis-service); " +
-        "блок родителей опущен",
-    );
-    return "";
-  });
+  setParentContextProvider((p, sectionKey, subsectionName) =>
+    buildMetaParentContext(p, sectionKey, subsectionName),
+  );
 }
 
 /* ══ Разъём провайдера оценок паузы (TODO 1.4 → 1.4b) ═════════════════ */
@@ -680,19 +680,31 @@ export async function resumeSynthesisFromPass(
   });
 }
 
-/** Параметры p в форме исходника из строки syntheses. */
-function buildParams(
+/** Параметры p в форме исходника из строки syntheses.
+ *  Беседа 3.1: участники-концепции (наполненные loadConceptParticipants)
+ *  сливаются в participants, гейт мета-синтеза p.isMetaSynthesis
+ *  (hasConceptParticipants исходника — флаг, не подсчёт!) выставляется
+ *  при их наличии; parentContextSchema — для диспетчеризации провайдера
+ *  (monolithic → Full, иначе Selective). */
+export function buildParams(
   row: SynthesisRow,
   philosophers: string[],
   secCtx: Record<string, string>,
-): PromptParams & {
-  secCtx: Record<string, string>;
-  keepFullBudget: boolean;
-} {
+  conceptParticipants: ConceptParticipantFull[] = [],
+): GenParams & { keepFullBudget: boolean } {
   return {
     seed: row.seed,
     phil: philosophers,
-    participants: philosophers.map((name) => ({ type: "philosopher", name })),
+    participants: [
+      ...philosophers.map((name) => ({
+        type: "philosopher" as const,
+        name,
+      })),
+      ...conceptParticipants,
+    ],
+    isMetaSynthesis: conceptParticipants.length > 0,
+    conceptParticipants,
+    parentContextSchema: row.parentContextSchema,
     sec: (row.sectionOrder ?? []).filter((k) => k !== "sum"),
     method: row.method as SynthesisMethod,
     synthLevel: row.synthLevel as SynthLevel,
@@ -736,7 +748,11 @@ export async function runGenerationPasses(
   const source = options.source ?? "initial";
   const isResume = source === "resume";
   const labelSuffix = isResume ? " [возобновление]" : "";
-  const p = buildParams(row, philosophers, secCtx);
+  // Беседа 3.1: концепции-родители из synthesis_lineage с полями из БД —
+  // загрузка здесь (а не в loadSynthesis), чтобы вызывающие с прежней
+  // сигнатурой (pause-resume 1.4b) получили мета-контекст без правок.
+  const conceptParticipants = await loadConceptParticipants(synthesisId);
+  const p = buildParams(row, philosophers, secCtx, conceptParticipants);
 
   /* ── Инфраструктура порядка [12078–12100] ── */
   const resolvedDeps = await resolveContextDeps(p);
@@ -791,15 +807,17 @@ export async function runGenerationPasses(
     totalConceptOverhead: partBase.length - partStatic.length,
     budgetMode: p.keepFullBudget ? "full" : "shrink",
     parentSpecBySection: await buildParentSpecBySection(
-      [],
+      conceptParticipants,
       p,
       sectionKeysForSpec,
-    ), // TODO(3.1): участники-концепции с полями
+    ), // участники-концепции с полями — беседа 3.1 (TODO закрыт)
     rulesChars: 0,
     qualityChars: partQuality.length,
     scaffoldChars: scaffoldLen,
     totalChars: commonChars,
-    conceptBlockSizes: await computeFullConceptBlockSizes([]), // TODO(3.1)
+    conceptBlockSizes: await computeFullConceptBlockSizes(
+      conceptParticipants,
+    ), // беседа 3.1 (TODO закрыт)
   };
   /* На возобновлении _genCommon обычно уже записан штатной генерацией —
      не дублируем (аналог `if (!genCommon)` исходника [25563/1039]). */
@@ -867,6 +885,8 @@ export async function runGenerationPasses(
                   generationOrder: p.generationOrder,
                   keepFullBudget: p.keepFullBudget,
                 },
+                // 3.1: давление родителей на бюджет (01 §4.13 ч. II)
+                participants: conceptParticipants,
               },
             );
             prior = built.text;
@@ -909,7 +929,9 @@ export async function runGenerationPasses(
 
       /* ── genEntry: insert 'streaming' → update по завершении ── */
       const parentFieldsUsed = hasConceptParticipants(p)
-        ? await parentFieldsUsedFor([], p, passKey).catch(() => [])
+        ? await parentFieldsUsedFor(conceptParticipants, p, passKey).catch(
+            () => [],
+          )
         : undefined;
       const [genEntry] = await db
         .insert(generationLog)
@@ -1466,6 +1488,10 @@ export function getAvailableSectionsToAdd(
 export type GenParams = PromptParams & {
   secCtx: Record<string, string>;
   keepFullBudget?: boolean | undefined;
+  /** Участники-концепции с полями (беседа 3.1; [] — не мета-синтез) */
+  conceptParticipants?: ConceptParticipantFull[] | undefined;
+  /** Схема родительского контекста строки syntheses (v11 §4.13 п.10) */
+  parentContextSchema?: string | undefined;
 };
 
 /* ── Инфраструктура порядка от ТЕКУЩЕГО состояния строки ────────────── */
@@ -1489,7 +1515,11 @@ export async function buildEditInfra(
   philosophers: string[],
   secCtx: Record<string, string>,
 ): Promise<EditInfra> {
-  const p = buildParams(row, philosophers, secCtx);
+  // 3.1: концепции-родители — здесь (все потребители инфраструктуры
+  // правок: regenerateSection/Subsection, addSection, планы, роуты —
+  // получают мета-контекст без смены своих сигнатур)
+  const conceptParticipants = await loadConceptParticipants(row.id);
+  const p = buildParams(row, philosophers, secCtx, conceptParticipants);
   const resolvedDeps = await resolveContextDeps(p);
   const effectiveDeps = await buildEffectiveDeps(
     p.sec,
@@ -1544,12 +1574,18 @@ async function ensureGenCommonForEdit(
         baseCharsWithoutConcepts: baseChars - parentsChars,
         totalConceptOverhead: parentsChars,
         budgetMode: p.keepFullBudget ? "full" : "shrink",
-        parentSpecBySection: await buildParentSpecBySection([], p, [sectionKey]),
+        parentSpecBySection: await buildParentSpecBySection(
+          p.conceptParticipants ?? [],
+          p,
+          [sectionKey],
+        ),
         rulesChars: 0,
         qualityChars: 0,
         scaffoldChars: scaffoldLen,
         totalChars: sysChars + baseChars + scaffoldLen,
-        conceptBlockSizes: await computeFullConceptBlockSizes([]),
+        conceptBlockSizes: await computeFullConceptBlockSizes(
+          p.conceptParticipants ?? [],
+        ),
       },
     },
   });
@@ -1765,6 +1801,9 @@ export async function regenerateSection(
       .update(syntheses)
       .set({ parentContextSchema: PARENT_CONTEXT_SCHEMA_ID, updatedAt: new Date() })
       .where(eq(syntheses.id, synthesisId));
+    // 3.1: p собран buildEditInfra ДО апдейта — переводим и его, чтобы
+    // сама первая перегенерация уже шла по selective (ТЗ 10.2)
+    p.parentContextSchema = PARENT_CONTEXT_SCHEMA_ID;
   }
 
   // ── 3. def раздела; номер — фактический из строки sections [20526] ──
@@ -1802,6 +1841,8 @@ export async function regenerateSection(
             generationOrder: p.generationOrder,
             keepFullBudget: p.keepFullBudget,
           },
+          // 3.1: давление родителей на бюджет (01 §4.13 ч. II)
+          participants: p.conceptParticipants ?? [],
         },
       );
       prior = built.text;
@@ -2180,6 +2221,8 @@ export async function regenerateSubsection(
             generationOrder: p.generationOrder,
             keepFullBudget: p.keepFullBudget,
           },
+          // 3.1: давление родителей на бюджет; intra-spec — по subsectionName
+          participants: p.conceptParticipants ?? [],
           subsectionName,
         },
       );
@@ -2632,6 +2675,8 @@ export async function addSection(
               generationOrder: p.generationOrder,
               keepFullBudget: p.keepFullBudget,
             },
+            // 3.1: давление родителей на бюджет (01 §4.13 ч. II)
+            participants: p.conceptParticipants ?? [],
           },
         );
         prior = built.text;

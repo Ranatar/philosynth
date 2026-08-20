@@ -25,7 +25,9 @@
  *    требует contextText («какой контекст БУДЕТ использован»), которого
  *    в context_log нет; формулировка 07 «последняя запись context_log»
  *    неточна — CtxLogDraft билдера и есть источник этих полей (в патч
- *    доков). participants=[] до 3.1 (концепции-родители — мета-синтез).
+ *    доков). Беседа 3.1: participants наполняются концепциями-родителями
+ *    (loadConceptParticipants) — превью учитывает давление их веса на
+ *    бюджет, как и живая генерация.
  */
 import { Hono } from "hono";
 
@@ -36,6 +38,7 @@ import { sections, synthesisLineage } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
 import { getSectionContextQualityMap } from "../services/context-quality.js";
+import { loadConceptParticipants } from "../services/meta-synthesis-service.js";
 import { buildContextForSection } from "../services/context-builder.js";
 import {
   buildEffectiveDeps,
@@ -202,12 +205,15 @@ sectionsRoutes.get("/:id/sections/:key/context", requireAuth, async (c) => {
       resolvedDeps,
       p.generationOrder,
     );
+    // 3.1: давление родителей на бюджет — как в живой генерации
+    const conceptParticipants = await loadConceptParticipants(row.id);
     const { text, ctxLog } = await buildContextForSection(
       key,
       row.id,
       row.depth,
       effectiveDeps,
       resolvedDeps,
+      { participants: conceptParticipants },
     );
 
     const preview: SectionContextPreview = ctxLog

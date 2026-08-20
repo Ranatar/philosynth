@@ -244,7 +244,17 @@ POST   /syntheses              { seed, philosophers?: string[], sections: string
                                 // v11: philosophers и participants опциональны —
                                 // оба пусты = свободный синтез (обязателен seed;
                                 //   иначе 400 NO_PARTICIPANTS_SEED_REQUIRED, §4.3)
-                                → { id: string, status: "generating" }
+                                // 3.1: participants принимает {type:'synthesis',
+                                //   synthesisId} — доступ (владелец ИЛИ публичный,
+                                //   403) и пригодность (validateConceptForMeta-
+                                //   Synthesis: sum/glossary/theses/critique,
+                                //   graph|dialogue, capsule → 400 c missing);
+                                //   дубликаты id → 400
+                                → { id: string, status: "generating",
+                                    warnings?: {level:'info'|'warn', text}[] }
+                                // warnings (3.1, аддитивно): неблокирующие
+                                // генеалогические пересечения (M3 §1.6;
+                                // confirm исходника жил на клиенте)
                                 // Генерация начинается, клиент подключается по WebSocket
 
 POST   /syntheses/estimate     тело = телу POST /syntheses (беседа 1.5)
@@ -257,6 +267,12 @@ POST   /syntheses/estimate     тело = телу POST /syntheses (беседа
                                 // §1.3; из вилки протокола «сервер или клиентская
                                 // копия» выбран сервер — копия дрейфовала бы от
                                 // Registry (fragment_share/context_budget).
+                                // 3.1: участники type='synthesis' учитываются —
+                                // вес родителей parentOverheadForSection-колбэком
+                                // (baseCtxStatic вместо baseCtx); недоступные id
+                                // для оценки молча пропускаются (оценка — не гейт).
+                                // estimate-diff: клиент зовёт /estimate дважды
+                                // (с концепциями и без); отрисовка разницы — 3.2.
 
 POST   /syntheses/advice       { sections: string[], method, synthLevel,
                                  generationOrder? }                (беседа 1.5)

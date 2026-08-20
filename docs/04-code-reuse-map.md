@@ -144,6 +144,7 @@
 | `resolveParentDeps()`, `resolveParentDepsForSubsection()`, `parentFieldsUsedFor()`, `buildParentSpecForLog()` | `server/services/parent-context.ts` |
 | `applyBudgetPressure()` (пол 40%), `parentOverheadForSection()`, `computeConceptOverhead()` | `server/services/context-builder.ts` |
 | `conceptContextBlockFull()`, `conceptContextBlockSelective()` | `server/services/meta-synthesis-service.ts` |
+| `checkGenealogyOverlaps()`, `collectPhilosopherAncestors()`, `isAncestor()` | `server/services/meta-synthesis-service.ts` (3.1; АДАПТАЦИЯ: предки — рекурсивный CTE по `synthesis_lineage`, в исходнике — обход объекта genealogy; тексты предупреждений 1:1) |
 
 ### 1.11. Зависимости режимов
 

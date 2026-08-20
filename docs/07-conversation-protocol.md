@@ -1,5 +1,23 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-08-20 (итоги беседы 3.1)**: мета-синтез и генеалогия
+> закрыты (смоук 28 ✓ + тесты 16 ✓ ×2, живой конвейер промпта);
+> текст 3.1 п.1: список loadConceptContext дополнен до 10 полей
+> исходника (отсутствовали portraits и dialogueSynthesis — оба в
+> PARENT_FIELD_ORDER), несуществующий «buildConceptContextBlock»
+> заменён реальными conceptContextBlockFull/Selective (провайдер
+> baseCtxParents), в п.1 вписан conceptContextBlockFull (карта 04
+> §1.10 назначала его сюда, legacy 'monolithic' до миграции требует
+> монолит; КВИРК исходника сохранён — монолит без portraits и
+> graphEdges); адрес генеалогических функций — meta-synthesis-service
+> (спека фрагмента называла lineage-service); отступления: ответ POST
+> += неблокирующее warnings (M3; контракт §2.2 не имел места для
+> confirm-предупреждений исходника), hasConceptParticipants гейтится
+> ФЛАГОМ p.isMetaSynthesis (выставляет buildParams), стык 2.2↔3.1 —
+> первая перегенерация после миграции схемы шла бы по монолиту
+> (p собран до апдейта строки; починено); §12 — четыре долга 3.1
+> закрыты (серверная половина участников-концепций; клиентская — 3.2).
+>
 > **Правки 2026-08-09 (итоги беседы 2.2)**: plan-executor и
 > регенерация закрыты (53 ✓ ×2, живой сервер + мок-SSE); блок
 > «По факту 2.2»; текст 2.2 п.1 расклеен (deleteSection/пост-план/
@@ -2172,7 +2190,11 @@ checkGenealogyOverlaps, collectPhilosopherAncestors, reconstructGenealogy).
      glossaryCompact (из glossary_terms),
      thesesSummary (из theses),
      dialogueConcepts (из sections WHERE key='dialogue' → парсинг),
-     goals, tensions (из sections WHERE key='sum' → парсинг).
+     dialogueSynthesis (dialogue:synthesis — аналитический комментарий),
+     goals, portraits, tensions (из sections WHERE key='sum' → парсинг).
+     (Ревизия 3.1: исходник извлекает 10 полей — в списке выше
+     отсутствовали portraits и dialogueSynthesis, оба входят в
+     PARENT_FIELD_ORDER и уровневые PARENT_DEPS; порт — по исходнику.)
      Аналог importConceptAsParticipant (importConceptAsParticipant()), но из БД.
      v10: на клиенте данные берутся из пула (`refreshPoolParticipant()`);
      сервис загружает из БД аналогично.
@@ -2193,6 +2215,9 @@ checkGenealogyOverlaps, collectPhilosopherAncestors, reconstructGenealogy).
    - collectPhilosopherAncestors(synthesisId):
      Рекурсивный CTE из synthesis_lineage. Возвращает Set<string> философов.
 
+   - conceptContextBlockFull(p): legacy-монолит для документов со
+     схемой 'monolithic' до миграции (карта 04 §1.10; ревизия 3.1 —
+     в запросе отсутствовал; КВИРК исходника: без portraits/graphEdges).
    - conceptContextBlockSelective(p, sectionKey, explicitSpec?):
      Формирует блок контекста концепций пер-секционно: состав полей — по
      resolveParentDeps/resolveParentDepsForSubsection (parent-context.ts,
@@ -2219,8 +2244,11 @@ checkGenealogyOverlaps, collectPhilosopherAncestors, reconstructGenealogy).
 
 4. Расширение server/services/generation-service.ts:
    - В generateSynthesis: если participants содержит type="synthesis",
-     вызвать loadConceptContext для каждого, добавить в промпт через 
-     buildConceptContextBlock, записать synthesis_lineage.
+     вызвать loadConceptContext для каждого, добавить в промпт через
+     провайдер baseCtxParents (conceptContextBlockFull для legacy
+     'monolithic', иначе conceptContextBlockSelective; функции
+     «buildConceptContextBlock» в исходнике нет — ревизия 3.1),
+     записать synthesis_lineage.
 
 5. Расширение server/routes/syntheses.ts:
    - POST /syntheses: принимать participants: ParticipantInput[],
@@ -3511,10 +3539,10 @@ streaming-manager.
 | Регистрация `regenerateModeSilent` в разъём `setModeRegenerator` (plan-executor; до неё шаги regen_mode → failed, план продолжается) | 4.1 | 2.2 | внесён 2026-08-09 |
 | Внутрисекционный каскад по `affectedSubs` (regenerateSubsection возвращает зависимые подразделы; предложение/исполнение — UI) | 2.3 | 2.2 | ЗАКРЫТ 2.3 (2026-08-20) с переформулировкой: буквально неисполним — роут отвечает { ok:true } фоном; зависимые вычислимы по картам ДО перегенерации → превью POST /subsection-impact + чекбоксы волны и очередь последовательных запусков по section_done в SubsectionRegenPanel |
 | Бейдж качества контекста (`contextQualityScore`) | 2.3 | 1.3 | ЗАКРЫТ 2.3 (2026-08-20): бейдж на EditSectionCard, пороги исходника ≥90/≥60 [18497], null → бейдж не рисуется |
-| `registerParentContextProvider` — реальный провайдер | 3.1 | 1.4 | внесён 2026-07-31 |
-| `parentFieldsUsed` / `conceptBlockSizes` / `parentSpecBySection` | 3.1 | 1.4 | внесён 2026-07-31 |
-| Серверные участники-концепции (снятие гейта мета-синтеза) | 3.1 + 3.2 | 1.5b | внесён 2026-07-31 |
-| Данные для `estimate-diff` | 3.1 | 1.5b | внесён 2026-07-31 |
+| `registerParentContextProvider` — реальный провайдер | 3.1 | 1.4 | ЗАКРЫТ 3.1 (2026-08-20): стаб заменён buildMetaParentContext (meta-synthesis-service): 'monolithic' → Full, иначе Selective + intra-spec подраздела |
+| `parentFieldsUsed` / `conceptBlockSizes` / `parentSpecBySection` | 3.1 | 1.4 | ЗАКРЫТ 3.1 (2026-08-20): genCommon и проходы наполнены реальными участниками (loadConceptParticipants) |
+| Серверные участники-концепции (снятие гейта мета-синтеза) | 3.1 + 3.2 | 1.5b | серверная половина ЗАКРЫТА 3.1 (2026-08-20): POST принимает type='synthesis' с валидацией и генеалогией; клиентская (гейт SynthesisForm) — за 3.2 |
+| Данные для `estimate-diff` | 3.1 | 1.5b | ЗАКРЫТ 3.1 (2026-08-20): /estimate принимает участников-концепций, вес родителей — колбэком parentOverheadForSection; отрисовка разницы — 3.2 |
 | `reconstructGenealogy` | 3.2 | 1.5b | в тексте 3.2 |
 | `restoreCapsulesFromHTML` | 3.2 | 1.5b | адрес восстановлен 2026-07-31 |
 | `applyReplacement` / `updateCompatAdvisor` / `toggleCompatPanel` | 3.2 | 1.1 (адресовался 1.5, затем «2.x») | внесён 2026-07-31 |
