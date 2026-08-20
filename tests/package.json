@@ -2,5 +2,9 @@
   "name": "@philosynth/tests",
   "private": true,
   "type": "module",
-  "description": "Все тесты бесед (vm-смоуки, API, браузерные). Запуск из корня репо: node tests/<файл> либо npx tsx tests/<файл>. Файл нужен как маркер type=module (как в scripts/): без него tsc/NodeNext трактует tests/*.ts как CommonJS. Типовое покрытие *.ts/*.mts — через scripts/tsconfig.json (npm run typecheck:scripts)."
+  "description": "Все тесты бесед (vm-смоуки, API, браузерные). Запуск из корня репо: node tests/<файл> либо npx tsx tests/<файл>. Файл нужен как маркер type=module (как в scripts/): без него tsc/NodeNext трактует tests/*.ts как CommonJS. Типовое покрытие *.ts/*.mts — через scripts/tsconfig.json (npm run typecheck:scripts).",
+  "dependencies": {
+    "postgres": "^3.4.9",
+    "puppeteer-core": "^23.11.1"
+  }
 }

@@ -25,10 +25,12 @@
 import { Hono } from "hono";
 
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
+import { analyzeImpact } from "../services/cascade-analyzer.js";
 import {
   PlanError,
   createPlan,
   deletePlan,
+  estimatePlanCost,
   getPlan,
   loadPlanRow,
   updatePlan,
@@ -36,6 +38,7 @@ import {
 import {
   GenerationError,
   isGenerationActive,
+  loadSynthesis,
 } from "../services/generation-service.js";
 import { executePlan } from "../services/plan-executor.js";
 import { isUuid } from "./syntheses.js";
@@ -43,6 +46,9 @@ import { isUuid } from "./syntheses.js";
 import type { Context } from "hono";
 import type {
   CreatePlanRequest,
+  EditStep,
+  PlanImpactRequest,
+  PlanImpactResponse,
   UpdatePlanRequest,
 } from "@philosynth/shared/types/edit-plan";
 
@@ -150,6 +156,104 @@ plansRoutes.delete("/:id/plans/:planId", requireAuth, async (c) => {
   try {
     await deletePlan(id, planId, user.id);
     return c.json({ ok: true });
+  } catch (err) {
+    return errJson(c, err);
+  }
+});
+
+/* ── POST /syntheses/:id/plans/impact (беседа 2.3) ───────────────────── */
+/*
+ * Read-only превью каскада для живой панели EditModal (клиентская
+ * отрисовка analyzeImpact — NEXT-CONTEXT гл. 2.1). До этого роута
+ * CascadeImpact не был доступен клиенту вообще (дыра транспорта того же
+ * класса, что /sections/:key/context перед 1.6). Ничего не персистит и
+ * не создаёт черновиков планов: вызывается с debounce на каждый клик по
+ * чекбоксам, как updateLiveCascade исходника [19139].
+ *
+ * estimatedCost — паритет футера исходника (updateEditPlanUI [19085]):
+ * оценка ТОЛЬКО выбранных действий (regen/add/modeRegen; delete = 0),
+ * без каскадных шагов — они появятся в плане после ▶. Считается через
+ * estimatePlanCost по виртуальным confirmed-шагам, fail-open 0.
+ */
+
+plansRoutes.post("/:id/plans/impact", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  if (!isUuid(id))
+    return c.json({ error: "Синтез не найден", code: "NOT_FOUND" }, 404);
+
+  let body: PlanImpactRequest;
+  try {
+    body = (await c.req.json()) as PlanImpactRequest;
+  } catch {
+    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+  }
+  const strings = (v: unknown): string[] =>
+    Array.isArray(v)
+      ? [...new Set(v.filter((x): x is string => typeof x === "string"))]
+      : [];
+  const regen = strings(body.regen);
+  const remove = strings(body.remove);
+  const add = strings(body.add);
+  const modeRegen: [string, number][] = Array.isArray(body.modeRegen)
+    ? body.modeRegen.filter(
+        (t): t is [string, number] =>
+          Array.isArray(t) &&
+          typeof t[0] === "string" &&
+          typeof t[1] === "number",
+      )
+    : [];
+
+  try {
+    // Владельческий гейт (превью каскада — edit-операция, правило 2.1)
+    const { row, philosophers } = await loadSynthesis(id);
+    if (row.userId !== user.id)
+      return c.json({ error: "Нет доступа к синтезу", code: "FORBIDDEN" }, 403);
+
+    const impact = await analyzeImpact(id, { regen, remove, add });
+
+    // Виртуальные шаги выбранных действий → estimatePlanCost (fail-open 0)
+    const steps: EditStep[] = [
+      ...remove.map(
+        (target): EditStep => ({
+          type: "delete",
+          target,
+          status: "confirmed",
+          cascadeGenerated: false,
+        }),
+      ),
+      ...regen.map(
+        (target): EditStep => ({
+          type: "regen",
+          target,
+          status: "confirmed",
+          cascadeGenerated: false,
+        }),
+      ),
+      ...add.map(
+        (target): EditStep => ({
+          type: "add",
+          target,
+          status: "confirmed",
+          cascadeGenerated: false,
+        }),
+      ),
+      ...modeRegen.map(
+        ([mk, i]): EditStep => ({
+          type: "regen_mode",
+          target: `${mk}:${i}`,
+          status: "confirmed",
+          cascadeGenerated: false,
+        }),
+      ),
+    ];
+    const estimatedCost =
+      steps.length > 0
+        ? await estimatePlanCost(id, row, philosophers, steps)
+        : 0;
+
+    const response: PlanImpactResponse = { impact, estimatedCost };
+    return c.json(response);
   } catch (err) {
     return errJson(c, err);
   }

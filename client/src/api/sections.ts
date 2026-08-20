@@ -9,10 +9,12 @@
  *      (htmlContent — весь <div class="doc-section"> с section-num и
  *       section-title внутри).
  *
- * SectionContextPreview (/sections/:key/context) здесь НЕ клиентится —
- * его потребитель EditSectionCard (беседа 2.3).
+ * getSectionContext → GET /syntheses/:id/sections/:key/context →
+ * SectionContextPreview (беседа 2.3: превью «какой контекст будет
+ * использован» в EditSectionCard; сервер — живой buildContextForSection).
  */
 import type {
+  SectionContextPreview,
   SectionFull,
   SectionSummary,
 } from "@philosynth/shared/types/section";
@@ -32,4 +34,13 @@ export function getSection(
   return apiGet<{ section: SectionFull }>(
     `/syntheses/${encodeURIComponent(synthesisId)}/sections/${encodeURIComponent(key)}`,
   ).then((r) => r.section);
+}
+
+export function getSectionContext(
+  synthesisId: string,
+  key: string,
+): Promise<SectionContextPreview> {
+  return apiGet<SectionContextPreview>(
+    `/syntheses/${encodeURIComponent(synthesisId)}/sections/${encodeURIComponent(key)}/context`,
+  );
 }

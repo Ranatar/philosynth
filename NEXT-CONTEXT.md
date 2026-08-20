@@ -3215,3 +3215,128 @@ check-map-04: 140 идентификаторов, 0 расхождений. За
   импортированных записей; TODO(4.2) ×2 в log-formatter).
 - UI-половины редактирования (Edit Modal / Cascade Panel) — беседа 2.3;
   context-quality готов, бейдж рисовать по score из GET /sections.
+
+# Беседа 2.3 — Edit Modal + Cascade Panel (клиент) [ЗАКРЫТА]
+
+> Закрыта 2026-08-20. Тесты: tests/test-23-requests2-5.mjs — 60 ✓ ×3
+> (R0 API-санитария превью-транспорта; R2 браузерный поток
+> модалка→каскад→«отметить ↑»; R3 исполнение с live-прогрессом до всех ✓;
+> R4 подраздельная с очередью каскада по section_done; R5 responsive
+> 375×812). Доки пропатчены scripts/patch-docs-conv23.py (14 правок).
+> Реализация запроса 1 велась после сжатия контекста беседы —
+> целостность сверена по стенограмме/фрагменту, расхождений нет.
+
+## Что создано
+
+- Превью-транспорт (одобренное отступление «сервер в клиентской
+  беседе», как viewOnly в 1.6): `POST /syntheses/:id/plans/impact`
+  (routes/plans.ts) — read-only CascadeImpact + estimatedCost только
+  выбранных действий (виртуальные confirmed-шаги → estimatePlanCost,
+  fail-open 0; НИЧЕГО не персистит); `POST /syntheses/:id/
+  subsection-impact` (routes/generation.ts) — intra/cross-зависимые,
+  режимы, estimateSubsectionCost (fail-open null), БЕЗ гейта активной
+  генерации; `PATCH /syntheses/:id` += extGraphMetrics. Из вилки
+  «черновик-план на каждый клик vs превью» выбрано превью (надёжнее:
+  без мусора в edit_plans, без гонок delete+create).
+- `shared/types/edit-plan.ts` += DTO превью (PlanImpactRequest/Response,
+  CascadeImpactDto + 5 суб-DTO, SubsectionImpactRequest/Response);
+  сервер отдаёт свой CascadeImpact как есть — структурная совместимость
+  проверена tsc-аннотацией ответа.
+- `client/api/plans.ts` (8 функций), `client/api/sections.ts` +=
+  getSectionContext, `client/hooks/useEditPlan.ts` — zustand
+  useEditPlanStore {currentPlan,isExecuting,stepResults,runningStep} +
+  хук со СВОИМ WS-соединением (plan-события доставляются по userId на
+  все соединения — subscribe_generation не нужен); plan_updated —
+  единственный источник статусов шагов; confirmStep: draft → PATCH,
+  executing → WS confirm_step; discard: черновик — DELETE.
+- `client/components/edit/` ×6: EditModal (двухшаговый workflow §4.5
+  «Составить план» → просмотр → «Исполнить» вместо цепочки confirm();
+  живой каскад debounce 400мс + seq-защита; карточка «Структура
+  устарела» по structureSections↔sectionOrder, null → устарела, кнопка
+  → regen sum/«Структура документа»; футер: счётчики + стоимость
+  (план приоритетнее превью, «Удаление бесплатно»); controlsDisabled
+  после составления плана), EditSectionCard (индикатор «⟳ », бейдж
+  ≥90/≥60/<60 и null→не рисуется, предупреждение <70, textarea secCtx,
+  ленивое превью /:key/context в sec-disclosure, чекбокс extGraphMetrics
+  на graph → PATCH, взаимоисключающие чекбоксы, кнопки подразделов при
+  >1 из фактических SectionSummary.subsections), SubsectionRegenPanel
+  (превью, userNote + «включить содержимое», чекбоксы волны intra+cross,
+  ОЧЕРЕДЬ последовательных POST по section_done, stream_error
+  останавливает, капсула → /regenerate/:key), CascadePanel (E1–E5 1:1),
+  EditPlanPanel (◯⟳✓✗−●, каскадные с золотой рамкой, результаты шагов),
+  AddSectionPanel. Кнопка «✎ Изменить» в SynthesisPage (disabled при
+  live; оптимистична — SynthesisFull без userId). CSS
+  .edit-*/.cascade-*/@keyframes spin (его в globals НЕ было) + @media
+  768px фуллскрин.
+- Долг 1.6b makeSectionCtxDisclosure закрыт: details.sec-disclosure в
+  SectionView при непустом secContext.
+
+## Ревью по карте 04
+
+- §2.4/§2.5 клиентские половины: openEditModal/renderEditSections ✓,
+  UI подразделовой ✓, recalcEditPlan/updateEditPlanUI (UI-часть) ✓,
+  updateLiveCascade (отрисовка; расчёт серверный 2.1, транспорт закрыт
+  /plans/impact) ✓, regenStructureFromEditModal (UI-половина) ✓,
+  toggleSubRegenInclude ✓, makeSectionCtxDisclosure ✓.
+- Осознанно НЕ перенесено (в 04/07 задокументировано): «третья волна»
+  подраздельного каскада и каскад режимов (нет повторного превью после
+  волны; режимы — 4.1); карточки результатов режимов в модалке
+  (TODO(4.1) — нет routes/modes и данных); гейты openEditModal
+  API_KEY/incomplete (6.1/4.3); деградация без списка issues
+  (SectionSummary несёт только score — детали в превью контекста);
+  пропуск pending-шага во время исполнения = «не подтверждать»
+  (PATCH только для draft).
+- Единственная метка в новых файлах: TODO(4.1) карточек режимов
+  в шапке EditModal.
+
+## Найдено и починено тестами (дефекты клиента; сервер был чист)
+
+1. onPlanFinished → store.load() переключал loading → SynthesisPage
+   рендерил спиннер → модалка размонтировалась; ref-дедупликация
+   терминального статуса не переживала ремаунт → бесконечный цикл
+   ремаунтов с парами WS-соединений (close 1006). Починка: терминальный
+   колбэк по ПЕРЕХОДУ статуса внутри handleMessage (не эффектом по
+   состоянию store) + НЕРАЗРУШАЮЩЕЕ обновление reloadSections +
+   applySynthesis вместо load. Диагностический приём:
+   evaluateOnNewDocument-обёртка window.WebSocket с журналом
+   open/close+stack — мгновенно указала виновника.
+
+## Знания/грабли, добытые в 2.3
+
+1. Статус готового синтеза — "ready", НЕ "complete" (enum схемы).
+2. Uppercase-грабля 1.5 повсеместна: .action-btn/.edit-sec-btn/
+   .cascade-title/шапка EditPlanPanel под text-transform — все
+   текстовые сверки браузерных тестов регистронезависимые.
+3. Фактический downstream graph = glossary+theses+dialogue (07 называл
+   только theses, dialogue — поправлено 07/C); intra «Таблицы
+   категорий» = Таблица связей, Топология графа, Топологическая
+   таблица; после очереди из двух подраздельных волн version_sub +2.
+4. Консольный шум окружения: fonts.googleapis.com 403 (egress-прокси
+   песочницы), /auth/me 401 до входа (×2 StrictMode) — в фильтр тестов.
+5. PG/Redis в песочнице НЕ переживают отдельные вызовы bash — стартовать
+   в той же команде, что и прогон; тесты встык оставляют сирот
+   vite/tsx (pkill перед запуском).
+6. Маршрут POST /:id/plans/impact не коллизирует: POST на
+   /:id/plans/:planId не существует (контракт 4u стережёт появление).
+
+## Открытые TODO после 2.3
+
+- Карточки результатов режимов в EditModal + перегенерация режимов из
+  подраздельной панели → 4.1 (routes/modes, mode-service, runMode).
+- «Третья волна» подраздельного каскада (повторное превью после
+  исполнения волны) — кандидат в 3.x/4.1 при живом спросе.
+- Гейты открытия модалки: API_KEY → 6.1, incomplete-атрибут импорта →
+  4.3.
+
+## Помодульно: что прикладывать в следующие беседы
+
+- 3.1/3.2 (мета-синтез): паттерн превью-эндпоинтов (plans/impact) как
+  прецедент для живых форм; useEditPlan как образец план-хука.
+- 4.1 (mode-service): TODO(4.1) в EditModal (карточки режимов) и
+  SubsectionRegenPanel (каскад режимов); CascadeImpactDto.affectedModes
+  уже течёт в UI — рисовать при появлении данных.
+- 4.3 (import): гейт incomplete на открытии модалки.
+- 6.1 (billing): гейт API_KEY на открытии модалки.
+- Любая клиентская беседа: tests/test-23-requests2-5.mjs — образец
+  браузерного харнесса с моком генерации, WS-инструментовкой и
+  регистронезависимыми сверками.

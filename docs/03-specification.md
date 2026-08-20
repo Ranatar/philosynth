@@ -280,11 +280,16 @@ DELETE /syntheses/:id          → { ok: true }
                                 // Активная генерация → 409
                                 // GENERATION_IN_PROGRESS (беседа 1.6).
 
-PATCH  /syntheses/:id          { title?, isPublic? }
+PATCH  /syntheses/:id          { title?, isPublic?, extGraphMetrics? }
                                 → { synthesis: SynthesisFull }
                                 // Только владелец. Единственный способ
                                 // опубликовать синтез — без него вкладка
                                 // «Публичные» недостижима из UI.
+                                // extGraphMetrics добавлен беседой 2.3 —
+                                // транспорт чекбокса «Расширенные
+                                // характеристики» на карточке graph в
+                                // EditModal (исходник писал
+                                // DOC_STATE.params напрямую [18475]).
 
 POST   /syntheses/:id/duplicate → { id: string }
                                 // Реализация — беседа 1.6 (сервер).
@@ -477,6 +482,23 @@ POST   /syntheses/:id/regenerate/:sectionKey
                                 → { ok: true }
                                 // Стриминг через WebSocket
 
+POST   /syntheses/:id/subsection-impact
+                                { sectionKey: string, subsectionName: string }
+                                → { intraDependents, crossDependents,
+                                    affectedModes, estimate|null }
+                                // Беседа 2.3: read-only превью подраздельной
+                                // перегенерации для SubsectionRegenPanel —
+                                // порт расчётной части showSubsectionRegenUI
+                                // [18686] (intra → cross по всем изменяемым с
+                                // dedup и фильтрами присутствия → режимы →
+                                // estimateSubsectionCost fail-open null).
+                                // Только владелец; БЕЗ гейта активной
+                                // генерации. Закрывает транспорт долга
+                                // «внутрисекционный каскад»: зависимые
+                                // вычислимы по картам ДО перегенерации, а
+                                // /regenerate-subsection отвечает { ok:true }
+                                // фоном и вернуть affectedSubs не может.
+
 POST   /syntheses/:id/regenerate-subsection
                                 { sectionKey: string, subsectionName: string,
                                   userNote?: string, includeCurrentContent?: boolean }
@@ -487,6 +509,22 @@ POST   /syntheses/:id/regenerate-subsection
 ### 2.6. Edit Plans
 
 ```
+POST   /syntheses/:id/plans/impact
+                                { regen: string[], remove: string[],
+                                  add: string[], modeRegen?: [string, number][] }
+                                → { impact: CascadeImpactDto, estimatedCost }
+                                // Беседа 2.3: read-only превью каскада для
+                                // живой CascadePanel (прецеденты класса —
+                                // /syntheses/advice 1.5, /:key/context 1.6).
+                                // impact — серверный analyzeImpact (до этого
+                                // роута CascadeImpact не был доступен клиенту
+                                // вообще); estimatedCost — паритет футера
+                                // updateEditPlanUI [19085]: только выбранные
+                                // действия (delete = 0), fail-open 0. Только
+                                // владелец; НИЧЕГО не персистит (решение
+                                // беседы: превью надёжнее черновик-плана на
+                                // каждый клик — без мусора в edit_plans).
+
 POST   /syntheses/:id/plans    { regen: string[], remove: string[], add: string[],
                                  regenContexts?: Record<string, string>,
                                  addContexts?: Record<string, string>,

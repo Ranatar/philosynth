@@ -95,6 +95,17 @@ export function SectionView({ section }: SectionViewProps) {
     <div className="doc-body">
       <a id={`sec-${section.key}`} />
       <div dangerouslySetInnerHTML={{ __html: enrichedHtml }} />
+      {/* Долг 1.6b → 2.3: порт makeSectionCtxDisclosure [11482] —
+          свёрнутый показ дополнительного контекста раздела (sec_context
+          уже в SectionFull; исходник вставлял details.sec-disclosure в
+          конец раздела при непустом secCtx; стили .sec-disclosure —
+          в globals.css с 1.6b) */}
+      {section.secContext && (
+        <details className="sec-disclosure">
+          <summary>Дополнительный контекст раздела</summary>
+          <div className="disclosure-body">{section.secContext}</div>
+        </details>
+      )}
     </div>
   );
 }

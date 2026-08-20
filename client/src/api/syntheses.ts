@@ -174,7 +174,7 @@ export function listPublicSyntheses(
  *  Единственный способ опубликовать синтез (03 §2.2); title ≤ 300, trim. */
 export function updateSynthesis(
   id: string,
-  patch: { title?: string; isPublic?: boolean },
+  patch: { title?: string; isPublic?: boolean; extGraphMetrics?: boolean },
 ): Promise<SynthesisFull> {
   return apiPatch<{ synthesis: SynthesisFull }>(
     `/syntheses/${encodeURIComponent(id)}`,

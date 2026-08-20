@@ -26,6 +26,7 @@ import { useParams } from "react-router-dom";
 
 import { getCategories } from "../api/elements";
 import { DocumentView } from "../components/document/DocumentView";
+import { EditModal } from "../components/edit/EditModal";
 import { ContextLogViewer } from "../components/logs/ContextLogViewer";
 import GraphModal from "../components/graph/GraphModal";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
@@ -51,6 +52,10 @@ export function SynthesisPage() {
   const [pauseModalOpen, setPauseModalOpen] = useState(false);
   // Беседа 2.4: модалка лога контекста
   const [logOpen, setLogOpen] = useState(false);
+  // Беседа 2.3: модалка редактирования. Кнопка оптимистична для всех
+  // залогиненных (SynthesisFull не несёт userId — 1.6b); не-владельцу
+  // сервер ответит 403, модалка покажет ошибку плана.
+  const [editOpen, setEditOpen] = useState(false);
 
   // Беседа 1.7: граф категорий — данные грузятся по клику на кнопку
   const [graphOpen, setGraphOpen] = useState(false);
@@ -216,6 +221,14 @@ export function SynthesisPage() {
           <button
             type="button"
             className="action-btn"
+            onClick={() => setEditOpen(true)}
+            disabled={live}
+          >
+            ✎ Изменить
+          </button>
+          <button
+            type="button"
+            className="action-btn"
             onClick={() => window.print()}
           >
             Распечатать
@@ -262,6 +275,9 @@ export function SynthesisPage() {
           onClose={() => setLogOpen(false)}
         />
       )}
+
+      {/* Беседа 2.3: модалка редактирования (Edit Modal + Cascade Panel) */}
+      <EditModal open={editOpen} onClose={() => setEditOpen(false)} />
 
       <PauseModal
         open={pauseModalOpen && paused}

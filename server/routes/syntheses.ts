@@ -891,14 +891,18 @@ synthesesRoutes.get("/:id", requireAuth, async (c) => {
   return c.json({ synthesis: await buildSynthesisFull(res.row) });
 });
 
-/* ── PATCH /syntheses/:id { title?, isPublic? } — только владелец ────── */
+/* ── PATCH /syntheses/:id { title?, isPublic?, extGraphMetrics? } ────── */
+/* Только владелец. extGraphMetrics добавлен беседой 2.3: чекбокс
+ * «Расширенные характеристики» на карточке графа в EditModal пишет тот же
+ * флаг, что читает перегенерация (исходник писал DOC_STATE.params напрямую
+ * [18475]; транспорта для этого поля до 2.3 не было — дыра доков). */
 
 synthesesRoutes.patch("/:id", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   if (!isUuid(id)) return c.json(notFoundJson, 404);
 
-  let body: { title?: unknown; isPublic?: unknown };
+  let body: { title?: unknown; isPublic?: unknown; extGraphMetrics?: unknown };
   try {
     body = (await c.req.json()) as typeof body;
   } catch {
@@ -920,6 +924,11 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
     if (typeof body.isPublic !== "boolean") details.isPublic = "boolean";
     else patch.isPublic = body.isPublic;
   }
+  if (body.extGraphMetrics !== undefined) {
+    if (typeof body.extGraphMetrics !== "boolean")
+      details.extGraphMetrics = "boolean";
+    else patch.extGraphMetrics = body.extGraphMetrics;
+  }
   if (Object.keys(details).length > 0) {
     return c.json(
       { error: "Невалидные параметры", code: "VALIDATION_ERROR", details },
@@ -929,9 +938,9 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
   if (Object.keys(patch).length === 0) {
     return c.json(
       {
-        error: "Нужно хотя бы одно из полей title, isPublic",
+        error: "Нужно хотя бы одно из полей title, isPublic, extGraphMetrics",
         code: "VALIDATION_ERROR",
-        details: { body: "title? | isPublic?" },
+        details: { body: "title? | isPublic? | extGraphMetrics?" },
       },
       400,
     );

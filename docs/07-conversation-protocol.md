@@ -1900,6 +1900,17 @@ confirm деградации при skip реализован данными ski
   sec_context уже в SectionFull) портируется здесь (§12)
 - Исходник: openEditModal … подразделовая перегенерация UI (**только** как визуальный референс UI)
 
+> **ФАКТ 2.3 (2026-08-20)**: врезка ниже оказалась неполной — live-каскаду
+> и панели подраздела транспорта НЕ хватало (CascadeImpact и
+> getIntraDependents/getCrossSecDependents/estimateSubsectionCost не были
+> доступны клиенту), а extGraphMetrics было некуда писать. Беседа 2.3
+> добавила read-only превью POST /plans/impact и POST /subsection-impact
+> (03 §2.6/§2.5) и расширила PATCH /syntheses/:id полем extGraphMetrics —
+> из вилки «черновик-план на каждый клик vs превью» выбрано превью
+> (надёжнее: без мусора в edit_plans и гонок). Карточки результатов
+> режимов в модалке опущены до 4.1 (нет routes/modes и данных); гейты
+> openEditModal (API_KEY / DOC_STATE.incomplete) — до 6.1/4.3.
+>
 > **Транспорт готов** (аудит 2026-07-30): `server/routes/plans.ts`
 > создаёт беседа 2.1 и расширяет 2.2; `POST /syntheses/:id/regenerate-subsection`
 > и WS-сообщения `regen_subsection` описаны в 03 §2.3/§3.2 и реализуются
@@ -1939,7 +1950,9 @@ grep -n 'function openEditModal' philosynth.html | head -1  # найти нач�
    - Карточка одного раздела
    - Чекбоксы перегенерации/удаления (взаимоисключающие)
    - Поле контекста (скрыто, разворачивается; GET /sections/:key/context)
-   - Индикатор: "✓ изменён" если раздел был отредактирован
+   - Индикатор изменённости: ФАКТ — префикс «⟳ » в заголовке карточки
+     (renderEditSections [18521]: `${isEdited ? "⟳ " : ""}`; формулировка
+     «✓ изменён» была приблизительной)
    - Бейдж качества контекста (contextQualityScore, ≥90 зелёный):
      ВНИМАНИЕ — до беседы 2.4 (context-quality.ts) роут отдаёт null.
      Компонент обязан корректно рисовать состояние «нет оценки»
@@ -1990,8 +2003,8 @@ grep -n 'function openEditModal' philosynth.html | head -1  # найти нач�
 ```
 
 **Последующие запросы:**
-- «Протестируй поток: открыть EditModal → отметить graph для перегенерации → CascadePanel должен показать downstream (theses, dialogue) → нажать "отметить ↑" для theses → кнопка ▶ активируется»
-- «Протестируй исполнение: нажать ▶ → EditPlanPanel показывает прогресс шагов → по завершении все шаги ✓»
+- «Протестируй поток: открыть EditModal → отметить graph для перегенерации → CascadePanel должен показать downstream (ФАКТ по конфигам: glossary, theses, dialogue) → нажать "отметить ↑" для theses → кнопка ▶ активируется»
+- «Протестируй исполнение: «▶ Составить план» (draft, шаги ●) → «▶ Исполнить» → EditPlanPanel показывает прогресс шагов → по завершении все шаги ✓» — ФАКТ 2.3: двухшаговый workflow 01 §4.5 вместо цепочки confirm() исходника (одобрено)
 - «Протестируй подразделовую перегенерацию: открыть SubsectionRegenPanel для "graph" → выбрать "Таблица категорий" → показать зависимые подразделы»
 - «Проверь responsive: модальное окно на мобильных (< 768px)»
 
@@ -3496,8 +3509,8 @@ streaming-manager.
 |---|---|---|---|
 | `getEffectiveModeDepsFromConfig` / `MODE_TITLES` — локальные порты в cascade-analyzer; владелец `getEffectiveModeDeps`/`MODE_CONFIG` — mode-service (метки TODO(4.1) в коде) | 4.1 | 2.1 | внесён 2026-08-04 |
 | Регистрация `regenerateModeSilent` в разъём `setModeRegenerator` (plan-executor; до неё шаги regen_mode → failed, план продолжается) | 4.1 | 2.2 | внесён 2026-08-09 |
-| Внутрисекционный каскад по `affectedSubs` (regenerateSubsection возвращает зависимые подразделы; предложение/исполнение — UI) | 2.3 | 2.2 | внесён 2026-08-09 |
-| Бейдж качества контекста (`contextQualityScore`) | 2.3 | 1.3 | серверная половина закрыта 2.4 (2026-08-17): score живой в GET /sections; осталась UI-половина (EditSectionCard) |
+| Внутрисекционный каскад по `affectedSubs` (regenerateSubsection возвращает зависимые подразделы; предложение/исполнение — UI) | 2.3 | 2.2 | ЗАКРЫТ 2.3 (2026-08-20) с переформулировкой: буквально неисполним — роут отвечает { ok:true } фоном; зависимые вычислимы по картам ДО перегенерации → превью POST /subsection-impact + чекбоксы волны и очередь последовательных запусков по section_done в SubsectionRegenPanel |
+| Бейдж качества контекста (`contextQualityScore`) | 2.3 | 1.3 | ЗАКРЫТ 2.3 (2026-08-20): бейдж на EditSectionCard, пороги исходника ≥90/≥60 [18497], null → бейдж не рисуется |
 | `registerParentContextProvider` — реальный провайдер | 3.1 | 1.4 | внесён 2026-07-31 |
 | `parentFieldsUsed` / `conceptBlockSizes` / `parentSpecBySection` | 3.1 | 1.4 | внесён 2026-07-31 |
 | Серверные участники-концепции (снятие гейта мета-синтеза) | 3.1 + 3.2 | 1.5b | внесён 2026-07-31 |
@@ -3511,7 +3524,7 @@ streaming-manager.
 | BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | в тексте 6.1 |
 | Форма ввода ключа в auth-модалке `PauseModal` | 6.2 | 1.4b (адресовался 6.1) | внесён 2026-07-31 |
 | Per-user HTTP-лимитирование (подсчёт после auth; сейчас фактически per-IP — 03 §3.4) | 6.1 | 1.6 | внесён 2026-08-02 |
-| `makeSectionCtxDisclosure` — disclosure секционного контекста в документе (sec_context отдаётся в SectionFull, UI не показывает) | 2.3 | 1.6b | внесён 2026-08-03 |
+| `makeSectionCtxDisclosure` — disclosure секционного контекста в документе (sec_context отдаётся в SectionFull, UI не показывает) | 2.3 | 1.6b | ЗАКРЫТ 2.3 (2026-08-20): details.sec-disclosure в SectionView при непустом secContext |
 | Экспорт графа MMD/PNG/JSON (кнопки GraphModal — заглушки, метки TODO(4.2) в GraphModal.tsx; серверные services/export/*) | 4.2 | 1.7 | внесён 2026-08-04 |
 
 Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,

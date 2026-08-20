@@ -349,7 +349,11 @@ philosynth-service/
 │   │   │   │   │                           # clearLegendFilter (v10: динамические палитры вместо TC/EC)
 │   │   │   │   └── EdgePanel.tsx           # showEdgePanel — панель информации о связи (v10)
 │   │   │   │
-│   │   │   ├── edit/
+│   │   │   ├── edit/                       # Шесть верхних файлов — беседа 2.3 (ФАКТ):
+│   │   │   │                               # плюс client/api/plans.ts и
+│   │   │   │                               # client/hooks/useEditPlan.ts (zustand-store
+│   │   │   │                               # внутри хука); CSS .edit-*/.cascade-* —
+│   │   │   │                               # в globals.css; ElementEditor и ниже — 3.x
 │   │   │   │   ├── EditModal.tsx           # Модальное окно редактирования
 │   │   │   │   ├── EditSectionCard.tsx     # Карточка раздела (перегенерация/удаление)
 │   │   │   │   ├── SubsectionRegenPanel.tsx # Перегенерация подраздела
