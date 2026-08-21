@@ -27,6 +27,7 @@ import { ApiError } from "../api/client";
 import {
   createSynthesis,
   type CreateSynthesisInput,
+  type GenealogyWarningDto,
 } from "../api/syntheses";
 import { GenerationProgress } from "../components/synthesis/GenerationProgress";
 import { PauseModal } from "../components/synthesis/PauseModal";
@@ -55,6 +56,12 @@ export function CreateSynthesisPage() {
   const navigate = useNavigate();
 
   const [synthesisId, setSynthesisId] = useState<string | null>(null);
+  /* Актуальный id для отложенного редиректа. ПОПУТНАЯ ПОЧИНКА (беседа
+     3.2, найдено браузерным тестом test-32): прежний код звал navigate()
+     ВНУТРИ функционального апдейтера setSynthesisId — React исполняет
+     апдейтеры в рендер-фазе → «Cannot update BrowserRouter while
+     rendering CreateSynthesisPage». Читаем из ref, апдейтер не нужен. */
+  const synthesisIdRef = useRef<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [expectedSections, setExpectedSections] = useState<string[]>([]);
@@ -65,10 +72,8 @@ export function CreateSynthesisPage() {
     // Короткая пауза, чтобы пользователь увидел «✓ Завершён» (07, тест 4)
     if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
     redirectTimerRef.current = setTimeout(() => {
-      setSynthesisId((id) => {
-        if (id) navigate(`/synthesis/${id}`);
-        return id;
-      });
+      const id = synthesisIdRef.current;
+      if (id) navigate(`/synthesis/${id}`);
     }, REDIRECT_DELAY_MS);
   }, [navigate]);
 
@@ -91,6 +96,13 @@ export function CreateSynthesisPage() {
     if (pauseKey !== null) setPauseModalOpen(true);
   }, [pauseKey]);
 
+  // Беседа 3.2: неблокирующие генеалогические предупреждения из ответа
+  // POST (аддитивное поле warnings, беседа 3.1 — M3). Предполётный confirm
+  // с теми же текстами уже показала форма (checkGenealogyOverlaps на
+  // клиенте); серверные рисуем жёлтым боксом над прогрессом — синтез уже
+  // создан, отменять нечего.
+  const [genWarnings, setGenWarnings] = useState<GenealogyWarningDto[]>([]);
+
   const handleSubmit = async (input: CreateSynthesisInput) => {
     // Пул (1.5b): перед генерацией — refreshAllSynthParticipants [4940]
     // + сброс индикатора просмотра (интеграция из беседы 1.5; снимок
@@ -98,9 +110,12 @@ export function CreateSynthesisPage() {
     usePoolStore.getState().prepareForGeneration();
     setSubmitting(true);
     setServerError(null);
+    setGenWarnings([]);
     try {
-      const { id } = await createSynthesis(input);
+      const { id, warnings } = await createSynthesis(input);
       setExpectedSections(["sum", ...input.sections]);
+      setGenWarnings(warnings ?? []);
+      synthesisIdRef.current = id;
       setSynthesisId(id);
     } catch (err) {
       setServerError(serverErrorMessage(err));
@@ -156,6 +171,21 @@ export function CreateSynthesisPage() {
 
       {synthesisId && (
         <div className="mt-6">
+          {/* Беседа 3.2: серверные генеалогические предупреждения (POST
+              warnings, 3.1) — неблокирующе, паритет замысла confirm */}
+          {genWarnings.length > 0 && (
+            <div className="mb-3 rounded border border-gold bg-gold/5 p-3">
+              {genWarnings.map((w, i) => (
+                <div
+                  key={i}
+                  className="font-mono text-[11px] leading-relaxed text-ink-mid"
+                >
+                  {w.level === "warn" ? "⚠ " : "ℹ "}
+                  {w.text}
+                </div>
+              ))}
+            </div>
+          )}
           <GenerationProgress
             sections={stream.sections}
             complete={stream.complete}

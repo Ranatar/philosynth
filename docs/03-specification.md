@@ -232,6 +232,10 @@ GET    /syntheses/public       ?page=1&limit=20&search=...&philosopher=Кант
 // desc), limit 1..100 (default 20), page ≥ 1; search — подстрока title
 // без учёта регистра (ILIKE %…%, gin_trgm); philosopher — ТОЧНОЕ имя в
 // генеалогии (как §2.8); невалидные status/method → 400
+// SynthesisPreview += hasConceptParents: boolean (беседа 3.2,
+// аддитивно): есть родители-концепции (parent_type='synthesis') —
+// бейдж «мета-синтез» в карточке каталога; несут оба списка и
+// /lineage/search (loadConceptParentFlags батчем).
 // VALIDATION_ERROR. PATCH title: trim, непустая, ≤ 300 символов.
 // Не-UUID в /:id повсюду → 404 (guard до запроса к PG, иначе 22P02).
 
@@ -594,6 +598,17 @@ GET    /lineage/search          ?philosopher=Кант&philosopher=Хайдегг
                                 → { syntheses: SynthesisPreview[] }
                                 // Концепции, в генеалогии которых есть ВСЕ указанные философы
 ```
+
+Клиентские потребители (беседа 3.2): `client/api/lineage.ts`
+(getAncestors/getDescendants/searchByPhilosophers); дерево на
+SynthesisPage (секция «Генеалогическое древо», только для
+мета-синтезов — паритет updateGenealogyInHeader); фильтр каталога
+`?descendantsOf=<id>` — потомки отдельным запросом, каталог отображает
+ПЕРЕСЕЧЕНИЕ (аудит 2026-07-30); LineageSearch — блок «Поиск по
+генеалогии» в каталоге. Предполётная проверка пересечений формы:
+каталожные участники — через getAncestors, файловые — по
+participant.genealogy (клиентский checkGenealogyOverlaps, тексты ≡
+серверным).
 
 ### 2.9. Prompts (Admin)
 

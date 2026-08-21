@@ -5,11 +5,24 @@
  *
  * Референс — #compatPanel исходника: заголовок с иконкой severity и
  * сворачиванием (toggleCompatPanel), описание, чипы по разделам
- * (chipClassForRating), советы. Кнопки «Рекомендуемые замены»
- * (applyReplacement) — TODO беседы 1.5+: требуют replacements из entry
- * и мутации формы; в первом рендере панель показывает текстовый advice.
+ * (chipClassForRating), советы.
+ *
+ * Беседа 3.2 — закрыт долг §12 (applyReplacement / updateCompatAdvisor /
+ * toggleCompatPanel, заведён 1.1):
+ *  - кнопки «Рекомендуемые замены» (рендер replacements из updateCompatAdvisor
+ *    [7499–7517]: «СОХРАНИТЬ УРОВЕНЬ → ЗАМЕНИТЬ МЕТОД» / «СОХРАНИТЬ МЕТОД →
+ *    ЗАМЕНИТЬ УРОВЕНЬ», label + rating); клик — onApplyReplacement(param,
+ *    value): форма меняет method/synthLevel, пересчёт advice/warnings/
+ *    estimate идёт автоматически через deps эффектов (React-аналог цепочки
+ *    applyReplacement → updateCompatAdvisor → updateSectionWarnings);
+ *  - блок рекомендации порядка генерации (orderAdvice [7454–7476]):
+ *    «⚠ Рекомендуется … порядок» / «ℹ Может помочь …» + кнопка
+ *    переключения; при совпадении — «✓ Текущий порядок … оптимален»;
+ *  - автораскрытие панели при conflict/hard-conflict [7521–7523]
+ *    (toggleCompatPanel = сворачивание вручную; смена entry с конфликтом
+ *    разворачивает заново).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 
@@ -26,14 +39,41 @@ function chipCls(rating: string): string {
   return "border-rule text-ink-dim";
 }
 
+const REPLACE_BTN_CLS =
+  "rounded border border-rule px-2 py-1 text-[11px] text-ink-mid " +
+  "hover:border-gold hover:text-gold";
+
 export interface CompatAdvisorProps {
   entry: CompatEntryDto | null;
   /** Показывать чипы только выбранных разделов */
   selectedSections: readonly string[];
+  /** Текущий порядок генерации — для orderAdvice (беседа 3.2) */
+  generationOrder?: string | undefined;
+  /** applyReplacement [7365]: param 'method'|'level' → смена значения
+   *  формы; 'order' — переключение порядка генерации (кнопка orderAdvice).
+   *  Не передан — кнопки не рисуются (обратная совместимость). */
+  onApplyReplacement?:
+    | ((param: "method" | "level" | "order", value: string) => void)
+    | undefined;
 }
 
-export function CompatAdvisor({ entry, selectedSections }: CompatAdvisorProps) {
+export function CompatAdvisor({
+  entry,
+  selectedSections,
+  generationOrder,
+  onApplyReplacement,
+}: CompatAdvisorProps) {
   const [collapsed, setCollapsed] = useState(false);
+
+  // Автораскрытие при конфликтах [7521]: смена entry с severity
+  // conflict/hard-conflict разворачивает панель (ручное сворачивание
+  // toggleCompatPanel при спокойных severity сохраняется)
+  const severity = entry?.severity ?? null;
+  useEffect(() => {
+    if (severity === "conflict" || severity === "hard-conflict")
+      setCollapsed(false);
+  }, [severity]);
+
   if (!entry) return null;
 
   const chips = selectedSections
@@ -43,6 +83,20 @@ export function CompatAdvisor({ entry, selectedSections }: CompatAdvisorProps) {
       rating: entry.sections[key] ?? "★",
     }))
     .filter((c) => c.key !== "sum");
+
+  const repl = entry.replacements;
+  const hasReplacements = !!(
+    repl &&
+    ((repl.keepLevel && repl.keepLevel.length) ||
+      (repl.keepMethod && repl.keepMethod.length))
+  );
+
+  // orderAdvice [7454]: несовпадение текущего порядка с рекомендованным
+  const oa = entry.orderAdvice;
+  const orderMismatch =
+    !!oa && !!generationOrder && generationOrder !== oa.recommended;
+  const orderLabel =
+    oa?.recommended === "genetic" ? "генетический" : "архитектурный";
 
   return (
     <div
@@ -88,6 +142,100 @@ export function CompatAdvisor({ entry, selectedSections }: CompatAdvisorProps) {
           {entry.advice && (
             <div className="mt-2 font-mono text-[11px] text-ink-dim">
               Совет: {entry.advice}
+            </div>
+          )}
+
+          {/* Рекомендация порядка генерации (orderAdvice [7454], 3.2) */}
+          {oa && (
+            <div className="mt-2 font-mono text-[11px] leading-relaxed">
+              <span className="text-[9px] tracking-widest text-ink-dim">
+                ПОРЯДОК ГЕНЕРАЦИИ{" "}
+              </span>
+              {orderMismatch ? (
+                <>
+                  <span className="text-gold">
+                    {oa.strength === "recommended" ? "⚠ Рекомендуется" : "ℹ Может помочь"}{" "}
+                    <strong>{orderLabel}</strong> порядок.
+                  </span>{" "}
+                  <span className="text-ink-mid">{oa.text}</span>
+                  {onApplyReplacement && (
+                    <button
+                      type="button"
+                      className={REPLACE_BTN_CLS + " ml-2"}
+                      onClick={() =>
+                        onApplyReplacement("order", oa.recommended)
+                      }
+                    >
+                      Переключить на {orderLabel}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <span className="text-ink-mid">
+                  ✓ Текущий порядок ({orderLabel}) оптимален для этой
+                  комбинации. {oa.text}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Кнопки замен (replacements [7499], 3.2) */}
+          {hasReplacements && onApplyReplacement && (
+            <div className="mt-3">
+              {repl?.keepLevel && repl.keepLevel.length > 0 && (
+                <>
+                  <div className="mb-1.5 font-mono text-[9px] tracking-widest text-ink-dim">
+                    СОХРАНИТЬ УРОВЕНЬ → ЗАМЕНИТЬ МЕТОД:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {repl.keepLevel.map((r) => (
+                      <button
+                        key={r.param + r.value}
+                        type="button"
+                        className={REPLACE_BTN_CLS}
+                        onClick={() =>
+                          onApplyReplacement(
+                            r.param === "level" ? "level" : "method",
+                            r.value,
+                          )
+                        }
+                      >
+                        {r.label}
+                        <span className="ml-1 text-[10px] text-gold">
+                          {r.rating}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {repl?.keepMethod && repl.keepMethod.length > 0 && (
+                <>
+                  <div className="mb-1.5 mt-2 font-mono text-[9px] tracking-widest text-ink-dim">
+                    СОХРАНИТЬ МЕТОД → ЗАМЕНИТЬ УРОВЕНЬ:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {repl.keepMethod.map((r) => (
+                      <button
+                        key={r.param + r.value}
+                        type="button"
+                        className={REPLACE_BTN_CLS}
+                        onClick={() =>
+                          onApplyReplacement(
+                            r.param === "level" ? "level" : "method",
+                            r.value,
+                          )
+                        }
+                      >
+                        {r.label}
+                        <span className="ml-1 text-[10px] text-gold">
+                          {r.rating}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

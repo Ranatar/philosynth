@@ -26,19 +26,44 @@
  *  - при 0 ☑-концепций synthReady снимается (галочки разделов не
  *    трогаем — [4760] «пользователь сам решит»).
  *
- * ОГРАНИЧЕНИЕ (план 1.5b, п. 4): сабмит с ☑-концепциями блокируется —
- * файловые концепции не представимы в ParticipantInput ({type:'synthesis',
- * synthesisId}), а сервер отклоняет type='synthesis' до беседы 3.1
- * (мета-синтез) и серверного импорта файлов (4.3). TODO(3.1/4.3).
+ * ГЕЙТ МЕТА-СИНТЕЗА (1.5b → 3.2): сервер принимает участников-концепции
+ * {type:'synthesis', synthesisId} с беседы 3.1 — блокировка сабмита СНЯТА
+ * для концепций ИЗ КАТАЛОГА (у них есть synthesisId; долг §12 закрыт).
+ * ФАЙЛОВЫЕ концепции по-прежнему блокируются: они не представимы в
+ * ParticipantInput до серверного импорта файлов — TODO(4.3).
+ *
+ * Беседа 3.2, дополнительно:
+ *  - предполётная проверка генеалогических пересечений ☑-концепций
+ *    (каталожные — через GET /lineage/ancestors, файловые — по
+ *    participant.genealogy из reconstructGenealogy) + confirm с текстами
+ *    checkGenealogyOverlaps 1:1; отмена не отправляет форму. Серверные
+ *    warnings из ответа POST (аддитивное поле 3.1) рисует
+ *    CreateSynthesisPage — неблокирующе (синтез уже создан);
+ *  - estimate-diff в FullBudgetPreview (долг §12): /estimate дважды —
+ *    с участниками-концепциями и без, отрисовка разницы;
+ *  - кнопки замен CompatAdvisor (долг §12): onApplyReplacement меняет
+ *    method/synthLevel/generationOrder — пересчёт advice/warnings/
+ *    estimate автоматически через deps (аналог цепочки applyReplacement →
+ *    updateCompatAdvisor → updateSectionWarnings исходника).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { ParticipantInput } from "@philosynth/shared/types/lineage";
+
 import type { CreateSynthesisInput } from "../../api/syntheses";
 import {
+  estimateSynthesis,
   fetchSynthesisAdvice,
   type SynthesisAdvice,
+  type SynthesisEstimate,
 } from "../../api/syntheses";
+import { getAncestors } from "../../api/lineage";
 import { usePoolStore } from "../../stores/pool-store";
+import {
+  checkGenealogyOverlaps,
+  lineageNodeToGenealogy,
+  type OverlapParticipant,
+} from "../../utils/genealogy";
 import { ConceptPool } from "../pool/ConceptPool";
 import { CompatAdvisor } from "./CompatAdvisor";
 import { CostEstimate } from "./CostEstimate";
@@ -90,11 +115,60 @@ function computeConceptOverheadPreview(
     );
 }
 
-/** Порт renderFullBudgetPreview [10456–10520] (без estimate-diff —
- *  TODO(3.1), см. комментарий у CONTEXT_BUDGET_PREVIEW) */
-function FullBudgetPreview({ depth }: { depth: string }) {
+/** Порт renderFullBudgetPreview [10456–10520].
+ *
+ *  Беседа 3.2 — долг §12 «отрисовка estimate-diff» ЗАКРЫТ: при наличии
+ *  участников в estimateParams превью дополнительно зовёт серверный
+ *  POST /syntheses/estimate ДВАЖДЫ — с концепциями и без (механика
+ *  зафиксирована в 03 §2.2 беседой 3.1: «клиент зовёт /estimate дважды;
+ *  отрисовка разницы — 3.2») — и рисует разницу стоимости/токенов.
+ *  Символьный расчёт исходника сохранён для файловых концепций (у
+ *  каталожных контент живёт на сервере — клиентские поля пусты, их
+ *  вес виден только через estimate-diff). Дебаунс 600 мс — как у
+ *  CostEstimate (1.5); сбой оценки превью не блокирует. */
+function FullBudgetPreview({
+  depth,
+  estimateParams,
+}: {
+  depth: string;
+  estimateParams: CreateSynthesisInput | null;
+}) {
   const conceptParticipants = usePoolStore((s) => s.conceptParticipants);
   const N = conceptParticipants.length;
+
+  const [diff, setDiff] = useState<{
+    withParents: SynthesisEstimate;
+    without: SynthesisEstimate;
+  } | null>(null);
+  const diffSeqRef = useRef(0);
+
+  const hasServerParticipants = !!(
+    estimateParams?.participants && estimateParams.participants.length > 0
+  );
+
+  useEffect(() => {
+    const seq = ++diffSeqRef.current;
+    if (!estimateParams || !hasServerParticipants) {
+      setDiff(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      const { participants: _p, keepFullBudget: _k, ...rest } = estimateParams;
+      Promise.all([
+        estimateSynthesis(estimateParams),
+        estimateSynthesis(rest), // без участников-концепций
+      ])
+        .then(([withParents, without]) => {
+          if (diffSeqRef.current === seq) setDiff({ withParents, without });
+        })
+        .catch(() => {
+          if (diffSeqRef.current === seq) setDiff(null);
+        });
+    }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(estimateParams), hasServerParticipants]);
+
   if (N === 0) return null;
 
   const conceptChars = computeConceptOverheadPreview(conceptParticipants);
@@ -103,6 +177,12 @@ function FullBudgetPreview({ depth }: { depth: string }) {
     rawBudget - conceptChars,
     Math.floor(rawBudget * 0.4),
   );
+
+  const fmtUsd = (v: number) => "$" + v.toFixed(4);
+  const diffCost = diff ? diff.withParents.cost - diff.without.cost : 0;
+  const diffTokens = diff
+    ? diff.withParents.inTokens - diff.without.inTokens
+    : 0;
 
   return (
     <pre className="mt-2 whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-ink-dim">
@@ -118,7 +198,18 @@ function FullBudgetPreview({ depth }: { depth: string }) {
         " симв.\n" +
         "Без ужимания:       бюджет секций " +
         rawBudget.toLocaleString("ru") +
-        " симв."}
+        " симв." +
+        (diff
+          ? "\nОценка с родителями: " +
+            fmtUsd(diff.withParents.cost) +
+            " · без: " +
+            fmtUsd(diff.without.cost) +
+            " · разница: +" +
+            fmtUsd(Math.max(diffCost, 0)) +
+            " (+" +
+            Math.max(diffTokens, 0).toLocaleString("ru") +
+            " ток. входа)"
+          : "")}
     </pre>
   );
 }
@@ -293,6 +384,14 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
     if (Object.keys(sectionContexts).length > 0)
       input.sectionContexts = sectionContexts;
     if (conceptParticipants.length > 0) input.keepFullBudget = keepFullBudget;
+    // Беседа 3.2: каталожные ☑-концепции → ParticipantInput (сервер 3.1
+    // принимает type='synthesis'); файловые (без synthesisId) не
+    // представимы до 4.3 — их наличие блокирует сабмит в handleSubmit
+    const catalogParticipants: ParticipantInput[] = conceptParticipants
+      .filter((p) => p.synthesisId)
+      .map((p) => ({ type: "synthesis", synthesisId: p.synthesisId! }));
+    if (catalogParticipants.length > 0)
+      input.participants = catalogParticipants;
     return input;
   };
 
@@ -313,10 +412,50 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       lang,
       extGraphMetrics,
       keepFullBudget,
+      conceptParticipants, // беседа 3.2: участники-концепции в оценке
     ],
   );
 
-  const handleSubmit = () => {
+  const [submitChecking, setSubmitChecking] = useState(false);
+
+  /* Предполётная проверка генеалогических пересечений (беседа 3.2):
+     каталожные ☑-концепции — предки через GET /lineage/ancestors
+     (lineageNodeToGenealogy: дерево 3.1 → genealogy-форма), файловые —
+     participant.genealogy (reconstructGenealogy). Тексты предупреждений —
+     checkGenealogyOverlaps 1:1; confirm — паритет замысла исходника
+     (в нём checkGenealogyOverlaps [22467] определена, но не вызвана —
+     мёртвый код; серверная 3.1 вернёт те же тексты аддитивным warnings,
+     их неблокирующе рисует CreateSynthesisPage). Сбой запроса предков
+     проверку молча пропускает — сервер продублирует предупреждения. */
+  const collectOverlapWarningTexts = async (): Promise<string[]> => {
+    const parts: OverlapParticipant[] = philosophers.map((name) => ({
+      type: "philosopher",
+      name,
+    }));
+    for (const p of conceptParticipants) {
+      if (p.synthesisId) {
+        try {
+          const tree = await getAncestors(p.synthesisId);
+          parts.push({
+            type: "concept",
+            name: p.name || "[безымянная концепция]",
+            genealogy: lineageNodeToGenealogy(tree),
+          });
+        } catch {
+          parts.push({ type: "concept", name: p.name, genealogy: null });
+        }
+      } else {
+        parts.push({
+          type: "concept",
+          name: p.name || "[безымянная концепция]",
+          genealogy: p.genealogy,
+        });
+      }
+    }
+    return checkGenealogyOverlaps(parts).map((w) => w.text);
+  };
+
+  const handleSubmit = async () => {
     const participantsCount =
       philosophers.length + conceptParticipants.length;
     if (sections.length === 0) {
@@ -330,19 +469,41 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       );
       return;
     }
-    // Ограничение 1.5b (см. шапку): сервер примет концепции-участники
-    // после бесед 3.1 (мета-синтез) и 4.3 (импорт файлов в БД)
-    if (conceptParticipants.length > 0) {
+    // Гейт 1.5b СУЖЕН беседой 3.2: сервер принимает каталожные концепции
+    // (type='synthesis', беседа 3.1); блокируются только ФАЙЛОВЫЕ —
+    // до серверного импорта файлов (4.3)
+    const fileConcepts = conceptParticipants.filter((p) => !p.synthesisId);
+    if (fileConcepts.length > 0) {
       setFormError(
-        "Мета-синтез с концепциями-участниками пока не поддержан сервером: " +
-          "файловые концепции нужно сначала импортировать в каталог " +
-          "(серверный импорт — в разработке), а генерацию с родительским " +
-          "контекстом добавит мета-синтез-сервис. Снимите ☑ с концепций " +
-          "в пуле, чтобы сгенерировать обычный синтез.",
+        "Файловые концепции пока не поддержаны как участники мета-синтеза: " +
+          "их нужно сначала импортировать в каталог (серверный импорт — " +
+          "в разработке). Снимите ☑ с файловых концепций (" +
+          fileConcepts.map((p) => "«" + p.name + "»").join(", ") +
+          ") либо добавьте участников кнопкой «+ Из каталога».",
       );
       return;
     }
     setFormError(null);
+
+    // Пересечения предков → confirm (см. комментарий выше)
+    if (conceptParticipants.length > 0) {
+      setSubmitChecking(true);
+      let texts: string[] = [];
+      try {
+        texts = await collectOverlapWarningTexts();
+      } finally {
+        setSubmitChecking(false);
+      }
+      if (texts.length > 0) {
+        const ok = window.confirm(
+          "Генеалогические пересечения участников:\n\n— " +
+            texts.join("\n— ") +
+            "\n\nПродолжить генерацию?",
+        );
+        if (!ok) return;
+      }
+    }
+
     onSubmit(buildInput());
   };
 
@@ -505,6 +666,14 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
         <CompatAdvisor
           entry={advice?.entry ?? null}
           selectedSections={sections}
+          generationOrder={generationOrder}
+          onApplyReplacement={(param, value) => {
+            // applyReplacement [7365] (беседа 3.2): смена параметра формы;
+            // пересчёт advice/warnings/estimate — через deps эффектов
+            if (param === "method") setMethod(value);
+            else if (param === "level") setSynthLevel(value);
+            else if (param === "order") setGenerationOrder(value);
+          }}
         />
       </div>
 
@@ -526,8 +695,9 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
               </span>
             </span>
           </label>
-          {/* fullBudgetPreview (renderFullBudgetPreview [10456]) */}
-          <FullBudgetPreview depth={depth} />
+          {/* fullBudgetPreview (renderFullBudgetPreview [10456]) +
+              estimate-diff (беседа 3.2) */}
+          <FullBudgetPreview depth={depth} estimateParams={estimateParams} />
         </div>
       )}
 
@@ -542,11 +712,15 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <button
             type="button"
-            onClick={handleSubmit}
-            disabled={busy}
+            onClick={() => void handleSubmit()}
+            disabled={busy || submitChecking}
             className="rounded border border-gold bg-gold px-6 py-2.5 text-sm font-semibold text-white hover:bg-gold-light disabled:opacity-50"
           >
-            {busy ? "Запуск…" : "Синтезировать Концепцию"}
+            {busy
+              ? "Запуск…"
+              : submitChecking
+                ? "Проверка генеалогии…"
+                : "Синтезировать Концепцию"}
           </button>
           <CostEstimate params={estimateParams} />
         </div>

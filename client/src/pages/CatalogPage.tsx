@@ -12,25 +12,53 @@
  * - Пагинация: limit 20 (default сервера), кнопки ← / → по total.
  *
  * CatalogFilters (метод/уровень/философы) — C5, Фаза 2.
+ *
+ * Беседа 3.2 (п. 5 + п. 3):
+ *  - фильтр «Потомки концепции X» — параметр URL ?descendantsOf=<id>
+ *    (вход — ссылка из секции генеалогии SynthesisPage): потомки берутся
+ *    ОТДЕЛЬНЫМ запросом GET /lineage/descendants, каталог отображает
+ *    ПЕРЕСЕЧЕНИЕ текущего списка с множеством потомков (решение аудита
+ *    2026-07-30: параметра у GET /syntheses нет и не нужно). Чужие
+ *    приватные поддеревья уже отсечены сервером (pruneInvisible);
+ *  - бейдж «мета-синтез» в карточке — SynthesisPreview.hasConceptParents
+ *    (аддитивное поле транспорта, беседа 3.2);
+ *  - блок «Поиск по генеалогии» (LineageSearch) — сворачиваемый, под
+ *    строкой поиска.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
+import type { LineageNode } from "@philosynth/shared/types/lineage";
 import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
 
 import { ApiError } from "../api/client";
+import { getDescendants } from "../api/lineage";
 import {
   listPublicSyntheses,
   listSyntheses,
   updateSynthesis,
 } from "../api/syntheses";
 import { SynthesisList } from "../components/catalog/SynthesisList";
+import { LineageSearch } from "../components/lineage/LineageSearch";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
 
 const PAGE_LIMIT = 20;
 const SEARCH_DEBOUNCE_MS = 400;
 
 type CatalogTab = "mine" | "public";
+
+/** Собрать id всех узлов-концепций из леса потомков (беседа 3.2) */
+function collectDescendantIds(nodes: readonly LineageNode[]): Set<string> {
+  const ids = new Set<string>();
+  const walk = (list: readonly LineageNode[]) => {
+    for (const n of list) {
+      if (n.type === "synthesis" && n.synthesisId) ids.add(n.synthesisId);
+      walk(n.children);
+    }
+  };
+  walk(nodes);
+  return ids;
+}
 
 export function CatalogPage() {
   const [tab, setTab] = useState<CatalogTab>("mine");
@@ -43,6 +71,31 @@ export function CatalogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  // Беседа 3.2: фильтр «Потомки концепции X» (?descendantsOf=<id>)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const descendantsOf = searchParams.get("descendantsOf");
+  const [descendantIds, setDescendantIds] = useState<Set<string> | null>(null);
+  const [descendantsError, setDescendantsError] = useState(false);
+  useEffect(() => {
+    setDescendantIds(null);
+    setDescendantsError(false);
+    if (!descendantsOf) return;
+    let cancelled = false;
+    getDescendants(descendantsOf)
+      .then((children) => {
+        if (!cancelled) setDescendantIds(collectDescendantIds(children));
+      })
+      .catch(() => {
+        if (!cancelled) setDescendantsError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [descendantsOf]);
+
+  // Беседа 3.2: сворачиваемый блок «Поиск по генеалогии»
+  const [lineageSearchOpen, setLineageSearchOpen] = useState(false);
 
   // Дебаунс поиска: ввод → 400 мс тишины → серверный ?search=
   useEffect(() => {
@@ -110,6 +163,14 @@ export function CatalogPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
 
+  // Беседа 3.2: пересечение текущего списка с множеством потомков
+  // (клиентское — «каталог лишь отображает пересечение», аудит 2026-07-30)
+  const visibleItems = useMemo(() => {
+    if (!descendantsOf || descendantIds === null || descendantsError)
+      return items;
+    return items.filter((s) => descendantIds.has(s.id));
+  }, [items, descendantsOf, descendantIds, descendantsError]);
+
   const tabBtn = (key: CatalogTab, label: string) => (
     <button
       type="button"
@@ -149,14 +210,65 @@ export function CatalogPage() {
           {tabBtn("mine", "Мои")}
           {tabBtn("public", "Публичные")}
         </div>
-        <input
-          type="search"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Поиск по названию…"
-          className="w-64 rounded border border-rule bg-paper px-3 py-2 text-sm outline-none focus:border-blue-corp"
-        />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="action-btn"
+            onClick={() => setLineageSearchOpen((v) => !v)}
+            title="Поиск концепций по философам-предкам"
+          >
+            {lineageSearchOpen ? "▾" : "▸"} Генеалогия
+          </button>
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Поиск по названию…"
+            className="w-64 rounded border border-rule bg-paper px-3 py-2 text-sm outline-none focus:border-blue-corp"
+          />
+        </div>
       </div>
+
+      {/* Беседа 3.2 (п. 3): поиск по философам-предкам */}
+      {lineageSearchOpen && (
+        <div className="mt-3">
+          <LineageSearch />
+        </div>
+      )}
+
+      {/* Беседа 3.2 (п. 5): баннер фильтра потомков */}
+      {descendantsOf && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded border border-gold bg-gold/5 px-3 py-2">
+          <span className="font-mono text-[11px] text-ink-mid">
+            {descendantsError
+              ? "⚠ Не удалось загрузить потомков — фильтр не применён."
+              : descendantIds === null
+                ? "Загрузка потомков…"
+                : descendantIds.size === 0
+                  ? "У этой концепции нет потомков (видимых вам)."
+                  : "Показаны только потомки концепции (" +
+                    descendantIds.size +
+                    ") — пересечение с текущей вкладкой."}{" "}
+            <Link
+              to={`/synthesis/${descendantsOf}`}
+              className="text-gold hover:no-underline"
+            >
+              ◈ к концепции
+            </Link>
+          </span>
+          <button
+            type="button"
+            className="action-btn"
+            style={{ padding: "2px 10px" }}
+            onClick={() => {
+              searchParams.delete("descendantsOf");
+              setSearchParams(searchParams, { replace: true });
+            }}
+          >
+            ✕ Сбросить фильтр
+          </button>
+        </div>
+      )}
 
       <div className="mt-4">
         {loading ? (
@@ -167,13 +279,15 @@ export function CatalogPage() {
           </div>
         ) : (
           <SynthesisList
-            items={items}
+            items={visibleItems}
             emptyText={
-              search
-                ? "Ничего не найдено по запросу."
-                : tab === "mine"
-                  ? "У вас пока нет синтезов — начните с «Новый синтез»."
-                  : "Публичных синтезов пока нет."
+              descendantsOf && descendantIds !== null && !descendantsError
+                ? "На этой вкладке потомков выбранной концепции нет."
+                : search
+                  ? "Ничего не найдено по запросу."
+                  : tab === "mine"
+                    ? "У вас пока нет синтезов — начните с «Новый синтез»."
+                    : "Публичных синтезов пока нет."
             }
             onTogglePublic={tab === "mine" ? handleTogglePublic : undefined}
             togglingId={togglingId}

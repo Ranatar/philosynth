@@ -36,9 +36,17 @@ export interface CreateSynthesisInput {
   participants?: ParticipantInput[];
 }
 
+/** Неблокирующее генеалогическое предупреждение (POST /syntheses,
+ *  аддитивное поле из беседы 3.1 — M3 §1.6; рисует клиент 3.2) */
+export interface GenealogyWarningDto {
+  level: "info" | "warn";
+  text: string;
+}
+
 export interface CreateSynthesisResult {
   id: string;
   status: "generating";
+  warnings?: GenealogyWarningDto[];
 }
 
 export function createSynthesis(
@@ -81,6 +89,22 @@ export interface SectionAdviceDto {
   substitutions: SectionAdviceItem[];
 }
 
+/** Кнопка замены параметра (COMPAT_MATRIX_COMPACT.replacements;
+ *  applyReplacement [7365] — беседа 3.2) */
+export interface CompatReplacementDto {
+  param: "method" | "level" | string;
+  value: string;
+  label: string;
+  rating: string;
+}
+
+/** Рекомендация порядка генерации (entry.orderAdvice; беседа 3.2) */
+export interface CompatOrderAdviceDto {
+  recommended: "architectural" | "genetic";
+  strength: string;
+  text: string;
+}
+
 export interface CompatEntryDto {
   rating: string;
   severity: string;
@@ -91,6 +115,13 @@ export interface CompatEntryDto {
   /** Иконка/заголовок severity — посчитаны сервером */
   icon: string;
   title: string;
+  /** Кнопки замен (беседа 3.2: сервер /advice спредит entry — поля
+   *  текли с 1.5, DTO их просто не типизировал) */
+  replacements?: {
+    keepLevel?: CompatReplacementDto[];
+    keepMethod?: CompatReplacementDto[];
+  } | null;
+  orderAdvice?: CompatOrderAdviceDto;
 }
 
 export interface SynthesisAdviceInput {

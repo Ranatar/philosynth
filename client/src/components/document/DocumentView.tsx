@@ -25,6 +25,9 @@ export interface DocumentViewProps {
   sections: readonly SectionFull[];
   /** Беседа 2.4: кнопка «◈ Лог» в футере */
   onOpenLog?: (() => void) | undefined;
+  /** Беседа 3.2: слот «под шапкой документа» — секция генеалогии
+   *  (аналог docHeaderExtras исходника; рендерит SynthesisPage) */
+  afterHeader?: React.ReactNode;
 }
 
 export function DocumentView({
@@ -32,6 +35,7 @@ export function DocumentView({
   summaries,
   sections,
   onOpenLog,
+  afterHeader,
 }: DocumentViewProps) {
   const byKey = new Map(
     sections.filter((s) => s.key !== "capsule").map((s) => [s.key, s]),
@@ -49,6 +53,7 @@ export function DocumentView({
   return (
     <div>
       <DocumentHeader synthesis={synthesis} />
+      {afterHeader}
       <div>
         <TableOfContents
           sectionOrder={synthesis.sectionOrder}

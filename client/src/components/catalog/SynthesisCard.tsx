@@ -55,8 +55,17 @@ export function SynthesisCard({
         <h3 className="font-serif text-lg text-blue-corp">
           {synthesis.title}
         </h3>
-        <span className="meta-label shrink-0">
-          {STATUS_LABELS[synthesis.status] ?? synthesis.status}
+        <span className="flex shrink-0 items-center gap-1.5">
+          {/* Беседа 3.2 (п. 5): бейдж мета-синтеза (родители-концепции
+              в генеалогии — SynthesisPreview.hasConceptParents) */}
+          {synthesis.hasConceptParents && (
+            <span className="rounded border border-gold px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-gold">
+              ◈ мета-синтез
+            </span>
+          )}
+          <span className="meta-label">
+            {STATUS_LABELS[synthesis.status] ?? synthesis.status}
+          </span>
         </span>
       </div>
 

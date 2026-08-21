@@ -3446,3 +3446,150 @@ restoreCapsulesFromHTML — клиентские, 3.2 (§12 без измене�
 - ответ POST /syntheses с warnings — рисовать подтверждение как
   confirm исходника [22052].
 
+# Беседа 3.2 — Concept Participants + Genealogy Tree (клиент) [ЗАКРЫТА]
+
+Закрыта 2026-08-21. Браузерный тест tests/test-32-requests2-5.mjs
+52 ✓ ×2 (харнесс-образец — test-23); integration-check += 4w (и правка
+4n: гейт сужен); audit чист; typecheck (shared/server/client/checks) —
+0; vite build чист. Доки пропатчены scripts/patch-docs-conv32.py
+(ревизионная заметка в шапке 07 — полный список рассогласований).
+
+## Что создано
+
+- `client/utils/genealogy.ts` — порты 1:1: reconstructGenealogy
+  [22181] и restoreCapsulesFromHTML [11745] (долги §12 закрыты; капсулы
+  родителей — из `.gen-card` сохранённого дерева файла, мутирует узел
+  как исходник), isPlaceholderConceptName, resolveConceptName (FIX
+  `\w`→`[а-яё]` в регекспе префиксов — латентный баг исходника, та же
+  кириллическая грабля, что чинилась 1.4), normalizeGenealogyNames,
+  stripCapsulesFromGenealogy (лягут в экспорт 4.2),
+  collectPhilosopherAncestors (КЛИЕНТСКАЯ версия — обход
+  genealogy-объекта; серверная 3.1 ходит по CTE), checkGenealogyOverlaps
+  (тексты ≡ серверным [22475/22492] дословно — дрейф-контроль
+  integration-check 4w), lineageNodeToGenealogy (дерево GET ancestors →
+  форма исходника; узлы БЕЗ method/seed/capsule, с synthesisId).
+- `client/api/lineage.ts` — getAncestors/getDescendants/
+  searchByPhilosophers (обёртки §2.8; depth зажимает сервер).
+- `client/components/lineage/GenealogyTree.tsx` — React-порт
+  renderGenealogyTree [22343]: карточки/философы, зерно корня усечённое
+  / родителя в details, капсула в details, .gen-vertical при > 4;
+  АДАПТАЦИИ: без мета-строки для узлов из API, узлы с synthesisId —
+  Link на /synthesis/:id. CSS .gen-* в globals.css дословно (три @media
+  целиком С ОБЁРТКАМИ — грабля сборщика; закомментированный квирк
+  `.gen-tree > ul::before` сохранён).
+- `client/components/lineage/LineageSearch.tsx` — чипы + datalist по
+  106 философам → /lineage/search → карточки SynthesisCard (кнопка
+  «Найти», не живой поиск — CTE тяжелее ILIKE).
+
+## Интеграционные правки
+
+- concept-file.ts: participant.genealogy ЗАПОЛНЯЕТСЯ (долг
+  TODO(3.1/3.2) закрыт); ConceptParticipant/PoolConceptEntry +=
+  synthesisId; фабрика catalogPreviewToPoolEntry (filename
+  `catalog:<id>` — ключ дедупликации addToPool; isSynthParticipant
+  сразу true; контентные поля пусты — контекст грузит СЕРВЕР).
+- ConceptPool/PoolCard: пикер «+ Из каталога» (listSyntheses
+  status=ready + listPublicSyntheses, дедуп по id); у каталожных
+  записей вместо ◉ — ссылка «↗ Открыть».
+- SynthesisForm: гейт 1.5b СУЖЕН — блокируются только ФАЙЛОВЫЕ
+  концепции (до серверного импорта 4.3); каталожные →
+  ParticipantInput {type:'synthesis'} в POST И /estimate
+  (conceptParticipants в deps estimateParams); предполётный confirm
+  пересечений («Генеалогические пересечения участников:», кнопка
+  «Проверка генеалогии…»; каталожные — через getAncestors +
+  lineageNodeToGenealogy, файловые — по participant.genealogy);
+  estimate-diff в FullBudgetPreview (долг §12 закрыт): /estimate
+  ДВАЖДЫ (дебаунс 600 мс), строка «Оценка с родителями: … · без: … ·
+  разница: …».
+- CompatAdvisor: кнопки замен («СОХРАНИТЬ УРОВЕНЬ → ЗАМЕНИТЬ МЕТОД» /
+  наоборот, label+rating), блок orderAdvice с кнопкой переключения,
+  автораскрытие при conflict/hard-conflict; onApplyReplacement
+  ('method'|'level'|'order') — React-аналог цепочки applyReplacement →
+  updateCompatAdvisor → updateSectionWarnings (пересчёт через deps);
+  CompatEntryDto += replacements/orderAdvice (сервер спредил entry
+  с 1.5 — DTO не типизировал). Долг §12 закрыт.
+- CreateSynthesisPage: жёлтый бокс warnings из ответа POST
+  (неблокирующе — синтез уже создан); ПОПУТНАЯ ПОЧИНКА дефекта 1.6b
+  (нашёл браузерный тест): navigate() звался ВНУТРИ апдейтера
+  setSynthesisId (рендер-фаза React, «Cannot update BrowserRouter…») —
+  id перенесён в synthesisIdRef.
+- DocumentView: слот afterHeader (аналог docHeaderExtras);
+  SynthesisPage: секция details «Генеалогическое древо» (open, тёмная
+  схема) ТОЛЬКО при parentSyntheses.length > 0 (паритет
+  updateGenealogyInHeader), фолбэк-ссылки parentSyntheses при сбое
+  дерева, ссылка «◈ Потомки этой концепции в каталоге».
+- CatalogPage: `?descendantsOf=<id>` → getDescendants → клиентское
+  ПЕРЕСЕЧЕНИЕ visibleItems (аудит 2026-07-30), баннер со сбросом;
+  сворачиваемый блок «Генеалогия» (LineageSearch); SynthesisCard:
+  бейдж «◈ мета-синтез» по hasConceptParents.
+- АДДИТИВНАЯ СЕРВЕРНАЯ ПРАВКА (дыра транспорта п.5): SynthesisPreview
+  += hasConceptParents; routes/syntheses: loadConceptParentFlags(ids)
+  → Set + третий параметр toPreview (default false); оба списка
+  каталога и /lineage/search.
+
+## Знания/грабли, добытые в 3.2
+
+- text-transform: uppercase МЕНЯЕТ innerText в Chrome — сверки текстов
+  бейджей/кнопок в puppeteer только регистронезависимые.
+- Гонка баннера и списка: запрос потомков может опередить загрузку
+  каталога — перед $$eval ссылок ждать waitForSelector конкретной
+  карточки, не только текста баннера.
+- navigate() внутри функционального апдейтера setState — setState-in-
+  render (апдейтеры исполняются в рендер-фазе): побочные эффекты из
+  апдейтеров не звать, актуальное значение для таймеров держать в ref.
+- PG/Redis в песочнице не переживают пауз между bash-вызовами — стек,
+  сиды и тест поднимать ОДНИМ вызовом; при повторном прогоне БД на
+  диске жива: сиды не пересеивать, мусор прошлых прогонов новому
+  пользователю не виден (списки фильтруются владельцем/публичностью).
+- Окружение браузерных тестов: apt postgresql-16 + redis-server
+  (битый nodesource.list удалить — 403), pg_ctlcluster 16 main start,
+  роль philosynth SUPERUSER + CREATE EXTENSION pg_trgm, npm run
+  db:migrate, сиды prompts(253)/configs(27)/taxonomy; puppeteer-core +
+  postgres через npm i --no-save; Chrome /opt/google/chrome/chrome.
+- Пригодность мета-синтеза в тестах: прямые вставки (sum/glossary/
+  theses/critique + graph + capsule_html) — образец scripts/test-31;
+  сгенерированный через форму мета-синтез пригоден сам (эффект
+  hasSynthConcepts довключает SYNTH_READY_SECTIONS, capsule пишется в
+  capsule_html) — мета-синтез 2-го уровня строится без ручной доводки.
+- typecheck:scripts: 5 ПРЕДСУЩЕСТВУЮЩИХ ошибок (scripts/smoke-31.ts ×3,
+  scripts/test-31-requests2-4.ts ×2; 3.1 гоняла их через tsx) —
+  проверено на чистом HEAD; в 3.2 новых нет.
+
+## Ревью по карте 04
+
+Advisor v2 (§ compat): applyReplacement/updateCompatAdvisor/
+toggleCompatPanel — портированы (патч). §2.6: клиентские копии
+checkGenealogyOverlaps/collectPhilosopherAncestors, санация имён с FIX
+[а-яё], новые строки reconstructGenealogy/restoreCapsulesFromHTML/
+stripCapsulesFromGenealogy; renderGenealogyTree — фактический адрес
+lineage/GenealogyTree.tsx. check-map-04: 147 идентификаторов,
+расхождений 0.
+
+## Открытые TODO после 3.2
+
+- Файловые концепции как участники мета-синтеза — после серверного
+  импорта файлов (4.3); гейт формы снимать по факту.
+- Серверная копия санации имён (normalizeGenealogyNames и родня) —
+  import-service, беседа 4.3.
+- stripCapsulesFromGenealogy/normalizeGenealogyNames лежат в
+  client/utils/genealogy.ts БЕЗ потребителя — подключить в экспорт (4.2).
+- Ошибки typecheck:scripts из 3.1 (см. грабли) — чинить при следующем
+  касании этих скриптов.
+
+## Помодульно: что прикладывать в следующие беседы
+
+- 4.1 (Mode Service): SynthesisPage.tsx (слот afterHeader занят
+  генеалогией — режимные вкладки размещать не конфликтуя),
+  useStreamingGeneration, generation-service (разъём setModeRegenerator
+  из 2.2).
+- 4.2 (Export): client/utils/genealogy.ts
+  (stripCapsulesFromGenealogy/normalizeGenealogyNames — санация перед
+  сохранением), GenealogyTree.tsx + CSS .gen-* (дерево в экспортном
+  HTML), embeddedState-совместимость concept-file.ts.
+- 4.3 (Import): client/utils/genealogy.ts (resolveConceptName с FIX —
+  серверная копия обязана нести тот же фикс), concept-file.ts
+  (catalogPreviewToPoolEntry, участок гейта файловых в SynthesisForm —
+  снимать), validateConceptForMetaSynthesis (3.1).
+- Всем клиентским: tests/test-32-requests2-5.mjs — харнесс с
+  подготовкой пригодных концепций прямыми вставками и работой с
+  window.confirm (dialogPlan).

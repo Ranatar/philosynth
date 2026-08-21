@@ -1746,3 +1746,383 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ══════════════════════════════════════
+ * GENEALOGY TREE — CSS org-chart (беседа 3.2)
+ * Порт philosynth.html [2937–3302] по фрагменту 3.2-genealogy-ui.js:
+ * базовые правила, три @media (light / print / ≤500px) — целиком,
+ * с обёртками (грабля сборщика: правила из @media без обёртки стали
+ * бы безусловными), затем .gen-tree-light (дерево в теле документа).
+ * Закомментированное правило .gen-tree > ul::before сохранено как
+ * в исходнике (квирки переносятся дословно).
+ * ══════════════════════════════════════ */
+
+.gen-tree {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 8px 8px;
+  overflow-x: auto;
+}
+
+/* ── Уровень: горизонтальный ряд детей ── */
+.gen-tree ul {
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+}
+
+.gen-tree ul::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.gen-tree li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 20px 6px 0;
+}
+
+.gen-tree li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.gen-tree li::before { right: 50%; }
+.gen-tree li::after  { left: 50%; }
+
+.gen-tree li:first-child::before { display: none; }
+.gen-tree li:last-child::after { display: none; }
+.gen-tree li:only-child::after { display: none; }
+
+.gen-tree li > .gen-phil {
+  position: relative;
+}
+
+.gen-tree li > .gen-phil::before {
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Корневой узел: без входящей линии сверху */
+.gen-tree > .gen-card::before { display: none; }
+/* Первый ul: без линии от псевдородителя 
+.gen-tree > ul::before { display: none; }*/
+
+/* ── Карточка концепции ── */
+.gen-card {
+  background: rgba(107, 0, 170, 0.12);
+  border: 1px solid rgba(107, 0, 170, 0.35);
+  padding: 10px 14px;
+  min-width: 160px;
+  max-width: 280px;
+  text-align: center;
+  position: relative;
+}
+
+.gen-card-name {
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--violet);
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.gen-card-meta {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 2px;
+}
+
+.gen-card-seed {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.4;
+  margin-top: 4px;
+  max-height: 2.8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gen-card-seed-details {
+  margin-top: 4px;
+  text-align: left;
+}
+
+.gen-card-seed-details summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+}
+
+.gen-card-seed-details summary::-webkit-details-marker { display: none; }
+
+.gen-card-seed-details summary::before {
+  content: "▸";
+  font-size: 8px;
+  transition: transform 0.2s;
+}
+
+.gen-card-seed-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.gen-card-seed-details-body {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-style: italic;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.10);
+  border-left: 2px solid rgba(255, 255, 255, 0.25);
+  max-height: 150px;
+  overflow-y: auto;
+  text-align: left;
+  white-space: pre-line;
+}
+
+.gen-card-capsule {
+  margin-top: 6px;
+  text-align: left;
+}
+
+.gen-card-capsule summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--gold);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+}
+
+.gen-card-capsule summary::-webkit-details-marker { display: none; }
+
+.gen-card-capsule summary::before {
+  content: "▸";
+  font-size: 8px;
+  transition: transform 0.2s;
+}
+
+.gen-card-capsule[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.gen-card-capsule-body {
+  font-family: var(--sans);
+  font-size: 10px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-left: 2px solid var(--gold);
+  max-height: 200px;
+  overflow-y: auto;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+/* ── Философ ── */
+.gen-phil {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 14px;
+  min-width: 100px;
+  text-align: center;
+  position: relative;
+}
+
+.gen-phil-name {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ── Корневая карточка — золотой акцент ── */
+.gen-tree > .gen-card {
+  border-color: var(--gold);
+  background: rgba(184, 134, 11, 0.12);
+}
+
+.gen-tree > .gen-card .gen-card-name {
+  color: var(--gold-light);
+  font-size: 14px;
+}
+
+@media (prefers-color-scheme: light) {
+  .gen-tree ul::before,
+  .gen-tree li::before,
+  .gen-tree li::after,
+  .gen-tree li > .gen-card::before,
+  .gen-tree li > .gen-phil::before {
+    background: var(--rule);
+  }
+  .gen-card {
+    background: var(--violet-light);
+    border-color: var(--violet);
+  }
+  .gen-card-meta { color: var(--ink-dim); }
+  .gen-card-seed { color: var(--ink-dim); }
+  .gen-card-seed-details summary { color: var(--ink-dim); }
+  .gen-card-seed-details-body {
+    color: var(--ink-dim);
+    background: rgba(0,0,0,0.03);
+  }
+  .gen-card-capsule-body {
+    color: var(--ink-mid);
+    background: rgba(0,0,0,0.03);
+  }
+  .gen-phil {
+    background: var(--off);
+    border-color: var(--rule);
+  }
+  .gen-phil-name { color: var(--ink); }
+  .gen-tree > .gen-card {
+    border-color: var(--gold);
+    background: #fffbee;
+  }
+}
+
+/* ── Печать ── */
+@media print {
+  .gen-tree { overflow: visible; }
+  .gen-card-capsule { display: none; } /* капсулы скрыть при печати */
+  .gen-card-seed-details { display: none; } /* зёрна скрыть при печати */
+  .gen-card, .gen-phil { break-inside: avoid; }
+}
+
+/* ── Мобильные: вертикальный стек при нехватке ширины ── */
+@media (max-width: 500px) {
+  .gen-tree ul {
+    flex-direction: column;
+    align-items: center;
+    padding-top: 12px;
+  }
+  .gen-tree li {
+    padding: 12px 0 0;
+  }
+  .gen-tree li::before,
+  .gen-tree li::after {
+    display: none;
+  }
+  /* Уровень 3+ — компактные карточки */
+  .gen-tree li li li .gen-card {
+    padding: 6px 10px;
+    min-width: 120px;
+    max-width: 200px;
+  }
+  .gen-tree li li li .gen-card-name { font-size: 11px; }
+  .gen-tree li li li .gen-card-meta { font-size: 7px; }
+  .gen-tree li li li .gen-card-seed { display: none; }
+  .gen-tree li li li .gen-card-seed-details { display: none; }
+  .gen-tree li li li .gen-card-capsule summary { font-size: 7px; }
+
+  .gen-tree ul {
+    flex-wrap: wrap;
+    gap: 4px 0;
+  }
+  .gen-tree ul::before {
+    height: 12px;
+  }
+  .gen-tree ul.gen-vertical {
+    flex-direction: column;
+    align-items: center;
+    padding-top: 12px;
+  }
+  .gen-tree ul.gen-vertical > li {
+    padding: 8px 0 0;
+  }
+  .gen-tree ul.gen-vertical > li::before,
+  .gen-tree ul.gen-vertical > li::after {
+    /* Вертикальная линия вместо горизонтальной */
+    width: 1px;
+    height: 8px;
+    top: 0;
+    left: 50%;
+    right: auto;
+  }
+  .gen-tree ul.gen-vertical > li::after { display: none; }
+  .gen-tree ul.gen-vertical > li:first-child::before { display: block; }
+    .gen-tree li > .gen-card::before,
+    .gen-tree li > .gen-phil::before {
+      height: 12px;
+      top: -12px;
+    }
+  }
+
+/* Светлый контекст: дерево внутри body (не в шапке) */
+.gen-tree-light .gen-card {
+  background: var(--violet-light);
+  border-color: var(--violet);
+}
+.gen-tree-light .gen-card-name { color: var(--violet); }
+.gen-tree-light .gen-card-meta { color: var(--ink-dim); }
+.gen-tree-light .gen-card-seed { color: var(--ink-dim); }
+.gen-tree-light .gen-card-seed-details summary { color: var(--ink-dim); }
+.gen-tree-light .gen-card-seed-details-body {
+  color: var(--ink-dim);
+  background: var(--off);
+}
+.gen-tree-light .gen-card-capsule-body {
+  color: var(--ink-mid);
+  background: var(--off);
+}
+.gen-tree-light .gen-phil {
+  background: var(--off);
+  border-color: var(--rule);
+}
+.gen-tree-light .gen-phil-name { color: var(--ink); }
+.gen-tree-light ul::before,
+.gen-tree-light li::before,
+.gen-tree-light li::after,
+.gen-tree-light li > .gen-card::before,
+.gen-tree-light li > .gen-phil::before {
+  background: var(--rule);
+}
+.gen-tree-light > .gen-card {
+  background: #fffbee;
+  border-color: var(--gold);
+}
+.gen-tree-light > .gen-card .gen-card-name { color: var(--gold); }

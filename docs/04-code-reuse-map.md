@@ -69,7 +69,7 @@
 |---|---|
 | `COMPAT_MATRIX_COMPACT`, `COMPAT_SEC_LABELS` (COMPAT_KEYS удалён) | `server/config/compat-matrix.ts` (→ БД) |
 | `computeSectionRating()` | `server/services/compat-advisor.ts` |
-| Advisor v2 (заменил computeMethodRating/computeOverallCompat/getCompatAdvice — их больше нет): `getCompatEntry()`, `getCompatEntryByKey()` (entry-модель `level:method` с severity), `iconForSeverity()`, `titleForSeverity()`, `chipClassForRating()` | `server/services/compat-advisor.ts` + `client/components/synthesis/CompatAdvisor.tsx` и `SectionWarnings.tsx` (боксы ⚠/💡/⇄; данные — POST /syntheses/advice, беседа 1.5); `applyReplacement()` и `updateCompatAdvisor()` — НЕ портированы, долг беседы 3.2 (§12 протокола 07): кнопки замен и перерисовка советника, replacements уже в entry |
+| Advisor v2 (заменил computeMethodRating/computeOverallCompat/getCompatAdvice — их больше нет): `getCompatEntry()`, `getCompatEntryByKey()` (entry-модель `level:method` с severity), `iconForSeverity()`, `titleForSeverity()`, `chipClassForRating()` | `server/services/compat-advisor.ts` + `client/components/synthesis/CompatAdvisor.tsx` и `SectionWarnings.tsx` (боксы ⚠/💡/⇄; данные — POST /syntheses/advice, беседа 1.5); `applyReplacement()` [7365] / `updateCompatAdvisor()` [7499] / `toggleCompatPanel()` — ПОРТИРОВАНЫ 3.2 в `client/components/synthesis/CompatAdvisor.tsx`: кнопки замен («СОХРАНИТЬ УРОВЕНЬ → ЗАМЕНИТЬ МЕТОД» / наоборот), блок orderAdvice, автораскрытие при conflict; onApplyReplacement — React-аналог цепочки перерисовки (пересчёт через deps эффектов формы) |
 | Section Dependency Warnings (живые предупреждения/рекомендации/подстановки в форме): `computeSectionWarnings()`, `updateSectionWarnings()` → на сервере назван `computeSectionAdvice()` (ФАКТ, беседа 1.1: возвращает структуры `{icon,text,severity}` вместо правки DOM — под прежним именем в коде не искать) | там же + `client/components/synthesis/SectionWarnings.tsx` |
 
 ### 1.3. Оценка стоимости
@@ -144,7 +144,7 @@
 | `resolveParentDeps()`, `resolveParentDepsForSubsection()`, `parentFieldsUsedFor()`, `buildParentSpecForLog()` | `server/services/parent-context.ts` |
 | `applyBudgetPressure()` (пол 40%), `parentOverheadForSection()`, `computeConceptOverhead()` | `server/services/context-builder.ts` |
 | `conceptContextBlockFull()`, `conceptContextBlockSelective()` | `server/services/meta-synthesis-service.ts` |
-| `checkGenealogyOverlaps()`, `collectPhilosopherAncestors()`, `isAncestor()` | `server/services/meta-synthesis-service.ts` (3.1; АДАПТАЦИЯ: предки — рекурсивный CTE по `synthesis_lineage`, в исходнике — обход объекта genealogy; тексты предупреждений 1:1) |
+| `checkGenealogyOverlaps()`, `collectPhilosopherAncestors()`, `isAncestor()` | `server/services/meta-synthesis-service.ts` (3.1; АДАПТАЦИЯ: предки — рекурсивный CTE по `synthesis_lineage`, в исходнике — обход объекта genealogy; тексты предупреждений 1:1) + КЛИЕНТСКАЯ копия первых двух — `client/utils/genealogy.ts` (3.2; обход объекта как в исходнике — для файловых концепций пула; тождественность текстов клиент↔сервер сторожит integration-check 4w) |
 
 ### 1.11. Зависимости режимов
 
@@ -227,8 +227,10 @@
 | `extractSections()` | Серверный DOM-парсер | там же |
 | `extractEmbeddedState()` | Без изменений | там же |
 | `buildDocStateFromImport()` | Вместо DOC_STATE → создание записей в БД | там же |
-| `importConceptAsParticipant()` | Чтение из БД вместо из DOM | `server/services/meta-synthesis-service.ts` (3.1); клиентский порт файлового сценария 1:1 — `client/utils/concept-file.ts` (1.5b, genealogy=null до 3.1/3.2) |
-| `normalizeGenealogyNames()`, `isPlaceholderConceptName()`, `resolveConceptName()` | Санация имён генеалогии («[безымянная концепция]») — без изменений | `server/services/import-service.ts` |
+| `importConceptAsParticipant()` | Чтение из БД вместо из DOM | `server/services/meta-synthesis-service.ts` (3.1); клиентский порт файлового сценария 1:1 — `client/utils/concept-file.ts` (1.5b; с 3.2 participant.genealogy ЗАПОЛНЯЕТСЯ — reconstructGenealogy + restoreCapsulesFromHTML из `client/utils/genealogy.ts`) |
+| `reconstructGenealogy()` [22181], `restoreCapsulesFromHTML()` [11745] | Реконструкция генеалогии участника из meta/embeddedState + восстановление капсул родителей из `.gen-card` сохранённого дерева файла | `client/utils/genealogy.ts` (3.2; долги §12 закрыты) |
+| `stripCapsulesFromGenealogy()` [22321] | Очистка капсул перед сохранением | `client/utils/genealogy.ts` (3.2; потребитель — экспорт 4.2) |
+| `normalizeGenealogyNames()`, `isPlaceholderConceptName()`, `resolveConceptName()` | Санация имён генеалогии («[безымянная концепция]») — без изменений | `client/utils/genealogy.ts` (3.2; resolveConceptName несёт FIX `\w`→`[а-яё]` — латентный баг регекспа префиксов исходника, та же грабля, что чинилась 1.4 в updateDocTitleFromName) + `server/services/import-service.ts` (серверная копия — беседа 4.3) |
 | `genCommon.conceptBlockSizes` | Размеры контекстных блоков концепций (v10, для реконструкции промптов) | `server/services/generation-service.ts` |
 | `buildPromptSkeleton()` | Скелет промпта пишется в genLog при генерации (реконструкция — fallback только для импортов) | `server/services/generation-service.ts` |
 
@@ -267,7 +269,7 @@
 | CSS документа [476–929, 3304–3319]: `.doc-header`, `#docTOC`, `.doc-section`, `.doc-content`, `.doc-table`, `.callout*`, `.risk*`, `.doc-footer` | `client/src/globals.css` (1.6b) — обязательны для рендера html_content через dangerouslySetInnerHTML |
 | graph-STATE [4389–4413]: `G`, `roleMode`, `legendFilter`, `clusterVisible`, `clearLegendFilter()` | `client/components/graph/graph-utils.ts` (1.7) — лежит ВНЕ основного фрагмента 1.7-graph-viz.js |
 | `syncFormFromImport()` | React state sync |
-| `renderGenealogyTree()` | `client/components/GenealogyTree.tsx` |
+| `renderGenealogyTree()` | `client/components/lineage/GenealogyTree.tsx` (3.2; визуальный референс → React; АДАПТАЦИИ: узлы из GET /lineage/ancestors не несут method/seed/capsule — мета-строка опускается, узлы с synthesisId — ссылки на /synthesis/:id; CSS `.gen-*` в globals.css дословно, включая @media ≤500px и .gen-tree-light) |
 | Mode modal UI | `client/components/ModeModal.tsx` |
 | DOMContentLoaded listeners, checkbox sync | React lifecycle |
 | `refreshCtxLogIfOpen()` | React state subscription |

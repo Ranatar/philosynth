@@ -401,7 +401,11 @@ philosynth-service/
 │   │   ├── vite-env.d.ts                   # Типы import.meta.env (появился в 1.5b)
 │   │   │
 │   │   └── utils/
-│   │       ├── concept-file.ts             # Парсинг концепт-файлов пула (1.5b, клиентские порты)
+│   │       ├── concept-file.ts             # Парсинг концепт-файлов пула (1.5b, клиентские порты;
+│   │       │                               # 3.2: += catalogPreviewToPoolEntry, genealogy заполняется)
+│   │       ├── genealogy.ts                # Порты генеалогии (3.2): reconstructGenealogy,
+│   │       │                               # restoreCapsulesFromHTML, checkGenealogyOverlaps,
+│   │       │                               # resolveConceptName (FIX [а-яё]), lineageNodeToGenealogy
 │   │       ├── graph-physics.ts            # tick(), warmup() (tick(), warmup())
 │   │       ├── graph-geometry.ts           # nodeGeometry3D, mkSprite (nodeGeometry3D(), mkSprite())
 │   │       └── format.ts                  # Форматирование чисел, дат

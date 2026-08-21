@@ -36,7 +36,7 @@ scripts/           эксплуатационные скрипты: extract-seed
                    -taxonomy, идемпотентные патч-скрипты доков
                    (patch-docs-*.py)
 docs/              7 проектных документов + fragments-for-conversations/
-tests/             ВСЕ тесты бесед (0.3b–2.3): vm-смоуки байтовой сверки
+tests/             ВСЕ тесты бесед (0.3b–3.2): vm-смоуки байтовой сверки
                    с исходником (smoke-*.mjs/.mts), API-тесты (mini-Hono),
                    браузерные (puppeteer + системный Chromium). Запуск из
                    корня репо: `node tests/<файл>` / `npx tsx tests/<файл>`.
@@ -83,8 +83,9 @@ npm run typecheck:scripts
 `check:integration` расширяется секциями по мере бесед — 1.5b добавила
 4n: модули пула (pool-store без snapshotCurrentState, concept-file,
 PoolCard/ConceptPool, SYNTH_READY_SECTIONS) и контракты (гейт
-мета-синтеза до 3.1/4.3, prepareForGeneration перед POST,
-CONTEXT_BUDGET_PREVIEW локализован); 1.6 — 2k/4o/5n: роуты чтения
+мета-синтеза СУЖЕН 3.2 до файловых концепций — остаток до 4.3,
+prepareForGeneration перед POST, CONTEXT_BUDGET_PREVIEW локализован,
+genealogy заполняется с 3.2); 1.6 — 2k/4o/5n: роуты чтения
 (makeDocNum [12110], /public ДО /:id, duplicate без lineage-связи и
 логов, viewOnly ДО запуска генерации, walker «TODO(1.6)=0», живой цикл
 список→Full→sections→categories→PATCH→duplicate→DELETE); 2.4 —
@@ -92,11 +93,18 @@ CONTEXT_BUDGET_PREVIEW локализован); 1.6 — 2k/4o/5n: роуты ч�
 формула [5571] с краями живьём, постоянная viewOnly-подписка
 SynthesisPage, «TODO(2.4)»-walker); 3.1 — 2p/4v/5r: мета-синтез
 (модули, провайдер вместо стаба, квирк Full-блока, живые CTE
-генеалогии и Selective-блок). Сейчас покрывает 0.1–0.6, 1.1–1.7,
-2.1–2.4 и 3.1 целиком; живые секции требуют поднятых PG и Redis
+генеалогии и Selective-блок); 3.2 — 4w: клиент генеалогии
+(utils/genealogy + api/lineage + GenealogyTree/LineageSearch,
+дрейф-контроль текстов пересечений клиент↔сервер, каталожные
+концепции в пуле и participants в POST/estimate, estimate-diff
+двумя вызовами, кнопки замен CompatAdvisor, анти-регресс
+setState-in-render, транспорт hasConceptParents, CSS дерева с
+мобильной медиа; живьём — браузерный tests/test-32-requests2-5.mjs
+52 ✓ ×2). Сейчас покрывает 0.1–0.6, 1.1–1.7,
+2.1–2.4 и 3.1–3.2 целиком; живые секции требуют поднятых PG и Redis
 и засеянных prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фазы 0–2 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3); Фаза 3 — беседа 3.1 закрыта
+## Статус: Фазы 0–3 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2)
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -332,16 +340,39 @@ hooks/useEditPlan.ts (свой WS, plan_updated — источник стату�
   промпта: обе капсулы в baseCtx). Доки пропатчены
   scripts/patch-docs-conv31.py.
 
-Не сделано (Фаза 2+): applyReplacement (3.2), клиентская половина
-мета-синтеза (3.2: снятие гейта ☑-концепций в SynthesisForm и
-отрисовка estimate-diff; сервер готов с 3.1), полный пул с деревом
-(3.2), режимы
+- **3.2 — Concept Participants + Genealogy Tree (клиент).**
+  utils/genealogy.ts (порты 1:1: reconstructGenealogy [22181] и
+  restoreCapsulesFromHTML [11745] — долги §12 закрыты;
+  checkGenealogyOverlaps ≡ серверным дословно, resolveConceptName с
+  FIX [а-яё], lineageNodeToGenealogy), api/lineage.ts,
+  components/lineage/ (GenealogyTree — React-порт renderGenealogyTree,
+  узлы с synthesisId кликабельны; LineageSearch — чипы + datalist).
+  Пул: пикер «+ Из каталога» (catalogPreviewToPoolEntry, дедуп
+  catalog:<id>), «↗ Открыть» у каталожных. Форма: гейт СУЖЕН до
+  файловых (каталожные → {type:'synthesis'} в POST и /estimate),
+  предполётный confirm пересечений, estimate-diff (долг §12 закрыт),
+  CompatAdvisor: кнопки замен + orderAdvice (долг applyReplacement
+  закрыт). SynthesisPage: секция «Генеалогическое древо»
+  (afterHeader, только мета-синтезы) + «Потомки в каталоге»;
+  CatalogPage: ?descendantsOf= пересечением + LineageSearch; бейдж
+  «◈ мета-синтез» (аддитивный SynthesisPreview.hasConceptParents).
+  Попутно починен дефект 1.6b (navigate в апдейтере setState —
+  нашёл браузерный тест). Тесты: tests/test-32-requests2-5.mjs
+  52 ✓ ×2 (полный поток: каталог → пул → confirm → генерация →
+  дерево; мета² 3 уровня; транзитивный поиск; мобильная вёрстка).
+  Доки пропатчены scripts/patch-docs-conv32.py.
+
+Не сделано (Фаза 4+): файловые концепции как участники мета-синтеза
+(4.3 — серверный импорт; гейт SynthesisForm снимать по факту), режимы
 (4.1 — карточки результатов в EditModal и каскад режимов подраздельной
 панели ждут routes/modes), экспорт/импорт (4.x — серверный
-parseConceptFile), billing, BYO-Key (6.1 — ввод ключа в auth-модалке).
+parseConceptFile; потребители stripCapsulesFromGenealogy/
+normalizeGenealogyNames — экспорт 4.2), billing, BYO-Key (6.1 — ввод
+ключа в auth-модалке).
 Фаза 1 закрыта целиком (1.1–1.7); Фаза 2 закрыта целиком: 2.1, 2.2,
-2.4 (велась перед 2.3 — §11) и 2.3. Следующая по графу 07 — 3.1
-(мета-синтез).
+2.4 (велась перед 2.3 — §11) и 2.3; Фаза 3 закрыта целиком: 3.1, 3.2.
+Следующая по графу 07 — 4.1
+(Mode Service).
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

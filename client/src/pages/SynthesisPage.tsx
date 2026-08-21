@@ -22,10 +22,12 @@
  *   с мёртвыми обработчиками не рисуем.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { getCategories } from "../api/elements";
+import { getAncestors } from "../api/lineage";
 import { DocumentView } from "../components/document/DocumentView";
+import { GenealogyTree } from "../components/lineage/GenealogyTree";
 import { EditModal } from "../components/edit/EditModal";
 import { ContextLogViewer } from "../components/logs/ContextLogViewer";
 import GraphModal from "../components/graph/GraphModal";
@@ -36,6 +38,10 @@ import { useStreamingGeneration } from "../hooks/useStreamingGeneration";
 import { useSynthesisStore } from "../stores/synthesis-store";
 
 import type { GraphData } from "@philosynth/shared/types/graph";
+import {
+  lineageNodeToGenealogy,
+  type GenealogyNode,
+} from "../utils/genealogy";
 
 export function SynthesisPage() {
   const { id } = useParams<{ id: string }>();
@@ -81,6 +87,35 @@ export function SynthesisPage() {
     if (id) void load(id);
     return () => clear();
   }, [id, load, clear]);
+
+  /* ── Беседа 3.2 (п. 4): секция «Генеалогия» под шапкой документа ──
+     Только для мета-синтезов (есть родители-концепции) — паритет
+     updateGenealogyInHeader [22415]: «не показываем, если все участники —
+     философы». Дерево — GET /lineage/ancestors (корень depth 0 — сам
+     синтез, children — родители); узлы с synthesisId кликабельны.
+     Сбой запроса секцию молча скрывает (генеалогия — дополнение, не
+     содержимое документа). Перезагрузка по synthesis.id, а не по
+     parentSyntheses (ссылка меняется при каждом load). */
+  const isMetaSynthesis = (synthesis?.parentSyntheses.length ?? 0) > 0;
+  const [genealogyTree, setGenealogyTree] = useState<GenealogyNode | null>(
+    null,
+  );
+  const synthesisIdLoaded = synthesis?.id ?? null;
+  useEffect(() => {
+    setGenealogyTree(null);
+    if (!synthesisIdLoaded || !isMetaSynthesis) return;
+    let cancelled = false;
+    getAncestors(synthesisIdLoaded)
+      .then((tree) => {
+        if (!cancelled) setGenealogyTree(lineageNodeToGenealogy(tree));
+      })
+      .catch(() => {
+        if (!cancelled) setGenealogyTree(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [synthesisIdLoaded, isMetaSynthesis]);
 
   const live = synthesis?.status === "generating" || synthesis?.status === "paused";
 
@@ -259,6 +294,44 @@ export function SynthesisPage() {
         summaries={summaries}
         sections={sections}
         onOpenLog={() => setLogOpen(true)}
+        afterHeader={
+          // Беседа 3.2 (п. 4): «Генеалогическое древо» — только для
+          // мета-синтезов; details открыт (updateGenealogyInHeader:
+          // details.open = true); дерево в шапке — тёмная схема
+          // (light: false, как в исходнике). Ссылки на родителей —
+          // parentSyntheses (SynthesisFull) + кликабельные узлы дерева.
+          isMetaSynthesis ? (
+            <details className="header-disclosure" open>
+              <summary>Генеалогическое древо</summary>
+              <div
+                className="disclosure-body"
+                style={{ padding: 16, overflowX: "auto" }}
+              >
+                {genealogyTree ? (
+                  <GenealogyTree node={genealogyTree} light={false} />
+                ) : (
+                  <div className="font-mono text-[11px] text-ink-dim">
+                    Родительские концепции:{" "}
+                    {synthesis.parentSyntheses.map((p, i) => (
+                      <span key={p.id}>
+                        {i > 0 && ", "}
+                        <Link to={`/synthesis/${p.id}`}>«{p.title}»</Link>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-2 font-mono text-[10px]">
+                  <Link
+                    to={`/catalog?descendantsOf=${synthesis.id}`}
+                    className="text-ink-dim hover:text-gold"
+                  >
+                    ◈ Потомки этой концепции в каталоге
+                  </Link>
+                </div>
+              </div>
+            </details>
+          ) : undefined
+        }
       />
 
       {/* Беседа 2.4: лог контекста. Live-обновление — refreshKey растёт по

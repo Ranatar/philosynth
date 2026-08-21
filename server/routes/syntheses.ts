@@ -234,10 +234,34 @@ export async function loadPhilosophersFor(
   return map;
 }
 
-/** Экспорт — для /lineage/search (беседа 3.1). */
+/** Синтезы из списка, у которых есть родители-концепции
+ *  (parent_type='synthesis') — признак «мета-синтез» для бейджа карточки
+ *  каталога (беседа 3.2, п. 5; аддитивная правка транспорта — дыра доков:
+ *  SynthesisPreview признака не нёс). Экспорт — для /lineage/search. */
+export async function loadConceptParentFlags(
+  ids: string[],
+): Promise<Set<string>> {
+  const flags = new Set<string>();
+  if (ids.length === 0) return flags;
+  const rows = await db
+    .select({ synthesisId: synthesisLineage.synthesisId })
+    .from(synthesisLineage)
+    .where(
+      and(
+        inArray(synthesisLineage.synthesisId, ids),
+        eq(synthesisLineage.parentType, "synthesis"),
+      ),
+    );
+  for (const r of rows) flags.add(r.synthesisId);
+  return flags;
+}
+
+/** Экспорт — для /lineage/search (беседа 3.1). Третий параметр — признак
+ *  родителей-концепций (беседа 3.2; loadConceptParentFlags). */
 export function toPreview(
   row: SynthesisRow,
   philosophers: string[],
+  hasConceptParents = false,
 ): SynthesisPreview {
   return {
     id: row.id,
@@ -248,6 +272,7 @@ export function toPreview(
     status: row.status,
     isPublic: row.isPublic,
     philosophers,
+    hasConceptParents,
     capsulePreview: capsulePreviewOf(row.capsuleHtml),
     totalCostUsd: Number.parseFloat(row.totalCostUsd ?? "0") || 0,
     createdAt: row.createdAt.toISOString(),
@@ -975,8 +1000,12 @@ synthesesRoutes.get("/", requireAuth, async (c) => {
     .where(where);
   const total = Number(totalRow?.value ?? 0);
 
-  const philMap = await loadPhilosophersFor(rows.map((r) => r.id));
-  const items = rows.map((r) => toPreview(r, philMap.get(r.id) ?? []));
+  const ids = rows.map((r) => r.id);
+  const philMap = await loadPhilosophersFor(ids);
+  const metaFlags = await loadConceptParentFlags(ids); // беседа 3.2
+  const items = rows.map((r) =>
+    toPreview(r, philMap.get(r.id) ?? [], metaFlags.has(r.id)),
+  );
   return c.json({ items, total });
 });
 
@@ -1021,8 +1050,12 @@ synthesesRoutes.get("/public", requireAuth, async (c) => {
     .where(where);
   const total = Number(totalRow?.value ?? 0);
 
-  const philMap = await loadPhilosophersFor(rows.map((r) => r.id));
-  const items = rows.map((r) => toPreview(r, philMap.get(r.id) ?? []));
+  const ids = rows.map((r) => r.id);
+  const philMap = await loadPhilosophersFor(ids);
+  const metaFlags = await loadConceptParentFlags(ids); // беседа 3.2
+  const items = rows.map((r) =>
+    toPreview(r, philMap.get(r.id) ?? [], metaFlags.has(r.id)),
+  );
   return c.json({ items, total });
 });
 

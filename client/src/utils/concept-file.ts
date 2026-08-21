@@ -20,10 +20,10 @@
  *  - fetchWithFallback + CORS_PROXIES [21227–21273]
  *
  * ОТСТУПЛЕНИЯ (задокументированы по месту):
- *  1. reconstructGenealogy [22181] и restoreCapsulesFromHTML [11745]
- *     НЕ портированы — participant.genealogy = null. Генеалогия участника
- *     нужна серверному мета-синтезу (беседа 3.1) и дереву (3.2); карточке
- *     пула — нет. TODO(3.1/3.2).
+ *  1. [ЗАКРЫТО беседой 3.2] reconstructGenealogy [22181] и
+ *     restoreCapsulesFromHTML [11745] портированы в utils/genealogy.ts;
+ *     importConceptAsParticipant теперь заполняет participant.genealogy
+ *     (реконструкция + восстановление капсул из .gen-card дерева файла).
  *  2. extractThesesSummary исходника при отсутствии секции возвращает
  *     undefined (нет финального return) — здесь нормализовано к null
  *     (все потребители используют `|| ""`, поведение неотличимо).
@@ -37,6 +37,12 @@ import {
   REVERSE_SL,
 } from "@philosynth/shared/constants/labels";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
+
+import {
+  reconstructGenealogy,
+  restoreCapsulesFromHTML,
+  type GenealogyNode,
+} from "./genealogy";
 
 /* ─────────────────────────── Типы ─────────────────────────── */
 
@@ -59,10 +65,16 @@ export interface ConceptParticipant {
   method: string;
   synthLevel: string;
   seed: string;
-  /** TODO(3.1/3.2): reconstructGenealogy не портирован — см. шапку */
-  genealogy: null;
+  /** Генеалогия участника (reconstructGenealogy + restoreCapsulesFromHTML,
+   *  беседа 3.2 — долг TODO(3.1/3.2) закрыт); null — реконструкция
+   *  невозможна (не должно случаться для валидного файла) */
+  genealogy: GenealogyNode | null;
   /** Переносится из записи пула в syncConceptParticipants [4885] */
   generationOrder?: string;
+  /** Только у концепций, добавленных ИЗ КАТАЛОГА (беседа 3.2): id синтеза
+   *  в БД — представим в ParticipantInput {type:'synthesis', synthesisId};
+   *  файловые концепции поля не имеют (сервер примет их после импорта 4.3) */
+  synthesisId?: string;
   // Мета для UI
   _filename: string;
   _nodeCount: number;
@@ -83,6 +95,12 @@ export interface PoolConceptEntry {
   generationOrder: string;
   /** «граф», «диалог», «глоссарий», «тезисы» — для мета-строки карточки */
   sources: string[];
+  /** Концепция ИЗ КАТАЛОГА (беседа 3.2): id синтеза в БД. Файловые записи
+   *  поля не имеют. Каталожная запись: rawHTML="" (◉-предпросмотр
+   *  недоступен — просмотр на /synthesis/:id), контекст для промптов
+   *  грузит СЕРВЕР (loadConceptContext, беседа 3.1) — у клиента только
+   *  метаданные превью. */
+  synthesisId?: string;
   participant: ConceptParticipant | null;
   participantError: string | null;
   isSelected: boolean;
@@ -723,10 +741,18 @@ export function importConceptAsParticipant(
   if (conceptName === "Синтез Философской Концепции") conceptName = "";
   // Пустое имя — не ошибка; запросим при добавлении
 
-  // ── 7. Реконструкция генеалогии ──
-  // ОТСТУПЛЕНИЕ 1 (шапка): reconstructGenealogy/restoreCapsulesFromHTML
-  // не портированы — TODO(3.1/3.2); карточке пула генеалогия не нужна.
-  const genealogy = null;
+  // ── 7. Реконструкция генеалогии (беседа 3.2 — долг закрыт) ──
+  // reconstructGenealogy [22181]: embeddedState.genealogy при наличии,
+  // иначе реконструкция из meta/participants; restoreCapsulesFromHTML
+  // [11745]: капсулы родителей — из .gen-card сохранённого дерева файла.
+  let genealogy: GenealogyNode | null = null;
+  try {
+    genealogy = reconstructGenealogy(meta, embeddedState, doc);
+    restoreCapsulesFromHTML(genealogy, doc);
+  } catch (err) {
+    console.warn("Не удалось реконструировать генеалогию:", err);
+    genealogy = null;
+  }
 
   // ── 8. Сборка участника ──
   return {
@@ -813,6 +839,64 @@ export function parseConceptFile(
     participantError,
     isSelected: false,
     isSynthParticipant: false,
+    snapshot: null,
+  };
+}
+
+/* ───── catalogPreviewToPoolEntry (беседа 3.2, запрос 1, п. 1) ─────
+ * Каталожная концепция → запись пула. В исходнике аналога нет (пул был
+ * файловым); в сервисе синтезы уже лежат в БД — участник представим в
+ * ParticipantInput {type:'synthesis', synthesisId}, а контекст для
+ * промптов грузит СЕРВЕР (loadConceptContext, 3.1). Клиентский
+ * participant заполняется пустыми строками — контентные поля ему не
+ * нужны (FullBudgetPreview для каталожных концепций считает не по
+ * символам, а по серверному estimate-diff); genealogy = null —
+ * пересечения предков проверяются через GET /lineage/ancestors. */
+
+export function catalogPreviewToPoolEntry(preview: {
+  id: string;
+  title: string;
+  method: string;
+  synthLevel: string;
+}): PoolConceptEntry {
+  const participant: ConceptParticipant = {
+    type: "concept",
+    name: preview.title,
+    capsule: "",
+    graphNodes: "",
+    graphEdges: "",
+    dialogueConcepts: "",
+    dialogueSynthesis: "",
+    glossaryCompact: "",
+    thesesSummary: "",
+    goals: "",
+    tensions: "",
+    portraits: "",
+    method: preview.method,
+    synthLevel: preview.synthLevel,
+    seed: "",
+    genealogy: null,
+    synthesisId: preview.id,
+    _filename: "catalog:" + preview.id,
+    _nodeCount: 0,
+    _thesesCount: 0,
+  };
+  return {
+    id: Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+    filename: "catalog:" + preview.id, // дедупликация addToPool по filename
+    rawHTML: "",
+    name: "«" + preview.title + "»",
+    realName: preview.title,
+    subtitle: "",
+    method: preview.method,
+    synthLevel: preview.synthLevel,
+    generationOrder: "",
+    sources: ["каталог"],
+    synthesisId: preview.id,
+    participant,
+    participantError: null,
+    isSelected: false,
+    isSynthParticipant: true, // добавили из каталога — сразу ☑ участник
     snapshot: null,
   };
 }

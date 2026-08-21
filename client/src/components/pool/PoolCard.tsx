@@ -9,6 +9,8 @@
  *
  * esc() исходника не нужен: React экранирует текст сам.
  */
+import { Link } from "react-router-dom";
+
 import { ML, SL } from "@philosynth/shared/constants/labels";
 
 import type { PoolConceptEntry } from "../../utils/concept-file";
@@ -75,23 +77,36 @@ export function PoolCard({
           Синтез
         </label>
 
-        {/* Колонка 2: радио просмотра */}
-        <label
-          className="flex shrink-0 cursor-pointer flex-col items-center gap-0.5 text-[10px] text-ink-mid"
-          title="Просмотр и редактирование"
-        >
-          <input
-            type="radio"
-            name="poolView"
-            checked={c.isSelected}
-            onClick={() => onSelectForViewing(c.id)}
-            onChange={() => {
-              /* toggle в onClick — как в исходнике (повторный клик = деселект) */
-            }}
-            className="accent-[var(--gold)]"
-          />
-          Просм.
-        </label>
+        {/* Колонка 2: радио просмотра. Каталожная запись (беседа 3.2):
+            rawHTML="" — предпросмотра нет, вместо ◉ ссылка на страницу
+            синтеза (полный просмотр там) */}
+        {c.synthesisId ? (
+          <Link
+            to={`/synthesis/${c.synthesisId}`}
+            title="Открыть страницу синтеза"
+            className="flex shrink-0 flex-col items-center gap-0.5 text-[10px] text-ink-mid hover:text-gold"
+          >
+            <span className="font-mono text-sm leading-none">↗</span>
+            Открыть
+          </Link>
+        ) : (
+          <label
+            className="flex shrink-0 cursor-pointer flex-col items-center gap-0.5 text-[10px] text-ink-mid"
+            title="Просмотр и редактирование"
+          >
+            <input
+              type="radio"
+              name="poolView"
+              checked={c.isSelected}
+              onClick={() => onSelectForViewing(c.id)}
+              onChange={() => {
+                /* toggle в onClick — как в исходнике (повторный клик = деселект) */
+              }}
+              className="accent-[var(--gold)]"
+            />
+            Просм.
+          </label>
+        )}
 
         {/* Колонка 3: информация */}
         <div className="min-w-0 flex-1">

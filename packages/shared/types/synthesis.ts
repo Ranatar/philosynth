@@ -186,6 +186,11 @@ export interface SynthesisPreview {
   status: SynthesisStatus;
   isPublic: boolean;
   philosophers: string[];
+  /** Есть родители-концепции (parent_type='synthesis') — бейдж
+   *  «мета-синтез» в карточке каталога (беседа 3.2, п. 5; аддитивная
+   *  правка транспорта: SynthesisPreview признака не нёс — дыра доков,
+   *  прецедент аддитивности — warnings в POST из 3.1) */
+  hasConceptParents: boolean;
   /** Первые символы капсулы (превью карточки каталога) */
   capsulePreview: string;
   totalCostUsd: number;

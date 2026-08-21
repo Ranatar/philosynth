@@ -20,10 +20,14 @@
  * документа — беседы 1.6b (SynthesisPage, клиент) + 4.3 (серверный
  * импорт).
  */
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
+
+import { listPublicSyntheses, listSyntheses } from "../../api/syntheses";
 import { usePoolStore } from "../../stores/pool-store";
 import {
+  catalogPreviewToPoolEntry,
   fetchWithFallback,
   parseConceptFile,
 } from "../../utils/concept-file";
@@ -44,6 +48,50 @@ export function ConceptPool() {
   const [urlValue, setUrlValue] = useState("");
   const [urlBusy, setUrlBusy] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(true);
+
+  /* «+ Из каталога» (беседа 3.2, запрос 1, п. 1): каталожные концепции
+     представимы участниками {type:'synthesis', synthesisId} — сервер 3.1
+     их принимает. Пикер: свои ready-синтезы + публичные (доступ =
+     доступу POST: владелец ИЛИ публичный). */
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogItems, setCatalogItems] = useState<SynthesisPreview[] | null>(
+    null,
+  );
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!catalogOpen || catalogItems !== null) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [mine, pub] = await Promise.all([
+          listSyntheses({ status: "ready", limit: 100 }),
+          listPublicSyntheses({ limit: 100 }),
+        ]);
+        if (cancelled) return;
+        // Дедупликация (свой публичный синтез приходит в обоих списках)
+        const seen = new Set<string>();
+        const merged: SynthesisPreview[] = [];
+        for (const s of [...mine.items, ...pub.items]) {
+          if (seen.has(s.id)) continue;
+          seen.add(s.id);
+          if (s.status === "ready") merged.push(s);
+        }
+        setCatalogItems(merged);
+      } catch {
+        if (!cancelled) setCatalogError("Не удалось загрузить каталог.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogOpen, catalogItems]);
+
+  const handleAddFromCatalog = (s: SynthesisPreview) => {
+    if (addToPool(catalogPreviewToPoolEntry(s))) {
+      setPoolStatus("✓ Из каталога: «" + s.title + "»", "ok");
+    }
+  };
 
   // handlePoolFileImport [4949–4977]
   const handleFileImport = (input: HTMLInputElement) => {
@@ -184,6 +232,14 @@ export function ConceptPool() {
           >
             + Загрузить по URL
           </button>
+          {/* Беседа 3.2: каталожные концепции-участники */}
+          <button
+            type="button"
+            onClick={() => setCatalogOpen((v) => !v)}
+            className="rounded border border-rule px-2 py-1 text-xs text-ink-mid hover:border-rule-strong hover:text-ink"
+          >
+            + Из каталога
+          </button>
         </div>
       </div>
       <div className="mt-0.5 font-mono text-[10px] leading-relaxed text-ink-dim">
@@ -217,6 +273,56 @@ export function ConceptPool() {
           >
             {urlBusy ? "…" : "Загрузить"}
           </button>
+        </div>
+      )}
+
+      {/* Пикер «Из каталога» (беседа 3.2) */}
+      {catalogOpen && (
+        <div className="mt-2 max-h-56 overflow-auto rounded border border-rule bg-white">
+          {catalogError && (
+            <div className="p-2 font-mono text-[11px] text-red">
+              {catalogError}
+            </div>
+          )}
+          {!catalogError && catalogItems === null && (
+            <div className="p-2 font-mono text-[11px] text-ink-dim">
+              Загрузка каталога…
+            </div>
+          )}
+          {catalogItems !== null && catalogItems.length === 0 && (
+            <div className="p-2 font-mono text-[11px] text-ink-dim">
+              Готовых синтезов в каталоге нет.
+            </div>
+          )}
+          {catalogItems?.map((s) => {
+            const added = concepts.some((c) => c.synthesisId === s.id);
+            return (
+              <div
+                key={s.id}
+                className="flex items-center justify-between gap-2 border-b border-rule px-2 py-1.5 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-semibold text-ink">
+                    {s.title}
+                  </div>
+                  <div className="truncate font-mono text-[10px] text-ink-dim">
+                    {s.philosophers.length > 0
+                      ? s.philosophers.join(", ")
+                      : "свободный синтез"}
+                    {s.hasConceptParents ? " · мета-синтез" : ""}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={added}
+                  onClick={() => handleAddFromCatalog(s)}
+                  className="shrink-0 rounded border border-gold px-2 py-0.5 text-[11px] text-gold hover:bg-gold hover:text-white disabled:opacity-40"
+                >
+                  {added ? "в пуле" : "+ в пул"}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 

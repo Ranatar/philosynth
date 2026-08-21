@@ -35,6 +35,7 @@ import {
 import type { LineageNode } from "@philosynth/shared/types/lineage";
 import {
   forbiddenJson,
+  loadConceptParentFlags,
   loadPhilosophersFor,
   loadSynthesisForRead,
   notFoundJson,
@@ -149,8 +150,12 @@ lineageSearchRoutes.get("/search", requireAuth, async (c) => {
     )
     .orderBy(syntheses.createdAt);
 
-  const philMap = await loadPhilosophersFor(rows.map((r) => r.id));
+  const rowIds = rows.map((r) => r.id);
+  const philMap = await loadPhilosophersFor(rowIds);
+  const metaFlags = await loadConceptParentFlags(rowIds); // беседа 3.2
   return c.json({
-    syntheses: rows.map((r) => toPreview(r, philMap.get(r.id) ?? [])),
+    syntheses: rows.map((r) =>
+      toPreview(r, philMap.get(r.id) ?? [], metaFlags.has(r.id)),
+    ),
   });
 });

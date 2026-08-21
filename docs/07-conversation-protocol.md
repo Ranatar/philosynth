@@ -1,5 +1,29 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-08-21 (итоги беседы 3.2)**: клиентская половина
+> мета-синтеза и дерево генеалогии закрыты (браузерный тест
+> tests/test-32-requests2-5.mjs 52 ✓ ×2). Найденные текстом 3.2
+> рассогласования: (а) п.1 «пересечения по GET /lineage/ancestors»
+> неприменим к ФАЙЛОВЫМ концепциям пула (их нет в БД) — реализовано
+> двумя путями (каталожные — через API, файловые — по
+> participant.genealogy из reconstructGenealogy); (б) «снятие
+> блокировки сабмита» не оговаривало остаток: файловые концепции
+> по-прежнему блокируются до серверного импорта 4.3 — снято только
+> для КАТАЛОЖНЫХ ({type:'synthesis', synthesisId}); (в) механизм
+> добавления каталожных концепций в пул в 07 не описан, хотя тест №1
+> его требует — добавлен пикер «+ Из каталога» в ConceptPool;
+> (г) SynthesisPreview не нёс признака мета-синтеза для бейджа п.5 —
+> закрыто аддитивным полем hasConceptParents (прецедент — warnings
+> POST из 3.1); (д) checkGenealogyOverlaps в исходнике ОПРЕДЕЛЕНА,
+> но НЕ ВЫЗВАНА (мёртвый код) — предупреждение реализовано
+> предполётным confirm на клиенте, серверные warnings из POST
+> рисуются неблокирующе; (е) попутная починка предсуществующего
+> дефекта 1.6b, найденного браузерным тестом: CreateSynthesisPage
+> звал navigate() внутри апдейтера setSynthesisId (рендер-фаза
+> React) — id перенесён в ref; (ж) в scripts/smoke-31.ts и
+> scripts/test-31-requests2-4.ts остались 5 ошибок typecheck:scripts
+> (3.1 гоняла их через tsx) — предсуществующие, за 3.1.
+
 > **Правки 2026-08-20 (итоги беседы 3.1)**: мета-синтез и генеалогия
 > закрыты (смоук 28 ✓ + тесты 16 ✓ ×2, живой конвейер промпта);
 > текст 3.1 п.1: список loadConceptContext дополнен до 10 полей
@@ -2334,7 +2358,24 @@ grep -n 'function renderGenealogyTree' philosynth.html | head -1  # найти �
    Добавить здесь:
    - Предупреждения о генеалогических пересечениях (пересечение предков
      выбранных ☑-концепций — по GET /syntheses/:id/lineage/ancestors)
+     > **По факту 3.2:** формула «по GET ancestors» верна только для
+     > концепций ИЗ КАТАЛОГА; файловые записи пула в БД отсутствуют —
+     > их предки берутся из participant.genealogy
+     > (reconstructGenealogy + restoreCapsulesFromHTML). Тексты —
+     > checkGenealogyOverlaps 1:1 (дрейф-контроль клиент↔сервер —
+     > integration-check 4w). В исходнике функция ОПРЕДЕЛЕНА, но не
+     > ВЫЗВАНА (мёртвый код) — реализован предполётный confirm;
+     > серверные warnings POST рисуются неблокирующе (синтез создан).
    - Снятие блокировки сабмита, если 3.1 уже принимает участников-концепции
+     > **По факту 3.2:** снято только для КАТАЛОЖНЫХ концепций
+     > (представимы в ParticipantInput {type:'synthesis', synthesisId});
+     > пул дополнен пикером «+ Из каталога» (свои ready + публичные,
+     > дедупликация; фабрика catalogPreviewToPoolEntry, ключ
+     > дедупликации filename="catalog:<id>"). ФАЙЛОВЫЕ концепции
+     > блокируются до серверного импорта (4.3) с точечным текстом
+     > ошибки. Бейдж п.5 питается аддитивным SynthesisPreview.
+     > hasConceptParents (loadConceptParentFlags — оба списка каталога
+     > и /lineage/search).
    - Порт `reconstructGenealogy` (отложен в 1.5b с пометкой TODO(3.1/3.2)) —
      без него дерево для импортированной концепции не строится;
    - Порт `restoreCapsulesFromHTML`: журнал 1.5b адресует его ЭТОЙ
@@ -3541,12 +3582,12 @@ streaming-manager.
 | Бейдж качества контекста (`contextQualityScore`) | 2.3 | 1.3 | ЗАКРЫТ 2.3 (2026-08-20): бейдж на EditSectionCard, пороги исходника ≥90/≥60 [18497], null → бейдж не рисуется |
 | `registerParentContextProvider` — реальный провайдер | 3.1 | 1.4 | ЗАКРЫТ 3.1 (2026-08-20): стаб заменён buildMetaParentContext (meta-synthesis-service): 'monolithic' → Full, иначе Selective + intra-spec подраздела |
 | `parentFieldsUsed` / `conceptBlockSizes` / `parentSpecBySection` | 3.1 | 1.4 | ЗАКРЫТ 3.1 (2026-08-20): genCommon и проходы наполнены реальными участниками (loadConceptParticipants) |
-| Серверные участники-концепции (снятие гейта мета-синтеза) | 3.1 + 3.2 | 1.5b | серверная половина ЗАКРЫТА 3.1 (2026-08-20): POST принимает type='synthesis' с валидацией и генеалогией; клиентская (гейт SynthesisForm) — за 3.2 |
+| Серверные участники-концепции (снятие гейта мета-синтеза) | 3.1 + 3.2 | 1.5b | серверная половина ЗАКРЫТА 3.1 (2026-08-20): POST принимает type='synthesis' с валидацией и генеалогией; клиентская ЗАКРЫТА 3.2 (2026-08-21): гейт СУЖЕН до файловых концепций (остаток — серверный импорт файлов, 4.3) |
 | Данные для `estimate-diff` | 3.1 | 1.5b | ЗАКРЫТ 3.1 (2026-08-20): /estimate принимает участников-концепций, вес родителей — колбэком parentOverheadForSection; отрисовка разницы — 3.2 |
-| `reconstructGenealogy` | 3.2 | 1.5b | в тексте 3.2 |
-| `restoreCapsulesFromHTML` | 3.2 | 1.5b | адрес восстановлен 2026-07-31 |
-| `applyReplacement` / `updateCompatAdvisor` / `toggleCompatPanel` | 3.2 | 1.1 (адресовался 1.5, затем «2.x») | внесён 2026-07-31 |
-| Отрисовка `estimate-diff` в `FullBudgetPreview` | 3.2 | 1.5b | внесён 2026-07-31 |
+| `reconstructGenealogy` | 3.2 | 1.5b | ЗАКРЫТ 3.2 (2026-08-21): клиентский порт в `client/utils/genealogy.ts`; importConceptAsParticipant заполняет participant.genealogy |
+| `restoreCapsulesFromHTML` | 3.2 | 1.5b | ЗАКРЫТ 3.2 (2026-08-21): порт в `client/utils/genealogy.ts` (капсулы родителей — из .gen-card сохранённого дерева файла) |
+| `applyReplacement` / `updateCompatAdvisor` / `toggleCompatPanel` | 3.2 | 1.1 (адресовался 1.5, затем «2.x») | ЗАКРЫТ 3.2 (2026-08-21): кнопки замен + orderAdvice + автораскрытие при конфликте в CompatAdvisor.tsx; onApplyReplacement меняет method/synthLevel/generationOrder формы — пересчёт советов/предупреждений/оценки через deps эффектов |
+| Отрисовка `estimate-diff` в `FullBudgetPreview` | 3.2 | 1.5b | ЗАКРЫТ 3.2 (2026-08-21): /estimate дважды (с участниками и без, дебаунс 600 мс), строка «Оценка с родителями: … · без: … · разница: …» |
 | Серверный импорт концепт-файлов | 4.3 | 1.5b | в тексте 4.3 |
 | `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 | 2.4 | 2.4 закрыта 2026-08-17: TODO(4.2) ×2 в log-formatter, записи без promptSkeleton помечаются «промпт недоступен» |
 | BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | в тексте 6.1 |
