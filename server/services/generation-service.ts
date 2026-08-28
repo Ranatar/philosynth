@@ -1592,7 +1592,11 @@ async function ensureGenCommonForEdit(
 }
 
 /** Общий стрим с ретраями pre-stream (модель streamResp [12642]). */
-async function streamWithRetries(
+/** ЭКСПОРТ (беседа 4.1): единая retry-обёртка (порт streamResp [12642])
+ *  нужна и mode-service (runMode стримит через тот же контракт);
+ *  прецеденты аддитивных экспортов — buildParams (3.1),
+ *  loadActualOutputChars (2.1). */
+export async function streamWithRetries(
   handle: GenerationSlotHandle,
   streamKey: string,
   fp: string,
@@ -1697,7 +1701,9 @@ async function applySectionSideEffects(
 }
 
 /** SQL-инкременты totals (устойчиво к параллельным строкам; образец 1.4b). */
-async function bumpTotals(
+/** ЭКСПОРТ (беседа 4.1): mode-service учитывает usage режимов той же
+ *  функцией (единая формула totals, без копий). */
+export async function bumpTotals(
   synthesisId: string,
   usage: { inputTokens: number; outputTokens: number },
 ): Promise<void> {

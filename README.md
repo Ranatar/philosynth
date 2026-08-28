@@ -104,7 +104,7 @@ setState-in-render, транспорт hasConceptParents, CSS дерева с
 2.1–2.4 и 3.1–3.2 целиком; живые секции требуют поднятых PG и Redis
 и засеянных prompt_templates, synthesis_configs и каталогов таксономии.
 
-## Статус: Фазы 0–3 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2)
+## Статус: Фазы 0–3 завершены + 4.1 (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1)
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -362,17 +362,46 @@ hooks/useEditPlan.ts (свой WS, plan_updated — источник стату�
   дерево; мета² 3 уровня; транзитивный поиск; мобильная вёрстка).
   Доки пропатчены scripts/patch-docs-conv32.py.
 
+- **4.1 — Mode Service (бэкенд + клиент).**
+  services/mode-service.ts — владелец режимов: MODE_CONFIG (статика
+  дословно [22578], промпты mode.* из Registry), канонический
+  getEffectiveModeDeps [22558] (делегаты cascade-analyzer — ЛЕНИВЫЙ
+  import() против цикла через generation-service; MODE_TITLES
+  удалён — долг §12 закрыт), buildModeContext (ContextSource, бюджет
+  12000, ctxLog), checkModeDeps (тексты 1:1), runMode (дельты
+  sectionKey "mode:{key}", индекс = позиция по created_at ASC),
+  regenerateModeSilent (source mode_cascade; отступление: UPDATE с
+  сохранением created_at) + регистрация setModeRegenerator ПОБОЧНЫМ
+  ЭФФЕКТОМ импорта (долг §12 закрыт — шаги regen_mode планов
+  работают). routes/modes.ts §2.7 (+ аддитивные warnings/estimate в
+  GET /modes/:modeKey; DELETE и новый POST
+  /modes/:modeKey/:index/regenerate под 409-гейтом). Клиент:
+  ModeModal (MODE_UI — копия статики, дрейф сторожит
+  integration-check 4x) + ModeTabBar + кнопки «◈ …» со счётчиками
+  (гейт капсулы — порт updateModeButtons [11799]); guard "mode:*"
+  в useStreamingGeneration. Довыполнение долгов §12 (по указанию
+  пользователя — беседа не закрывается с долгами своего объёма):
+  панель «РЕЖИМЫ» EditModal (ModeResultsPanel [18556–18620]) с
+  планом modeRegen/modeRemove и «отметить ↑» в E5 [19483];
+  подраздельный каскад режимов — confirm с Σ-оценкой 1:1 [19022] →
+  тихие перегенерации с СОБСТВЕННЫМ param (отступление от
+  runMode-из-модалки исходника [19034], «нужен fallback» — его же
+  комментарий). Найдено тестами: счётчики SynthesisPage не
+  обновлялись после плана (закрытие EditModal перечитывает
+  getModes). Тесты: tests/test-41-requests2-5.mjs R0–R7 77 ✓ ×2.
+  Доки пропатчены scripts/patch-docs-conv41.py.
+
 Не сделано (Фаза 4+): файловые концепции как участники мета-синтеза
-(4.3 — серверный импорт; гейт SynthesisForm снимать по факту), режимы
-(4.1 — карточки результатов в EditModal и каскад режимов подраздельной
-панели ждут routes/modes), экспорт/импорт (4.x — серверный
+(4.3 — серверный импорт; гейт SynthesisForm снимать по факту),
+экспорт/импорт (4.x — серверный
 parseConceptFile; потребители stripCapsulesFromGenealogy/
 normalizeGenealogyNames — экспорт 4.2), billing, BYO-Key (6.1 — ввод
 ключа в auth-модалке).
 Фаза 1 закрыта целиком (1.1–1.7); Фаза 2 закрыта целиком: 2.1, 2.2,
-2.4 (велась перед 2.3 — §11) и 2.3; Фаза 3 закрыта целиком: 3.1, 3.2.
-Следующая по графу 07 — 4.1
-(Mode Service).
+2.4 (велась перед 2.3 — §11) и 2.3; Фаза 3 закрыта целиком: 3.1,
+3.2; из Фазы 4 закрыта 4.1 (включая довыполнение долгов §12).
+Следующая по графу 07 — 4.2
+(Export Service).
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

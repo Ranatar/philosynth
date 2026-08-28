@@ -49,9 +49,11 @@ import { useWebSocket } from "./useWebSocket";
 
 import type { CreatePlanRequest } from "@philosynth/shared/types/edit-plan";
 
-/** Событие завершения/ошибки раздела — для очередей каскада (2.3) */
+/** Событие завершения/ошибки раздела — для очередей каскада (2.3).
+ *  С 4.1 += mode_done (sectionKey "mode:{modeKey}") — очередь каскада
+ *  режимов SubsectionRegenPanel ждёт его как section_done. */
 export interface SectionEvent {
-  kind: "section_done" | "stream_error";
+  kind: "section_done" | "stream_error" | "mode_done";
   sectionKey: string | null;
 }
 
@@ -218,6 +220,11 @@ export function useEditPlan(options: UseEditPlanOptions): UseEditPlanResult {
         onSectionEventRef.current?.({
           kind: "stream_error",
           sectionKey: msg.sectionKey ?? null,
+        });
+      } else if (msg.type === "mode_done") {
+        onSectionEventRef.current?.({
+          kind: "mode_done",
+          sectionKey: "mode:" + msg.modeKey,
         });
       }
     },

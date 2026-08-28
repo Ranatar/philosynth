@@ -150,7 +150,7 @@
 
 | Функция / объект | Целевой модуль сервиса |
 |---|---|
-| `getEffectiveModeDeps()` | `server/services/mode-service.ts` (→ БД, беседа 4.1) |
+| `getEffectiveModeDeps()` | `server/services/mode-service.ts` — ФАКТ (4.1): канонический порт [22558] (mode_deps из Registry; генетическая подмена graph:nodes → dialogue:new_concepts при отсутствии графа); в cascade-analyzer — ЛЕНИВЫЙ делегат await import() (статический импорт замкнул бы цикл через generation-service) |
 | `MODE_DEPS` — ФАКТ: посеян раньше владельца, лежит отдельным конфигом | `server/config/mode-deps.ts` |
 
 ## 2. Адаптируемое (логика сохраняется, источник данных меняется)
@@ -238,9 +238,9 @@
 
 | Функция | Что меняется | Целевой модуль |
 |---|---|---|
-| `MODE_CONFIG`, `buildModeContext()` | Контекст из БД; промпт из Registry | `server/services/mode-service.ts` |
-| `runMode()` | Стриминг через бэкенд + WebSocket | там же |
-| `regenerateModeSilent()` | Аналогично | там же |
+| `MODE_CONFIG`, `buildModeContext()` | Контекст из БД; промпт из Registry | `server/services/mode-service.ts` — ФАКТ (4.1): статика дословно [22578], промпты mode.{adversarial,translator,timeslice}.prompt; контекст — ContextSource (не DOM), бюджет 12000, required без бюджета + optional с truncateText, ctxLog-драфт; клиентская копия статики MODE_UI (ModeModal) — дрейф сторожит integration-check 4x |
+| `runMode()` | Стриминг через бэкенд + WebSocket | там же — ФАКТ (4.1): дельты sectionKey "mode:{modeKey}", mode_done; индекс результата = позиция по created_at ASC; КВИРК taskChars = prompt − ctx; version_modes+1; пауз нет |
+| `regenerateModeSilent()` | Аналогично | там же — ФАКТ (4.1): source 'mode_cascade', метка «[каскад]», стрим БЕЗ дельт; КВИРКИ: taskChars = prompt целиком, catch без учёта usage; ОТСТУПЛЕНИЕ: UPDATE строки с сохранением created_at (стабильность индексов) |
 
 ---
 
@@ -258,8 +258,8 @@
 | `switchView()`, `openGraph()`, `closeGraph()` | `client/components/graph/GraphModal.tsx` |
 | `buildLegend()` — ФАКТ (беседа 1.7): вынесен в отдельный компонент | `client/components/graph/GraphLegend.tsx` |
 | `clearLegendFilter()` — ФАКТ (беседа 1.7): живёт рядом с состоянием графа | `client/components/graph/graph-utils.ts` |
-| `openEditModal()`, `renderEditSections()` | `client/components/edit/EditModal.tsx` + `EditSectionCard.tsx`/`AddSectionPanel.tsx`/`EditPlanPanel.tsx` — ФАКТ (2.3): двухшаговый workflow §4.5 («Составить план» → просмотр → «Исполнить») вместо цепочки confirm(); карточка «Структура устарела» — сравнение structureSections↔sectionOrder на клиенте; гейты API_KEY/incomplete не переносятся (6.1/4.3); карточки результатов режимов — TODO(4.1) |
-| UI подразделовой перегенерации | `client/components/edit/SubsectionRegenPanel.tsx` — ФАКТ (2.3): зависимые/оценка — превью POST /subsection-impact; каскад = чекбоксы волны (intra+cross) + ОЧЕРЕДЬ последовательных запусков по section_done (stream_error останавливает); капсула-квирк «подраздел капсулы → весь раздел» сохранён; «третья волна» и каскад режимов не переносятся (повторного превью после волны нет; режимы — 4.1) |
+| `openEditModal()`, `renderEditSections()` | `client/components/edit/EditModal.tsx` + `EditSectionCard.tsx`/`AddSectionPanel.tsx`/`EditPlanPanel.tsx` — ФАКТ (2.3): двухшаговый workflow §4.5 («Составить план» → просмотр → «Исполнить») вместо цепочки confirm(); карточка «Структура устарела» — сравнение structureSections↔sectionOrder на клиенте; гейты API_KEY/incomplete не переносятся (6.1/4.3); карточки результатов режимов — ФАКТ (4.1, довыполнение §12): ModeResultsPanel + план modeRegen/modeRemove + «отметить ↑» в E5 |
+| UI подразделовой перегенерации | `client/components/edit/SubsectionRegenPanel.tsx` — ФАКТ (2.3): зависимые/оценка — превью POST /subsection-impact; каскад = чекбоксы волны (intra+cross) + ОЧЕРЕДЬ последовательных запусков по section_done (stream_error останавливает); капсула-квирк «подраздел капсулы → весь раздел» сохранён; «третья волна» не переносится (повторного превью после волны нет); каскад режимов — ФАКТ (4.1, довыполнение §12): confirm с оценкой [19022] → тихие перегенерации с СОБСТВЕННЫМ param через POST /modes/:key/:i/regenerate (отступление от runMode-из-модалки [19034]) |
 | `addSection()`, `deleteSection()`, `rebuildDbMapping()` | Серверные операции через API — ФАКТ (2.2): add/delete только через планы (§2.6), в §2.5 их эндпоинтов нет; `rebuildDbMapping` ВЫРОЖДЕН (db-индексы DOM → строки sections; перенумерация = `recalcSectionNumbers` + `renumberSectionRefs`) |
 | `parseConceptFile()`, `addToPool()`, `removeFromPool()`, `selectForViewing()`, `snapshotCurrentState()`, `restoreFromPoolSnapshot()`, `syncConceptParticipants()`, `refreshPoolParticipant()`, `renderPoolConcepts()`, `handlePoolFileImport()`, `handlePoolUrlImport()` | `client/components/pool/ConceptPool.tsx`+`PoolCard.tsx`, `client/stores/pool-store.ts`, `client/utils/concept-file.ts` (беседа 1.5b ✓; snapshotCurrentState/restoreFromPoolSnapshot вырождены — локальных правок в сервисе нет, refreshPoolParticipant по ветке «rawHTML не менялся»; renamePoolConcept/toggleSynthParticipant/setPoolStatus там же) |
 | `buildTableOfContents()` [11621] — якоря `#sec-{key}` / `#subsec-{key}-{slug}`, кнопки ⏫, пропуск `capsule` | `client/components/document/TableOfContents.tsx` (беседа 1.6b) |

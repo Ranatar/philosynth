@@ -85,7 +85,8 @@ type PlanRow = typeof editPlans.$inferSelect;
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
   connectionManager.sendToUser(userId, msg);
 
-/* ══ Разъём режимной перегенерации (TODO(4.1): mode-service) ══════════ */
+/* ══ Разъём режимной перегенерации (владелец — mode-service; долг §12
+ *    закрыт 4.1: регистрация побочным эффектом импорта mode-service) ══ */
 
 export type ModeRegenerator = (
   handle: GenerationSlotHandle,

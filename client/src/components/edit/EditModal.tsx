@@ -32,8 +32,9 @@
  *    (= серверная половина regenStructureFromEditModal, 2.2);
  *  - чекбокс extGraphMetrics на карточке graph пишет флаг синтеза
  *    сразу (PATCH /syntheses/:id — исходник писал DOC_STATE.params);
- *  - карточки РЕЗУЛЬТАТОВ РЕЖИМОВ [18560–18630] НЕ переносятся:
- *    GET-эндпоинта результатов и mode-service нет до 4.1 — TODO(4.1);
+ *  - карточки РЕЗУЛЬТАТОВ РЕЖИМОВ [18560–18630] НЕ перенесены:
+ *    транспорт есть с 4.1 (GET /modes + mode-service), сами карточки —
+ *    открытый долг §12 за 4.1 (довыполнение по команде);
  *  - обновление документа после исполнения: onPlanFinished →
  *    reloadSections + applySynthesis (НЕ store.load: тот переключает
  *    loading, страница рендерит спиннер и размонтирует модалку —
@@ -43,15 +44,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import type { CascadeImpactDto } from "@philosynth/shared/types/edit-plan";
+import type { ModeResult } from "@philosynth/shared/types/modes";
 
 import { getPlanImpact, regenerateSubsection } from "../../api/plans";
 import { getSynthesis, updateSynthesis } from "../../api/syntheses";
 import { useEditPlan, type SectionEvent } from "../../hooks/useEditPlan";
 import { useSynthesisStore } from "../../stores/synthesis-store";
+import { getModes } from "../../api/modes";
+
 import { AddSectionPanel } from "./AddSectionPanel";
 import { CascadePanel } from "./CascadePanel";
 import { EditPlanPanel } from "./EditPlanPanel";
 import { EditSectionCard } from "./EditSectionCard";
+import { ModeResultsPanel } from "./ModeResultsPanel";
 import { SubsectionRegenPanel } from "./SubsectionRegenPanel";
 
 /** ALL_SECTION_KEYS [20906] без «sum» — клиентская копия перечня
@@ -84,6 +89,14 @@ export function EditModal({ open, onClose }: EditModalProps) {
   const [addChecked, setAddChecked] = useState<Set<string>>(new Set());
   const [secCtx, setSecCtx] = useState<Record<string, string>>({});
   const [addCtx, setAddCtx] = useState<Record<string, string>>({});
+  /* Режимы (долг §12 закрыт): результаты + отмеченные пары `mk:i` */
+  const [modes, setModes] = useState<Record<string, ModeResult[]>>({});
+  const [modeRegenChecked, setModeRegenChecked] = useState<Set<string>>(
+    new Set(),
+  );
+  const [modeRemoveChecked, setModeRemoveChecked] = useState<Set<string>>(
+    new Set(),
+  );
   const [subRegen, setSubRegen] = useState<{
     sectionKey: string;
     subsectionName: string;
@@ -102,6 +115,7 @@ export function EditModal({ open, onClose }: EditModalProps) {
     if (!synthesisId) return;
     void reloadSections();
     void getSynthesis(synthesisId).then(applySynthesis).catch(() => {});
+    void getModes(synthesisId).then(setModes).catch(() => {});
   }, [synthesisId, reloadSections, applySynthesis]);
 
   const onSectionEvent = useCallback((ev: SectionEvent) => {
@@ -134,6 +148,11 @@ export function EditModal({ open, onClose }: EditModalProps) {
     setAddCtx({});
     setSubRegen(null);
     setStructureDone(false);
+    setModeRegenChecked(new Set());
+    setModeRemoveChecked(new Set());
+    setModes({});
+    if (synthesisId)
+      void getModes(synthesisId).then(setModes).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -155,6 +174,19 @@ export function EditModal({ open, onClose }: EditModalProps) {
   const regenArr = useMemo(() => [...regenChecked], [regenChecked]);
   const removeArr = useMemo(() => [...removeChecked], [removeChecked]);
   const addArr = useMemo(() => [...addChecked], [addChecked]);
+  const toPairs = (set: ReadonlySet<string>): [string, number][] =>
+    [...set].map((k) => {
+      const i = k.lastIndexOf(":");
+      return [k.slice(0, i), Number(k.slice(i + 1))];
+    });
+  const modeRegenPairs = useMemo(
+    () => toPairs(modeRegenChecked),
+    [modeRegenChecked],
+  );
+  const modeRemovePairs = useMemo(
+    () => toPairs(modeRemoveChecked),
+    [modeRemoveChecked],
+  );
 
   useEffect(() => {
     if (!open || !synthesisId) return;
@@ -207,6 +239,29 @@ export function EditModal({ open, onClose }: EditModalProps) {
     setAddChecked((s) => toggleIn(s, key, true));
   }, []);
 
+  /* Чекбоксы карточек режимов: взаимоисключение регенерации/удаления
+   * (сервер: VALIDATION_ERROR «modeRegen и modeRemove одновременно») */
+  const toggleModeRegen = useCallback(
+    (mk: string, i: number, v: boolean) => {
+      const key = mk + ":" + i;
+      setModeRegenChecked((s) => toggleIn(s, key, v));
+      if (v) setModeRemoveChecked((s) => toggleIn(s, key, false));
+    },
+    [],
+  );
+  const toggleModeRemove = useCallback(
+    (mk: string, i: number, v: boolean) => {
+      const key = mk + ":" + i;
+      setModeRemoveChecked((s) => toggleIn(s, key, v));
+      if (v) setModeRegenChecked((s) => toggleIn(s, key, false));
+    },
+    [],
+  );
+  const markModeRegen = useCallback(
+    (mk: string, i: number) => toggleModeRegen(mk, i, true),
+    [toggleModeRegen],
+  );
+
   /* ── extGraphMetrics (PATCH — транспорт добавлен 2.3) ── */
   const handleExtGraphMetrics = useCallback(
     (checked: boolean) => {
@@ -243,7 +298,8 @@ export function EditModal({ open, onClose }: EditModalProps) {
 
   /* ── План: составить / исполнить ── */
   const totalActions =
-    regenArr.length + removeArr.length + addArr.length;
+    regenArr.length + removeArr.length + addArr.length +
+    modeRegenPairs.length + modeRemovePairs.length;
 
   const handleCreatePlan = useCallback(async () => {
     const regenContexts: Record<string, string> = {};
@@ -256,8 +312,13 @@ export function EditModal({ open, onClose }: EditModalProps) {
       add: addArr,
       ...(Object.keys(regenContexts).length ? { regenContexts } : {}),
       ...(Object.keys(addContexts).length ? { addContexts } : {}),
+      ...(modeRegenPairs.length ? { modeRegen: modeRegenPairs } : {}),
+      ...(modeRemovePairs.length ? { modeRemove: modeRemovePairs } : {}),
     });
-  }, [editPlan, regenArr, removeArr, addArr, secCtx, addCtx]);
+  }, [
+    editPlan, regenArr, removeArr, addArr, secCtx, addCtx,
+    modeRegenPairs, modeRemovePairs,
+  ]);
 
   const handleFooterRun = useCallback(() => {
     if (!plan) void handleCreatePlan();
@@ -291,6 +352,8 @@ export function EditModal({ open, onClose }: EditModalProps) {
   if (regenArr.length) footerInfoParts.push(regenArr.length + " перегенер.");
   if (removeArr.length) footerInfoParts.push(removeArr.length + " удал.");
   if (addArr.length) footerInfoParts.push(addArr.length + " добавл.");
+  const modeCount = modeRegenPairs.length + modeRemovePairs.length;
+  if (modeCount) footerInfoParts.push(modeCount + " режим.");
 
   const footerCost =
     plan && plan.estimatedCost > 0
@@ -335,6 +398,8 @@ export function EditModal({ open, onClose }: EditModalProps) {
         <div className="edit-modal-body">
           {/* Каскадная панель — первой (как #cascadePanel исходника) */}
           <CascadePanel
+            modeRegenChecked={modeRegenChecked}
+            onMarkModeRegen={markModeRegen}
             impact={impact}
             loading={impactLoading}
             regenChecked={regenChecked}
@@ -470,6 +535,17 @@ export function EditModal({ open, onClose }: EditModalProps) {
               </div>
             );
           })}
+
+          {/* Панель «РЕЖИМЫ» — карточки результатов [18556–18620] */}
+          <ModeResultsPanel
+            modes={modes}
+            affectedModes={impact?.affectedModes ?? []}
+            regenChecked={modeRegenChecked}
+            removeChecked={modeRemoveChecked}
+            onToggleRegen={toggleModeRegen}
+            onToggleRemove={toggleModeRemove}
+            disabled={controlsDisabled}
+          />
 
           {/* Панель добавления */}
           <AddSectionPanel

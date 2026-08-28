@@ -10,7 +10,8 @@
  *  E2 upstream: жёсткие потери (красные .sec-warning-item, кнопки «+»);
  *  E3 активные подстановки (.sec-substituted-item, качество словами);
  *  E4 рекомендации по optional (.sec-recommend-item, «добавить ↓»);
- *  E5 затронутые режимы (пока mode-результатов нет до 4.1 — пусто).
+ *  E5 затронутые режимы (наполняется с 4.1: getAffectedModes сервера
+ *     видит строки mode_results — до первого запуска режима пусто).
  * Заголовок панели — три варианта, как в исходнике; невидимость при
  * пустом импакте (ветка D).
  *
@@ -32,6 +33,10 @@ export interface CascadePanelProps {
   labels: (key: string) => string;
   onMarkRegen: (key: string) => void;
   onMarkAdd: (key: string) => void;
+  /** Отмеченные к перегенерации пары `modeKey:index` (E5, с 4.1) */
+  modeRegenChecked: ReadonlySet<string>;
+  /** Кнопка «отметить ↑» E5 [19483–19493] — ставит чекбокс карточки */
+  onMarkModeRegen: (modeKey: string, index: number) => void;
 }
 
 const QUALITY_LABEL: Record<number, string> = {
@@ -47,6 +52,8 @@ export function CascadePanel({
   labels,
   onMarkRegen,
   onMarkAdd,
+  modeRegenChecked,
+  onMarkModeRegen,
 }: CascadePanelProps) {
   const affected = impact?.affectedSections ?? [];
   const missingHard = impact?.missingHard ?? [];
@@ -259,6 +266,24 @@ export function CascadePanel({
             <span>
               ◈ {am.title}: {am.reason}
             </span>
+            {!modeRegenChecked.has(am.modeKey + ":" + am.index) && (
+              <button
+                type="button"
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 9,
+                  border: "1px solid var(--violet)",
+                  background: "transparent",
+                  color: "var(--violet)",
+                  padding: "2px 8px",
+                  cursor: "pointer",
+                  marginLeft: "auto",
+                }}
+                onClick={() => onMarkModeRegen(am.modeKey, am.index)}
+              >
+                отметить ↑
+              </button>
+            )}
           </div>
         ))}
       </div>

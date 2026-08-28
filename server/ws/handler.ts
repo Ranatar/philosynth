@@ -49,6 +49,7 @@ import {
 // Импорт plan-executor регистрирует resume-разъём в pause-resume-service
 // (побочный эффект — образец провайдера оценок 1.4b)
 import { confirmStep, executePlan } from "../services/plan-executor.js";
+import { startMode } from "../services/mode-service.js";
 import { PlanError } from "../services/edit-planner.js";
 import {
   computePauseEstimates,
@@ -391,10 +392,12 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
       })();
       return;
 
-    // Режимы — беседа 4.1 (mode-service)
+    // Режимы — беседа 4.1 (mode-service). sectionKey ошибки —
+    // "mode:{modeKey}" (тот же ключ, что у stream_delta режима)
     case "start_mode":
-      console.warn(
-        `[ws] user=${user.id}: тип "${msg.type}" ещё не реализован (беседа 4.1)`,
+      void handleBackground(
+        ws, user, msg.synthesisId, `mode:${msg.modeKey}`,
+        () => startMode(msg.synthesisId, user.id, msg.modeKey, msg.param),
       );
       return;
   }

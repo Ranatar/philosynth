@@ -1,5 +1,30 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-08-28 (итоги беседы 4.1)**: система режимов закрыта
+> (запрос 1 + браузерный тест tests/test-41-requests2-5.mjs 53 ✓;
+> R4 — АДАПТАЦИЯ против буквы: вход в модалку без капсулы скрыт —
+> порт updateModeButtons [11799], предупреждение «без capsule»
+> проверено API-уровнем, отображение ⚠/💡 — на синтезе с капсулой
+> без critique/graph). Дыры, закрытые этим патчем: §2.7 не
+> специфицировал транспорт checkModeDeps/estimateModeCost —
+> аддитивные warnings/estimate в GET /modes/:modeKey; spec фрагмента
+> 4.1 не извлекал css:#modeTabsBar [1619–1627] и @keyframes
+> pulse-tab [1673] (css*:.mode- их не ловит) — дополнен, комплект
+> пересобран. Отступления: DELETE результата под 409-гейтом
+> (исходник removeModeResult доступен всегда); silent-перегенерация
+> — UPDATE строки с СОХРАНЕНИЕМ created_at (стабильность индексов;
+> исходник обновлял timestamp); source 'mode_cascade' (enum 02
+> §2.15; в исходнике 'mode-cascade'). Приёмы: связь
+> cascade-analyzer → mode-service ТОЛЬКО ленивым import()
+> (статический замыкает цикл через generation-service); аддитивные
+> экспорты streamWithRetries/bumpTotals из generation-service.
+> Дрейф-контроль клиентской статики MODE_UI ↔ MODE_CONFIG — секция
+> 4x integration-check (попутно дефект 4r: регексп статического
+> импорта ловил пример в комментарии — сужен до ^import…/m). §12:
+> долги cascade-analyzer-портов и setModeRegenerator ЗАКРЫТЫ;
+> внесены открытые долги карточек режимов EditModal и каскада
+> режимов SubsectionRegenPanel (за 4.1, довыполнение по команде).
+>
 > **Правки 2026-08-21 (итоги беседы 3.2)**: клиентская половина
 > мета-синтеза и дерево генеалогии закрыты (браузерный тест
 > tests/test-32-requests2-5.mjs 52 ✓ ×2). Найденные текстом 3.2
@@ -2530,6 +2555,34 @@ runMode, regenerateModeSilent, openModeModal, buildModeTabsBar, switchModeTab.
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
 
+**По факту 4.1 (2026-08-28):**
+- Транспорт п.2: GET /modes/:modeKey отдаёт { results, warnings,
+  estimate } — предупреждения checkModeDeps и оценка (fail-open
+  null) едут вместе с результатами, отдельных эндпоинтов нет.
+  Чтение обоих GET — владелец ИЛИ публичный синтез; run/DELETE —
+  владелец + 409-гейт активной генерации (DELETE под гейтом —
+  отступление, см. журнал).
+- runMode: дельты стрима под sectionKey "mode:{modeKey}"
+  (клиентский guard в useStreamingGeneration отсекает их от
+  прогресса генерации); индекс результата = позиция строки по
+  created_at ASC; квирки исходника сохранены (taskChars =
+  prompt − ctx; в silent — промпт целиком, catch без учёта
+  usage); пауз у режимов нет.
+- regenerateModeSilent зарегистрирован в setModeRegenerator
+  ПОБОЧНЫМ ЭФФЕКТОМ импорта mode-service (долг §12 закрыт) —
+  шаги regen_mode планов работают.
+- Клиентская статика MODE_UI (ModeModal) — копия MODE_CONFIG;
+  дрейф в обе стороны сторожит integration-check 4x.
+- Довыполнение (2026-08-28, той же беседой): оба долга §12 ЗАКРЫТЫ —
+  панель «РЕЖИМЫ» EditModal (ModeResultsPanel) с планом
+  modeRegen/modeRemove и кнопкой «отметить ↑» E5; подраздельный
+  каскад режимов через новый POST /modes/:modeKey/:index/regenerate
+  (confirm с оценкой 1:1 [19022]; отступление: тихая перегенерация
+  с СОБСТВЕННЫМ param вместо runMode-из-модалки [19034]).
+  Найдено тестом R6: счётчики режимов SynthesisPage не обновлялись
+  после плана — закрытие EditModal теперь перечитывает getModes.
+  Тест расширен до R6/R7: 77 ✓ ×2.
+
 ---
 
 ### Беседа 4.2: Export Service
@@ -3576,8 +3629,10 @@ streaming-manager.
 
 | Долг | Адресат | Заведён | Состояние |
 |---|---|---|---|
-| `getEffectiveModeDepsFromConfig` / `MODE_TITLES` — локальные порты в cascade-analyzer; владелец `getEffectiveModeDeps`/`MODE_CONFIG` — mode-service (метки TODO(4.1) в коде) | 4.1 | 2.1 | внесён 2026-08-04 |
-| Регистрация `regenerateModeSilent` в разъём `setModeRegenerator` (plan-executor; до неё шаги regen_mode → failed, план продолжается) | 4.1 | 2.2 | внесён 2026-08-09 |
+| `getEffectiveModeDepsFromConfig` / `MODE_TITLES` — локальные порты в cascade-analyzer; владелец `getEffectiveModeDeps`/`MODE_CONFIG` — mode-service (метки TODO(4.1) в коде) | 4.1 | 2.1 | ЗАКРЫТ 4.1 (2026-08-28): MODE_TITLES удалён, делегаты — ленивые await import("./mode-service.js") (анти-цикл через generation-service) |
+| Регистрация `regenerateModeSilent` в разъём `setModeRegenerator` (plan-executor; до неё шаги regen_mode → failed, план продолжается) | 4.1 | 2.2 | ЗАКРЫТ 4.1 (2026-08-28): регистрация побочным эффектом импорта mode-service |
+| Карточки результатов режимов в EditModal [18560–18630] (транспорт GET /modes готов с 4.1) | 4.1 | 4.1 | ЗАКРЫТ 4.1 (2026-08-28, довыполнение): ModeResultsPanel (панель «РЕЖИМЫ», чекбоксы с id исходника, ⚡-строки затронутости; взаимоисключение — паритет валидации edit-planner, исходник позволял оба) + план modeRegen/modeRemove из EditModal + кнопка «отметить ↑» в CascadePanel E5 [19483] + refetch панели по onPlanFinished и счётчиков SynthesisPage при закрытии модалки; тест R6 |
+| Каскад режимов после перегенерации подраздела (очередь runMode из SubsectionRegenPanel; mode-service готов с 4.1) | 4.1 | 4.1 | ЗАКРЫТ 4.1 (2026-08-28, довыполнение) С ПЕРЕФОРМУЛИРОВКОЙ: исходник после волны спрашивал confirm со списком и оценкой [19007–19036] и звал runMode() с paramValue ИЗ ПОЛЯ МОДАЛКИ [19034] («нужен fallback» — его же комментарий; создавало НОВЫЙ результат с чужим параметром). Реализовано: confirm 1:1 [19022] → очередь тихих перегенераций СУЩЕСТВУЮЩИХ результатов с их СОБСТВЕННЫМИ param (механизм планового каскада [19756]) через новый POST /modes/:modeKey/:index/regenerate (startModeRegen, финал mode_done); тест R7 |
 | Внутрисекционный каскад по `affectedSubs` (regenerateSubsection возвращает зависимые подразделы; предложение/исполнение — UI) | 2.3 | 2.2 | ЗАКРЫТ 2.3 (2026-08-20) с переформулировкой: буквально неисполним — роут отвечает { ok:true } фоном; зависимые вычислимы по картам ДО перегенерации → превью POST /subsection-impact + чекбоксы волны и очередь последовательных запусков по section_done в SubsectionRegenPanel |
 | Бейдж качества контекста (`contextQualityScore`) | 2.3 | 1.3 | ЗАКРЫТ 2.3 (2026-08-20): бейдж на EditSectionCard, пороги исходника ≥90/≥60 [18497], null → бейдж не рисуется |
 | `registerParentContextProvider` — реальный провайдер | 3.1 | 1.4 | ЗАКРЫТ 3.1 (2026-08-20): стаб заменён buildMetaParentContext (meta-synthesis-service): 'monolithic' → Full, иначе Selective + intra-spec подраздела |

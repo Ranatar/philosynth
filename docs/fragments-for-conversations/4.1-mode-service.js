@@ -755,7 +755,7 @@
 // philosynth.html строки 4354–4354 ─────
         <div id="modeTabsBar"></div>
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1477–1486 ─────
       .mode-overlay {
         display: none;
@@ -768,13 +768,13 @@
         padding: 24px;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1487–1489 ─────
       .mode-overlay.visible {
         display: flex;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1490–1499 ─────
       .mode-modal {
         background: var(--paper);
@@ -787,7 +787,7 @@
         box-shadow: 0 8px 40px rgba(0,0,0,0.25);
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1500–1508 ─────
       .mode-modal-header {
         background: var(--blue-corp);
@@ -799,7 +799,7 @@
         flex-shrink: 0;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1509–1514 ─────
       .mode-modal-title {
         font-family: var(--serif);
@@ -808,7 +808,7 @@
         color: #fff;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1515–1526 ─────
       .mode-modal-close {
         font-family: var(--mono);
@@ -823,14 +823,14 @@
         transition: all 0.15s;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1527–1530 ─────
       .mode-modal-close:hover {
         border-color: #fff;
         color: #fff;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1531–1536 ─────
       .mode-modal-params {
         padding: 16px 24px;
@@ -839,7 +839,7 @@
         background: var(--off);
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1537–1542 ─────
       .mode-modal-body {
         overflow-y: auto;
@@ -848,7 +848,7 @@
         background: var(--paper);
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1544–1548 ─────
       .mode-modal-body .doc-content {
         font-size: 13px;
@@ -856,7 +856,7 @@
         color: var(--ink-mid);
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1549–1557 ─────
       .mode-modal-body .doc-content h4 {
         font-family: var(--mono);
@@ -868,13 +868,13 @@
         margin: 20px 0 8px;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1558–1560 ─────
       .mode-modal-body .doc-content p {
         margin-bottom: 12px;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1561–1566 ─────
       .mode-modal-body .doc-content table {
         width: 100%;
@@ -883,7 +883,7 @@
         font-size: 12px;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1567–1577 ─────
       .mode-modal-body .doc-content th {
         background: var(--blue-corp);
@@ -897,7 +897,7 @@
         font-weight: 500;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1578–1584 ─────
       .mode-modal-body .doc-content td {
         padding: 9px 14px;
@@ -907,13 +907,13 @@
         line-height: 1.6;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1585–1587 ─────
       .mode-modal-body .doc-content tr:nth-child(even) td {
         background: var(--off);
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1588–1596 ─────
       .mode-modal-footer {
         display: flex;
@@ -925,7 +925,7 @@
         background: var(--off);
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1597–1602 ─────
       .mode-modal-info {
         font-family: var(--mono);
@@ -934,7 +934,7 @@
         letter-spacing: 1px;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1603–1615 ─────
       .mode-modal-copy {
         font-family: var(--mono);
@@ -950,13 +950,13 @@
         transition: background 0.15s;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1616–1618 ─────
       .mode-modal-copy:hover {
         background: var(--blue-mid);
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1628–1641 ─────
       .mode-tab {
         padding: 8px 16px;
@@ -973,7 +973,7 @@
         position: relative;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1642–1646 ─────
       .mode-tab.active {
         background: var(--paper);
@@ -981,13 +981,13 @@
         border-bottom-color: var(--violet);
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1647–1649 ─────
       .mode-tab:hover {
         color: var(--violet);
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1650–1654 ─────
       .mode-tab-date {
         font-size: 8px;
@@ -995,7 +995,7 @@
         margin-left: 4px;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1655–1662 ─────
       .mode-tab-close {
         font-size: 11px;
@@ -1006,23 +1006,41 @@
         transition: opacity 0.15s;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1663–1665 ─────
       .mode-tab:hover .mode-tab-close {
         opacity: 0.5;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1666–1668 ─────
       .mode-tab-close:hover {
         opacity: 1 !important;
       }
 
-// ───── Стили режимов · css*:.mode-
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css*:.mode-
 // philosynth.html строки 1669–1672 ─────
       .mode-tab.adding {
         color: var(--blue-corp);
         animation: pulse-tab 1s infinite;
+      }
+
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css:#modeTabsBar
+// philosynth.html строки 1620–1627 ─────
+      #modeTabsBar, #expModeTabsBar {
+        display: flex;
+        gap: 0;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--rule);
+        flex-shrink: 0;
+        background: var(--off);
+      }
+
+// ───── дыра комплекта, найденная беседой 4.1 (доложено в журнал 07) · css:@keyframes pulse-tab
+// philosynth.html строки 1673–1676 ─────
+      @keyframes pulse-tab {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
       }
 
 // ───── escape-последовательность. Область сужена, чтобы взять нужный. · js:truncLabel

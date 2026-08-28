@@ -392,6 +392,12 @@ CREATE INDEX idx_modes_synthesis ON mode_results(synthesis_id);
 CREATE INDEX idx_modes_key ON mode_results(synthesis_id, mode_key);
 ```
 
+По факту 4.1: индекс результата в API (§2.7, DELETE и вкладки UI) —
+позиция строки по `created_at` ASC. Тихая перегенерация
+(regenerateModeSilent) обновляет строку С СОХРАНЕНИЕМ `created_at` —
+отступление от исходника (тот обновлял timestamp, отчего индексы и
+порядок вкладок плыли).
+
 ### 2.15. generation_log
 
 Аналог массива `genLog` из исходника.

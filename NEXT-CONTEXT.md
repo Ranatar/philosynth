@@ -3593,3 +3593,122 @@ lineage/GenealogyTree.tsx. check-map-04: 147 идентификаторов,
 - Всем клиентским: tests/test-32-requests2-5.mjs — харнесс с
   подготовкой пригодных концепций прямыми вставками и работой с
   window.confirm (dialogPlan).
+
+# Беседа 4.1 — Mode Service (бэкенд + клиент) [ЗАКРЫТА]
+
+> Закрыта 2026-08-28: запрос 1 + тестовые запросы 2–5 браузерным
+> харнессом tests/test-41-requests2-5.mjs (53 ✓); доки пропатчены
+> scripts/patch-docs-conv41.py.
+
+## Что создано
+
+- `server/services/mode-service.ts` — владелец режимов: MODE_CONFIG
+  (статика дословно [22578]; промпты mode.{adversarial,translator,
+  timeslice}.prompt из Registry), канонический getEffectiveModeDeps
+  [22558] (mode_deps из Registry; генетическая подмена graph:nodes →
+  dialogue:new_concepts), buildModeContext [22651] (ContextSource,
+  бюджет 12000, required без бюджета + optional с truncateText,
+  ctxLog-драфт), checkModeDeps/computeModeDepsWarnings [22782] (тексты
+  дословно), estimateModeForSynthesis (fail-open null), runMode [23020]
+  (дельты sectionKey "mode:{modeKey}" → mode_done; индекс результата =
+  позиция по created_at ASC; квирк taskChars = prompt − ctx; пауз нет),
+  startMode (обёртка со слотом), regenerateModeSilent [23165] (source
+  'mode_cascade', метка «[каскад]», без дельт; квирки: taskChars
+  целиком, catch без usage; отступление: UPDATE с сохранением
+  created_at). Внизу — регистрация setModeRegenerator ПОБОЧНЫМ
+  ЭФФЕКТОМ импорта (долг §12 закрыт).
+- `server/routes/modes.ts` — §2.7 + аддитивные warnings/estimate в
+  GET /modes/:modeKey; чтение владелец-или-публичный; run/DELETE —
+  владелец + 409-гейт (DELETE под гейтом — отступление).
+- `client/src/api/modes.ts` (runMode/getModes/getModeResults/
+  deleteMode); `client/src/components/modes/` — ModeModal (экспортирует
+  MODE_UI/MODE_ORDER — клиентскую копию статики; дрейф сторожит
+  integration-check 4x), ModeTabBar (id="modeTabsBar", ⟳ .adding),
+  ModeContent (doc-content).
+- `tests/test-41-requests2-5.mjs` — браузерный харнесс (мок-SSE +
+  puppeteer): R0 API-санитария, R2/R3/R4/R5 = тесты 2–5 из 07.
+
+## Интеграционные правки
+
+- generation-service: экспортированы streamWithRetries/bumpTotals
+  (аддитивно — единая реализация вместо копий).
+- cascade-analyzer: MODE_TITLES удалён; getEffectiveModeDepsFromConfig
+  и заголовки getAffectedModes — ЛЕНИВЫЕ делегаты
+  `await import("./mode-service.js")`.
+- ws/handler: start_mode → startMode; index.ts: modesRoutes.
+- SynthesisPage: кнопки «◈ …» со счётчиками; видимость — порт
+  updateModeButtons [11799] (capsule в sectionOrder И capsuleHtml
+  непуст); useStreamingGeneration: guard sectionKey "mode:*".
+- globals.css: блок .mode-* [1477–1677] + #modeTabsBar [1619–1627] +
+  @keyframes pulse-tab [1673].
+- shared/types/modes.ts: += desc/paramPlaceholder, ModeDepsWarning,
+  ModeCostEstimate, ModeKeyResponse.
+
+## Знания/грабли, добытые в 4.1
+
+- Анти-цикл: связь cascade-analyzer → mode-service ТОЛЬКО ленивым
+  import() — статический замкнул бы цикл через generation-service.
+  Регексп-проверка «нет статического импорта» обязана быть
+  `^import…/m` — иначе ловит пример в комментарии (дефект 4r, пойман
+  и починен при завершении 4.1).
+- Reset-эффект модалки не должен держать в deps колбэки родителя:
+  нестабильный onResultsChanged → refetch → бесконечный цикл сброса
+  (решение — refetchRef; класс грабли R3 беседы 2.3).
+- .action-btn капсит текст (text-transform: uppercase) — сверки
+  подписей кнопок в тестах регистронезависимые.
+- puppeteer: triple-click + type НЕ заменяет значение занятого input —
+  нативный сеттер value + dispatchEvent("input").
+- Мок-маршрутизация по промптам: задание капсулы содержит слово
+  «критического» — капсулу ловить ПЕРВОЙ (по «Капсула» в ёлочках);
+  critique:final_table экстрактора хочет data-section*="Итоговая
+  оценка" (или последнюю doc-table).
+- Осиротевшие vite/tsx переживают timeout-kill родителя — pkill -9
+  -f "[v]ite" / "[t]sx index.ts" перед прогоном.
+
+## Довыполнение (той же беседой, 2026-08-28)
+
+- Оба долга §12 ЗАКРЫТЫ. Сервер: startModeRegen (mode-service) +
+  POST /modes/:modeKey/:index/regenerate — транспорт одиночной тихой
+  перегенерации (гейты как у DELETE, финал mode_done). Клиент:
+  ModeResultsPanel (панель «РЕЖИМЫ» EditModal [18556–18620], id
+  чекбоксов исходника, взаимоисключение — паритет валидации
+  edit-planner), план modeRegen/modeRemove, «отметить ↑» в E5
+  CascadePanel [19483], каскад режимов SubsectionRegenPanel: после
+  волны confirm 1:1 [19022] с Σ-оценкой → очередь тихих перегенераций
+  по mode_done (kind "mode" в QueueItem; mode_done проброшен в
+  SectionEvent useEditPlan).
+- ВАЖНОЕ ОТСТУПЛЕНИЕ: исходник в подраздельном каскаде звал runMode()
+  с paramValue ИЗ ПОЛЯ МОДАЛКИ [19034] («нужен fallback» — его же
+  комментарий; создавало НОВЫЙ результат с чужим параметром);
+  реализована тихая перегенерация СУЩЕСТВУЮЩИХ результатов с их
+  СОБСТВЕННЫМИ param — механизм планового каскада исходника [19756].
+- Найдено тестом R6: счётчики режимов SynthesisPage не обновлялись
+  после плана с режимными шагами — закрытие EditModal теперь
+  перечитывает getModes (editOpen в deps эффекта счётчиков).
+- Тест расширен сценариями R6 (карточки → план → исполнение: UPDATE
+  той же строки с сохранением created_at, genLog mode_cascade,
+  refetch панели и счётчика) и R7 (волна → confirm → перегенерация с
+  собственным param): 77 ✓ ×2.
+
+## Ревью по карте 04
+
+- §1.11 getEffectiveModeDeps — ФАКТ; §2.7 (MODE_CONFIG/buildModeContext,
+  runMode, regenerateModeSilent) — все три строки ФАКТ; строки §2.6
+  (карточки EditModal, каскад режимов SubsectionRegenPanel) — ФАКТ
+  довыполнением; отступления зафиксированы в карте и журнале 07.
+
+## Открытые TODO после 4.1
+- Прежние TODO(4.2) не тронуты (экспорт; buildModesExportSection
+  затронет MODE_CONFIG.title и вложенный truncLabel — см. spec 4.1).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- 4.2 (Export): `server/services/mode-service.ts` (MODE_CONFIG —
+  заголовки для buildModesExportSection; формат строк mode_results);
+  schema.ts (mode_results).
+- Любой беседе, трогающей cascade-analyzer / generation-service /
+  plan-executor: mode-service.ts — владелец депов режимов и
+  регистрации setModeRegenerator (порядок импортов существен).
+- Довыполнению долгов §12: EditModal.tsx + SubsectionRegenPanel.tsx
+  (метки «долг §12» в шапках), client/src/api/modes.ts,
+  исходник [18560–18630].

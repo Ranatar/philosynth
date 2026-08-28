@@ -18,10 +18,15 @@
  *   СГЕНЕРИРОВАН» + «◈ Граф» (беседа 1.7: GET /categories по клику →
  *   GraphModal; пустой граф открывает модалку с пустым состоянием) +
  *   «Распечатать»; остальные кнопки (Изменить — 2.3, лог — 2.4,
- *   экспорт — 4.2, режимы — 4.1) появятся в своих беседах — заглушек
- *   с мёртвыми обработчиками не рисуем.
+ *   экспорт — 4.2) появятся в своих беседах — заглушек с мёртвыми
+ *   обработчиками не рисуем.
+ * - Беседа 4.1: кнопки режимов «◈ Оппонент / ◈ Переводчик / ◈ Временной
+ *   срез» + ModeModal. Видимость — порт updateModeButtons [11799]:
+ *   только при капсуле (sectionOrder содержит capsule И capsuleHtml
+ *   непуст); счётчик результатов « (N)» — GET /modes при загрузке,
+ *   обновление через onResultsChanged модалки.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getCategories } from "../api/elements";
@@ -31,13 +36,20 @@ import { GenealogyTree } from "../components/lineage/GenealogyTree";
 import { EditModal } from "../components/edit/EditModal";
 import { ContextLogViewer } from "../components/logs/ContextLogViewer";
 import GraphModal from "../components/graph/GraphModal";
+import {
+  MODE_ORDER,
+  MODE_UI,
+  ModeModal,
+} from "../components/modes/ModeModal";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
 import { GenerationProgress } from "../components/synthesis/GenerationProgress";
 import { PauseModal } from "../components/synthesis/PauseModal";
 import { useStreamingGeneration } from "../hooks/useStreamingGeneration";
+import { getModes } from "../api/modes";
 import { useSynthesisStore } from "../stores/synthesis-store";
 
 import type { GraphData } from "@philosynth/shared/types/graph";
+import type { ModeKey } from "@philosynth/shared/types/modes";
 import {
   lineageNodeToGenealogy,
   type GenealogyNode,
@@ -87,6 +99,49 @@ export function SynthesisPage() {
     if (id) void load(id);
     return () => clear();
   }, [id, load, clear]);
+
+  /* ── Беседа 4.1: режимы. Видимость кнопок — порт updateModeButtons
+     [11799]: hasCapsule = capsule в sectionOrder И capsuleHTML непуст;
+     счётчики — GET /modes (по готовности синтеза с капсулой). ── */
+  const [modeOpen, setModeOpen] = useState<ModeKey | null>(null);
+  const [modeCounts, setModeCounts] = useState<Record<string, number>>({});
+  const hasCapsule =
+    !!synthesis &&
+    (synthesis.sectionOrder ?? []).includes("capsule") &&
+    !!synthesis.capsuleHtml;
+  const synthesisIdForModes = synthesis?.id ?? null;
+  // Стабильная ссылка (грабля R3: инлайн-колбэк в props модалки менял
+  // идентичность её refetch каждый рендер); prev при том же счётчике —
+  // без нового объекта, чтобы не гонять рендеры по кругу
+  const onModeResultsChanged = useCallback(
+    (mk: ModeKey, count: number) =>
+      setModeCounts((prev) =>
+        prev[mk] === count ? prev : { ...prev, [mk]: count },
+      ),
+    [],
+  );
+  useEffect(() => {
+    setModeCounts({});
+    if (!synthesisIdForModes || !hasCapsule) return;
+    if (editOpen) return; // пока модалка открыта, счётчики не гоняем
+    let cancelled = false;
+    getModes(synthesisIdForModes)
+      .then((modes) => {
+        if (cancelled) return;
+        const counts: Record<string, number> = {};
+        for (const [k, list] of Object.entries(modes)) counts[k] = list.length;
+        setModeCounts(counts);
+      })
+      .catch(() => {
+        /* счётчики — украшение; сбой молча пропускаем */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // editOpen в deps: план с режимными шагами / подраздельный каскад
+    // меняют результаты — закрытие EditModal перечитывает счётчики
+    // (паритет updateModeButtons после applyEditPlan исходника)
+  }, [synthesisIdForModes, hasCapsule, editOpen]);
 
   /* ── Беседа 3.2 (п. 4): секция «Генеалогия» под шапкой документа ──
      Только для мета-синтезов (есть родители-концепции) — паритет
@@ -261,6 +316,19 @@ export function SynthesisPage() {
           >
             ✎ Изменить
           </button>
+          {hasCapsule &&
+            MODE_ORDER.map((mk) => (
+              <button
+                key={mk}
+                type="button"
+                className="action-btn"
+                onClick={() => setModeOpen(mk)}
+                disabled={live}
+              >
+                ◈ {MODE_UI[mk].title.slice(2)}
+                {(modeCounts[mk] ?? 0) > 0 ? ` (${modeCounts[mk]})` : ""}
+              </button>
+            ))}
           <button
             type="button"
             className="action-btn"
@@ -363,6 +431,15 @@ export function SynthesisPage() {
           console.warn("resume_plan из SynthesisPage не поддержан:", mode);
         }}
         onClose={() => setPauseModalOpen(false)}
+      />
+
+      {/* Беседа 4.1: модалка режимов */}
+      <ModeModal
+        open={modeOpen !== null}
+        synthesisId={synthesis.id}
+        modeKey={modeOpen}
+        onClose={() => setModeOpen(null)}
+        onResultsChanged={onModeResultsChanged}
       />
 
       {/* Беседа 1.7: модалка графа категорий */}

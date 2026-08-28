@@ -226,6 +226,16 @@ export function useStreamingGeneration(
 
   const handleMessage = useCallback(
     (msg: WsServerMessage) => {
+      // Беседа 4.1: поток РЕЖИМОВ (sectionKey "mode:{modeKey}") ведёт
+      // ModeModal по собственному соединению — здесь его дельты/ошибки
+      // игнорируются, иначе mode:-ключ стал бы «разделом» прогресса
+      if (
+        "sectionKey" in msg &&
+        typeof msg.sectionKey === "string" &&
+        msg.sectionKey.startsWith("mode:")
+      ) {
+        return;
+      }
       switch (msg.type) {
         case "stream_delta":
           setCurrentSection(msg.sectionKey);

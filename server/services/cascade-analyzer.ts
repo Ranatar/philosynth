@@ -32,12 +32,14 @@
  *    возвращающий синхронную функцию с уже загруженными вариантами;
  *  - INTRA_DEPS / SUBSECTION_TO_CTX_KEYS / MODE_DEPS — из Registry
  *    (intra_deps / subsection_ctx_keys / mode_deps), не из server/config;
- *  - getEffectiveModeDeps [22558] — ВЛАДЕЛЕЦ mode-service (беседа 4.1,
- *    карта 04 §1.11); здесь минимальный локальный порт
- *    getEffectiveModeDepsFromConfig, TODO(4.1): при создании mode-service
- *    перевести на импорт оттуда. MODE_CONFIG.title (тоже 4.1) заменён
- *    словарём MODE_TITLES (значения — дословно из MODE_CONFIG исходника
- *    [22579]);
+ *  - getEffectiveModeDeps [22558] и MODE_CONFIG [22578] — ВЛАДЕЛЕЦ
+ *    mode-service (карта 04 §1.11): локальные порты 2.1
+ *    (getEffectiveModeDepsFromConfig-тело, MODE_TITLES) СНЯТЫ беседой
+ *    4.1. getEffectiveModeDepsFromConfig оставлен тонким async-делегатом
+ *    (потребитель — edit-planner), заголовки берутся из MODE_CONFIG;
+ *    связь с mode-service — ЛЕНИВЫЙ import(): статический замкнул бы
+ *    цикл cascade-analyzer → mode-service → generation-service →
+ *    cascade-analyzer (запрет по грабле 2.1, ср. loadSynthesisLocal);
  *  - статусы entries ctxLog совпадают с исходником
  *    (found/truncated/missing/…, сверено с context-builder 1.3) —
  *    buildFactualDepsMap портируется 1:1.
@@ -353,49 +355,21 @@ export interface AffectedMode {
 }
 
 /**
- * MODE_CONFIG[*].title исходника [22579] — дословно. Сам MODE_CONFIG
- * (промпты режимов) — mode-service, беседа 4.1; TODO(4.1): при его
- * создании перевести на импорт оттуда.
- */
-export const MODE_TITLES: Readonly<Record<string, string>> = {
-  adversarial: "⚔ Оппонент",
-  translator: "🔄 Переводчик",
-  timeslice: "⏳ Временной срез",
-} as const;
-
-/**
- * Локальный порт getEffectiveModeDeps(modeKey, p) [22558]: MODE_DEPS —
- * из Registry (конфиг mode_deps); при генетическом порядке graph:nodes /
- * graph:edges замещаются диалоговыми ключами, если графа нет в документе
- * (DOC_STATE.sectionOrder → параметр sectionOrder).
- * ВЛАДЕЛЕЦ функции — mode-service (карта 04 §1.11, беседа 4.1);
- * TODO(4.1): заменить на импорт из mode-service, этот порт удалить.
+ * Делегат канонического getEffectiveModeDeps [22558] из mode-service
+ * (владелец — карта 04 §1.11; локальный порт 2.1 снят беседой 4.1).
+ * Оставлен под прежним именем ради потребителей (edit-planner).
+ * Импорт ЛЕНИВЫЙ: статический `from "./mode-service.js"` замкнул бы цикл
+ * cascade-analyzer → mode-service → generation-service → cascade-analyzer
+ * (грабля 2.1 «статический цикл импортов»); функция и так async, к
+ * моменту вызова графы модулей инициализированы.
  */
 export async function getEffectiveModeDepsFromConfig(
   modeKey: string,
   generationOrder: GenerationOrder | undefined,
   sectionOrder: readonly string[],
 ): Promise<SectionDeps> {
-  const modeDeps =
-    await getConfig<Record<string, SectionDeps | undefined>>("mode_deps");
-  const base = modeDeps[modeKey];
-  if (!base) return { required: [], optional: [] };
-
-  if (generationOrder === "genetic") {
-    // Заменяем graph:nodes на dialogue:new_concepts, если графа нет
-    const hasGraph = sectionOrder.includes("graph");
-    const mapKey = (k: string): string => {
-      if (k === "graph:nodes" && !hasGraph) return "dialogue:new_concepts";
-      if (k === "graph:edges" && !hasGraph) return "dialogue:turning_points";
-      return k;
-    };
-    return {
-      required: base.required.map(mapKey),
-      optional: base.optional.map(mapKey),
-    };
-  }
-
-  return base;
+  const { getEffectiveModeDeps } = await import("./mode-service.js");
+  return getEffectiveModeDeps(modeKey, generationOrder, sectionOrder);
 }
 
 export interface AffectedModesInput {
@@ -429,6 +403,12 @@ export async function getAffectedModes(
   const canonicalize =
     subsectionCtxKeys !== null ? await getCanonicalizer() : null;
 
+  // Заголовки режимов — MODE_CONFIG mode-service (владелец, 4.1);
+  // импорт ленивый — см. шапку модуля (анти-цикл)
+  const { MODE_CONFIG } = await import("./mode-service.js");
+  const titleOf = (mk: string): string =>
+    (MODE_CONFIG as Record<string, { title: string } | undefined>)[mk]?.title ?? mk;
+
   for (const [modeKey, results] of Object.entries(modes || {})) {
     if (!Array.isArray(results)) continue;
     const deps = await getEffectiveModeDepsFromConfig(
@@ -437,7 +417,7 @@ export async function getAffectedModes(
       input.sectionOrder,
     );
     if (!deps) continue;
-    const title = MODE_TITLES[modeKey] ?? modeKey;
+    const title = titleOf(modeKey);
     const allCtxKeys = [...(deps.required || []), ...(deps.optional || [])];
 
     for (let i = 0; i < results.length; i++) {

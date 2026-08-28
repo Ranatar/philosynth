@@ -32,8 +32,11 @@ js:updateModeButtons
 html:#modeOverlay
 html:#modeTabsBar
 
-## Стили режимов
+## Стили режимов. css*:.mode- не ловит id-правило и keyframes —
+## дыра комплекта, найденная беседой 4.1 (доложено в журнал 07)
 css*:.mode-
+css:#modeTabsBar
+css:@keyframes pulse-tab
 
 ## Обрезка подписи вкладки. В исходнике ДВА truncLabel: этот и вложенный
 ## в buildModesExportSection (4.2), который печатает не символ …, а

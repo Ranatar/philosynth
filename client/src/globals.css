@@ -2126,3 +2126,211 @@
   border-color: var(--gold);
 }
 .gen-tree-light > .gen-card .gen-card-name { color: var(--gold); }
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Режимы (беседа 4.1) — модалка, вкладки [1477–1677].
+ * Дословно из исходника; дыра комплекта 4.1-mode-service.js: правило
+ * #modeTabsBar [1619–1627] и @keyframes pulse-tab [1673] не попали во
+ * фрагмент (взяты из source напрямую) — доложить в патч доков.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.mode-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.70);
+  z-index: 9998;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.mode-overlay.visible {
+  display: flex;
+}
+.mode-modal {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+}
+.mode-modal-header {
+  background: var(--blue-corp);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  flex-shrink: 0;
+}
+.mode-modal-title {
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+.mode-modal-close {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.7);
+  padding: 5px 12px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+.mode-modal-close:hover {
+  border-color: #fff;
+  color: #fff;
+}
+.mode-modal-params {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+  background: var(--off);
+}
+.mode-modal-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 28px 48px;
+  background: var(--paper);
+}
+.mode-modal-body .doc-content {
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--ink-mid);
+}
+.mode-modal-body .doc-content h4 {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 20px 0 8px;
+}
+.mode-modal-body .doc-content p {
+  margin-bottom: 12px;
+}
+.mode-modal-body .doc-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 12px;
+}
+.mode-modal-body .doc-content th {
+  background: var(--blue-corp);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 9px 14px;
+  text-align: left;
+  font-weight: 500;
+}
+.mode-modal-body .doc-content td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+  color: var(--ink-mid);
+  line-height: 1.6;
+}
+.mode-modal-body .doc-content tr:nth-child(even) td {
+  background: var(--off);
+}
+.mode-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-top: 1px solid var(--rule);
+  flex-shrink: 0;
+  background: var(--off);
+}
+.mode-modal-info {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 1px;
+}
+.mode-modal-copy {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: var(--blue-corp);
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mode-modal-copy:hover {
+  background: var(--blue-mid);
+}
+
+/* ── Mode tabs ── */
+#modeTabsBar, #expModeTabsBar {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+  background: var(--off);
+}
+.mode-tab {
+  padding: 8px 16px;
+  border: none;
+  background: var(--off);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--ink-mid);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.15s;
+  position: relative;
+}
+.mode-tab.active {
+  background: var(--paper);
+  color: var(--violet);
+  border-bottom-color: var(--violet);
+}
+.mode-tab:hover {
+  color: var(--violet);
+}
+.mode-tab-date {
+  font-size: 8px;
+  color: var(--ink-dim);
+  margin-left: 4px;
+}
+.mode-tab-close {
+  font-size: 11px;
+  margin-left: 6px;
+  opacity: 0;
+  cursor: pointer;
+  color: var(--red);
+  transition: opacity 0.15s;
+}
+.mode-tab:hover .mode-tab-close {
+  opacity: 0.5;
+}
+.mode-tab-close:hover {
+  opacity: 1 !important;
+}
+.mode-tab.adding {
+  color: var(--blue-corp);
+  animation: pulse-tab 1s infinite;
+}
+@keyframes pulse-tab {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

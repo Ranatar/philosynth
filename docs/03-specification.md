@@ -574,15 +574,43 @@ DELETE /syntheses/:id/plans/:planId
 POST   /syntheses/:id/modes/:modeKey/run
                                 { param: string }
                                 → { ok: true }
-                                // Стриминг через WebSocket
+                                // Стриминг через WebSocket: дельты
+                                // sectionKey "mode:{modeKey}", финал
+                                // mode_done (§3.2). Пустой param →
+                                // 400 VALIDATION_ERROR (details.param);
+                                // активная генерация → 409
 
 GET    /syntheses/:id/modes     → { modes: Record<string, ModeResult[]> }
 
 GET    /syntheses/:id/modes/:modeKey
-                                → { results: ModeResult[] }
+                                → { results: ModeResult[],
+                                    warnings: ModeDepsWarning[],
+                                    estimate: ModeCostEstimate | null }
+                                // По факту 4.1: транспорт checkModeDeps
+                                // (warnings) и estimateModeCost
+                                // (estimate; fail-open null) для модалки
+                                // — до 4.1 §2.7 их не специфицировал.
+                                // Чтение обоих GET — владелец ИЛИ
+                                // публичный синтез
+
+POST   /syntheses/:id/modes/:modeKey/:index/regenerate
+                                → { ok: true }
+                                // По факту 4.1 (довыполнение §12):
+                                // тихая перегенерация СУЩЕСТВУЮЩЕГО
+                                // результата с его собственным param
+                                // (UPDATE строки, created_at сохранён);
+                                // финал — mode_done, без дельт. Гейты
+                                // как у DELETE. Исходник эндпоинта не
+                                // имел: каскад звал runMode() с param
+                                // из поля модалки [19034] — отступление
 
 DELETE /syntheses/:id/modes/:modeKey/:index
                                 → { ok: true }
+                                // index — позиция по created_at ASC;
+                                // вне диапазона → 404. ОТСТУПЛЕНИЕ 4.1:
+                                // под 409-гейтом активной генерации
+                                // (исходник removeModeResult доступен
+                                // всегда)
 ```
 
 ### 2.8. Lineage

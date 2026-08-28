@@ -21,7 +21,9 @@
  *    Каскад «третьей волны» [19870+] и каскад режимов НЕ переносятся:
  *    первая — по данным превью не вычислима без повторного запроса
  *    после каждой волны (осознанное упрощение, зафиксировать в ревью),
- *    вторые — беседа 4.1 (нет ни результатов режимов, ни runMode).
+ *    вторые — очередь запусков runMode после волны: инфраструктура
+ *    есть с 4.1 (mode-service + POST /modes/:key/run), сам каскад не
+ *    портирован — долг §12 за 4.1 (довыполнение по команде).
  *  - Подраздел капсулы каскада → перегенерация ВСЕГО раздела
  *    (POST /regenerate/:key) — квирк исходника сохранён.
  */
@@ -33,6 +35,7 @@ import type {
 } from "@philosynth/shared/types/edit-plan";
 
 import { apiPost } from "../../api/client";
+import { getModeResults, regenerateModeResult } from "../../api/modes";
 import { getSubsectionImpact, regenerateSubsection } from "../../api/plans";
 import type { SectionEvent } from "../../hooks/useEditPlan";
 
@@ -50,7 +53,11 @@ export interface SubsectionRegenPanelProps {
 
 type QueueItem =
   | { kind: "sub"; section: string; subsection: string }
-  | { kind: "section"; section: string };
+  | { kind: "section"; section: string }
+  /* Каскад режимов (долг §12 закрыт): section = "mode:{modeKey}" —
+   * унифицирует матчинг с mode_done/stream_error в очереди */
+  | { kind: "mode"; section: string; modeKey: string;
+      index: number; title: string };
 
 export function SubsectionRegenPanel({
   synthesisId,
@@ -107,6 +114,21 @@ export function SubsectionRegenPanel({
   const startItem = useCallback(
     async (item: QueueItem) => {
       setRunning(item);
+      if (item.kind === "mode") {
+        // Паритет прогресса исходника [19032]: «Каскад: {title}...»
+        setProgressText(`Каскад: ${item.title}…`);
+        try {
+          await regenerateModeResult(synthesisId, item.modeKey, item.index);
+          // Дальше ждём mode_done/stream_error по WS
+        } catch (err) {
+          setProgressText(
+            "⚠ " + (err instanceof Error ? err.message : String(err)),
+          );
+          setRunning(null);
+          setQueue([]);
+        }
+        return;
+      }
       const label =
         item.kind === "sub"
           ? `${labels(item.section)} → ${item.subsection}`
@@ -141,6 +163,56 @@ export function SubsectionRegenPanel({
     [synthesisId, sectionKey, subsectionName, note, includeContent, labels],
   );
 
+  /* ── Каскад режимов после волны (долг §12 закрыт) ── */
+  const modeCascadeAskedRef = useRef(false);
+  const askModeCascade = useCallback(async () => {
+    const affected = impact?.affectedModes ?? [];
+    if (affected.length === 0) return;
+    // Оценка — паритет modeCostTotal исходника [19013–19017]: сумма по
+    // каждому затронутому результату; статические estimate — из GET
+    // /modes/:modeKey (по одному запросу на уникальный ключ)
+    let costTotal = 0;
+    try {
+      const uniq = [...new Set(affected.map((a) => a.modeKey))];
+      const est = new Map<string, number>();
+      for (const mk of uniq) {
+        const r = await getModeResults(synthesisId, mk);
+        est.set(mk, r.estimate?.cost ?? 0);
+      }
+      for (const a of affected) costTotal += est.get(a.modeKey) ?? 0;
+    } catch {
+      costTotal = 0; // fail-open — как estimateModeCost → null
+    }
+    const modeNames = affected.map((a) => a.title).join(", ");
+    const costStr =
+      costTotal > 0
+        ? "\nОценка стоимости: ≈ $" + costTotal.toFixed(4) +
+          " (" + (costTotal * 100).toFixed(2) + "¢), " +
+          affected.length + " запр."
+        : "";
+    const doRegen = window.confirm(
+      "Подраздел «" + subsectionName + "» обновлён.\n\n" +
+      "Затронутые режимы: " + modeNames + "." + costStr + "\n\n" +
+      "Перегенерировать их?",
+    );
+    if (!doRegen) {
+      setProgressText("✓ Готово");
+      return;
+    }
+    const [first, ...rest] = affected.map(
+      (a): QueueItem => ({
+        kind: "mode",
+        section: "mode:" + a.modeKey,
+        modeKey: a.modeKey,
+        index: a.index,
+        title: a.title,
+      }),
+    );
+    if (!first) return;
+    setQueue(rest);
+    void startItem(first);
+  }, [impact, synthesisId, subsectionName, startItem]);
+
   // Очередь: section_done текущего раздела → следующий POST
   const lastEventRef = useRef<SectionEvent | null>(null);
   useEffect(() => {
@@ -162,11 +234,26 @@ export function SubsectionRegenPanel({
     if (next) {
       setQueue(rest);
       void startItem(next);
+    } else if (
+      running.kind !== "mode" &&
+      !modeCascadeAskedRef.current &&
+      (impact?.affectedModes.length ?? 0) > 0
+    ) {
+      // Каскад режимов исходника [19007–19036]: после волны — confirm
+      // со списком и оценкой, при согласии — перегенерация затронутых.
+      // ОТСТУПЛЕНИЕ (задокументировано): исходник звал runMode() с
+      // paramValue ИЗ ПОЛЯ МОДАЛКИ («нужен fallback» — его же
+      // комментарий); здесь — тихая перегенерация СУЩЕСТВУЮЩИХ
+      // результатов с их собственными param (механизм планового
+      // каскада [19756]) через POST .../regenerate.
+      modeCascadeAskedRef.current = true;
+      setRunning(null);
+      void askModeCascade();
     } else {
       setProgressText("✓ Готово");
       setRunning(null);
     }
-  }, [sectionEvent, running, queue, startItem]);
+  }, [sectionEvent, running, queue, startItem, impact, askModeCascade]);
 
   const handleRun = useCallback(() => {
     if (!impact || busy) return;
@@ -182,6 +269,7 @@ export function SubsectionRegenPanel({
       else wave.push({ kind: "section", section: d.section });
     }
     setQueue(wave);
+    modeCascadeAskedRef.current = false;
     void startItem({
       kind: "sub",
       section: sectionKey,
@@ -338,8 +426,7 @@ export function SubsectionRegenPanel({
                 ⚡ Затронутые режимы:{" "}
                 {[...new Set(impact.affectedModes.map((m) => m.title))]
                   .map((n) => `«${n}»`)
-                  .join(", ")}{" "}
-                — перегенерация режимов появится в беседе 4.1
+                  .join(", ")}
               </div>
             )}
             {impact.estimate && (
