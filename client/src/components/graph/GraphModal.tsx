@@ -12,10 +12,9 @@
  * вида), тултип #graph-tooltip (инлайновые стили исходника).
  *
  * АДАПТАЦИИ:
- *  - Кнопки экспорта MMD/PNG/JSON — ЗАГЛУШКИ с TODO(4.2): exportMMD/
- *    exportPNG/exportJSON реализуются серверными services/export/* в
- *    беседе 4.2 и в фрагмент 1.7 не входят (обрыв на 16366, exportMMD
- *    с 16370). Здесь — разметка кнопок и обработчики-заглушки.
+ *  - Кнопки экспорта MMD/PNG/JSON (беседа 4.2, долг §12 закрыт):
+ *    downloadExport → серверные services/export/* через GET
+ *    /:id/export/{mmd,png,json}; заглушки 1.7 сняты.
  *  - Пустой граф: openGraph() исходника делал alert(«Нет данных графа.»)
  *    и не открывался; по протоколу 1.7 (edge case запроса 8) модалка
  *    ОТКРЫВАЕТСЯ и показывает пустое состояние, не падает.
@@ -28,6 +27,7 @@
  *    _extended — из SynthesisFull.extGraphMetrics (проп).
  */
 
+import { downloadExport } from "../../api/export";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import Graph2D from "./Graph2D";
@@ -63,12 +63,16 @@ export interface GraphModalProps {
   data: GraphData | null;
   extGraphMetrics: boolean;
   onClose: () => void;
+  /** Беседа 4.2: id синтеза для серверных экспортов MMD/PNG/JSON
+   *  (services/export/*); без него кнопки экспорта неактивны */
+  synthesisId?: string | null;
 }
 
 export default function GraphModal({
   open,
   data,
   extGraphMetrics,
+  synthesisId = null,
   onClose,
 }: GraphModalProps) {
   const [mode, setMode] = useState<"3d" | "2d">("3d");
@@ -162,13 +166,16 @@ export default function GraphModal({
     [activeFilter],
   );
 
-  // TODO(4.2): exportMMD/exportPNG/exportJSON — серверные services/export/*
-  const exportStub = useCallback((kind: string) => {
-    setExportOpen(false);
-    console.warn(
-      `Экспорт ${kind} появится в беседе 4.2 (серверные services/export/*)`,
-    );
-  }, []);
+  // Беседа 4.2: экспорт графа — серверные services/export/* (03 §2.11);
+  // заглушка 1.7 снята (долг §12 закрыт)
+  const doExport = useCallback(
+    (fmt: "mmd" | "png" | "json") => {
+      setExportOpen(false);
+      if (!synthesisId) return;
+      downloadExport(synthesisId, fmt);
+    },
+    [synthesisId],
+  );
 
   if (!open) return null;
 
@@ -234,19 +241,19 @@ export default function GraphModal({
             <div className="gm-export-menu">
               <button
                 className="gm-export-item"
-                onClick={() => exportStub("MMD")}
+                onClick={() => doExport("mmd")}
               >
                 MMD
               </button>
               <button
                 className="gm-export-item"
-                onClick={() => exportStub("PNG")}
+                onClick={() => doExport("png")}
               >
                 PNG
               </button>
               <button
                 className="gm-export-item"
-                onClick={() => exportStub("JSON")}
+                onClick={() => doExport("json")}
               >
                 JSON
               </button>

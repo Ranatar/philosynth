@@ -63,7 +63,9 @@ export type BudgetMode = "full" | "shrink";
 export interface ContextEntry {
   /** Ключ фрагмента: 'graph:nodes', 'theses:summary', ... (CTX_LABELS) */
   key: string;
-  /** 'included'|'truncated'|'missing'|'skipped_budget'|... */
+  /** ФАКТИЧЕСКИЕ статусы (уточнено 4.2; прежний комментарий называл
+   *  несуществующий 'included'): 'found' | 'truncated' | 'missing' |
+   *  'skipped_budget' | 'dropped' */
   status: string;
   /** Длина фрагмента, симв. */
   len: number;

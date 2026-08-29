@@ -210,13 +210,15 @@
 
 | Функция | Что меняется | Целевой модуль |
 |---|---|---|
-| `saveHTML()` | Генерация HTML из БД на сервере (шаблон + данные) | `server/services/export/html-exporter.ts` |
-| `exportMMD()` | Вместо G.nodes → БД-запрос categories/edges | `server/services/export/mmd-exporter.ts` |
-| `exportPNG()` | Canvas rendering на сервере (node-canvas) или генерация SVG | `server/services/export/png-exporter.ts` |
-| `exportJSON()` | Из БД | `server/services/export/json-exporter.ts` |
-| `saveMD()` + `node2md()`, `sec2md()`, `table2md()`, `inline2md()`, `sig2md()` | Markdown-экспорт УЖЕ реализован в исходнике (в 03/06 ошибочно числится «Фаза 2, новое») | `server/services/export/md-exporter.ts` |
-| `buildGraphExportSection()` | Вставка в экспортируемый HTML | `server/services/export/html-exporter.ts` |
-| `auditCSS()` | Оптимизация CSS для экспорта — переносится | `server/utils/css-audit.ts` |
+| `saveHTML()` | Генерация HTML из БД на сервере (шаблон + данные) | `server/services/export/html-exporter.ts` — ФАКТ (4.2): шапка-зеркало DocumentHeader (subtitleForExport/docDateFor — двойники, дрейф сторожит integration-check 4y), .doc-body с якорями sec-{key}; ЗАМЕНА fn.toString() исходника: скрипты графа/режимов — статические бандлы `server/config/export-assets.ts` (генерат `npm run extract:export-assets` из исходника: fnBundle 46 функций, constBundle 6, gm/mode-оверлеи, rawCSS); видимый лог ПРЕДВЫЧИСЛЕН formatCtxLogHTML на сервере (после импорта и правок пересчитается только внешним пересохранением); embedded state version:2 — genLog/ctxLog без sys/promptSkeleton, params=buildParams, участники type='synthesis' без капсул (stripCapsules), genealogy однослойная из lineage (полную строит импорт 4.3) |
+| `exportMMD()` | Вместо G.nodes → БД-запрос categories/edges | `server/services/export/mmd-exporter.ts` — ФАКТ (4.2): loadGModel общий (`graph-model.ts`), стиль/сиды — `graph-style.ts` (копия клиентского graph-utils 1.7, дрейф сторожит 4y); КВИРК исходника сохранён: classDef объявлены, строк class нет |
+| `exportPNG()` | Canvas rendering на сервере (node-canvas) или генерация SVG | `server/services/export/png-exporter.ts` — ФАКТ (4.2): вариант (а) node-canvas 2048×2048, PAD 120; физика — `graph-physics.ts` (клиентские константы, warmup(...,2)); квирки-опущения исходника задокументированы в шапке модуля |
+| `exportJSON()` | Из БД | `server/services/export/json-exporter.ts` — ФАКТ (4.2): meta.format "PhiloSynth Graph" version 1, roles нормализованы, clusters с members |
+| `saveMD()` + `node2md()`, `sec2md()`, `table2md()`, `inline2md()`, `sig2md()` | Markdown-экспорт УЖЕ реализован в исходнике (в 03/06 ошибочно числится «Фаза 2, новое») | `server/services/export/md-exporter.ts` — ФАКТ (4.2): DOM через html-parser (linkedom изолирован); требует каркаса .section-num/.section-title/.doc-content в html_content (моки без каркаса дают пустой MD — грабля тестов) |
+| `getDocFilename()` [17477] | Из params БД вместо DOC_STATE | `server/services/export/filename.ts` — ФАКТ (4.2): paramCode склейка join("") без дефисов — пример «hm-t-2» в комментарии исходника устарел; RFC5987-имена в Content-Disposition (`routes/export.ts`) |
+| `reconstructBaseCtxSkeleton()`, `reconstructCtxMarkers()`, `reconstructSectionTask()`, `reconstructSkeleton()` | Fallback-реконструкция скелета промпта для записей без metadata.promptSkeleton (импорты; долг 2.4 §12) | `server/services/prompt-reconstruction.ts` — ФАКТ (4.2): все 4 async; config.buildPrompt исходника → renderTemplate из Registry; source 'subsection_regen'; участники type='synthesis' через isConceptParticipant; подключён в log-formatter (rc один раз на форматирование) |
+| `buildGraphExportSection()` | Вставка в экспортируемый HTML | `server/services/export/html-exporter.ts` — ФАКТ (4.2): initScript [17773-17828] дословно, ассеты из export-assets; buildModesExportSection — скрипт дословно |
+| `auditCSS()` | Оптимизация CSS для экспорта — переносится | `server/utils/css-audit.ts` — ФАКТ (4.2): 1:1 [17835-18001] |
 
 ### 2.6. Импорт
 

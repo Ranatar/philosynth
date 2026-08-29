@@ -20,6 +20,7 @@
     "db:studio": "drizzle-kit studio",
     "extract:seed": "node scripts/extract-seed-data.mjs",
     "extract:sections": "node scripts/extract-section-templates.mjs",
+    "extract:export-assets": "node scripts/extract-export-assets.mjs",
     "seed:prompts": "tsx scripts/seed-prompts.ts",
     "seed:configs": "tsx scripts/seed-configs.ts",
     "seed:taxonomy": "tsx scripts/seed-taxonomy.ts",

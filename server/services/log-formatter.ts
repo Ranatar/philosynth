@@ -30,10 +30,11 @@
  *    группируются обратно; строка версии — metadata.version (дописана в
  *    bumpVersionsForPlan этой беседой; у строк без неё номер опускается).
  *
- * По 07 (беседа 2.4): fallback reconstructSkeleton НЕ реализуется —
- * prompt-reconstruction.ts создаёт беседа 4.2; записи без
- * metadata.promptSkeleton помечаются «промпт недоступен (импортированная
- * запись)». TODO(4.2): подключить реконструкцию (сделает сама 4.2).
+ * Беседа 4.2: fallback reconstructSkeleton ПОДКЛЮЧЁН
+ * (prompt-reconstruction.ts) — для записей без metadata.promptSkeleton
+ * скелет восстанавливается из параметров синтеза, ctxLog и определений
+ * разделов; метка «промпт недоступен (импортированная запись)» остаётся
+ * лишь когда и реконструкция невозможна (нет параметров/строки синтеза).
  */
 import { asc, eq } from "drizzle-orm";
 
@@ -45,6 +46,12 @@ import { CTX_LABELS } from "@philosynth/shared/constants/ctx-keys";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import { ML, SL } from "@philosynth/shared/constants/labels";
 import { colorizeLog } from "@philosynth/shared/utils/colorize-log";
+
+import {
+  buildReconstructionContext,
+  reconstructBaseCtxSkeleton,
+  reconstructSkeleton,
+} from "./prompt-reconstruction.js";
 import { formatVersion } from "@philosynth/shared/utils/version";
 
 import type { ContextEntry, ParentSpecLog } from "@philosynth/shared/types/generation";
@@ -838,9 +845,10 @@ export async function formatCtxLogHTML(
  * Текстовый дамп промптов (GET /logs/prompts). null — нет ни одной
  * записи-запроса (клиент показывает «Нет сохранённых промптов»).
  *
- * По 07: fallback reconstructSkeleton НЕ реализуется до 4.2 — записи без
- * metadata.promptSkeleton помечаются «промпт недоступен (импортированная
- * запись)»; TODO(4.2). Регулярки среза ПАРАМЕТРОВ несут маркеры
+ * Беседа 4.2: записи без metadata.promptSkeleton проходят через
+ * reconstructSkeleton (prompt-reconstruction.ts); метка «промпт недоступен
+ * (импортированная запись)» — только при невозможной реконструкции.
+ * Регулярки среза ПАРАМЕТРОВ несут маркеры
  * «КОНТЕКСТ ДРУГИХ», «Перегенерируй ТОЛЬКО», «КОНТЕКСТ
  * КОНЦЕПЦИЙ-УЧАСТНИКОВ» — как в исходнике.
  */
@@ -856,6 +864,17 @@ export async function formatPromptsForExport(
     (g) => g.logType === "generation" && g.sectionKey !== "_genCommon",
   );
   if (entries.length === 0) return null;
+
+  // Беседа 4.2: контекст реконструкции — один раз на экспорт (params из
+  // строки syntheses; fail-open: null → реконструкция пропускается)
+  const needsReconstruction =
+    entries.some(
+      (g) => typeof (g.metadata as Record<string, unknown>)["promptSkeleton"] !== "string" ||
+        !(g.metadata as Record<string, unknown>)["promptSkeleton"],
+    );
+  const rc = needsReconstruction
+    ? await buildReconstructionContext(synthesisId, ctxRows, genCommon)
+    : null;
 
   const metaOf = (g: GenRow): Record<string, unknown> =>
     g.metadata as Record<string, unknown>;
@@ -930,8 +949,13 @@ export async function formatPromptsForExport(
   const partBaseMatch = firstSkeleton.match(
     /^ПАРАМЕТРЫ СИНТЕЗА:\n([\s\S]*?)(?=\nКОНТЕКСТ ИЗ ПРЕДЫДУЩИХ|\nКОНТЕКСТ ДРУГИХ|\nЗАДАНИЕ:|\n(?:Перегенерируй|Доработай) ТОЛЬКО)/,
   );
-  // Реконструкция reconstructBaseCtxSkeleton — беседа 4.2; TODO(4.2)
-  const baseCtxText = partBaseMatch ? partBaseMatch[1]!.trim() : null;
+  // Беседа 4.2: при пустом скелете первый блок восстанавливается
+  // реконструкцией (reconstructBaseCtxSkeleton)
+  let baseCtxText = partBaseMatch ? partBaseMatch[1]!.trim() : null;
+  if (!baseCtxText && rc) {
+    const rec = await reconstructBaseCtxSkeleton(rc.params, rc.genCommon);
+    baseCtxText = rec.trim() || null;
+  }
   if (baseCtxText) {
     lines.push(sep);
     lines.push("## ПАРАМЕТРЫ СИНТЕЗА");
@@ -963,8 +987,11 @@ export async function formatPromptsForExport(
     lines.push(sep);
     lines.push("");
 
-    // Скелет промпта: только из metadata; реконструкция — TODO(4.2)
+    // Скелет промпта: metadata.promptSkeleton, иначе реконструкция (4.2)
     let skeleton = skeletonOf(g);
+    if (!skeleton && rc) {
+      skeleton = (await reconstructSkeleton(g, rc)) ?? "";
+    }
     if (!skeleton) {
       lines.push("[промпт недоступен (импортированная запись)]");
     } else {

@@ -100,11 +100,17 @@ SynthesisPage, «TODO(2.4)»-walker); 3.1 — 2p/4v/5r: мета-синтез
 двумя вызовами, кнопки замен CompatAdvisor, анти-регресс
 setState-in-render, транспорт hasConceptParents, CSS дерева с
 мобильной медиа; живьём — браузерный tests/test-32-requests2-5.mjs
-52 ✓ ×2). Сейчас покрывает 0.1–0.6, 1.1–1.7,
-2.1–2.4 и 3.1–3.2 целиком; живые секции требуют поднятых PG и Redis
-и засеянных prompt_templates, synthesis_configs и каталогов таксономии.
+52 ✓ ×2). 4.1 — 4x: режимы (mode-service/routes/клиент,
+дрейф-контроль MODE_UI↔MODE_CONFIG); 4.2 — 2q/4y/5s: экспорт
+(экспорты модулей; дрейф-контроль graph-style/physics ↔ клиент 1.7 и
+subtitleForExport ↔ DocumentHeader, бандлы ассетов, роуты,
+снятие TODO(4.2)/exportStub; живой конвейер loadGModel →
+MMD/JSON/PNG/MD + ExportError NO_GRAPH). Сейчас покрывает 0.1–0.6,
+1.1–1.7, 2.1–2.4, 3.1–3.2 и 4.1–4.2 целиком; живые секции требуют
+поднятых PG и Redis и засеянных prompt_templates, synthesis_configs
+и каталогов таксономии.
 
-## Статус: Фазы 0–3 завершены + 4.1 (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1)
+## Статус: Фазы 0–3 завершены + 4.1, 4.2 (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2)
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -390,18 +396,38 @@ hooks/useEditPlan.ts (свой WS, plan_updated — источник стату�
   обновлялись после плана (закрытие EditModal перечитывает
   getModes). Тесты: tests/test-41-requests2-5.mjs R0–R7 77 ✓ ×2.
   Доки пропатчены scripts/patch-docs-conv41.py.
+- **4.2 — Export Service.** services/export/* — пять форматов:
+  MMD (loadGModel: мульти-кластерные копии, петли ↺; стиль/сиды —
+  graph-style.ts, копия клиентского graph-utils 1.7, дрейф сторожит
+  integration-check 4y; КВИРК classDef-без-class сохранён), JSON
+  (meta/nodes/edges/clusters, роли нормализованы), PNG (вариант (а):
+  node-canvas 2048×2048, физика graph-physics.ts), MD (saveMD +
+  sec2md/… через html-parser; требует каркаса
+  section-num/section-title/doc-content), HTML (шапка-зеркало
+  DocumentHeader, embedded state version:2 без sys/promptSkeleton,
+  genealogy однослойная из lineage — полную строит 4.3; ЗАМЕНА
+  fn.toString(): статические бандлы config/export-assets.ts — генерат
+  npm run extract:export-assets, 46 функций + оверлеи + rawCSS;
+  видимый лог ПРЕДВЫЧИСЛЕН formatCtxLogHTML; auditCSS 1:1).
+  prompt-reconstruction.ts — 4 reconstruct* fallback-ом в
+  log-formatter (долг 2.4 §12 закрыт; renderTemplate вместо
+  config.buildPrompt). routes/export.ts — 5 GET, RFC5987, NO_GRAPH →
+  400. Клиент: меню «⤓ Экспорт» SynthesisPage, GraphModal →
+  downloadExport (долг 1.7 §12 закрыт). Тесты:
+  tests/test-42-requests2-6.mjs 76 ✓ ×2 (mermaid тем же движком;
+  file:// с подменой CDN; roundtrip — первый тест 4.3). Доки
+  пропатчены scripts/patch-docs-conv42.py.
 
 Не сделано (Фаза 4+): файловые концепции как участники мета-синтеза
 (4.3 — серверный импорт; гейт SynthesisForm снимать по факту),
-экспорт/импорт (4.x — серверный
-parseConceptFile; потребители stripCapsulesFromGenealogy/
-normalizeGenealogyNames — экспорт 4.2), billing, BYO-Key (6.1 — ввод
+импорт (4.3 — серверные importHTML/parseConceptFile/
+reconstructGenealogy; экспорт 4.2 ГОТОВ), billing, BYO-Key (6.1 — ввод
 ключа в auth-модалке).
 Фаза 1 закрыта целиком (1.1–1.7); Фаза 2 закрыта целиком: 2.1, 2.2,
 2.4 (велась перед 2.3 — §11) и 2.3; Фаза 3 закрыта целиком: 3.1,
-3.2; из Фазы 4 закрыта 4.1 (включая довыполнение долгов §12).
-Следующая по графу 07 — 4.2
-(Export Service).
+3.2; из Фазы 4 закрыты 4.1 (включая довыполнение долгов §12) и 4.2
+(Export Service; roundtrip-покрытие — первым тестом 4.3).
+Следующая по графу 07 — 4.3 (Import Service).
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

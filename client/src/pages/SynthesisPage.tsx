@@ -36,6 +36,7 @@ import { GenealogyTree } from "../components/lineage/GenealogyTree";
 import { EditModal } from "../components/edit/EditModal";
 import { ContextLogViewer } from "../components/logs/ContextLogViewer";
 import GraphModal from "../components/graph/GraphModal";
+import { downloadExport, EXPORT_FORMATS } from "../api/export";
 import {
   MODE_ORDER,
   MODE_UI,
@@ -79,6 +80,8 @@ export function SynthesisPage() {
   const [graphOpen, setGraphOpen] = useState(false);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [graphLoading, setGraphLoading] = useState(false);
+  // Беседа 4.2: выпадающее меню «⤓ Экспорт» (HTML/MD/Mermaid/PNG/JSON)
+  const [exportOpen, setExportOpen] = useState(false);
 
   const handleOpenGraph = async () => {
     if (!id || graphLoading) return;
@@ -329,6 +332,47 @@ export function SynthesisPage() {
                 {(modeCounts[mk] ?? 0) > 0 ? ` (${modeCounts[mk]})` : ""}
               </button>
             ))}
+          {/* Беседа 4.2: экспорт (скачивание с сервера, 03 §2.11) */}
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => setExportOpen((v) => !v)}
+              disabled={live}
+            >
+              ⤓ Экспорт
+            </button>
+            {exportOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  zIndex: 50,
+                  display: "flex",
+                  flexDirection: "column",
+                  background: "var(--paper, #1a1814)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  minWidth: 130,
+                }}
+              >
+                {EXPORT_FORMATS.map(({ fmt, label }) => (
+                  <button
+                    key={fmt}
+                    type="button"
+                    className="action-btn"
+                    style={{ border: "none", textAlign: "left" }}
+                    onClick={() => {
+                      setExportOpen(false);
+                      downloadExport(id ?? "", fmt);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             type="button"
             className="action-btn"
@@ -448,6 +492,7 @@ export function SynthesisPage() {
         data={graphData}
         extGraphMetrics={synthesis.extGraphMetrics}
         onClose={() => setGraphOpen(false)}
+        synthesisId={synthesis.id}
       />
     </div>
   );

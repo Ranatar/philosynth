@@ -1,5 +1,17 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-08-29 (итоги беседы 4.2)**: Export Service закрыт
+> (запрос 1 + тесты 2–6 tests/test-42-requests2-6.mjs 76 ✓ ×2; тест 4
+> протокола — roundtrip — исполняет беседа 4.3 первым тестом, инверсия
+> помечена по месту). Дыры, закрытые этим патчем: первый запрос 4.2 не
+> содержал md-exporter/filename/GET /export/md (роутов пять, не четыре);
+> пп. 4d/4g/5b не оговаривали серверные адаптации (ассеты вместо
+> fn.toString, предвычисленный лог, renderTemplate вместо
+> config.buildPrompt); «Контекст» дополнен фактическим входным
+> комплектом; квирк truncLabel переформулирован ("\u2026" — валидный
+> литерал); графу §11 добавлены рёбра 4.2; оба долга §12 за 4.2
+> вычеркнуты как ЗАКРЫТЫЕ.
+>
 > **Правки 2026-08-28 (итоги беседы 4.1)**: система режимов закрыта
 > (запрос 1 + браузерный тест tests/test-41-requests2-5.mjs 53 ✓;
 > R4 — АДАПТАЦИЯ против буквы: вход в модалку без капсулы скрыт —
@@ -268,8 +280,11 @@
 >   диапазоном целиком, а `css*:` сужается якорями `scope:`
 >   (образец — `3.2-genealogy-ui.spec`);
 > — одноимённые функции: в исходнике два `truncLabel`, и вложенный в
->   `buildModesExportSection` печатает escape-последовательность
->   вместо символа «…» — нужный выбирается через `scope:`
+>   `buildModesExportSection` записан с литералом `"\u2026"` вместо
+>   символа «…» — в генерируемом файле это ВАЛИДНЫЙ JS-литерал и
+>   рендерится многоточием (формулировка «печатает
+>   escape-последовательность» из прежней ревизии была преувеличена;
+>   уточнено 4.2) — нужный выбирается через `scope:`
 >   (образец — `4.1-mode-service.spec`).
 >
 > (Прежняя пометка «**ВНИМАНИЕ (2026-07-30):** скрипта
@@ -2591,7 +2606,8 @@ runMode, regenerateModeSilent, openModeModal, buildModeTabsBar, switchModeTab.
 - `03-specification.md` (секции 1.8 Экспорт, 2.11 Export API)
 - `04-code-reuse-map.md` (секция 2.5 — экспорт)
 - Из предыдущих бесед: `server/db/schema.ts`, `server/services/graph-parser.ts` (из 1.4)
-- Исходник: exportMMD … auditCSS (весь экспорт) + reconstructBaseCtxSkeleton … reconstructSkeleton (реконструкция промптов)
+- ФАКТ (4.2) — дополнительно потребовались: `server/services/mode-service.ts` (MODE_CONFIG для секции режимов и реконструкции), `server/services/log-formatter.ts` (снятие TODO(4.2) + предвычисление видимого лога), `server/services/section-defs-builder.ts` и `prompt-builder.ts` (reconstructSectionTask), `server/services/generation-service.ts` (buildParams/genCommon), клиентские `graph-utils.ts`/`Graph*.tsx` 1.7 (двойники graph-style/graph-physics — дрейф сторожит integration-check 4y) и `DocumentHeader.tsx` 1.6b (двойник шапки)
+- Исходник: exportMMD … auditCSS (весь экспорт) + reconstructBaseCtxSkeleton … reconstructSkeleton (реконструкция промптов) + getDocFilename [17477] + saveMD/node2md/sec2md/table2md/inline2md/sig2md (Markdown-экспорт)
 
 **Извлечение:**
 ```bash
@@ -2627,6 +2643,19 @@ exportJSON, saveHTML, buildGraphExportSection, buildModesExportSection, auditCSS
      b. Генерация SVG → конвертация в PNG через sharp
      Выбрать вариант (a) — ближе к исходнику.
 
+3b. server/services/export/md-exporter.ts — ФАКТ (4.2), в запросе отсутствовал:
+   - exportMD(synthesisId): порт saveMD() + sec2md/node2md/inline2md/
+     table2md/sig2md через html-parser (linkedom изолирован).
+     Требует каркаса .section-num/.section-title/.doc-content
+     в html_content (реальный вывод модели его несёт по сис-промпту;
+     моки без каркаса дают пустой MD — грабля тестов 2.3/4.1).
+
+3c. server/services/export/filename.ts — ФАКТ (4.2):
+   - getDocFilename [17477] из params БД; КВИРК: paramCode
+     склеивается join("") без дефисов — пример «hm-t-2» в комментарии
+     исходника устарел. Общее: common.ts (ExportError NOT_FOUND/NO_GRAPH
+     «Нет графа.», loadExportSynthesis, exportFilename).
+
 4. server/services/export/html-exporter.ts:
    - exportHTML(synthesisId):
      Порт saveHTML (saveHTML()). Собирает самодостаточный HTML:
@@ -2637,9 +2666,18 @@ exportJSON, saveHTML, buildGraphExportSection, buildModesExportSection, auditCSS
      d. Встраивает graph section (buildGraphExportSection, buildGraphExportSection()):
         Three.js + D3.js CDN ссылки, сериализованные функции графа,
         клонированное модальное окно
+        [ФАКТ 4.2: fn.toString()/клонирование DOM на сервере неисполнимы —
+        скрипты и оверлеи берутся из статических бандлов
+        server/config/export-assets.ts, генерат npm run
+        extract:export-assets из исходника: fnBundle 46 функций,
+        constBundle 6, gm/mode-оверлеи (минус .mode-modal-params), rawCSS;
+        initScript [17773-17828] дословно]
      e. Встраивает modes section (buildModesExportSection, buildModesExportSection())
      f. auditCSS — убирает неиспользуемые стили (auditCSS())
      g. Встраивает лог контекста (details + script)
+        [ФАКТ 4.2: видимый лог ПРЕДВЫЧИСЛЕН formatCtxLogHTML на сервере
+        (в исходнике строился скриптом в файле); после импорта и правок
+        файла пересчитается только пересохранением]
 
 5. server/utils/css-audit.ts:
    - auditCSS(cssText, contentToCheck):
@@ -2658,12 +2696,21 @@ exportJSON, saveHTML, buildGraphExportSection, buildModesExportSection, auditCSS
    - reconstructSkeleton(genEntry):
      Полный скелет: base + ctx + task + quality.
    Фрагмент исходника: reconstructBaseCtxSkeleton … reconstructSkeleton
+   [ФАКТ 4.2: все четыре — async (Registry/БД); config.buildPrompt
+   исходника → renderTemplate("mode.{key}.prompt"); source
+   'subsection_regen' (не 'subsection'); участники мета-синтеза
+   type='synthesis' — отбор через isConceptParticipant; подключены
+   fallback-ом в log-formatter (долг 2.4 §12 закрыт): rc считается
+   один раз на форматирование, needsReconstruction → baseCtx+skeleton]
 
-6. server/routes/export.ts:
+6. server/routes/export.ts (ФАКТ 4.2: роутов ПЯТЬ — плюс md):
    - GET /syntheses/:id/export/html → Content-Type: text/html
+   - GET /syntheses/:id/export/md → Content-Type: text/markdown
    - GET /syntheses/:id/export/mmd → Content-Type: text/plain
    - GET /syntheses/:id/export/png → Content-Type: image/png
    - GET /syntheses/:id/export/json → Content-Type: application/json
+   requireAuth + loadSynthesisForRead; имена файлов RFC5987;
+   NO_GRAPH → 400 VALIDATION_ERROR «Нет графа.» (png/mmd/json)
 
 7. Кнопки экспорта в SynthesisPage.tsx:
    - Выпадающее меню: HTML, Mermaid, PNG, JSON
@@ -2674,13 +2721,39 @@ exportJSON, saveHTML, buildGraphExportSection, buildModesExportSection, auditCSS
 - «Протестируй exportMMD: граф с 8 узлами, 3 кластерами — Mermaid валидный? Вставь в mermaid.live и проверь»
 - «Протестируй exportJSON: структура соответствует спецификации (meta, nodes, edges, clusters)?»
 - «Протестируй exportHTML: скачанный файл открывается в браузере, граф работает (3D/2D), лог контекста отображается?»
-- «Протестируй exportHTML: импортируй скачанный файл обратно через POST /syntheses/import — все данные восстанавливаются?»
+- «Протестируй exportHTML: импортируй скачанный файл обратно через POST /syntheses/import — все данные восстанавливаются?» [ФАКТ 4.2: НЕИСПОЛНИМ в 4.2 — POST /syntheses/import создаёт беседа 4.3; инверсия зависимости. Покрытие не теряется: ПЕРВЫЙ тестовый запрос беседы 4.3 — тот же roundtrip]
 - «Edge case: exportPNG для синтеза без графа — корректная ошибка 400»
 
 **Завершение беседы:**
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
+
+**По факту 4.2 (2026-08-29):**
+- Скрипты экспортируемого файла: fn.toString()/клонирование DOM
+  неисполнимы на сервере — статические бандлы export-assets.ts
+  (генерат extract:export-assets из исходника); видимый лог
+  предвычислен formatCtxLogHTML.
+- Embedded state version:2 — genLog/ctxLog без sys/promptSkeleton
+  (паритет клиентского среза), params=buildParams, участники
+  type='synthesis' без капсул, genealogy однослойная из lineage
+  (полную строит импорт 4.3).
+- Тесты 2–6: tests/test-42-requests2-6.mjs 76 ✓ ×2. АДАПТАЦИИ:
+  mermaid.live заменён ТЕМ ЖЕ движком (npm-пакет mermaid в странице
+  puppeteer, parse+render); CDN three/d3 в file://-тесте подменены
+  локальными копиями тех же версий. Тест roundtrip (п.4) неисполним —
+  исполняет 4.3 её первым тестом.
+- ГРАБЛИ МОКА (наследие тестов 2.3/4.1, чинить в будущих моках):
+  (1) специфичные маркеры pickHtml («Таблица категорий», «Сводная
+  таблица», «„Капсула“») должны стоять ПЕРЕД общим корнем
+  /критическ/i — задание графа упоминает критический анализ, и
+  прогон 1 записал критику в раздел graph; (2) моки возвращали
+  разделы БЕЗ каркаса section-num/section-title/doc-content, который
+  системный промпт требует от настоящей модели — на таком вводе
+  sec2md даёт пустой MD; мок 4.2 оборачивает wrapSection().
+- Дрейф-контроль двойников: graph-style/graph-physics ↔ клиент 1.7,
+  subtitleForExport/docDateFor ↔ DocumentHeader — integration-check
+  4y; живой конвейер экспорта — секция 5s.
 
 ---
 
@@ -3582,6 +3655,7 @@ streaming-manager.
 1.6 (роуты чтения: syntheses, sections, categories) ← 1.4 (данные, WS) + 1.4b (pausedState/pauseEstimates)
 2.3 (EditModal поверх страницы синтеза) ← 2.1 + 2.2 (планы) + 1.6b (SynthesisPage, SectionView, synthesis-store) + 1.6 (/sections/:key/context)
 2.4 (ContextLogViewer, кнопка в футере) ← 1.6b (DocumentFooter); fallback промптов — только после 4.2 (prompt-reconstruction)
+4.2 (export) ← 2.4 (log-formatter: снятие TODO(4.2), предвычисленный видимый лог) + 4.1 (MODE_CONFIG для секции режимов и реконструкции) + 1.7 (GraphModal — снятие exportStub) + 1.6b (SynthesisPage — меню «⤓ Экспорт»; DocumentHeader — двойник шапки) + 3.1 (lineage → однослойная genealogy в embedded state)
 3.2 (пул + генеалогия) ← 1.5b (пул уже создан) + 3.1 (routes/lineage.ts) + 1.6b (SynthesisPage, CatalogPage, SynthesisCard)
 1.6b (просмотр документа и каталог) ← 0.4 + 1.6 (роуты) + 1.5 (useStreamingGeneration, PauseModal)
 1.7 (граф) ← 0.4 + 1.6 (GET /categories) + 1.6b (SynthesisPage)
@@ -3644,12 +3718,12 @@ streaming-manager.
 | `applyReplacement` / `updateCompatAdvisor` / `toggleCompatPanel` | 3.2 | 1.1 (адресовался 1.5, затем «2.x») | ЗАКРЫТ 3.2 (2026-08-21): кнопки замен + orderAdvice + автораскрытие при конфликте в CompatAdvisor.tsx; onApplyReplacement меняет method/synthLevel/generationOrder формы — пересчёт советов/предупреждений/оценки через deps эффектов |
 | Отрисовка `estimate-diff` в `FullBudgetPreview` | 3.2 | 1.5b | ЗАКРЫТ 3.2 (2026-08-21): /estimate дважды (с участниками и без, дебаунс 600 мс), строка «Оценка с родителями: … · без: … · разница: …» |
 | Серверный импорт концепт-файлов | 4.3 | 1.5b | в тексте 4.3 |
-| `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 | 2.4 | 2.4 закрыта 2026-08-17: TODO(4.2) ×2 в log-formatter, записи без promptSkeleton помечаются «промпт недоступен» |
+| `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 | 2.4 | ЗАКРЫТ 4.2 (2026-08-29): `server/services/prompt-reconstruction.ts` (4 async-функции), подключён в formatPromptsForExport — rc один раз на форматирование, needsReconstruction → baseCtx+skeleton; TODO(4.2) в log-formatter сняты |
 | BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | в тексте 6.1 |
 | Форма ввода ключа в auth-модалке `PauseModal` | 6.2 | 1.4b (адресовался 6.1) | внесён 2026-07-31 |
 | Per-user HTTP-лимитирование (подсчёт после auth; сейчас фактически per-IP — 03 §3.4) | 6.1 | 1.6 | внесён 2026-08-02 |
 | `makeSectionCtxDisclosure` — disclosure секционного контекста в документе (sec_context отдаётся в SectionFull, UI не показывает) | 2.3 | 1.6b | ЗАКРЫТ 2.3 (2026-08-20): details.sec-disclosure в SectionView при непустом secContext |
-| Экспорт графа MMD/PNG/JSON (кнопки GraphModal — заглушки, метки TODO(4.2) в GraphModal.tsx; серверные services/export/*) | 4.2 | 1.7 | внесён 2026-08-04 |
+| Экспорт графа MMD/PNG/JSON (кнопки GraphModal — заглушки, метки TODO(4.2) в GraphModal.tsx; серверные services/export/*) | 4.2 | 1.7 | ЗАКРЫТ 4.2 (2026-08-29): серверные `services/export/*` (mmd/png/json/md/html + graph-model/style/physics/filename/common) + 5 роутов `routes/export.ts`; GraphModal → downloadExport (exportStub снят), меню «⤓ Экспорт» в SynthesisPage + `client/src/api/export.ts` |
 
 Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,
 помечено в 03 §2.1; `POST /syntheses/estimate` и `/advice` — реализованы

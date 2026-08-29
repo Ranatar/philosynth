@@ -67,7 +67,7 @@
   через структурный TableLikeElement — готов к linkedom). Не пересоздавать.
 - `shared/constants/ctx-keys.ts`, `shared/types/generation.ts`
 
-### Беседа 4.2 (export)
+### Беседа 4.2 (export) — ВЫПОЛНЕНО 2026-08-29 (итоги — глава в конце файла)
 - `shared/utils/transliterate.ts`, `shared/utils/version.ts`
   (formatVersionFilename), `shared/constants/methods.ts` (все 4 *_CODE
   сверены с исходником: DEPTH — цифры, ORDER — заглавные),
@@ -3712,3 +3712,65 @@ lineage/GenealogyTree.tsx. check-map-04: 147 идентификаторов,
 - Довыполнению долгов §12: EditModal.tsx + SubsectionRegenPanel.tsx
   (метки «долг §12» в шапках), client/src/api/modes.ts,
   исходник [18560–18630].
+
+---
+
+# Беседа 4.2 — Export Service [ЗАКРЫТА]
+
+> Закрыта 2026-08-29: запрос 1 + тестовые запросы 2–6 харнессом
+> tests/test-42-requests2-6.mjs (76 ✓ ×2); тест 4 протокола
+> (roundtrip-импорт) исполняет беседа 4.3 своим ПЕРВЫМ тестом
+> (инверсия помечена в 07); доки пропатчены
+> scripts/patch-docs-conv42.py; integration-check += 2q/4y/5s.
+
+## Что создано
+
+- `server/services/export/` — mmd-exporter, json-exporter,
+  png-exporter (вариант (а): node-canvas 2048×2048, PAD 120,
+  warmup(...,2)), md-exporter (saveMD + sec2md/node2md/inline2md/
+  table2md/sig2md через html-parser), html-exporter (шапка-зеркало
+  DocumentHeader, .doc-body + якоря sec-{key}, buildGraphExportSection
+  с initScript [17773-17828] дословно, buildModesExportSection,
+  embedded state version:2, видимый лог предвычислен), graph-model.ts
+  (loadGModel: мульти-кластерность копиями, clusterLabels по индексу),
+  graph-style.ts / graph-physics.ts (копии клиентских 1.7 — дрейф
+  сторожит integration-check 4y), filename.ts (getDocFilename [17477];
+  КВИРК: paramCode join("") без дефисов), common.ts (ExportError
+  NOT_FOUND/NO_GRAPH «Нет графа.», loadExportSynthesis, exportFilename).
+- `server/utils/css-audit.ts` — auditCSS 1:1 [17835-18001].
+- `server/services/prompt-reconstruction.ts` — 4 reconstruct* (все
+  async; config.buildPrompt → renderTemplate; source 'subsection_regen';
+  участники type='synthesis' через isConceptParticipant); подключён
+  fallback-ом в log-formatter — TODO(4.2) сняты, долг 2.4 §12 закрыт.
+- `server/routes/export.ts` — 5 GET /:id/export/{html,md,mmd,png,json};
+  requireAuth + loadSynthesisForRead, RFC5987-имена, NO_GRAPH → 400
+  VALIDATION_ERROR; смонтирован в index.ts.
+- `server/config/export-assets.ts` — ГЕНЕРАТ `npm run
+  extract:export-assets` (scripts/extract-export-assets.mjs): fnBundle
+  46 функций, constBundle 6, gmOverlay/modeOverlay (минус
+  .mode-modal-params), rawCSS. НЕ править руками — перегенерация из
+  исходника.
+- Клиент: `client/src/api/export.ts` (EXPORT_FORMATS/exportUrl/
+  downloadExport), меню «⤓ Экспорт» в SynthesisPage, GraphModal →
+  downloadExport (exportStub снят; долг 1.7 §12 закрыт).
+- Тесты: tests/test-42-requests2-6.mjs (мок с графом 8 узлов /
+  3 кластера, mermaid-валидация тем же движком, file://-браузер с
+  подменой CDN three@0.128.0/d3@7.8.5 локальными копиями).
+
+## Файлы-контекст для следующих бесед
+
+### Беседа 4.3 (import)
+- из 4.2: `server/config/export-assets.ts` (формы embedded state и
+  оверлеев — то, что import разбирает), `server/services/export/
+  html-exporter.ts` (ИСТОЧНИК формата файла: шапка, якоря sec-{key},
+  philosynth-state version:2, секции графа/режимов/лога),
+  `server/services/prompt-reconstruction.ts` (восстановление скелетов
+  для импортированных genLog-записей), `server/services/export/
+  common.ts` + `filename.ts` (обратные ожидания к именам/метаданным).
+- ЗАМЕТКА: в embedded state genealogy УЧАСТНИКОВ = null, корневая
+  genealogy — однослойная из lineage; ПОЛНУЮ (рекурсивную) строит
+  4.3 — серверные reconstructGenealogy + normalizeGenealogyNames
+  (клиентские порты 3.2 в client/utils/genealogy.ts — образец).
+- ГРАБЛИ МОКА для тестов 4.3 (см. «По факту 4.2» в 07): специфичные
+  маркеры pickHtml ПЕРЕД /критическ/i; разделы мока — С каркасом
+  section-num/section-title/doc-content (иначе sec2md/просмотр пусты).
