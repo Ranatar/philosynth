@@ -3774,3 +3774,52 @@ lineage/GenealogyTree.tsx. check-map-04: 147 идентификаторов,
 - ГРАБЛИ МОКА для тестов 4.3 (см. «По факту 4.2» в 07): специфичные
   маркеры pickHtml ПЕРЕД /критическ/i; разделы мока — С каркасом
   section-num/section-title/doc-content (иначе sec2md/просмотр пусты).
+
+# Беседа 4.3 — Import Service [ЗАКРЫТА 2026-08-30]
+
+## Что создано
+- server/services/import-service.ts (~1000 строк): importHTML шаги a–m
+  + extractMetadata/validateImportMeta/extractSections/
+  extractEmbeddedState/extractModesFromHTML + серверные копии
+  titleToKey (concept-file.ts) и isPlaceholderConceptName/
+  resolveConceptName (FIX [а-яё])/normalizeGenealogyNames/
+  restoreCapsulesFromHTML/reconstructGenealogy (genealogy.ts) +
+  мапперы логов ДВУХ форматов; 9 АДАПТАЦИЙ — в шапке модуля.
+- server/utils/html-parser.ts += parseDocument/HtmlDocument (полный
+  документ; инвариант «единственная точка linkedom» сохранён),
+  HtmlElement += closest/outerHTML/innerHTML.
+- server/routes/import.ts: POST /syntheses/import (multipart, поле
+  file; 401/400 VALIDATION_ERROR/400 IMPORT_INVALID; лимит 25 МБ);
+  смонтирован в index.ts. shared += ImportWarning.
+- Клиент: api/import.ts (локальный multipart-fetch с контрактом
+  ApiError — api() JSON-only), ImportPage.tsx (drag&drop, проверка
+  .html, «Подтвердить импорт»/«Отмена» ДО отправки, индетерминированный
+  индикатор, warnings ⚠ critical/⚡, redirect /synthesis/:id).
+
+## Знания/грабли, добытые в 4.3
+- Экспорт 4.2 рендерит шапку ПО КЛАССАМ без id — буквальный порт
+  extractMetadata на собственном экспорте не работает; .doc-body несёт
+  якорь sec-{key} и кнопку графа — html_content брать outerHTML
+  .doc-section.
+- Порядок legacy-логов: standalone датирует только маркеры — при
+  неполной датировке ВСЕ записи получают t0+i (иначе маркер с прошлой
+  датой обгоняет свежие fallback-даты; найдено тестом R3).
+- Sections-row 'capsule' при импорте НЕ создаётся — капсула в
+  capsule_html + ключ в sectionOrder (паритет исходника; тесты
+  сравнения разделов должны исключать capsule).
+- Мок: заданию SUM нужен СВОЙ маркер («Точки напряжения») ПЕРЕД
+  /критическ/i — задание sum перечисляет структуру документа.
+- Квирк v11: validateImportMeta считает 0 философов критичным —
+  roundtrip свободного синтеза даёт ложно-критическое предупреждение
+  (порт 1:1).
+- puppeteer: кука сессии ставится page.setCookie на origin vite
+  (прокси /api сохраняет домен); Chromium /opt/pw-browsers/…
+
+## Файлы-контекст для следующих бесед
+- Беседа 6.2 (клиент): client/src/api/import.ts + ImportPage.tsx +
+  долг §12 «Авто-импорт файловых ☑-концепций при сабмите» (SynthesisForm
+  + pool-store 1.5b; participants type='synthesis' с id импорта).
+- Любая работа с импортом: server/services/import-service.ts (шапка —
+  реестр адаптаций), server/utils/html-parser.ts, tests/
+  test-43-requests2-5.mjs (харнесс с моком обоих форматов).
+

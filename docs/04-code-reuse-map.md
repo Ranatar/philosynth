@@ -224,15 +224,16 @@
 
 | Функция | Что меняется | Целевой модуль |
 |---|---|---|
-| `importHTML()` | Клиент загружает файл → сервер парсит → создаёт записи в БД | `server/services/import-service.ts` |
-| `extractMetadata()` | Серверный DOM-парсер | там же |
-| `extractSections()` | Серверный DOM-парсер | там же |
+| `importHTML()` | Клиент загружает файл → сервер парсит → создаёт записи в БД — ФАКТ (4.3): шаги a–m, ДВА входных формата (standalone / экспорт 4.2), откат строки syntheses при сбое (CASCADE); критичность validateImportMeta — в warnings ответа (confirm — клиент) | `server/services/import-service.ts` |
+| `extractMetadata()` | Серверный DOM-парсер — ФАКТ (4.3): id standalone → fallback классы экспорта 4.2 (.doc-title/.doc-subtitle/.doc-meta-grid по русским подписям, «—»→пусто) | там же |
+| `extractSections()` | Серверный DOM-парсер — ФАКТ (4.3): html_content = outerHTML .doc-section (обвязка экспорта — якоря/кнопка графа — не попадает); secCtx из sec-disclosure родителя (standalone) либо embedded params.secCtx | там же |
 | `extractEmbeddedState()` | Без изменений | там же |
-| `buildDocStateFromImport()` | Вместо DOC_STATE → создание записей в БД | там же |
+| `buildDocStateFromImport()` | Вместо DOC_STATE → создание записей в БД — ФАКТ (4.3): sections-row 'capsule' НЕ создаётся (капсула → capsule_html + ключ в sectionOrder, паритет исходника); порядок legacy-логов — синтетические t0+i при неполной датировке | там же |
 | `importConceptAsParticipant()` | Чтение из БД вместо из DOM | `server/services/meta-synthesis-service.ts` (3.1); клиентский порт файлового сценария 1:1 — `client/utils/concept-file.ts` (1.5b; с 3.2 participant.genealogy ЗАПОЛНЯЕТСЯ — reconstructGenealogy + restoreCapsulesFromHTML из `client/utils/genealogy.ts`) |
 | `reconstructGenealogy()` [22181], `restoreCapsulesFromHTML()` [11745] | Реконструкция генеалогии участника из meta/embeddedState + восстановление капсул родителей из `.gen-card` сохранённого дерева файла | `client/utils/genealogy.ts` (3.2; долги §12 закрыты) |
 | `stripCapsulesFromGenealogy()` [22321] | Очистка капсул перед сохранением | `client/utils/genealogy.ts` (3.2; потребитель — экспорт 4.2) |
 | `normalizeGenealogyNames()`, `isPlaceholderConceptName()`, `resolveConceptName()` | Санация имён генеалогии («[безымянная концепция]») — без изменений | `client/utils/genealogy.ts` (3.2; resolveConceptName несёт FIX `\w`→`[а-яё]` — латентный баг регекспа префиксов исходника, та же грабля, что чинилась 1.4 в updateDocTitleFromName) + `server/services/import-service.ts` (серверная копия — беседа 4.3) |
+| `populateFromImport()` | ВЫРОЖДЕН (4.3): DOM-рендер исходника; его данные — поля syntheses (title/docNum/totals) и sections, отображение — SynthesisPage (1.6b) | — |
 | `genCommon.conceptBlockSizes` | Размеры контекстных блоков концепций (v10, для реконструкции промптов) | `server/services/generation-service.ts` |
 | `buildPromptSkeleton()` | Скелет промпта пишется в genLog при генерации (реконструкция — fallback только для импортов) | `server/services/generation-service.ts` |
 

@@ -106,11 +106,13 @@ setState-in-render, транспорт hasConceptParents, CSS дерева с
 subtitleForExport ↔ DocumentHeader, бандлы ассетов, роуты,
 снятие TODO(4.2)/exportStub; живой конвейер loadGModel →
 MMD/JSON/PNG/MD + ExportError NO_GRAPH). Сейчас покрывает 0.1–0.6,
-1.1–1.7, 2.1–2.4, 3.1–3.2 и 4.1–4.2 целиком; живые секции требуют
+1.1–1.7, 2.1–2.4, 3.1–3.2 и 4.1–4.3 целиком (4.3 — 2r/4z/5t: импорт,
+дрейф двойников titleToKey/genealogy клиент↔сервер, живой importHTML
+против БД); живые секции требуют
 поднятых PG и Redis и засеянных prompt_templates, synthesis_configs
 и каталогов таксономии.
 
-## Статус: Фазы 0–3 завершены + 4.1, 4.2 (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2)
+## Статус: Фазы 0–4 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3)
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -258,6 +260,15 @@ utils/graph-{physics,geometry}, api/elements (getCategories),
 модулей + браузерные 3D/2D/панели/кластеры/hover/edge cases +
 честный CDP-touch: pinch/orbit/tap). Экспорт MMD/PNG/JSON —
 заглушки TODO(4.2). Доки пропатчены scripts/patch-docs-conv17.py.
+
+Беседа 4.3 (Import Service, 2026-08-30): POST /syntheses/import
+(multipart) + import-service (importHTML a–m; ДВА входных формата —
+standalone и экспорт 4.2; серверные копии titleToKey/genealogy-портов,
+дрейф сторожит integration-check 4z) + parseDocument в html-parser +
+ImportPage/api-import. Тесты tests/test-43-requests2-5.mjs 64 ✓ ×2
+(roundtrip с родителем-концепцией, standalone c предупреждениями,
+IMPORT_INVALID, без embedded state, браузерный сегмент ImportPage).
+Доки пропатчены scripts/patch-docs-conv43.py.
 
 Беседа 2.1 (каскадный анализ + планировщик, бэкенд):
 services/cascade-analyzer.ts (computeDependents, каноникализация с

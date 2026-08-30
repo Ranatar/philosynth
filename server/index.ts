@@ -22,6 +22,7 @@ import { logsRoutes } from "./routes/logs.js";
 import { plansRoutes } from "./routes/plans.js";
 import { modesRoutes } from "./routes/modes.js";
 import { exportRoutes } from "./routes/export.js";
+import { importRoutes } from "./routes/import.js";
 import {
   lineageRoutes,
   lineageSearchRoutes,
@@ -76,6 +77,7 @@ app.route("/api/v1/syntheses", generationRoutes); // беседа 2.2 (03 §2.5)
 app.route("/api/v1/syntheses", logsRoutes); // беседа 2.4 (03 §2.12)
 app.route("/api/v1/syntheses", modesRoutes); // беседа 4.1 (03 §2.7)
 app.route("/api/v1/syntheses", exportRoutes); // беседа 4.2 (03 §2.11)
+app.route("/api/v1/syntheses", importRoutes); // беседа 4.3 (03 §2.2, POST /import)
 app.route("/api/v1/syntheses", lineageRoutes); // беседа 3.1 (03 §2.8)
 app.route("/api/v1/lineage", lineageSearchRoutes); // беседа 3.1 (03 §2.8)
 

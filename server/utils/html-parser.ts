@@ -38,6 +38,14 @@ export interface HtmlElement extends TableLikeElement {
   querySelectorAll(selector: string): Iterable<HtmlElement>;
   getAttribute(name: string): string | null;
   hasAttribute(name: string): boolean;
+  /** Ближайший предок по селектору (порт extractSections 4.3 ищет
+   *  родительский .doc-body через closest — linkedom его реализует) */
+  closest(selector: string): HtmlElement | null;
+  /** Сериализация элемента (extractSections 4.3 сохраняет outerHTML
+   *  раздела в sections.html_content; innerHTML — тела .philosynth-mode
+   *  в extractModesFromHTML) */
+  readonly outerHTML: string;
+  readonly innerHTML: string;
   textContent: string | null;
 }
 
@@ -134,6 +142,30 @@ export function parseFragment(html: string): HtmlElement {
 /** true, если строка состоит только из пробельных символов */
 function isBlank(s: string): boolean {
   return /^\s*$/.test(s);
+}
+
+/* ── Полный документ (беседа 4.3: importHTML разбирает целый файл) ───── */
+
+/**
+ * Минимум document-API для import-service: getElementById + селекторы.
+ * parseFragment здесь не годится — импортируемый файл является полным
+ * документом (<html><head>…), а не фрагментом раздела.
+ */
+export interface HtmlDocument {
+  getElementById(id: string): HtmlElement | null;
+  querySelector(selector: string): HtmlElement | null;
+  querySelectorAll(selector: string): Iterable<HtmlElement>;
+}
+
+/**
+ * Парсинг ПОЛНОГО HTML-документа (беседа 4.3, importHTML). Аналог
+ * `new DOMParser().parseFromString(htmlString, "text/html")` исходника
+ * [21284]. Единственная точка входа linkedom (инвариант 1.3) — модуль
+ * этот же.
+ */
+export function parseDocument(html: string): HtmlDocument {
+  const { document } = parseHTML(html);
+  return document as unknown as HtmlDocument;
 }
 
 /**

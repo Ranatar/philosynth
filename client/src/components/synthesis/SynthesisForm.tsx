@@ -29,8 +29,10 @@
  * ГЕЙТ МЕТА-СИНТЕЗА (1.5b → 3.2): сервер принимает участников-концепции
  * {type:'synthesis', synthesisId} с беседы 3.1 — блокировка сабмита СНЯТА
  * для концепций ИЗ КАТАЛОГА (у них есть synthesisId; долг §12 закрыт).
- * ФАЙЛОВЫЕ концепции по-прежнему блокируются: они не представимы в
- * ParticipantInput до серверного импорта файлов — TODO(4.3).
+ * ФАЙЛОВЫЕ концепции по-прежнему блокируются: серверный импорт файлов
+ * ГОТОВ (4.3: POST /syntheses/import), но авто-импорт при сабмите
+ * (файл → импорт → участник type='synthesis' с полученным id) — долг
+ * §12 за беседой 6.2 — TODO(6.2).
  *
  * Беседа 3.2, дополнительно:
  *  - предполётная проверка генеалогических пересечений ☑-концепций
@@ -386,7 +388,8 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
     if (conceptParticipants.length > 0) input.keepFullBudget = keepFullBudget;
     // Беседа 3.2: каталожные ☑-концепции → ParticipantInput (сервер 3.1
     // принимает type='synthesis'); файловые (без synthesisId) не
-    // представимы до 4.3 — их наличие блокирует сабмит в handleSubmit
+    // представимы до авто-импорта при сабмите (долг §12 за 6.2; серверный
+    // POST /syntheses/import готов с 4.3) — наличие блокирует сабмит
     const catalogParticipants: ParticipantInput[] = conceptParticipants
       .filter((p) => p.synthesisId)
       .map((p) => ({ type: "synthesis", synthesisId: p.synthesisId! }));
@@ -471,7 +474,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
     }
     // Гейт 1.5b СУЖЕН беседой 3.2: сервер принимает каталожные концепции
     // (type='synthesis', беседа 3.1); блокируются только ФАЙЛОВЫЕ —
-    // до серверного импорта файлов (4.3)
+    // до авто-импорта файлов при сабмите (долг §12 за 6.2)
     const fileConcepts = conceptParticipants.filter((p) => !p.synthesisId);
     if (fileConcepts.length > 0) {
       setFormError(

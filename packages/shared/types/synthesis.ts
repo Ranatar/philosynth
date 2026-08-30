@@ -197,3 +197,21 @@ export interface SynthesisPreview {
   createdAt: string;
   updatedAt: string;
 }
+
+/* ── Импорт HTML-файла (беседа 4.3; 03-spec §2.2 POST /syntheses/import) ── */
+
+/**
+ * Предупреждение импорта — форма validateImportMeta исходника [21416]
+ * плюс операционные предупреждения сервиса (пропущенные рёбра графа,
+ * неразрешённые концепции-родители и т.п.; у них critical=false).
+ */
+export interface ImportWarning {
+  /** Поле метаданных ('phil'|'method'|'depth'|'synthLevel'|'log') либо
+   *  область операционного предупреждения ('graph'|'lineage'|'sections'|
+   *  'theses'|'glossary'|'modes') */
+  field: string;
+  message: string;
+  /** true — критическое: в исходнике блокировало перегенерацию
+   *  (DOC_STATE.incomplete); сервис импортирует, клиент показывает */
+  critical: boolean;
+}
