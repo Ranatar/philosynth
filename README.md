@@ -261,15 +261,6 @@ utils/graph-{physics,geometry}, api/elements (getCategories),
 честный CDP-touch: pinch/orbit/tap). Экспорт MMD/PNG/JSON —
 заглушки TODO(4.2). Доки пропатчены scripts/patch-docs-conv17.py.
 
-Беседа 4.3 (Import Service, 2026-08-30): POST /syntheses/import
-(multipart) + import-service (importHTML a–m; ДВА входных формата —
-standalone и экспорт 4.2; серверные копии titleToKey/genealogy-портов,
-дрейф сторожит integration-check 4z) + parseDocument в html-parser +
-ImportPage/api-import. Тесты tests/test-43-requests2-5.mjs 64 ✓ ×2
-(roundtrip с родителем-концепцией, standalone c предупреждениями,
-IMPORT_INVALID, без embedded state, браузерный сегмент ImportPage).
-Доки пропатчены scripts/patch-docs-conv43.py.
-
 Беседа 2.1 (каскадный анализ + планировщик, бэкенд):
 services/cascade-analyzer.ts (computeDependents, каноникализация с
 getCanonicalizer → закрыт TODO(2.1) в context-builder, intra/cross-sec
@@ -429,16 +420,24 @@ hooks/useEditPlan.ts (свой WS, plan_updated — источник стату�
   file:// с подменой CDN; roundtrip — первый тест 4.3). Доки
   пропатчены scripts/patch-docs-conv42.py.
 
-Не сделано (Фаза 4+): файловые концепции как участники мета-синтеза
-(4.3 — серверный импорт; гейт SynthesisForm снимать по факту),
-импорт (4.3 — серверные importHTML/parseConceptFile/
-reconstructGenealogy; экспорт 4.2 ГОТОВ), billing, BYO-Key (6.1 — ввод
-ключа в auth-модалке).
+Беседа 4.3 (Import Service, 2026-08-30): POST /syntheses/import
+(multipart) + import-service (importHTML a–m; ДВА входных формата —
+standalone и экспорт 4.2; серверные копии titleToKey/genealogy-портов,
+дрейф сторожит integration-check 4z) + parseDocument в html-parser +
+ImportPage/api-import. Тесты tests/test-43-requests2-5.mjs 64 ✓ ×2
+(roundtrip с родителем-концепцией, standalone c предупреждениями,
+IMPORT_INVALID, без embedded state, браузерный сегмент ImportPage).
+Доки пропатчены scripts/patch-docs-conv43.py.
+
+Не сделано (Фаза 5+): авто-импорт файловых ☑-концепций при сабмите
+формы (долг §12 за 6.2; серверный POST /syntheses/import ГОТОВ с 4.3,
+экспорт 4.2 ГОТОВ), billing, BYO-Key (6.1 — ввод ключа в
+auth-модалке).
 Фаза 1 закрыта целиком (1.1–1.7); Фаза 2 закрыта целиком: 2.1, 2.2,
 2.4 (велась перед 2.3 — §11) и 2.3; Фаза 3 закрыта целиком: 3.1,
-3.2; из Фазы 4 закрыты 4.1 (включая довыполнение долгов §12) и 4.2
-(Export Service; roundtrip-покрытие — первым тестом 4.3).
-Следующая по графу 07 — 4.3 (Import Service).
+3.2; Фаза 4 закрыта целиком: 4.1 (включая довыполнение долгов §12),
+4.2 и 4.3 (Import Service).
+Следующие по графу 07 — Фаза 5 (5.1) либо 6.1.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
