@@ -3500,6 +3500,39 @@ need(await import("./config/export-assets.js"),
       errs.push(`4z: устаревшая метка TODO(4.3) в ${rel}`);
 }
 
+// ── 4aa (правка 2026-09-02): id из URL — только после проверки uuid ──
+// ДЕФЕКТ, найден браузерным тестом 0.4/2: WS-операции брали synthesisId
+// из ?resume= / subscribe_generation, то есть прямо из адреса страницы,
+// и сравнивали строку с колонкой типа uuid. Произвольный id («/synthesis/
+// что-угодно») давал PostgresError «invalid input syntax for type uuid»,
+// обработчик валился, и ПОСЛЕ ЭТОГО любой HTTP-запрос отвечал 500 —
+// вплоть до /auth/me, отчего клиент считал сессию мёртвой.
+// Инвариант: каждая функция ws/handler.ts, принимающая synthesisId,
+// обязана вызвать isUuid ДО первого обращения к БД.
+{
+  const rd4aa = async (rel: string): Promise<string> =>
+    (await import("node:fs/promises")).readFile(new URL(rel, import.meta.url), "utf8");
+  const ws = await rd4aa("./ws/handler.ts");
+  if (!ws.includes('import { isUuid }'))
+    errs.push("4aa: ws/handler.ts не импортирует isUuid");
+  for (const fn of ["handleResume", "handleSubscribeGeneration"]) {
+    const at = ws.indexOf(`async function ${fn}(`);
+    if (at < 0) { errs.push(`4aa: не найдена функция ${fn}`); continue; }
+    const dbAt = ws.indexOf("await db", at);
+    const uuidAt = ws.indexOf("isUuid(synthesisId)", at);
+    if (uuidAt < 0 || dbAt < 0 || uuidAt > dbAt)
+      errs.push(`4aa: ${fn} обращается к БД до проверки isUuid (500 на кривом id)`);
+  }
+  // Живая проверка: кривой id не доходит до БД (иначе PostgresError)
+  const routes4aa = await import("./routes/syntheses.js");
+  const bad = await routes4aa.loadSynthesisForRead(
+    "не-uuid-строка",
+    "00000000-0000-0000-0000-000000000000",
+  );
+  if (bad.access !== "notfound")
+    errs.push("4aa: loadSynthesisForRead на не-uuid вернул не notfound");
+}
+
 // Единый финальный гейт (перенесён из-за дефекта 2.1 — см. выше)
 if (errs.length) { console.error("ПРОБЛЕМЫ:\n" + errs.map(e => " - " + e).join("\n")); process.exit(1); }
 

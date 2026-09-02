@@ -1,7 +1,12 @@
 /**
- * Боковая навигация. Беседа 0.4 (только скелет).
- * Desktop (≥768px): постоянная колонка. Mobile: скрыта, открывается
- * бургером в Header (выдвижная панель + подложка).
+ * Боковая навигация. В исходнике навигации нет — страница одна, поэтому
+ * классы .app-* заведены в части 3 globals.css и оформлены по системе
+ * исходника (mono, капитель, разрядка, синяя активная полоса).
+ *
+ * Desktop (≥900px): постоянная колонка .app-sidebar-desktop.
+ * Mobile: выдвижная панель .app-sidebar-mobile (aria-hidden, кнопка ✕,
+ * подложка .app-sidebar-backdrop) — контракт беседы 0.4 сохранён,
+ * поменялось только оформление (правка 2026-09-02).
  */
 import { NavLink } from "react-router-dom";
 
@@ -33,20 +38,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   );
 
   const nav = (
-    <nav className="flex flex-col gap-1 p-3">
-      <div className="meta-label mb-2 px-2">Разделы</div>
+    <nav>
+      <div className="app-nav-group">Разделы</div>
       {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
           onClick={onClose}
           className={({ isActive }) =>
-            [
-              "rounded px-3 py-2 text-sm no-underline transition-colors hover:no-underline",
-              isActive
-                ? "bg-off font-medium text-ink shadow-[inset_2px_0_0_var(--gold)]"
-                : "text-ink-mid hover:bg-off hover:text-ink",
-            ].join(" ")
+            isActive ? "app-nav-link active" : "app-nav-link"
           }
         >
           {item.label}
@@ -58,35 +58,30 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <>
       {/* Desktop */}
-      <aside className="hidden w-56 shrink-0 border-r border-rule bg-paper md:block">
-        {nav}
-      </aside>
+      <aside className="app-sidebar app-sidebar-desktop">{nav}</aside>
 
       {/* Mobile: подложка + выдвижная панель */}
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-ink/40 md:hidden"
-          onClick={onClose}
-          aria-hidden
-        />
-      )}
+      <div
+        className={["app-sidebar-backdrop", open ? "open" : ""].join(" ")}
+        onClick={onClose}
+        aria-hidden
+      />
       <aside
-        className={[
-          "fixed inset-y-0 left-0 z-50 w-64 border-r border-rule bg-paper transition-transform md:hidden",
-          open ? "translate-x-0" : "-translate-x-full",
-        ].join(" ")}
+        className={["app-sidebar", "app-sidebar-mobile", open ? "open" : ""].join(
+          " ",
+        )}
         aria-hidden={!open}
       >
-        <div className="flex items-center justify-between border-b border-rule px-4 py-3">
-          <span className="font-serif font-semibold text-ink">
-            <span aria-hidden className="text-gold">◈ </span>
-            PhiloSynth
+        <div className="app-sidebar-head">
+          <span className="app-nav-group" style={{ border: "none", padding: 0 }}>
+            Навигация
           </span>
           <button
             type="button"
             onClick={onClose}
             aria-label="Закрыть меню"
-            className="rounded border border-rule px-2 py-0.5 text-sm text-ink-mid"
+            className="action-btn"
+            style={{ padding: "2px 10px" }}
           >
             ✕
           </button>

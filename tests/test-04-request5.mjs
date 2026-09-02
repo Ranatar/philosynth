@@ -8,7 +8,7 @@
 import puppeteer from "puppeteer-core";
 
 const CHROME =
-  "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome";
+  "/opt/google/chrome/chrome";
 
 let failures = 0;
 function check(name, cond, extra = "") {

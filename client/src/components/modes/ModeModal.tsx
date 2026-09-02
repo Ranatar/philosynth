@@ -319,13 +319,14 @@ export function ModeModal({
 
         <div className="mode-modal-params">
           <div className="form-group" id="modeParamsGroup">
-            <div className="form-label mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-mid">
+            <div className="form-label">
               {ui.paramLabel}
             </div>
             <input
               ref={inputRef}
               id="modeParamInput"
-              className="form-input w-full border border-rule bg-paper px-3 py-2 text-sm text-ink"
+              className="form-input"
+              style={{ width: "100%" }}
               placeholder={ui.paramPlaceholder}
               value={param}
               onChange={(e) => setParam(e.target.value)}
@@ -369,7 +370,7 @@ export function ModeModal({
           >
             <button
               type="button"
-              className="submit-btn action-btn primary"
+              className="submit-btn"
               style={{ padding: "10px 24px" }}
               id="modeRunBtn"
               disabled={running}

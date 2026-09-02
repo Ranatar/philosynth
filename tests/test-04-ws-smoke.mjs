@@ -1,6 +1,6 @@
 /** Смоук WS-пути беседы 0.4: браузер → vite-прокси /ws → Hono handler (0.2), ping→pong. */
 import puppeteer from "puppeteer-core";
-const CHROME = "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome";
+const CHROME = "/opt/google/chrome/chrome";
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: "shell",
   args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 const page = await browser.newPage();

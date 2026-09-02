@@ -13,7 +13,7 @@
 import puppeteer from "puppeteer-core";
 
 const CHROME =
-  "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome";
+  "/opt/google/chrome/chrome";
 const BASE = "http://localhost:5173";
 const EMAIL = "test04@philosynth.dev";
 const PASSWORD = "password-04";
@@ -58,9 +58,7 @@ await page.goto(BASE + "/catalog", { waitUntil: "networkidle0" });
 let d = await page.evaluate((vf) => {
   const visible = eval(vf);
   const burger = document.querySelector('header button[aria-label="Открыть меню"]');
-  const desktopAside = [...document.querySelectorAll("aside")].find((a) =>
-    a.className.includes("md:block"),
-  );
+  const desktopAside = document.querySelector("aside.app-sidebar-desktop");
   const email = [...document.querySelectorAll("header span")].find((s) =>
     s.textContent.includes("Тест 0.4"),
   );
@@ -83,12 +81,8 @@ await sleep(300);
 let m = await page.evaluate((vf) => {
   const visible = eval(vf);
   const burger = document.querySelector('header button[aria-label="Открыть меню"]');
-  const desktopAside = [...document.querySelectorAll("aside")].find((a) =>
-    a.className.includes("md:block"),
-  );
-  const mobileAside = [...document.querySelectorAll("aside")].find((a) =>
-    a.className.includes("md:hidden"),
-  );
+  const desktopAside = document.querySelector("aside.app-sidebar-desktop");
+  const mobileAside = document.querySelector("aside.app-sidebar-mobile");
   const email = [...document.querySelectorAll("header span")].find((s) =>
     s.textContent.includes("Тест 0.4"),
   );
@@ -103,11 +97,7 @@ let m = await page.evaluate((vf) => {
         b.textContent.includes("Выйти"),
       ),
     ),
-    wordmarkVisible: visible(
-      [...document.querySelectorAll("header span")].find((s) =>
-        s.textContent.includes("PhiloSynth"),
-      ),
-    ),
+    wordmarkVisible: visible(document.querySelector("header .brand-name")),
     hOverflow: document.documentElement.scrollWidth > innerWidth,
   };
 }, visibleFn);
@@ -126,10 +116,8 @@ await page.click('header button[aria-label="Открыть меню"]');
 await sleep(400);
 m = await page.evaluate((vf) => {
   const visible = eval(vf);
-  const mobileAside = [...document.querySelectorAll("aside")].find((a) =>
-    a.className.includes("md:hidden"),
-  );
-  const overlay = document.querySelector(".fixed.inset-0.z-40");
+  const mobileAside = document.querySelector("aside.app-sidebar-mobile");
+  const overlay = document.querySelector(".app-sidebar-backdrop");
   const closeBtn = mobileAside?.querySelector('button[aria-label="Закрыть меню"]');
   return {
     panelVisible: visible(mobileAside),
@@ -150,9 +138,7 @@ await page.screenshot({ path: "/tmp/shot-5-mobile-open.png" });
 
 /* Навигация из панели → переход + автозакрытие */
 await page.evaluate(() => {
-  const aside = [...document.querySelectorAll("aside")].find((a) =>
-    a.className.includes("md:hidden"),
-  );
+  const aside = document.querySelector("aside.app-sidebar-mobile");
   [...aside.querySelectorAll("nav a")]
     .find((a) => a.textContent.trim() === "Импорт")
     ?.click();
@@ -160,9 +146,7 @@ await page.evaluate(() => {
 await sleep(400);
 m = await page.evaluate((vf) => {
   const visible = eval(vf);
-  const mobileAside = [...document.querySelectorAll("aside")].find((a) =>
-    a.className.includes("md:hidden"),
-  );
+  const mobileAside = document.querySelector("aside.app-sidebar-mobile");
   return {
     path: location.pathname,
     h1: document.querySelector("main h1")?.textContent ?? "",
@@ -176,15 +160,13 @@ check("mobile: панель закрылась после перехода", !m.
 /* Закрытие подложкой */
 await page.click('header button[aria-label="Открыть меню"]');
 await sleep(300);
-// клик по видимой части подложки: панель w-64 (256px, z-50) перекрывает
+// клик по видимой части подложки: панель 232px перекрывает
 // центр экрана (187px) — кликаем правее панели
 await page.mouse.click(330, 300);
 await sleep(400);
 const overlayClosed = await page.evaluate((vf) => {
   const visible = eval(vf);
-  const mobileAside = [...document.querySelectorAll("aside")].find((a) =>
-    a.className.includes("md:hidden"),
-  );
+  const mobileAside = document.querySelector("aside.app-sidebar-mobile");
   return !visible(mobileAside);
 }, visibleFn);
 check("mobile: клик по подложке закрывает панель", overlayClosed);
@@ -194,9 +176,7 @@ await page.setViewport({ width: 1280, height: 800 });
 await sleep(300);
 d = await page.evaluate((vf) => {
   const visible = eval(vf);
-  const desktopAside = [...document.querySelectorAll("aside")].find((a) =>
-    a.className.includes("md:block"),
-  );
+  const desktopAside = document.querySelector("aside.app-sidebar-desktop");
   const burger = document.querySelector('header button[aria-label="Открыть меню"]');
   return { sidebar: visible(desktopAside), burger: visible(burger) };
 }, visibleFn);

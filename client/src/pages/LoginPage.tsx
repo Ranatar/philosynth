@@ -25,20 +25,23 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center">
-          <span aria-hidden className="text-2xl text-gold">◈</span>
-          <h1 className="mt-1 text-2xl">PhiloSynth</h1>
-          <p className="meta-label mt-1">вход</p>
+    <div className="auth-screen">
+      <div className="auth-card">
+        <div className="site-header auth-header">
+          <div>
+            <h1 className="brand-name">
+              Philo<span>Synth</span>
+            </h1>
+            <div className="brand-tagline">вход</div>
+          </div>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="mt-6 flex flex-col gap-3 rounded border border-rule bg-paper p-6"
+          className="input-form"
         >
-          <label className="flex flex-col gap-1">
-            <span className="meta-label">Email</span>
+          <label className="form-group">
+            <span className="form-label">Email</span>
             <input
               type="email"
               required
@@ -48,12 +51,12 @@ export function LoginPage() {
                 setEmail(e.target.value);
                 if (error) clearError();
               }}
-              className="rounded border border-rule bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+              className="form-input"
             />
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="meta-label">Пароль</span>
+          <label className="form-group">
+            <span className="form-label">Пароль</span>
             <input
               type="password"
               required
@@ -63,25 +66,26 @@ export function LoginPage() {
                 setPassword(e.target.value);
                 if (error) clearError();
               }}
-              className="rounded border border-rule bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+              className="form-input"
             />
           </label>
 
           {error && (
-            <p role="alert" className="text-sm text-red">
+            <div role="alert" className="callout warning">
               {error}
-            </p>
+            </div>
           )}
 
           <button
             type="submit"
             disabled={pending}
-            className="mt-2 rounded bg-blue-corp px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="submit-btn"
+            style={{ justifyContent: "center", marginTop: 8 }}
           >
             {pending ? "Вход…" : "Войти"}
           </button>
 
-          <p className="text-center text-sm text-ink-mid">
+          <p className="submit-note" style={{ textAlign: "center", maxWidth: "100%" }}>
             Нет аккаунта? <Link to="/register">Регистрация</Link>
           </p>
         </form>

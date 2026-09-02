@@ -289,7 +289,7 @@ export function SynthesisPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div>
       {/* actions-bar [4134] — минимум 1.6b */}
       <div className="actions-bar">
         <div
@@ -384,7 +384,7 @@ export function SynthesisPage() {
       </div>
 
       {live && (
-        <div className="mb-6">
+        <div style={{ marginBottom: 24 }}>
           <GenerationProgress
             sections={progressSections}
             complete={stream.complete}
@@ -394,7 +394,8 @@ export function SynthesisPage() {
             showAbort={synthesis.status === "generating" && !paused}
           />
           {stream.error && (
-            <div className="mt-3 rounded border border-red bg-red/5 p-3 text-sm text-red">
+            <div className="callout warning">
+              <span className="callout-label">Ошибка генерации</span>
               {stream.error}
             </div>
           )}
@@ -422,7 +423,7 @@ export function SynthesisPage() {
                 {genealogyTree ? (
                   <GenealogyTree node={genealogyTree} light={false} />
                 ) : (
-                  <div className="font-mono text-[11px] text-ink-dim">
+                  <div className="doc-meta-val">
                     Родительские концепции:{" "}
                     {synthesis.parentSyntheses.map((p, i) => (
                       <span key={p.id}>
@@ -432,11 +433,8 @@ export function SynthesisPage() {
                     ))}
                   </div>
                 )}
-                <div className="mt-2 font-mono text-[10px]">
-                  <Link
-                    to={`/catalog?descendantsOf=${synthesis.id}`}
-                    className="text-ink-dim hover:text-gold"
-                  >
+                <div className="doc-meta-key" style={{ marginTop: 8 }}>
+                  <Link to={`/catalog?descendantsOf=${synthesis.id}`}>
                     ◈ Потомки этой концепции в каталоге
                   </Link>
                 </div>
@@ -500,9 +498,19 @@ export function SynthesisPage() {
 
 function PageError({ code, text }: { code: string; text: string }) {
   return (
-    <div className="mx-auto max-w-3xl py-16 text-center">
-      <div className="font-serif text-5xl text-rule-strong">{code}</div>
-      <p className="mt-4 text-sm text-ink-mid">{text}</p>
+    <div className="input-form" style={{ textAlign: "center" }}>
+      <div
+        style={{
+          fontFamily: "var(--serif)",
+          fontSize: 48,
+          color: "var(--rule-strong)",
+        }}
+      >
+        {code}
+      </div>
+      <div className="submit-note" style={{ maxWidth: "100%" }}>
+        {text}
+      </div>
     </div>
   );
 }

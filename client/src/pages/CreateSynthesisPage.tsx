@@ -157,11 +157,12 @@ export function CreateSynthesisPage() {
   const generating = !!synthesisId && !stream.complete && !stream.error;
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="meta-label">генерация</div>
-      <h1 className="mt-1 text-2xl">Новый синтез</h1>
-
-      <div className="mt-6 rounded border border-rule bg-paper p-5">
+    <div>
+      {/* Контейнер формы исходника [3628]: .input-form + .form-section-title */}
+      <div className="input-form">
+        <h1 className="form-section-title">
+          Новый синтез — § 0, Параметры Синтеза Концепции
+        </h1>
         <SynthesisForm
           onSubmit={handleSubmit}
           busy={submitting || !!synthesisId}
@@ -170,18 +171,17 @@ export function CreateSynthesisPage() {
       </div>
 
       {synthesisId && (
-        <div className="mt-6">
+        <div>
           {/* Беседа 3.2: серверные генеалогические предупреждения (POST
               warnings, 3.1) — неблокирующе, паритет замысла confirm */}
           {genWarnings.length > 0 && (
-            <div className="mb-3 rounded border border-gold bg-gold/5 p-3">
+            <div className="sec-warnings">
               {genWarnings.map((w, i) => (
-                <div
-                  key={i}
-                  className="font-mono text-[11px] leading-relaxed text-ink-mid"
-                >
-                  {w.level === "warn" ? "⚠ " : "ℹ "}
-                  {w.text}
+                <div key={i} className="sec-warning-item">
+                  <span className="warn-icon">
+                    {w.level === "warn" ? "⚠" : "ℹ"}
+                  </span>
+                  <span>{w.text}</span>
                 </div>
               ))}
             </div>
@@ -195,14 +195,13 @@ export function CreateSynthesisPage() {
             showAbort={generating && !stream.pause}
           />
           {stream.error && (
-            <div className="mt-3 rounded border border-red bg-red/5 p-3 text-sm text-red">
+            <div className="callout warning">
+              <span className="callout-label">Ошибка генерации</span>
               {stream.error}
             </div>
           )}
           {stream.complete && (
-            <div className="mt-3 font-mono text-xs text-ink-dim">
-              Готово — открываю документ…
-            </div>
+            <div className="pool-status ok">Готово — открываю документ…</div>
           )}
         </div>
       )}

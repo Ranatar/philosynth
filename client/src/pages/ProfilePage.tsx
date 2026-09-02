@@ -34,18 +34,18 @@ function Field({
   disabled,
 }: FieldProps) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="meta-label">{label}</span>
+    <label className="form-group">
+      <span className="form-label">{label}</span>
       <input
         type={type}
         {...(autoComplete ? { autoComplete } : {})}
         value={value}
         disabled={disabled ?? false}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-rule bg-white px-3 py-2 text-sm outline-none focus:border-gold disabled:bg-paper disabled:text-ink-mid"
+        className="form-input"
       />
       {error && (
-        <span role="alert" className="text-sm text-red">
+        <span role="alert" className="form-sublabel" style={{ color: "var(--red)" }}>
           {error}
         </span>
       )}
@@ -115,16 +115,14 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="meta-label">аккаунт</div>
-      <h1 className="mt-1 text-2xl">Профиль</h1>
+    <div>
+      <h1 className="form-section-title" style={{ border: "none" }}>
+        Профиль
+      </h1>
 
       {/* ── Профиль ── */}
-      <form
-        onSubmit={handleProfileSubmit}
-        className="mt-6 flex flex-col gap-3 rounded border border-rule bg-paper p-6"
-      >
-        <h2 className="font-serif text-lg text-ink">Данные</h2>
+      <form onSubmit={handleProfileSubmit} className="input-form">
+        <div className="form-section-title">Данные</div>
         <Field
           label="Email"
           type="email"
@@ -145,19 +143,20 @@ export function ProfilePage() {
           error={profileErrors.displayName}
         />
         {profileErrors._ && (
-          <p role="alert" className="text-sm text-red">
+          <p role="alert" className="callout warning">
             {profileErrors._}
           </p>
         )}
         {profileSaved && (
-          <p role="status" className="text-sm text-green-check">
+          <p role="status" className="callout note">
             Сохранено
           </p>
         )}
         <button
           type="submit"
           disabled={profilePending}
-          className="mt-1 self-start rounded bg-blue-corp px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="submit-btn"
+          style={{ alignSelf: "flex-start", marginTop: 4 }}
         >
           {profilePending ? "Сохранение…" : "Сохранить"}
         </button>
@@ -166,9 +165,9 @@ export function ProfilePage() {
       {/* ── Смена пароля ── */}
       <form
         onSubmit={handlePasswordSubmit}
-        className="mt-6 flex flex-col gap-3 rounded border border-rule bg-paper p-6"
+        className="input-form"
       >
-        <h2 className="font-serif text-lg text-ink">Смена пароля</h2>
+        <div className="form-section-title">Смена пароля</div>
         <Field
           label="Текущий пароль"
           type="password"
@@ -206,19 +205,20 @@ export function ProfilePage() {
           error={passwordErrors.repeatPassword}
         />
         {passwordErrors._ && (
-          <p role="alert" className="text-sm text-red">
+          <p role="alert" className="callout warning">
             {passwordErrors._}
           </p>
         )}
         {passwordChanged && (
-          <p role="status" className="text-sm text-green-check">
+          <p role="status" className="callout note">
             Пароль изменён; прочие сессии завершены
           </p>
         )}
         <button
           type="submit"
           disabled={passwordPending}
-          className="mt-1 self-start rounded bg-blue-corp px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="submit-btn"
+          style={{ alignSelf: "flex-start", marginTop: 4 }}
         >
           {passwordPending ? "Смена…" : "Сменить пароль"}
         </button>

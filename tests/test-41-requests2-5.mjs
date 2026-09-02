@@ -842,9 +842,11 @@ try {
     JSON.stringify(glc.map((g) => g.section_label)));
   // Панель обновилась после исполнения (refetch getModes)
   await page.waitForFunction(
+    /* Правка 2026-09-02: заголовки карточек режимов рисуются капителью
+       исходника, а innerText отдаёт ОТРИСОВАННЫЙ текст — без регистра. */
     () => {
-      const t = document.querySelector(".edit-modal")?.innerText ?? "";
-      return t.includes("⚔ Оппонент · Кант") && !t.includes("Постмодернизм");
+      const t = (document.querySelector(".edit-modal")?.innerText ?? "").toLowerCase();
+      return t.includes("⚔ оппонент · кант") && !t.includes("постмодернизм");
     },
     { timeout: 15000 },
   );

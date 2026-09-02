@@ -270,8 +270,14 @@ philosynth-service/
 │   ├── src/
 │   │   ├── main.tsx                    # React entry point
 │   │   ├── App.tsx                     # Router (React Router)
-│   │   ├── globals.css                 # CSS-переменные (палитра из исходника),
-│   │   │                               # Tailwind директивы
+│   │   ├── globals.css                 # Три части (правка 2026-09-02):
+│   │   │                               #  1) :root исходника + базовый слой;
+│   │   │                               #  2) ДОСЛОВНЫЙ порт <style> [13–3528];
+│   │   │                               #  3) дополнения сервиса (каркас SPA,
+│   │   │                               #     каталог, вход, отклонения R9).
+│   │   │                               # @tailwind utilities — В КОНЦЕ файла:
+│   │   │                               # утилиты обязаны перебивать классы
+│   │   │                               # исходника, а не наоборот.
 │   │   │
 │   │   ├── api/
 │   │   │   ├── client.ts               # fetch-обёртка с auth, error handling

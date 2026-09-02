@@ -15,7 +15,7 @@
 import puppeteer from "puppeteer-core";
 
 const CHROME =
-  "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome";
+  "/opt/google/chrome/chrome";
 const BASE = "http://localhost:5173";
 const EMAIL = "test04@philosynth.dev";
 const PASSWORD = "password-04";
@@ -94,7 +94,10 @@ await page.evaluate(
 const protectedRoutes = [
   ["/catalog", "Каталог"],
   ["/synthesis/new", "Новый синтез"],
-  ["/synthesis/abc-123", "Синтез"],
+  /* Правка 2026-09-02 (ревизия устаревших ожиданий): заглушки 1.6 нет —
+     беседа 1.6b сделала настоящую страницу; для несуществующего id она
+     рисует карточку ошибки без h1, поэтому маршрут проверяется отдельно
+     ниже (не белый экран + остались на маршруте). */
   ["/import", "Импорт"],
   ["/billing", "Биллинг"],
   ["/admin/prompts", "Промпты"],
@@ -106,12 +109,17 @@ for (const [path, h1part] of protectedRoutes) {
     r.path === path && r.hasLayout && r.h1.includes(h1part),
     `path=${r.path}; h1=${r.h1}`);
 }
-/* :id из URL пробрасывается в заглушку */
+/* /synthesis/:id с несуществующим id: страница документа (1.6b) остаётся
+   на маршруте и показывает карточку «не найден», а не белый экран */
 r = await loadRoute("/synthesis/abc-123");
-const hasId = await page.evaluate(() =>
-  (document.querySelector("main")?.innerText ?? "").includes("abc-123"),
+assertNotBlank("/synthesis/abc-123", r);
+const notFoundCard = await page.evaluate(() =>
+  (document.querySelector("main")?.innerText ?? "").toLowerCase(),
 );
-check("/synthesis/:id: параметр id отображён", hasId);
+check("/synthesis/:id: карточка «не найден» вместо белого экрана",
+  r.path === "/synthesis/abc-123" && r.hasLayout &&
+  notFoundCard.includes("не найден"),
+  `path=${r.path}; text=${notFoundCard.slice(0, 50).replace(/\n/g, " ")}`);
 
 /* ── /login и /register при живой сессии — не белый экран ───────────── */
 r = await loadRoute("/login");

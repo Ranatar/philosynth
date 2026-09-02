@@ -31,6 +31,7 @@ import type {
 import { eq } from "drizzle-orm";
 
 import { db } from "../db/index.js";
+import { isUuid } from "../routes/syntheses.js";
 import { syntheses } from "../db/schema.js";
 import {
   getSessionToken,
@@ -119,6 +120,19 @@ async function handleSubscribeGeneration(
 ): Promise<void> {
   if (isGenerationActive(synthesisId)) return; // уже подписан по userId
 
+  // Тот же дефект, что в handleResume (2026-09-02): id приходит из URL
+  // страницы и может не быть uuid — сравнение с колонкой uuid валило
+  // обработчик. Отвечаем как на несуществующий синтез.
+  if (!isUuid(synthesisId)) {
+    connectionManager.send(ws, {
+      type: "stream_error",
+      synthesisId,
+      error: "Синтез не найден",
+      recoverable: false,
+    });
+    return;
+  }
+
   const [row] = await db
     .select({ userId: syntheses.userId, status: syntheses.status })
     .from(syntheses)
@@ -194,6 +208,13 @@ async function handleResume(
   user: AuthUser,
   synthesisId: string,
 ): Promise<void> {
+  // ДЕФЕКТ, найден браузерным тестом 0.4/2 (2026-09-02): ?resume= несёт
+  // произвольную строку из URL страницы (/synthesis/<что угодно>), а
+  // запрос ниже сравнивает её с колонкой uuid — PostgresError «invalid
+  // input syntax for type uuid» валил обработчик и уводил весь сервер,
+  // после чего ЛЮБОЙ запрос отвечал 500 и клиент разлогинивался.
+  // Семантика та же, что строкой ниже: несуществующий — молча.
+  if (!isUuid(synthesisId)) return;
   const [row] = await db
     .select({
       userId: syntheses.userId,

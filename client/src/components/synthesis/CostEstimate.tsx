@@ -70,8 +70,17 @@ export function CostEstimate({ params }: CostEstimateProps) {
   }, [params ? JSON.stringify(params) : null]);
 
   if (!text && !loading) return null;
+  // Стиль #costEstimate исходника [4110] — inline, как в самом исходнике
   return (
-    <div className="text-right font-mono text-[10px] tracking-wide text-ink-dim">
+    <div
+      style={{
+        fontFamily: "var(--mono)",
+        fontSize: 9,
+        color: "var(--ink-dim)",
+        letterSpacing: "0.5px",
+        textAlign: "right",
+      }}
+    >
       {loading ? "оценка…" : text}
     </div>
   );

@@ -21,10 +21,10 @@ export function SynthesisList({
   togglingId,
 }: SynthesisListProps) {
   if (items.length === 0) {
-    return <p className="py-8 text-center text-sm text-ink-dim">{emptyText}</p>;
+    return <p className="pool-status" style={{ textAlign: "center", padding: "32px 0" }}>{emptyText}</p>;
   }
   return (
-    <div className="flex flex-col gap-3">
+    <div className="catalog-list">
       {items.map((s) => (
         <SynthesisCard
           key={s.id}

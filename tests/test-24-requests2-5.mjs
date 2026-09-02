@@ -513,7 +513,9 @@ try {
   }
   ok(streamingSeen, "genLog: запись graph в статусе streaming (hold работает)");
 
-  const pptr = await import("/tmp/pptr/node_modules/puppeteer-core/lib/esm/puppeteer/puppeteer-core.js");
+  // Правка 2026-09-02: puppeteer-core берётся из node_modules репозитория
+  // (раскладка lib/esm/… была у версии 23; в 25.x — lib/puppeteer/…).
+  const pptr = await import("puppeteer-core");
   browser = await pptr.launch({
     executablePath: CHROME,
     headless: true,

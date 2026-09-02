@@ -645,9 +645,12 @@ async function main() {
       !tGen.includes("СИНТЕЗ ЗАВЕРШЁН"),
       "generating: validity-stamp не показан",
     );
-    // Прогресс-панель с шагами (GenerationProgress) на странице
+    // Прогресс-панель с шагами (GenerationProgress) на странице.
+    // Правка 2026-09-02: .progress-step рисуется капителью исходника,
+    // а innerText отдаёт ОТРИСОВАННЫЙ текст — сравниваем без регистра.
     ok(
-      tGen.includes("Граф категорий") || tGen.includes("graph"),
+      tGen.toLowerCase().includes("граф категорий") ||
+        tGen.toLowerCase().includes("graph"),
       "generating: шаг ожидаемого раздела в прогрессе",
     );
     await sleep(2500); // время на гипотетический незаконный запуск

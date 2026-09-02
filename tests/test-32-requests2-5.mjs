@@ -513,10 +513,18 @@ try {
     "разделы capsule/dialogue довключены (SYNTH_READY_SECTIONS)",
     JSON.stringify(synthReadyState));
   // ☑ обеих карточек отмечены (isSynthParticipant=true при добавлении)
+  /* Правка 2026-09-02 (единство стилей с исходником): в .pool-card-controls
+     подпись — СОСЕД чекбокса (разметка renderPoolConcepts [5056]), а не
+     обёртка, поэтому ищем по контейнеру, а не по label. */
   const checkedCount = await page.evaluate(() =>
-    [...document.querySelectorAll("label")]
-      .filter((l) => l.innerText.trim().toLowerCase().startsWith("синтез"))
-      .filter((l) => l.querySelector("input")?.checked).length);
+    [...document.querySelectorAll(".pool-card-controls")]
+      .filter((c) =>
+        (c.querySelector("label")?.textContent ?? "")
+          .trim()
+          .toLowerCase()
+          .startsWith("синтез"),
+      )
+      .filter((c) => c.querySelector('input[type="checkbox"]')?.checked).length);
   ok(checkedCount === 2, "оба чекбокса ☑ Синтез отмечены", String(checkedCount));
 
   // keepFullBudget-блок и превью бюджета

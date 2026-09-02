@@ -17,7 +17,7 @@
 import puppeteer from "puppeteer-core";
 
 const CHROME =
-  "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome";
+  "/opt/google/chrome/chrome";
 const BASE = "http://localhost:5173";
 const EMAIL = "test04@philosynth.dev";
 const PASSWORD = "password-04";

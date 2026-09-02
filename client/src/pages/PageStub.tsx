@@ -13,11 +13,10 @@ interface PageStubProps {
 
 export function PageStub({ title, plannedIn, children }: PageStubProps) {
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="meta-label">страница</div>
-      <h1 className="mt-1 text-2xl">{title}</h1>
-      <div className="mt-6 rounded border border-rule bg-paper p-6">
-        <p className="text-ink-mid">
+    <div className="input-form">
+      <h1 className="form-section-title">{title}</h1>
+      <div className="form-group full">
+        <p className="submit-note">
           Заглушка каркаса (беседа 0.4). Наполнение — беседа {plannedIn}.
         </p>
         {children}

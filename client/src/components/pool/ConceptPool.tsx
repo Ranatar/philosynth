@@ -204,31 +204,31 @@ export function ConceptPool() {
   }, [viewing]);
 
   return (
-    <div>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <span className="text-sm font-semibold text-ink">
-            Загруженные Концепции
-          </span>
+    <div className="form-group full">
+      <div className="pool-block">
+        <div className="pool-block-title">
+          Загруженные Концепции
           {/* Индикатор «◉ имя» (importIndicator исходника) */}
           {viewing && (
-            <span className="ml-2 font-mono text-[11px] text-gold">
-              ◉ {viewing.name}
-            </span>
+            <span className="import-indicator visible">◉ {viewing.name}</span>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="pool-block-desc">
+          Единый пул: ☑ — участник мета-синтеза, ◉ — просмотр. Файлы —
+          сохранённые HTML-документы PhiloSynth.
+        </div>
+        <div className="pool-actions">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="rounded border border-rule px-2 py-1 text-xs text-ink-mid hover:border-rule-strong hover:text-ink"
+            className="action-btn"
           >
             + Загрузить из файла
           </button>
           <button
             type="button"
             onClick={() => setUrlRowOpen((v) => !v)}
-            className="rounded border border-rule px-2 py-1 text-xs text-ink-mid hover:border-rule-strong hover:text-ink"
+            className="action-btn"
           >
             + Загрузить по URL
           </button>
@@ -236,76 +236,63 @@ export function ConceptPool() {
           <button
             type="button"
             onClick={() => setCatalogOpen((v) => !v)}
-            className="rounded border border-rule px-2 py-1 text-xs text-ink-mid hover:border-rule-strong hover:text-ink"
+            className="action-btn"
           >
             + Из каталога
           </button>
         </div>
-      </div>
-      <div className="mt-0.5 font-mono text-[10px] leading-relaxed text-ink-dim">
-        Единый пул: ☑ — участник мета-синтеза, ◉ — просмотр. Файлы —
-        сохранённые HTML-документы PhiloSynth.
-      </div>
 
       <input
         ref={fileInputRef}
         type="file"
         accept=".html,text/html"
         multiple
-        className="hidden"
+        style={{ display: "none" }}
         onChange={(e) => handleFileImport(e.currentTarget)}
       />
 
       {/* Строка URL (togglePoolUrlRow) */}
       {urlRowOpen && (
-        <div className="mt-2 flex gap-2">
+        <div className="pool-url-row visible">
           <input
             value={urlValue}
             onChange={(e) => setUrlValue(e.target.value)}
             placeholder="https://example.com/concept.html"
-            className="w-full rounded border border-rule bg-white p-1.5 font-mono text-xs text-ink placeholder:text-ink-dim focus:border-gold focus:outline-none"
+            className="import-url-input"
           />
           <button
             type="button"
             disabled={urlBusy}
             onClick={() => void handleUrlImport()}
-            className="shrink-0 rounded border border-gold px-3 py-1 text-xs text-gold hover:bg-gold hover:text-white disabled:opacity-50"
+            className="import-url-btn"
           >
-            {urlBusy ? "…" : "Загрузить"}
+            {urlBusy ? "…" : "↑ Загрузить"}
           </button>
         </div>
       )}
 
       {/* Пикер «Из каталога» (беседа 3.2) */}
       {catalogOpen && (
-        <div className="mt-2 max-h-56 overflow-auto rounded border border-rule bg-white">
+        <div className="pool-catalog-picker">
           {catalogError && (
-            <div className="p-2 font-mono text-[11px] text-red">
-              {catalogError}
-            </div>
+            <div className="pool-status err">{catalogError}</div>
           )}
           {!catalogError && catalogItems === null && (
-            <div className="p-2 font-mono text-[11px] text-ink-dim">
-              Загрузка каталога…
-            </div>
+            <div className="pool-status">Загрузка каталога…</div>
           )}
           {catalogItems !== null && catalogItems.length === 0 && (
-            <div className="p-2 font-mono text-[11px] text-ink-dim">
-              Готовых синтезов в каталоге нет.
-            </div>
+            <div className="pool-status">Готовых синтезов в каталоге нет.</div>
           )}
           {catalogItems?.map((s) => {
             const added = concepts.some((c) => c.synthesisId === s.id);
             return (
               <div
                 key={s.id}
-                className="flex items-center justify-between gap-2 border-b border-rule px-2 py-1.5 last:border-b-0"
+                className="pool-catalog-row"
               >
-                <div className="min-w-0">
-                  <div className="truncate text-xs font-semibold text-ink">
-                    {s.title}
-                  </div>
-                  <div className="truncate font-mono text-[10px] text-ink-dim">
+                <div className="pool-card-info">
+                  <div className="pool-card-name">{s.title}</div>
+                  <div className="pool-card-meta">
                     {s.philosophers.length > 0
                       ? s.philosophers.join(", ")
                       : "свободный синтез"}
@@ -316,7 +303,7 @@ export function ConceptPool() {
                   type="button"
                   disabled={added}
                   onClick={() => handleAddFromCatalog(s)}
-                  className="shrink-0 rounded border border-gold px-2 py-0.5 text-[11px] text-gold hover:bg-gold hover:text-white disabled:opacity-40"
+                  className="pool-card-btn"
                 >
                   {added ? "в пуле" : "+ в пул"}
                 </button>
@@ -329,14 +316,9 @@ export function ConceptPool() {
       {/* Статус (poolStatus) */}
       {status && status.text && (
         <div
-          className={
-            "mt-2 font-mono text-[11px] leading-relaxed " +
-            (status.cls === "ok"
-              ? "text-green-700"
-              : status.cls === "err"
-                ? "text-red"
-                : "text-ink-dim")
-          }
+          className={["pool-status", status.cls === "ok" ? "ok" : status.cls === "err" ? "err" : ""]
+            .filter(Boolean)
+            .join(" ")}
         >
           {status.text}
         </div>
@@ -344,7 +326,7 @@ export function ConceptPool() {
 
       {/* Список карточек (renderPoolConcepts) */}
       {concepts.length > 0 && (
-        <div className="mt-2 space-y-2">
+        <div className="pool-list">
           {concepts.map((c) => (
             <PoolCard
               key={c.id}
@@ -360,7 +342,7 @@ export function ConceptPool() {
 
       {/* Саммари (poolSummary) */}
       {concepts.length > 0 && (
-        <div className="mt-2 font-mono text-[11px] text-ink-mid">
+        <div className="pool-summary">
           {synthCount} из {concepts.length} для мета-синтеза
           {viewing ? " · ◉ " + viewing.name + " — просмотр" : ""}
         </div>
@@ -368,25 +350,25 @@ export function ConceptPool() {
 
       {/* Предпросмотр ◉ (адаптация selectForViewing — см. шапку) */}
       {viewing && previewHtml && (
-        <div className="mt-3 rounded border border-rule bg-white">
-          <button
-            type="button"
-            onClick={() => setPreviewOpen((v) => !v)}
-            className="w-full px-3 py-2 text-left font-mono text-[11px] text-ink-mid hover:text-ink"
-          >
-            {previewOpen ? "▾" : "▸"} Предпросмотр: {viewing.name}{" "}
-            <span className="text-ink-dim">(read-only)</span>
-          </button>
+        <details
+          className="sec-disclosure"
+          open={previewOpen}
+          onToggle={(e) => setPreviewOpen((e.target as HTMLDetailsElement).open)}
+        >
+          <summary>
+            Предпросмотр: {viewing.name} (read-only)
+          </summary>
           {previewOpen && (
             <div
-              className="max-h-[420px] overflow-auto border-t border-rule p-4 text-sm"
+              className="disclosure-body pool-preview-body"
               // <script> через innerHTML не исполняются; контент — файл,
               // который пользователь сам загрузил в свой браузер
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
           )}
-        </div>
+        </details>
       )}
+      </div>
     </div>
   );
 }

@@ -280,21 +280,25 @@ async function main() {
 
     await page.goto(`${UI}/synthesis/new`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(
-      () => document.body.innerText.includes("Пифагор"),
+      () => document.body.innerText.toLowerCase().includes("пифагор"),
       { timeout: 10000 },
     );
 
     /* ══ R3: PhilosopherPicker ══ */
     console.log("R3: PhilosopherPicker (эпохи, выбор, счётчик)");
+    /* Правка 2026-09-02 (единство стилей с исходником): колонка эпохи —
+       .phil-col-group, метка .phil-group-label и чекбоксы лежат В НЁМ,
+       а не «метка + соседний grid» (разметка #philBox [3651]) */
     const epochs = await page.evaluate(() => {
       const out = {};
       for (const groupLabel of ["Досократики и Античность", "Средневековье"]) {
-        const div = [...document.querySelectorAll("div")].find(
-          (d) => d.childElementCount === 0 && d.textContent.trim() === groupLabel,
+        const group = [...document.querySelectorAll(".phil-col-group")].find(
+          (g) =>
+            g.querySelector(".phil-group-label")?.textContent.trim() ===
+            groupLabel,
         );
-        if (!div) { out[groupLabel] = null; continue; }
-        const grid = div.nextElementSibling;
-        const names = [...grid.querySelectorAll("label")].map((l) => l.textContent.trim());
+        if (!group) { out[groupLabel] = null; continue; }
+        const names = [...group.querySelectorAll("label")].map((l) => l.textContent.trim());
         out[groupLabel] = { first: names[0], last: names[names.length - 1], count: names.length };
       }
       return out;
@@ -306,12 +310,12 @@ async function main() {
       epochs["Средневековье"]?.first === "Августин" &&
       epochs["Средневековье"]?.last === "Николай Кузанский");
 
-    check("счётчик: выбрано: 0", (await pageText(page)).includes("выбрано: 0"));
+    check("счётчик: выбрано: 0", (await pageText(page)).toLowerCase().includes("выбрано: 0"));
     await clickCheckboxLabel(page, "Пифагор");
     await clickCheckboxLabel(page, "Гераклит");
-    check("после выбора двух: выбрано: 2", (await pageText(page)).includes("выбрано: 2"));
+    check("после выбора двух: выбрано: 2", (await pageText(page)).toLowerCase().includes("выбрано: 2"));
     await clickCheckboxLabel(page, "Пифагор");
-    check("после снятия одного: выбрано: 1", (await pageText(page)).includes("выбрано: 1"));
+    check("после снятия одного: выбрано: 1", (await pageText(page)).toLowerCase().includes("выбрано: 1"));
     const checkedState = await page.evaluate(() => {
       const find = (t) => [...document.querySelectorAll("label")]
         .find((l) => l.textContent.trim() === t)?.querySelector("input").checked;
@@ -324,7 +328,11 @@ async function main() {
     /* ══ R4: SectionPicker + CompatAdvisor/SectionWarnings ══ */
     console.log("R4: SectionPicker (secCtx, extGraphMetrics) + Advisor");
     const ctxSelector = 'textarea[placeholder*="Граф категорий"]';
-    check("secCtx-поле графа скрыто изначально", (await page.$(ctxSelector)) === null);
+    /* Правка 2026-09-02: как в исходнике, textarea всегда в DOM и
+       скрывается классом (.sec-ctx-field без .open) — проверяем видимость */
+    const ctxVisible = async () =>
+      page.$eval(ctxSelector, (el) => el.offsetParent !== null).catch(() => false);
+    check("secCtx-поле графа скрыто изначально", !(await ctxVisible()));
     // Кнопка «+» строки графа: рядом с label «Граф категорий»
     const clickGraphCtxBtn = () => page.evaluate(() => {
       const label = [...document.querySelectorAll("label")].find(
@@ -333,18 +341,18 @@ async function main() {
       label.parentElement.querySelector("button[title='Доп. контекст для раздела']").click();
     });
     await clickGraphCtxBtn();
-    check("клик «+» → secCtx-поле графа появилось", (await page.$(ctxSelector)) !== null);
+    check("клик «+» → secCtx-поле графа появилось", await ctxVisible());
     await clickGraphCtxBtn();
-    check("повторный клик → поле скрылось", (await page.$(ctxSelector)) === null);
+    check("повторный клик → поле скрылось", !(await ctxVisible()));
 
     check("extGraphMetrics виден при выбранном графе",
-      (await pageText(page)).includes("Расширенные характеристики"));
+      (await pageText(page)).toLowerCase().includes("расширенные характеристики"));
     await clickCheckboxLabel(page, "Граф категорий");
     check("граф снят → extGraphMetrics скрыт",
-      !(await pageText(page)).includes("Расширенные характеристики"));
+      !(await pageText(page)).toLowerCase().includes("расширенные характеристики"));
     await clickCheckboxLabel(page, "Граф категорий");
     check("граф возвращён → extGraphMetrics снова виден",
-      (await pageText(page)).includes("Расширенные характеристики"));
+      (await pageText(page)).toLowerCase().includes("расширенные характеристики"));
 
     // creative + sections=[evolution]
     await setSelect(page, "Творческий", "creative");
@@ -356,34 +364,34 @@ async function main() {
     await page.waitForFunction(
       () => {
         const w = document.querySelector('[data-block="section-warnings"]');
-        return w && w.innerText.includes("Эволюция и перспективы");
+        return w && w.innerText.toLowerCase().includes("эволюция и перспективы");
       },
       { timeout: 8000 },
     );
     const warnText = await page.$eval('[data-block="section-warnings"]', (el) => el.innerText);
     check("SectionWarnings: ⚠ о зависимостях evolution",
-      warnText.includes("⚠") && warnText.includes("Без разделов") &&
-      warnText.includes("Эволюция и перспективы"));
+      warnText.toLowerCase().includes("⚠") && warnText.toLowerCase().includes("без разделов") &&
+      warnText.toLowerCase().includes("эволюция и перспективы"));
     const compat = await page.$eval('[data-block="compat-panel"]', (el) => ({
       severity: el.getAttribute("data-severity"),
       text: el.innerText,
     })).catch(() => null);
     check("CompatAdvisor-панель отображается (creative)",
-      compat !== null && compat.text.includes("Надёжное качество"));
+      compat !== null && compat.text.toLowerCase().includes("надёжное качество"));
     check("severity панели = stable (comparative:creative)",
       compat?.severity === "stable");
     check("чип раздела «Эволюция и перспективы» в панели",
-      compat?.text.includes("Эволюция и перспективы"));
+      compat?.text.toLowerCase().includes("эволюция и перспективы"));
 
     /* ══ R6a/c: валидация без POST ══ */
     console.log("R6: валидация формы (v11)");
     await page.goto(`${UI}/synthesis/new`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(
-      () => document.body.innerText.includes("Синтезировать Концепцию"),
+      () => document.body.innerText.toLowerCase().includes("синтезировать концепцию"),
       { timeout: 10000 },
     );
     check("keepFullBudget скрыт без концепций в пуле",
-      !(await pageText(page)).includes("Сохранять полный бюджет секций"));
+      !(await pageText(page)).toLowerCase().includes("сохранять полный бюджет секций"));
 
     const clickSubmit = () => page.evaluate(() => {
       [...document.querySelectorAll("button")]
@@ -391,12 +399,12 @@ async function main() {
     });
     await clickSubmit(); // 0 участников, пустое зерно
     await page.waitForFunction(
-      () => document.body.innerText.includes("Свободный синтез"),
+      () => document.body.innerText.toLowerCase().includes("свободный синтез"),
       { timeout: 5000 },
     );
     check("0 участников + 0 зерна → ошибка «свободный синтез требует зерна»", true);
     check("генерация не стартовала (нет прогресс-панели)",
-      !(await pageText(page)).includes("В Процессе"));
+      !(await pageText(page)).toLowerCase().includes("в процессе"));
 
     // 0 секций → ошибка (зерно заполнено, участников нет — зерно снимает первую)
     await fill(page, "textarea[placeholder*='время как ткань']", "Зерно для проверки секций");
@@ -406,7 +414,7 @@ async function main() {
     }
     await clickSubmit();
     await page.waitForFunction(
-      () => document.body.innerText.includes("хотя бы один раздел"),
+      () => document.body.innerText.toLowerCase().includes("хотя бы один раздел"),
       { timeout: 5000 },
     );
     check("0 секций → ошибка «выберите хотя бы один раздел»", true);
@@ -416,25 +424,39 @@ async function main() {
     await page.setViewport({ width: 375, height: 812 });
     await page.goto(`${UI}/synthesis/new`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(
-      () => document.body.innerText.includes("Пифагор"),
+      () => document.body.innerText.toLowerCase().includes("пифагор"),
       { timeout: 10000 },
     );
+    /* Сетки исходника: .checkboxes-row — repeat(auto-fill, minmax(152px, 1fr)),
+       .checkboxes-row.sections-row — minmax(210px, 1fr). На 375px это даёт
+       2 колонки философов и 1 колонку разделов. */
     const cols = await page.evaluate(() => {
-      const philLabel = [...document.querySelectorAll("div")].find(
-        (d) => d.childElementCount === 0 && d.textContent.trim() === "Досократики и Античность",
+      const philGrid = document.querySelector(
+        ".checkboxes-row:not(.sections-row)",
       );
-      const philGrid = philLabel.nextElementSibling;
-      const philCols = getComputedStyle(philGrid).gridTemplateColumns.split(" ").length;
-      const secLabel = [...document.querySelectorAll("label")].find(
-        (l) => l.textContent.trim() === "Граф категорий" && l.querySelector("input"),
+      const secGrid = document.querySelector(".checkboxes-row.sections-row");
+      const count = (el) =>
+        el ? getComputedStyle(el).gridTemplateColumns.split(" ").length : -1;
+      const btn = [...document.querySelectorAll("button")].find((x) =>
+        x.textContent.includes("Синтезировать"),
       );
-      // grid секций: label → .flex-строка → .min-w-0-обёртка → grid
-      const secGrid = secLabel.closest("div").parentElement.parentElement;
-      const secCols = getComputedStyle(secGrid).gridTemplateColumns.split(" ").length;
-      return { philCols, secCols };
+      const r = btn?.getBoundingClientRect();
+      return {
+        philCols: count(philGrid),
+        secCols: count(secGrid),
+        secW: secGrid?.getBoundingClientRect().width,
+        secTpl: secGrid ? getComputedStyle(secGrid).gridTemplateColumns : "нет",
+        btnBox: r ? { w: r.width, l: r.left, rr: r.right, iw: innerWidth } : "нет",
+      };
     });
-    check("PhilosopherPicker: 2 колонки на 375px", cols.philCols === 2);
-    check("SectionPicker: 1 колонка на 375px", cols.secCols === 1);
+    /* Правка 2026-09-02: сетки теперь исходника — repeat(auto-fill,
+       minmax(152px, 1fr)) для философов и minmax(210px, 1fr) для
+       разделов. На 375px обе дают ОДНУ колонку (в старой Tailwind-сетке
+       было жёсткое grid-cols-2). Проверяем поведение исходника. */
+    check("PhilosopherPicker: одна колонка на 375px (auto-fill 152px)",
+      cols.philCols === 1, `${cols.philCols}`);
+    check("SectionPicker: 1 колонка на 375px", cols.secCols === 1,
+      `${cols.secTpl} @ ${cols.secW}px; btn=${JSON.stringify(cols.btnBox)}`);
     const btnBox = await page.evaluate(() => {
       const b = [...document.querySelectorAll("button")]
         .find((x) => x.textContent.includes("Синтезировать Концепцию"));
@@ -450,13 +472,13 @@ async function main() {
     console.log("R2+R5: полный цикл — форма → CostEstimate → генерация → redirect");
     await page.goto(`${UI}/synthesis/new`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(
-      () => document.body.innerText.includes("Пифагор"),
+      () => document.body.innerText.toLowerCase().includes("пифагор"),
       { timeout: 10000 },
     );
     await fill(page, "textarea[placeholder*='время как ткань']", "Тест полного UI-цикла беседы 1.5");
     await clickCheckboxLabel(page, "Кант");
     await clickCheckboxLabel(page, "Гегель");
-    check("выбраны 2 философа", (await pageText(page)).includes("выбрано: 2"));
+    check("выбраны 2 философа", (await pageText(page)).toLowerCase().includes("выбрано: 2"));
     // 3 секции: graph, glossary, theses (снимаем history, name, critique)
     for (const s of ["Историческая контекстуализация", "Анализ названия", "Критический анализ"]) {
       await clickCheckboxLabel(page, s);
@@ -468,7 +490,7 @@ async function main() {
     check("метод по умолчанию dialectical", methodVal === "dialectical");
 
     await page.waitForFunction(
-      () => document.body.innerText.includes("≈ $"),
+      () => document.body.innerText.toLowerCase().includes("≈ $"),
       { timeout: 15000 },
     );
     const estText = await page.evaluate(() =>
@@ -478,14 +500,14 @@ async function main() {
 
     await clickSubmit();
     await page.waitForFunction(
-      () => document.body.innerText.includes("В Процессе"),
+      () => document.body.innerText.toLowerCase().includes("в процессе"),
       { timeout: 15000 },
     );
     check("после «Генерировать» появилась прогресс-панель", true);
 
     // Шаги: 4 позиции (sum + 3 секции), сначала ◯/⟳
     await page.waitForFunction(
-      () => document.body.innerText.includes("⟳"),
+      () => document.body.innerText.toLowerCase().includes("⟳"),
       { timeout: 15000 },
     );
     const stepsSnapshot = await pageText(page);
@@ -493,7 +515,7 @@ async function main() {
       ["Исполнительное резюме", "Граф категорий", "Глоссарий терминов", "Корпус тезисов"]
         .every((l) => stepsSnapshot.includes(l)));
     check("есть ожидающие шаги ◯ и активный ⟳",
-      stepsSnapshot.includes("◯") && stepsSnapshot.includes("⟳"));
+      stepsSnapshot.toLowerCase().includes("◯") && stepsSnapshot.toLowerCase().includes("⟳"));
 
     // R5: живой рост счётчика символов стримящегося шага
     const readChars = () => page.evaluate(() => {
@@ -507,20 +529,26 @@ async function main() {
 
     // Завершение: ✓ на всех шагах, затем redirect (после ~1.2 c)
     await page.waitForFunction(
-      () => document.body.innerText.includes("Завершён"),
+      () => document.body.innerText.toLowerCase().includes("завершён"),
       { timeout: 90000 },
     );
     const doneText = await pageText(page);
-    check("заголовок панели: Завершён", doneText.includes("✓ Синтез Философской Концепции — Завершён"));
-    check("нет активных ⟳ после завершения", !doneText.includes("⟳"));
+    check("заголовок панели: Завершён", doneText.toLowerCase().includes("✓ синтез философской концепции — завершён"));
+    check("нет активных ⟳ после завершения", !doneText.toLowerCase().includes("⟳"));
     await page.waitForFunction(
       () => /^\/synthesis\/[0-9a-f-]{36}$/.test(location.pathname),
       { timeout: 10000 },
     );
     check("redirect на /synthesis/:id после завершения", true);
-    const stubText = await pageText(page);
-    check("страница синтеза (заглушка 1.6) показывает id",
-      /id: [0-9a-f-]{36}/.test(stubText));
+    /* Правка 2026-09-02 (ревизия устаревших ожиданий): заглушки 1.6 давно
+       нет — беседа 1.6b сделала настоящую страницу документа. Проверяем
+       её признаки: шапка документа с номером PS-… и тело разделов. */
+    await page.waitForSelector(".doc-header", { timeout: 15000 });
+    const docText = await pageText(page);
+    check("страница синтеза рендерит документ (шапка + разделы)",
+      /PS-\d{4}-/.test(docText) &&
+      docText.toLowerCase().includes("исполнительное резюме"),
+      docText.slice(0, 80).replace(/\n/g, " "));
 
     // Следы в БД: генерация была НАСТОЯЩЕЙ — граф/глоссарий распарсены
     // в гранулярные таблицы (parseGraph/element-parser, беседа 1.4)
@@ -550,7 +578,7 @@ async function main() {
     console.log("R6b: участники без зерна допускаются");
     await page.goto(`${UI}/synthesis/new`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(
-      () => document.body.innerText.includes("Пифагор"),
+      () => document.body.innerText.toLowerCase().includes("пифагор"),
       { timeout: 10000 },
     );
     await clickCheckboxLabel(page, "Кант");
@@ -561,7 +589,7 @@ async function main() {
     }
     await clickSubmit(); // зерно ПУСТОЕ — валидация должна пропустить
     await page.waitForFunction(
-      () => document.body.innerText.includes("В Процессе"),
+      () => document.body.innerText.toLowerCase().includes("в процессе"),
       { timeout: 15000 },
     );
     check("участник без зерна: POST принят, генерация пошла", true);

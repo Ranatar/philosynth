@@ -8,6 +8,10 @@
  * v11: выбор ОПЦИОНАЛЕН (0 философов = свободный синтез) — компонент
  * не валидирует, только отдаёт список; валидация «0 участников → нужен
  * seed» — в SynthesisForm.
+ *
+ * Правка 2026-09-02 (единство стилей с исходником): разметка приведена
+ * к #philBox исходника — .checkboxes-row → .phil-col-group →
+ * .phil-group-label + .checkbox-item; выбранный получает ._checked.
  */
 import { PHILOSOPHER_EPOCHS } from "@philosynth/shared/constants/philosophers";
 
@@ -31,43 +35,36 @@ export function PhilosopherPicker({
   };
 
   return (
-    <div>
-      <div className="flex items-baseline justify-between">
-        <div className="text-sm font-semibold text-ink">Философы</div>
-        <div className="font-mono text-xs text-ink-dim">
-          выбрано: {selected.length}
-        </div>
-      </div>
-      <div className="mt-1 font-mono text-[10px] leading-relaxed text-ink-dim">
+    <div className="form-group full">
+      <div className="form-label">Философы для Синтеза</div>
+      <div className="form-sublabel">
         Опционально: без выбранных философов синтез идёт только из зерна
-        (свободный синтез).
+        (свободный синтез). Рекомендуется 2–5 для лучшего результата.
+        Выбрано: {selected.length}.
       </div>
 
-      <div className="mt-2 max-h-80 overflow-y-auto rounded border border-rule bg-white p-3">
+      <div className="checkboxes-row">
         {PHILOSOPHER_EPOCHS.map((epoch) => (
-          <div key={epoch.label} className="mb-3 last:mb-0">
-            <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-dim">
-              {epoch.label}
-            </div>
-            {/* responsive: 2 колонки на мобильных (07, тест responsive) */}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-3 md:grid-cols-4">
-              {epoch.philosophers.map((name) => (
-                <label
-                  key={name}
-                  className="flex cursor-pointer items-center gap-1.5 text-xs text-ink-mid hover:text-ink"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedSet.has(name)}
-                    onChange={() => toggle(name)}
-                    className="accent-[var(--gold)]"
-                  />
-                  <span className="truncate" title={name}>
-                    {name}
-                  </span>
-                </label>
-              ))}
-            </div>
+          <div key={epoch.label} className="phil-col-group">
+            <div className="phil-group-label">{epoch.label}</div>
+            {epoch.philosophers.map((name) => (
+              <label
+                key={name}
+                className={
+                  selectedSet.has(name)
+                    ? "checkbox-item _checked"
+                    : "checkbox-item"
+                }
+                title={name}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedSet.has(name)}
+                  onChange={() => toggle(name)}
+                />
+                {name}
+              </label>
+            ))}
           </div>
         ))}
       </div>

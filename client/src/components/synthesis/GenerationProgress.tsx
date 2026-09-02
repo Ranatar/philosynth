@@ -8,6 +8,12 @@
  * как классы progress-step исходника.
  *
  * Данные — useStreamingGeneration; компонент презентационный.
+ *
+ * Правка 2026-09-02 (единство стилей с исходником): разметка приведена
+ * к #progressPanel [4117–4132] — .progress-panel.visible >
+ * .progress-panel-header (.progress-title + .progress-panel-actions с
+ * .progress-pause-badge и .progress-abort-btn) + .progress-steps >
+ * .progress-step (.done/.active/.error) с .step-icon.
  */
 import { PauseBadge } from "./PauseModal";
 import type { SectionProgress } from "../../hooks/useStreamingGeneration";
@@ -19,11 +25,12 @@ const STEP_ICON: Record<SectionProgress["status"], string> = {
   error: "⚠",
 };
 
-const STEP_ICON_CLS: Record<SectionProgress["status"], string> = {
-  pending: "text-ink-dim",
-  streaming: "animate-spin text-gold",
-  done: "text-green-check",
-  error: "text-red",
+/** Состояние строки → класс .progress-step исходника */
+const STEP_STATE_CLS: Record<SectionProgress["status"], string> = {
+  pending: "",
+  streaming: "active",
+  done: "done",
+  error: "error",
 };
 
 export interface GenerationProgressProps {
@@ -45,21 +52,21 @@ export function GenerationProgress({
   showAbort,
 }: GenerationProgressProps) {
   return (
-    <div className="rounded border border-rule bg-paper">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-4 py-3">
-        <div className="text-sm font-semibold text-ink">
+    <div className="progress-panel visible">
+      <div className="progress-panel-header">
+        <div className="progress-title">
           {complete
             ? "✓ Синтез Философской Концепции — Завершён"
             : "⚙ Синтез Философской Концепции — В Процессе"}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="progress-panel-actions">
           <PauseBadge visible={paused} onClick={onPauseBadgeClick} />
           {showAbort && (
             <button
               type="button"
               onClick={onAbort}
               title="Остановить текущую генерацию"
-              className="rounded border border-rule px-2 py-1 font-mono text-xs text-ink-mid hover:border-red hover:text-red"
+              className="progress-abort-btn visible"
             >
               ⏹ Остановить
             </button>
@@ -67,29 +74,24 @@ export function GenerationProgress({
         </div>
       </div>
 
-      <div className="space-y-1.5 px-4 py-3">
+      <div className="progress-steps">
         {sections.map((s) => (
-          <div key={s.key} className="flex items-baseline gap-2 text-sm">
-            <span
-              className={`inline-block w-4 text-center font-mono ${STEP_ICON_CLS[s.status]}`}
-            >
-              {STEP_ICON[s.status]}
-            </span>
-            <span
-              className={
-                s.status === "pending" ? "text-ink-dim" : "text-ink"
-              }
-            >
-              {s.label}
-            </span>
+          <div
+            key={s.key}
+            className={["progress-step", STEP_STATE_CLS[s.status]]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <span className="step-icon">{STEP_ICON[s.status]}</span>
+            <span>{s.label}</span>
             {s.chars > 0 && (
-              <span className="ml-auto font-mono text-[11px] tabular-nums text-ink-dim">
+              <span style={{ marginLeft: "auto" }}>
                 {s.chars.toLocaleString("ru-RU")} симв.
               </span>
             )}
             {s.status === "streaming" && s.subsections.length > 0 && (
               <span
-                className="font-mono text-[10px] text-ink-dim"
+                style={{ fontSize: 10, opacity: 0.7 }}
                 title={s.subsections.join(" · ")}
               >
                 подразделов: {s.subsections.length}
@@ -98,8 +100,9 @@ export function GenerationProgress({
           </div>
         ))}
         {sections.length === 0 && (
-          <div className="font-mono text-xs text-ink-dim">
-            ожидание первых данных стрима…
+          <div className="progress-step">
+            <span className="step-icon">◯</span>
+            <span>ожидание первых данных стрима…</span>
           </div>
         )}
       </div>

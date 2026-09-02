@@ -194,23 +194,22 @@ export function CatalogPage() {
   );
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="meta-label">каталог</div>
-          <h1 className="mt-1 text-2xl">Каталог концепций</h1>
-        </div>
-        <Link to="/synthesis/new" className="action-btn primary hover:no-underline">
+    <div>
+      <div className="actions-bar">
+        <h1 className="form-section-title" style={{ margin: 0, border: "none" }}>
+          Каталог концепций
+        </h1>
+        <Link to="/synthesis/new" className="action-btn primary">
           Новый синтез
         </Link>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
+      <div className="actions-bar">
+        <div className="actions-bar-btns">
           {tabBtn("mine", "Мои")}
           {tabBtn("public", "Публичные")}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="actions-bar-btns">
           <button
             type="button"
             className="action-btn"
@@ -224,22 +223,21 @@ export function CatalogPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Поиск по названию…"
-            className="w-64 rounded border border-rule bg-paper px-3 py-2 text-sm outline-none focus:border-blue-corp"
+            className="form-input"
+            style={{ width: 256 }}
           />
         </div>
       </div>
 
       {/* Беседа 3.2 (п. 3): поиск по философам-предкам */}
       {lineageSearchOpen && (
-        <div className="mt-3">
-          <LineageSearch />
-        </div>
+        <LineageSearch />
       )}
 
       {/* Беседа 3.2 (п. 5): баннер фильтра потомков */}
       {descendantsOf && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded border border-gold bg-gold/5 px-3 py-2">
-          <span className="font-mono text-[11px] text-ink-mid">
+        <div className="callout gold catalog-filter-bar">
+          <span>
             {descendantsError
               ? "⚠ Не удалось загрузить потомков — фильтр не применён."
               : descendantIds === null
@@ -249,12 +247,7 @@ export function CatalogPage() {
                   : "Показаны только потомки концепции (" +
                     descendantIds.size +
                     ") — пересечение с текущей вкладкой."}{" "}
-            <Link
-              to={`/synthesis/${descendantsOf}`}
-              className="text-gold hover:no-underline"
-            >
-              ◈ к концепции
-            </Link>
+            <Link to={`/synthesis/${descendantsOf}`}>◈ к концепции</Link>
           </span>
           <button
             type="button"
@@ -270,11 +263,12 @@ export function CatalogPage() {
         </div>
       )}
 
-      <div className="mt-4">
+      <div>
         {loading ? (
           <LoadingSpinner label="загрузка каталога…" />
         ) : error ? (
-          <div className="rounded border border-red bg-red/5 p-3 text-sm text-red">
+          <div className="callout warning">
+            <span className="callout-label">Ошибка</span>
             {error}
           </div>
         ) : (
@@ -296,7 +290,7 @@ export function CatalogPage() {
       </div>
 
       {!loading && !error && total > PAGE_LIMIT && (
-        <div className="mt-4 flex items-center justify-center gap-4">
+        <div className="actions-bar" style={{ justifyContent: "center", gap: 16 }}>
           <button
             type="button"
             className="action-btn"
@@ -305,7 +299,7 @@ export function CatalogPage() {
           >
             ← Назад
           </button>
-          <span className="font-mono text-xs text-ink-dim">
+          <span className="pool-summary" style={{ margin: 0, border: "none", padding: 0 }}>
             стр. {page} / {totalPages} · всего {total}
           </span>
           <button

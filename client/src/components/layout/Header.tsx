@@ -1,7 +1,9 @@
 /**
- * Шапка приложения. Беседа 0.4 (только скелет).
- * Мотив — шапка документа исходника: серифный вордмарк, знак ◈,
- * двойная линейка снизу (класс .double-rule в Layout).
+ * Шапка приложения — .topbar + .site-header исходника [3531–3557],
+ * дословно по классам. Правки 2026-09-02 (единство стилей с исходником):
+ * вместо собственного каркаса на Tailwind используются классы исходника,
+ * содержимое адаптировано под сервис (сессия вместо API-ключа в памяти
+ * вкладки, ссылка на профиль и выход вместо статичной строки справа).
  */
 import { Link, useNavigate } from "react-router-dom";
 
@@ -22,53 +24,68 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   }
 
   return (
-    <header className="flex items-center gap-4 bg-paper px-4 py-3 md:px-6">
-      {/* Бургер — только на мобильных */}
-      <button
-        type="button"
-        onClick={onToggleSidebar}
-        aria-label="Открыть меню"
-        className="rounded border border-rule px-2 py-1 font-mono text-sm text-ink-mid hover:border-rule-strong md:hidden"
-      >
-        ☰
-      </button>
-
-      <Link to="/catalog" className="flex items-baseline gap-2 no-underline hover:no-underline">
-        <span aria-hidden className="text-gold">
-          ◈
-        </span>
-        <span className="font-serif text-xl font-semibold text-ink">
-          PhiloSynth
-        </span>
-        <span className="meta-label hidden sm:inline">service</span>
-      </Link>
-
-      <div className="ml-auto flex items-center gap-3">
-        {user ? (
-          <>
-            <Link
-              to="/profile"
-              title="Профиль"
-              className="max-w-[40vw] truncate font-mono text-xs text-ink-mid no-underline hover:text-ink hover:no-underline sm:max-w-xs"
-            >
-              {user.displayName || user.email}
-            </Link>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="rounded border border-rule px-3 py-1 text-sm text-ink-mid transition-colors hover:border-rule-strong hover:text-ink"
-            >
-              Выйти
-            </button>
-          </>
-        ) : (
-          <Link
-            to="/login"
-            className="rounded border border-rule px-3 py-1 text-sm text-ink-mid hover:border-rule-strong hover:text-ink"
+    <header>
+      <div className="topbar">
+        <div className="topbar-left">
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            aria-label="Открыть меню"
+            className="app-topbar-btn app-burger"
           >
-            Войти
+            ☰
+          </button>
+          <span>PhiloSynth Pro™</span>
+          <span className="topbar-badge">Synthesis Engine v1.0</span>
+          <span className="topbar-tagline">
+            Платформа синтеза философских концепций · Claude-Powered · 3D/2D Graph
+          </span>
+        </div>
+        <div className="topbar-right app-topbar-right">
+          {user ? (
+            <>
+              <Link to="/profile" title="Профиль" className="app-topbar-link">
+                <span>{user.displayName || user.email}</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="app-topbar-btn"
+              >
+                Выйти
+              </button>
+            </>
+          ) : (
+            <Link to="/login" className="app-topbar-link">
+              Войти
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <div className="site-header">
+        <div>
+          <Link to="/catalog" className="brand-link">
+            <div className="brand-name">
+              Philo<span>Synth</span>
+            </div>
           </Link>
-        )}
+          <div className="brand-tagline">
+            Система Синтеза Философских Концепций · Professional Grade
+          </div>
+          <div className="brand-desc">
+            Платформа для автоматизированного синтеза, анализа и формализации
+            философских концепций на основе выбранных философских традиций.
+            Генерация графов категорий с интерактивной 3D/2D-визуализацией,
+            тезисов, диалогов, исторической контекстуализации и критического
+            анализа — в формате единого структурированного документа.
+          </div>
+        </div>
+        <div className="header-badges">
+          <div className="cert-badge gold">★ AI-POWERED SYNTHESIS</div>
+          <div className="cert-badge">THREE.JS + D3.JS GRAPH</div>
+          <div className="cert-badge">STREAMING OUTPUT</div>
+        </div>
       </div>
     </header>
   );

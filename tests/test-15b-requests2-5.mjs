@@ -183,11 +183,12 @@ const bodyText = (page) => page.evaluate(() => document.body.textContent);
 function poolCardControl(page, nameSub, kind) {
   return page.evaluate(({ nameSub, kind }) => {
     // Якорь — радио poolView (ровно одно на карточку), карточка — его
-    // ближайший div.rounded.border (класс корня PoolCard). Детерминировано,
-    // в отличие от эвристики «последний матчащий div» (флак R5 первой
-    // редакции теста: цеплялся посторонний контейнер).
+    // ближайший .pool-card (корень PoolCard, класс исходника; до правки
+    // 2026-09-02 это был Tailwind-контейнер div.rounded.border).
+    // Детерминировано, в отличие от эвристики «последний матчащий div»
+    // (флак R5 первой редакции теста: цеплялся посторонний контейнер).
     const card = [...document.querySelectorAll('input[type="radio"][name="poolView"]')]
-      .map((r) => r.closest("div.rounded.border"))
+      .map((r) => r.closest(".pool-card"))
       .find((c) => c && c.textContent.includes(nameSub));
     if (!card) return { ok: false, why: "card not found" };
     if (kind === "synth") {
@@ -321,16 +322,16 @@ async function main() {
       { timeout: 8000 },
     );
     let txt = await bodyText(page);
-    check("обе карточки в пуле", txt.includes("«Альфа-концепция»") && txt.includes("«Бета-концепция»"));
-    check("статус «✓ Загружено: 2»", txt.includes("✓ Загружено: 2"));
-    check("саммари «0 из 2 для мета-синтеза»", txt.includes("0 из 2 для мета-синтеза"));
-    check("keepFullBudget скрыт без ☑", !txt.includes("Сохранять полный бюджет секций"));
+    check("обе карточки в пуле", txt.toLowerCase().includes("«альфа-концепция»") && txt.toLowerCase().includes("«бета-концепция»"));
+    check("статус «✓ Загружено: 2»", txt.toLowerCase().includes("✓ загружено: 2"));
+    check("саммари «0 из 2 для мета-синтеза»", txt.toLowerCase().includes("0 из 2 для мета-синтеза"));
+    check("keepFullBudget скрыт без ☑", !txt.toLowerCase().includes("сохранять полный бюджет секций"));
 
     // ☑ Альфа
     const t1 = await poolAct(page, "Альфа-концепция", "synth", "1 из 2 для мета-синтеза");
     check("☑ Альфа кликнут (чекбокс активен)", t1.ok && t1.disabled === false, JSON.stringify(t1));
     txt = await bodyText(page);
-    check("статус автовключения разделов", txt.includes("☑ Включены разделы, обязательные для мета-синтеза"));
+    check("статус автовключения разделов", txt.toLowerCase().includes("☑ включены разделы, обязательные для мета-синтеза"));
     check("synthReady включился", await page.evaluate(() => {
       const lab = [...document.querySelectorAll("label")].find((l) =>
         l.textContent.includes("Пригодность к дальнейшему синтезу"));
@@ -338,25 +339,25 @@ async function main() {
     }) === true);
     check("раздел «Диалог» автовключён", (await sectionChecked(page, "Диалог между традициями")) === true);
     check("раздел «Капсула» автовключён", (await sectionChecked(page, "Капсула концепции")) === true);
-    check("keepFullBudget появился", txt.includes("Сохранять полный бюджет секций"));
-    check("превью бюджета: «Контекст родителей»", txt.includes("Контекст родителей:"));
+    check("keepFullBudget появился", txt.toLowerCase().includes("сохранять полный бюджет секций"));
+    check("превью бюджета: «Контекст родителей»", txt.toLowerCase().includes("контекст родителей:"));
 
     // ◉ Бета → предпросмотр Бета
     await poolAct(page, "Бета-концепция", "view", "Предпросмотр: «Бета-концепция»");
     txt = await bodyText(page);
-    check("индикатор «◉ «Бета-концепция»»", txt.includes("◉ «Бета-концепция»"));
-    check("предпросмотр содержит контент Беты", txt.includes("MARKER-BETA"));
+    check("индикатор «◉ «Бета-концепция»»", txt.toLowerCase().includes("◉ «бета-концепция»"));
+    check("предпросмотр содержит контент Беты", txt.toLowerCase().includes("marker-beta"));
 
     // Переключить ◉ на Альфа (адаптация «снимок сохранён» — см. шапку)
     await poolAct(page, "Альфа-концепция", "view", "Предпросмотр: «Альфа-концепция»");
     txt = await bodyText(page);
-    check("просмотр переключился на Альфу", txt.includes("MARKER-ALPHA"));
-    check("контент Беты ушёл из предпросмотра", !txt.includes("MARKER-BETA"));
+    check("просмотр переключился на Альфу", txt.toLowerCase().includes("marker-alpha"));
+    check("контент Беты ушёл из предпросмотра", !txt.toLowerCase().includes("marker-beta"));
 
     // Повторный клик ◉ — деселект
     await poolAct(page, "Альфа-концепция", "view", "Предпросмотр:", true);
     txt = await bodyText(page);
-    check("деселект: индикатор ◉ исчез", !txt.includes("◉ «Альфа-концепция» — просмотр") && !txt.includes("◉ «Альфа-концепция»"));
+    check("деселект: индикатор ◉ исчез", !txt.toLowerCase().includes("◉ «альфа-концепция» — просмотр") && !txt.toLowerCase().includes("◉ «альфа-концепция»"));
 
     // Попутно: CostEstimate среда-независимо — на посеянном Registry
     // показывает оценку («≈ $…»), на пустом грациозно деградирует в
@@ -381,13 +382,13 @@ async function main() {
       { timeout: 8000 },
     );
     txt = await bodyText(page);
-    check("⚠ причина непригодности на карточке", txt.includes("не пригодна для мета-синтеза"));
+    check("⚠ причина непригодности на карточке", txt.toLowerCase().includes("не пригодна для мета-синтеза"));
     check("причина называет глоссарий", /Отсутствуют разделы:.{0,40}Глоссарий/s.test(txt));
     const t3 = await poolCardControl(page, "Гамма-неполная", "synth");
     check("чекбокс ☑ у непригодной disabled ([5258] — как в исходнике)", t3.ok && t3.disabled === true);
     await sleep(300);
     txt = await bodyText(page);
-    check("клик по disabled не меняет счётчик", txt.includes("1 из 3 для мета-синтеза"));
+    check("клик по disabled не меняет счётчик", txt.toLowerCase().includes("1 из 3 для мета-синтеза"));
     check("alert не всплывал (ветка [4738] из UI недостижима — дыра 07)", dialogs.length === dlgBefore);
 
     /* ══ R4: перед генерацией (сервисная проекция теста 4) ══ */
@@ -400,8 +401,15 @@ async function main() {
         .find((b) => b.textContent.includes("Синтезировать Концепцию"))
         .click();
     });
+    /* Правка 2026-09-02 (ревизия устаревших ожиданий): гейт 1.5b СУЖЕН
+       беседой 3.2 — каталожные концепции сервер принимает, блокируются
+       только ФАЙЛОВЫЕ, и текст ошибки стал другим (SynthesisForm [488]).
+       Тест грузит два ФАЙЛА, поэтому сабмит по-прежнему блокируется. */
     await page.waitForFunction(
-      () => document.body.textContent.includes("Мета-синтез с концепциями-участниками"),
+      () =>
+        document.body.textContent.includes(
+          "Файловые концепции пока не поддержаны как участники мета-синтеза",
+        ),
       { timeout: 5000 },
     );
     check("сабмит с ☑-концепциями заблокирован (план п.4)", true);
@@ -417,7 +425,7 @@ async function main() {
     }) === false);
     check("разделы НЕ сняты ([4760] — пользователь сам решит)",
       (await sectionChecked(page, "Диалог между традициями")) === true);
-    check("keepFullBudget скрылся", !txt.includes("Сохранять полный бюджет секций"));
+    check("keepFullBudget скрылся", !txt.toLowerCase().includes("сохранять полный бюджет секций"));
 
     await poolAct(page, "Бета-концепция", "view", "Предпросмотр: «Бета-концепция»");
     await page.evaluate(() => {
@@ -433,7 +441,7 @@ async function main() {
     );
     txt = await bodyText(page);
     check("POST /syntheses ушёл (без ☑ блокировки нет)", createPosts === postsBefore + 1, String(createPosts - postsBefore));
-    check("prepareForGeneration: индикатор ◉ сброшен до POST", !txt.includes("◉ «Бета-концепция»"));
+    check("prepareForGeneration: индикатор ◉ сброшен до POST", !txt.toLowerCase().includes("◉ «бета-концепция»"));
     const errShown = await page.waitForFunction(
       () => document.body.textContent.includes("API-ключ"),
       { timeout: 8000 },
@@ -456,11 +464,11 @@ async function main() {
       { timeout: 5000 },
     );
     txt = await bodyText(page);
-    check("карточка удалена", !txt.includes("«Альфа-концепция»"));
-    check("индикатор ◉ сброшен", !txt.includes("◉ «Альфа-концепция»") && !txt.includes("Предпросмотр:"));
-    check("саммари пересчитан («0 из 2»)", txt.includes("0 из 2 для мета-синтеза"));
-    check("conceptParticipants обновлён (keepFullBudget скрыт)", !txt.includes("Сохранять полный бюджет секций"));
-    check("остальные карточки живы", txt.includes("«Бета-концепция»") && txt.includes("«Гамма-неполная»"));
+    check("карточка удалена", !txt.toLowerCase().includes("«альфа-концепция»"));
+    check("индикатор ◉ сброшен", !txt.toLowerCase().includes("◉ «альфа-концепция»") && !txt.toLowerCase().includes("предпросмотр:"));
+    check("саммари пересчитан («0 из 2»)", txt.toLowerCase().includes("0 из 2 для мета-синтеза"));
+    check("conceptParticipants обновлён (keepFullBudget скрыт)", !txt.toLowerCase().includes("сохранять полный бюджет секций"));
+    check("остальные карточки живы", txt.toLowerCase().includes("«бета-концепция»") && txt.toLowerCase().includes("«гамма-неполная»"));
   } finally {
     await browser.close().catch(() => {});
     serverProc?.kill("SIGKILL");

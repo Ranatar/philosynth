@@ -21,6 +21,14 @@
  *  - автораскрытие панели при conflict/hard-conflict [7521–7523]
  *    (toggleCompatPanel = сворачивание вручную; смена entry с конфликтом
  *    разворачивает заново).
+ *
+ * Правка 2026-09-02 (единство стилей с исходником): разметка приведена
+ * к #compatPanel [4075–4098] — .compat-panel[data-severity] → .compat-header
+ * (.compat-badge + .compat-icon + .compat-toggle) → .compat-body >
+ * .compat-body-inner (.compat-desc, .compat-section-chips/.compat-chip,
+ * .compat-section-advice/.advice-label, .compat-replacements/
+ * .compat-replace-btn/.replace-rating). Раскрытие — класс .open на панели,
+ * как в toggleCompatPanel.
  */
 import { useEffect, useState } from "react";
 
@@ -28,20 +36,15 @@ import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 
 import type { CompatEntryDto } from "../../api/syntheses";
 
-/** Зеркало chipClassForRating [7325] в терминах Tailwind-токенов */
+/** chipClassForRating [7325] — дословно */
 function chipCls(rating: string): string {
-  if (rating === "★★★" || rating === "★★")
-    return "border-green-check text-green-check";
-  if (rating === "★") return "border-rule-strong text-ink-mid";
-  if (rating === "≈") return "border-gold text-gold";
-  if (rating === "✗") return "border-red text-red";
-  if (rating === "✗✗") return "border-red bg-red/10 font-semibold text-red";
-  return "border-rule text-ink-dim";
+  if (rating === "★★★" || rating === "★★") return "chip-synergy";
+  if (rating === "★") return "chip-ok";
+  if (rating === "≈") return "chip-tension";
+  if (rating === "✗") return "chip-conflict";
+  if (rating === "✗✗") return "chip-hard-conflict";
+  return "chip-ok";
 }
-
-const REPLACE_BTN_CLS =
-  "rounded border border-rule px-2 py-1 text-[11px] text-ink-mid " +
-  "hover:border-gold hover:text-gold";
 
 export interface CompatAdvisorProps {
   entry: CompatEntryDto | null;
@@ -102,76 +105,74 @@ export function CompatAdvisor({
     <div
       data-block="compat-panel"
       data-severity={entry.severity}
-      className="mt-3 rounded border border-rule bg-white"
+      className={collapsed ? "compat-panel" : "compat-panel open"}
     >
-      <button
-        type="button"
+      <div
+        className="compat-header"
         onClick={() => setCollapsed((v) => !v)}
-        className="flex w-full items-center justify-between px-3 py-2 text-left"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setCollapsed((v) => !v);
+        }}
       >
-        <span className="flex items-center gap-2 text-sm text-ink">
-          <span className="font-mono text-gold">{entry.icon}</span>
-          <span className="font-semibold">{entry.title}</span>
-          <span className="font-mono text-[10px] text-ink-dim">
-            ({entry.rating})
-          </span>
-        </span>
-        <span className="font-mono text-xs text-ink-dim">
-          {collapsed ? "▲" : "▼"}
-        </span>
-      </button>
+        <div className="compat-badge">
+          <span className="compat-icon">{entry.icon}</span>
+          <span>{entry.title}</span>
+          <span className="replace-rating">{entry.rating}</span>
+        </div>
+        <span className="compat-toggle">▼</span>
+      </div>
 
-      {!collapsed && (
-        <div className="border-t border-rule px-3 py-2.5">
-          <div className="text-[12px] leading-relaxed text-ink-mid">
-            {entry.desc}
-          </div>
+      <div className="compat-body">
+        <div className="compat-body-inner">
+          <div className="compat-desc">{entry.desc}</div>
+
           {chips.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="compat-section-chips">
               {chips.map((c) => (
                 <span
                   key={c.key}
-                  className={`rounded border px-1.5 py-0.5 font-mono text-[10px] ${chipCls(c.rating)}`}
+                  className={`compat-chip ${chipCls(c.rating)}`}
                   title={`${c.label}: ${c.rating}`}
                 >
-                  {c.label} {c.rating}
+                  {c.rating} {c.label}
                 </span>
               ))}
             </div>
           )}
+
           {entry.advice && (
-            <div className="mt-2 font-mono text-[11px] text-ink-dim">
-              Совет: {entry.advice}
+            <div className="compat-section-advice">
+              <span className="advice-label">Совет по разделам</span>
+              <span>{entry.advice}</span>
             </div>
           )}
 
           {/* Рекомендация порядка генерации (orderAdvice [7454], 3.2) */}
           {oa && (
-            <div className="mt-2 font-mono text-[11px] leading-relaxed">
-              <span className="text-[9px] tracking-widest text-ink-dim">
-                ПОРЯДОК ГЕНЕРАЦИИ{" "}
-              </span>
+            <div className="compat-section-advice">
+              <span className="advice-label">Порядок генерации</span>
               {orderMismatch ? (
-                <>
-                  <span className="text-gold">
+                <span>
+                  <span style={{ color: "var(--gold)" }}>
                     {oa.strength === "recommended" ? "⚠ Рекомендуется" : "ℹ Может помочь"}{" "}
                     <strong>{orderLabel}</strong> порядок.
                   </span>{" "}
-                  <span className="text-ink-mid">{oa.text}</span>
+                  {oa.text}
                   {onApplyReplacement && (
                     <button
                       type="button"
-                      className={REPLACE_BTN_CLS + " ml-2"}
-                      onClick={() =>
-                        onApplyReplacement("order", oa.recommended)
-                      }
+                      className="compat-replace-btn"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => onApplyReplacement("order", oa.recommended)}
                     >
                       Переключить на {orderLabel}
                     </button>
                   )}
-                </>
+                </span>
               ) : (
-                <span className="text-ink-mid">
+                <span>
                   ✓ Текущий порядок ({orderLabel}) оптимален для этой
                   комбинации. {oa.text}
                 </span>
@@ -181,18 +182,21 @@ export function CompatAdvisor({
 
           {/* Кнопки замен (replacements [7499], 3.2) */}
           {hasReplacements && onApplyReplacement && (
-            <div className="mt-3">
+            <div className="compat-replacements">
+              <div className="compat-replacements-title">
+                Рекомендуемые замены
+              </div>
               {repl?.keepLevel && repl.keepLevel.length > 0 && (
                 <>
-                  <div className="mb-1.5 font-mono text-[9px] tracking-widest text-ink-dim">
+                  <div className="compat-replacements-title">
                     СОХРАНИТЬ УРОВЕНЬ → ЗАМЕНИТЬ МЕТОД:
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div>
                     {repl.keepLevel.map((r) => (
                       <button
                         key={r.param + r.value}
                         type="button"
-                        className={REPLACE_BTN_CLS}
+                        className="compat-replace-btn"
                         onClick={() =>
                           onApplyReplacement(
                             r.param === "level" ? "level" : "method",
@@ -201,9 +205,7 @@ export function CompatAdvisor({
                         }
                       >
                         {r.label}
-                        <span className="ml-1 text-[10px] text-gold">
-                          {r.rating}
-                        </span>
+                        <span className="replace-rating">{r.rating}</span>
                       </button>
                     ))}
                   </div>
@@ -211,15 +213,15 @@ export function CompatAdvisor({
               )}
               {repl?.keepMethod && repl.keepMethod.length > 0 && (
                 <>
-                  <div className="mb-1.5 mt-2 font-mono text-[9px] tracking-widest text-ink-dim">
+                  <div className="compat-replacements-title">
                     СОХРАНИТЬ МЕТОД → ЗАМЕНИТЬ УРОВЕНЬ:
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div>
                     {repl.keepMethod.map((r) => (
                       <button
                         key={r.param + r.value}
                         type="button"
-                        className={REPLACE_BTN_CLS}
+                        className="compat-replace-btn"
                         onClick={() =>
                           onApplyReplacement(
                             r.param === "level" ? "level" : "method",
@@ -228,9 +230,7 @@ export function CompatAdvisor({
                         }
                       >
                         {r.label}
-                        <span className="ml-1 text-[10px] text-gold">
-                          {r.rating}
-                        </span>
+                        <span className="replace-rating">{r.rating}</span>
                       </button>
                     ))}
                   </div>
@@ -239,7 +239,7 @@ export function CompatAdvisor({
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -36,7 +36,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (status === "restoring") {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="auth-screen">
         <span className="meta-label">проверка сессии…</span>
       </div>
     );

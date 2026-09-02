@@ -1,6 +1,7 @@
 /**
- * Общий каркас авторизованной части: Header + Sidebar + контент (Outlet).
- * Беседа 0.4.
+ * Общий каркас авторизованной части: .topbar + .site-header (Header),
+ * колонка навигации и .main-wrap исходника вокруг Outlet.
+ * Беседа 0.4; правка 2026-09-02 — единство стилей с исходником.
  */
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
@@ -12,13 +13,14 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="app-root">
       <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
-      <div className="double-rule" aria-hidden />
-      <div className="flex min-h-0 flex-1">
+      <div className="app-shell">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="min-w-0 flex-1 p-4 md:p-8">
-          <Outlet />
+        <main className="app-main">
+          <div className="main-wrap">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

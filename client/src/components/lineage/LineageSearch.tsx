@@ -60,14 +60,14 @@ export function LineageSearch() {
   };
 
   return (
-    <div className="rounded border border-rule bg-paper p-4">
-      <div className="text-sm font-semibold text-ink">Поиск по генеалогии</div>
-      <div className="mt-0.5 font-mono text-[10px] leading-relaxed text-ink-dim">
+    <div className="pool-block lineage-search">
+      <div className="pool-block-title">Поиск по генеалогии</div>
+      <div className="pool-block-desc">
         Концепции, в генеалогии которых присутствуют ВСЕ указанные философы
         (включая предков через мета-синтез).
       </div>
 
-      <div className="mt-2 flex gap-2">
+      <div className="pool-url-row visible">
         <input
           list="lineage-search-philosophers"
           value={input}
@@ -79,7 +79,7 @@ export function LineageSearch() {
             }
           }}
           placeholder="Имя философа (напр. Кант)"
-          className="w-full rounded border border-rule bg-white p-1.5 text-sm text-ink placeholder:text-ink-dim focus:border-gold focus:outline-none"
+          className="import-url-input"
         />
         <datalist id="lineage-search-philosophers">
           {PHILOSOPHERS.map((name) => (
@@ -89,7 +89,7 @@ export function LineageSearch() {
         <button
           type="button"
           onClick={addName}
-          className="shrink-0 rounded border border-rule px-3 py-1 text-xs text-ink-mid hover:border-rule-strong hover:text-ink"
+          className="import-url-btn"
         >
           + Добавить
         </button>
@@ -97,7 +97,7 @@ export function LineageSearch() {
           type="button"
           disabled={loading || selected.length === 0}
           onClick={() => void handleSearch()}
-          className="shrink-0 rounded border border-gold px-3 py-1 text-xs text-gold hover:bg-gold hover:text-white disabled:opacity-50"
+          className="action-btn primary"
         >
           {loading ? "…" : "Найти"}
         </button>
@@ -105,18 +105,18 @@ export function LineageSearch() {
 
       {/* Чипы выбранных */}
       {selected.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="compat-section-chips">
           {selected.map((name) => (
             <span
               key={name}
-              className="flex items-center gap-1 rounded border border-gold px-1.5 py-0.5 font-mono text-[11px] text-gold"
+              className="compat-chip chip-tension"
             >
               {name}
               <button
                 type="button"
                 onClick={() => removeName(name)}
                 aria-label={"Убрать " + name}
-                className="text-ink-dim hover:text-red"
+                className="pool-card-btn remove"
               >
                 ✕
               </button>
@@ -126,19 +126,19 @@ export function LineageSearch() {
       )}
 
       {error && (
-        <div className="mt-2 font-mono text-[11px] text-red">{error}</div>
+        <div className="pool-status err">{error}</div>
       )}
 
       {/* Результаты */}
       {results !== null && !loading && (
-        <div className="mt-3">
+        <div className="lineage-results">
           {results.length === 0 ? (
-            <div className="font-mono text-[11px] text-ink-dim">
+            <div className="pool-status">
               Концепций с философами {selected.join(", ")} в генеалогии не
               найдено.
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="catalog-list">
               {results.map((s) => (
                 <SynthesisCard key={s.id} synthesis={s} />
               ))}

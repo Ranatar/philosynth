@@ -187,7 +187,16 @@ function FullBudgetPreview({
     : 0;
 
   return (
-    <pre className="mt-2 whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-ink-dim">
+    <pre
+      style={{
+        marginTop: 8,
+        whiteSpace: "pre-wrap",
+        fontFamily: "var(--mono)",
+        fontSize: 11,
+        lineHeight: 1.6,
+        color: "var(--ink-dim)",
+      }}
+    >
       {"Контекст родителей: " +
         conceptChars.toLocaleString("ru") +
         " симв. (" +
@@ -510,17 +519,16 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
     onSubmit(buildInput());
   };
 
-  const fieldCls =
-    "w-full rounded border border-rule bg-white p-2 text-sm text-ink " +
-    "placeholder:text-ink-dim focus:border-gold focus:outline-none";
-  const labelCls = "text-sm font-semibold text-ink";
-  const sublabelCls =
-    "mt-0.5 font-mono text-[10px] leading-relaxed text-ink-dim";
+  // Классы формы исходника [3628–3700]: .form-label / .form-sublabel /
+  // .form-input / .form-select / .form-textarea (правка 2026-09-02).
+  const labelCls = "form-label";
+  const sublabelCls = "form-sublabel";
 
   return (
-    <fieldset disabled={busy} className="space-y-5">
+    <fieldset disabled={busy} style={{ border: "none", padding: 0, margin: 0 }}>
+      <div className="form-grid">
       {/* Зерно */}
-      <div>
+      <div className="form-group full">
         <div className={labelCls}>Зерно концепции</div>
         <div className={sublabelCls}>
           Исходная идея, проблема или интуиция. Обязательно при свободном
@@ -530,7 +538,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           value={seed}
           onChange={(e) => setSeed(e.target.value)}
           placeholder="Например: время как ткань межличностных обязательств..."
-          className={`${fieldCls} h-20`}
+          className="form-textarea"
         />
       </div>
 
@@ -541,8 +549,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       <ConceptPool />
 
       {/* Метод / порядок / уровень / глубина / язык */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
+        <div className="form-group">
           <div className={labelCls}>Метод Синтеза</div>
           <div className={sublabelCls}>
             Стратегия объединения идей выбранных философов.
@@ -550,7 +557,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           <select
             value={method}
             onChange={(e) => setMethod(e.target.value)}
-            className={fieldCls}
+            className="form-select"
           >
             {METHOD_OPTIONS.map(([v, l]) => (
               <option key={v} value={v}>
@@ -559,7 +566,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
             ))}
           </select>
         </div>
-        <div>
+        <div className="form-group">
           <div className={labelCls}>Порядок Генерации</div>
           <div className={sublabelCls}>
             Последовательность порождения разделов.
@@ -567,7 +574,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           <select
             value={generationOrder}
             onChange={(e) => setGenerationOrder(e.target.value)}
-            className={fieldCls}
+            className="form-select"
           >
             {ORDER_OPTIONS.map(([v, l]) => (
               <option key={v} value={v}>
@@ -576,7 +583,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
             ))}
           </select>
         </div>
-        <div>
+        <div className="form-group">
           <div className={labelCls}>Уровень Синтеза</div>
           <div className={sublabelCls}>
             Насколько радикально категории отрываются от исходных традиций.
@@ -584,7 +591,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           <select
             value={synthLevel}
             onChange={(e) => setSynthLevel(e.target.value)}
-            className={fieldCls}
+            className="form-select"
           >
             {LEVEL_OPTIONS.map(([v, l]) => (
               <option key={v} value={v}>
@@ -593,7 +600,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
             ))}
           </select>
         </div>
-        <div>
+        <div className="form-group">
           <div className={labelCls}>Глубина Проработки</div>
           <div className={sublabelCls}>
             Влияет на объём и детализацию каждого раздела.
@@ -601,7 +608,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           <select
             value={depth}
             onChange={(e) => setDepth(e.target.value)}
-            className={fieldCls}
+            className="form-select"
           >
             {DEPTH_OPTIONS.map(([v, l]) => (
               <option key={v} value={v}>
@@ -610,12 +617,12 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
             ))}
           </select>
         </div>
-        <div>
+        <div className="form-group">
           <div className={labelCls}>Язык генерации</div>
           <select
             value={langChoice}
             onChange={(e) => setLangChoice(e.target.value)}
-            className={fieldCls}
+            className="form-select"
           >
             {LANG_OPTIONS.map(([v, l]) => (
               <option key={v} value={v}>
@@ -625,20 +632,19 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           </select>
         </div>
         {langChoice === "__custom" && (
-          <div>
+          <div className="form-group">
             <div className={labelCls}>Укажите язык (по-английски)</div>
             <input
               value={customLang}
               onChange={(e) => setCustomLang(e.target.value)}
               placeholder="e.g. Korean, Ancient Greek, Hindi"
-              className={fieldCls}
+              className="form-input"
             />
           </div>
         )}
-      </div>
 
       {/* Доп. контекст */}
-      <div>
+      <div className="form-group full">
         <div className={labelCls}>Дополнительный Контекст</div>
         <div className={sublabelCls}>
           Опционально. Любые уточнения, ограничения, фокус внимания.
@@ -647,11 +653,12 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           value={context}
           onChange={(e) => setContext(e.target.value)}
           placeholder="Например: фокус на этике, игнорировать метафизику, интересует применимость к образованию..."
-          className={`${fieldCls} h-16`}
+          className="form-textarea"
+          style={{ height: 60 }}
         />
       </div>
 
-      <div>
+      <div className="form-group full">
         <SectionPicker
           selected={sections}
           onChange={setSections}
@@ -682,17 +689,32 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
 
       {/* keepFullBudget (v11): только при концепциях в пуле (1.5b) */}
       {conceptParticipants.length > 0 && (
-        <div className="rounded border border-rule bg-black/[0.02] p-3">
-          <label className="flex cursor-pointer items-start gap-2 text-[13px]">
+        <div
+          className="form-group full"
+          style={{
+            marginTop: 12,
+            padding: 10,
+            border: "1px solid var(--rule)",
+            background: "rgba(0,0,0,0.02)",
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+          >
             <input
               type="checkbox"
               checked={keepFullBudget}
               onChange={(e) => setKeepFullBudget(e.target.checked)}
-              className="mt-0.5 accent-[var(--gold)]"
             />
             <span>
               <strong>Сохранять полный бюджет секций</strong>
-              <span className="font-normal text-ink-dim">
+              <span style={{ color: "var(--ink-dim)", fontWeight: "normal" }}>
                 {" "}
                 — не ужимать из-за контекста родительских концепций
               </span>
@@ -704,21 +726,34 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
         </div>
       )}
 
-      {/* Submit-строка */}
-      <div className="flex flex-col gap-3 border-t border-rule pt-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-md font-mono text-[10px] leading-relaxed text-ink-dim">
+      </div>
+
+      {/* Submit-строка [4101–4113] */}
+      <div className="submit-row">
+        <div className="submit-note">
           Генерация выполняется в несколько проходов с потоковым выводом.
           Каждый проход — отдельный запрос к Claude API. Полный документ может
           занять 2–5 минут в зависимости от глубины и количества разделов.
         </div>
         {/* Кнопка всегда видна (07, тест responsive) */}
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: 6,
+            flexShrink: 0,
+          }}
+        >
           <button
             type="button"
             onClick={() => void handleSubmit()}
             disabled={busy || submitChecking}
-            className="rounded border border-gold bg-gold px-6 py-2.5 text-sm font-semibold text-white hover:bg-gold-light disabled:opacity-50"
+            className={
+              busy || submitChecking ? "submit-btn loading" : "submit-btn"
+            }
           >
+            <div className="spinner" />
             {busy
               ? "Запуск…"
               : submitChecking
@@ -730,7 +765,8 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       </div>
 
       {(formError || serverError) && (
-        <div className="rounded border border-red bg-red/5 p-3 text-sm text-red">
+        <div className="callout warning">
+          <span className="callout-label">Ошибка</span>
           {formError ?? serverError}
         </div>
       )}

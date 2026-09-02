@@ -31,6 +31,13 @@
  *
  * Интеграция в страницы (SynthesisPage/GenerationProgress) — беседа 1.5:
  * компонент управляется пропсами и не ходит в API сам.
+ *
+ * Правка 2026-09-02 (единство стилей с исходником): разметка приведена
+ * к #pauseOverlay [4366] — .pause-overlay.visible > .pause-modal >
+ * .pause-modal-header (.pause-modal-title + .pause-modal-close),
+ * .pause-modal-body (.pause-info-box / .pause-reason-box / .pause-subtle),
+ * .pause-modal-footer (.pause-btn .primary/.danger/.ghost); бейдж —
+ * .progress-pause-badge.visible.
  */
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import type {
@@ -57,23 +64,15 @@ export function fmtCost(cost: number | null | undefined): string {
 /* ── Мелкие блоки разметки (аналог css-классов pause-* исходника) ────── */
 
 function ReasonBox({ reason }: { reason: string }) {
-  return (
-    <div className="rounded border border-red/40 bg-white px-3 py-2 font-mono text-xs text-red">
-      {reason}
-    </div>
-  );
+  return <div className="pause-reason-box">{reason}</div>;
 }
 
 function InfoBox({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded border border-rule bg-paper px-3 py-2 text-sm text-ink">
-      {children}
-    </div>
-  );
+  return <div className="pause-info-box">{children}</div>;
 }
 
 function Subtle({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-ink-dim">{children}</p>;
+  return <p className="pause-subtle">{children}</p>;
 }
 
 type BtnKind = "primary" | "default" | "danger";
@@ -89,19 +88,17 @@ function PauseBtn({
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  const base =
-    "rounded border px-3 py-2 text-sm transition-colors disabled:opacity-50";
   const byKind: Record<BtnKind, string> = {
-    primary: "border-gold bg-gold/10 text-ink hover:bg-gold/20",
-    default: "border-rule bg-white text-ink hover:border-rule-strong",
-    danger: "border-red/50 bg-white text-red hover:bg-red/10",
+    primary: "pause-btn primary",
+    default: "pause-btn",
+    danger: "pause-btn danger",
   };
   return (
     <button
       type="button"
       title={title}
       onClick={onClick}
-      className={`${base} ${byKind[kind]}`}
+      className={byKind[kind]}
     >
       {children}
     </button>
@@ -112,7 +109,7 @@ function CostSpan({ cost, prefix }: { cost: number | null | undefined; prefix?: 
   const s = fmtCost(cost);
   if (!s) return null;
   return (
-    <span className="opacity-80"> ({prefix ? `${prefix} ` : ""}{s})</span>
+    <span className="pause-subtle"> ({prefix ? `${prefix} ` : ""}{s})</span>
   );
 }
 
@@ -144,7 +141,7 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
           ? " (стрим завис без ответа)"
           : "";
     return (
-      <div className="flex flex-col gap-3">
+      <div className="pause-content">
         <p>
           Генерация раздела <strong>{ps.sectionLabel}</strong> оборвалась
           {causeHint} — успело сгенерироваться{" "}
@@ -159,7 +156,7 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
           {completedCount > 0 && (
             <>
               <br />
-              <em className="text-ink-dim">{completedList}</em>
+              <em className="pause-subtle">{completedList}</em>
             </>
           )}
           <br />
@@ -198,7 +195,7 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
 
   // Pre-stream: ничего не сгенерировано в прерванном разделе [24825]
   return (
-    <div className="flex flex-col gap-3">
+    <div className="pause-content">
       <p>
         Генерация раздела <strong>{ps.sectionLabel}</strong> не смогла
         начаться — запрос к API не прошёл после 3 попыток.
@@ -209,7 +206,7 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
         {completedCount > 0 && (
           <>
             <br />
-            <em className="text-ink-dim">{completedList}</em>
+            <em className="pause-subtle">{completedList}</em>
           </>
         )}
         <br />
@@ -329,7 +326,7 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
     remaining.length > 5 ? " и ещё " + (remaining.length - 5) : "";
   const stepsWord = remaining.length === 1 ? "шаг" : "шагов";
   return (
-    <div className="flex flex-col gap-3">
+    <div className="pause-content">
       <p>
         План редактирования остановлен на шаге{" "}
         <strong>
@@ -345,7 +342,7 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
         {remaining.length > 0 && (
           <>
             <br />
-            <em className="text-ink-dim">
+            <em className="pause-subtle">
               {remainingLabels}
               {moreHint}
             </em>
@@ -400,7 +397,7 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
     .join(", ");
   const completedWord = completedCount === 1 ? "раздел" : "разделов";
   return (
-    <div className="flex flex-col gap-3">
+    <div className="pause-content">
       <p>
         Генерация приостановлена: <strong>баланс API исчерпан</strong>.
       </p>
@@ -410,7 +407,7 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
         {completedCount > 0 && (
           <>
             <br />
-            <em className="text-ink-dim">{completedList}</em>
+            <em className="pause-subtle">{completedList}</em>
           </>
         )}
         <br />
@@ -422,7 +419,7 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
           href="https://console.anthropic.com/settings/billing"
           target="_blank"
           rel="noreferrer"
-          className="text-gold"
+          style={{ color: "var(--gold)" }}
         >
           console.anthropic.com
         </a>
@@ -478,7 +475,7 @@ function AuthContent({ ps }: { ps: PausedState }) {
       </>
     );
   return (
-    <div className="flex flex-col gap-3">
+    <div className="pause-content">
       <p>
         API-ключ Anthropic недействителен или истёк. Генерация остановлена{" "}
         {context}.
@@ -543,9 +540,9 @@ export function PauseBadge({
       type="button"
       onClick={onClick}
       title="Генерация приостановлена — открыть действия"
-      className="rounded border border-gold bg-gold/10 px-2 py-1 font-mono text-xs text-ink hover:bg-gold/20"
+      className="progress-pause-badge visible"
     >
-      ⏸ Пауза
+      ⏸ Приостановлено
     </button>
   );
 }
@@ -645,28 +642,23 @@ export function PauseModal({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+      className="pause-overlay visible"
       onClick={onClose}
     >
-      <div
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-rule-strong bg-parchment shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-rule px-4 py-3">
-          <h2 className="font-serif text-lg font-semibold text-ink">{title}</h2>
+      <div className="pause-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="pause-modal-header">
+          <div className="pause-modal-title">{title}</div>
           <button
             type="button"
             onClick={onClose}
             title="Свернуть (пауза сохраняется)"
-            className="rounded border border-rule px-2 py-0.5 font-mono text-sm text-ink-mid hover:border-rule-strong"
+            className="pause-modal-close"
           >
             ✕
           </button>
         </div>
-        <div className="overflow-y-auto px-4 py-3">{body}</div>
-        <div className="flex flex-wrap gap-2 border-t border-rule px-4 py-3">
-          {footer}
-        </div>
+        <div className="pause-modal-body">{body}</div>
+        <div className="pause-modal-footer">{footer}</div>
       </div>
     </div>
   );

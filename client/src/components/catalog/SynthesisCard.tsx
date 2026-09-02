@@ -49,40 +49,36 @@ export function SynthesisCard({
   return (
     <Link
       to={`/synthesis/${synthesis.id}`}
-      className="block rounded border border-rule bg-paper p-4 transition-colors hover:border-blue-corp hover:no-underline"
+      className="catalog-card"
     >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="font-serif text-lg text-blue-corp">
+      <div className="catalog-card-head">
+        <div className="section-title" style={{ margin: 0, padding: 0, border: "none" }}>
           {synthesis.title}
-        </h3>
-        <span className="flex shrink-0 items-center gap-1.5">
+        </div>
+        <span className="header-badges" style={{ flexDirection: "row", gap: 6 }}>
           {/* Беседа 3.2 (п. 5): бейдж мета-синтеза (родители-концепции
               в генеалогии — SynthesisPreview.hasConceptParents) */}
           {synthesis.hasConceptParents && (
-            <span className="rounded border border-gold px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-gold">
-              ◈ мета-синтез
-            </span>
+            <span className="cert-badge gold">◈ мета-синтез</span>
           )}
-          <span className="meta-label">
+          <span className="cert-badge">
             {STATUS_LABELS[synthesis.status] ?? synthesis.status}
           </span>
         </span>
       </div>
 
-      <div className="mt-1 font-mono text-xs text-gold">
+      <div className="doc-meta-val gold">
         {ML[synthesis.method]} × {SL[synthesis.synthLevel]}
       </div>
 
-      <div className="mt-2 text-sm text-ink-mid">{phil}</div>
+      <div className="doc-content" style={{ marginTop: 6 }}>{phil}</div>
 
       {synthesis.capsulePreview && (
-        <p className="mt-2 line-clamp-2 text-xs text-ink-dim">
-          {synthesis.capsulePreview}
-        </p>
+        <p className="catalog-card-preview">{synthesis.capsulePreview}</p>
       )}
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="font-mono text-xs text-ink-dim">{date}</span>
+      <div className="catalog-card-foot">
+        <span className="doc-footer-left">{date}</span>
         {onTogglePublic && (
           <button
             type="button"

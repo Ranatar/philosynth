@@ -15,6 +15,13 @@
  * synthReadyHint [5116–5142]; автовключение SYNTH_READY_SECTIONS при
  * включении делает SynthesisForm (владелец sections) — onSynthReadyChange.
  * Подсказка про «Анализ названия» рендерится здесь: selected уже в пропсах.
+ *
+ * Правка 2026-09-02 (единство стилей с исходником): разметка приведена
+ * к классам исходника — .checkboxes-row.sections-row → .sec-item-wrap →
+ * .sec-item-row (.checkbox-item + .sec-ctx-btn) + .sec-ctx-field.
+ * Состояние «выбран» в исходнике ставит класс ._checked на обёртку и
+ * на .checkbox-item (updateCheckboxState), кнопка контекста получает
+ * .open — здесь то же самое делает React по selected/openCtx.
  */
 import { useState } from "react";
 
@@ -82,41 +89,53 @@ export function SectionPicker({
   };
 
   return (
-    <div>
-      <div className="text-sm font-semibold text-ink">Разделы документа</div>
-      <div className="mt-1 font-mono text-[10px] leading-relaxed text-ink-dim">
+    <div className="form-group full">
+      <div className="form-label">Разделы Документа</div>
+      <div className="form-sublabel">
         Выберите, какие разделы включить в итоговый документ. Исполнительное
         резюме включается всегда.
       </div>
 
-      {/* responsive: 1 колонка на мобильных, 2 на desktop (07) */}
-      <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 md:grid-cols-2">
+      <div className="checkboxes-row sections-row">
         {SECTION_CHECKBOX_IDS.map((id) => {
           const key = SEC_ID_TO_KEY[id];
           const checked = selectedSet.has(key);
           const ctxOpen = openCtx.has(key);
           const ctxValue = sectionContexts[key] ?? "";
+          const isCapsule = key === "capsule";
           return (
-            <div key={id} className="min-w-0">
-              <div className="flex items-center gap-2">
-                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-xs text-ink-mid hover:text-ink">
+            <div
+              key={id}
+              className={[
+                "sec-item-wrap",
+                checked ? "_checked" : "",
+                isCapsule ? "capsule-check" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <div className="sec-item-row">
+                <label
+                  className={[
+                    "checkbox-item",
+                    isCapsule ? "capsule-check-item" : "",
+                    checked ? "_checked" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggleSection(key)}
-                    className="accent-[var(--gold)]"
                   />
-                  <span className="truncate">{SECTION_LABELS[id]}</span>
+                  {SECTION_LABELS[id]}
                 </label>
                 <button
                   type="button"
                   title="Доп. контекст для раздела"
                   onClick={() => toggleCtx(key)}
-                  className={`shrink-0 rounded border px-1.5 font-mono text-[10px] leading-4 ${
-                    ctxValue.trim()
-                      ? "border-gold text-gold"
-                      : "border-rule text-ink-dim hover:border-rule-strong hover:text-ink-mid"
-                  }`}
+                  className={ctxOpen ? "sec-ctx-btn open" : "sec-ctx-btn"}
                 >
                   {ctxOpen ? "−" : "+"}
                 </button>
@@ -125,25 +144,30 @@ export function SectionPicker({
               {/* v10: extGraphMetrics — под «Граф категорий», виден только
                   при выбранном графе */}
               {key === "graph" && checked && (
-                <label className="ml-6 mt-0.5 flex cursor-pointer items-center gap-1.5 text-[11px] text-ink-dim hover:text-ink-mid">
-                  <input
-                    type="checkbox"
-                    checked={extGraphMetrics}
-                    onChange={(e) => onExtGraphMetricsChange(e.target.checked)}
-                    className="accent-[var(--gold)]"
-                  />
-                  Расширенные характеристики
-                </label>
+                <div
+                  className="sec-item-row"
+                  style={{ marginLeft: 28, marginTop: 2 }}
+                >
+                  <label
+                    className="checkbox-item"
+                    style={{ fontSize: 11, color: "var(--ink-dim)" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={extGraphMetrics}
+                      onChange={(e) => onExtGraphMetricsChange(e.target.checked)}
+                    />
+                    Расширенные характеристики
+                  </label>
+                </div>
               )}
 
-              {ctxOpen && (
-                <textarea
-                  value={ctxValue}
-                  onChange={(e) => onSectionContextChange(key, e.target.value)}
-                  placeholder={`Особые требования, акценты, ограничения для «${SECTION_LABELS[id]}»...`}
-                  className="mt-1 h-14 w-full rounded border border-rule bg-white p-2 font-mono text-[11px] text-ink placeholder:text-ink-dim focus:border-gold focus:outline-none"
-                />
-              )}
+              <textarea
+                value={ctxValue}
+                onChange={(e) => onSectionContextChange(key, e.target.value)}
+                placeholder={`Особые требования, акценты, ограничения для «${SECTION_LABELS[id]}»...`}
+                className={ctxOpen ? "sec-ctx-field open" : "sec-ctx-field"}
+              />
             </div>
           );
         })}
@@ -152,29 +176,35 @@ export function SectionPicker({
       {/* ◈ Пригодность к дальнейшему синтезу (secSynthReady, 1.5b).
           Включение гарантирует комплект разделов мета-синтеза —
           автовключение делает форма (onSynthReadyChange [5116]) */}
-      <div className="mt-3 border-t border-rule pt-2">
-        <label className="flex cursor-pointer items-start gap-1.5 text-xs text-ink-mid hover:text-ink">
+      <div className="synth-ready-row">
+        <label
+          className={
+            synthReady ? "checkbox-item _checked" : "checkbox-item"
+          }
+        >
           <input
             type="checkbox"
             checked={synthReady}
             onChange={(e) => onSynthReadyChange(e.target.checked)}
-            className="mt-0.5 accent-[var(--gold)]"
           />
-          <span>
-            ◈ Пригодность к дальнейшему синтезу
-            <span className="block font-mono text-[10px] leading-relaxed text-ink-dim">
-              Включает разделы, обязательные для использования концепции как
-              участника мета-синтеза (граф, глоссарий, тезисы, диалог,
-              критика, капсула).
-            </span>
-          </span>
+          ◈ Пригодность к дальнейшему синтезу
         </label>
+        <div className="form-sublabel">
+          Включает разделы, обязательные для использования концепции как
+          участника мета-синтеза (граф, глоссарий, тезисы, диалог, критика,
+          капсула).
+        </div>
         {/* synthReadyHint [5580–5589]: совет про «Анализ названия» */}
         {synthReady && !selectedSet.has("name") && (
-          <div className="ml-6 mt-1 font-mono text-[10px] leading-relaxed text-gold">
-            Совет: для качественной капсулы полезен раздел «Анализ названия».
-            Если он не выбран, задайте название вручную (кнопка ✎ в шапке)
-            после генерации.
+          <div className="sec-recommendations">
+            <div className="sec-recommend-item">
+              <span className="rec-icon">ℹ</span>
+              <span>
+                Совет: для качественной капсулы полезен раздел «Анализ
+                названия». Если он не выбран, задайте название вручную
+                (кнопка ✎ в шапке) после генерации.
+              </span>
+            </div>
           </div>
         )}
       </div>

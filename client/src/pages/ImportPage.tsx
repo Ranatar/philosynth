@@ -95,49 +95,48 @@ export function ImportPage() {
   const infos = warnings.filter((w) => !w.critical);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="meta-label">импорт</div>
-      <h1 className="mt-1 text-2xl">Импорт HTML-файла PhiloSynth</h1>
+    <div className="input-form">
+      <h1 className="form-section-title">Импорт HTML-файла PhiloSynth</h1>
 
       {phase === "uploading" && (
-        <div className="mt-6 rounded border border-rule bg-paper p-6">
-          <LoadingSpinner label="Загрузка и разбор файла…" />
-        </div>
+        <LoadingSpinner label="Загрузка и разбор файла…" />
       )}
 
       {phase === "done" && resultId && (
-        <div className="mt-6 flex flex-col gap-4">
-          <div className="rounded border border-rule bg-paper p-6">
-            <p>
-              Импорт завершён. Обнаружены проблемы с метаданными — документ
-              отображается, проверьте параметры перед перегенерацией.
-            </p>
-            <ul className="mt-4 flex flex-col gap-2">
-              {criticals.map((w, i) => (
-                <li key={`c${i}`} role="alert" className="text-sm text-red">
-                  ⚠ КРИТИЧНО: {w.message}
-                </li>
-              ))}
-              {infos.map((w, i) => (
-                <li key={`i${i}`} className="text-sm text-ink-mid">
-                  ⚡ Внимание: {w.message}
-                </li>
-              ))}
-            </ul>
+        <div className="form-group full">
+          <div className="submit-note">
+            Импорт завершён. Обнаружены проблемы с метаданными — документ
+            отображается, проверьте параметры перед перегенерацией.
           </div>
-          <div className="flex gap-3">
+          {criticals.length > 0 && (
+            <div className="sec-warnings">
+              {criticals.map((w, i) => (
+                <div key={`c${i}`} role="alert" className="sec-warning-item">
+                  <span className="warn-icon">⚠</span>
+                  <span>КРИТИЧНО: {w.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {infos.length > 0 && (
+            <div className="sec-recommendations">
+              {infos.map((w, i) => (
+                <div key={`i${i}`} className="sec-recommend-item">
+                  <span className="rec-icon">⚡</span>
+                  <span>Внимание: {w.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="actions-bar-btns" style={{ marginTop: 14 }}>
             <button
               type="button"
               onClick={() => navigate(`/synthesis/${resultId}`)}
-              className="rounded border border-gold px-4 py-2 text-sm text-gold hover:bg-gold hover:text-white"
+              className="action-btn primary"
             >
               Перейти к синтезу
             </button>
-            <button
-              type="button"
-              onClick={reset}
-              className="rounded border border-rule px-4 py-2 text-sm text-ink-mid hover:border-ink-mid"
-            >
+            <button type="button" onClick={reset} className="action-btn">
               Импортировать ещё
             </button>
           </div>
@@ -145,7 +144,7 @@ export function ImportPage() {
       )}
 
       {phase === "idle" && (
-        <div className="mt-6 flex flex-col gap-4">
+        <div className="form-group full">
           <div
             role="button"
             tabIndex={0}
@@ -161,16 +160,13 @@ export function ImportPage() {
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             className={
-              "flex cursor-pointer flex-col items-center gap-2 rounded border-2 border-dashed p-10 text-center transition-colors " +
-              (dragOver
-                ? "border-gold bg-paper"
-                : "border-rule bg-paper hover:border-gold")
+              "edit-add-panel import-dropzone" + (dragOver ? " over" : "")
             }
           >
-            <span className="text-3xl" aria-hidden>
+            <span style={{ fontSize: 30 }} aria-hidden>
               ⇪
             </span>
-            <p className="text-ink-mid">
+            <p className="submit-note">
               Перетащите сюда HTML-файл PhiloSynth
               <br />
               или нажмите, чтобы выбрать
@@ -179,32 +175,28 @@ export function ImportPage() {
               ref={inputRef}
               type="file"
               accept=".html,.htm,text/html"
-              className="hidden"
+              style={{ display: "none" }}
               onChange={(e) => pick(e.target.files?.[0])}
             />
           </div>
 
           {file && (
-            <div className="flex items-center justify-between rounded border border-rule bg-paper p-4">
-              <div className="min-w-0">
-                <div className="truncate font-medium">{file.name}</div>
-                <div className="meta-label mt-1">
+            <div className="pool-card">
+              <div className="pool-card-info">
+                <div className="pool-card-name">{file.name}</div>
+                <div className="pool-card-meta">
                   {(file.size / 1024).toFixed(0)} КБ
                 </div>
               </div>
-              <div className="flex shrink-0 gap-3">
+              <div className="pool-card-btns">
                 <button
                   type="button"
                   onClick={() => void confirmImport()}
-                  className="rounded border border-gold px-4 py-2 text-sm text-gold hover:bg-gold hover:text-white"
+                  className="action-btn primary"
                 >
                   Подтвердить импорт
                 </button>
-                <button
-                  type="button"
-                  onClick={reset}
-                  className="rounded border border-rule px-4 py-2 text-sm text-ink-mid hover:border-ink-mid"
-                >
+                <button type="button" onClick={reset} className="action-btn">
                   Отмена
                 </button>
               </div>
@@ -212,9 +204,10 @@ export function ImportPage() {
           )}
 
           {error && (
-            <p role="alert" className="text-sm text-red">
+            <div role="alert" className="callout warning">
+              <span className="callout-label">Ошибка импорта</span>
               {error}
-            </p>
+            </div>
           )}
         </div>
       )}

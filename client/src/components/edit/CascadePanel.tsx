@@ -97,7 +97,8 @@ export function CascadePanel({
   }
 
   return (
-    <div className={"cascade-panel visible" + (loading ? " opacity-70" : "")}>
+    <div className="cascade-panel visible"
+      style={loading ? { opacity: 0.7 } : undefined}>
       <div className="cascade-title">
         <span>⚡</span>
         <span>{title}</span>

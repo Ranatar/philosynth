@@ -8,6 +8,11 @@
  * словарь UI-меток, в shared не выносился).
  *
  * esc() исходника не нужен: React экранирует текст сам.
+ *
+ * Правка 2026-09-02 (единство стилей с исходником): классы .pool-card
+ * (.selected/.synth-on), .pool-card-controls, .pool-card-info,
+ * .pool-card-name/-basis/-meta, .pool-card-btns/.pool-card-btn.remove,
+ * .pool-card-synth-warn — как в renderPoolConcepts [5056–5089].
  */
 import { Link } from "react-router-dom";
 
@@ -48,106 +53,86 @@ export function PoolCard({
 
   return (
     <div
-      className={
-        "rounded border p-2 " +
-        (c.isSelected
-          ? "border-gold bg-gold/5 "
-          : "border-rule bg-white ") +
-        (c.isSynthParticipant ? "ring-1 ring-gold/40" : "")
-      }
+      className={[
+        "pool-card",
+        c.isSelected ? "selected" : "",
+        c.isSynthParticipant ? "synth-on" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
-      <div className="flex items-center gap-3">
-        {/* Колонка 1: чекбокс синтеза */}
-        <label
-          className={
-            "flex shrink-0 flex-col items-center gap-0.5 text-[10px] " +
-            (synthDisabled
-              ? "cursor-not-allowed text-ink-dim"
-              : "cursor-pointer text-ink-mid")
-          }
+      {/* Колонка 1: чекбокс синтеза */}
+      <div className="pool-card-controls">
+        <input
+          type="checkbox"
           title="Участник мета-синтеза"
-        >
-          <input
-            type="checkbox"
-            checked={c.isSynthParticipant}
-            disabled={synthDisabled}
-            onChange={() => onToggleSynth(c.id)}
-            className="accent-[var(--gold)]"
-          />
-          Синтез
-        </label>
+          checked={c.isSynthParticipant}
+          disabled={synthDisabled}
+          onChange={() => onToggleSynth(c.id)}
+        />
+        <label>Синтез</label>
+      </div>
 
-        {/* Колонка 2: радио просмотра. Каталожная запись (беседа 3.2):
-            rawHTML="" — предпросмотра нет, вместо ◉ ссылка на страницу
-            синтеза (полный просмотр там) */}
+      {/* Колонка 2: радио просмотра. Каталожная запись (беседа 3.2):
+          rawHTML="" — предпросмотра нет, вместо ◉ ссылка на страницу
+          синтеза (полный просмотр там) */}
+      <div className="pool-card-controls">
         {c.synthesisId ? (
-          <Link
-            to={`/synthesis/${c.synthesisId}`}
-            title="Открыть страницу синтеза"
-            className="flex shrink-0 flex-col items-center gap-0.5 text-[10px] text-ink-mid hover:text-gold"
-          >
-            <span className="font-mono text-sm leading-none">↗</span>
-            Открыть
+          <Link to={`/synthesis/${c.synthesisId}`} title="Открыть страницу синтеза">
+            ↗<label>Открыть</label>
           </Link>
         ) : (
-          <label
-            className="flex shrink-0 cursor-pointer flex-col items-center gap-0.5 text-[10px] text-ink-mid"
-            title="Просмотр и редактирование"
-          >
+          <>
             <input
               type="radio"
               name="poolView"
+              title="Просмотр и редактирование"
               checked={c.isSelected}
               onClick={() => onSelectForViewing(c.id)}
               onChange={() => {
                 /* toggle в onClick — как в исходнике (повторный клик = деселект) */
               }}
-              className="accent-[var(--gold)]"
             />
-            Просм.
-          </label>
+            <label>Просм.</label>
+          </>
         )}
+      </div>
 
-        {/* Колонка 3: информация */}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold text-ink">
-            {c.name}
-          </div>
-          {c.subtitle && c.subtitle !== "—" && (
-            <div className="truncate font-mono text-[10px] text-ink-dim">
-              {c.subtitle}
-            </div>
-          )}
-          <div className="truncate font-mono text-[10px] text-ink-mid">
-            {methodLabel} × {levelLabel}
-            {orderLabel ? " · " + orderLabel : ""} · {sourcesStr}
-          </div>
+      {/* Колонка 3: информация */}
+      <div className="pool-card-info">
+        <div className="pool-card-name">{c.name}</div>
+        {c.subtitle && c.subtitle !== "—" && (
+          <div className="pool-card-basis">{c.subtitle}</div>
+        )}
+        <div className="pool-card-meta">
+          {methodLabel} × {levelLabel}
+          {orderLabel ? " · " + orderLabel : ""} · {sourcesStr}
         </div>
+      </div>
 
-        {/* Колонка 4: кнопки */}
-        <div className="flex shrink-0 gap-1">
-          <button
-            type="button"
-            onClick={() => onRename(c.id)}
-            title="Переименовать"
-            className="rounded border border-rule px-1.5 py-0.5 text-xs text-ink-mid hover:border-rule-strong hover:text-ink"
-          >
-            ✎
-          </button>
-          <button
-            type="button"
-            onClick={() => onRemove(c.id)}
-            title="Удалить из пула"
-            className="rounded border border-rule px-1.5 py-0.5 text-xs text-red hover:border-red"
-          >
-            ✕
-          </button>
-        </div>
+      {/* Колонка 4: кнопки */}
+      <div className="pool-card-btns">
+        <button
+          type="button"
+          onClick={() => onRename(c.id)}
+          title="Переименовать"
+          className="pool-card-btn"
+        >
+          ✎
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(c.id)}
+          title="Удалить из пула"
+          className="pool-card-btn remove"
+        >
+          ✕
+        </button>
       </div>
 
       {/* Предупреждение о непригодности к синтезу [5051–5055] */}
       {showWarn && (
-        <div className="mt-1.5 rounded bg-red/5 px-2 py-1 font-mono text-[10px] leading-relaxed text-red">
+        <div className="pool-card-synth-warn">
           ⚠ {String(c.participantError).slice(0, 120)}
         </div>
       )}
