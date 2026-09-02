@@ -4,7 +4,13 @@
  * subscription_plans, user_subscriptions), 03-specification §2.10.
  */
 
-export type BillingMode = "byo" | "service";
+/**
+ * Режим биллинга запроса — три значения по приоритету 01 §6
+ * (правка 2026-09-02): byo — ключ пользователя, списания нет, costUsd
+ * несёт себестоимость; subscription — списана квота; balance — списано
+ * с баланса. Прежний enum byo|service не различал подписку и баланс.
+ */
+export type BillingMode = "byo" | "subscription" | "balance";
 
 export type TransactionType = "topup" | "usage" | "refund";
 

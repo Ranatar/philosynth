@@ -108,7 +108,14 @@ function enumOf(tableKey: keyof typeof schema, col: string): string[] {
   return c?.enumValues ?? [];
 }
 function parseUnion(file: string, typeName: string): string[] {
-  const src = readFileSync(TYPES_DIR + file, "utf-8");
+  // Комментарии снимаются ДО поиска (правка 2026-09-02): точка с запятой
+  // внутри JSDoc-пояснения к варианту union'а обрывала ленивый шаблон
+  // `=([\s\S]*?);` на середине — часть значений молча терялась, и аудит
+  // сообщал о расхождении, которого нет (либо, наоборот, не замечал
+  // настоящего).
+  const src = readFileSync(TYPES_DIR + file, "utf-8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
   const m = src.match(new RegExp(`export type ${typeName} =([\\s\\S]*?);`));
   if (!m) return [];
   return [...m[1]!.matchAll(/"([^"]+)"/g)].map(x => x[1]!);

@@ -78,9 +78,9 @@
 | E4 | Добавление нового раздела | MVP |
 | E5 | Каскадный анализ зависимостей (downstream, upstream) | MVP |
 | E6 | План редактирования: просмотр, подтверждение, исполнение шагов | MVP |
-| E7 | Ручное редактирование элементов (категории, тезисы, глоссарий) | Фаза 2 |
-| E8 | Автозамена имён при переименовании категории | Фаза 2 |
-| E9 | Версионирование элементов с откатом | Фаза 2 |
+| E7 | Ручное редактирование элементов (категории, тезисы, глоссарий) | Фаза 5 |
+| E8 | Автозамена имён при переименовании категории | Фаза 5 |
+| E9 | Версионирование элементов с откатом | Фаза 5 |
 
 ### 1.6. Мета-синтез
 
@@ -149,9 +149,9 @@
 
 | ID | Требование | Приоритет |
 |---|---|---|
-| T1 | Каталог типов категорий (18 системных + пользовательские) | Фаза 2 |
-| T2 | Каталог типов связей (29 системных + пользовательские) | Фаза 2 |
-| T3 | Нормализация типов при парсинге ответа Claude (маппинг на каталог) | Фаза 2 |
+| T1 | Каталог типов категорий (18 системных + пользовательские) | Фаза 0 (сделано 0.3b) |
+| T2 | Каталог типов связей (29 системных + пользовательские) | Фаза 0 (сделано 0.3b) |
+| T3 | Нормализация типов при парсинге ответа Claude (маппинг на каталог) | Фаза 0 (сделано 0.3b) |
 | T5 | Поиск и фильтрация по типам в каталоге концепций | Фаза 3 |
 | EN1 | Точечное обогащение категории через Claude (описание, аналоги, трактовки) | Фаза 5 |
 | EN2 | Точечное обоснование связи через Claude (философское обоснование, контраргументы) | Фаза 5 |
@@ -482,6 +482,70 @@ GET    /syntheses/:id/glossary  → { terms: GlossaryTerm[] }
 PATCH  /syntheses/:id/glossary/:termId
                                 { term?, definition?, extraColumns? }
                                 → { term: GlossaryTerm, impact: ImpactAnalysis }
+
+// ── Дополнения 2026-09-02 (аудит фаз 5–6) ──────────────────────────────
+
+// п.11: нормализованный тип пишется явно. PATCH категории/связи
+// принимает typeCatalogId (ссылка на каталог §2.13) ЛИБО свободный
+// type/edgeType. Ответ несёт оба поля — по ним TaxonomySelector (5.4)
+// рисует индикатор «из каталога» / «свободный текст».
+PATCH  /syntheses/:id/categories/:catId
+                                { …, typeCatalogId?: string | null }
+PATCH  /syntheses/:id/edges/:edgeId
+                                { …, typeCatalogId?: string | null }
+
+// п.14: топология и капсула редактируемы (01 §4.7 их перечисляет)
+PATCH  /syntheses/:id/categories/:catId
+                                { …, structuralRoles?, proceduralRoles?,
+                                  clusterIndices? }
+PATCH  /syntheses/:id/capsule   { html: string }
+                                → { capsuleHtml: string }
+                                // capsule_html живёт в syntheses;
+                                // PATCH /syntheses/:id (§2.2) правит
+                                // только title/isPublic
+
+// п.2: версии элемента и откат (беседа 5.1; UI — VersionHistory, 5.2).
+// Доступ: элемент обязан принадлежать :id — проверяется по
+// element_versions.synthesis_id (колонка добавлена 2026-09-02, п.3).
+GET    /syntheses/:id/elements/:elementType/:elementId/versions
+                                → { versions: ElementVersion[] }
+                                // elementType: category|edge|thesis|
+                                //   glossary_term|dialogue_turn|section
+                                // Сортировка: version DESC
+
+POST   /syntheses/:id/elements/:elementType/:elementId/rollback
+                                { version: number }
+                                → { element: unknown, version: ElementVersion,
+                                    impact: ImpactAnalysis }
+                                // Восстанавливает данные версии, создаёт
+                                // НОВУЮ версию с changeSource='rollback',
+                                // перерисовывает таблицу в html_content
+                                // (02 §3) и возвращает impact
+
+// п.4: автозамена имён (E8). Отдельный вызов, а не побочный эффект
+// PATCH: пользователь решает после просмотра impact.
+POST   /syntheses/:id/elements/auto-rename
+                                { oldName: string, newName: string }
+                                → { affectedSections: string[],
+                                    affectedTheses: number }
+                                // Замена в html_content всех разделов И в
+                                // theses.related_categories; каждая
+                                // затронутая строка получает версию с
+                                // changeSource='auto_rename'
+```
+
+**ElementVersion:**
+```typescript
+{
+  id: string;
+  elementType: "category" | "edge" | "thesis" | "glossary_term"
+             | "dialogue_turn" | "section";
+  elementId: string;
+  version: number;
+  data: Record<string, unknown>;   // снимок ДО изменения
+  changeSource: "manual" | "regenerated" | "cascade" | "auto_rename" | "rollback";
+  createdAt: string;
+}
 ```
 
 **ImpactAnalysis:**
@@ -658,6 +722,18 @@ GET    /configs                 → { configs: SynthesisConfig[] }
 
 PUT    /configs/:key            { value: any, description?: string }
                                 → { config: SynthesisConfig }
+                                // Создаёт НОВУЮ версию-черновик (не
+                                // активирует) — симметрично POST /prompts/:key
+
+// Дополнение 2026-09-02 (аудит фаз 5–6, п.9): у конфигов есть version и
+// is_active (02 §2.18), «версионирование аналогично шаблонам» требует
+// 6.2 — но эндпоинтов не было.
+GET    /configs/:key/versions   → { versions: ConfigVersion[] }
+
+POST   /configs/:key/activate   { version: number }
+                                → { config: SynthesisConfig }
+                                // Активирует версию, деактивирует прежнюю,
+                                // инвалидирует config_cache:* (0.3)
 ```
 
 ### 2.10. Billing
@@ -676,6 +752,12 @@ GET    /billing/api-key         → { keys: { id, prefix, isActive, createdAt }[
 POST   /billing/topup           { amountUsd: number }
                                 → { clientSecret: string }
                                 // Stripe PaymentIntent
+
+POST   /billing/topup/confirm   { paymentIntentId: string }
+                                → { balanceUsd: number, transaction: Transaction }
+                                // Правка 2026-09-02: эндпоинт требовался
+                                // беседой 6.1 (confirmTopup), в контракте
+                                // его не было
 
 GET    /billing/subscription    → { subscription: UserSubscription | null,
                                    plan: SubscriptionPlan | null,
@@ -746,8 +828,19 @@ POST   /taxonomy/normalize          { text: string, kind: "category"|"relationsh
 ### 2.14. Element Enrichment (точечные Claude-запросы)
 
 ```
+// Канон типов обогащения (правка 2026-09-02, аудит фаз 5–6, п.6).
+// Три документа расходились; принято: тип обогащения = enum модели
+// (02 §2.26), ключ шаблона Registry = "enrichment.{элемент}.{тип}".
+//   категория: description | evolution | justification
+//   связь:     justification | counterarguments
+//   характеристика: отдельный эндпоинт ниже (тип 'characteristic')
+// Пять ключей Registry: enrichment.category.description,
+// enrichment.category.evolution, enrichment.category.justification,
+// enrichment.edge.justification, enrichment.edge.counterarguments,
+// enrichment.characteristic_justification.
+
 POST   /syntheses/:id/enrich/category/:catId
-                                    { type: "description"|"evolution" }
+                                    { type: "description"|"evolution"|"justification" }
                                     → { enrichment: ElementEnrichment }
                                     // Стриминг через WebSocket
 
@@ -859,9 +952,32 @@ Endpoint: `wss://host/ws?token={sessionToken}`
 // kind="plan" (паритет executeEditPlan; беседа 2.2)
 { type: "cancel", synthesisId: string }
 
+// Запуск обогащения элемента (беседа 5.3). Правка 2026-09-02:
+// ответные enrichment_delta/enrichment_done в §3.2 были, запускающего
+// сообщения не было.
+{ type: "start_enrichment", synthesisId: string,
+  elementType: "category" | "edge", elementId: string,
+  enrichmentType: string }
+
+// Запуск трансформации представлений (беседа 5.5)
+{ type: "start_transform", synthesisId: string,
+  direction: "graph_to_theses" | "theses_to_graph" }
+
 // Пинг (keep-alive)
 { type: "ping" }
 ```
+
+> **Что именно запускает операцию (решение 2026-09-02, п.5).** Как в
+> фазах 1–4: HTTP-роут (§2.14 / §2.15) СОЗДАЁТ операцию и отвечает
+> `{ ok: true }`, WS-сообщение только ПОДПИСЫВАЕТ на её поток. Обогащение
+> и трансформация запускаются HTTP-роутом; `start_enrichment` /
+> `start_transform` допустимы как альтернативный вход для клиента, уже
+> держащего сокет, и обязаны быть идемпотентны при активной операции
+> (иначе — `GENERATION_IN_PROGRESS`).
+>
+> Дельты трансформации идут `stream_delta` с `sectionKey` = `"transform:{direction}"`
+> — по образцу `"mode:{modeKey}"` беседы 4.1; собственного типа дельт у
+> трансформации нет.
 
 ### 3.2. Сообщения сервер → клиент
 

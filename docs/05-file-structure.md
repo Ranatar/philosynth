@@ -166,7 +166,17 @@ philosynth-service/
 │   │   │                               # (MODE_CONFIG … regenerateModeSilent (вся система режимов))
 │   │   │
 │   │   ├── element-editor.ts           # PATCH-обработчики для категорий/тезисов/глоссария
-│   │   │                               # + impact analysis (НОВОЕ)
+│   │   │                               # + impact analysis + autoRenameReferences (НОВОЕ)
+│   │   │
+│   │   ├── element-renderer.ts         # НОВОЕ (решение 2026-09-02, п.1):
+│   │   │                               # обратное к element-parser — рисует
+│   │   │                               # таблицу категорий/связей/топологии/
+│   │   │                               # тезисов/глоссария из гранулярных
+│   │   │                               # данных и врезает её в html_content
+│   │   │                               # через spliceSubsectionHtml (1.4b).
+│   │   │                               # Раздел целиком НЕ перерисовывается —
+│   │   │                               # см. 02 §3. Приёмка: round-trip
+│   │   │                               # parse(render(x)) === x
 │   │   │
 │   │   ├── element-versioning.ts       # Создание версий, откат (НОВОЕ)
 │   │   │
@@ -284,7 +294,13 @@ philosynth-service/
 │   │   │   ├── syntheses.ts            # API-функции для /syntheses
 │   │   │   ├── sections.ts
 │   │   │   ├── elements.ts             # создаёт беседа 1.7 (getCategories),
-│   │   │   │                           # расширяет 5.2
+│   │   │   │                           # расширяет 5.2 (PATCH, версии, откат,
+│   │   │   │                           # auto-rename)
+│   │   │   ├── taxonomy.ts             # каталоги типов + normalize (5.4)
+│   │   │   ├── enrichment.ts           # обогащения и обоснования (5.4)
+│   │   │   ├── transforms.ts           # graph↔theses, история, откат (5.5)
+│   │   │   ├── prompts.ts              # админка Prompt Registry (6.2)
+│   │   │   ├── import.ts               # multipart-обёртка импорта (4.3)
 │   │   │   ├── generation.ts
 │   │   │   ├── logs.ts                 # GET /logs/* (беседа 2.4)
 │   │   │   ├── plans.ts
@@ -367,6 +383,11 @@ philosynth-service/
 │   │   │   │   ├── CascadePanel.tsx        # Панель каскадных зависимостей
 │   │   │   │   ├── AddSectionPanel.tsx     # Панель добавления разделов
 │   │   │   │   ├── ElementEditor.tsx       # Inline-редактирование элементов (НОВОЕ)
+│   │   │   │   ├── CategoryEditor.tsx      # Поля категории + предпросмотр строки (5.2)
+│   │   │   │   ├── ThesisEditor.tsx        # Поля тезиса (5.2)
+│   │   │   │   ├── GlossaryTermEditor.tsx  # Термин + столбцы по synth_level (5.2)
+│   │   │   │   ├── VersionHistory.tsx      # Версии элемента, diff, откат (5.2)
+│   │   │   │   ├── TransformHistory.tsx    # История трансформаций + откат (5.5)
 │   │   │   │   ├── CharacteristicSlider.tsx # Слайдер характеристики + кнопка «Обоснование»
 │   │   │   │   ├── EnrichmentPanel.tsx     # Панель результатов обогащения элемента
 │   │   │   │   ├── TaxonomySelector.tsx    # Выбор типа из каталога при нормализации

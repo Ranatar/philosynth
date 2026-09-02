@@ -2914,7 +2914,8 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 
 **Контекст для загрузки:**
 - `01-architecture.md` (секция 4.7 Element Editor)
-- `02-data-model.md` (таблица element_versions)
+- `02-data-model.md` (таблица element_versions, **§3 «Направление записи»** — правка элемента врезает перерисованную таблицу в html_content)
+- Из предыдущих бесед: `server/services/element-parser.ts` (из 1.4 — рендерер обязан быть обратным к нему), `server/utils/html-parser.ts` (из 1.4b — `spliceSubsectionHtml`)
 - `03-specification.md` (секции 1.5 E7–E9, 2.4 Elements API + ImpactAnalysis)
 - Из предыдущих бесед: `server/db/schema.ts`, `server/services/cascade-analyzer.ts` (из 2.1)
 - Исходник: НЕ НУЖЕН (полностью новая функциональность)
@@ -2948,8 +2949,15 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
      Обновление связи графа.
 
    - autoRenameReferences(synthesisId, oldName, newName):
-     При переименовании категории: поиск oldName в html_content 
-     всех sections, замена на newName. Возвращает список затронутых секций.
+     При переименовании категории: поиск oldName в html_content
+     всех sections, замена на newName. ТАКЖE замена в
+     theses.related_categories (правка 2026-09-02, п.4 — иначе тезисы
+     ссылаются на исчезнувшее имя). Каждая затронутая строка получает
+     версию с changeSource='auto_rename'. Возвращает
+     { affectedSections, affectedTheses }.
+     Вызывается ОТДЕЛЬНЫМ эндпоинтом POST /syntheses/:id/elements/auto-rename
+     (03 §2.4), а не побочным эффектом PATCH: решает пользователь после
+     просмотра impact.
 
    - computeElementImpact(elementType, elementId, synthesisId):
      Общий метод вычисления "зоны поражения":
@@ -2960,9 +2968,29 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
      d. Через getAffectedModes находит затронутые режимы
      e. Определяет severity: "none" / "low" / "high"
 
+1b. server/services/element-renderer.ts (НОВОЕ, решение 2026-09-02, п.1):
+   - renderCategoriesTable / renderEdgesTable / renderTopologyTable /
+     renderThesesTable / renderGlossaryTable — точное обратное к
+     element-parser.ts (1.4): из гранулярных строк собирают ту же
+     разметку, что генерирует Claude по шаблонам Registry.
+   - applyElementUpdateToHtml(synthesisId, sectionKey, subsectionName):
+     перерисовывает ОДНУ таблицу и врезает её в sections.html_content
+     через spliceSubsectionHtml (1.4b). Раздел целиком не трогается —
+     обоснования тезисов и прозаические подразделы лежат вне таблиц.
+   - Параметры формы таблиц: synth_level (столбцы глоссария),
+     ext_graph_metrics (столбцы категорий) — берутся из syntheses.
+   - Поля вне таблиц (обоснование тезиса, происхождение категории):
+     точечная правка абзаца либо пометка «раздел требует перегенерации»;
+     молча терять правку нельзя.
+   - ПРИЁМКА: round-trip parse(render(x)) === x на всех таблицах;
+     пара parser↔renderer берётся под дрейф-контроль в integration-check
+     (образцы — секции 4x MODE_UI↔MODE_CONFIG и 4y graph-style↔graph-utils).
+
 2. server/services/element-versioning.ts:
-   - createVersion(elementId, elementType, data, changeSource):
+   - createVersion(synthesisId, elementId, elementType, data, changeSource):
      Вставка в element_versions с автоинкрементом version.
+     ВНИМАНИЕ (правка 2026-09-02, п.3): synthesis_id — обязательная
+     колонка (миграция 0001), по ней же идёт проверка доступа в роутах.
    
    - getVersionHistory(elementId, elementType):
      Все версии элемента, отсортированные по version desc.
@@ -2984,8 +3012,16 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
    - PATCH /syntheses/:id/theses/:thesisId → updateThesis
    - GET /syntheses/:id/glossary → список
    - PATCH /syntheses/:id/glossary/:termId → updateGlossaryTerm
-   - GET /syntheses/:id/elements/:elementId/versions → getVersionHistory
-   - POST /syntheses/:id/elements/:elementId/rollback { version } → rollback
+   - GET /syntheses/:id/elements/:elementType/:elementId/versions
+     → getVersionHistory (контракт — 03 §2.4, дополнен 2026-09-02;
+       elementType в пути: без него нельзя ни проверить доступ, ни
+       выбрать таблицу для отката)
+   - POST /syntheses/:id/elements/:elementType/:elementId/rollback { version }
+     → rollback (создаёт версию changeSource='rollback', перерисовывает
+       таблицу в html_content, возвращает impact)
+   - POST /syntheses/:id/elements/auto-rename { oldName, newName }
+   - PATCH /syntheses/:id/capsule { html } (01 §4.7 числит капсулу
+     редактируемой; эндпоинта не было — п.14)
 ```
 
 **Последующие запросы:**
@@ -3007,6 +3043,7 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 **Контекст:**
 - `03-specification.md` (секция 2.4 Elements API)
 - `05-file-structure.md` (edit/ElementEditor.tsx)
+- Оформление нового интерфейса: `docs/fragments-for-conversations/5-6-ui-kit.md` (бриф и таблица соответствий классам исходника), `5-6-ui-kit.css` (примитивы), `5-6-ui-kit.html` (эталон разметки)
 - Из предыдущих бесед: `shared/types/graph.ts`, `shared/types/elements.ts`, `client/components/graph/NodePanel.tsx` (из 1.7), `client/components/document/SectionView.tsx` (из 1.6b), `client/api/elements.ts` (из 1.7)
 - Исходник: НЕ НУЖЕН
 
@@ -3051,6 +3088,15 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 7. Интеграция с SectionView.tsx:
    - При наведении на строку таблицы тезисов/глоссария — кнопка "✎"
    - Клик → inline-редактирование
+   - ГРАБЛЯ 1.6b (предупреждение 2026-09-02, п.16): SectionView рендерит
+     html_content через dangerouslySetInnerHTML, и вставки, сделанные
+     эффектом ПОСЛЕ рендера, стираются при hash-навигации. Кнопки ✎
+     добавляются тем же приёмом, что и прочие обогащения разметки —
+     обогащением СТРОКИ до вставки (enrichSectionHtml), а не DOM после.
+   - Кнопка «Перегенерировать затронутые» после impact запускается
+     ТОЛЬКО через планы (03 §2.6) — в контекст беседы обязательны
+     client/api/plans.ts и hooks/useEditPlan.ts (из 2.3), иначе
+     появится второй путь запуска перегенерации (п.15)
 
 8. client/api/elements.ts — расширение:
    - updateCategory, updateThesis, updateGlossaryTerm
@@ -3113,12 +3159,23 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
    - getEnrichments(elementId, elementType): история обогащений
    - getJustifications(elementId, elementType): история обоснований
 
-2. Промптовые шаблоны (добавить в seed-prompts.ts или через Admin UI):
+2. Промптовые шаблоны (добавить в seed-prompts.ts или через Admin UI) —
+   канон 2026-09-02, 03 §2.14, пять ключей:
    - enrichment.category.description
    - enrichment.category.evolution
+   - enrichment.category.justification
    - enrichment.edge.justification
    - enrichment.edge.counterarguments
    - enrichment.characteristic_justification
+   Тип обогащения в БД — enum 02 §2.26 (в него добавлен counterarguments).
+
+2b. Биллинг обогащений (правка 2026-09-02, п.10): enrichCategory /
+   enrichEdge / justifyCharacteristic пишут строку в api_usage
+   (billing_mode из контекста — byo|subscription|balance) и в режиме
+   подписки инкрементируют used_enrichments. Квота quota_enrichments
+   заведена в 02 §2.22 и до этой правки не тратилась никем.
+   Если беседа 6.1 ещё не прошла — оставить разъём
+   (setUsageRecorder / no-op по умолчанию) и внести долг в §12.
 
 3. server/routes/enrichment.ts:
    - POST /syntheses/:id/enrich/category/:catId
@@ -3144,7 +3201,12 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 - «Протестируй justifyCharacteristic: centrality=0.9 для категории "Бытие" → ответ содержит философские основания, ограничения, альтернативные подходы»
 - «Протестируй getEnrichments: после 2 обогащений одной категории → массив из 2 записей с разными типами»
 - «Протестируй стоимость: enrichment записывает input_tokens, output_tokens, cost_usd»
-- «Edge case: enrichCategory для несуществующей категории → 404. justifyCharacteristic с value вне диапазона [0,1] → 400»
+- «Edge case: enrichCategory для несуществующей категории → 404.
+  justifyCharacteristic с value вне ДОПУСТИМОГО ДЛЯ ЭТОЙ ХАРАКТЕРИСТИКИ
+  диапазона → 400. Диапазон зависит от поля (правка 2026-09-02, п.18):
+  [0,1] у centrality/certainty/clarity/breadth/depth/applicability/
+  historical_significance/strength/historical_support/logical_necessity/
+  context_dependency, целое [1,5] у innovation_degree»
 
 **Завершение беседы:**
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
@@ -3157,6 +3219,7 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 
 **Контекст для загрузки:**
 - `03-specification.md` (секции 2.13 Taxonomy, 2.14 Enrichment)
+- Оформление нового интерфейса: `docs/fragments-for-conversations/5-6-ui-kit.md` (бриф и таблица соответствий классам исходника), `5-6-ui-kit.css` (примитивы), `5-6-ui-kit.html` (эталон разметки)
 - Из предыдущих бесед: `server/services/element-enrichment.ts` (из 5.3), `server/services/element-taxonomy.ts` (из 0.3b), `client/components/edit/ElementEditor.tsx` (из 5.2), `client/components/graph/NodePanel.tsx` (из 1.7)
 - Исходник: НЕ НУЖЕН
 
@@ -3233,6 +3296,7 @@ element-enrichment.ts, element-taxonomy.ts, ElementEditor.tsx, NodePanel.tsx.
 - `03-specification.md` (секция 2.15 Transforms API, требования RT1–RT5)
 - Из предыдущих бесед: `server/services/graph-parser.ts` (из 1.4), `server/services/element-parser.ts` (из 1.4), `server/services/element-taxonomy.ts` (из 0.3b), `server/services/streaming-manager.ts` (из 1.4), `server/services/prompt-registry.ts` (из 0.3), `server/db/schema.ts`
 - Клиентские: `client/components/graph/GraphModal.tsx` (из 1.7), `client/components/document/SectionView.tsx` (из 1.6b)
+- Оформление нового интерфейса: `docs/fragments-for-conversations/5-6-ui-kit.md` (бриф и таблица соответствий классам исходника), `5-6-ui-kit.css` (примитивы), `5-6-ui-kit.html` (эталон разметки)
 - Исходник: НЕ НУЖЕН (полностью новая функциональность)
 
 **Первый запрос:**
@@ -3301,7 +3365,13 @@ element-parser.ts, element-taxonomy.ts, streaming-manager.ts, prompt-registry.ts
 
 4. Расширение ws/handler.ts:
    - start_transform → transformGraphToTheses / transformThesesToGraph
-   - Отправка stream_delta, transform_done
+     (сообщение внесено в 03 §3.1 правкой 2026-09-02, п.5; операцию
+     СОЗДАЁТ HTTP-роут, WS только подписывает — как в фазах 1–4)
+   - Отправка stream_delta с sectionKey = "transform:{direction}"
+     (образец — "mode:{modeKey}" беседы 4.1), затем transform_done
+   - После замены тезисов/графа в БД перерисовать соответствующий раздел
+     в sections.html_content через element-renderer (02 §3, решение п.1):
+     иначе документ покажет прежний текст
 
 КЛИЕНТ:
 5. client/components/edit/TransformPanel.tsx:
@@ -3393,8 +3463,13 @@ streaming-manager.
    > генерации, СОЗДАННЫЕ РАНЬШЕ — POST /syntheses (1.4), POST
    > /syntheses/:id/plans/:planId/execute (2.2), POST
    > /syntheses/:id/regenerate-subsection (2.2), WS-запуск генерации
-   > (ws/handler, 1.4/1.6). То есть беседа правит код закрытых бесед;
-   > это единственный такой случай в протоколе. Перед началом свериться
+   > (ws/handler, 1.4/1.6). То есть беседа правит код закрытых бесед.
+   > Уточнение 2026-09-02 (п.20): «единственный такой случай» — уже не
+   > так. Чужой код правят также 5.4 (NodePanel из 1.7), 5.5 (GraphModal
+   > 1.7, SectionView 1.6b, EditModal 2.3) и 6.2 (SynthesisForm 1.5b/3.2
+   > и PauseModal 1.4b — оба по долгам §12). Правило то же: перед
+   > правкой свериться с фактическим состоянием файла, а не с текстом
+   > закрытой беседы. Перед началом свериться
    > с фактическим списком роутов в server/index.ts, а не со списком ниже.
    - Middleware для routes генерации:
      a. Определяет режим биллинга (приоритет):
@@ -3426,9 +3501,14 @@ streaming-manager.
      customer.subscription.deleted → status = "canceled"
 
 5. Расширение server/services/streaming-manager.ts:
-   - В streamSection: после получения usage от Claude,
-     если billingMode === "service" → вызвать chargeUsage
-   - Записать в api_usage независимо от режима
+   - В streamSection: после получения usage от Claude —
+     billingMode === "balance" → chargeUsage (списание с баланса);
+     billingMode === "subscription" → incrementUsage (квота);
+     billingMode === "byo" → списания нет
+     (правка 2026-09-02, п.7: режимов ТРИ — byo|subscription|balance;
+      прежний литерал "service" не существовал ни в одном списке)
+   - Записать в api_usage независимо от режима; для byo cost_usd несёт
+     СЕБЕСТОИМОСТЬ (в итогах не суммировать с balance)
 
 6. server/routes/prompts.ts (03 §2.9 Prompts + §2.11 Configs):
    Модуль числится в 05 («Admin: CRUD prompt_templates, synthesis_configs»),
@@ -3439,7 +3519,11 @@ streaming-manager.
    - POST  /prompts/:key            { body } → новая версия-черновик
    - POST  /prompts/:key/activate   { version } → активация версии
    - GET   /configs                 → synthesis_configs
-   - PUT   /configs/:key            { value } → обновление конфига
+   - PUT   /configs/:key            { value } → НОВАЯ версия-черновик
+   - GET   /configs/:key/versions   → история версий конфига
+   - POST  /configs/:key/activate   { version } → активация
+     (правка 2026-09-02, п.9: 02 §2.18 обещает версионирование конфигов
+      «аналогично шаблонам», 6.2 его требует — эндпоинтов не было)
    Все — только для role === 'admin' (middleware из 0.2).
    Сброс кэша prompt-registry (0.3) после активации — обязателен,
    иначе генерация продолжит брать старый шаблон.
@@ -3482,6 +3566,7 @@ streaming-manager.
 **Контекст:**
 - `03-specification.md` (секции 1.10 Prompt Registry, 1.11 Биллинг, 2.9 Prompts API, 2.10 Billing API)
 - `05-file-structure.md` (client/pages/)
+- Оформление нового интерфейса: `docs/fragments-for-conversations/5-6-ui-kit.md` (бриф и таблица соответствий классам исходника), `5-6-ui-kit.css` (примитивы), `5-6-ui-kit.html` (эталон разметки)
 - Из предыдущих бесед: `client/api/client.ts`, `client/stores/auth-store.ts`
 - Исходник: НЕ НУЖЕН
 
@@ -3543,7 +3628,22 @@ streaming-manager.
    - listPrompts, getVersions, createVersion, activateVersion
    - listConfigs, updateConfig
 
-5. Защита роута: AdminPromptsPage доступна только для role === 'admin'
+5. Защита роута: AdminPromptsPage доступна только для role === 'admin'.
+   ФАКТ 2026-09-02: в App.tsx маршрут /admin/prompts закрыт только
+   RequireAuth — ролевой проверки нет, добавить здесь (RequireAdmin либо
+   параметр RequireAuth); ссылка в Sidebar уже admin-only с беседы 0.4.
+
+5b. UI подписок (правка 2026-09-02, п.8). Бэкенд подписок готов целиком
+   (02 §2.22–2.23, 03 §2.10 — шесть эндпоинтов и webhook,
+   subscription-service 6.1), а интерфейса не было ни в одной беседе,
+   хотя 01 §6 ставит подписку посередине приоритета биллинга. В
+   BillingPage добавить секцию «Подписка»:
+   - текущий план, статус, период, счётчики против квот
+     (GET /billing/subscription);
+   - выбор тарифа (GET /billing/plans) → POST /billing/subscribe →
+     Stripe Elements;
+   - отмена (cancel_at_period_end) и возобновление;
+   - client/api/subscription.ts (05 его уже числит).
 
 6. Форма ввода API-ключа в auth-модалке (долг TODO(6.1) главы 1.4b —
    задача клиентская, но была адресована серверной беседе 6.1; аудит
@@ -3790,6 +3890,12 @@ streaming-manager.
 | Per-user HTTP-лимитирование (подсчёт после auth; сейчас фактически per-IP — 03 §3.4) | 6.1 | 1.6 | внесён 2026-08-02 |
 | `makeSectionCtxDisclosure` — disclosure секционного контекста в документе (sec_context отдаётся в SectionFull, UI не показывает) | 2.3 | 1.6b | ЗАКРЫТ 2.3 (2026-08-20): details.sec-disclosure в SectionView при непустом secContext |
 | Экспорт графа MMD/PNG/JSON (кнопки GraphModal — заглушки, метки TODO(4.2) в GraphModal.tsx; серверные services/export/*) | 4.2 | 1.7 | ЗАКРЫТ 4.2 (2026-08-29): серверные `services/export/*` (mmd/png/json/md/html + graph-model/style/physics/filename/common) + 5 роутов `routes/export.ts`; GraphModal → downloadExport (exportStub снят), меню «⤓ Экспорт» в SynthesisPage + `client/src/api/export.ts` |
+
+| Админские update/delete пользовательских типов каталога (`POST` есть с 0.3b, изменение и удаление не специфицированы — 03 §2.13) | 5.4 | 0.3b | внесён 2026-09-02 (аудит фаз 5–6, п.19) |
+| Прогрев кэша Prompt Registry при старте (`warmCache` реализован в 0.3, в index.ts не подключён) | 6.1 | 0.3 | внесён 2026-09-02 (п.19) |
+| Ролевая защита маршрута `/admin/prompts` на клиенте (сейчас только RequireAuth) | 6.2 | 0.4 | внесён 2026-09-02 (п.19) |
+| UI подписок в BillingPage (бэкенд готов: 02 §2.22–2.23, 03 §2.10, subscription-service 6.1) | 6.2 | 6.1 | внесён 2026-09-02 (п.8) |
+| Учёт обогащений в биллинге (api_usage + used_enrichments; разъём в 5.3, наполнение — после 6.1) | 6.1 | 5.3 | внесён 2026-09-02 (п.10) |
 
 Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,
 помечено в 03 §2.1; `POST /syntheses/estimate` и `/advice` — реализованы

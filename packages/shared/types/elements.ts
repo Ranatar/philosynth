@@ -68,11 +68,19 @@ export type VersionedElementType =
   | "dialogue_turn"
   | "section";
 
-export type ChangeSource = "manual" | "regenerated" | "cascade" | "auto_rename";
+export type ChangeSource =
+  | "manual"
+  | "regenerated"
+  | "cascade"
+  | "auto_rename"
+  /** Откат к прежней версии (03 §2.4, правка 2026-09-02) */
+  | "rollback";
 
 /** Строка таблицы element_versions */
 export interface ElementVersion {
   id: string;
+  /** Владелец версии — по нему идёт проверка доступа (02 §2.12, п.3) */
+  synthesisId: string;
   elementId: string;
   elementType: VersionedElementType;
   version: number;
@@ -141,6 +149,8 @@ export type EnrichableElementType =
 export type EnrichmentType =
   | "description"
   | "justification"
+  /** Контраргументы к связи (03 §2.14; добавлен 2026-09-02) */
+  | "counterarguments"
   | "evolution"
   | "characteristic";
 
@@ -165,6 +175,8 @@ export interface ElementEnrichment {
 /** Строка characteristic_justifications */
 export interface CharacteristicJustification {
   id: string;
+  /** Владелец обоснования — см. ElementVersion.synthesisId */
+  synthesisId: string;
   elementId: string;
   elementType: "category" | "edge";
   /** 'centrality'|'certainty'|'historical_significance'|... */

@@ -511,6 +511,17 @@ export const elementVersions = pgTable(
   "element_versions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    /**
+     * Владелец версии (правка 2026-09-02, аудит фаз 5–6). Нужен для двух
+     * вещей: проверка доступа в роутах /syntheses/:id/elements/... одним
+     * WHERE вместо JOIN по пяти таблицам с ветвлением по element_type, и
+     * каскадная уборка — без него версии переживали удаление синтеза
+     * (element_id полиморфный, FK на элемент невозможен). Устройство
+     * зеркалит element_enrichments.
+     */
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
     elementId: uuid("element_id").notNull(),
     elementType: text("element_type", {
       enum: [
@@ -526,7 +537,8 @@ export const elementVersions = pgTable(
     /** Полный снимок элемента до изменения */
     data: jsonb("data").$type<Record<string, unknown>>().notNull(),
     changeSource: text("change_source", {
-      enum: ["manual", "regenerated", "cascade", "auto_rename"],
+      // +rollback (правка 2026-09-02): откат к версии сам создаёт версию
+      enum: ["manual", "regenerated", "cascade", "auto_rename", "rollback"],
     })
       .notNull()
       .default("manual"),
@@ -534,7 +546,10 @@ export const elementVersions = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("idx_versions_element").on(t.elementId, t.elementType)],
+  (t) => [
+    index("idx_versions_element").on(t.elementId, t.elementType),
+    index("idx_versions_synthesis").on(t.synthesisId),
+  ],
 );
 
 /* ─────────────────────────── 2.13. edit_plans ───────────────────────── */
@@ -816,7 +831,16 @@ export const apiUsage = pgTable(
       .references(() => users.id),
     synthesisId: uuid("synthesis_id").references(() => syntheses.id),
     sectionKey: text("section_key"),
-    billingMode: text("billing_mode", { enum: ["byo", "service"] }).notNull(),
+    /**
+     * Режим биллинга запроса (правка 2026-09-02): три значения по
+     * приоритету 01 §6 — byo (ключ пользователя, списания нет, cost_usd
+     * несёт СЕБЕСТОИМОСТЬ для статистики), subscription (списана квота),
+     * balance (списано с баланса). Прежний enum byo|service не различал
+     * подписку и баланс.
+     */
+    billingMode: text("billing_mode", {
+      enum: ["byo", "subscription", "balance"],
+    }).notNull(),
     inputTokens: integer("input_tokens").notNull().default(0),
     outputTokens: integer("output_tokens").notNull().default(0),
     costUsd: numeric("cost_usd", { precision: 10, scale: 6 })
@@ -955,7 +979,15 @@ export const elementEnrichments = pgTable(
       enum: ["category", "edge", "thesis", "glossary_term"],
     }).notNull(),
     enrichmentType: text("enrichment_type", {
-      enum: ["description", "justification", "evolution", "characteristic"],
+      // +counterarguments (правка 2026-09-02): 03 §2.14 допускает его для
+      // связей, а enum модели о нём не знал
+      enum: [
+        "description",
+        "justification",
+        "counterarguments",
+        "evolution",
+        "characteristic",
+      ],
     }).notNull(),
     /** Ключ шаблона в Prompt Registry */
     promptKey: text("prompt_key").notNull(),
@@ -987,6 +1019,11 @@ export const characteristicJustifications = pgTable(
   "characteristic_justifications",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    /** Владелец обоснования — см. комментарий в element_versions
+     *  (правка 2026-09-02, аудит фаз 5–6) */
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
     elementId: uuid("element_id").notNull(),
     elementType: text("element_type", {
       enum: ["category", "edge"],
@@ -1011,6 +1048,7 @@ export const characteristicJustifications = pgTable(
   },
   (t) => [
     index("idx_justifications_element").on(t.elementId, t.elementType),
+    index("idx_justifications_synthesis").on(t.synthesisId),
   ],
 );
 

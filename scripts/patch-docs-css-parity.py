@@ -186,6 +186,36 @@ else:
     failed += 1
     print("  fail  07: файл не найден")
 
+# ── 07: набор примитивов интерфейса в контекст бесед фаз 5–6 ────────────
+
+KIT = (
+    "- Оформление нового интерфейса: `docs/fragments-for-conversations/"
+    "5-6-ui-kit.md` (бриф и таблица соответствий классам исходника), "
+    "`5-6-ui-kit.css` (примитивы), `5-6-ui-kit.html` (эталон разметки)\n"
+)
+
+for conv, anchor in [
+    ("5.2", "- `05-file-structure.md` (edit/ElementEditor.tsx)\n"),
+    ("5.4", "- `03-specification.md` (секции 2.13 Taxonomy, 2.14 Enrichment)\n"),
+    ("6.2", "- `05-file-structure.md` (client/pages/)\n"),
+]:
+    patch(
+        "docs/07-conversation-protocol.md",
+        anchor,
+        anchor + KIT,
+        f"07 §{conv}: набор примитивов интерфейса в контексте",
+    )
+
+# 5.5 — клиентская часть (TransformPanel); якорь по строке клиентского контекста
+patch(
+    "docs/07-conversation-protocol.md",
+    "- Клиентские: `client/components/graph/GraphModal.tsx` (из 1.7), "
+    "`client/components/document/SectionView.tsx` (из 1.6b)\n",
+    "- Клиентские: `client/components/graph/GraphModal.tsx` (из 1.7), "
+    "`client/components/document/SectionView.tsx` (из 1.6b)\n" + KIT,
+    "07 §5.5: набор примитивов интерфейса в контексте",
+)
+
 # ── README ──────────────────────────────────────────────────────────────
 
 readme = ROOT / "README.md"

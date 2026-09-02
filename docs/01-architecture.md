@@ -365,7 +365,9 @@ interface EditStep {
 - **Обоснование характеристики**: почему centrality=0.9? какие философские и методологические основания?
 - **Анализ эволюции элемента**: как может измениться данная категория/связь в свете современных тенденций
 
-Каждый результат обогащения сохраняется в `element_enrichments` и может быть повторно запрошен с другими параметрами. Промптовые шаблоны — в Prompt Registry (ключи: `enrichment.category`, `enrichment.edge`, `enrichment.characteristic_justification`).
+Каждый результат обогащения сохраняется в `element_enrichments` и может быть повторно запрошен с другими параметрами. Промптовые шаблоны — в Prompt Registry; схема ключей (канон 2026-09-02, 03 §2.14): `enrichment.category.{description|evolution|justification}`, `enrichment.edge.{justification|counterarguments}`, `enrichment.characteristic_justification` — пять ключей.
+
+**Биллинг обогащений** (правка 2026-09-02, аудит фаз 5–6, п.10): каждый запрос обогащения пишет строку в `api_usage` и, в режиме подписки, инкрементирует `used_enrichments` — квота `quota_enrichments` (02 §2.22) иначе не тратится никем. Стоимость обогащений в `syntheses.total_cost_usd` НЕ входит: футер документа показывает стоимость генерации, обогащения видны в истории использования (6.2).
 
 ### 4.10. Prompt Skeleton Reconstruction (v10)
 

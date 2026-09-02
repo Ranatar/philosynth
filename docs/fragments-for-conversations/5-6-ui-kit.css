@@ -1,0 +1,731 @@
+/* Набор примитивов интерфейса для бесед ФАЗ 5 и 6 (2026-09-02).
+ *
+ * ЭТО НЕ ГЕНЕРАТ. Файл написан руками, extract-by-name.py его не трогает.
+ *
+ * Зачем. Беседы 5.1–6.2 добавляют функциональность, которой в
+ * philosynth.html нет вовсе: редактор элементов, слайдеры характеристик,
+ * панель обогащения, селектор таксономии, история версий с diff,
+ * трансформер представлений, биллинг, админка промптов. Оформления для
+ * них в исходнике взять негде, а изобретать его заново в каждой беседе —
+ * верный способ получить четыре разных интерфейса в одном приложении.
+ *
+ * Правило. Сначала ищем готовый класс исходника (см. 5-6-ui-kit.md,
+ * таблица соответствий). Примитив заводится здесь только там, где в
+ * одностраничнике нет ничего похожего.
+ *
+ * Куда это девать. Когда беседа доходит до своего блока, нужные правила
+ * переносятся в ЧАСТЬ 3 client/src/globals.css (дополнения сервиса) —
+ * целиком, без переименований. Переносить заранее не нужно: часть 3 не
+ * держит мёртвых правил.
+ *
+ * Система, из которой всё выведено: прямые углы (border-radius только
+ * там, где он есть в исходнике), микро-подписи моноширинным шрифтом
+ * капителью с разрядкой, границы --rule, акценты --blue-corp и --gold,
+ * фокус — золотая обводка. Ни скруглений, ни теней, ни градиентов.
+ */
+
+/* ═══ 1. Слайдер характеристики (5.4: CharacteristicSlider) ═══════════
+ * centrality, certainty, historical_significance, clarity, breadth,
+ * depth, applicability (0–1) и innovation_degree (1–5, дискретный).
+ * Кнопка «?» открывает обоснование (justifyCharacteristic).
+ */
+
+.char-slider {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.char-slider:last-of-type {
+  border-bottom: none;
+}
+
+.char-slider-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+}
+
+.char-slider-value {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blue-corp);
+  min-width: 34px;
+  text-align: right;
+}
+
+.char-slider-why {
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.char-slider-why:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.char-slider-why.loading {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.char-slider input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--blue-corp);
+  height: 18px;
+}
+
+/* Дискретный (innovation_degree 1–5) — засечки под дорожкой */
+.char-slider.discrete .char-slider-ticks {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ink-dim);
+  margin-top: -4px;
+}
+
+.char-slider.readonly {
+  opacity: 0.55;
+}
+
+/* Обоснование характеристики — раскрывается под слайдером,
+   не всплывающим окном: в документе всплывашки некуда девать */
+.char-justification {
+  grid-column: 1 / -1;
+  border-left: 3px solid var(--gold);
+  background: var(--white);
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--ink-mid);
+}
+
+.char-justification-meta {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+}
+
+/* ═══ 2. Комбобокс таксономии (5.4: TaxonomySelector) ═════════════════
+ * Список типов из каталога + свободный ввод с нормализацией.
+ */
+
+.combobox {
+  position: relative;
+}
+
+.combobox-list {
+  position: absolute;
+  z-index: 500;
+  left: 0;
+  right: 0;
+  top: 100%;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--rule-strong);
+  border-top: none;
+}
+
+.combobox-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--rule);
+}
+
+.combobox-item:last-child {
+  border-bottom: none;
+}
+
+.combobox-item:hover,
+.combobox-item.active {
+  background: var(--blue-light);
+}
+
+.combobox-item-code {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
+}
+
+.combobox-item.create {
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* Индикатор происхождения значения: каталог / свободный текст */
+.type-origin {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid;
+}
+
+.type-origin.catalog {
+  color: var(--green-check);
+  border-color: var(--green-check);
+  background: #f0fff4;
+}
+
+.type-origin.free {
+  color: var(--ink-dim);
+  border-color: var(--rule-strong);
+}
+
+/* ═══ 3. Таблица данных (6.2: история использования, транзакции) ══════
+ * Отличается от .doc-table: это интерфейс, а не тело документа —
+ * компактнее, с липкой шапкой и панелью фильтров.
+ */
+
+.data-table-wrap {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.data-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--off);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  background: var(--off);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  text-align: left;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.data-table tbody tr:hover {
+  background: var(--white);
+}
+
+.data-table .num {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.data-table tfoot td {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--off);
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: none;
+}
+
+.data-table-empty {
+  padding: 24px 12px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
+}
+
+/* ═══ 4. Сводные показатели (6.2: баланс, итоги) ══════════════════════ */
+
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 12px 0;
+}
+
+.stat-value {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--blue-corp);
+  line-height: 1.2;
+}
+
+.stat-value.gold {
+  color: var(--gold);
+}
+
+.stat-label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-top: 2px;
+}
+
+/* Маскированный API-ключ (6.1/6.2: BYO-Key) */
+.masked-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--rule);
+  padding: 5px 10px;
+}
+
+.masked-key-status {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.masked-key-status.active {
+  color: var(--green-check);
+}
+
+.masked-key-status.absent {
+  color: var(--ink-dim);
+}
+
+/* Выбор суммы пополнения */
+.amount-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.amount-choice .action-btn.active {
+  background: var(--blue-corp);
+  color: #fff;
+  border-color: var(--blue-corp);
+}
+
+/* ═══ 5. История версий и diff (5.2: VersionHistory; 6.2: промпты) ════ */
+
+.version-list {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.version-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+
+.version-item:last-child {
+  border-bottom: none;
+}
+
+.version-item:hover {
+  background: var(--white);
+}
+
+.version-item.selected {
+  background: var(--blue-light);
+}
+
+.version-item.current {
+  border-left: 3px solid var(--green-check);
+}
+
+.version-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--blue-corp);
+  min-width: 32px;
+}
+
+.version-meta {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--ink-dim);
+}
+
+.version-preview {
+  font-size: 12px;
+  color: var(--ink-mid);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diff {
+  border: 1px solid var(--rule);
+  background: var(--white);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.65;
+  overflow-x: auto;
+}
+
+.diff-line {
+  display: block;
+  padding: 1px 12px 1px 24px;
+  position: relative;
+  white-space: pre-wrap;
+}
+
+.diff-line::before {
+  position: absolute;
+  left: 8px;
+  color: var(--ink-dim);
+}
+
+.diff-line.add {
+  background: #f0fff4;
+  color: var(--green-check);
+}
+
+.diff-line.add::before {
+  content: "+";
+  color: var(--green-check);
+}
+
+.diff-line.del {
+  background: #fff5f5;
+  color: var(--red);
+}
+
+.diff-line.del::before {
+  content: "−";
+  color: var(--red);
+}
+
+.diff-line.ctx {
+  color: var(--ink-mid);
+}
+
+/* ═══ 6. Дерево ключей и редактор кода (6.2: AdminPromptsPage) ════════ */
+
+.key-tree {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.key-tree-group {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  padding: 8px 12px 4px;
+  background: var(--off);
+  border-bottom: 1px solid var(--rule);
+}
+
+.key-tree-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 12px 5px 22px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-mid);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+
+.key-tree-item:hover {
+  background: var(--white);
+}
+
+.key-tree-item.active {
+  background: var(--blue-light);
+  border-left-color: var(--blue-corp);
+  color: var(--blue-corp);
+}
+
+.key-tree-item .version-meta {
+  flex-shrink: 0;
+}
+
+/* Моноширинный редактор (тело шаблона, JSON конфига) */
+.code-editor {
+  width: 100%;
+  min-height: 220px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--rule);
+  padding: 10px 12px;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.code-editor:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.15);
+}
+
+.code-editor.invalid {
+  border-color: var(--red);
+}
+
+.code-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 5px 0;
+}
+
+.code-status.ok {
+  color: var(--green-check);
+}
+
+.code-status.err {
+  color: var(--red);
+}
+
+/* Плейсхолдер {{…}} в предпросмотре шаблона */
+.placeholder-chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--violet);
+  background: var(--violet-light);
+  padding: 0 3px;
+  border-bottom: 1px solid var(--violet);
+}
+
+.placeholder-chip.filled {
+  color: var(--blue-corp);
+  background: var(--blue-light);
+  border-bottom-color: var(--blue-corp);
+}
+
+/* ═══ 7. Правка элемента по месту (5.2: ElementEditor в документе) ════
+ * Строка таблицы тезисов/глоссария разворачивается в форму. Кнопка «✎»
+ * появляется по наведению — как .doc-title-edit-btn в шапке документа.
+ */
+
+.inline-edit-btn {
+  opacity: 0;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink-dim);
+  font-size: 10px;
+  padding: 1px 5px;
+  cursor: pointer;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+tr:hover > td > .inline-edit-btn,
+.inline-edit-host:hover .inline-edit-btn {
+  opacity: 1;
+}
+
+.inline-edit-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.inline-edit-form {
+  border-left: 3px solid var(--blue-corp);
+  background: var(--white);
+  padding: 12px 14px;
+  margin: 4px 0;
+}
+
+.inline-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+
+.inline-edit-dirty {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-left: auto;
+}
+
+/* ═══ 8. Панель обогащения (5.4: EnrichmentPanel) ═════════════════════
+ * Карточка результата и история. Стриминг показывается .edit-regen-*
+ * из исходника — своего индикатора не заводим.
+ */
+
+.enrich-card {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--violet);
+  background: var(--paper);
+  padding: 10px 14px;
+  margin-top: 8px;
+}
+
+.enrich-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+}
+
+.enrich-card-type {
+  color: var(--violet);
+  font-weight: 600;
+}
+
+.enrich-card-body {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.enrich-card.streaming .enrich-card-body::after {
+  content: "▌";
+  color: var(--violet);
+  animation: enrich-caret 1s steps(2) infinite;
+}
+
+@keyframes enrich-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ═══ 9. Трансформер представлений (5.5: TransformPanel) ══════════════
+ * Направление преобразования и предупреждение о перезаписи.
+ */
+
+.transform-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.transform-arrow {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--blue-corp);
+}
+
+.transform-warn {
+  border-left: 3px solid var(--red);
+  background: #fff5f5;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--red);
+}
+
+/* ═══ 10. Узкие экраны ════════════════════════════════════════════════ */
+
+@media (max-width: 700px) {
+  .char-slider {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 6px 8px;
+  }
+
+  .stat-row {
+    gap: 16px;
+  }
+
+  .version-item {
+    grid-template-columns: auto 1fr;
+  }
+
+  .version-item .version-meta {
+    grid-column: 2;
+  }
+}

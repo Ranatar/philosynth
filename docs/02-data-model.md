@@ -341,6 +341,13 @@ CREATE INDEX idx_dialogue_synthesis ON dialogue_turns(synthesis_id);
 ```sql
 CREATE TABLE element_versions (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- Владелец версии (правка 2026-09-02, аудит фаз 5–6, п.3).
+  -- Нужен для двух вещей: проверка доступа в /syntheses/:id/elements/...
+  -- одним WHERE вместо JOIN по пяти таблицам с ветвлением по element_type,
+  -- и каскадная уборка — без него версии переживали удаление синтеза
+  -- (element_id полиморфный, FK на элемент невозможен).
+  -- Устройство зеркалит element_enrichments (§2.26).
+  synthesis_id UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
   element_id   UUID NOT NULL,
   element_type TEXT NOT NULL,  -- 'category'|'edge'|'thesis'|'glossary_term'|'dialogue_turn'|'section'
   version      INT NOT NULL,
@@ -351,6 +358,7 @@ CREATE TABLE element_versions (
 );
 
 CREATE INDEX idx_versions_element ON element_versions(element_id, element_type);
+CREATE INDEX idx_versions_synthesis ON element_versions(synthesis_id);
 ```
 
 ### 2.13. edit_plans
@@ -561,7 +569,12 @@ CREATE TABLE api_usage (
   user_id       UUID NOT NULL REFERENCES users(id),
   synthesis_id  UUID REFERENCES syntheses(id),
   section_key   TEXT,
-  billing_mode  TEXT NOT NULL,  -- 'byo'|'service'
+  billing_mode  TEXT NOT NULL,  -- 'byo'|'subscription'|'balance'
+    -- Правка 2026-09-02 (аудит фаз 5–6, п.7): три режима по приоритету
+    -- 01 §6. Прежний enum 'byo'|'service' не различал подписку и баланс,
+    -- отчего история использования (6.2) не могла показать режим.
+    -- ВАЖНО: для 'byo' cost_usd несёт СЕБЕСТОИМОСТЬ (списания не было) —
+    -- суммировать его с 'balance' в одном итоге нельзя.
   input_tokens  INT NOT NULL DEFAULT 0,
   output_tokens INT NOT NULL DEFAULT 0,
   cost_usd      NUMERIC(10, 6) NOT NULL DEFAULT 0,
@@ -669,7 +682,10 @@ CREATE TABLE element_enrichments (
   synthesis_id   UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
   element_id     UUID NOT NULL,
   element_type   TEXT NOT NULL,  -- 'category'|'edge'|'thesis'|'glossary_term'
-  enrichment_type TEXT NOT NULL,  -- 'description'|'justification'|'evolution'|'characteristic'
+  enrichment_type TEXT NOT NULL,
+    -- 'description'|'justification'|'counterarguments'|'evolution'|'characteristic'
+    -- +counterarguments (правка 2026-09-02): 03 §2.14 допускает его для
+    -- связей, а enum модели о нём не знал
   prompt_key     TEXT NOT NULL,   -- ключ шаблона в Prompt Registry
   content        TEXT NOT NULL,   -- результат обогащения (текст от Claude)
   metadata       JSONB NOT NULL DEFAULT '{}',  -- доп. структурированные данные
@@ -690,6 +706,9 @@ CREATE INDEX idx_enrichments_synthesis ON element_enrichments(synthesis_id);
 ```sql
 CREATE TABLE characteristic_justifications (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- Владелец обоснования — см. комментарий в element_versions §2.12
+  -- (правка 2026-09-02, аудит фаз 5–6, п.3)
+  synthesis_id      UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
   element_id        UUID NOT NULL,
   element_type      TEXT NOT NULL,  -- 'category'|'edge'
   characteristic    TEXT NOT NULL,  -- 'centrality'|'certainty'|'historical_significance'|...
@@ -704,6 +723,7 @@ CREATE TABLE characteristic_justifications (
 );
 
 CREATE INDEX idx_justifications_element ON characteristic_justifications(element_id, element_type);
+CREATE INDEX idx_justifications_synthesis ON characteristic_justifications(synthesis_id);
 ```
 
 ### 2.28. representation_transforms
@@ -718,7 +738,13 @@ CREATE TABLE representation_transforms (
   
   -- Снимки до трансформации (для отката)
   source_snapshot JSONB NOT NULL,  -- граф или тезисы ДО трансформации
-  target_snapshot JSONB NOT NULL,  -- граф или тезисы ПОСЛЕ (старые, которые были заменены)
+  target_snapshot JSONB NOT NULL,  -- целевое представление ДО замены
+    -- Правка 2026-09-02 (аудит фаз 5–6, п.17): прежнее пояснение «ПОСЛЕ
+    -- (старые, которые были заменены)» противоречило само себе.
+    -- Семантика: source_snapshot — представление-ИСТОЧНИК на момент
+    -- трансформации (для аудита), target_snapshot — представление-ЦЕЛЬ
+    -- до того, как его заменили (именно из него делается откат).
+    -- Для graph_to_theses: source = граф, target = прежние тезисы.
   
   -- Результат
   result_summary  JSONB NOT NULL DEFAULT '{}',
@@ -748,7 +774,39 @@ CREATE INDEX idx_transforms_direction ON representation_transforms(synthesis_id,
 - Парсинг тезисов: таблица «Сводная таблица тезисов» → `theses`
 - Парсинг глоссария: таблица «Таблица определений» → `glossary_terms`
 
-**Направление записи**: HTML → гранулярные таблицы (при генерации). При ручном редактировании элемента: гранулярная таблица обновляется, HTML в `sections.html_content` перегенерируется из гранулярных данных (server-side template).
+**Направление записи**: HTML → гранулярные таблицы (при генерации).
+
+При ручном редактировании элемента (решение 2026-09-02, аудит фаз 5–6,
+п.1 вариант «а» в суженной форме): гранулярная таблица обновляется, затем
+`element-renderer.ts` перерисовывает ТОЛЬКО затронутую таблицу и врезает
+её в `sections.html_content` через `spliceSubsectionHtml()` (утилита
+беседы 1.4b, linkedom изолирован там же).
+
+**Раздел целиком НЕ перерисовывается.** Гранулярные таблицы покрывают не
+весь его текст: `parseThesesFromHTML` берёт формулировку/тип/новизну из
+«Сводной таблицы тезисов», а `justification` собирает из прозаических
+подразделов по индексу `<strong>формулировка</strong> текст`; у графа
+вокруг «Таблицы категорий»/«Таблицы связей»/«Топологической таблицы»
+живут преамбула и комментарии к кластерам. Перерисовка раздела стёрла бы
+всё это.
+
+Следствия, обязательные к соблюдению:
+
+1. **Рендерер — точное обратное к парсеру.** Приёмка: round-trip
+   `parse(render(x)) === x` на всех трёх таблицах графа, тезисах и
+   глоссарии.
+2. **Рендерер параметризован.** Столбцы глоссария зависят от
+   `synth_level` (`extra_columns`), столбцы категорий — от
+   `ext_graph_metrics`. Без параметров таблица выйдет не той ширины.
+3. **Дрейф-контроль с промптами.** Форма таблиц задана шаблонами Prompt
+   Registry (04 §2.3), а их правит админ в беседе 6.2 — пара
+   «element-parser ↔ element-renderer» берётся под секцию
+   integration-check, как `MODE_UI ↔ MODE_CONFIG` (4x) и
+   `graph-style ↔ graph-utils` (4y).
+4. **Поля вне таблиц** (обоснование тезиса, происхождение категории,
+   прозаические подразделы) рендерером таблицы не покрываются: PATCH по
+   ним либо правит абзац точечно, либо помечает раздел как требующий
+   перегенерации. Молча терять правку нельзя.
 
 ## 4. Миграция из standalone-файлов
 
