@@ -101,6 +101,92 @@ export interface ImpactAnalysis {
   severity: "none" | "low" | "high";
 }
 
+/* ── Element Editor: входы PATCH и ответы (03-spec §2.4; беседа 5.1) ─── */
+
+/** PATCH /syntheses/:id/categories/:catId (§2.4 + пп.11/14 правки 2026-09-02) */
+export interface CategoryUpdateInput {
+  name?: string;
+  type?: string;
+  definition?: string;
+  centrality?: number;
+  certainty?: number;
+  origin?: string;
+  historicalSignificance?: number;
+  innovationDegree?: number;
+  clarity?: number;
+  breadth?: number;
+  depthScore?: number;
+  applicability?: number;
+  /** п.11: ссылка на каталог ЛИБО null (свободный текст) */
+  typeCatalogId?: string | null;
+  /** п.14: топология редактируема */
+  structuralRoles?: string[];
+  proceduralRoles?: string[];
+  clusterIndices?: number[];
+}
+
+/** PATCH /syntheses/:id/edges/:edgeId */
+export interface EdgeUpdateInput {
+  description?: string;
+  edgeType?: string;
+  direction?: EdgeDirectionInput;
+  strength?: number;
+  certainty?: number;
+  historicalSupport?: number;
+  logicalNecessity?: number;
+  innovationDegree?: number;
+  contextDependency?: number;
+  typeCatalogId?: string | null;
+}
+export type EdgeDirectionInput =
+  | "однонаправленная"
+  | "двунаправленная"
+  | "рефлексивная";
+
+/** PATCH /syntheses/:id/theses/:thesisId */
+export interface ThesisUpdateInput {
+  formulation?: string;
+  justification?: string;
+  thesisType?: ThesisType;
+  noveltyDegree?: string;
+  relatedCategories?: string[];
+}
+
+/** PATCH /syntheses/:id/glossary/:termId */
+export interface GlossaryTermUpdateInput {
+  term?: string;
+  definition?: string;
+  extraColumns?: Record<string, string>;
+  termCategory?: string;
+}
+
+/**
+ * Синхронизация правки с html_content (02 §3 п.4 — «молча терять правку
+ * нельзя»). Аддитивное поле ответов PATCH/rollback (прецедент — warnings
+ * POST /syntheses 3.1): какие таблицы перерисованы, какие поля вне таблиц
+ * до документа не дошли и раздел требует перегенерации.
+ */
+export interface HtmlSyncInfo {
+  /** Перерисованные таблицы ("graph:Таблица категорий", …) */
+  rendered: string[];
+  /** Поля, отражённые точечной правкой абзаца (justification тезиса) */
+  patched: string[];
+  /** Поля, НЕ отражённые в HTML — раздел требует перегенерации */
+  pending: string[];
+  /** Раздел-хозяин отсутствует в sections — правка только в таблице БД */
+  sectionMissing: boolean;
+}
+
+/** POST /syntheses/:id/elements/auto-rename */
+export interface AutoRenameInput {
+  oldName: string;
+  newName: string;
+}
+export interface AutoRenameResult {
+  affectedSections: string[];
+  affectedTheses: number;
+}
+
 /* ── Таксономия: каталоги типов (03-spec §2.13, 01-arch §4.8) ────────── */
 
 /** Строка category_type_catalog (18 системных + пользовательские) */

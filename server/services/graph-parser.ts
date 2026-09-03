@@ -89,7 +89,8 @@ export interface ParsedGraph {
 /* ── parseTopology [12696] ───────────────────────────────────────────── */
 
 /** Роли: русская метка → ключ (структурные + процессуальные) [12707]. */
-const ROLE_MAP: Readonly<Record<string, string>> = {
+// export — 5.1: element-renderer строит обратную карту ключ → метка
+export const ROLE_MAP: Readonly<Record<string, string>> = {
   // Структурные
   "центральная": "central",
   "периферийная": "peripheral",

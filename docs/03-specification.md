@@ -532,6 +532,58 @@ POST   /syntheses/:id/elements/auto-rename
                                 // theses.related_categories; каждая
                                 // затронутая строка получает версию с
                                 // changeSource='auto_rename'
+                                // По факту 5.1: ТАКЖЕ в капсуле
+                                // (syntheses.capsule_html; ключ 'capsule'
+                                // в affectedSections) и в текстовых полях
+                                // гранулярных строк — theses.formulation/
+                                // justification, glossary_terms.term/
+                                // definition/extra_columns, categories.
+                                // definition/origin, category_edges.
+                                // description (иначе рассинхрон БД↔HTML:
+                                // таблица тезисов в HTML переименована,
+                                // строка theses — нет). Замена — целого
+                                // слова (lookaround \p{L}\p{N}); oldName ===
+                                // newName → 400 VALIDATION_ERROR.
+
+// ── По факту 5.1 (2026-09-03) ──────────────────────────────────────────
+
+// Удаление связи. Edge case протокола 5.1 требовал его, эндпоинта не
+// было. Снимок ребра остаётся версией (elementType 'edge', 'manual');
+// has_reflexive концов пересчитывается, таблицы связей/топологии
+// перерисовываются. Повторное удаление → 404.
+DELETE /syntheses/:id/edges/:edgeId
+                                → { ok: true, impact: ImpactAnalysis,
+                                    version: ElementVersion,
+                                    htmlSync: HtmlSyncInfo }
+
+// Все PATCH элементов, DELETE связи и rollback АДДИТИВНО несут
+//   version: ElementVersion   — созданная версия-снимок;
+//   htmlSync: HtmlSyncInfo    — синхронизация правки с html_content
+//     (02 §3 п.4 «молча терять правку нельзя»):
+//     { rendered: string[]   // перерисованные таблицы "graph:Таблица связей"…
+//       patched: string[]    // поля вне таблиц, отражённые точечной правкой
+//                            //   абзаца (thesis.justification)
+//       pending: string[]    // поля, НЕ отражённые в HTML — раздел требует
+//                            //   перегенерации (thesis.justification без
+//                            //   абзаца; glossary_term.termCategory всегда)
+//       sectionMissing: boolean } // раздела-хозяина нет в sections —
+//                            //   правка сохранена только в таблице БД
+// Гейты правок: только владелец (403); активная генерация → 409
+// GENERATION_IN_PROGRESS (гонка с saveGraphToDb/saveElementsToDb);
+// не-UUID → 404. Валидация: REAL-характеристики 0–1, innovationDegree
+// целое 1–5, direction ∈ три значения, thesisType ∈ enum, typeCatalogId —
+// строка каталога либо null; details по полям.
+// rollback: element — DTO типа (Category | CategoryEdge | Thesis |
+// GlossaryTerm; для section/dialogue_turn — снимок строки), версия
+// changeSource='rollback' хранит состояние ДО отката.
+// ImpactAnalysis.severity: 'high' — имя элемента (ПРЕЖНЕЕ и новое)
+// текстуально упомянуто в других разделах или тезисах; 'low' — только
+// структурные зависимые (cross-deps по SUBSECTION_TO_CTX_KEYS, downstream
+// analyzeImpact, режимы); 'none' — ничего, в т.ч. раздел-хозяин
+// отсутствует в документе.
+// PATCH /:id/capsule: строка sections 'capsule' есть после генерации
+// (1.4) и отсутствует после импорта (4.3) — обе точки синхронизируются;
+// ответ += version.
 ```
 
 **ElementVersion:**

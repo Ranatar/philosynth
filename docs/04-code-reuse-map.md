@@ -288,8 +288,10 @@
 | `server/middleware/auth.ts` | Lucia Auth: регистрация, сессии, middleware |
 | `server/middleware/rate-limiter.ts` | Rate limiting (Redis) |
 | `server/middleware/billing-check.ts` | Проверка баланса / наличия API-ключа |
-| `server/services/element-editor.ts` | Ручное редактирование элементов + impact analysis |
-| `server/services/element-versioning.ts` | Версионирование элементов |
+| `server/services/element-editor.ts` | Ручное редактирование элементов + impact analysis — ФАКТ (5.1): updateCategory/CategoryEdge/Thesis/GlossaryTerm, deleteCategoryEdge (аддитивно), autoRenameReferences (html_content + капсула + текстовые поля гранулярных строк), computeElementImpact (cross-deps + analyzeImpact + getAffectedModes; severity по упоминаниям прежнего И нового имени), rollbackElement, updateCapsule; ответы += version/htmlSync |
+| `server/services/element-versioning.ts` | Версионирование элементов — ФАКТ (5.1): createVersion (max+1 в tx вызывающего, synthesis_id обязателен), getVersionHistory (фильтр по synthesis_id), rollbackToVersion (белый список полей типа + версия 'rollback'), loadElementRow/restoreElementData |
+| `server/services/element-renderer.ts` | НОВОЕ (5.1, решение п.1): рендер пяти таблиц (категории/связи/топология/тезисы/глоссарий) — обратное к graph-parser/element-parser 1.4; applyElementUpdateToHtml перерисовывает ОДНУ таблицу через `replaceDocTable` (html-parser; заголовки thead из текущего HTML, шаблон Registry — fallback). Дрейф-контроль parser↔renderer — integration-check 4ab |
+| `server/utils/html-parser.ts` += `locateDocTable`, `replaceDocTable`, `replaceThesisParagraph` | ФАКТ (5.1): точечная замена таблицы/абзаца внутри подраздела с сохранением `<h4>` и прозы (spliceSubsectionHtml для этого не годится — заменяет весь подраздел); linkedom по-прежнему только здесь |
 | `server/services/billing-service.ts` | Stripe интеграция, транзакции |
 | `server/services/api-key-service.ts` | Шифрование/дешифрование API-ключей, проксирование |
 | `server/routes/*.ts` | Все HTTP-роуты (в исходнике нет бэкенда) |

@@ -3916,3 +3916,134 @@ vite build ✓. Браузерные: 0.4/2 ✓, 0.4/4 ✓, 0.4/6 ✓, 0.4/7 ✓
 - test-42 требует `mermaid` в node_modules (`npm i --no-save mermaid`).
 - Тест 0.6 регистрирует пользователя БЕЗ displayName: он ждёт в шапке
   email.
+
+---
+
+# Беседа 5.1 — Element Editor + Versioning (бэкенд) [ЗАКРЫТА 2026-09-03]
+
+> Запрос 1 + смоук tests/smoke-51-request1.mjs (40 ✓, без БД) + все
+> тестовые запросы R2–R6 одним заходом tests/test-51-requests2-6.mjs
+> (111 ✓ ×2, живой сервер) + завершение: typecheck (все конфиги) 0,
+> audit ✓, check:integration += 2s/4ab/5u → INTEGRATION OK,
+> check-map-04 0 расхождений, доки — scripts/patch-docs-conv51.py (9
+> правок, прогон 2 skip×9). Исходник не нужен — функциональность новая.
+
+## Что создано
+
+- `server/utils/html-parser.ts` += `locateDocTable` (заголовки thead по
+  локатору `{subsection}` | `{firstHeaderIncludes}`), `replaceDocTable`
+  (замена ОДНОЙ `table.doc-table` внутри подраздела; ветки
+  replaced/appended/created; `<h4>` и проза сохраняются),
+  `replaceThesisParagraph` (абзац `<strong>формулировка</strong>
+  обоснование`; `<strong>` внутри таблиц игнорируется). MutableElement
+  расширен textContent/parentElement/closest/innerHTML-set. Единственная
+  точка linkedom — по-прежнему здесь.
+- `server/services/element-renderer.ts` — пять рендереров (категории с
+  extGraphMetrics + `level.{level}.graph_last_col_name` из Registry; связи;
+  топология через `ROLE_LABELS` — обращение `ROLE_MAP` graph-parser
+  (теперь export); тезисы через `THESIS_TYPE_LABELS`; глоссарий по
+  extra_columns), `locatorsFor`, `applyElementUpdateToHtml(synthesisId,
+  which)` (`categories|edges|topology|theses|glossary`; заголовки thead из
+  ТЕКУЩЕГО HTML приоритетны — при lang ≠ Russian они переведены), `fmtNum`
+  (до 2 знаков без хвостовых нулей), `writeSectionHtml`.
+- `server/services/element-versioning.ts` — `createVersion` (max+1 в
+  транзакции вызывающего; `synthesisId` обязателен), `getVersionHistory`
+  (фильтр по synthesis_id — чужой id даёт пустой список),
+  `rollbackToVersion` (белый список полей типа RESTORE_FIELDS + версия
+  'rollback' со снимком ДО отката), `loadElementRow`, `restoreElementData`,
+  `snapshotOf` (Date → ISO), `VersioningError`.
+- `server/services/element-editor.ts` — `updateCategory/CategoryEdge/
+  Thesis/GlossaryTerm` (валидация: 0–1 REAL, innovationDegree целое 1–5,
+  direction/thesisType enum, typeCatalogId — строка каталога либо null;
+  details по полям; версия+UPDATE одной tx; source → 'manual'),
+  `deleteCategoryEdge`, `autoRenameReferences`, `computeElementImpact`,
+  `rollbackElement`, `updateCapsule`, DTO-мапперы, `ElementEditorError`.
+- `server/routes/elements.ts` — §2.4 целиком: GET/PATCH категорий, PATCH/
+  DELETE связей, GET/PATCH тезисов и глоссария, versions/rollback,
+  auto-rename, capsule. `ownerEditGate`: isUuid → 404, владелец → 403,
+  активная генерация → 409.
+- `packages/shared/types/elements.ts` += CategoryUpdateInput,
+  EdgeUpdateInput (+EdgeDirectionInput), ThesisUpdateInput,
+  GlossaryTermUpdateInput, HtmlSyncInfo, AutoRenameInput/Result.
+- integration-check += 2s (модули), 4ab (дрейф-контроль parser↔renderer
+  + текстовые контракты), 5u (живая перерисовка/версии/CASCADE); 4o
+  сужена (запрет не-GET роутов в elements.ts снят).
+
+## Решения/адаптации (все — в шапках модулей и «По факту 5.1» в 07)
+
+1. Врезка — `replaceDocTable`, не `spliceSubsectionHtml` (тот заменяет
+   весь подраздел вместе с h4/прозой — противоречит решению п.1).
+2. Round-trip — по полям после нормализации парсеров; невосстановимы
+   centrality/certainty/strength === 0 (парсер 1.4 читает 0.5, квирк
+   исходника [12939]).
+3. Ответы PATCH/DELETE/rollback += `version` и `htmlSync {rendered,
+   patched, pending, sectionMissing}`: `thesis.justification` — точечно в
+   абзац либо pending; `glossary_term.termCategory` — всегда pending.
+4. Impact — по ПРЕЖНЕМУ и новому имени (`[before.name, row.name]`);
+   severity: high — упоминания в других разделах/тезисах; low —
+   структурные зависимые; none — ничего/раздел-хозяин отсутствует.
+5. auto-rename расширен на текстовые поля гранулярных строк + капсулу
+   (по букве §2.4 возникал рассинхрон БД↔HTML — найдено тестом абзаца
+   тезиса).
+6. DELETE /edges/:edgeId — аддитивно; `has_reflexive` пересчитывается при
+   смене направления и удалении (`recomputeReflexive`), тогда
+   перерисовывается и топологическая таблица.
+7. Капсула: sections-row 'capsule' есть после генерации, нет после импорта
+   — обе точки синхронизируются.
+
+## Дыры доков, закрытые patch-docs-conv51.py
+
+spliceSubsectionHtml в тексте запроса; сигнатуры без synthesisId; DELETE
+edge; форма element в rollback; auto-rename только related_categories;
+impact по новому имени; 05 — PATCH-часть elements.ts; 04 — element-
+renderer + ФАКТ-пометки; README. Не закрыто патчем (мелочь, оставлено):
+03 §2.4 п.14 говорит «PATCH /syntheses/:id правит только title/isPublic»,
+хотя §2.2 уже добавил extGraphMetrics (2.3); чек-лист 07 §10 ссылается на
+06-dev-strategy как источник задач.
+
+## Знания/грабли, добытые в 5.1
+
+- **tsx — обёртка над дочерним node**: `server.kill("SIGKILL")` убивает
+  обёртку, сервер остаётся жить на порту, следующий прогон бьёт в СТАРЫЙ
+  код (потеряно полчаса на поиск несуществующего «стейла»). Лечение:
+  `spawn(..., { detached: true })` + `process.kill(-pid, "SIGKILL")`.
+  Прежние тесты (2.1–4.3) спавнят через `npx tsx` тем же приёмом —
+  проверять `ps aux | grep server/index` перед прогонами.
+- Redis не переживает паузу между ходами; при мёртвом Redis лимитер
+  fail-open, при живом — 60/мин per-IP съедает тест →
+  `RATE_LIMIT_HTTP_PER_MINUTE=100000` в env спавна (грабля 1.6).
+- nodesource-источник в этот раз лежал отдельным файлом — `grep -rl
+  nodesource /etc/apt/ | xargs rm` перед apt-get update.
+- parseTopology требует `[data-section="Топология графа"]` — без неё
+  таблица «Топологическая таблица» не читается (мок 4ab это словил).
+- Секция 4o (1.6) запрещала не-GET роуты в elements.ts — при расширении
+  чужого роутера искать в integration-check «замороженные» инварианты
+  прежних бесед.
+- Фикстуры тестов: гранулярные таблицы наполнять ТЕМИ ЖЕ парсерами 1.4
+  (saveGraphToDb/saveElementsToDb из мок-HTML), иначе правки идут против
+  несогласованного состояния HTML ↔ БД.
+
+## Открытые TODO после 5.1 (все — в §12 07)
+
+- Показ `htmlSync.pending`/`sectionMissing` в UI редактора → 5.2.
+- Парсер глоссария по th «термин» при lang ≠ Russian → 5.5 (дыра 1.4).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **5.2 (Element Editor UI)**: `packages/shared/types/elements.ts`
+  (входы PATCH, HtmlSyncInfo, ElementVersion, ImpactAnalysis),
+  `server/routes/elements.ts` (контракты §2.4 + «По факту 5.1»),
+  `client/src/api/elements.ts` (1.7; расширять), `client/api/plans.ts` +
+  `hooks/useEditPlan.ts` (2.3 — «перегенерировать затронутые» только через
+  планы), NodePanel/SectionView. UI-кит: docs/fragments-for-conversations/
+  5-6-ui-kit.*.
+- **5.3 (Enrichment)**: `server/services/element-editor.ts`
+  (`computeElementImpact`, DTO-мапперы, гейты), `element-versioning.ts`
+  (`createVersion` для регенерируемых элементов, changeSource
+  'regenerated'), `element-renderer.ts` (перерисовка после обогащения
+  характеристик).
+- **5.5 (Representation Transformer)**: `element-renderer.ts` (рендер
+  новых таблиц графа/тезисов после трансформации), `graph-parser.ts`
+  (`ROLE_MAP` export), долг парсера глоссария.
+- **Любая работа с html_content**: `server/utils/html-parser.ts`
+  (`replaceDocTable` — образец точечной правки; linkedom только здесь).

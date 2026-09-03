@@ -1,5 +1,24 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-09-03 (итоги беседы 5.1)**: Element Editor +
+> Versioning закрыты (запрос 1 + смоук round-trip 40 ✓ + все тестовые
+> запросы tests/test-51-requests2-6.mjs 111 ✓ ×2; check:integration +=
+> 2s/4ab/5u с дрейф-контролем parser↔renderer). Дыры, закрытые этим
+> патчем (глава «По факту 5.1»): текст запроса требовал врезку таблицы
+> через spliceSubsectionHtml — тот заменяет ВЕСЬ <div data-section>
+> вместе с <h4> и прозой, вопреки решению п.1 → новый хелпер
+> replaceDocTable; сигнатуры без synthesisId при требовании проверки
+> доступа по element_versions.synthesis_id; edge case «удаление связи»
+> без эндпоинта → аддитивный DELETE /edges/:edgeId; форма element в
+> ответе rollback не задана; auto-rename по букве §2.4 (только
+> html_content + related_categories) сам создавал рассинхрон БД↔HTML —
+> расширен на текстовые поля гранулярных строк; impact считался по
+> НОВОМУ имени — теперь по прежнему и новому. §12: два долга внесены
+> (pending-поля в UI → 5.2; парсер глоссария при lang ≠ Russian → 5.5).
+> Грабля окружения: tsx — обёртка над дочерним node, SIGKILL обёртке
+> оставляет сервер на порту, и следующий прогон бьёт в СТАРЫЙ код —
+> спавнить detached и гасить группу процессов.
+>
 > **Правки 2026-08-30 (итоги беседы 4.3)**: Import Service закрыт
 > (запрос 1 + все 4 тестовых запроса tests/test-43-requests2-5.mjs
 > 64 ✓ ×2, включая roundtrip — перенесённый тест 4 беседы 4.2 — и
@@ -2855,6 +2874,11 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 - «Протестируй невалидный файл: загрузи обычный HTML (не PhiloSynth) → ошибка IMPORT_INVALID»
 - «Протестируй файл без embedded state: только HTML-разделы → импорт с предупреждением "Лог отсутствует"»
 
+**Завершение беседы:**
+- «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
+- «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
+- «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
+
 > **По факту 4.3 (2026-08-30, беседа ЗАКРЫТА).** Запрос 1 и все
 > тестовые запросы выполнены (tests/test-43-requests2-5.mjs, 64 ✓ ×2:
 > roundtrip мета-синтеза с родителем, standalone с предупреждениями,
@@ -2900,11 +2924,6 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 > копий), → 1.6b (SynthesisPage рендерит импортированный документ).
 > Дрейф двойников titleToKey/genealogy клиент↔сервер сторожит
 > integration-check 4z.
-
-**Завершение беседы:**
-- «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
-- «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
-- «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
 
 ---
 
@@ -3036,6 +3055,69 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
 
+**По факту 5.1 (2026-09-03)** — беседа ЗАКРЫТА; отступления от буквы
+первого запроса и найденные дыры:
+
+1. **Врезка таблицы — не spliceSubsectionHtml.** Тот заменяет весь
+   `<div data-section>` вместе с `<h4>` и прозой подраздела, то есть
+   делает ровно то, что решение п.1 запрещает. В `html-parser.ts`
+   добавлены `locateDocTable` (фактические заголовки thead),
+   `replaceDocTable` (замена ОДНОЙ `table.doc-table`; ветки
+   replaced/appended/created) и `replaceThesisParagraph` (точечная
+   правка абзаца `<strong>формулировка</strong> обоснование`). Единственная
+   точка linkedom сохранена. Заголовки thead рендерер берёт из текущего
+   HTML (при `lang ≠ Russian` они переведены), шаблон Registry — fallback.
+2. **`synthesisId` — первый параметр всех функций** editor/versioning
+   (в тексте запроса его не было, при этом п.3 требует проверки доступа по
+   `element_versions.synthesis_id`).
+3. **`applyElementUpdateToHtml(synthesisId, which)`** — по имени таблицы
+   (`categories|edges|topology|theses|glossary`), а не по (sectionKey,
+   subsectionName): раздел-хозяин и локаторы выводятся из таблицы.
+4. **Round-trip — по полям после нормализации**, не побайтно: парсеры 1.4
+   нормализуют (normalizeName/Type, toLowerCase направления,
+   `parseFloat(...) || 0.5`). Невосстановимы centrality/certainty/
+   strength === 0 (парсер читает 0.5) — квирк исходника [12939].
+5. **`DELETE /syntheses/:id/edges/:edgeId`** — аддитивно: edge case
+   протокола требует удаление связи, в 03 §2.4 эндпоинта не было.
+   Снимок ребра остаётся версией 'manual'; `has_reflexive` концов
+   пересчитывается, топологическая таблица перерисовывается.
+6. **Ответы PATCH/DELETE/rollback += `version` и `htmlSync`**
+   `{ rendered, patched, pending, sectionMissing }` — реализация правила
+   02 §3 п.4 «молча терять правку нельзя»: `thesis.justification`
+   правится в абзаце (patched) либо уходит в pending;
+   `glossary_term.termCategory` (проза категорийных подразделов) — всегда
+   pending; отсутствие раздела-хозяина — `sectionMissing`.
+7. **Impact считается по прежнему И новому имени** элемента: тесты
+   показали, что после переименования «Бытие → Новое имя» упоминаний
+   нового имени нет и severity падала до 'low', хотя документ ссылается
+   на старое. `severity`: 'high' — имя упомянуто в других разделах/
+   тезисах; 'low' — только структурные зависимые (getCrossSecDependents +
+   analyzeImpact downstream + getAffectedModes); 'none' — ничего
+   (в т.ч. раздел-хозяин отсутствует в документе).
+8. **auto-rename расширен на текстовые поля гранулярных строк**
+   (`theses.formulation/justification`, `glossary_terms.term/definition/
+   extra_columns`, `categories.definition/origin`,
+   `category_edges.description`; версии 'auto_rename'): по букве §2.4
+   (только html_content + related_categories) сводная таблица тезисов в
+   HTML уже говорила «Существование есть…», а строка theses — «Бытие
+   есть…», и следующий PATCH тезиса не находил свой абзац. Капсула
+   (`syntheses.capsule_html`) тоже переписывается, ключ 'capsule' — в
+   affectedSections. Граница слова — lookaround `\p{L}\p{N}` (`\b`
+   для кириллицы не работает).
+9. **PATCH /:id/capsule**: строка `sections 'capsule'` есть после
+   генерации (1.4 сохраняет) и отсутствует после импорта (4.3) — обе точки
+   держатся в синхроне; версия — по id строки либо по id синтеза.
+10. **Гейт правок**: owner-only + 409 GENERATION_IN_PROGRESS (гонка с
+    saveGraphToDb/saveElementsToDb, которые ЗАМЕНЯЮТ строки); не-UUID →
+    404 до PG (правило 4aa). Чтение — владелец ИЛИ публичный.
+11. **Валидация**: REAL-характеристики 0–1, `innovationDegree` целое 1–5,
+    `direction` — три значения, `thesisType` — enum, `typeCatalogId` —
+    существующая строка каталога либо `null`; details по полям.
+12. **Дрейф-контроль parser↔renderer** — секция 4ab integration-check:
+    биекция ROLE_MAP↔ROLE_LABELS, ширина таблиц ≡ индексам td парсеров,
+    порядок столбцов ≡ строкам «Столбцы СТРОГО» section-templates,
+    round-trip на чистых функциях; 5u — живая перерисовка против БД.
+
 ---
 
 ### Беседа 5.2: Element Editor UI (клиент)
@@ -3101,6 +3183,12 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 8. client/api/elements.ts — расширение:
    - updateCategory, updateThesis, updateGlossaryTerm
    - getVersionHistory, rollbackToVersion
+   - По факту 5.1: также updateEdge, deleteEdge (DELETE /edges/:edgeId),
+     autoRename, updateCapsule; ответы PATCH/rollback несут version и
+     htmlSync — UI ОБЯЗАН показывать htmlSync.pending («поле не отражено
+     в документе, раздел требует перегенерации») и sectionMissing (долг
+     §12). Все PATCH → 409 при активной генерации — форма редактора
+     блокируется по status='generating'.
 ```
 
 **Последующие запросы:**
@@ -3896,6 +3984,8 @@ streaming-manager.
 | Ролевая защита маршрута `/admin/prompts` на клиенте (сейчас только RequireAuth) | 6.2 | 0.4 | внесён 2026-09-02 (п.19) |
 | UI подписок в BillingPage (бэкенд готов: 02 §2.22–2.23, 03 §2.10, subscription-service 6.1) | 6.2 | 6.1 | внесён 2026-09-02 (п.8) |
 | Учёт обогащений в биллинге (api_usage + used_enrichments; разъём в 5.3, наполнение — после 6.1) | 6.1 | 5.3 | внесён 2026-09-02 (п.10) |
+| Показ `htmlSync.pending`/`sectionMissing` в UI редактора (обоснование тезиса без абзаца, termCategory глоссария — в html_content не отражены; сервер 5.1 отдаёт список, клиент обязан предупредить и предложить перегенерацию) | 5.2 | 5.1 | внесён 2026-09-03 |
+| Парсер глоссария 1.4 ищет таблицу по первому th «термин» [8027], а рендерер 5.1 — ещё и по data-section «Таблица определений»; при `lang ≠ Russian` заголовок переведён и парсер таблицу НЕ найдёт (глоссарий такого документа не попадает в glossary_terms) — унифицировать поиск по data-section | 5.5 | 5.1 (дыра 1.4) | внесён 2026-09-03 |
 
 Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,
 помечено в 03 §2.1; `POST /syntheses/estimate` и `/advice` — реализованы

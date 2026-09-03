@@ -84,8 +84,10 @@ philosynth-service/
 │   │   │                               # (создаёт беседа 1.6 — до 2026-07-30
 │   │   │                               #  модуль не был назначен ни одной беседе)
 │   │   ├── elements.ts                 # GET/PATCH categories, theses, glossary
-│   │   │                               # GET /categories — беседа 1.6 (нужен 1.7),
-│   │   │                               # остальное (PATCH, theses, glossary) — 5.1
+│   │   │                               # GET /categories — беседа 1.6 (нужен 1.7);
+│   │   │                               # остальное СДЕЛАНО 5.1: PATCH категорий/
+│   │   │                               # связей/тезисов/глоссария, DELETE связи,
+│   │   │                               # versions/rollback, auto-rename, capsule
 │   │   ├── transforms.ts               # POST transform graph-to-theses / theses-to-graph, history, rollback
 │   │   ├── taxonomy.ts                 # GET/POST category-types, relationship-types, normalize
 │   │   ├── enrichment.ts               # POST enrich/category, enrich/edge, justify-characteristic

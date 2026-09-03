@@ -255,7 +255,12 @@ interface MutableElement {
   ): void;
   remove(): void;
   readonly outerHTML: string;
-  readonly innerHTML: string;
+  /** innerHTML записываемый — точечная правка абзаца (5.1) */
+  innerHTML: string;
+  /** Ниже — расширение 5.1 (linkedom реализует всё) */
+  readonly textContent: string | null;
+  readonly parentElement: MutableElement | null;
+  closest(selector: string): MutableElement | null;
 }
 
 function parseMutable(html: string): MutableElement {
@@ -334,4 +339,159 @@ export function removeSubsectionHtml(
   if (!div) return { html: sectionHtml, removed: false };
   div.remove();
   return { html: root.innerHTML, removed: true };
+}
+
+/* ── Точечная замена таблицы внутри подраздела (беседа 5.1) ──────────── */
+
+/**
+ * Локатор таблицы doc-table в HTML раздела. Зеркалит приёмы поиска
+ * парсеров (graph-parser 1.4 / element-parser 1.4):
+ *  - `subsection` — таблица внутри <div data-section="…"> (точное имя,
+ *    затем нечёткое — как findMutableSubsection);
+ *  - `firstHeaderIncludes` — первая table.doc-table, чей ПЕРВЫЙ th
+ *    содержит подстроку (порт критерия extractGlossaryCompact [8027]).
+ * Локаторы перебираются по порядку; первый найденный — рабочий.
+ */
+export type DocTableLocator =
+  | { subsection: string }
+  | { firstHeaderIncludes: string };
+
+export interface LocatedDocTable {
+  /** Имя подраздела, в котором лежит таблица (null — вне data-section) */
+  subsection: string | null;
+  /** Заголовки thead (trim), как их отрендерил Claude */
+  headers: string[];
+}
+
+function tableHeaders(table: MutableElement): string[] {
+  return Array.from(table.querySelectorAll("thead th")).map((th) =>
+    (th.textContent ?? "")
+      .trim()
+      .replace(/\s+/g, " "),
+  );
+}
+
+function locateMutableTable(
+  root: MutableElement,
+  locators: readonly DocTableLocator[],
+): { table: MutableElement | null; host: MutableElement | null; hostName: string | null } {
+  for (const loc of locators) {
+    if ("subsection" in loc) {
+      const host = findMutableSubsection(root, loc.subsection);
+      if (!host) continue;
+      const table =
+        host.querySelector("table.doc-table") ?? host.querySelector("table");
+      return {
+        table,
+        host,
+        hostName: host.getAttribute("data-section") ?? loc.subsection,
+      };
+    }
+    const needle = loc.firstHeaderIncludes.toLowerCase();
+    for (const t of root.querySelectorAll("table.doc-table")) {
+      const ths = tableHeaders(t);
+      if (ths.length >= 2 && (ths[0] ?? "").toLowerCase().includes(needle)) {
+        const host = t.closest("[data-section]");
+        return {
+          table: t,
+          host,
+          hostName: host?.getAttribute("data-section") ?? null,
+        };
+      }
+    }
+  }
+  return { table: null, host: null, hostName: null };
+}
+
+/**
+ * Чтение фактических заголовков таблицы раздела — рендерер (5.1)
+ * предпочитает их шаблонным, чтобы не переписывать перевод/формулировку,
+ * которую дал Claude (lang ≠ Russian, quirk'и заголовков).
+ */
+export function locateDocTable(
+  sectionHtml: string,
+  locators: readonly DocTableLocator[],
+): LocatedDocTable | null {
+  const root = parseMutable(sectionHtml);
+  const { table, hostName } = locateMutableTable(root, locators);
+  if (!table) return null;
+  return { subsection: hostName, headers: tableHeaders(table) };
+}
+
+export interface ReplaceDocTableResult {
+  html: string;
+  /** 'replaced' — таблица найдена и заменена; 'appended' — таблицы не было,
+   *  новая добавлена в найденный подраздел; 'created' — не было и
+   *  подраздела, создан <div data-section> в конце раздела */
+  outcome: "replaced" | "appended" | "created";
+}
+
+/**
+ * Замена ОДНОЙ таблицы doc-table внутри подраздела (решение 2026-09-02,
+ * аудит фаз 5–6, п.1 в суженной форме). В отличие от spliceSubsectionHtml
+ * (замена всего <div data-section>) заголовок <h4> и прозаические абзацы
+ * подраздела сохраняются: перерисовывается только таблица.
+ * `fallbackSubsection` — имя подраздела для ветки 'created'.
+ */
+export function replaceDocTable(
+  sectionHtml: string,
+  locators: readonly DocTableLocator[],
+  tableHtml: string,
+  fallbackSubsection: string,
+): ReplaceDocTableResult {
+  const root = parseMutable(sectionHtml);
+  const { table, host } = locateMutableTable(root, locators);
+  if (table) {
+    table.insertAdjacentHTML("beforebegin", tableHtml);
+    table.remove();
+    return { html: root.innerHTML, outcome: "replaced" };
+  }
+  if (host) {
+    host.insertAdjacentHTML("beforeend", tableHtml);
+    return { html: root.innerHTML, outcome: "appended" };
+  }
+  root.insertAdjacentHTML(
+    "beforeend",
+    `<div data-section="${fallbackSubsection.replace(/"/g, "&quot;")}"><h4>${fallbackSubsection
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")}</h4>${tableHtml}</div>`,
+  );
+  return { html: root.innerHTML, outcome: "created" };
+}
+
+/**
+ * Точечная правка прозаического абзаца тезиса (поле вне таблицы, 02 §3
+ * п.4): ищется элемент, чей первый <strong>/<b> совпадает с прежней
+ * формулировкой (нормализованно, как в buildJustificationIndex
+ * element-parser 1.4); его содержимое заменяется на
+ * «<strong>формулировка</strong> обоснование». Не найден → null —
+ * вызывающий обязан сообщить, что правка в HTML не отражена.
+ */
+export function replaceThesisParagraph(
+  sectionHtml: string,
+  oldFormulation: string,
+  newFormulation: string,
+  justification: string,
+): string | null {
+  const root = parseMutable(sectionHtml);
+  const norm = (s: string): string =>
+    s.toLowerCase().replace(/\s+/g, " ").trim();
+  const target = norm(oldFormulation);
+  if (target.length < 4) return null;
+  for (const strong of root.querySelectorAll("strong, b")) {
+    const key = norm(strong.textContent ?? "");
+    if (!key || !(key === target || key.includes(target) || target.includes(key)))
+      continue;
+    const parent = strong.parentElement;
+    if (!parent || parent === root) continue;
+    // Таблицу не трогаем — её рисует рендерер
+    if (parent.closest("table")) continue;
+    const esc = (s: string): string =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    parent.innerHTML =
+      `<strong>${esc(newFormulation)}</strong>` +
+      (justification ? " " + esc(justification) : "");
+    return root.innerHTML;
+  }
+  return null;
 }
