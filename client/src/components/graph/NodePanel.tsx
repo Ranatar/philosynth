@@ -9,6 +9,10 @@
  * Исходящие/Входящие/Рефлексивные (двунаправленные A→B дублируются во
  * «входящие» с перестановкой концов).
  *
+ * Беседа 5.2 (п. 6): проп onEdit — кнопка «✎ Редактировать» под бейджами
+ * (открывает CategoryEditor узла в GraphModal); в исходнике правки
+ * элементов не было.
+ *
  * АДАПТАЦИЯ: разметка — JSX вместо innerHTML (панель — React-компонент,
  * данные приходят колбэком onShowNode из рендер-ядра); класс .visible
  * навешивается эффектом после первого кадра — сохранена slide-in-анимация
@@ -134,6 +138,10 @@ export interface NodePanelProps {
   links: PanelLink[];
   clusterLabels: string[];
   onClose: () => void;
+  /** Беседа 5.2 (п. 6): кнопка «✎ Редактировать» → CategoryEditor узла.
+   *  Не передан — кнопки нет (чужой/публичный синтез, нет dbId) */
+  onEdit?: (() => void) | undefined;
+  editDisabled?: boolean | undefined;
 }
 
 export default function NodePanel({
@@ -141,6 +149,8 @@ export default function NodePanel({
   links,
   clusterLabels,
   onClose,
+  onEdit,
+  editDisabled = false,
 }: NodePanelProps) {
   // slide-in: .visible после первого кадра (rAF исходника)
   const [visible, setVisible] = useState(false);
@@ -220,6 +230,26 @@ export default function NodePanel({
             groupLabel="Структурные"
           />
           <RoleGroup roles={d.proceduralRoles} groupLabel="Процессуальные" />
+        </div>
+      ) : null}
+      {onEdit ? (
+        <div className="gm-panel-edit-row">
+          <button
+            type="button"
+            className="gm-btn gm-panel-edit-btn"
+            disabled={editDisabled}
+            title={
+              editDisabled
+                ? "Идёт генерация — правки заблокированы"
+                : "Редактировать категорию"
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            ✎ Редактировать
+          </button>
         </div>
       ) : null}
       <div className="gm-panel-def">{d.def || ""}</div>

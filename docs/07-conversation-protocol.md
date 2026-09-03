@@ -1,5 +1,21 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-09-04 (итоги беседы 5.2)**: Element Editor UI закрыт
+> (запрос 1 + смоук tests/smoke-52-request1.mjs 26 ✓ + все тестовые
+> запросы tests/test-52-requests2-5.mjs 73 ✓ ×2 (браузер, Chrome);
+> check:integration += 4ac; регрессия 1.6b/1.7/2.3/4.1 — как база).
+> Дыры, закрытые этим патчем (глава «По факту 5.2»): «inline» внутри
+> dangerouslySetInnerHTML неисполним — форма под HTML раздела; узел
+> G-модели не нёс id категории → GNode.dbId; транспорта предотметки
+> разделов в EditModal не было → проп initialRegen (перегенерация —
+> только через планы); владение было оптимистичным («покажем всем, 403
+> решит») → SynthesisFull.isOwner, гейты ✎/«Изменить»/режимов; 02 §3 и 05
+> всё ещё называли spliceSubsectionHtml (факт 5.1 — replaceDocTable);
+> §11 без ребра 5.2 ← 2.3; §12: долг pending-полей ЗАКРЫТ, внесён долг
+> CATEGORY_TYPES → 5.4. Грабли харнесса: тройной клик puppeteer выделяет
+> слово, не поле; `pkill -f "[t]sx"` из подсказки убивает и оболочку
+> запуска; teardown 2.3 не гасит группу vite.
+>
 > **Правки 2026-09-03 (итоги беседы 5.1)**: Element Editor +
 > Versioning закрыты (запрос 1 + смоук round-trip 40 ✓ + все тестовые
 > запросы tests/test-51-requests2-6.mjs 111 ✓ ×2; check:integration +=
@@ -3182,7 +3198,8 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 
 8. client/api/elements.ts — расширение:
    - updateCategory, updateThesis, updateGlossaryTerm
-   - getVersionHistory, rollbackToVersion
+   - getVersionHistory, rollbackToVersion (elementType — в пути:
+     /elements/:elementType/:elementId/versions|rollback, 03 §2.4)
    - По факту 5.1: также updateEdge, deleteEdge (DELETE /edges/:edgeId),
      autoRename, updateCapsule; ответы PATCH/rollback несут version и
      htmlSync — UI ОБЯЗАН показывать htmlSync.pending («поле не отражено
@@ -3201,6 +3218,44 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
+
+**По факту 5.2 (2026-09-04)** — беседа ЗАКРЫТА; отступления от буквы
+первого запроса и найденные дыры:
+
+1. **Форма правки строки — ПОД HTML раздела, не внутри строки.** Разметка
+   раздела вставляется `dangerouslySetInnerHTML`, React-узел внутрь неё
+   не поместить; кнопки ✎ добавляются в HTML-строку (`addInlineEditButtons`
+   внутри `enrichSectionHtml`, дополнительный столбец `.inline-edit-cell`
+   только на экране), клик ловится делегированием, `ElementEditor` рендерится
+   слотом `inlineEditor` в `.doc-body` после HTML. Сопоставление строки с
+   элементом БД: тезис — по «№» (fallback индекс), термин — по позиции
+   (fallback текст термина).
+2. **`GNode.dbId`** — G-модель 1.7 строится по именам и id категории не
+   несла; `buildGFromGraphData` заполняет `dbId`, `GraphModal` открывает
+   `ElementEditor variant="modal"` (`.element-editor-overlay`, z-index над
+   `.gm-overlay`) поверх графа. Кнопка «✎ Редактировать» в `NodePanel` —
+   проп `onEdit`.
+3. **«Перегенерировать затронутые» → `EditModal.initialRegen`** — новый
+   проп: разделы из `impact.affectedSections` (+ раздел-хозяин при
+   `htmlSync.pending`) предотмечаются на перегенерацию; план создаётся
+   штатно (createPlan/useEditPlan), второго пути запуска нет.
+4. **`SynthesisFull.isOwner`** (аддитивно; сервер `buildSynthesisFull(row,
+   viewerUserId)`, флаг, а не userId — публичный синтез владельца не
+   раскрывает). Гейтит ✎ в таблицах, «✎ Редактировать» в NodePanel, И
+   «✎ Изменить» 2.3 с кнопками режимов 4.1 — прежний оптимизм снят.
+5. **`htmlSync` в UI** (долг §12 5.1 закрыт): `rendered`/`patched` —
+   зелёным, `pending` и `sectionMissing` — `.callout.warning` с именем поля
+   и раздела; при `pending` раздел-хозяин попадает в перегенерацию.
+6. **Автозамена** — только после смены имени категории; отчёт по
+   affectedSections/affectedTheses; повторная заблокирована.
+7. **`CATEGORY_TYPES`** в CategoryEditor — 14 канонических типов промпта;
+   ВРЕМЕННО до TaxonomySelector 5.4 (каталог 0.3b = 14 + 4 расширенных);
+   секция 4ac сторожит ⊆ section-templates.
+8. **Стили**: блоки 5 и 7 UI-кита (+ их часть блока 10) перенесены в
+   часть 3 globals.css дословно; добавлено `@media (hover: none)` — в киte
+   ✎ виден только по :hover, на касаниях кнопки не было бы.
+9. **Ответы**: `element` в редакторе после PATCH/отката — из ответа;
+   разделы — `reloadSections`, граф — повторный `GET /categories`.
 
 ---
 
@@ -3917,7 +3972,7 @@ streaming-manager.
 5.3 (element-enrichment) ← 5.1 + 0.3b (taxonomy) + 1.4 (streaming-manager)
 5.4 (CharacteristicSlider, EnrichmentPanel, TaxonomySelector) ← 5.3 + 5.2 + 1.7 (NodePanel)
 5.5 (representation-transformer, TransformPanel) ← 1.4 (graph-parser, streaming) + 0.3b (taxonomy) + 1.7 (GraphModal) + 1.6b (SectionView)
-5.2 (ElementEditor UI) ← 5.1 + 1.7 (NodePanel) + 1.6b (SectionView)
+5.2 (ElementEditor UI) ← 5.1 + 1.7 (NodePanel) + 1.6b (SectionView) + 2.3 (EditModal/useEditPlan — «перегенерировать затронутые» только через планы)
 6.1 (billing-service, api-key-service) ← 0.1 (schema) + 0.2 (auth) + 1.4 (streaming-manager)
 6.2 (BillingPage, AdminPromptsPage) ← 6.1 + 0.4 (клиент каркас)
 ```
@@ -3984,7 +4039,8 @@ streaming-manager.
 | Ролевая защита маршрута `/admin/prompts` на клиенте (сейчас только RequireAuth) | 6.2 | 0.4 | внесён 2026-09-02 (п.19) |
 | UI подписок в BillingPage (бэкенд готов: 02 §2.22–2.23, 03 §2.10, subscription-service 6.1) | 6.2 | 6.1 | внесён 2026-09-02 (п.8) |
 | Учёт обогащений в биллинге (api_usage + used_enrichments; разъём в 5.3, наполнение — после 6.1) | 6.1 | 5.3 | внесён 2026-09-02 (п.10) |
-| Показ `htmlSync.pending`/`sectionMissing` в UI редактора (обоснование тезиса без абзаца, termCategory глоссария — в html_content не отражены; сервер 5.1 отдаёт список, клиент обязан предупредить и предложить перегенерацию) | 5.2 | 5.1 | внесён 2026-09-03 |
+| Показ `htmlSync.pending`/`sectionMissing` в UI редактора (обоснование тезиса без абзаца, termCategory глоссария — в html_content не отражены; сервер 5.1 отдаёт список, клиент обязан предупредить и предложить перегенерацию) | 5.2 | 5.1 | ЗАКРЫТ 5.2 (2026-09-04): `.callout.warning` с полем и разделом в блоке «Анализ влияния» ElementEditor; раздел-хозяин добавляется в «Перегенерировать затронутые» (EditModal.initialRegen) |
+| `CATEGORY_TYPES` в CategoryEditor — клиентская копия 14 типов промпта графа (select типа категории); заменить TaxonomySelector по каталогу 0.3b (18 = 14 + расширенные) с индикатором «из каталога / свободный текст»; расширенные по методу — `EXTRA_CATEGORY_TYPES` | 5.4 | 5.2 | внесён 2026-09-04 (секция 4ac сторожит ⊆ section-templates) |
 | Парсер глоссария 1.4 ищет таблицу по первому th «термин» [8027], а рендерер 5.1 — ещё и по data-section «Таблица определений»; при `lang ≠ Russian` заголовок переведён и парсер таблицу НЕ найдёт (глоссарий такого документа не попадает в glossary_terms) — унифицировать поиск по data-section | 5.5 | 5.1 (дыра 1.4) | внесён 2026-09-03 |
 
 Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,

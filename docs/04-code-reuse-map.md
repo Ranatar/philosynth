@@ -305,6 +305,7 @@
 | `server/routes/taxonomy.ts` | API каталогов типов |
 | `server/routes/enrichment.ts` | API обогащения элементов |
 | `scripts/seed-taxonomy.ts` | Начальное заполнение каталогов (18 типов категорий + 29 типов связей) |
+| `client/components/edit/ElementEditor.tsx`, `CategoryEditor.tsx`, `ThesisEditor.tsx`, `GlossaryTermEditor.tsx`, `VersionHistory.tsx` | НОВОЕ (5.2, ФАКТ 2026-09-04): редактор элемента по месту (просмотр/правка, PATCH только изменившихся полей, блок «Анализ влияния» с htmlSync), специализированные формы, история версий с diff по полям и откатом; `client/api/elements.ts` += 12 функций §2.4; интеграция: `NodePanel.onEdit` + `GraphModal` (модальный редактор поверх графа, `GNode.dbId` в graph-utils), `SectionView.addInlineEditButtons` (✎ в HTML-строке) + слот `inlineEditor`, `EditModal.initialRegen`; `SynthesisFull.isOwner` (routes/syntheses) — гейты клиента |
 | `client/components/edit/CharacteristicSlider.tsx` | Слайдер характеристики + кнопка «Обоснование» |
 | `client/components/edit/EnrichmentPanel.tsx` | Панель результатов обогащения элемента |
 | `client/components/edit/TaxonomySelector.tsx` | Выбор типа из каталога при нормализации |

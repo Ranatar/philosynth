@@ -39,7 +39,9 @@ const PAIRS: Pair[] = [
     schemaOnly: ["userId", "versionBase", "versionSub", "versionModes", "versionModeRegen"],
     typeOnly: ["version", "philosophers", "parentSyntheses", "childSyntheses",
       // 1.6: оценки паузы вычисляются computePauseEstimates (1.4b), не колонка
-      "pauseEstimates"] },
+      "pauseEstimates",
+      // 5.2: признак владения — userId === viewer, колонки нет (userId — schemaOnly)
+      "isOwner"] },
   { table: "sections", file: "section.ts", iface: "SectionFull",
     schemaOnly: ["id", "synthesisId", "createdAt", "updatedAt"],
     typeOnly: ["subsections"], renamed: { secContext: "secContext" } },

@@ -43,6 +43,9 @@ import type { GraphData } from "@philosynth/shared/types/graph";
 
 /** Узел G — поля как в исходнике (parseGraph): name/type/def/orig/cen/cert… */
 export interface GNode {
+  /** id строки categories (беседа 5.2: кнопка ✎ в NodePanel → редактор
+   *  категории); в исходнике узлу негде было хранить id — его не было */
+  dbId?: string;
   name: string;
   type: string;
   def: string;
@@ -759,6 +762,7 @@ export function buildGFromGraphData(data: GraphData, extended: boolean): void {
   for (const c of data.categories) idToName.set(c.id, c.name);
 
   const nodes: GNode[] = data.categories.map((c) => ({
+    dbId: c.id,
     name: c.name,
     type: c.type,
     def: c.definition,

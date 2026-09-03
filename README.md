@@ -112,7 +112,7 @@ MMD/JSON/PNG/MD + ExportError NO_GRAPH). Сейчас покрывает 0.1–0
 поднятых PG и Redis и засеянных prompt_templates, synthesis_configs
 и каталогов таксономии.
 
-## Статус: Фазы 0–4 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3); Фаза 5 начата — 5.1 закрыта (2026-09-03)
+## Статус: Фазы 0–4 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3); Фаза 5 начата — 5.1 и 5.2 закрыты (2026-09-04)
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -442,7 +442,12 @@ element-editor / element-versioning / element-renderer + routes/elements
 §2.4 целиком (смоук round-trip 40 ✓, tests/test-51-requests2-6.mjs
 111 ✓ ×2, check:integration += 2s/4ab/5u); доки пропатчены
 scripts/patch-docs-conv51.py.
-Следующие по графу 07 — 5.2 (Element Editor UI) либо 5.3 / 6.1.
+Беседа 5.2 (Element Editor UI, клиент) ЗАКРЫТА 2026-09-04:
+ElementEditor/CategoryEditor/ThesisEditor/GlossaryTermEditor/VersionHistory
++ интеграция NodePanel/GraphModal/SectionView/EditModal + isOwner в
+SynthesisFull (смоук 26 ✓, tests/test-52-requests2-5.mjs 73 ✓ ×2,
+check:integration += 4ac); доки пропатчены scripts/patch-docs-conv52.py.
+Следующие по графу 07 — 5.3 (Enrichment, бэкенд) либо 6.1.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

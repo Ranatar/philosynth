@@ -354,6 +354,12 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
                                         // здесь развёрнуто, чтобы не путать
                                         // с оценкой стоимости /estimate
   isPublic: boolean;
+  isOwner: boolean;                     // 5.2 («По факту 5.2»): текущий
+                                        // пользователь — владелец; клиентские
+                                        // гейты правок (✎, «Изменить», режимы)
+                                        // вместо оптимизма «403 решит».
+                                        // Флаг, а не userId — публичный
+                                        // синтез владельца не раскрывает
   docNum: string;                       // «PS-NNNN-XXXX» — заполняется при
                                         // создании записи (формат исходника
                                         // [12110]); шапка документа
@@ -418,9 +424,8 @@ GET    /syntheses/:id/sections/:key/context
                                        // (01 §4.15 п.3) — 0–100 либо null,
                                        // если ctxLog по разделу отсутствует;
                                        // цветной бейдж в Edit Modal.
-                                       // ДО беседы 2.4 (context-quality.ts
-                                       // ещё не создан) роут отдаёт null —
-                                       // TODO(2.4)
+                                       // context-quality.ts — беседа 2.4
+                                       // (сделано; пометка снята 5.2)
   subsections: string[];               // имена data-section внутри HTML —
                                        // нужны TableOfContents (беседа 1.6b)
                                        // для якорей второго уровня;
@@ -502,7 +507,8 @@ PATCH  /syntheses/:id/capsule   { html: string }
                                 → { capsuleHtml: string }
                                 // capsule_html живёт в syntheses;
                                 // PATCH /syntheses/:id (§2.2) правит
-                                // только title/isPublic
+                                // только title/isPublic/extGraphMetrics
+                                // (extGraphMetrics — 2.3; уточнено 5.2)
 
 // п.2: версии элемента и откат (беседа 5.1; UI — VersionHistory, 5.2).
 // Доступ: элемент обязан принадлежать :id — проверяется по

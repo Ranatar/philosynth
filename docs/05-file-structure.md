@@ -175,7 +175,9 @@ philosynth-service/
 │   │   │                               # таблицу категорий/связей/топологии/
 │   │   │                               # тезисов/глоссария из гранулярных
 │   │   │                               # данных и врезает её в html_content
-│   │   │                               # через spliceSubsectionHtml (1.4b).
+│   │   │                               # через replaceDocTable (html-parser,
+│   │   │                               # 5.1; spliceSubsectionHtml заменял
+│   │   │                               # бы весь подраздел — факт 5.1).
 │   │   │                               # Раздел целиком НЕ перерисовывается —
 │   │   │                               # см. 02 §3. Приёмка: round-trip
 │   │   │                               # parse(render(x)) === x
@@ -377,7 +379,9 @@ philosynth-service/
 │   │   │   │                               # плюс client/api/plans.ts и
 │   │   │   │                               # client/hooks/useEditPlan.ts (zustand-store
 │   │   │   │                               # внутри хука); CSS .edit-*/.cascade-* —
-│   │   │   │                               # в globals.css; ElementEditor и ниже — 3.x
+│   │   │   │                               # в globals.css; ElementEditor…VersionHistory —
+│   │   │   │                               # 5.2 (СДЕЛАНО 2026-09-04), Characteristic/
+│   │   │   │                               # Enrichment/Taxonomy — 5.4, Transform* — 5.5
 │   │   │   │   ├── EditModal.tsx           # Модальное окно редактирования
 │   │   │   │   ├── EditSectionCard.tsx     # Карточка раздела (перегенерация/удаление)
 │   │   │   │   ├── SubsectionRegenPanel.tsx # Перегенерация подраздела

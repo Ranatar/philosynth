@@ -3994,6 +3994,263 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 5.2 — ручное редактирование элементов ═══════════════════
+ * В исходнике правки элементов нет: строки таблиц не редактировались,
+ * версий и diff не было. Блоки 5 (история версий, diff) и 7 (правка по
+ * месту) перенесены из docs/fragments-for-conversations/5-6-ui-kit.css
+ * целиком, без переименований; ниже — только то, чего нет и в киte:
+ * обвязка редактора (шапка, сводка полей, столбец ✎ в таблице документа,
+ * кнопка ✎ в тёмной панели графа, слой над .gm-overlay). Ни скруглений,
+ * ни теней; микро-подписи — моноширинные капителью, как везде.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* — 5-6-ui-kit.css, блок 5: история версий и diff — */
+  .version-list {
+    border: 1px solid var(--rule);
+    background: var(--paper);
+  }
+
+  .version-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--rule);
+    cursor: pointer;
+  }
+
+  .version-item:last-child {
+    border-bottom: none;
+  }
+
+  .version-item:hover {
+    background: var(--white);
+  }
+
+  .version-item.selected {
+    background: var(--blue-light);
+  }
+
+  .version-item.current {
+    border-left: 3px solid var(--green-check);
+  }
+
+  .version-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--blue-corp);
+    min-width: 32px;
+  }
+
+  .version-meta {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    color: var(--ink-dim);
+  }
+
+  .version-preview {
+    font-size: 12px;
+    color: var(--ink-mid);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .diff {
+    border: 1px solid var(--rule);
+    background: var(--white);
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.65;
+    overflow-x: auto;
+  }
+
+  .diff-line {
+    display: block;
+    padding: 1px 12px 1px 24px;
+    position: relative;
+    white-space: pre-wrap;
+  }
+
+  .diff-line::before {
+    position: absolute;
+    left: 8px;
+    color: var(--ink-dim);
+  }
+
+  .diff-line.add {
+    background: #f0fff4;
+    color: var(--green-check);
+  }
+
+  .diff-line.add::before {
+    content: "+";
+    color: var(--green-check);
+  }
+
+  .diff-line.del {
+    background: #fff5f5;
+    color: var(--red);
+  }
+
+  .diff-line.del::before {
+    content: "−";
+    color: var(--red);
+  }
+
+  .diff-line.ctx {
+    color: var(--ink-mid);
+  }
+
+  /* — 5-6-ui-kit.css, блок 7: правка элемента по месту — */
+  .inline-edit-btn {
+    opacity: 0;
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink-dim);
+    font-size: 10px;
+    padding: 1px 5px;
+    cursor: pointer;
+    transition: opacity 0.15s, border-color 0.15s;
+  }
+
+  tr:hover > td > .inline-edit-btn,
+  .inline-edit-host:hover .inline-edit-btn {
+    opacity: 1;
+  }
+
+  .inline-edit-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .inline-edit-form {
+    border-left: 3px solid var(--blue-corp);
+    background: var(--white);
+    padding: 12px 14px;
+    margin: 4px 0;
+  }
+
+  .inline-edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .inline-edit-dirty {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-left: auto;
+  }
+
+  /* — обвязка сервиса — */
+
+  /* Столбец ✎ в таблицах документа: узкий, без переноса; кнопка видна и
+     на устройствах без hover (нет :hover — нет opacity 0) */
+  .doc-table th.inline-edit-cell,
+  .doc-table td.inline-edit-cell {
+    width: 28px;
+    padding-left: 4px;
+    padding-right: 4px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  @media (hover: none) {
+    .inline-edit-btn {
+      opacity: 1;
+    }
+  }
+
+  /* Шапка редактора по месту: заголовок капителью + ✕ (как .raw-close) */
+  .element-editor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .element-editor-head .element-editor-title {
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  /* Сводка полей в режиме просмотра: подпись слева, значение справа */
+  .element-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .element-summary-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 160px) 1fr;
+    gap: 12px;
+    align-items: baseline;
+  }
+
+  .element-summary-value {
+    font-size: 13px;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+
+  /* Предпросмотр строки таблицы графа — та же .doc-table, но без
+     отступа документа снизу */
+  .element-preview-table {
+    margin: 4px 0 0;
+  }
+
+  /* Кнопка «✎ Редактировать» в тёмной панели узла графа */
+  .gm-panel-edit-row {
+    margin: 0 0 8px;
+  }
+
+  .gm-panel-edit-btn {
+    width: 100%;
+  }
+
+  .gm-panel-edit-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  /* Редактор категории открывается ПОВЕРХ графовой модалки
+     (.gm-overlay z-index 9999 > .edit-overlay 9998) */
+  .edit-overlay.element-editor-overlay {
+    z-index: 10000;
+  }
+}
+
+@media (max-width: 700px) {
+  /* 5-6-ui-kit.css, блок 10 — часть, относящаяся к блокам 5 и 7 */
+  .version-item {
+    grid-template-columns: auto 1fr;
+  }
+
+  .version-item .version-meta {
+    grid-column: 2;
+  }
+
+  .element-summary-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;

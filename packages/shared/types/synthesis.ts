@@ -158,6 +158,10 @@ export interface SynthesisFull {
    *  Не путать с оценкой стоимости /estimate (03 §2.2, беседа 1.6). */
   pauseEstimates: PauseEstimates | null;
   isPublic: boolean;
+  /** Текущий пользователь — владелец синтеза (беседа 5.2, «По факту 5.2»):
+   *  клиентские гейты правок вместо оптимизма «покажем всем, 403 решит».
+   *  Флаг, а не userId — публичный синтез не раскрывает владельца. */
+  isOwner: boolean;
   docNum: string;
   sectionOrder: string[];
   version: DocVersion;

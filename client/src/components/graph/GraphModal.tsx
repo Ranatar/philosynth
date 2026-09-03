@@ -25,10 +25,19 @@
  *    (сбросы из рендер-ядер снимают active-класс в легенде).
  *  - G наполняется из GraphData (buildGFromGraphData) при открытии;
  *    _extended — из SynthesisFull.extGraphMetrics (проп).
+ *  - Беседа 5.2 (п. 6): NodePanel получает onEdit → ElementEditor
+ *    (variant="modal") с CategoryEditor поверх графа; категория ищется по
+ *    dbId узла (buildGFromGraphData), запасной путь — по имени. После
+ *    сохранения хозяин (SynthesisPage) перечитывает граф и разделы.
  */
 
 import { downloadExport } from "../../api/export";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import {
+  ElementEditor,
+  type SaveOutcome,
+} from "../edit/ElementEditor";
 
 import Graph2D from "./Graph2D";
 import Graph3D from "./Graph3D";
@@ -44,7 +53,7 @@ import {
   setLegendFilterListener,
 } from "./graph-utils";
 
-import type { GraphData } from "@philosynth/shared/types/graph";
+import type { Category, GraphData } from "@philosynth/shared/types/graph";
 import type {
   GEdge,
   LegendFilter,
@@ -66,6 +75,15 @@ export interface GraphModalProps {
   /** Беседа 4.2: id синтеза для серверных экспортов MMD/PNG/JSON
    *  (services/export/*); без него кнопки экспорта неактивны */
   synthesisId?: string | null;
+  /** Беседа 5.2 (п. 6): правка категории из панели узла. Кнопка «✎»
+   *  показывается при editable (владелец предполагается — SynthesisFull
+   *  без userId, как у «✎ Изменить» 2.3); editDisabled — status='generating' */
+  editable?: boolean | undefined;
+  editDisabled?: boolean | undefined;
+  /** После PATCH/отката/автозамены — хозяин перечитывает граф и разделы */
+  onElementSaved?: ((outcome: SaveOutcome) => void) | undefined;
+  /** «Перегенерировать затронутые» — только через планы (EditModal 2.3) */
+  onRegenerateAffected?: ((sectionKeys: string[]) => void) | undefined;
 }
 
 export default function GraphModal({
@@ -73,8 +91,14 @@ export default function GraphModal({
   data,
   extGraphMetrics,
   synthesisId = null,
+  editable = false,
+  editDisabled = false,
+  onElementSaved,
+  onRegenerateAffected,
   onClose,
 }: GraphModalProps) {
+  // Беседа 5.2: редактируемая категория (модалка редактора поверх графа)
+  const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [mode, setMode] = useState<"3d" | "2d">("3d");
   const [clustersOn, setClustersOn] = useState(graphState.clusterVisible);
   const [exportOpen, setExportOpen] = useState(false);
@@ -93,6 +117,7 @@ export default function GraphModal({
     setMode("3d");
     graphState.currentViewMode = "3d";
     setPanel(null);
+    setEditCategory(null);
     clearLegendFilter();
     document.body.style.overflow = "hidden";
     return () => {
@@ -175,6 +200,28 @@ export default function GraphModal({
       downloadExport(synthesisId, fmt);
     },
     [synthesisId],
+  );
+
+  // Категория для редактора: по dbId узла, запасной путь — по имени
+  const openEditor = useCallback(
+    (d: PanelNodeData) => {
+      if (!data) return;
+      const cat =
+        (d.dbId ? data.categories.find((c) => c.id === d.dbId) : undefined) ??
+        data.categories.find((c) => c.name === d.name);
+      if (cat) setEditCategory(cat);
+    },
+    [data],
+  );
+
+  const handleSaved = useCallback(
+    (outcome: SaveOutcome) => {
+      // Обновлённая категория остаётся открытой в редакторе (просмотр);
+      // граф перечитает хозяин по onElementSaved (getCategories → data)
+      if (outcome.kind === "category") setEditCategory(outcome.element as Category);
+      onElementSaved?.(outcome);
+    },
+    [onElementSaved],
   );
 
   if (!open) return null;
@@ -307,6 +354,12 @@ export default function GraphModal({
                 links={panel.links}
                 clusterLabels={clusterLabels}
                 onClose={() => setPanel(null)}
+                onEdit={
+                  editable && synthesisId && data
+                    ? () => openEditor(panel.d)
+                    : undefined
+                }
+                editDisabled={editDisabled}
               />
             ) : null}
             {panel?.kind === "edge" ? (
@@ -320,6 +373,24 @@ export default function GraphModal({
           </>
         )}
       </div>
+      {/* Беседа 5.2: редактор категории поверх графа (z-index выше
+          .gm-overlay — .element-editor-overlay, часть 3 globals.css) */}
+      {editCategory && synthesisId ? (
+        <ElementEditor
+          key={editCategory.id}
+          variant="modal"
+          synthesisId={synthesisId}
+          target={{ kind: "category", element: editCategory }}
+          disabled={editDisabled}
+          startInEditMode
+          onSaved={handleSaved}
+          onRegenerateAffected={(keys) => {
+            setEditCategory(null);
+            onRegenerateAffected?.(keys);
+          }}
+          onClose={() => setEditCategory(null)}
+        />
+      ) : null}
     </div>
   );
 }

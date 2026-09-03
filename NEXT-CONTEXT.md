@@ -4047,3 +4047,119 @@ renderer + ФАКТ-пометки; README. Не закрыто патчем (м
   (`ROLE_MAP` export), долг парсера глоссария.
 - **Любая работа с html_content**: `server/utils/html-parser.ts`
   (`replaceDocTable` — образец точечной правки; linkedom только здесь).
+
+---
+
+# Беседа 5.2 — Element Editor UI (клиент) [ЗАКРЫТА 2026-09-04]
+
+> Запрос 1 + смоук tests/smoke-52-request1.mjs (26 ✓, без БД/браузера) +
+> все тестовые запросы R2–R5 одним заходом tests/test-52-requests2-5.mjs
+> (73 ✓ ×2, Chrome 141 + vite + живой сервер) + завершение: typecheck
+> (все конфиги) 0, audit ✓, check:integration += 4ac → INTEGRATION OK,
+> check-map-04 0 расхождений, регрессия 1.6b 63 ✓ / 1.7 84 ✓ / 2.3 60 ✓ /
+> 4.1 77 ✓, css-parity-audit A/B = 0; доки — scripts/patch-docs-conv52.py
+> (14 правок, повтор skip×14). Исходник не нужен — функциональность новая.
+
+## Что создано
+
+- `client/src/components/edit/ElementEditor.tsx` — оркестратор: просмотр
+  ↔ правка, «Сохранить» (PATCH только изменившихся полей через
+  diff-функции редакторов; 400 → ошибки по полям из details, 409/403 —
+  строкой), блок «Анализ влияния» (`data-element-impact`): ImpactAnalysis
+  + htmlSync (`rendered`/`patched` зелёным, `pending`/`sectionMissing` —
+  `.callout.warning`, `data-testid="html-sync-pending|missing"`), кнопки
+  «Перегенерировать затронутые» (→ `onRegenerateAffected(keys)`,
+  раздел-хозяин добавляется при pending), «Автозамена имён» (только после
+  смены имени категории), «Ничего»; «◷ История версий». Варианты
+  `inline` (`.inline-edit-form`) и `modal` (`.edit-overlay
+  .element-editor-overlay`). Экспорты-утилиты `FieldError`, `fmtNum`,
+  `HOST_SECTION`.
+- `CategoryEditor.tsx` (name, select 14 типов + «другое…», definition,
+  range centrality/certainty, origin, предпросмотр строки «Таблицы
+  категорий»; `CATEGORY_TYPES` — временно до 5.4), `ThesisEditor.tsx`
+  (`THESIS_TYPE_OPTIONS` ≡ THESIS_TYPE_LABELS рендерера),
+  `GlossaryTermEditor.tsx` (столбцы = ключи extraColumns ∪ thead;
+  termCategory не редактируется — всегда pending), `VersionHistory.tsx`
+  (GET versions DESC, строка «текущее» первой, diff по полям выбранной ↔
+  более новой, «Откатить к vN» с confirm).
+- `client/src/api/elements.ts` += getCategory/getTheses/getGlossary,
+  updateCategory/updateEdge/deleteEdge/updateThesis/updateGlossaryTerm/
+  updateCapsule, getVersionHistory/rollbackToVersion, autoRename; типы
+  ответов `ElementMutationMeta` (impact + version + htmlSync).
+- Интеграция: `NodePanel` (проп `onEdit`/`editDisabled` → «✎ Редактировать»),
+  `GraphModal` (пропы `editable`/`editDisabled`/`onElementSaved`/
+  `onRegenerateAffected`; редактор поверх графа, категория по `GNode.dbId`,
+  fallback по имени), `graph-utils` (`GNode.dbId` из `buildGFromGraphData`),
+  `SectionView` (`addInlineEditButtons` внутри `enrichSectionHtml`,
+  пропы `editable`/`onRowEdit`/`inlineEditor`, тип `EditableRowRef`),
+  `DocumentView` (проброс + `inlineEditorFor(key)`), `EditModal`
+  (`initialRegen`), `SynthesisPage` (сопоставление строки с элементом,
+  `isOwner`-гейты, перечитка разделов/графа после правок).
+- Сервер: `SynthesisFull.isOwner` (`buildSynthesisFull(row, viewerUserId)`
+  в routes/syntheses; shared-тип; audit.mts typeOnly).
+- `globals.css` часть 3: блоки 5 и 7 UI-кита дословно + обвязка
+  (`.inline-edit-cell`, `.element-editor-head/-title`, `.element-summary*`,
+  `.element-preview-table`, `.gm-panel-edit-*`, `.element-editor-overlay`,
+  `@media (hover: none)`).
+- integration-check += 4ac (модули, дрейф-контроль THESIS_TYPE_OPTIONS ↔
+  THESIS_TYPE_LABELS, HOST_SECTION ↔ TABLE_SECTION, CATEGORY_TYPES ⊆
+  section-templates, текстовые контракты).
+
+## Решения/адаптации (все — в шапках модулей и «По факту 5.2» в 07)
+
+1. Форма правки строки — ПОД HTML раздела (внутрь dangerouslySetInnerHTML
+   React-узел не вставить); ✎ — в HTML-строке (грабля 1.6b).
+2. `GNode.dbId` — узел графа не нёс id категории.
+3. «Перегенерировать затронутые» → `EditModal.initialRegen` (планы §2.6 —
+   единственный путь).
+4. `isOwner` вместо оптимизма 2.3/4.1; флаг, а не userId.
+5. Владение и генерация: `editable = isOwner && !live`, `disabled = live`.
+
+## Дыры доков, закрытые patch-docs-conv52.py
+
+02 §3 и 05 — spliceSubsectionHtml → replaceDocTable (факт 5.1); 07 §11 —
+ребро 5.2 ← 2.3; 07 5.2 п.8 — elementType в пути; 03 §2.2 isOwner, §2.4
+п.14 extGraphMetrics, §2.3 устаревший TODO(2.4); 04 §4 модули 5.2; 05
+комментарий «ElementEditor и ниже — 3.x»; README. Не патчено (решение
+пользователя): 14 типов категорий в shared НЕ выносятся — 5.4 заменит
+select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
+
+## Знания/грабли, добытые в 5.2
+
+- **puppeteer `click({clickCount: 3})` выделяет СЛОВО**, не поле: «Бытие»
+  → «БытиСущее». Харнесс 5.2 — Ctrl+A перед вводом.
+- **`pkill -9 -f "[t]sx|[v]ite"`** (подсказка харнессов) в песочнике
+  убивает и оболочку, запустившую команду (её командная строка содержит те
+  же буквы) → инструмент падает без вывода. Чистить `pgrep -f` по маске с
+  исключением `$$`.
+- Teardown test-23 (`kill("SIGKILL")` без группы) оставляет `npx vite` на
+  5199 — следующий харнесс падает «порт занят» (грабля tsx-обёртки 5.1
+  относится и к vite).
+- PG/Redis не переживают паузу между ходами — перед прогонами
+  `service postgresql start; redis-server --daemonize yes`.
+- `innerText` капителью: «Корпус тезисов» (KEY_LABELS) ≠ «Тезисы» — в
+  проверках предупреждений искать метку раздела из KEY_LABELS.
+- `useEffect` в SectionView запрещён секцией 4p — делегирование клика и
+  обогащение строки решают задачу без эффектов.
+
+## Открытые TODO после 5.2 (все — в §12 07)
+
+- `CATEGORY_TYPES` → TaxonomySelector по каталогу (5.4).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **5.4 (Характеристики/Обогащение/Таксономия UI)**:
+  `client/src/components/edit/ElementEditor.tsx` (блок «Анализ влияния»,
+  `SaveOutcome`, вариант modal — место для CharacteristicSlider и
+  EnrichmentPanel), `CategoryEditor.tsx` (select типа → TaxonomySelector,
+  RangeField → CharacteristicSlider), `client/src/api/elements.ts`,
+  `NodePanel.tsx` (проп onEdit — образец интеграции), UI-кит блоки 1/2/8.
+- **5.5 (Representation Transformer)**: `SectionView.tsx`
+  (`addInlineEditButtons`/`inlineEditor` — образец кнопок в документе),
+  `GraphModal.tsx` (пропы редактора), `EditModal.tsx` (`initialRegen`).
+- **6.2 (BillingPage/AdminPromptsPage)**: `VersionHistory.tsx`
+  (`diffSnapshots`, классы `.version-*`/`.diff*` уже в globals.css —
+  переиспользовать для версий шаблонов).
+- **Любая клиентская беседа**: `SynthesisPage.tsx` — `isOwner`-гейты
+  (новые кнопки правок вешать под `isOwner`), `DocumentView.tsx`
+  (`inlineEditorFor`).

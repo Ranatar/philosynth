@@ -14,7 +14,7 @@ import type { SynthesisFull } from "@philosynth/shared/types/synthesis";
 
 import { DocumentFooter } from "./DocumentFooter";
 import { DocumentHeader } from "./DocumentHeader";
-import { SectionView } from "./SectionView";
+import { SectionView, type EditableRowRef } from "./SectionView";
 import { TableOfContents } from "./TableOfContents";
 
 export interface DocumentViewProps {
@@ -28,6 +28,11 @@ export interface DocumentViewProps {
   /** Беседа 3.2: слот «под шапкой документа» — секция генеалогии
    *  (аналог docHeaderExtras исходника; рендерит SynthesisPage) */
   afterHeader?: React.ReactNode;
+  /** Беседа 5.2 (п. 7): правка строк таблиц тезисов/глоссария по месту */
+  editable?: boolean | undefined;
+  onRowEdit?: ((row: EditableRowRef) => void) | undefined;
+  /** Редактор по месту для раздела с этим ключом */
+  inlineEditorFor?: ((sectionKey: string) => React.ReactNode) | undefined;
 }
 
 export function DocumentView({
@@ -36,6 +41,9 @@ export function DocumentView({
   sections,
   onOpenLog,
   afterHeader,
+  editable = false,
+  onRowEdit,
+  inlineEditorFor,
 }: DocumentViewProps) {
   const byKey = new Map(
     sections.filter((s) => s.key !== "capsule").map((s) => [s.key, s]),
@@ -60,7 +68,13 @@ export function DocumentView({
           summaries={summaries}
         />
         {ordered.map((section) => (
-          <SectionView key={section.key} section={section} />
+          <SectionView
+            key={section.key}
+            section={section}
+            editable={editable}
+            onRowEdit={onRowEdit}
+            inlineEditor={inlineEditorFor?.(section.key)}
+          />
         ))}
       </div>
       <DocumentFooter synthesis={synthesis} onOpenLog={onOpenLog} />

@@ -72,9 +72,14 @@ const labelOf = (key: string): string =>
 export interface EditModalProps {
   open: boolean;
   onClose: () => void;
+  /** Беседа 5.2: разделы, предотмеченные на перегенерацию при открытии
+   *  («Перегенерировать затронутые» ElementEditor → план; единственный
+   *  путь запуска перегенерации — планы §2.6). Ключи вне документа
+   *  игнорируются. */
+  initialRegen?: readonly string[] | undefined;
 }
 
-export function EditModal({ open, onClose }: EditModalProps) {
+export function EditModal({ open, onClose, initialRegen }: EditModalProps) {
   const synthesis = useSynthesisStore((s) => s.synthesis);
   const summaries = useSynthesisStore((s) => s.summaries);
   const sections = useSynthesisStore((s) => s.sections);
@@ -139,7 +144,9 @@ export function EditModal({ open, onClose }: EditModalProps) {
   // сбрасывал _editPlan до построения карточек); secCtx — из разделов
   useEffect(() => {
     if (!open) return;
-    setRegenChecked(new Set());
+    // 5.2: предотметка затронутых разделов (только присутствующие в документе)
+    const present = new Set(sections.map((s) => s.key));
+    setRegenChecked(new Set((initialRegen ?? []).filter((k) => present.has(k))));
     setRemoveChecked(new Set());
     setAddChecked(new Set());
     const ctx: Record<string, string> = {};

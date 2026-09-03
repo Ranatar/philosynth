@@ -285,7 +285,10 @@ export function toPreview(
  * Оценки паузы — только для kind='gen' (computePauseEstimates, 1.4b,
  * fail-open {}); kind='plan' → {}; pausedState=null → null.
  */
-async function buildSynthesisFull(row: SynthesisRow): Promise<SynthesisFull> {
+async function buildSynthesisFull(
+  row: SynthesisRow,
+  viewerUserId: string,
+): Promise<SynthesisFull> {
   const lineageRows = await db
     .select()
     .from(synthesisLineage)
@@ -351,6 +354,10 @@ async function buildSynthesisFull(row: SynthesisRow): Promise<SynthesisFull> {
     pausedState: ps,
     pauseEstimates,
     isPublic: row.isPublic,
+    // Беседа 5.2 («По факту 5.2»): признак владения для клиентских гейтов
+    // (✎ редактора, «Изменить», режимы). Именно флаг, а не userId — у
+    // публичного синтеза id владельца читателю не раскрывается.
+    isOwner: row.userId === viewerUserId,
     docNum: row.docNum,
     sectionOrder: row.sectionOrder,
     version: {
@@ -1066,7 +1073,7 @@ synthesesRoutes.get("/:id", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
-  return c.json({ synthesis: await buildSynthesisFull(res.row) });
+  return c.json({ synthesis: await buildSynthesisFull(res.row, user.id) });
 });
 
 /* ── PATCH /syntheses/:id { title?, isPublic?, extGraphMetrics? } ────── */
@@ -1138,7 +1145,7 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
     .where(eq(syntheses.id, id))
     .returning();
   return c.json({
-    synthesis: await buildSynthesisFull(updated as SynthesisRow),
+    synthesis: await buildSynthesisFull(updated as SynthesisRow, user.id),
   });
 });
 

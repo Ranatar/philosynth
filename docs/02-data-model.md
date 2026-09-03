@@ -779,8 +779,10 @@ CREATE INDEX idx_transforms_direction ON representation_transforms(synthesis_id,
 При ручном редактировании элемента (решение 2026-09-02, аудит фаз 5–6,
 п.1 вариант «а» в суженной форме): гранулярная таблица обновляется, затем
 `element-renderer.ts` перерисовывает ТОЛЬКО затронутую таблицу и врезает
-её в `sections.html_content` через `spliceSubsectionHtml()` (утилита
-беседы 1.4b, linkedom изолирован там же).
+её в `sections.html_content` через `replaceDocTable()` (html-parser,
+беседа 5.1: замена ОДНОЙ `table.doc-table` внутри подраздела с сохранением
+`<h4>` и прозы; `spliceSubsectionHtml` 1.4b для этого не годится — заменяет
+весь подраздел. Правка 2026-09-04, беседа 5.2). linkedom изолирован там же.
 
 **Раздел целиком НЕ перерисовывается.** Гранулярные таблицы покрывают не
 весь его текст: `parseThesesFromHTML` берёт формулировку/тип/новизну из

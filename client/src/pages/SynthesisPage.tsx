@@ -25,11 +25,23 @@
  *   только при капсуле (sectionOrder содержит capsule И capsuleHtml
  *   непуст); счётчик результатов « (N)» — GET /modes при загрузке,
  *   обновление через onResultsChanged модалки.
+ * - Беседа 5.2: ручное редактирование элементов — ✎ на строках таблиц
+ *   тезисов/глоссария (SectionView → ElementEditor по месту) и в
+ *   NodePanel графа (CategoryEditor поверх GraphModal); после правки
+ *   разделы перечитываются транспортом чтения, граф — GET /categories;
+ *   «Перегенерировать затронутые» открывает EditModal с предотмеченными
+ *   разделами (единственный путь — планы §2.6).
  */
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getCategories } from "../api/elements";
+import { getCategories, getGlossary, getTheses } from "../api/elements";
+import {
+  ElementEditor,
+  type EditableElement,
+  type SaveOutcome,
+} from "../components/edit/ElementEditor";
+import type { EditableRowRef } from "../components/document/SectionView";
 import { getAncestors } from "../api/lineage";
 import { DocumentView } from "../components/document/DocumentView";
 import { GenealogyTree } from "../components/lineage/GenealogyTree";
@@ -71,10 +83,21 @@ export function SynthesisPage() {
   const [pauseModalOpen, setPauseModalOpen] = useState(false);
   // Беседа 2.4: модалка лога контекста
   const [logOpen, setLogOpen] = useState(false);
-  // Беседа 2.3: модалка редактирования. Кнопка оптимистична для всех
-  // залогиненных (SynthesisFull не несёт userId — 1.6b); не-владельцу
-  // сервер ответит 403, модалка покажет ошибку плана.
+  // Беседа 2.3: модалка редактирования. С 5.2 кнопка — только владельцу
+  // (SynthesisFull.isOwner); до того была оптимистична для всех, 403
+  // показывался ошибкой плана.
   const [editOpen, setEditOpen] = useState(false);
+  // Беседа 5.2: предотмеченные на перегенерацию разделы при открытии
+  // EditModal из «Перегенерировать затронутые» ElementEditor
+  const [editInitialRegen, setEditInitialRegen] = useState<string[] | undefined>(
+    undefined,
+  );
+  // Беседа 5.2 (п. 7): редактор строки таблицы тезисов/глоссария по месту
+  const [inlineEdit, setInlineEdit] = useState<{
+    sectionKey: string;
+    target: EditableElement;
+  } | null>(null);
+  const [inlineEditError, setInlineEditError] = useState<string | null>(null);
 
   // Беседа 1.7: граф категорий — данные грузятся по клику на кнопку
   const [graphOpen, setGraphOpen] = useState(false);
@@ -102,6 +125,103 @@ export function SynthesisPage() {
     if (id) void load(id);
     return () => clear();
   }, [id, load, clear]);
+
+  /* ── Беседа 5.2: ручное редактирование элементов ──
+     Кнопки ✎ на строках таблиц (SectionView) и «✎ Редактировать» в
+     NodePanel (GraphModal). Владение — оптимистично (как «✎ Изменить»
+     2.3); блокировка по status='generating'/paused (сервер: 409). */
+  const openInlineEditor = useCallback(
+    async (row: EditableRowRef) => {
+      if (!id) return;
+      setInlineEditError(null);
+      try {
+        if (row.kind === "thesis") {
+          const theses = await getTheses(id);
+          const num = Number.parseInt(row.cells[0] ?? "", 10);
+          const t =
+            (Number.isFinite(num) ? theses.find((x) => x.thesisNum === num) : undefined) ??
+            theses[row.rowIndex];
+          if (!t) throw new Error("Строка тезиса не найдена в данных синтеза");
+          setInlineEdit({
+            sectionKey: row.sectionKey,
+            target: { kind: "thesis", element: t },
+          });
+        } else {
+          const terms = [...(await getGlossary(id))].sort(
+            (a, b) => a.position - b.position,
+          );
+          const byText = terms.find((x) => x.term === (row.cells[0] ?? ""));
+          const g = terms[row.rowIndex] ?? byText;
+          const chosen =
+            g && byText && g.id !== byText.id && g.term !== (row.cells[0] ?? "")
+              ? byText
+              : g;
+          if (!chosen) throw new Error("Строка глоссария не найдена в данных синтеза");
+          const columnKeys = [
+            ...new Set([
+              ...row.headers.slice(2),
+              ...terms.flatMap((x) => Object.keys(x.extraColumns)),
+            ]),
+          ];
+          setInlineEdit({
+            sectionKey: row.sectionKey,
+            target: { kind: "glossary_term", element: chosen, columnKeys },
+          });
+        }
+      } catch (err) {
+        setInlineEditError(
+          err instanceof Error ? err.message : "Не удалось открыть редактор",
+        );
+      }
+    },
+    [id],
+  );
+
+  // После PATCH/отката: элемент в редакторе — из ответа, разделы —
+  // транспортом чтения (html_content перерисован сервером 5.1)
+  const handleInlineSaved = useCallback(
+    (outcome: SaveOutcome) => {
+      setInlineEdit((cur) =>
+        cur
+          ? {
+              sectionKey: cur.sectionKey,
+              target: {
+                ...cur.target,
+                element: outcome.element,
+              } as EditableElement,
+            }
+          : cur,
+      );
+      void reloadSections();
+    },
+    [reloadSections],
+  );
+
+  const handleRegenerateAffected = useCallback((keys: string[]) => {
+    setInlineEdit(null);
+    setGraphOpen(false);
+    setEditInitialRegen(keys);
+    setEditOpen(true);
+  }, []);
+
+  const refreshGraphData = useCallback(async () => {
+    if (!id) return;
+    try {
+      setGraphData(await getCategories(id));
+    } catch {
+      /* граф — вторичное представление; сбой перечитки не критичен */
+    }
+  }, [id]);
+
+  const handleGraphElementSaved = useCallback(() => {
+    void reloadSections();
+    void refreshGraphData();
+  }, [reloadSections, refreshGraphData]);
+
+  const handleAutoRenamed = useCallback(() => {
+    void reloadSections();
+    void refreshGraphData();
+  }, [reloadSections, refreshGraphData]);
 
   /* ── Беседа 4.1: режимы. Видимость кнопок — порт updateModeButtons
      [11799]: hasCapsule = capsule в sectionOrder И capsuleHTML непуст;
@@ -176,6 +296,15 @@ export function SynthesisPage() {
   }, [synthesisIdLoaded, isMetaSynthesis]);
 
   const live = synthesis?.status === "generating" || synthesis?.status === "paused";
+  // Беседа 5.2 («По факту 5.2»): владение — из SynthesisFull.isOwner
+  // (оптимизм «покажем всем, 403 решит» 2.3/4.1 снят тем же флагом)
+  const isOwner = synthesis?.isOwner ?? false;
+
+  // Смена синтеза — редактор по месту закрывается
+  useEffect(() => {
+    setInlineEdit(null);
+    setInlineEditError(null);
+  }, [id]);
 
   // П. 8: подписка «только просмотр» — viewOnly не запускает генерацию.
   // Беседа 2.4: подписка держится и при status='ready' — standalone-
@@ -311,15 +440,18 @@ export function SynthesisPage() {
           >
             {graphLoading ? "Загрузка…" : "◈ Граф"}
           </button>
-          <button
-            type="button"
-            className="action-btn"
-            onClick={() => setEditOpen(true)}
-            disabled={live}
-          >
-            ✎ Изменить
-          </button>
+          {isOwner && (
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => setEditOpen(true)}
+              disabled={live}
+            >
+              ✎ Изменить
+            </button>
+          )}
           {hasCapsule &&
+            isOwner &&
             MODE_ORDER.map((mk) => (
               <button
                 key={mk}
@@ -402,11 +534,35 @@ export function SynthesisPage() {
         </div>
       )}
 
+      {inlineEditError && (
+        <div className="callout warning">
+          <span className="callout-label">Редактор</span>
+          {inlineEditError}
+        </div>
+      )}
+
       <DocumentView
         synthesis={synthesis}
         summaries={summaries}
         sections={sections}
         onOpenLog={() => setLogOpen(true)}
+        editable={isOwner && !live}
+        onRowEdit={(row) => void openInlineEditor(row)}
+        inlineEditorFor={(key) =>
+          inlineEdit && inlineEdit.sectionKey === key ? (
+            <ElementEditor
+              key={inlineEdit.target.element.id}
+              synthesisId={synthesis.id}
+              target={inlineEdit.target}
+              disabled={live}
+              startInEditMode
+              onSaved={handleInlineSaved}
+              onAutoRenamed={handleAutoRenamed}
+              onRegenerateAffected={handleRegenerateAffected}
+              onClose={() => setInlineEdit(null)}
+            />
+          ) : undefined
+        }
         afterHeader={
           // Беседа 3.2 (п. 4): «Генеалогическое древо» — только для
           // мета-синтезов; details открыт (updateGenealogyInHeader:
@@ -460,7 +616,14 @@ export function SynthesisPage() {
       )}
 
       {/* Беседа 2.3: модалка редактирования (Edit Modal + Cascade Panel) */}
-      <EditModal open={editOpen} onClose={() => setEditOpen(false)} />
+      <EditModal
+        open={editOpen}
+        initialRegen={editInitialRegen}
+        onClose={() => {
+          setEditOpen(false);
+          setEditInitialRegen(undefined);
+        }}
+      />
 
       <PauseModal
         open={pauseModalOpen && paused}
@@ -491,6 +654,10 @@ export function SynthesisPage() {
         extGraphMetrics={synthesis.extGraphMetrics}
         onClose={() => setGraphOpen(false)}
         synthesisId={synthesis.id}
+        editable={isOwner && !live}
+        editDisabled={live}
+        onElementSaved={handleGraphElementSaved}
+        onRegenerateAffected={handleRegenerateAffected}
       />
     </div>
   );
