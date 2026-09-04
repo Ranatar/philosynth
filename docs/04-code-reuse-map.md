@@ -301,9 +301,9 @@
 | `client/components/EditPlanPanel.tsx` | Визуализация плана редактирования |
 | `client/stores/*.ts` | Zustand stores |
 | `server/services/element-taxonomy.ts` | Каталог типов, нечёткая нормализация, справочник для поиска/фильтрации (идея из предыдущего проекта) |
-| `server/services/element-enrichment.ts` | Точечные Claude-запросы для обогащения элементов (идея из предыдущего проекта) |
-| `server/routes/taxonomy.ts` | API каталогов типов |
-| `server/routes/enrichment.ts` | API обогащения элементов |
+| `server/services/element-enrichment.ts` | Точечные Claude-запросы для обогащения элементов (идея из предыдущего проекта) — ФАКТ (5.3): enrichCategory/enrichEdge/justifyCharacteristic под withGenerationSlot, стрим streamWithRetries → enrichment_delta/enrichment_done, SYS = buildSYS(mode), промпты из Registry (enrichment-templates), парсинг трёх data-section обоснования, getEnrichments/getJustifications, разъём setUsageRecorder (→ 6.1); чистые ядра buildCategoryVars/buildEdgeVars/buildCharacteristicVars — дрейф-контроль с шаблонами (integration-check 4ad) |
+| `server/routes/taxonomy.ts` | API каталогов типов — ФАКТ (5.3): пять обёрток §2.13 над element-taxonomy 0.3b, /api/v1/taxonomy; createCustomType += defaultDirection |
+| `server/routes/enrichment.ts` | API обогащения элементов — ФАКТ (5.3): пять роутов §2.14; POST — владелец/409/синхронная валидация (диапазон по характеристике) + фон, GET — владелец или публичный |
 | `scripts/seed-taxonomy.ts` | Начальное заполнение каталогов (18 типов категорий + 29 типов связей) |
 | `client/components/edit/ElementEditor.tsx`, `CategoryEditor.tsx`, `ThesisEditor.tsx`, `GlossaryTermEditor.tsx`, `VersionHistory.tsx` | НОВОЕ (5.2, ФАКТ 2026-09-04): редактор элемента по месту (просмотр/правка, PATCH только изменившихся полей, блок «Анализ влияния» с htmlSync), специализированные формы, история версий с diff по полям и откатом; `client/api/elements.ts` += 12 функций §2.4; интеграция: `NodePanel.onEdit` + `GraphModal` (модальный редактор поверх графа, `GNode.dbId` в graph-utils), `SectionView.addInlineEditButtons` (✎ в HTML-строке) + слот `inlineEditor`, `EditModal.initialRegen`; `SynthesisFull.isOwner` (routes/syntheses) — гейты клиента |
 | `client/components/edit/CharacteristicSlider.tsx` | Слайдер характеристики + кнопка «Обоснование» |

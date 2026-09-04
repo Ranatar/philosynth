@@ -23,6 +23,7 @@ import { and, eq, max } from "drizzle-orm";
 import { closeDb, db, schema } from "../server/db/index.js";
 import { SEED_PROMPT_TEMPLATES } from "../server/config/prompt-templates.js";
 import { SEED_SECTION_TEMPLATES } from "../server/config/section-templates.js";
+import { SEED_ENRICHMENT_TEMPLATES } from "../server/config/enrichment-templates.js";
 
 const { promptTemplates } = schema;
 
@@ -31,7 +32,15 @@ const { promptTemplates } = schema;
  * (server/config/section-templates.ts, генератор
  * scripts/extract-section-templates.mjs) — закрытие TODO-3 беседы 0.3.
  */
-const ALL_TEMPLATES = [...SEED_PROMPT_TEMPLATES, ...SEED_SECTION_TEMPLATES];
+/**
+ * Беседа 5.3: шесть шаблонов Element Enrichment enrichment.* (03 §2.14,
+ * server/config/enrichment-templates.ts — новые тексты, не из исходника).
+ */
+const ALL_TEMPLATES = [
+  ...SEED_PROMPT_TEMPLATES,
+  ...SEED_SECTION_TEMPLATES,
+  ...SEED_ENRICHMENT_TEMPLATES,
+];
 
 interface Report {
   created: string[];
@@ -89,7 +98,8 @@ async function seedOne(
 async function main(): Promise<void> {
   console.log(
     `Заполнение prompt_templates: ${ALL_TEMPLATES.length} шаблонов ` +
-      `(${SEED_PROMPT_TEMPLATES.length} из 0.3 + ${SEED_SECTION_TEMPLATES.length} section.* из 1.2)…`,
+      `(${SEED_PROMPT_TEMPLATES.length} из 0.3 + ${SEED_SECTION_TEMPLATES.length} section.* из 1.2 ` +
+      `+ ${SEED_ENRICHMENT_TEMPLATES.length} enrichment.* из 5.3)…`,
   );
   const report: Report = { created: [], updated: [], skipped: [], failed: [] };
 

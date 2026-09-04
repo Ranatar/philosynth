@@ -240,6 +240,29 @@ export type EnrichmentType =
   | "evolution"
   | "characteristic";
 
+/** Типы обогащения категории (03 §2.14, канон 2026-09-02) */
+export type CategoryEnrichmentType = "description" | "evolution" | "justification";
+/** Типы обогащения связи */
+export type EdgeEnrichmentType = "justification" | "counterarguments";
+
+/** Тело POST /syntheses/:id/enrich/category/:catId */
+export interface EnrichCategoryInput {
+  type: CategoryEnrichmentType;
+}
+/** Тело POST /syntheses/:id/enrich/edge/:edgeId */
+export interface EnrichEdgeInput {
+  type: EdgeEnrichmentType;
+}
+/** Тело POST /syntheses/:id/justify-characteristic */
+export interface JustifyCharacteristicInput {
+  elementId: string;
+  elementType: "category" | "edge";
+  /** snake_case колонки (centrality, historical_significance, …);
+   *  принимаются и camelCase-имена DTO — см. shared/constants/characteristics */
+  characteristic: string;
+  value: number;
+}
+
 /** Строка element_enrichments */
 export interface ElementEnrichment {
   id: string;

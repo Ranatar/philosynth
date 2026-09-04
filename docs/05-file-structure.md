@@ -30,7 +30,11 @@ philosynth-service/
 │       │   ├── section-labels.ts       # KEY_LABELS, SECTION_LABELS (KEY_LABELS, SECTION_LABELS)
 │       │   ├── ctx-keys.ts             # CTX_LABELS (ALL_CTX_KEYS удалён в v11; перечень ключей — из CTX_LABELS)
 │       │   ├── phil-filename.ts        # PHIL_FILENAME (PHIL_FILENAME)
-│       │   └── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (METHOD_CODE, LEVEL_CODE)
+│       │   ├── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (METHOD_CODE, LEVEL_CODE)
+│       │   └── characteristics.ts      # Характеристики категорий (8) и связей (6) с
+│       │                               # диапазонами, resolveCharacteristic (алиасы
+│       │                               # depth/camelCase), validateCharacteristicValue
+│       │                               # (5.3; нужны серверу и слайдерам 5.4)
 │       │
 │       ├── types/
 │       │   ├── synthesis.ts            # SynthesisParams, SynthesisFull, SynthesisPreview
@@ -90,7 +94,10 @@ philosynth-service/
 │   │   │                               # versions/rollback, auto-rename, capsule
 │   │   ├── transforms.ts               # POST transform graph-to-theses / theses-to-graph, history, rollback
 │   │   ├── taxonomy.ts                 # GET/POST category-types, relationship-types, normalize
+│   │   │                               # (СДЕЛАНО 5.3; монтируется на /api/v1/taxonomy)
 │   │   ├── enrichment.ts               # POST enrich/category, enrich/edge, justify-characteristic
+│   │   │                               # + GET enrichments/justifications (СДЕЛАНО 5.3;
+│   │   │                               #  POST → { ok:true }, результат по WS)
 │   │   ├── generation.ts               # POST regenerate, regenerate-subsection
 │   │   ├── plans.ts                    # CRUD /plans, POST execute
 │   │   ├── modes.ts                    # POST run, GET results, DELETE
@@ -258,7 +265,9 @@ philosynth-service/
 │   │   │                              # PARENT_INTRA_DEPS, PARENT_FIELD_ORDER/LABELS,
 │   │   │                              # PARENT_CONTEXT_SCHEMA_ID/VERSION (v11)
 │   │   ├── cardinality-prompts.ts     # MD_BY_CARD (6×3), SD_BY_CARD (3×3) (v11)
-│   │   └── mode-deps.ts               # MODE_DEPS (v11)
+│   │   ├── mode-deps.ts               # MODE_DEPS (v11)
+│   │   └── enrichment-templates.ts    # 6 шаблонов enrichment.* (5.3; новые тексты,
+│   │                                  # не из исходника; JUSTIFICATION_SECTIONS)
 │   │
 │   ├── utils/
 │   │   ├── deep-merge.ts               # deepMergeUniq (deepMergeUniq())

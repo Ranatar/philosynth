@@ -22,6 +22,8 @@ import { logsRoutes } from "./routes/logs.js";
 import { plansRoutes } from "./routes/plans.js";
 import { modesRoutes } from "./routes/modes.js";
 import { exportRoutes } from "./routes/export.js";
+import { enrichmentRoutes } from "./routes/enrichment.js";
+import { taxonomyRoutes } from "./routes/taxonomy.js";
 import { importRoutes } from "./routes/import.js";
 import {
   lineageRoutes,
@@ -80,6 +82,8 @@ app.route("/api/v1/syntheses", exportRoutes); // беседа 4.2 (03 §2.11)
 app.route("/api/v1/syntheses", importRoutes); // беседа 4.3 (03 §2.2, POST /import)
 app.route("/api/v1/syntheses", lineageRoutes); // беседа 3.1 (03 §2.8)
 app.route("/api/v1/lineage", lineageSearchRoutes); // беседа 3.1 (03 §2.8)
+app.route("/api/v1/syntheses", enrichmentRoutes); // беседа 5.3 (03 §2.14)
+app.route("/api/v1/taxonomy", taxonomyRoutes); // беседа 5.3 (03 §2.13; дыра 0.3b)
 
 /* ── WebSocket (auth до upgrade — внутри registerWebSocket) ──────────── */
 

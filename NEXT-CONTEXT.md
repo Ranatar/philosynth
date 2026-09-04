@@ -4163,3 +4163,119 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
 - **Любая клиентская беседа**: `SynthesisPage.tsx` — `isOwner`-гейты
   (новые кнопки правок вешать под `isOwner`), `DocumentView.tsx`
   (`inlineEditorFor`).
+
+---
+
+# Беседа 5.3 — Extended Characteristics + Enrichment Service (бэкенд) [ЗАКРЫТА 2026-09-04]
+
+> Запрос 1 + смоук tests/smoke-53-request1.mjs (59 ✓, без БД/сети: шаблоны
+> ↔ переменные сервиса на чистых ядрах, канон ключей, диапазоны, роуты) +
+> все тестовые запросы R2–R6 одним заходом tests/test-53-requests2-6.mjs
+> (87 ✓ ×2: живой сервер :3153, PG16 + Redis, три сида, мок Claude SSE на
+> :3853 через ANTHROPIC_BASE_URL, WS-клиент — глобальный WebSocket Node 22)
+> + завершение: typecheck (все конфиги) 0, audit ✓, check:integration +=
+> 2t/4ad/5v → INTEGRATION OK, check-map-04 0 расхождений, css-parity A/B = 0,
+> vite build чисто; доки — scripts/patch-docs-conv53.py (18 правок, повтор
+> skip×18). Исходник не нужен — функциональность новая. Браузерных тестов
+> нет (бэкенд).
+
+## Что создано
+
+- `server/services/element-enrichment.ts` — `enrichCategory` /
+  `enrichEdge` / `justifyCharacteristic(handle, …)` под уже занятым
+  generation-слотом (a–e первого запроса: элемент + контекст синтеза →
+  промпт Registry → стрим `streamWithRetries` c `enrichment_delta` → INSERT
+  → `recordUsage` → `enrichment_done`), обёртки со своим слотом
+  `startEnrichment` / `startJustification` (ошибки внутри → `stream_error`
+  с `sectionKey "enrich:{тип}:{id}"`; ошибки ДО слота пробрасываются
+  вызывающему), `getEnrichments` / `getJustifications` (DESC, фильтр
+  elementType, доступ по synthesis_id), `validateJustifyInput`,
+  `parseJustificationHtml` (три data-section → колонки, fail-soft),
+  разъём `setUsageRecorder` (no-op), чистые ядра
+  `buildSynthesisContextText` / `buildCategoryVars` / `buildEdgeVars` /
+  `buildCharacteristicVars` (экспорт ради дрейф-контроля), DTO-мапперы,
+  `EnrichmentError` (NOT_FOUND | VALIDATION_ERROR + details).
+- `server/config/enrichment-templates.ts` — шесть шаблонов канона +
+  `JUSTIFICATION_SECTIONS`; `scripts/seed-prompts.ts` сеет их (итого 259).
+- `server/routes/enrichment.ts` — пять роутов §2.14 (POST: ownerEditGate
+  404/403/409 → синхронная валидация 400 → синхронный 404 элемента → фон
+  → `{ ok: true }`; GET: loadSynthesisForRead, `?elementType`).
+- `server/routes/taxonomy.ts` — пять обёрток §2.13, `/api/v1/taxonomy`
+  (201 на создание, дубликат → 400 по контракту `TaxonomyValidationError`).
+- `packages/shared/constants/characteristics.ts` — 8 характеристик
+  категорий / 6 связей: key (snake_case), dtoField, labelRu, min/max,
+  integer; `resolveCharacteristic` (алиасы depth/depthScore/camelCase),
+  `validateCharacteristicValue`.
+- `packages/shared/types/ws-messages.ts` += `WsStartEnrichment`;
+  `WsEnrichmentDone` += `enrichmentId`, `content`.
+  `packages/shared/types/elements.ts` += `CategoryEnrichmentType`,
+  `EdgeEnrichmentType`, входы трёх POST.
+- `server/ws/handler.ts` += `start_enrichment` (явная проверка владельца);
+  `server/index.ts` — два монтирования;
+  `server/services/element-taxonomy.ts` — `createCustomType` +=
+  необязательный `defaultDirection`, `RELATIONSHIP_DIRECTIONS`.
+- integration-check += 2t (модули), 4ad (канон ключей; ДРЕЙФ шаблоны ↔
+  переменные в обе стороны; три data-section ↔ парсер; dtoField ↔ строки
+  таблиц; диапазоны п.18; роуты/монтирование/WS; без bumpTotals; слот;
+  разъём; SYS mode; посев), 5v (живая история против БД + CASCADE).
+
+## Решения/адаптации (все — в шапке модуля и «По факту 5.3» в 07)
+
+1. POST → `{ ok: true }` + WS (п.5 03 §3.1), не `{ enrichment }` из §2.14;
+   `enrichment_done` += enrichmentId/content.
+2. Общий generation-слот синтеза: 409 при активной операции в обе стороны;
+   паузы нет.
+3. SYS = `buildSYS(p, { outputMode: "mode" })`; формат — в шаблоне.
+4. Стоимость только в строке обогащения; `bumpTotals` нет; `generation_log`
+   не пишется.
+5. Обоснование характеристики: `enrichment_done` type 'characteristic';
+   диапазон по характеристике; WS его не запускает (долг §12 → 5.4).
+6. Шесть ключей, не пять; `defaultDirection` доведён до сервиса 0.3b.
+
+## Знания/грабли, добытые в 5.3
+
+- В песочнике PG/Redis могут отсутствовать вовсе: `apt-get install
+  postgresql redis-server` (nodesource-источник удалить, `apt-get update`
+  обязателен), `service postgresql start`, роль/БД
+  philosynth/philosynth_dev/philosynth создать через `su postgres`,
+  `.env` из `.env.example` для drizzle-kit migrate.
+- `pgrep -f "server/index"` ловит собственную оболочку — проверять
+  `ps aux | grep "[s]erver/index"` или `ss -ltnp` по порту.
+- Слот `withGenerationSlot` ставится синхронно до первого await, поэтому
+  `startEnrichment(...)` надо ВЫЗВАТЬ (не отложить) до `c.json` — тогда
+  второй POST получает 409 из `ownerEditGate` сразу (тест R2 это ловит).
+- Мок Claude для обогащений выбирает ответ по маркеру промпта
+  («ЭЛЕМЕНТ: » → три data-section, иначе enrichment-result) — при смене
+  текста шаблона обоснования маркер в моке проверить.
+- Смоук без БД может импортировать сервис, тянущий `db`/`generation-service`
+  — пока нет запросов, соединение не открывается (tsx завершается штатно
+  при `process.exit`).
+
+## Открытые TODO после 5.3 (все — в §12 07)
+
+- WS-запуск обоснования характеристики (start_enrichment без
+  characteristic/value) → 5.4.
+- Учёт обогащений в биллинге: `setUsageRecorder` заполнить в 6.1 (строка
+  §12 дополнена).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **5.4 (Характеристики/Обогащение/Таксономия UI)**:
+  `server/routes/enrichment.ts` + `server/routes/taxonomy.ts` (контракты),
+  `packages/shared/constants/characteristics.ts` (слайдеры: min/max/step
+  по `integer`, подписи labelRu), `packages/shared/types/elements.ts`
+  (входы, ElementEnrichment, CharacteristicJustification, CategoryType,
+  RelationshipType, TypeMatch), `packages/shared/types/ws-messages.ts`
+  (enrichment_delta/enrichment_done с enrichmentId/content,
+  start_enrichment), `client/src/hooks/useStreamingGeneration.ts` (образец
+  guard'а `mode:` для дельт — обогащение идёт своим типом сообщения, не
+  stream_delta), `client/src/api/elements.ts` (расширять либо создать
+  api/enrichment.ts и api/taxonomy.ts по 05), ElementEditor/CategoryEditor
+  5.2 (RangeField → CharacteristicSlider, select → TaxonomySelector).
+- **5.5 (Representation Transformer)**: `element-enrichment.ts` — образец
+  «малой операции под слотом со своим типом WS-сообщений» (паттерн
+  startEnrichment/reportStreamError), `enrichment-templates.ts` — образец
+  ручных шаблонов вне генерата.
+- **6.1 (billing)**: `setUsageRecorder` + `EnrichmentUsageContext`
+  (element-enrichment) — единственная точка учёта обогащений; `apiKey`
+  берётся из env в `streamEnrichment` (TODO(6.1) — BYO-Key).

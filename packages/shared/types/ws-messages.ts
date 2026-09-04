@@ -102,6 +102,22 @@ export interface WsCancel {
   synthesisId: string;
 }
 
+/**
+ * Запуск обогащения элемента (беседа 5.3; 03-spec §3.1, правка
+ * 2026-09-02). Альтернативный вход для клиента, уже держащего сокет:
+ * операцию создаёт HTTP-роут §2.14, WS-сообщение идемпотентно при
+ * активной операции (иначе GENERATION_IN_PROGRESS → stream_error).
+ * Обоснование характеристики (type 'characteristic') требует
+ * characteristic+value и запускается ТОЛЬКО HTTP-роутом.
+ */
+export interface WsStartEnrichment {
+  type: "start_enrichment";
+  synthesisId: string;
+  elementType: "category" | "edge";
+  elementId: string;
+  enrichmentType: string;
+}
+
 export interface WsPing {
   type: "ping";
 }
@@ -116,6 +132,7 @@ export type WsClientMessage =
   | WsResumeGeneration
   | WsResumePlan
   | WsCancel
+  | WsStartEnrichment
   | WsPing;
 
 /* ── Сервер → Клиент (03-spec §3.2) ──────────────────────────────────── */
@@ -255,8 +272,14 @@ export interface WsEnrichmentDone {
   type: "enrichment_done";
   synthesisId: string;
   elementId: string;
+  /** Тип обогащения; 'characteristic' — обоснование характеристики
+   *  (тогда enrichmentId — id строки characteristic_justifications) */
   enrichmentType: string;
   usage: TokenUsage;
+  /** АДДИТИВНО (беседа 5.3, паритет mode_done.html): id сохранённой
+   *  строки и её содержимое — клиенту не нужен повторный GET */
+  enrichmentId: string;
+  content: string;
 }
 
 /** Reconnect (03-spec §3.3): сервер продолжает стрим с накопленного буфера */

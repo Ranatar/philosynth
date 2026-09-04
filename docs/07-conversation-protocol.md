@@ -1,5 +1,21 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-09-04 (итоги беседы 5.3)**: Enrichment Service закрыт
+> (запрос 1 + смоук tests/smoke-53-request1.mjs 59 ✓ + все тестовые
+> запросы tests/test-53-requests2-6.mjs 87 ✓ ×2 (живой сервер + мок
+> Claude SSE); check:integration += 2t/4ad/5v с дрейф-контролем
+> «шаблоны enrichment.* ↔ переменные сервиса»). Дыры, закрытые этим
+> патчем (глава «По факту 5.3»): 03 §2.14 обещал `POST → { enrichment }`,
+> а решение п.5 §3.1 — `{ ok: true }` + WS: выбран п.5, `enrichment_done`
+> += enrichmentId/content; «пять ключей Registry» при шести
+> перечисленных; `createCustomType` 0.3b терял `defaultDirection`
+> из §2.13; `start_enrichment` не несёт characteristic/value —
+> обоснование характеристики запускается только HTTP; п.18 пишет
+> `depth` при колонке `depth_score` → резолвер алиасов в
+> shared/constants/characteristics. Грабля стенда: в песочнике не было
+> PG/Redis — ставить apt-get (nodesource-источник удалить), БД
+> philosynth/philosynth_dev создать вручную.
+>
 > **Правки 2026-09-04 (итоги беседы 5.2)**: Element Editor UI закрыт
 > (запрос 1 + смоук tests/smoke-52-request1.mjs 26 ✓ + все тестовые
 > запросы tests/test-52-requests2-5.mjs 73 ✓ ×2 (браузер, Chrome);
@@ -3303,7 +3319,8 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
    - getJustifications(elementId, elementType): история обоснований
 
 2. Промптовые шаблоны (добавить в seed-prompts.ts или через Admin UI) —
-   канон 2026-09-02, 03 §2.14, пять ключей:
+   канон 2026-09-02, 03 §2.14, шесть ключей (по факту 5.3 — файл
+   server/config/enrichment-templates.ts):
    - enrichment.category.description
    - enrichment.category.evolution
    - enrichment.category.justification
@@ -3356,6 +3373,47 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
 
+**По факту 5.3 (2026-09-04) — отступления от буквы первого запроса:**
+
+1. **Ответ POST-роутов §2.14 — `{ ok: true }`, результат — по WS**
+   (`enrichment_delta` → `enrichment_done`), а не `{ enrichment }` из тела
+   §2.14: решение п.5 §3.1 (2026-09-02, «HTTP создаёт операцию, WS
+   подписывает») и паритет режимов 4.1. Чтобы клиенту не понадобился
+   повторный GET, `enrichment_done` аддитивно несёт `enrichmentId` и
+   `content` (аналог `mode_done.html`).
+2. **Обогащение исполняется под generation-слотом синтеза**
+   (`withGenerationSlot`): второй запуск при активной операции → 409
+   `GENERATION_IN_PROGRESS` (идемпотентность п.5), гонки с правками 5.1 и
+   генерацией исключены. Паузы (pausedState) у обогащений нет — как у
+   режимов; обрыв → `stream_error` с `sectionKey "enrich:{тип}:{id}"`.
+3. **Системный промпт — `buildSYS(p, { outputMode: "mode" })`**: формат
+   ответа задаёт сам шаблон; седьмого ключа `enrichment.system` канон
+   §2.14 не предусматривает, поэтому не заведён. Ключей ШЕСТЬ («пять»
+   в тексте — ошибка счёта). Шаблоны — `server/config/enrichment-
+   templates.ts` (новые тексты, генератора нет; сеются `seed-prompts`).
+4. **Стоимость** — в строке `element_enrichments` /
+   `characteristic_justifications`; `bumpTotals` не вызывается (01 §4.9),
+   `generation_log` не пишется (`log_type` не предусматривает).
+   Биллинг — разъём `setUsageRecorder` (no-op; строку `api_usage` и
+   `used_enrichments` пишет 6.1 — долг §12 внесён ранее).
+5. **Обоснование характеристики** — `enrichment_done` с `enrichmentType:
+   'characteristic'` и `enrichmentId` = id строки
+   `characteristic_justifications` (своего финала у §3.2 нет). Ответ Claude
+   — три `data-section` «Основания / Ограничения / Альтернативные подходы»
+   → три колонки; без секций весь текст идёт в `justification` (fail-soft).
+   Диапазон значения — по характеристике (`shared/constants/
+   characteristics.ts`: 8 у категорий, 6 у связей; `innovation_degree`
+   целое [1,5]); принимаются snake_case, camelCase DTO и `depth`
+   (п.18) → канонический `depth_score`. WS `start_enrichment` не несёт
+   `characteristic`/`value` — обоснование запускается только HTTP-роутом.
+6. **`routes/taxonomy.ts`** — тонкие обёртки над 0.3b на
+   `/api/v1/taxonomy`; `createCustomType` получил необязательный
+   `defaultDirection` (§2.13 его требовал, сервис 0.3b терял); дубликат
+   ключа → 400 VALIDATION_ERROR (контракт `TaxonomyValidationError`).
+7. **Промпт обогащения** несёт контекст синтеза (зерно, метки метода/
+   уровня, философы и концепции-родители из lineage), поля элемента,
+   русские метки ролей (обратная `ROLE_MAP`), метрики и связи из графа.
+
 ---
 
 ### Беседа 5.4: Характеристики + Обогащение + Таксономия UI (клиент)
@@ -3363,7 +3421,7 @@ populateFromImport, buildDocStateFromImport, validateImportMeta.
 **Контекст для загрузки:**
 - `03-specification.md` (секции 2.13 Taxonomy, 2.14 Enrichment)
 - Оформление нового интерфейса: `docs/fragments-for-conversations/5-6-ui-kit.md` (бриф и таблица соответствий классам исходника), `5-6-ui-kit.css` (примитивы), `5-6-ui-kit.html` (эталон разметки)
-- Из предыдущих бесед: `server/services/element-enrichment.ts` (из 5.3), `server/services/element-taxonomy.ts` (из 0.3b), `client/components/edit/ElementEditor.tsx` (из 5.2), `client/components/graph/NodePanel.tsx` (из 1.7)
+- Из предыдущих бесед: `server/services/element-enrichment.ts` (из 5.3), `server/routes/enrichment.ts` и `server/routes/taxonomy.ts` (контракты §2.14/§2.13, «По факту 5.3»: POST → { ok:true }, результат — WS `enrichment_done` c enrichmentId/content), `packages/shared/constants/characteristics.ts` (диапазоны/подписи для CharacteristicSlider), `packages/shared/types/elements.ts` (входы обогащений, ElementEnrichment, CharacteristicJustification), `server/services/element-taxonomy.ts` (из 0.3b), `client/components/edit/ElementEditor.tsx` (из 5.2), `client/components/graph/NodePanel.tsx` (из 1.7)
 - Исходник: НЕ НУЖЕН
 
 **Первый запрос:**
@@ -4038,7 +4096,8 @@ streaming-manager.
 | Прогрев кэша Prompt Registry при старте (`warmCache` реализован в 0.3, в index.ts не подключён) | 6.1 | 0.3 | внесён 2026-09-02 (п.19) |
 | Ролевая защита маршрута `/admin/prompts` на клиенте (сейчас только RequireAuth) | 6.2 | 0.4 | внесён 2026-09-02 (п.19) |
 | UI подписок в BillingPage (бэкенд готов: 02 §2.22–2.23, 03 §2.10, subscription-service 6.1) | 6.2 | 6.1 | внесён 2026-09-02 (п.8) |
-| Учёт обогащений в биллинге (api_usage + used_enrichments; разъём в 5.3, наполнение — после 6.1) | 6.1 | 5.3 | внесён 2026-09-02 (п.10) |
+| Учёт обогащений в биллинге (api_usage + used_enrichments; разъём в 5.3, наполнение — после 6.1) | 6.1 | 5.3 | внесён 2026-09-02 (п.10); разъём `setUsageRecorder` (element-enrichment) СДЕЛАН 5.3 (2026-09-04), контекст несёт userId/synthesisId/streamKey/usage с посчитанной стоимостью |
+| Запуск обоснования характеристики по WS: `start_enrichment` (03 §3.1) не несёт characteristic/value — пока только HTTP `POST /justify-characteristic`; либо расширить сообщение в 5.4, либо зафиксировать «только HTTP» в §3.1 | 5.4 | 5.3 | внесён 2026-09-04 |
 | Показ `htmlSync.pending`/`sectionMissing` в UI редактора (обоснование тезиса без абзаца, termCategory глоссария — в html_content не отражены; сервер 5.1 отдаёт список, клиент обязан предупредить и предложить перегенерацию) | 5.2 | 5.1 | ЗАКРЫТ 5.2 (2026-09-04): `.callout.warning` с полем и разделом в блоке «Анализ влияния» ElementEditor; раздел-хозяин добавляется в «Перегенерировать затронутые» (EditModal.initialRegen) |
 | `CATEGORY_TYPES` в CategoryEditor — клиентская копия 14 типов промпта графа (select типа категории); заменить TaxonomySelector по каталогу 0.3b (18 = 14 + расширенные) с индикатором «из каталога / свободный текст»; расширенные по методу — `EXTRA_CATEGORY_TYPES` | 5.4 | 5.2 | внесён 2026-09-04 (секция 4ac сторожит ⊆ section-templates) |
 | Парсер глоссария 1.4 ищет таблицу по первому th «термин» [8027], а рендерер 5.1 — ещё и по data-section «Таблица определений»; при `lang ≠ Russian` заголовок переведён и парсер таблицу НЕ найдёт (глоссарий такого документа не попадает в glossary_terms) — унифицировать поиск по data-section | 5.5 | 5.1 (дыра 1.4) | внесён 2026-09-03 |

@@ -334,12 +334,23 @@ const KEY_RE = /^[a-z][a-z0-9_]{1,63}$/;
  * Каталоги расширяемы пользователем и админом (01-arch §4.8).
  * @throws TaxonomyValidationError — невалидный key/nameRu или занятый key.
  */
+/** Допустимые default_direction связи (02 §2.25; дефолт схемы — unidirectional). */
+export const RELATIONSHIP_DIRECTIONS = [
+  "unidirectional",
+  "bidirectional",
+  "reflexive",
+] as const;
+export type RelationshipDirection = (typeof RELATIONSHIP_DIRECTIONS)[number];
+
 export async function createCustomType(
   key: string,
   nameRu: string,
   description: string,
   kind: TaxonomyKind,
   userId: string,
+  /** Только для kind='relationship' (03 §2.13 POST /relationship-types
+   *  принимает defaultDirection; беседа 5.3 — до неё параметр терялся) */
+  defaultDirection?: RelationshipDirection | undefined,
 ): Promise<CategoryType | RelationshipType> {
   if (!KEY_RE.test(key))
     throw new TaxonomyValidationError(
@@ -389,6 +400,7 @@ export async function createCustomType(
       key,
       nameRu: trimmedName,
       description: description.trim(),
+      ...(defaultDirection ? { defaultDirection } : {}),
       isSystem: false,
       createdBy: userId,
     })

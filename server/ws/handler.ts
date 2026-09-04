@@ -17,6 +17,9 @@
  * бесед 2.2 / 4.1.
  * Reconnect-протокол §3.3 (?resume= + stream_state в Redis) — запрос 6
  * беседы 1.4.
+ * Беседа 5.3: start_enrichment → startEnrichment (element-enrichment);
+ * enrichment_delta/enrichment_done шлёт сервис по userId; ошибки —
+ * stream_error с sectionKey "enrich:{elementType}:{elementId}".
  */
 import { createNodeWebSocket } from "@hono/node-ws";
 import type { Hono } from "hono";
@@ -51,6 +54,10 @@ import {
 // (побочный эффект — образец провайдера оценок 1.4b)
 import { confirmStep, executePlan } from "../services/plan-executor.js";
 import { startMode } from "../services/mode-service.js";
+import {
+  enrichmentStreamKey,
+  startEnrichment,
+} from "../services/element-enrichment.js";
 import { PlanError } from "../services/edit-planner.js";
 import {
   computePauseEstimates,
@@ -72,6 +79,7 @@ const CLIENT_MESSAGE_TYPES: ReadonlySet<WsClientMessage["type"]> = new Set([
   "resume_generation",
   "resume_plan",
   "cancel",
+  "start_enrichment",
   "ping",
 ] satisfies WsClientMessage["type"][]);
 
@@ -419,6 +427,34 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
       void handleBackground(
         ws, user, msg.synthesisId, `mode:${msg.modeKey}`,
         () => startMode(msg.synthesisId, user.id, msg.modeKey, msg.param),
+      );
+      return;
+
+    // Обогащение элемента — беседа 5.3 (element-enrichment). Владелец
+    // проверяется явно (паритет ownerEditGate роута §2.14): слот сам
+    // владение не проверяет. 409 при активной операции даёт слот →
+    // stream_error (идемпотентность п.5 03 §3.1).
+    case "start_enrichment":
+      void handleBackground(
+        ws, user, msg.synthesisId,
+        enrichmentStreamKey(msg.elementType, msg.elementId),
+        async () => {
+          if (msg.elementType !== "category" && msg.elementType !== "edge")
+            throw new GenerationError("VALIDATION_ERROR", "elementType: ожидается category | edge");
+          if (!isUuid(msg.synthesisId) || !isUuid(msg.elementId))
+            throw new GenerationError("NOT_FOUND", "Синтез или элемент не найден");
+          const [row] = await db
+            .select({ userId: syntheses.userId })
+            .from(syntheses)
+            .where(eq(syntheses.id, msg.synthesisId))
+            .limit(1);
+          if (!row) throw new GenerationError("NOT_FOUND", "Синтез не найден");
+          if (row.userId !== user.id)
+            throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
+          await startEnrichment(
+            msg.synthesisId, user.id, msg.elementType, msg.elementId, msg.enrichmentType,
+          );
+        },
       );
       return;
   }

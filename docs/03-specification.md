@@ -877,6 +877,13 @@ POST   /taxonomy/category-types     { key, nameRu, description } → { type: Cat
 GET    /taxonomy/relationship-types → { types: RelationshipType[] }
 POST   /taxonomy/relationship-types { key, nameRu, description, defaultDirection }
                                     → { type: RelationshipType }
+                                    // По факту 5.3: defaultDirection ∈
+                                    // unidirectional|bidirectional|reflexive,
+                                    // необязателен (дефолт схемы); до 5.3
+                                    // createCustomType 0.3b его терял. Оба
+                                    // POST → 201; дубликат ключа → 400
+                                    // VALIDATION_ERROR (контракт 0.3b).
+                                    // Роуты смонтированы на /api/v1/taxonomy.
 
 POST   /taxonomy/normalize          { text: string, kind: "category"|"relationship" }
                                     → { match: TypeMatch | null, suggestions: TypeMatch[] }
@@ -892,10 +899,20 @@ POST   /taxonomy/normalize          { text: string, kind: "category"|"relationsh
 //   категория: description | evolution | justification
 //   связь:     justification | counterarguments
 //   характеристика: отдельный эндпоинт ниже (тип 'characteristic')
-// Пять ключей Registry: enrichment.category.description,
+// Шесть ключей Registry (правка 5.3: прежнее «пять» — ошибка счёта):
+// enrichment.category.description,
 // enrichment.category.evolution, enrichment.category.justification,
 // enrichment.edge.justification, enrichment.edge.counterarguments,
 // enrichment.characteristic_justification.
+// По факту 5.3: все POST ниже отвечают { ok: true } и исполняются фоном
+// под generation-слотом (409 GENERATION_IN_PROGRESS при активной
+// операции) — решение п.5 §3.1; результат — WS enrichment_delta →
+// enrichment_done (§3.2, += enrichmentId/content). Прежние формы
+// «→ { enrichment }» / «→ { justification }» ниже — исторические.
+// GET-история принимает необязательный ?elementType=category|edge.
+// justify-characteristic: value валидируется по диапазону
+// ХАРАКТЕРИСТИКИ (shared/constants/characteristics — п.18); characteristic
+// принимает snake_case, camelCase DTO и `depth` → depth_score.
 
 POST   /syntheses/:id/enrich/category/:catId
                                     { type: "description"|"evolution"|"justification" }
@@ -1016,6 +1033,9 @@ Endpoint: `wss://host/ws?token={sessionToken}`
 { type: "start_enrichment", synthesisId: string,
   elementType: "category" | "edge", elementId: string,
   enrichmentType: string }
+// По факту 5.3: обоснование характеристики (нужны characteristic+value)
+// сообщение не покрывает — только POST /justify-characteristic (§12 → 5.4).
+// Владелец проверяется явно; чужой синтез → stream_error FORBIDDEN.
 
 // Запуск трансформации представлений (беседа 5.5)
 { type: "start_transform", synthesisId: string,
@@ -1151,8 +1171,11 @@ Endpoint: `wss://host/ws?token={sessionToken}`
 { type: "enrichment_done",
   synthesisId: string,
   elementId: string,
-  enrichmentType: string,
-  usage: { inputTokens: number, outputTokens: number, costUsd: number } }
+  enrichmentType: string,      // 'characteristic' — обоснование характеристики
+                               // (enrichmentId тогда — id characteristic_justifications)
+  usage: { inputTokens: number, outputTokens: number, costUsd: number },
+  enrichmentId: string,        // По факту 5.3 (аддитивно, паритет mode_done.html):
+  content: string }            // id сохранённой строки и её содержимое
 
 // Понг (keep-alive)
 { type: "pong" }
