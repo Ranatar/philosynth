@@ -454,8 +454,15 @@ shared/constants/characteristics (смоук 59 ✓,
 tests/test-53-requests2-6.mjs 87 ✓ ×2 на моке Claude,
 check:integration += 2t/4ad/5v); доки пропатчены
 scripts/patch-docs-conv53.py.
-Следующие по графу 07 — 5.4 (UI характеристик/обогащения/таксономии),
-5.5 либо 6.1.
+Беседа 5.4 (Характеристики + Обогащение + Таксономия UI, клиент)
+ЗАКРЫТА 2026-09-05: CharacteristicSlider(Group) + EnrichmentPanel +
+TaxonomySelector + EdgeEditor (новый kind='edge' ElementEditor) +
+useEnrichmentStream + api/taxonomy, api/enrichment + интеграция
+NodePanel/EdgePanel/GraphModal/CategoryEditor (смоук 36 ✓,
+tests/test-54-requests2-6.mjs 79 ✓ ×2 в браузере на моке Claude,
+check:integration += 2u/4ae; долги §12 CATEGORY_TYPES и WS-запуск
+обоснования закрыты); доки пропатчены scripts/patch-docs-conv54.py.
+Следующие по графу 07 — 5.5 (Representation Transformer) либо 6.1.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

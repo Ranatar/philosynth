@@ -4251,6 +4251,483 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 5.4 — характеристики, обогащение, таксономия ═══════════
+ * В исходнике нет ни слайдеров характеристик с обоснованием, ни панели
+ * обогащения, ни селектора типа по каталогу. Блоки 1 (слайдер), 2
+ * (комбобокс таксономии) и 8 (карточка обогащения) перенесены из
+ * docs/fragments-for-conversations/5-6-ui-kit.css целиком, без
+ * переименований; ниже — только то, чего нет и в киte: части обоснования
+ * (ограничения/альтернативы), строка ввода комбобокса с индикатором,
+ * форма нового типа, шапка панели обогащения и переопределения для
+ * ТЁМНОГО контекста панели узла графа (.gm-info-panel — примитивы кита
+ * писаны под светлый .input-form). Идиома та же: прямые углы, микро-
+ * подписи моноширинные капителью, палитра :root.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* — 5-6-ui-kit.css, блок 1: слайдер характеристики — */
+  /* ═══ 1. Слайдер характеристики (5.4: CharacteristicSlider) ═══════════
+   * centrality, certainty, historical_significance, clarity, breadth,
+   * depth, applicability (0–1) и innovation_degree (1–5, дискретный).
+   * Кнопка «?» открывает обоснование (justifyCharacteristic).
+   */
+
+  .char-slider {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .char-slider:last-of-type {
+    border-bottom: none;
+  }
+
+  .char-slider-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+
+  .char-slider-value {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--blue-corp);
+    min-width: 34px;
+    text-align: right;
+  }
+
+  .char-slider-why {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    width: 20px;
+    height: 20px;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .char-slider-why:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .char-slider-why.loading {
+    opacity: 0.5;
+    cursor: wait;
+  }
+
+  .char-slider input[type="range"] {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--blue-corp);
+    height: 18px;
+  }
+
+  /* Дискретный (innovation_degree 1–5) — засечки под дорожкой */
+  .char-slider.discrete .char-slider-ticks {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    margin-top: -4px;
+  }
+
+  .char-slider.readonly {
+    opacity: 0.55;
+  }
+
+  /* Обоснование характеристики — раскрывается под слайдером,
+     не всплывающим окном: в документе всплывашки некуда девать */
+  .char-justification {
+    grid-column: 1 / -1;
+    border-left: 3px solid var(--gold);
+    background: var(--white);
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--ink-mid);
+  }
+
+  .char-justification-meta {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 4px;
+  }
+
+  /* — 5-6-ui-kit.css, блок 2: комбобокс таксономии — */
+  /* ═══ 2. Комбобокс таксономии (5.4: TaxonomySelector) ═════════════════
+   * Список типов из каталога + свободный ввод с нормализацией.
+   */
+
+  .combobox {
+    position: relative;
+  }
+
+  .combobox-list {
+    position: absolute;
+    z-index: 500;
+    left: 0;
+    right: 0;
+    top: 100%;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--paper);
+    border: 1px solid var(--rule-strong);
+    border-top: none;
+  }
+
+  .combobox-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .combobox-item:last-child {
+    border-bottom: none;
+  }
+
+  .combobox-item:hover,
+  .combobox-item.active {
+    background: var(--blue-light);
+  }
+
+  .combobox-item-code {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--ink-dim);
+  }
+
+  .combobox-item.create {
+    color: var(--gold);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  /* Индикатор происхождения значения: каталог / свободный текст */
+  .type-origin {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border: 1px solid;
+  }
+
+  .type-origin.catalog {
+    color: var(--green-check);
+    border-color: var(--green-check);
+    background: #f0fff4;
+  }
+
+  .type-origin.free {
+    color: var(--ink-dim);
+    border-color: var(--rule-strong);
+  }
+
+  /* — 5-6-ui-kit.css, блок 8: панель обогащения — */
+  /* ═══ 8. Панель обогащения (5.4: EnrichmentPanel) ═════════════════════
+   * Карточка результата и история. Стриминг показывается .edit-regen-*
+   * из исходника — своего индикатора не заводим.
+   */
+
+  .enrich-card {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--violet);
+    background: var(--paper);
+    padding: 10px 14px;
+    margin-top: 8px;
+  }
+
+  .enrich-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 6px;
+  }
+
+  .enrich-card-type {
+    color: var(--violet);
+    font-weight: 600;
+  }
+
+  .enrich-card-body {
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--ink);
+  }
+
+  .enrich-card.streaming .enrich-card-body::after {
+    content: "▌";
+    color: var(--violet);
+    animation: enrich-caret 1s steps(2) infinite;
+  }
+
+
+  /* — Дополнения 5.4 (в киte нет) — */
+
+  /* Группа слайдеров одного элемента — рама, как у .version-list */
+  .char-slider-group {
+    padding: 0 2px;
+  }
+
+  /* Подпись концов связи в редакторе («Бытие → Ничто») */
+  .edge-editor-ends {
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  /* Комбобокс в узком/тёмном контексте — без внешних отступов кита */
+  .combobox.compact .combobox-input-row {
+    gap: 6px;
+  }
+
+  /* Ошибка поля под слайдером (details 400) */
+  .char-slider-error {
+    grid-column: 1 / -1;
+  }
+
+  /* Обоснование: части «Ограничения» / «Альтернативные подходы» */
+  .char-justification-part {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .char-justification-part-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 2px;
+  }
+
+  .char-justification-live {
+    white-space: pre-wrap;
+  }
+
+  .char-justification.streaming .char-justification-live::after {
+    content: "▌";
+    color: var(--gold);
+    animation: enrich-caret 1s steps(2) infinite;
+  }
+
+  .char-justification-actions {
+    margin-top: 8px;
+  }
+
+  /* Комбобокс: поле + индикатор происхождения в одну строку */
+  .combobox-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .combobox-input-row .form-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .combobox-input-row .type-origin {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Форма нового типа каталога — под полем, в раме списка */
+  .combobox-create-form {
+    margin-top: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--rule-strong);
+    background: var(--paper);
+  }
+
+  .combobox-create-form .actions-bar-btns {
+    margin-top: 8px;
+  }
+
+  /* Панель обогащения: шапка с итогом истории */
+  .enrich-panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .enrich-panel-title {
+    margin: 0;
+  }
+
+  .enrich-panel-total {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--violet);
+  }
+
+  .enrich-panel-actions {
+    margin: 6px 0 8px;
+  }
+
+  .enrich-card-toggle {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  /* Тёмная панель узла графа: примитивы кита на фоне .gm-info-panel */
+  .gm-panel-inline-edit {
+    margin: 0 0 8px;
+    padding: 6px 0 4px;
+    border-top: 1px dashed rgba(127, 140, 141, 0.3);
+    border-bottom: 1px dashed rgba(127, 140, 141, 0.3);
+  }
+
+  .gm-info-panel .char-slider {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    padding: 5px 0;
+    gap: 4px 8px;
+  }
+
+  .gm-info-panel .char-slider-label {
+    color: rgba(200, 192, 176, 0.75);
+    font-size: 8px;
+  }
+
+  .gm-info-panel .char-slider-value {
+    color: var(--gold-light);
+  }
+
+  .gm-info-panel .char-slider-why {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(200, 192, 176, 0.75);
+  }
+
+  .gm-info-panel .char-slider input[type="range"] {
+    accent-color: var(--gold-light);
+    height: 14px;
+  }
+
+  .gm-info-panel .char-justification {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(200, 192, 176, 0.9);
+    border-left-color: var(--gold-light);
+  }
+
+  .gm-info-panel .char-justification-part {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .gm-info-panel .combobox .form-input {
+    background: rgba(255, 255, 255, 0.06);
+    color: #c8c0b0;
+    border-color: rgba(255, 255, 255, 0.15);
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .gm-info-panel .combobox-list {
+    background: rgba(10, 10, 20, 0.97);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #c8c0b0;
+  }
+
+  .gm-info-panel .combobox-item {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .gm-info-panel .combobox-item:hover,
+  .gm-info-panel .combobox-item.active {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .gm-info-panel .combobox-create-form {
+    background: rgba(10, 10, 20, 0.97);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .gm-info-panel .type-origin.free {
+    color: rgba(200, 192, 176, 0.6);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .gm-info-panel .type-origin.catalog {
+    background: transparent;
+  }
+
+  .gm-info-panel .enrich-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .gm-info-panel .enrich-card-body {
+    color: rgba(200, 192, 176, 0.9);
+    font-size: 11px;
+  }
+
+  .gm-info-panel .enrich-panel .action-btn {
+    background: transparent;
+    color: #c8c0b0;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .gm-info-panel .enrich-panel .form-label,
+  .gm-info-panel .enrich-panel .form-sublabel {
+    color: rgba(200, 192, 176, 0.75);
+  }
+
+  .gm-info-panel .pool-status {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 700px) {
+  /* 5-6-ui-kit.css, блок 10 — часть, относящаяся к блокам 1 и 2 */
+  .char-slider {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .combobox-input-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* Каретка стриминга карточки обогащения (кит, блок 8) — вне @layer */
+@keyframes enrich-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;

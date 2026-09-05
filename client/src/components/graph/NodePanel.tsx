@@ -13,13 +13,31 @@
  * (открывает CategoryEditor узла в GraphModal); в исходнике правки
  * элементов не было.
  *
+ * Беседа 5.4 (п. 4): проп edit — правка ПО МЕСТУ в панели (владелец, не
+ * генерация): TaxonomySelector типа (PATCH при выборе), CharacteristicSliderGroup
+ * всех восьми характеристик (PATCH одного поля по отпусканию ползунка;
+ * «?» — обоснование под слайдером), кнопка «Обогатить» → EnrichmentPanel
+ * внутри панели. Значения берутся из строки categories (проп), а не из
+ * узла G — после PATCH хозяин перечитывает граф, узел догоняет. Метрики-
+ * полосы исходника остаются для чтения. Тёмный контекст .gm-info-panel —
+ * переопределения кита в части 3 globals.css (.gm-info-panel .char-slider*).
+ *
  * АДАПТАЦИЯ: разметка — JSX вместо innerHTML (панель — React-компонент,
  * данные приходят колбэком onShowNode из рендер-ядра); класс .visible
  * навешивается эффектом после первого кадра — сохранена slide-in-анимация
  * исходника (requestAnimationFrame → transition).
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+import type { Category } from "@philosynth/shared/types/graph";
+
+import { ApiError } from "../../api/client";
+import { updateCategory, type UpdateCategoryResponse } from "../../api/elements";
+import type { EnrichmentStream } from "../../hooks/useEnrichmentStream";
+import { CharacteristicSliderGroup } from "../edit/CharacteristicSlider";
+import { EnrichmentPanel } from "../edit/EnrichmentPanel";
+import { TaxonomySelector } from "../edit/TaxonomySelector";
 
 import {
   CPAL,
@@ -142,6 +160,20 @@ export interface NodePanelProps {
    *  Не передан — кнопки нет (чужой/публичный синтез, нет dbId) */
   onEdit?: (() => void) | undefined;
   editDisabled?: boolean | undefined;
+  /** Беседа 5.4 (п. 4): правка по месту — слайдеры, тип, обогащение.
+   *  Не передан — панель только для чтения (чужой синтез, нет dbId) */
+  edit?: NodePanelEdit | undefined;
+}
+
+export interface NodePanelEdit {
+  synthesisId: string;
+  /** Строка categories узла (по GNode.dbId) */
+  category: Category;
+  stream: EnrichmentStream;
+  /** status='generating' — слайдеры и обогащение заблокированы */
+  readOnly: boolean;
+  /** После каждого PATCH — хозяин перечитывает граф */
+  onPatched: (res: UpdateCategoryResponse) => void;
 }
 
 export default function NodePanel({
@@ -151,6 +183,7 @@ export default function NodePanel({
   onClose,
   onEdit,
   editDisabled = false,
+  edit,
 }: NodePanelProps) {
   // slide-in: .visible после первого кадра (rAF исходника)
   const [visible, setVisible] = useState(false);
@@ -252,6 +285,7 @@ export default function NodePanel({
           </button>
         </div>
       ) : null}
+      {edit ? <InlineEditBlock edit={edit} /> : null}
       <div className="gm-panel-def">{d.def || ""}</div>
       {d.orig ? (
         <div className="gm-panel-orig">
@@ -357,4 +391,146 @@ export default function NodePanel({
       ) : null}
     </div>
   );
+}
+
+/* ── Беседа 5.4: правка по месту в панели узла ───────────────────────── */
+
+function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
+  const { synthesisId, category, stream, readOnly, onPatched } = edit;
+  const [values, setValues] = useState<Record<string, number>>(() => pickChars(category));
+  const [type, setType] = useState({ type: category.type, typeCatalogId: category.typeCatalogId });
+  const [saving, setSaving] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [enrichOpen, setEnrichOpen] = useState(false);
+
+  // Свежая строка от хозяина (после перечитки графа) → синхронизация
+  useEffect(() => {
+    setValues(pickChars(category));
+    setType({ type: category.type, typeCatalogId: category.typeCatalogId });
+  }, [category]);
+
+  const patch = useCallback(
+    async (body: Record<string, unknown>, label: string) => {
+      setSaving(label);
+      setStatus(null);
+      try {
+        const res = await updateCategory(synthesisId, category.id, body);
+        setStatus({
+          ok: true,
+          text:
+            "Сохранено" +
+            (res.htmlSync.rendered.length
+              ? " · перерисовано: " + res.htmlSync.rendered.join(", ")
+              : ""),
+        });
+        onPatched(res);
+      } catch (err) {
+        const msg =
+          err instanceof ApiError
+            ? err.code === "GENERATION_IN_PROGRESS"
+              ? "Идёт генерация — правки заблокированы"
+              : err.code === "FORBIDDEN"
+                ? "Редактировать может только владелец"
+                : err.message
+            : String(err);
+        setStatus({ ok: false, text: msg });
+        // откат к строке БД
+        setValues(pickChars(category));
+        setType({ type: category.type, typeCatalogId: category.typeCatalogId });
+      } finally {
+        setSaving(null);
+      }
+    },
+    [synthesisId, category, onPatched],
+  );
+
+  return (
+    <div
+      className="gm-panel-inline-edit"
+      data-node-inline-edit
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="gm-panel-el-label">Тип</div>
+      <TaxonomySelector
+        id={`np-type-${category.id}`}
+        kind="category"
+        compact
+        value={type}
+        disabled={readOnly || saving !== null}
+        onChange={(v) => {
+          setType(v);
+          // Ввод руками — только черновик; фиксируем выбор строки каталога
+          // либо потерю фокуса (blur ниже)
+          if (v.typeCatalogId && (v.typeCatalogId !== category.typeCatalogId || v.type !== category.type))
+            void patch({ type: v.type, typeCatalogId: v.typeCatalogId }, "type");
+        }}
+      />
+      {!type.typeCatalogId && type.type.trim() && type.type !== category.type && !readOnly && (
+        <div className="actions-bar-btns" style={{ marginTop: 4 }}>
+          <button
+            type="button"
+            className="gm-btn"
+            disabled={saving !== null}
+            onClick={() => void patch({ type: type.type.trim(), typeCatalogId: null }, "type")}
+          >
+            Сохранить тип «{type.type.trim()}»
+          </button>
+        </div>
+      )}
+
+      <div className="gm-panel-el-label" style={{ marginTop: 6 }}>Характеристики</div>
+      <CharacteristicSliderGroup
+        elementType="category"
+        idPrefix={`np-${category.id}`}
+        values={values}
+        onChange={(f, v) => setValues((prev) => ({ ...prev, [f]: v }))}
+        onCommit={(f, v) => {
+          if (v === (category as unknown as Record<string, number>)[f]) return;
+          void patch({ [f]: v }, f);
+        }}
+        readOnly={readOnly}
+        busy={saving !== null}
+        justify={{ stream, elementType: "category", elementId: category.id }}
+      />
+
+      {status && (
+        <div className={"pool-status " + (status.ok ? "ok" : "err")} data-testid="node-edit-status">
+          {status.text}
+        </div>
+      )}
+
+      <div className="gm-panel-edit-row" style={{ marginTop: 6 }}>
+        <button
+          type="button"
+          className={"gm-btn gm-panel-edit-btn" + (enrichOpen ? " active" : "")}
+          onClick={() => setEnrichOpen((v) => !v)}
+          data-testid="node-enrich-toggle"
+        >
+          ✦ Обогатить
+        </button>
+      </div>
+      {enrichOpen && (
+        <EnrichmentPanel
+          stream={stream}
+          elementType="category"
+          elementId={category.id}
+          elementLabel={category.name}
+          readOnly={readOnly}
+        />
+      )}
+    </div>
+  );
+}
+
+function pickChars(c: Category): Record<string, number> {
+  return {
+    centrality: c.centrality,
+    certainty: c.certainty,
+    historicalSignificance: c.historicalSignificance,
+    innovationDegree: c.innovationDegree,
+    clarity: c.clarity,
+    breadth: c.breadth,
+    depthScore: c.depthScore,
+    applicability: c.applicability,
+  };
 }

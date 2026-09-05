@@ -655,7 +655,7 @@ export function SynthesisPage() {
         onClose={() => setGraphOpen(false)}
         synthesisId={synthesis.id}
         editable={isOwner && !live}
-        editDisabled={live}
+        editDisabled={isOwner && live}
         onElementSaved={handleGraphElementSaved}
         onRegenerateAffected={handleRegenerateAffected}
       />

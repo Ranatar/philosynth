@@ -65,6 +65,8 @@ export interface GNode {
 
 /** Ребро G — по именам узлов (src/tgt), как в исходнике */
 export interface GEdge {
+  /** id строки category_edges (беседа 5.4: правка связи из EdgePanel) */
+  dbId?: string;
   src: string;
   tgt: string;
   type: string;
@@ -781,6 +783,7 @@ export function buildGFromGraphData(data: GraphData, extended: boolean): void {
 
   const edges: GEdge[] = data.edges
     .map((e) => ({
+      dbId: e.id,
       src: idToName.get(e.sourceId) ?? "",
       tgt: idToName.get(e.targetId) ?? "",
       type: e.edgeType,

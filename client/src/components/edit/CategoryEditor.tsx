@@ -1,73 +1,90 @@
 /**
  * CategoryEditor — поля категории графа + предпросмотр строки таблицы.
- * Беседа 5.2 (запрос 1, п. 2). Функциональности нет в исходнике — новый
- * React-код.
+ * Беседа 5.2 (запрос 1, п. 2); беседа 5.4 (запрос 1, пп. 1/3/4) —
+ * характеристики и тип.
  *
- * Контролируемая форма: значение — CategoryUpdateInput (только
- * редактируемые здесь поля), хозяин (ElementEditor) хранит состояние и
- * шлёт PATCH. Ошибки по полям — details ответа 400 VALIDATION_ERROR
- * (сервер 5.1 отдаёт details по именам полей).
+ * Контролируемая форма: значение — CategoryDraft (редактируемые поля
+ * CategoryUpdateInput), хозяин (ElementEditor) хранит состояние и шлёт
+ * PATCH только изменившихся полей (categoryDiff). Ошибки по полям —
+ * details ответа 400 VALIDATION_ERROR (сервер 5.1).
  *
- * Поля (протокол): name, type (select), definition (textarea),
- * centrality/certainty (range 0–1, шаг 0.05), origin (textarea).
- * Расширенные характеристики (historicalSignificance…applicability) —
- * беседа 5.4 (CharacteristicSlider), здесь НЕ редактируются.
- *
- * Select типа: 14 канонических типов промпта (section-templates
- * «Тип категории: …»; тот же перечень — _TC_HUE_SEEDS graph-utils) +
- * текущее значение, если оно вне списка (метод «творческий» допускает
- * нестандартные типы; каталог 0.3b с индикатором «из каталога» — 5.4,
- * TaxonomySelector). Свободный ввод — режим «другое…».
+ * 5.4:
+ *  - тип — TaxonomySelector по каталогу category_type_catalog 0.3b
+ *    (18 системных + пользовательские) с индикатором «из каталога /
+ *    свободный текст» (03 §2.4 п.11: type + typeCatalogId). Временная
+ *    клиентская копия CATEGORY_TYPES (14 типов промпта) УДАЛЕНА — долг
+ *    §12 за 5.4 закрыт; расширенные по методу типы (_EXTRA_CATEGORY_TYPES)
+ *    остаются свободным текстом: их каталог 0.3b не содержит, а
+ *    нормализация даёт ближайший системный тип подсказкой «≈»;
+ *  - centrality/certainty (RangeField 5.2) → CharacteristicSliderGroup со
+ *    ВСЕМИ восемью характеристиками (CATEGORY_CHARACTERISTICS 5.3), включая
+ *    дискретный innovation_degree 1–5; «?» — обоснование (justify-контекст
+ *    от хозяина; в форме — по ТЕКУЩЕМУ значению ползунка).
  *
  * Предпросмотр — строка «Таблицы категорий» в том виде, в каком её рисует
  * element-renderer 5.1: Категория · Тип · Определение · Центральность ·
  * Определённость · <столбец уровня>. Заголовок последнего столбца
- * зависит от synth_level (level.{l}.graph_last_col_name) — клиенту
- * шаблон недоступен, подпись «Происхождение» условная (проп lastColName
- * позволяет передать фактическую из thead).
+ * зависит от synth_level (level.{l}.graph_last_col_name) — клиенту шаблон
+ * недоступен, подпись «Происхождение» условная (проп lastColName —
+ * фактическая из thead). Расширенные характеристики в таблице категорий
+ * появляются только при ext_graph_metrics — в предпросмотре не показаны.
  */
 import type { Category } from "@philosynth/shared/types/graph";
 import type { CategoryUpdateInput } from "@philosynth/shared/types/elements";
 
+import {
+  CharacteristicSliderGroup,
+  type CharacteristicJustifyContext,
+} from "./CharacteristicSlider";
 import { FieldError, fmtNum } from "./ElementEditor";
-
-/** 14 канонических типов категорий (промпт раздела «Граф»).
- *  TODO(5.4): временная клиентская копия — заменяется TaxonomySelector по
- *  каталогу 0.3b (долг §12); секция 4ac сторожит ⊆ section-templates. */
-export const CATEGORY_TYPES: readonly string[] = [
-  "онтологическая",
-  "эпистемологическая",
-  "этическая",
-  "аксиологическая",
-  "метафизическая",
-  "логическая",
-  "практическая",
-  "эстетическая",
-  "антропологическая",
-  "феноменологическая",
-  "экзистенциальная",
-  "социальная",
-  "политическая",
-  "теологическая",
-];
-
-const OTHER = "__other__";
+import { TaxonomySelector } from "./TaxonomySelector";
 
 export type CategoryDraft = Required<
   Pick<
     CategoryUpdateInput,
-    "name" | "type" | "definition" | "centrality" | "certainty" | "origin"
+    | "name"
+    | "type"
+    | "typeCatalogId"
+    | "definition"
+    | "origin"
+    | "centrality"
+    | "certainty"
+    | "historicalSignificance"
+    | "innovationDegree"
+    | "clarity"
+    | "breadth"
+    | "depthScore"
+    | "applicability"
   >
 >;
+
+/** Поля-характеристики черновика (dtoField CATEGORY_CHARACTERISTICS) */
+export const CATEGORY_DRAFT_CHARACTERISTICS = [
+  "centrality",
+  "certainty",
+  "historicalSignificance",
+  "innovationDegree",
+  "clarity",
+  "breadth",
+  "depthScore",
+  "applicability",
+] as const;
 
 export function categoryToDraft(c: Category): CategoryDraft {
   return {
     name: c.name,
     type: c.type,
+    typeCatalogId: c.typeCatalogId,
     definition: c.definition,
+    origin: c.origin,
     centrality: c.centrality,
     certainty: c.certainty,
-    origin: c.origin,
+    historicalSignificance: c.historicalSignificance,
+    innovationDegree: c.innovationDegree,
+    clarity: c.clarity,
+    breadth: c.breadth,
+    depthScore: c.depthScore,
+    applicability: c.applicability,
   };
 }
 
@@ -79,10 +96,12 @@ export function categoryDiff(
   const out: CategoryUpdateInput = {};
   if (after.name !== before.name) out.name = after.name.trim();
   if (after.type !== before.type) out.type = after.type.trim();
+  if (after.typeCatalogId !== before.typeCatalogId) out.typeCatalogId = after.typeCatalogId;
   if (after.definition !== before.definition) out.definition = after.definition;
-  if (after.centrality !== before.centrality) out.centrality = after.centrality;
-  if (after.certainty !== before.certainty) out.certainty = after.certainty;
   if (after.origin !== before.origin) out.origin = after.origin;
+  for (const k of CATEGORY_DRAFT_CHARACTERISTICS) {
+    if (after[k] !== before[k]) out[k] = after[k];
+  }
   return out;
 }
 
@@ -93,6 +112,8 @@ export interface CategoryEditorProps {
   disabled?: boolean | undefined;
   /** Фактический заголовок последнего столбца таблицы (из thead) */
   lastColName?: string | undefined;
+  /** Контекст «?» слайдеров (без него кнопок обоснования нет) */
+  justify?: CharacteristicJustifyContext | undefined;
 }
 
 export function CategoryEditor({
@@ -101,9 +122,8 @@ export function CategoryEditor({
   errors = {},
   disabled = false,
   lastColName = "Происхождение",
+  justify,
 }: CategoryEditorProps) {
-  const inList = CATEGORY_TYPES.includes(value.type);
-  const selectValue = inList ? value.type : OTHER;
   const set = <K extends keyof CategoryDraft>(k: K, v: CategoryDraft[K]) =>
     onChange({ ...value, [k]: v });
 
@@ -127,34 +147,14 @@ export function CategoryEditor({
           <label className="form-label" htmlFor="cat-ed-type">
             Тип
           </label>
-          <select
+          <TaxonomySelector
             id="cat-ed-type"
-            className="form-select"
-            value={selectValue}
+            kind="category"
+            value={{ type: value.type, typeCatalogId: value.typeCatalogId }}
+            onChange={(v) => onChange({ ...value, type: v.type, typeCatalogId: v.typeCatalogId })}
             disabled={disabled}
-            onChange={(e) =>
-              set("type", e.target.value === OTHER ? "" : e.target.value)
-            }
-          >
-            {CATEGORY_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-            <option value={OTHER}>другое…</option>
-          </select>
-          {selectValue === OTHER && (
-            <input
-              className="form-input"
-              style={{ marginTop: 6 }}
-              placeholder="тип свободным текстом"
-              value={value.type}
-              disabled={disabled}
-              onChange={(e) => set("type", e.target.value)}
-              aria-label="Тип категории (свободный текст)"
-            />
-          )}
-          <FieldError text={errors.type} />
+            error={errors.type ?? errors.typeCatalogId}
+          />
         </div>
       </div>
 
@@ -173,26 +173,20 @@ export function CategoryEditor({
         <FieldError text={errors.definition} />
       </div>
 
-      <div className="form-grid">
-        <RangeField
-          id="cat-ed-cen"
-          label="Центральность"
-          value={value.centrality}
-          disabled={disabled}
-          error={errors.centrality}
-          onChange={(v) => set("centrality", v)}
-        />
-        <RangeField
-          id="cat-ed-cert"
-          label="Определённость"
-          value={value.certainty}
-          disabled={disabled}
-          error={errors.certainty}
-          onChange={(v) => set("certainty", v)}
-        />
+      <div className="form-label" style={{ marginTop: 10 }}>
+        Характеристики
       </div>
+      <CharacteristicSliderGroup
+        elementType="category"
+        idPrefix="cat-ed"
+        values={value as unknown as Record<string, number>}
+        onChange={(field, v) => onChange({ ...value, [field]: v })}
+        readOnly={disabled}
+        errors={errors}
+        justify={justify}
+      />
 
-      <div className="form-group full">
+      <div className="form-group full" style={{ marginTop: 10 }}>
         <label className="form-label" htmlFor="cat-ed-orig">
           {lastColName}
         </label>
@@ -238,45 +232,6 @@ export function CategoryEditor({
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-function RangeField({
-  id,
-  label,
-  value,
-  onChange,
-  disabled,
-  error,
-}: {
-  id: string;
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  disabled: boolean;
-  error?: string | undefined;
-}) {
-  return (
-    <div className="form-group">
-      <label className="form-label" htmlFor={id}>
-        {label}
-        <span className="form-sublabel" style={{ marginLeft: 8 }}>
-          {fmtNum(value)}
-        </span>
-      </label>
-      <input
-        id={id}
-        type="range"
-        min={0}
-        max={1}
-        step={0.05}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%" }}
-      />
-      <FieldError text={error} />
     </div>
   );
 }

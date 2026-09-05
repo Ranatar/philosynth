@@ -29,6 +29,10 @@
  *    (variant="modal") с CategoryEditor поверх графа; категория ищется по
  *    dbId узла (buildGFromGraphData), запасной путь — по имени. После
  *    сохранения хозяин (SynthesisPage) перечитывает граф и разделы.
+ *  - Беседа 5.4: NodePanel получает edit (правка по месту: слайдеры
+ *    характеристик, тип из каталога, обогащение) — строка categories по
+ *    GNode.dbId и общий канал useEnrichmentStream модалки; EdgePanel
+ *    получает onEdit → ElementEditor kind='edge' (EdgeEditor) по GEdge.dbId.
  */
 
 import { downloadExport } from "../../api/export";
@@ -38,6 +42,8 @@ import {
   ElementEditor,
   type SaveOutcome,
 } from "../edit/ElementEditor";
+
+import { useEnrichmentStream } from "../../hooks/useEnrichmentStream";
 
 import Graph2D from "./Graph2D";
 import Graph3D from "./Graph3D";
@@ -53,7 +59,7 @@ import {
   setLegendFilterListener,
 } from "./graph-utils";
 
-import type { Category, GraphData } from "@philosynth/shared/types/graph";
+import type { Category, CategoryEdge, GraphData } from "@philosynth/shared/types/graph";
 import type {
   GEdge,
   LegendFilter,
@@ -99,6 +105,12 @@ export default function GraphModal({
 }: GraphModalProps) {
   // Беседа 5.2: редактируемая категория (модалка редактора поверх графа)
   const [editCategory, setEditCategory] = useState<Category | null>(null);
+  // Беседа 5.4: редактируемая связь + канал обогащений панели узла
+  const [editEdge, setEditEdge] = useState<CategoryEdge | null>(null);
+  const enrichment = useEnrichmentStream({
+    synthesisId: synthesisId ?? "",
+    enabled: open && editable && !!synthesisId,
+  });
   const [mode, setMode] = useState<"3d" | "2d">("3d");
   const [clustersOn, setClustersOn] = useState(graphState.clusterVisible);
   const [exportOpen, setExportOpen] = useState(false);
@@ -118,6 +130,7 @@ export default function GraphModal({
     graphState.currentViewMode = "3d";
     setPanel(null);
     setEditCategory(null);
+    setEditEdge(null);
     clearLegendFilter();
     document.body.style.overflow = "hidden";
     return () => {
@@ -219,7 +232,60 @@ export default function GraphModal({
       // Обновлённая категория остаётся открытой в редакторе (просмотр);
       // граф перечитает хозяин по onElementSaved (getCategories → data)
       if (outcome.kind === "category") setEditCategory(outcome.element as Category);
+      if (outcome.kind === "edge") setEditEdge(outcome.element as CategoryEdge);
       onElementSaved?.(outcome);
+    },
+    [onElementSaved],
+  );
+
+  // Беседа 5.4: связь для редактора — по dbId ребра, запасной путь — по концам и типу
+  const nameToId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of data?.categories ?? []) m.set(c.name.toLowerCase().trim(), c.id);
+    return m;
+  }, [data]);
+  const idToName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of data?.categories ?? []) m.set(c.id, c.name);
+    return m;
+  }, [data]);
+
+  const openEdgeEditor = useCallback(
+    (e: GEdge) => {
+      if (!data) return;
+      const edge =
+        (e.dbId ? data.edges.find((x) => x.id === e.dbId) : undefined) ??
+        data.edges.find(
+          (x) =>
+            x.sourceId === nameToId.get(e.src.toLowerCase().trim()) &&
+            x.targetId === nameToId.get(e.tgt.toLowerCase().trim()) &&
+            x.edgeType === e.type,
+        );
+      if (edge) setEditEdge(edge);
+    },
+    [data, nameToId],
+  );
+
+  // Строка categories узла для правки по месту в NodePanel (5.4)
+  const panelCategory = useMemo(() => {
+    if (!data || panel?.kind !== "node") return null;
+    const d = panel.d;
+    return (
+      (d.dbId ? data.categories.find((c) => c.id === d.dbId) : undefined) ??
+      data.categories.find((c) => c.name === d.name) ??
+      null
+    );
+  }, [data, panel]);
+
+  const handleNodePatched = useCallback(
+    (res: { category: Category } & Omit<SaveOutcome, "kind" | "element" | "renamed">) => {
+      onElementSaved?.({
+        kind: "category",
+        element: res.category,
+        impact: res.impact,
+        version: res.version,
+        htmlSync: res.htmlSync,
+      });
     },
     [onElementSaved],
   );
@@ -360,6 +426,19 @@ export default function GraphModal({
                     : undefined
                 }
                 editDisabled={editDisabled}
+                edit={
+                  // 5.4: владелец при генерации (editDisabled) видит блок в
+                  // режиме только чтения — слайдеры .readonly, история «?»
+                  (editable || editDisabled) && synthesisId && panelCategory
+                    ? {
+                        synthesisId,
+                        category: panelCategory,
+                        stream: enrichment,
+                        readOnly: editDisabled,
+                        onPatched: handleNodePatched,
+                      }
+                    : undefined
+                }
               />
             ) : null}
             {panel?.kind === "edge" ? (
@@ -368,6 +447,12 @@ export default function GraphModal({
                 allNodes={G.nodes}
                 clusterLabels={clusterLabels}
                 onClose={() => setPanel(null)}
+                onEdit={
+                  editable && synthesisId && data
+                    ? () => openEdgeEditor(panel.edgeData)
+                    : undefined
+                }
+                editDisabled={editDisabled}
               />
             ) : null}
           </>
@@ -389,6 +474,28 @@ export default function GraphModal({
             onRegenerateAffected?.(keys);
           }}
           onClose={() => setEditCategory(null)}
+        />
+      ) : null}
+      {/* Беседа 5.4: редактор связи поверх графа (EdgeEditor) */}
+      {editEdge && synthesisId ? (
+        <ElementEditor
+          key={editEdge.id}
+          variant="modal"
+          synthesisId={synthesisId}
+          target={{
+            kind: "edge",
+            element: editEdge,
+            sourceName: idToName.get(editEdge.sourceId),
+            targetName: idToName.get(editEdge.targetId),
+          }}
+          disabled={editDisabled}
+          startInEditMode
+          onSaved={handleSaved}
+          onRegenerateAffected={(keys) => {
+            setEditEdge(null);
+            onRegenerateAffected?.(keys);
+          }}
+          onClose={() => setEditEdge(null)}
         />
       ) : null}
     </div>

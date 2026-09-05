@@ -4279,3 +4279,169 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
 - **6.1 (billing)**: `setUsageRecorder` + `EnrichmentUsageContext`
   (element-enrichment) — единственная точка учёта обогащений; `apiKey`
   берётся из env в `streamEnrichment` (TODO(6.1) — BYO-Key).
+
+---
+
+# Беседа 5.4 — Характеристики + Обогащение + Таксономия UI (клиент) [ЗАКРЫТА 2026-09-05]
+
+> Запрос 1 + смоук tests/smoke-54-request1.mjs (36 ✓, без БД/сети/браузера:
+> спецификации слайдеров, ядра селектора, канон типов ≡ шаблонам 5.3, диффы
+> редакторов, пути api/* ≡ роутам через перехват fetch, guard enrich:) + все
+> тестовые запросы R2–R6 одним заходом tests/test-54-requests2-6.mjs (79 ✓ ×2:
+> сервер :3000 + vite :5199 + PG16/Redis, мок Claude SSE :3854 через
+> ANTHROPIC_BASE_URL, puppeteer-core 23 + системный Chromium 141) +
+> завершение: typecheck (все конфиги) 0, audit ✓, check:integration += 2u/4ae
+> → INTEGRATION OK, check-map-04 0 расхождений, css-parity A/B = 0 (раздел C
+> — только доисторический gm-hint), vite build чисто, регресс 5.2
+> (test-52 73 ✓) зелёный; доки — scripts/patch-docs-conv54.py (21 правка,
+> повтор skip×21). Исходник не нужен — функциональность новая.
+
+## Что создано
+
+- `client/src/api/taxonomy.ts` — `getCategoryTypes` / `getRelationshipTypes`
+  / `getCatalog(kind)` (кэш на сессию вкладки, `invalidateTaxonomyCache`) /
+  `normalizeType(text, kind)` / `createCustomType(kind, {key, nameRu,
+  description, defaultDirection?})` — контракты §2.13 (routes/taxonomy 5.3).
+- `client/src/api/enrichment.ts` — `enrichCategory` / `enrichEdge` /
+  `justifyCharacteristic` (→ `{ ok: true }`, результат по WS) /
+  `getEnrichments` / `getJustifications` (`?elementType=`) — §2.14.
+- `client/src/hooks/useEnrichmentStream.ts` — канал доставки: СОБСТВЕННОЕ
+  WS-соединение хозяина (`useWebSocket`, доставка по userId — подписки не
+  нужно), REST-запуск (`startEnrichment` / `startJustification` →
+  Promise<boolean>), `enrichment_delta` → `liveText`, `enrichment_done` →
+  `lastDone` + подписчики `onDone`, `stream_error` с `sectionKey
+  "enrich:…:{elementId}"` → `error`; одна активная операция (слот сервера —
+  второй запуск отклоняется локально с подсказкой); `messageOfEnrichmentError`
+  переводит ApiError (409 GENERATION_IN_PROGRESS / 403 / 400 details).
+- `client/src/components/edit/CharacteristicSlider.tsx` — `CharacteristicSlider`
+  (по `CharacteristicSpec`: min/max, step 1 у целых с засечками `.discrete`,
+  `REAL_STEP` 0.05; `onChange` черновик / `onCommit` по pointerup и
+  клавишам; `readOnly`; «?» → `JustificationBlock` под слайдером: история
+  GET → показ последнего / запуск POST с текущим значением / стрим с
+  кареткой / три части) + `CharacteristicSliderGroup(elementType, values,
+  …)` по `CHARACTERISTICS_BY_TYPE`; `characteristicStep`, `formatCharacteristic`.
+- `client/src/components/edit/EnrichmentPanel.tsx` — «Обогатить» → кнопки
+  типов (`CATEGORY_ENRICHMENT_OPTIONS` / `EDGE_ENRICHMENT_OPTIONS` — дрейф с
+  сервисом сторожит 4ae), стриминговая карточка `.enrich-card.streaming`,
+  история (GET при монтировании; финал добавляется из `enrichment_done` без
+  GET), сворачиваемые карточки (тип · дата · токены · $), итог «N · $…»;
+  `ENRICHMENT_TYPE_LABELS` (вкл. `characteristic`); readOnly — без запуска.
+- `client/src/components/edit/TaxonomySelector.tsx` — комбобокс каталога:
+  значение `{ type, typeCatalogId }`, локальный фильтр + POST /normalize
+  (debounce 300 мс, `normSeq` против гонок; match первым с «≈»), индикатор
+  `.type-origin.catalog/.free`, клавиатура (↑↓ Enter Esc), клик вне —
+  закрыть; «+ Создать тип» (когда normalize → null и нет точного
+  совпадения) → `CreateTypeForm` (ключ `suggestTypeKey` = transliterate под
+  KEY_RE, описание, направление для связей) → POST → выбран; при открытии
+  с непустым свободным типом — предложение привязки. `typeTextFromCatalog`
+  (name_ru → строчная первая буква).
+- `client/src/components/edit/EdgeEditor.tsx` — `EdgeDraft` / `edgeToDraft` /
+  `edgeDiff` / `EDGE_DIRECTIONS`; поля: тип (TaxonomySelector relationship),
+  направление, описание, шесть слайдеров; концы не редактируются.
+- `tests/smoke-54-request1.mjs`, `tests/test-54-requests2-6.mjs`.
+
+## Что изменено
+
+- `ElementEditor.tsx` — `EditableElement` += `{ kind: "edge", element,
+  sourceName?, targetName? }`, `HOST_SECTION.edge = graph`, PATCH `/edges`,
+  сводка со всеми характеристиками (обоих типов), `EnrichmentPanel` в
+  просмотре категории/связи, justify-контекст формам; `useEnrichmentStream`
+  включён только для enrichable целей.
+- `CategoryEditor.tsx` — `CategoryDraft` += `typeCatalogId` и 6 расширенных
+  полей, `CATEGORY_DRAFT_CHARACTERISTICS`; select+`CATEGORY_TYPES` →
+  `TaxonomySelector`; `RangeField` → `CharacteristicSliderGroup`.
+- `NodePanel.tsx` — проп `edit: NodePanelEdit` → `InlineEditBlock`:
+  TaxonomySelector (PATCH при выборе строки каталога; для свободного текста
+  кнопка «Сохранить тип …»), слайдеры с `onCommit` → PATCH одного поля,
+  статус `[data-testid=node-edit-status]`, откат локальных значений при
+  ошибке, «✦ Обогатить» → EnrichmentPanel внутри панели; значения — из
+  строки `categories`, синхронизация эффектом при смене пропа.
+- `EdgePanel.tsx` — `onEdit` / `editDisabled` («✎ Редактировать»);
+  `graph-utils.ts` — `GEdge.dbId` (заполняется из `e.id`).
+- `GraphModal.tsx` — один `useEnrichmentStream` на модалку (enabled при
+  open && editable); `panelCategory` по `GNode.dbId` (fallback по имени);
+  `openEdgeEditor` по `GEdge.dbId` (fallback концы + тип); редактор связи
+  поверх графа (`key={editEdge.id}`, `startInEditMode`); блок правки
+  NodePanel рендерится при `(editable || editDisabled)` — readOnly у
+  владельца при генерации; `SynthesisPage`: `editDisabled={isOwner && live}`.
+- `useStreamingGeneration.ts` — guard `enrich:` рядом с `mode:`.
+- `globals.css` часть 3 — блоки 1/2/8 кита дословно + дополнения
+  (`.char-slider-group`, `.char-justification-part/-label/-live/-actions`,
+  `.combobox-input-row`, `.combobox-create-form`, `.enrich-panel-*`,
+  `.enrich-card-toggle`, `.gm-panel-inline-edit`, `.gm-info-panel .char-
+  slider*` / `.combobox*` / `.type-origin*` / `.enrich-*`, медиа ≤700px);
+  `@keyframes enrich-caret` вынесен из `@layer`.
+- `integration-check.mts` — 4ac переписана (сторожит НЕвозврат
+  `CATEGORY_TYPES`, экспорт `CATEGORY_DRAFT_CHARACTERISTICS`), += 2u/4ae.
+
+## Решения/адаптации (все — в шапках модулей и «По факту 5.4» в 07)
+
+1. EdgeEditor как новый вид ElementEditor — п.5 запроса предполагал редактор
+   связи, которого не было; концы связи неизменяемы (нет POST /edges — долг
+   §12 → 6.2).
+2. «?» — блок под слайдером (кит), не popover; запрос — по текущему
+   значению ползунка, в форме — несохранённому.
+3. Запуск только HTTP; WS `start_enrichment` не используется (долг §12
+   закрыт решением, §3.1 зафиксирован). Своё WS-соединение у GraphModal и у
+   ElementEditor (два одновременно — приемлемо, паритет ModeModal).
+4. NodePanel: PATCH по отпусканию без панели impact; readOnly-блок у
+   владельца при генерации (иначе edge case был мёртвым путём).
+5. Тип из каталога пишется в написании документа; `typeCatalogId` у
+   сгенерированных элементов null (дыра парсера → долг §12 5.5), селектор
+   предлагает привязку «≈».
+6. `CATEGORY_TYPES` снята (долг §12 закрыт), расширенные типы — свободный
+   текст с подсказкой.
+
+## Знания/грабли, добытые в 5.4
+
+- `innerText` кнопок `.gm-btn` (и других с `text-transform: uppercase`) —
+  капителью: `waitForFunction(... .includes("Редактировать"))` молча висит;
+  сравнивать в нижнем регистре (хелпер `has()`).
+- Пользовательские типы каталога переживают прогоны тестов: «новый_тип_abc»
+  vs «новый_тип_xyz» → Левенштейн ≥ 0.75 → normalize даёт match и строка
+  «Создать тип» не появляется. В начале прогона удалять `is_system=false`
+  (сначала обнулить `categories.type_catalog_id`), имена — случайные буквы.
+- `waitText` ловит стриминговый текст до финала — ждать `:not(.streaming)`.
+- После выбора из каталога индикатор UI меняется до ответа PATCH — БД
+  опрашивать с ожиданием (30×200 мс).
+- Мок 500 на один вызов недостаточен: `streamWithRetries` повторяет
+  (`STREAM_RETRY_DELAYS=50` → 2 попытки) — `failCount` ≥ числа попыток.
+- React-контролируемый `<input type=range>`: менять через нативный setter
+  `HTMLInputElement.prototype.value` + `input` event, коммит — `PointerEvent
+  ("pointerup")`.
+- Прокси vite (`client/vite.config.ts`) зашит на :3000 — браузерный стенд
+  поднимает сервер только на :3000 (в отличие от бэкенд-тестов 5.3 на :3153).
+- Redis/PG не переживают паузу между ходами инструмента — `redis-server
+  --daemonize yes; service postgresql start` перед каждым прогоном;
+  `[redis] connect ECONNREFUSED` в логе теста — признак именно этого.
+- puppeteer-core 23 ставится `npm i --no-save`; `~/.cache/puppeteer` пуст —
+  только `/opt/google/chrome/chrome` (Chromium 141; пользователь называет
+  его «Chrome 131»).
+- Kit-правила внутри `@layer components` переносятся дословно, но
+  `@keyframes` — вне слоя (иначе анимация может не примениться при
+  сборке Tailwind).
+
+## Открытые TODO после 5.4 (все — в §12 07)
+
+- Серверная нормализация типов на каталог при парсинге (`normalizeType` в
+  `saveGraphToDb` и трансформациях) → 5.5.
+- Создание связи из UI (POST /edges не специфицирован) → 6.2.
+- Админские update/delete типов каталога → переадресован 6.2 (эндпоинтов
+  и спецификации нет; UI-адресат — админка).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **5.5 (Representation Transformer)**: `hooks/useEnrichmentStream.ts`
+  (образец «REST создаёт операцию, свой WS-канал доставки одной операции»
+  — для TransformPanel с `transform_*`-сообщениями; guard в
+  `useStreamingGeneration` расширять на `transform:`), `EdgeEditor.tsx` /
+  `CharacteristicSliderGroup` (готовые поля для превью трансформированных
+  элементов), `GraphModal.tsx` (пропы `edit`/`onEdit`, `panelCategory`,
+  `openEdgeEditor` — образец связки панелей графа с редакторами), 5.4-факт
+  о `typeCatalogId=null` (долг нормализации — 5.5 трогает graph-parser).
+- **6.2 (BillingPage/AdminPromptsPage)**: `TaxonomySelector.tsx` +
+  `api/taxonomy.ts` (создание типов есть; update/delete — долг),
+  `EnrichmentPanel.tsx` (карточка с токенами/стоимостью — образец строк
+  истории расходов).
+- **6.1 (billing)**: `useEnrichmentStream` шлёт только REST — учёт
+  обогащений в `api_usage` целиком серверный (`setUsageRecorder`).

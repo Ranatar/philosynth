@@ -229,10 +229,13 @@ export function useStreamingGeneration(
       // Беседа 4.1: поток РЕЖИМОВ (sectionKey "mode:{modeKey}") ведёт
       // ModeModal по собственному соединению — здесь его дельты/ошибки
       // игнорируются, иначе mode:-ключ стал бы «разделом» прогресса
+      // Беседа 5.4: поток ОБОГАЩЕНИЙ (stream_error с sectionKey
+      // "enrich:…") ведёт useEnrichmentStream — иначе обрыв обогащения
+      // стал бы «ошибкой генерации» страницы
       if (
         "sectionKey" in msg &&
         typeof msg.sectionKey === "string" &&
-        msg.sectionKey.startsWith("mode:")
+        (msg.sectionKey.startsWith("mode:") || msg.sectionKey.startsWith("enrich:"))
       ) {
         return;
       }

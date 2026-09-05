@@ -303,7 +303,7 @@ interface EditStep {
 
 **Граф категорий** (внутри синтеза):
 - Данные: таблицы `categories` + `category_edges` + `category_topology`
-- Парсинг: `parseGraph()` (parseGraph()) + нормализация типов через Element Taxonomy (4.8) и `parseTopology()` (parseTopology()) адаптируются для извлечения из HTML-ответа Claude и записи в БД
+- Парсинг: `parseGraph()` (parseGraph()) + нормализация типов через Element Taxonomy (4.8) и `parseTopology()` (parseTopology()) адаптируются для извлечения из HTML-ответа Claude и записи в БД. ФАКТ 5.4 (2026-09-05): нормализация на каталог в graph-parser/saveGraphToDb НЕ вызывается (только lower-case текста) — `type_catalog_id` заполняется лишь через PATCH/TaxonomySelector; долг §12 07 → 5.5
 - Визуализация: D3.js (2D) + Three.js (3D) — полностью на клиенте, данные загружаются через API
 - Код визуализации (`build2D()` build2D(), `build3D()` build3D()) переносится в React-компоненты
 - Динамические палитры `_nodeColorMap`/`_edgeStyleMap` (hue-seeds + золотой угол); `showEdgePanel` (клик на связи); `getStructuralMarkers` (массив маркеров); `roleMode` по умолчанию `"procedural"`; `clearLegendFilter` + фильтр по легенде (`legendFilter`)

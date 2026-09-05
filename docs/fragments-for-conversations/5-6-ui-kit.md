@@ -13,7 +13,7 @@
 | Беседа | Новый интерфейс |
 |---|---|
 | 5.2 | ElementEditor, CategoryEditor, ThesisEditor, GlossaryTermEditor, VersionHistory с diff |
-| 5.4 | CharacteristicSlider, EnrichmentPanel, TaxonomySelector |
+| 5.4 | CharacteristicSlider, EnrichmentPanel, TaxonomySelector (+ EdgeEditor) — СДЕЛАНО 2026-09-05: блоки 1, 2, 8 перенесены в часть 3 `globals.css` дословно; дополнения (части обоснования, строка комбобокса, форма нового типа, шапка панели, тёмные переопределения `.gm-info-panel`) — там же с комментариями |
 | 5.5 | TransformPanel (graph ↔ theses) |
 | 6.2 | BillingPage (ключ, баланс, история, транзакции), AdminPromptsPage (дерево ключей, редактор, версии, JSON-конфиги) |
 

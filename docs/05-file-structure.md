@@ -309,8 +309,8 @@ philosynth-service/
 │   │   │   ├── elements.ts             # создаёт беседа 1.7 (getCategories),
 │   │   │   │                           # расширяет 5.2 (PATCH, версии, откат,
 │   │   │   │                           # auto-rename)
-│   │   │   ├── taxonomy.ts             # каталоги типов + normalize (5.4)
-│   │   │   ├── enrichment.ts           # обогащения и обоснования (5.4)
+│   │   │   ├── taxonomy.ts             # каталоги типов + normalize + createCustomType (5.4 СДЕЛАНО 2026-09-05; кэш на сессию)
+│   │   │   ├── enrichment.ts           # обогащения и обоснования — 5 функций §2.14 (5.4 СДЕЛАНО 2026-09-05)
 │   │   │   ├── transforms.ts           # graph↔theses, история, откат (5.5)
 │   │   │   ├── prompts.ts              # админка Prompt Registry (6.2)
 │   │   │   ├── import.ts               # multipart-обёртка импорта (4.3)
@@ -333,6 +333,8 @@ philosynth-service/
 │   │   ├── hooks/
 │   │   │   ├── useWebSocket.ts         # WebSocket с reconnect, типизированные сообщения
 │   │   │   ├── useStreamingGeneration.ts  # Подписка на стриминг генерации
+│   │   │   ├── useEnrichmentStream.ts  # Канал обогащений/обоснований: свой WS,
+│   │   │   │                           # REST-запуск, enrichment_delta/done (5.4)
 │   │   │   ├── useEditPlan.ts          # Состояние плана редактирования
 │   │   │   └── useGraphData.ts         # Загрузка и подготовка данных графа
 │   │   │
@@ -390,7 +392,8 @@ philosynth-service/
 │   │   │   │                               # внутри хука); CSS .edit-*/.cascade-* —
 │   │   │   │                               # в globals.css; ElementEditor…VersionHistory —
 │   │   │   │                               # 5.2 (СДЕЛАНО 2026-09-04), Characteristic/
-│   │   │   │                               # Enrichment/Taxonomy — 5.4, Transform* — 5.5
+│   │   │   │                               # Enrichment/Taxonomy/EdgeEditor — 5.4
+│   │   │   │                               # (СДЕЛАНО 2026-09-05), Transform* — 5.5
 │   │   │   │   ├── EditModal.tsx           # Модальное окно редактирования
 │   │   │   │   ├── EditSectionCard.tsx     # Карточка раздела (перегенерация/удаление)
 │   │   │   │   ├── SubsectionRegenPanel.tsx # Перегенерация подраздела
@@ -403,9 +406,13 @@ philosynth-service/
 │   │   │   │   ├── GlossaryTermEditor.tsx  # Термин + столбцы по synth_level (5.2)
 │   │   │   │   ├── VersionHistory.tsx      # Версии элемента, diff, откат (5.2)
 │   │   │   │   ├── TransformHistory.tsx    # История трансформаций + откат (5.5)
-│   │   │   │   ├── CharacteristicSlider.tsx # Слайдер характеристики + кнопка «Обоснование»
-│   │   │   │   ├── EnrichmentPanel.tsx     # Панель результатов обогащения элемента
-│   │   │   │   ├── TaxonomySelector.tsx    # Выбор типа из каталога при нормализации
+│   │   │   │   ├── EdgeEditor.tsx          # Поля связи: тип (TaxonomySelector), направление,
+│   │   │   │   │                           # шесть слайдеров; kind='edge' ElementEditor (5.4)
+│   │   │   │   ├── CharacteristicSlider.tsx # Слайдер характеристики + «?» → обоснование под
+│   │   │   │   │                           # слайдером; CharacteristicSliderGroup (5.4)
+│   │   │   │   ├── EnrichmentPanel.tsx     # Панель обогащения: запуск по типу, стрим, история (5.4)
+│   │   │   │   ├── TaxonomySelector.tsx    # Комбобокс каталога + normalize + создание типа,
+│   │   │   │   │                           # индикатор «из каталога / свободный текст» (5.4)
 │   │   │   │   └── TransformPanel.tsx      # Кнопки graph→theses / theses→graph, превью, история
 │   │   │   │
 │   │   │   ├── modes/

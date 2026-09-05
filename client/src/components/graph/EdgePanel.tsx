@@ -11,6 +11,10 @@
  *
  * АДАПТАЦИЯ: JSX вместо innerHTML; данные — колбэком onShowEdge;
  * slide-in .visible — эффектом после первого кадра (rAF исходника).
+ *
+ * Беседа 5.4 (п. 5): проп onEdit — кнопка «✎ Редактировать» под бейджами
+ * (открывает EdgeEditor связи поверх GraphModal, как NodePanel.onEdit 5.2);
+ * связь находится по GEdge.dbId. В исходнике правки связей не было.
  */
 
 import { useEffect, useState } from "react";
@@ -138,6 +142,9 @@ export interface EdgePanelProps {
   allNodes: GNode[];
   clusterLabels: string[];
   onClose: () => void;
+  /** Беседа 5.4: «✎ Редактировать» → EdgeEditor; не передан — кнопки нет */
+  onEdit?: (() => void) | undefined;
+  editDisabled?: boolean | undefined;
 }
 
 export default function EdgePanel({
@@ -145,6 +152,8 @@ export default function EdgePanel({
   allNodes,
   clusterLabels,
   onClose,
+  onEdit,
+  editDisabled = false,
 }: EdgePanelProps) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -206,6 +215,26 @@ export default function EdgePanel({
           {dirIcon} {dirLabel}
         </span>
       </div>
+      {onEdit ? (
+        <div className="gm-panel-edit-row">
+          <button
+            type="button"
+            className="gm-btn gm-panel-edit-btn"
+            disabled={editDisabled}
+            title={
+              editDisabled
+                ? "Идёт генерация — правки заблокированы"
+                : "Редактировать связь"
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            ✎ Редактировать
+          </button>
+        </div>
+      ) : null}
       {edgeData.desc ? (
         <div className="gm-panel-def">{edgeData.desc}</div>
       ) : null}

@@ -34,11 +34,20 @@
  * Варианты размещения: inline (в теле документа, .inline-edit-form) и
  * modal (поверх графовой модалки: .edit-overlay.element-editor-overlay с
  * z-index выше .gm-overlay — правило в части 3 globals.css).
+ *
+ * Беседа 5.4:
+ *  - новый вид цели kind='edge' (EdgeEditor; связь — из EdgePanel графа,
+ *    PATCH /edges/:edgeId; ФАКТ: правки связей на клиенте до 5.4 не было);
+ *  - для категории и связи в режиме просмотра — EnrichmentPanel (история
+ *    обогащений и запуск), у слайдеров характеристик обоих редакторов —
+ *    кнопка «?» (обоснование); канал доставки — собственное WS-соединение
+ *    useEnrichmentStream (доставка по userId, паритет ModeModal 4.1),
+ *    открывается только пока редактор смонтирован.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
-import type { Category } from "@philosynth/shared/types/graph";
+import type { Category, CategoryEdge } from "@philosynth/shared/types/graph";
 import type {
   AutoRenameResult,
   GlossaryTerm,
@@ -52,11 +61,13 @@ import { ApiError } from "../../api/client";
 import {
   autoRename,
   updateCategory,
+  updateEdge,
   updateGlossaryTerm,
   updateThesis,
   type ElementMutationMeta,
   type RollbackResponse,
 } from "../../api/elements";
+import { useEnrichmentStream } from "../../hooks/useEnrichmentStream";
 import {
   CategoryEditor,
   categoryDiff,
@@ -69,6 +80,10 @@ import {
   glossaryToDraft,
   type GlossaryDraft,
 } from "./GlossaryTermEditor";
+import { EdgeEditor, edgeDiff, edgeToDraft, type EdgeDraft } from "./EdgeEditor";
+import { EnrichmentPanel } from "./EnrichmentPanel";
+import { formatCharacteristic } from "./CharacteristicSlider";
+import { CATEGORY_CHARACTERISTICS, EDGE_CHARACTERISTICS } from "@philosynth/shared/constants/characteristics";
 import { ThesisEditor, thesisDiff, thesisToDraft, type ThesisDraft } from "./ThesisEditor";
 import { VersionHistory } from "./VersionHistory";
 
@@ -95,6 +110,8 @@ export function fmtNum(n: number): string {
 
 export type EditableElement =
   | { kind: "category"; element: Category }
+  /** Беседа 5.4: связь графа; имена концов — для подписи и шапки */
+  | { kind: "edge"; element: CategoryEdge; sourceName?: string | undefined; targetName?: string | undefined }
   | { kind: "thesis"; element: Thesis }
   | { kind: "glossary_term"; element: GlossaryTerm; columnKeys?: readonly string[] };
 
@@ -103,12 +120,14 @@ export type EditableKind = EditableElement["kind"];
 /** Раздел-хозяин таблицы элемента (element-renderer 5.1: TABLES_BY_TYPE) */
 export const HOST_SECTION: Record<EditableKind, string> = {
   category: "graph",
+  edge: "graph",
   thesis: "theses",
   glossary_term: "glossary",
 };
 
 const KIND_TITLE: Record<EditableKind, string> = {
   category: "Категория графа",
+  edge: "Связь графа",
   thesis: "Тезис",
   glossary_term: "Термин глоссария",
 };
@@ -126,7 +145,7 @@ const labelOf = (key: string): string =>
 export interface SaveOutcome extends ElementMutationMeta {
   kind: EditableKind;
   /** Обновлённый элемент (после PATCH/отката) */
-  element: Category | Thesis | GlossaryTerm;
+  element: Category | CategoryEdge | Thesis | GlossaryTerm;
   /** Категория переименована — доступна автозамена */
   renamed?: { oldName: string; newName: string } | undefined;
 }
@@ -152,6 +171,7 @@ export interface ElementEditorProps {
 
 type Draft =
   | { kind: "category"; value: CategoryDraft; base: CategoryDraft }
+  | { kind: "edge"; value: EdgeDraft; base: EdgeDraft }
   | { kind: "thesis"; value: ThesisDraft; base: ThesisDraft }
   | { kind: "glossary_term"; value: GlossaryDraft; base: GlossaryDraft };
 
@@ -160,6 +180,10 @@ function makeDraft(t: EditableElement): Draft {
     case "category": {
       const d = categoryToDraft(t.element);
       return { kind: "category", value: d, base: d };
+    }
+    case "edge": {
+      const d = edgeToDraft(t.element);
+      return { kind: "edge", value: d, base: d };
     }
     case "thesis": {
       const d = thesisToDraft(t.element);
@@ -176,6 +200,8 @@ function isDirty(d: Draft): boolean {
   switch (d.kind) {
     case "category":
       return Object.keys(categoryDiff(d.base, d.value)).length > 0;
+    case "edge":
+      return Object.keys(edgeDiff(d.base, d.value)).length > 0;
     case "thesis":
       return Object.keys(thesisDiff(d.base, d.value)).length > 0;
     case "glossary_term":
@@ -246,6 +272,17 @@ export function ElementEditor({
     [target.element],
   );
 
+  // Беседа 5.4: канал обогащений/обоснований — только у категорий и связей
+  const enrichable = target.kind === "category" || target.kind === "edge";
+  const stream = useEnrichmentStream({ synthesisId, enabled: enrichable });
+  const justify = useMemo(
+    () =>
+      enrichable
+        ? { stream, elementType: target.kind as "category" | "edge", elementId }
+        : undefined,
+    [enrichable, stream, target.kind, elementId],
+  );
+
   const cancel = useCallback(() => {
     setDraft(makeDraft(target));
     setFieldErrors({});
@@ -274,6 +311,15 @@ export function ElementEditor({
             body.name !== undefined && body.name !== draft.base.name
               ? { oldName: draft.base.name, newName: res.category.name }
               : undefined,
+        };
+      } else if (draft.kind === "edge") {
+        const res = await updateEdge(synthesisId, elementId, edgeDiff(draft.base, draft.value));
+        out = {
+          kind: "edge",
+          element: res.edge,
+          impact: res.impact,
+          version: res.version,
+          htmlSync: res.htmlSync,
         };
       } else if (draft.kind === "thesis") {
         const res = await updateThesis(
@@ -320,7 +366,7 @@ export function ElementEditor({
     (res: RollbackResponse) => {
       const out: SaveOutcome = {
         kind: target.kind,
-        element: res.element as Category | Thesis | GlossaryTerm,
+        element: res.element as Category | CategoryEdge | Thesis | GlossaryTerm,
         impact: res.impact,
         version: res.version,
         htmlSync: res.htmlSync,
@@ -369,6 +415,17 @@ export function ElementEditor({
         errors={fieldErrors}
         disabled={disabled || saving}
         lastColName={lastColName}
+        justify={justify}
+      />
+    ) : draft.kind === "edge" ? (
+      <EdgeEditor
+        value={draft.value}
+        onChange={(v) => setDraft({ ...draft, value: v })}
+        errors={fieldErrors}
+        disabled={disabled || saving}
+        sourceName={target.kind === "edge" ? target.sourceName : undefined}
+        targetName={target.kind === "edge" ? target.targetName : undefined}
+        justify={justify}
       />
     ) : draft.kind === "thesis" ? (
       <ThesisEditor
@@ -487,6 +544,24 @@ export function ElementEditor({
         />
       )}
 
+      {enrichable && !editing && (
+        <div style={{ marginTop: 12 }}>
+          <EnrichmentPanel
+            stream={stream}
+            elementType={target.kind as "category" | "edge"}
+            elementId={elementId}
+            elementLabel={
+              target.kind === "category"
+                ? target.element.name
+                : target.kind === "edge"
+                  ? `${target.sourceName ?? "?"} → ${target.targetName ?? "?"}`
+                  : undefined
+            }
+            readOnly={disabled}
+          />
+        </div>
+      )}
+
       {historyOpen && (
         <div style={{ marginTop: 12 }}>
           <VersionHistory
@@ -516,6 +591,7 @@ export function ElementEditor({
             <div className="edit-modal-title">
               ✎ {title}
               {target.kind === "category" ? ` · ${target.element.name}` : ""}
+              {target.kind === "edge" ? ` · ${target.sourceName ?? "?"} → ${target.targetName ?? "?"}` : ""}
             </div>
             <button type="button" className="raw-close" onClick={onClose} title="Закрыть">
               ✕
@@ -561,9 +637,32 @@ function ElementSummary({
           <Row label="Название" value={c.name} />
           <Row label="Тип" value={c.type} />
           <Row label="Определение" value={c.definition} />
-          <Row label="Центральность" value={fmtNum(c.centrality)} />
-          <Row label="Определённость" value={fmtNum(c.certainty)} />
+          {CATEGORY_CHARACTERISTICS.map((s) => (
+            <Row
+              key={s.key}
+              label={s.labelRu.charAt(0).toUpperCase() + s.labelRu.slice(1)}
+              value={formatCharacteristic(s, (c as unknown as Record<string, number>)[s.dtoField] ?? s.min)}
+            />
+          ))}
           <Row label={lastColName ?? "Происхождение"} value={c.origin} />
+        </div>
+      );
+    }
+    case "edge": {
+      const e = target.element;
+      return (
+        <div className="element-summary">
+          <Row label="Связь" value={`${target.sourceName ?? "?"} → ${target.targetName ?? "?"}`} />
+          <Row label="Тип связи" value={e.edgeType} />
+          <Row label="Направление" value={e.direction} />
+          <Row label="Описание" value={e.description} />
+          {EDGE_CHARACTERISTICS.map((s) => (
+            <Row
+              key={s.key}
+              label={s.labelRu.charAt(0).toUpperCase() + s.labelRu.slice(1)}
+              value={formatCharacteristic(s, (e as unknown as Record<string, number>)[s.dtoField] ?? s.min)}
+            />
+          ))}
         </div>
       );
     }
