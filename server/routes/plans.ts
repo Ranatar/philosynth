@@ -25,6 +25,7 @@
 import { Hono } from "hono";
 
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
+import { billingCheck } from "../middleware/billing-check.js"; // 6.1
 import { analyzeImpact } from "../services/cascade-analyzer.js";
 import {
   PlanError,
@@ -261,7 +262,7 @@ plansRoutes.post("/:id/plans/impact", requireAuth, async (c) => {
 
 /* ── POST /syntheses/:id/plans/:planId/execute (беседа 2.2) ──────────── */
 
-plansRoutes.post("/:id/plans/:planId/execute", requireAuth, async (c) => {
+plansRoutes.post("/:id/plans/:planId/execute", requireAuth, billingCheck({ quota: "regenerations" }), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const planId = c.req.param("planId");

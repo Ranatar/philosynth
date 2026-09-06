@@ -44,7 +44,8 @@ Real-time:   WebSocket (Hono WebSocket adapter)
 
 Auth:        Lucia Auth (сессии в PostgreSQL)
 
-Payments:    Stripe (Subscriptions — подписки, PaymentIntents — разовые пополнения)
+Payments:    Stripe (Subscriptions — подписки, PaymentIntents — разовые пополнения;
+             ФАКТ 6.1 — тонкий REST-клиент поверх fetch, без SDK)
 
 Deploy:      Docker Compose (dev) → VPS / managed PostgreSQL (prod)
 ```
@@ -1004,6 +1005,8 @@ GET /syntheses/:id/sections; бейдж в EditSectionCard.tsx (беседа 2.3
 3. **Pay-as-you-go** (баланс): пополнение через Stripe PaymentIntents, per-request списание по себестоимости API + наценка.
 
 Приоритет middleware: BYO-Key → активная подписка с остатком квоты → положительный баланс → ошибка `BILLING_REQUIRED`.
+
+**ФАКТ 6.1 (2026-09-06):** решение принимает `resolveBilling` (billing-service) — дважды: middleware `billing-check` (предпроверка, квоту не трогает, 403 до создания строк) и `withGenerationSlot` (гейт и для WS; здесь квота потребляется атомарно ОДИН раз на операцию, ключ ложится в `handle.billing.apiKey`). Учёт каждого вызова Claude — в `streamSection` через разъём `setStreamUsageRecorder`: `api_usage` пишется во всех режимах (для 'byo' — себестоимость без списания), 'balance' списывает себестоимость × `BILLING_MARKUP`. «Положительный баланс» = баланс ≥ `BILLING_MIN_RESERVE_USD` (порог; точная оценка у middleware недоступна). `BILLING_ENFORCE=false` (дефолт вне production) — без источника оплаты операция идёт серверным ключом в режиме balance в долг. Stripe — тонкий fetch-клиент (`stripe-client.ts`, `STRIPE_API_BASE` для мока), без SDK.
 
 **Авторизация ресурсов:**
 - Синтез принадлежит пользователю (`syntheses.userId`)

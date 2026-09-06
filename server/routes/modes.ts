@@ -33,6 +33,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { modeResults, syntheses } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
+import { billingCheck } from "../middleware/billing-check.js"; // 6.1
 import {
   isGenerationActive,
   loadSynthesis,
@@ -166,7 +167,7 @@ modesRoutes.get("/:id/modes/:modeKey", requireAuth, async (c) => {
 
 /* ── POST /syntheses/:id/modes/:modeKey/run — запуск режима (§2.7) ──── */
 
-modesRoutes.post("/:id/modes/:modeKey/run", requireAuth, async (c) => {
+modesRoutes.post("/:id/modes/:modeKey/run", requireAuth, billingCheck({ quota: "modes" }), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const modeKey = c.req.param("modeKey");
@@ -234,6 +235,7 @@ modesRoutes.delete("/:id/modes/:modeKey/:index", requireAuth, async (c) => {
 modesRoutes.post(
   "/:id/modes/:modeKey/:index/regenerate",
   requireAuth,
+  billingCheck({ quota: "modes" }), // 6.1
   async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");

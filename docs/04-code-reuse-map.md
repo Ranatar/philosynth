@@ -241,7 +241,7 @@
 
 | Функция | Что меняется | Целевой модуль |
 |---|---|---|
-| `MODE_CONFIG`, `buildModeContext()` | Контекст из БД; промпт из Registry | `server/services/mode-service.ts` — ФАКТ (4.1): статика дословно [22578], промпты mode.{adversarial,translator,timeslice}.prompt; контекст — ContextSource (не DOM), бюджет 12000, required без бюджета + optional с truncateText, ctxLog-драфт; клиентская копия статики MODE_UI (ModeModal) — дрейф сторожит integration-check 4x |
+| `MODE_CONFIG`, `buildModeContext()` | Контекст из БД; промпт из Registry | `server/services/mode-service.ts` — ФАКТ (4.1): статика дословно [22578], промпты `mode.{adversarial,translator,timeslice}` (ФАКТ: без суффикса `.prompt`); контекст — ContextSource (не DOM), бюджет 12000, required без бюджета + optional с truncateText, ctxLog-драфт; клиентская копия статики MODE_UI (ModeModal) — дрейф сторожит integration-check 4x |
 | `runMode()` | Стриминг через бэкенд + WebSocket | там же — ФАКТ (4.1): дельты sectionKey "mode:{modeKey}", mode_done; индекс результата = позиция по created_at ASC; КВИРК taskChars = prompt − ctx; version_modes+1; пауз нет |
 | `regenerateModeSilent()` | Аналогично | там же — ФАКТ (4.1): source 'mode_cascade', метка «[каскад]», стрим БЕЗ дельт; КВИРКИ: taskChars = prompt целиком, catch без учёта usage; ОТСТУПЛЕНИЕ: UPDATE строки с сохранением created_at (стабильность индексов) |
 
@@ -287,13 +287,14 @@
 |---|---|
 | `server/middleware/auth.ts` | Lucia Auth: регистрация, сессии, middleware |
 | `server/middleware/rate-limiter.ts` | Rate limiting (Redis) |
-| `server/middleware/billing-check.ts` | Проверка баланса / наличия API-ключа |
+| `server/middleware/billing-check.ts` | Проверка баланса / наличия API-ключа — ФАКТ (6.1): `billingCheck({ quota })` — предпроверка `resolveBilling(consume:false)` → 403 с кодами §4.3 до создания строк; решение в `c.get("billing")` (apiKey только для BYO); гейт и потребление квоты — `withGenerationSlot` (generation-service) |
 | `server/services/element-editor.ts` | Ручное редактирование элементов + impact analysis — ФАКТ (5.1): updateCategory/CategoryEdge/Thesis/GlossaryTerm, deleteCategoryEdge (аддитивно), autoRenameReferences (html_content + капсула + текстовые поля гранулярных строк), computeElementImpact (cross-deps + analyzeImpact + getAffectedModes; severity по упоминаниям прежнего И нового имени), rollbackElement, updateCapsule; ответы += version/htmlSync |
 | `server/services/element-versioning.ts` | Версионирование элементов — ФАКТ (5.1): createVersion (max+1 в tx вызывающего, synthesis_id обязателен), getVersionHistory (фильтр по synthesis_id), rollbackToVersion (белый список полей типа + версия 'rollback'), loadElementRow/restoreElementData |
 | `server/services/element-renderer.ts` | НОВОЕ (5.1, решение п.1): рендер пяти таблиц (категории/связи/топология/тезисы/глоссарий) — обратное к graph-parser/element-parser 1.4; applyElementUpdateToHtml перерисовывает ОДНУ таблицу через `replaceDocTable` (html-parser; заголовки thead из текущего HTML, шаблон Registry — fallback). Дрейф-контроль parser↔renderer — integration-check 4ab |
 | `server/utils/html-parser.ts` += `locateDocTable`, `replaceDocTable`, `replaceThesisParagraph` | ФАКТ (5.1): точечная замена таблицы/абзаца внутри подраздела с сохранением `<h4>` и прозы (spliceSubsectionHtml для этого не годится — заменяет весь подраздел); linkedom по-прежнему только здесь |
-| `server/services/billing-service.ts` | Stripe интеграция, транзакции |
-| `server/services/api-key-service.ts` | Шифрование/дешифрование API-ключей, проксирование |
+| `server/services/billing-service.ts` | Stripe интеграция, транзакции — ФАКТ (6.1): getBalance/createTopup/confirmTopup (идемпотентно по stripe_id)/chargeUsage (себестоимость по PRICE_IN/PRICE_OUT оценщика, списание × BILLING_MARKUP)/recordApiUsage/getUsageHistory (byMode, byo вне totals)/getTransactionHistory + `resolveBilling` (приоритет BYO → подписка с квотой → баланс ≥ порог → ошибка; `BILLING_ENFORCE`) + `recordStreamUsage`, регистрируемый в разъём `setStreamUsageRecorder` streaming-manager импортом; Stripe — тонкий клиент `stripe-client.ts` |
+| `server/services/subscription-service.ts` | НОВОЕ (6.1): планы, `findBillableSubscription` (active/trialing, period_end > now), createSubscription (Customer на подписку + default_incomplete → clientSecret), cancel/resume, checkQuota/incrementUsage/`consumeQuota` (атомарный), resetUsageCounters, handleStripeWebhook (invoice.paid — сброс при новом периоде; subscription.updated/deleted) |
+| `server/services/api-key-service.ts` | Шифрование/дешифрование API-ключей — ФАКТ (6.1): storeApiKey (валидация формата, один активный), getDecryptedKey, deleteApiKey (NOT_FOUND), listApiKeys; «проксирование» — не отдельный слой: ключ идёт в `handle.billing.apiKey` слота |
 | `server/routes/*.ts` | Все HTTP-роуты (в исходнике нет бэкенда) |
 | `server/ws/handler.ts` | WebSocket-обработчик |
 | `client/pages/CatalogPage.tsx` | Каталог концепций |

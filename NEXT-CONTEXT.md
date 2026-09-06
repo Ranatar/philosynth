@@ -4588,3 +4588,116 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
   `TransformHistory.tsx` (образец панели операции с подтверждением и
   историей), `TaxonomySelector.tsx` + `api/taxonomy.ts` (update/delete
   типов — долг).
+
+---
+
+# Беседа 6.1 — Billing Service + API Key Management (бэкенд) [ЗАКРЫТА 2026-09-06]
+
+> Запрос 1 + смоук tests/smoke-61-request1.mjs (54 ✓, без БД/сети/Stripe:
+> AES-256-GCM round-trip и pack/unpack, валидация формата ключа, form-encoding
+> Stripe и подпись webhook, маппинг статусов, стоимость/наценка/коды→статусы,
+> разъём учёта streaming-manager на моке SSE — успех и max-tokens, роуты
+> billing (13) и prompts (8), billingCheck на 11 роутах, warmCache, отсутствие
+> env.anthropic.apiKey и TODO(6.1) в сервисах) + все тестовые запросы R2–R11
+> одним заходом tests/test-61-requests2-11.mjs (109 ✓: живой сервер :3000 с
+> BILLING_ENFORCE=true + PG16/Redis + мок Claude SSE :3855 + мок Stripe REST
+> :3866 через STRIPE_API_BASE; браузер не нужен) + завершение: typecheck (все
+> конфиги) 0, audit ✓, check:integration += 2w/4ag/5x → INTEGRATION OK,
+> check-map-04 0 расхождений, css-parity 0/586, vite build чисто; доки —
+> scripts/patch-docs-conv61.py (29 правок, повтор skip×29). Исходник не
+> нужен — функциональность новая (единственный «порт» — формула стоимости
+> оценщика 1.1). Полный текст решений — «По факту 6.1» в 07.
+
+## Что создано
+
+- `server/utils/crypto.ts` — deriveKey (SHA-256 из секрета любой длины),
+  encrypt/decrypt AES-256-GCM, packSecret/unpackSecret (iv‖tag‖ciphertext).
+- `server/services/api-key-service.ts` — storeApiKey (формат `sk-ant-…`,
+  один активный), getDecryptedKey, hasActiveApiKey, deleteApiKey,
+  listApiKeys; ApiKeyError VALIDATION_ERROR/NOT_FOUND.
+- `server/services/stripe-client.ts` — тонкий fetch-клиент (PaymentIntents,
+  Customers, Subscriptions), encodeForm, constructWebhookEvent /
+  signWebhookPayload, StripeError (STRIPE_UNAVAILABLE/STRIPE_ERROR/
+  WEBHOOK_SIGNATURE_INVALID); база API — env.stripe.apiBase.
+- `server/services/subscription-service.ts` — getPlans,
+  findBillableSubscription, getActiveSubscription, createSubscription,
+  cancel/resume, checkQuota/incrementUsage/consumeQuota (атомарный),
+  resetUsageCounters, handleStripeWebhook, mapStripeStatus, DTO.
+- `server/services/billing-service.ts` — BillingError + billingErrorStatus,
+  computeCostUsd/computeChargeUsd, getBalance, createTopup/confirmTopup,
+  chargeUsage/recordApiUsage, getUsageHistory (byMode)/getTransactionHistory,
+  **resolveBilling** (единый резолвер приоритета; consume:true/false),
+  recordStreamUsage → регистрируется в `setStreamUsageRecorder` импортом.
+- `server/middleware/billing-check.ts` — `billingCheck({ quota, units,
+  estimatedCostUsd })`, кладёт `BillingContextVar` в `c.get("billing")`
+  (поле необязательно в AuthEnv.Variables).
+- `server/routes/billing.ts` (13 эндпоинтов §2.10, /webhook до requireAuth),
+  `server/routes/prompts.ts` (8 эндпоинтов §2.9 под requireAdmin).
+- `server/db/migrations/0002_billing_history_set_null.sql` — ON DELETE SET
+  NULL для `api_usage.synthesis_id` и `transactions.synthesis_id`.
+- shared/types/billing.ts += StoredApiKey, TopupIntent, TopupResult,
+  UsageHistory, TransactionHistory, SubscribeResult, QuotaType.
+- Правлены: streaming-manager (opts.billing + разъём, учёт и при max-tokens),
+  generation-service (GenerationError.details; `GenerationSlotHandle.billing`;
+  `withGenerationSlot(…, SlotBillingOptions)`; `billingContextOf`;
+  assertCanStartGeneration без проверки ключа), mode-service /
+  element-enrichment / representation-transformer / pause-resume-service /
+  plan-executor (`countBillableSteps`) — ключ из `handle.billing.apiKey`,
+  квоты на всех 13 слотах; prompt-registry += createVersion/listTemplates/
+  listConfigs/createConfigVersion/activateConfigVersion; rate-limiter —
+  per-session идентичность; 11 роутов-стартеров обёрнуты billingCheck;
+  index.ts — монтирование + warmCache; env.ts/.env.example —
+  BILLING_ENFORCE, BILLING_MIN_RESERVE_USD, STRIPE_API_BASE; schema.ts —
+  set null; client/api/client.ts — коды STRIPE_UNAVAILABLE/STRIPE_ERROR/
+  WEBHOOK_SIGNATURE_INVALID.
+
+## Решения/адаптации (все — в шапках модулей и «По факту 6.1» в 07)
+
+- Ручка слота как носитель решения биллинга; middleware — предпроверка.
+- Учёт в streamSection через разъём; разъём 5.3 `setUsageRecorder` — no-op.
+- Квота один раз на операцию (таблица соответствия — «По факту 6.1» п.3).
+- BILLING_ENFORCE (в долг вне production); порог BILLING_MIN_RESERVE_USD.
+- Себестоимость в api_usage, наценка в transactions; byo вне totals.
+- Тонкий Stripe-клиент; Customer на подписку (нет stripe_customer_id).
+- Один активный BYO-ключ; первая версия шаблона — черновик.
+- SET NULL истории по synthesis_id; RESTRICT по user_id сохранён.
+
+## Знания/грабли, добытые в 6.1
+
+- `*/` внутри блочного комментария TS (`prompt_cache:*/config_cache:*`,
+  `used_*/quota_*`) закрывает комментарий — писать словами.
+- `env` читается один раз при импорте: в integration-check секция 5x правит
+  объект env (enforce=true) и возвращает обратно.
+- Ключи шаблонов режимов — `mode.adversarial` и т.п., без `.prompt` (04
+  писал иначе; исправлено патчем).
+- FK-политика при уборке стендов: `user_subscriptions → subscription_plans`,
+  `api_usage/transactions → users` — иначе FK; синтез после 0002 удаляется
+  свободно.
+- Полный прогон test-61 ≈ 3,5 мин — только в фоне (`… > log &` + sleep),
+  прямой вызов упирается в лимит инструмента; PG/Redis поднимать перед
+  КАЖДЫМ прогоном (гибнут между ходами).
+- Для мок-Stripe достаточно шести маршрутов и разбора
+  `application/x-www-form-urlencoded` с ключами `a[b][c]`.
+- drizzle-kit generate по правке двух `.references()` даёт ровно две пары
+  DROP/ADD CONSTRAINT — дрейфа схемы нет.
+
+## Открытые TODO после 6.1 (все — в §12 07)
+
+- `users.stripe_customer_id` (Customer на подписку) — 6.2/схема.
+- Точная оценка для гейта POST /syntheses вместо порога — 6.2.
+- Процедура удаления аккаунта с финансовой историей — 6.2.
+- Форма ввода ключа в auth-рендерере PauseModal — 6.2 (была).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **6.2 (BillingPage / AdminPromptsPage)**: `shared/types/billing.ts` (DTO
+  всех эндпоинтов), `routes/billing.ts` и `routes/prompts.ts` (контракты,
+  коды), `middleware/billing-check.ts` (какие коды 403 ловить в UI),
+  `stripe-client.ts` (clientSecret → Stripe Elements: PaymentIntent для
+  topup, PaymentIntent первого инвойса для подписки),
+  `subscription-service.ts` (форма SubscriptionOverview, статус incomplete до
+  оплаты), `prompt-registry.ts` (createVersion — черновик, активация
+  явная), `client/api/client.ts` (новые коды), `PauseModal.tsx` (auth-
+  рендерер — сюда форма ключа), `ProfilePage.tsx` (образец пополевых
+  ошибок), `tests/test-61-requests2-11.mjs` (мок Stripe — переиспользовать
+  в браузерных тестах 6.2).

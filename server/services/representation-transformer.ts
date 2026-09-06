@@ -412,7 +412,7 @@ async function streamTransform(
   targetTitle: string,
 ): Promise<StreamedResult> {
   const { synthesisId, userId } = handle;
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
   const streamKey = transformStreamKey(direction);
   const [genEntry] = await db
     .insert(generationLog)
@@ -649,7 +649,7 @@ export async function startTransform(
         recoverable: false,
       });
     }
-  });
+  }, { quota: "regenerations" }); // 6.1: квота подписки
 }
 
 /* ══ История ══════════════════════════════════════════════════════════ */

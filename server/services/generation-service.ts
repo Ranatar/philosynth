@@ -33,8 +33,9 @@
  *    восстановимы из metadata.subsections генлога);
  *  - user-abort (cancel §3.1): pausedState НЕ создаётся, частичный
  *    результат финализируется по правилам stop (status='ready');
- *  - API-ключ: env.ANTHROPIC_API_KEY; BYO-Key/подписки — биллинг-беседы
- *    (TODO(6.1): ключ пользователя через api-key-service);
+ *  - API-ключ (6.1): handle.billing.apiKey — BYO-Key пользователя либо
+ *    серверный (режимы subscription/balance); решение — resolveBilling в
+ *    withGenerationSlot, учёт usage — разъём streaming-manager;
  *  - _autoAddCurrentDocToPool: на сервере тривиально — синтез уже в БД и
  *    доступен участником мета-синтеза; UX-паттерн — ConceptPool.tsx (3.2);
  *  - setParentContextProvider (разъём 1.2): регистрируется здесь при
@@ -88,6 +89,12 @@ import { computeDependents, getIntraDependents } from "./cascade-analyzer.js";
 import { updateStructureSections, STRUCTURE_SUBSECTION } from "./structure-tracker.js";
 import { createDbContextSource } from "./context-extractor.js";
 import { PRICE_IN, PRICE_OUT } from "./cost-estimator.js";
+import {
+  BillingError,
+  resolveBilling,
+  type BillingDecision,
+} from "./billing-service.js";
+import type { QuotaType } from "./subscription-service.js";
 import {
   isConceptParticipant,
   buildParentSpecForLog,
@@ -214,10 +221,13 @@ const activeRuns = new Map<string, ActiveRun>();
 
 export class GenerationError extends Error {
   code: string;
-  constructor(code: string, message: string) {
+  /** Детали (6.1: QUOTA_EXCEEDED несёт quotaType/used/quota) */
+  details?: unknown;
+  constructor(code: string, message: string, details?: unknown) {
     super(message);
     this.name = "GenerationError";
     this.code = code;
+    if (details !== undefined) this.details = details;
   }
 }
 
@@ -564,7 +574,10 @@ export interface GenerateSynthesisOptions {
 /**
  * Предпроверки старта (используются и POST /syntheses ДО создания строки,
  * и generateSynthesis повторно — гонка допустима, вторая проверка решает):
- * лимит одновременных генераций (03 §3.4) и наличие API-ключа.
+ * лимит одновременных генераций (03 §3.4). Проверка ключа/оплаты с 6.1 —
+ * у биллинга: middleware billing-check (HTTP) и resolveBilling в
+ * withGenerationSlot (единая точка для HTTP и WS; отсутствие серверного
+ * ключа при режимах subscription/balance → API_KEY_MISSING оттуда).
  */
 export function assertCanStartGeneration(userId: string): void {
   if (activeRunsOfUser(userId) >= env.rateLimit.concurrentGenerations) {
@@ -572,9 +585,6 @@ export function assertCanStartGeneration(userId: string): void {
       "RATE_LIMIT",
       `Не более ${env.rateLimit.concurrentGenerations} одновременных генераций`,
     );
-  }
-  if (!env.anthropic.apiKey) {
-    throw new GenerationError("API_KEY_MISSING", "API-ключ Anthropic не задан");
   }
 }
 
@@ -590,6 +600,38 @@ export interface GenerationSlotHandle {
   userId: string;
   /** Сигнал user-abort (WS cancel §3.1) */
   signal: AbortSignal;
+  /** Решение биллинга операции (6.1): режим, ключ Anthropic (BYO или
+   *  серверный), подписка. Все стримы под слотом берут ключ ОТСЮДА. */
+  billing: BillingDecision;
+}
+
+/** Что операция стоит подписчику (6.1): квота и число единиц. null —
+ *  без квоты (возобновление/продолжение уже оплаченной операции). */
+export interface SlotBillingOptions {
+  quota?: QuotaType | null | undefined;
+  units?: number | undefined;
+  /** Порог баланса для режима 'balance' (дефолт env.billing.minReserveUsd) */
+  estimatedCostUsd?: number | undefined;
+}
+
+/** Контекст учёта для streamSection (6.1) — из ручки слота. */
+export function billingContextOf(
+  handle: GenerationSlotHandle,
+  sectionKey?: string,
+): {
+  userId: string;
+  billingMode: BillingDecision["billingMode"];
+  subscriptionId?: string | undefined;
+  synthesisId: string;
+  sectionKey?: string | undefined;
+} {
+  return {
+    userId: handle.userId,
+    billingMode: handle.billing.billingMode,
+    subscriptionId: handle.billing.subscriptionId,
+    synthesisId: handle.synthesisId,
+    ...(sectionKey !== undefined ? { sectionKey } : {}),
+  };
 }
 
 /**
@@ -606,6 +648,7 @@ export async function withGenerationSlot(
   synthesisId: string,
   userId: string,
   fn: (handle: GenerationSlotHandle) => Promise<void>,
+  billingOpts: SlotBillingOptions = {},
 ): Promise<void> {
   if (activeRuns.has(synthesisId)) {
     throw new GenerationError(
@@ -622,7 +665,23 @@ export async function withGenerationSlot(
   };
   activeRuns.set(synthesisId, run);
   try {
-    await fn({ synthesisId, userId, signal: run.abort.signal });
+    // 6.1: режим биллинга и ключ — ПОД слотом (гонка двух стартов решена
+    // has()-проверкой выше), квота подписки потребляется атомарно здесь.
+    let billing: BillingDecision;
+    try {
+      billing = await resolveBilling(userId, {
+        quota: billingOpts.quota ?? null,
+        units: billingOpts.units ?? 1,
+        estimatedCostUsd: billingOpts.estimatedCostUsd,
+        consume: true,
+      });
+    } catch (err) {
+      if (err instanceof BillingError) {
+        throw new GenerationError(err.code, err.message, err.details);
+      }
+      throw err;
+    }
+    await fn({ synthesisId, userId, signal: run.abort.signal, billing });
   } finally {
     activeRuns.delete(synthesisId);
   }
@@ -634,15 +693,20 @@ export async function generateSynthesis(
   opts: GenerateSynthesisOptions = {},
 ): Promise<void> {
   registerParentContextProvider();
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
-  await withGenerationSlot(synthesisId, userId, async (handle) => {
-    const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
-    if (row.userId !== userId) {
-      throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
-    }
-    Object.assign(secCtx, opts.sectionContexts ?? {});
-    await runGenerationPasses(handle, row, philosophers, secCtx, apiKey);
-  });
+  await withGenerationSlot(
+    synthesisId,
+    userId,
+    async (handle) => {
+      const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
+      if (row.userId !== userId) {
+        throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
+      }
+      Object.assign(secCtx, opts.sectionContexts ?? {});
+      // 6.1: ключ — из решения биллинга (BYO пользователя или серверный)
+      await runGenerationPasses(handle, row, philosophers, secCtx, handle.billing.apiKey);
+    },
+    { quota: "syntheses" },
+  );
 }
 
 export interface ResumeFromPassOptions {
@@ -666,18 +730,24 @@ export async function resumeSynthesisFromPass(
   opts: ResumeFromPassOptions = {},
 ): Promise<void> {
   registerParentContextProvider();
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
-  await withGenerationSlot(synthesisId, userId, async (handle) => {
-    const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
-    if (row.userId !== userId) {
-      throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
-    }
-    Object.assign(secCtx, opts.sectionContexts ?? {});
-    await runGenerationPasses(handle, row, philosophers, secCtx, apiKey, {
-      startIdx,
-      source: "resume",
-    });
-  });
+  // 6.1: возобновление — квота синтеза потреблена при старте, повторно
+  // не списывается (quota: null); режим/ключ определяются заново
+  await withGenerationSlot(
+    synthesisId,
+    userId,
+    async (handle) => {
+      const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
+      if (row.userId !== userId) {
+        throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
+      }
+      Object.assign(secCtx, opts.sectionContexts ?? {});
+      await runGenerationPasses(handle, row, philosophers, secCtx, handle.billing.apiKey, {
+        startIdx,
+        source: "resume",
+      });
+    },
+    { quota: null },
+  );
 }
 
 /** Параметры p в форме исходника из строки syntheses.
@@ -1023,7 +1093,7 @@ export async function runGenerationPasses(
                 attemptHtml = htmlSoFar;
                 onDelta(delta, totalChars, htmlSoFar);
               },
-              { signal: run.signal },
+              { signal: run.signal, billing: billingContextOf(run, passKey) },
             );
             html = attemptHtml;
             break;
@@ -1621,7 +1691,7 @@ export async function streamWithRetries(
           attemptHtml = htmlSoFar;
           onDelta(delta, totalChars, htmlSoFar);
         },
-        { signal: handle.signal },
+        { signal: handle.signal, billing: billingContextOf(handle, streamKey) },
       );
       html = attemptHtml;
       break;
@@ -1764,7 +1834,7 @@ export async function regenerateSection(
   _opts: RegenerateSectionOpts = {},
 ): Promise<{ inputTokens: number; outputTokens: number }> {
   const { synthesisId, userId } = handle;
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
   registerParentContextProvider();
 
   const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
@@ -2035,7 +2105,7 @@ export async function startSectionRegeneration(
         recoverable: false,
       });
     }
-  });
+  }, { quota: "regenerations" }); // 6.1: квота подписки
 }
 
 /* ── regenerateSubsection [20236–20476] (полный; долг 1.4b закрыт) ───── */
@@ -2176,7 +2246,7 @@ export async function regenerateSubsection(
 }> {
   const { synthesisId, userId } = handle;
   const sectionKey = def.key;
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
   if (!def.parts) {
     throw new GenerationError(
       "VALIDATION_ERROR",
@@ -2487,7 +2557,7 @@ export async function startSubsectionRegeneration(
         recoverable: false,
       });
     }
-  });
+  }, { quota: "regenerations" }); // 6.1: квота подписки
 }
 
 /* ── Нумерация разделов [5730] + ссылки §N [5628] ────────────────────── */
@@ -2613,7 +2683,7 @@ export async function addSection(
   _opts: AddSectionOpts = {},
 ): Promise<{ inputTokens: number; outputTokens: number }> {
   const { synthesisId, userId } = handle;
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
   registerParentContextProvider();
 
   const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);

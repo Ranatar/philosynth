@@ -22,6 +22,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 import { db, schema } from "../db/index.js";
 import { env } from "../env.js";
+import type { BillingContextVar } from "./billing-check.js";
 
 /* ── Константы ───────────────────────────────────────────────────────── */
 
@@ -47,11 +48,14 @@ export interface SessionInfo {
   expiresAt: Date;
 }
 
-/** Hono-Env с переменными, которые выставляет requireAuth */
+/** Hono-Env с переменными, которые выставляет requireAuth.
+ *  billing — выставляет billingCheck (беседа 6.1) на роутах генерации;
+ *  необязательна: у прочих роутов её нет. */
 export type AuthEnv = {
   Variables: {
     user: AuthUser;
     session: SessionInfo;
+    billing?: BillingContextVar;
   };
 };
 

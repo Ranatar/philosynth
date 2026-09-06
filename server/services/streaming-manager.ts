@@ -21,6 +21,15 @@
  *  - частичный результат при обрыве пишется в Redis (ws/stream-state) —
  *    п. f первого запроса 1.4; периодические записи держат reconnect-буфер
  *    §3.3 актуальным и во время штатного стрима.
+ *
+ * Расширение 6.1 (п. 5 запроса 1): учёт биллинга. После получения usage
+ * от Claude (и при max-tokens — токены потрачены) вызывается разъём
+ * setStreamUsageRecorder с контекстом opts.billing: 'balance' → списание
+ * с баланса, 'subscription' → строка api_usage (квота потреблена при
+ * взятии слота), 'byo' → api_usage с себестоимостью без списания. Сам
+ * streaming-manager БД не трогает — реализацию регистрирует
+ * billing-service побочным эффектом импорта; без регистрации (смоуки без
+ * биллинга) — no-op. Без opts.billing учёт не ведётся.
  */
 import { env } from "../env.js";
 import {
@@ -106,6 +115,58 @@ export interface StreamSectionOptions {
   maxTokens?: number | undefined;
   /** Порог stuck-детектора, мс (дефолт env.streaming.stuckMs = 45 000) */
   stuckMs?: number | undefined;
+  /** Контекст учёта биллинга (беседа 6.1); нет — usage не учитывается */
+  billing?: StreamBillingContext | undefined;
+}
+
+/* ── Учёт биллинга (беседа 6.1) ──────────────────────────────────────── */
+
+/** Кто и в каком режиме платит за этот вызов Claude. synthesisId/
+ *  sectionKey подставляются из аргументов streamSection. */
+export interface StreamBillingContext {
+  userId: string;
+  billingMode: "byo" | "subscription" | "balance";
+  subscriptionId?: string | undefined;
+  synthesisId?: string | null | undefined;
+  sectionKey?: string | null | undefined;
+}
+
+export type StreamUsageRecorder = (
+  ctx: StreamBillingContext,
+  usage: StreamUsage,
+) => Promise<void>;
+
+let usageRecorder: StreamUsageRecorder | null = null;
+
+/** Регистрация учёта (billing-service). null — снять. */
+export function setStreamUsageRecorder(fn: StreamUsageRecorder | null): void {
+  usageRecorder = fn;
+}
+
+export function hasStreamUsageRecorder(): boolean {
+  return usageRecorder !== null;
+}
+
+async function recordUsageIfBilled(
+  billing: StreamBillingContext | undefined,
+  synthesisId: string,
+  sectionKey: string,
+  usage: StreamUsage,
+): Promise<void> {
+  if (!billing || !usageRecorder) return;
+  try {
+    await usageRecorder(
+      {
+        ...billing,
+        synthesisId: billing.synthesisId ?? synthesisId,
+        sectionKey: billing.sectionKey ?? sectionKey,
+      },
+      usage,
+    );
+  } catch (err) {
+    // Учёт не должен ломать уже полученный результат стрима
+    console.error("[streaming-manager] учёт usage:", err);
+  }
 }
 
 /** Троттлинг записи reconnect-буфера в Redis, мс */
@@ -342,12 +403,18 @@ export async function streamSection(
     );
     err.maxTokensUsed = maxTokens;
     err.usage = { inputTokens: usageIn, outputTokens: usageOut };
+    // 6.1: токены потрачены — учитываются, как err._usage в genEntry
+    await recordUsageIfBilled(opts.billing, synthesisId, sectionKey, err.usage);
     throw err;
   }
 
+  const usage: StreamUsage = { inputTokens: usageIn, outputTokens: usageOut };
+  // 6.1 (п. 5): списание/учёт после usage от Claude
+  await recordUsageIfBilled(opts.billing, synthesisId, sectionKey, usage);
+
   // Успех: буфер раздела больше не нужен reconnect'у
   await clearStreamState(synthesisId, sectionKey);
-  return { inputTokens: usageIn, outputTokens: usageOut };
+  return usage;
 }
 
 /* ── Дружественное сообщение об обрыве ───────────────────────────────── */

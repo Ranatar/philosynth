@@ -39,9 +39,11 @@
  *  - intra-запись ctxLog [20255–20310]: колонки type='intra-section' в
  *    context_log нет — тип восстановим по sectionKey вида
  *    'раздел:подраздел' и префиксу 'intra:' у entries;
- *  - _resumeWithNewApiKey [24552] (ввод нового ключа в модалке) —
- *    TODO(6.1) BYO-Key: ключ серверный (env), менять из модалки нечего;
- *    auth-пауза возобновляется retry после замены ключа на сервере;
+ *  - _resumeWithNewApiKey [24552] (ввод нового ключа в модалке) — с 6.1
+ *    ключ берётся из решения биллинга при взятии слота (BYO пользователя
+ *    или серверный): пользователь сохраняет новый ключ через POST
+ *    /billing/api-key и жмёт «Повторить» — retry подхватит его; форма
+ *    ввода в auth-рендерере PauseModal — долг §12 → 6.2;
  *  - прогресс-панель/контейнеры/кнопки (_rebuildProgressPanelForResume,
  *    _ensureDocBodyContainers, submitBtn) — клиент (1.5).
  *
@@ -790,7 +792,7 @@ async function resumeFillMissingSubs(
         fresh.row,
         fresh.philosophers,
         fresh.secCtx,
-        env.anthropic.apiKey,
+        handle.billing.apiKey, // 6.1
         { startIdx: ps.passIdx + 1, source: "resume" },
       );
     } catch (rawErr) {
@@ -875,7 +877,7 @@ async function resumeFillMissingSubs(
         estimates: await computePauseEstimates(synthesisId, newPs),
       });
     }
-  });
+  }, { quota: null }); // 6.1: квота подписки
 }
 
 /* ══ resumePlan (kind='plan') [25910] ═════════════════════════════════ */

@@ -58,6 +58,30 @@ export const env = {
     secretKey: process.env.STRIPE_SECRET_KEY ?? "",
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
     billingMarkup: num("BILLING_MARKUP", 1.2),
+    /** База REST API Stripe (беседа 6.1): мок в тестах — тот же приём,
+     *  что ANTHROPIC_BASE_URL. */
+    apiBase: process.env.STRIPE_API_BASE ?? "https://api.stripe.com",
+  },
+
+  billing: {
+    /**
+     * Принуждение биллинга (беседа 6.1). true — запрос без BYO-Key,
+     * подписки с квотой и достаточного баланса отклоняется
+     * (BILLING_REQUIRED / QUOTA_EXCEEDED / INSUFFICIENT_BALANCE).
+     * false (дефолт вне production) — при отсутствии источника оплаты
+     * операция идёт серверным ключом в режиме 'balance' и списывается с
+     * баланса, который при этом уходит в минус: учёт честный, гейта нет.
+     * Иначе двадцать тестовых стендов бесед 1.4–5.5 (пользователи с
+     * нулевым балансом, мок Claude) потребовали бы пополнения.
+     */
+    enforce:
+      process.env.BILLING_ENFORCE !== undefined
+        ? process.env.BILLING_ENFORCE === "true"
+        : isProd,
+    /** Минимальный резерв баланса, ниже которого операция в режиме
+     *  'balance' не запускается (гейт «баланс > estimatedCost» — точная
+     *  оценка есть только у POST /syntheses; для прочих операций порог). */
+    minReserveUsd: num("BILLING_MIN_RESERVE_USD", 0.05),
   },
 
   rateLimit: {

@@ -3,7 +3,11 @@
  *
  * Алгоритм: fixed window на Redis (INCR + EXPIRE), ключи по схеме
  * 01-architecture §3: rate_limit:{scope}:{identity}:{windowIdx}.
- * Идентичность: userId авторизованного пользователя, иначе IP.
+ * Идентичность: userId авторизованного пользователя; иначе (беседа 6.1,
+ * долг §12 «per-user HTTP-лимитирование») — сессия из cookie (SHA-256
+ * токена, первые 16 hex: лимитер стоит ДО requireAuth и в БД не ходит,
+ * а cookie-сессия ≡ пользователю в Lucia-модели; разные сессии одного
+ * пользователя считаются раздельно — принято); иначе IP.
  *
  * Ответ при превышении — 429 { error, code: "RATE_LIMIT",
  * details: { retryAfter } } + заголовок Retry-After (секунды до конца окна);
@@ -15,8 +19,11 @@
  * Лимиты генераций (3 одновременных, §3.4) — не здесь: это семантика
  * generation-service (беседа 1.4), а не HTTP-окна.
  */
+import { createHash } from "node:crypto";
+
 import { getConnInfo } from "@hono/node-server/conninfo";
 import type { Context, MiddlewareHandler } from "hono";
+import { getCookie } from "hono/cookie";
 
 import { env } from "../env.js";
 import { redis } from "../redis.js";
@@ -34,6 +41,10 @@ export interface RateLimiterOptions {
 function clientIdentity(c: Context): string {
   const user = (c as Context<AuthEnv>).get("user");
   if (user?.id) return `u:${user.id}`;
+  const token = getCookie(c, env.session.cookieName);
+  if (token) {
+    return `s:${createHash("sha256").update(token).digest("hex").slice(0, 16)}`;
+  }
   const forwarded = c.req.header("x-forwarded-for");
   if (forwarded) return `ip:${forwarded.split(",")[0]!.trim()}`;
   try {

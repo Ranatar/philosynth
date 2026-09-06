@@ -33,6 +33,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { categories, categoryEdges, syntheses } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
+import { billingCheck } from "../middleware/billing-check.js"; // 6.1
 import {
   EnrichmentError,
   getEnrichments,
@@ -121,7 +122,7 @@ function fireAndForget(label: string, p: Promise<void>): void {
 
 /* ── POST /:id/enrich/category/:catId ────────────────────────────────── */
 
-enrichmentRoutes.post("/:id/enrich/category/:catId", requireAuth, async (c) => {
+enrichmentRoutes.post("/:id/enrich/category/:catId", requireAuth, billingCheck({ quota: "enrichments" }), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const catId = c.req.param("catId");
@@ -144,7 +145,7 @@ enrichmentRoutes.post("/:id/enrich/category/:catId", requireAuth, async (c) => {
 
 /* ── POST /:id/enrich/edge/:edgeId ───────────────────────────────────── */
 
-enrichmentRoutes.post("/:id/enrich/edge/:edgeId", requireAuth, async (c) => {
+enrichmentRoutes.post("/:id/enrich/edge/:edgeId", requireAuth, billingCheck({ quota: "enrichments" }), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const edgeId = c.req.param("edgeId");
@@ -167,7 +168,7 @@ enrichmentRoutes.post("/:id/enrich/edge/:edgeId", requireAuth, async (c) => {
 
 /* ── POST /:id/justify-characteristic ────────────────────────────────── */
 
-enrichmentRoutes.post("/:id/justify-characteristic", requireAuth, async (c) => {
+enrichmentRoutes.post("/:id/justify-characteristic", requireAuth, billingCheck({ quota: "enrichments" }), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const gate = await ownerEditGate(c, id, user.id);

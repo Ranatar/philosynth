@@ -43,6 +43,7 @@ import { createLineageRecords } from "../services/lineage-service.js";
 import { parentOverheadForSection } from "../services/context-builder.js";
 import { normalizeSectionKey } from "../services/parent-context.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
+import { billingCheck } from "../middleware/billing-check.js"; // 6.1
 import {
   assertCanStartGeneration,
   generateSynthesis,
@@ -381,7 +382,7 @@ async function buildSynthesisFull(
 
 export const synthesesRoutes = new Hono<AuthEnv>();
 
-synthesesRoutes.post("/", requireAuth, async (c) => {
+synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), async (c) => {
   const user = c.get("user");
 
   let body: PostBody;

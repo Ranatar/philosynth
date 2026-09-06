@@ -810,7 +810,12 @@ export const transactions = pgTable(
       precision: 10,
       scale: 4,
     }).notNull(),
-    synthesisId: uuid("synthesis_id").references(() => syntheses.id),
+    /** ON DELETE SET NULL (правка 6.1): история платежей переживает
+     *  удаление синтеза; без этого DELETE /syntheses/:id падал бы на FK у
+     *  любого оплаченного синтеза (02 §2.20 писал голый REFERENCES). */
+    synthesisId: uuid("synthesis_id").references(() => syntheses.id, {
+      onDelete: "set null",
+    }),
     sectionKey: text("section_key"),
     stripeId: text("stripe_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -829,7 +834,10 @@ export const apiUsage = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id),
-    synthesisId: uuid("synthesis_id").references(() => syntheses.id),
+    /** ON DELETE SET NULL (правка 6.1) — см. transactions.synthesis_id */
+    synthesisId: uuid("synthesis_id").references(() => syntheses.id, {
+      onDelete: "set null",
+    }),
     sectionKey: text("section_key"),
     /**
      * Режим биллинга запроса (правка 2026-09-02): три значения по

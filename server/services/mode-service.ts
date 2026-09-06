@@ -471,7 +471,7 @@ export async function runMode(
   if (!param) {
     throw new GenerationError("VALIDATION_ERROR", "Заполните параметр.");
   }
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
 
   const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
   const p = buildParams(row, philosophers, secCtx);
@@ -623,7 +623,7 @@ export async function startMode(
         recoverable: false,
       });
     }
-  });
+  }, { quota: "modes" }); // 6.1: квота подписки
 }
 
 /**
@@ -671,7 +671,7 @@ export async function startModeRegen(
         recoverable: false,
       });
     }
-  });
+  }, { quota: "modes" }); // 6.1: квота подписки
 }
 
 /* ══ regenerateModeSilent [23165] ════════════════════════════════════ */
@@ -701,7 +701,7 @@ export async function regenerateModeSilent(
   if (!target) return ZERO;
   const config = getModeConfig(modeKey);
   if (!config) return ZERO;
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
 
   const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
   const p = buildParams(row, philosophers, secCtx);

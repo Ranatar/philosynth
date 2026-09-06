@@ -484,7 +484,7 @@ async function streamEnrichment(
   row: SynthesisRow,
   philosophers: string[],
 ): Promise<StreamedResult> {
-  const apiKey = env.anthropic.apiKey; // TODO(6.1): BYO-Key пользователя
+  const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
   const prompt = await renderTemplate(promptKey, vars);
   const SYS = await buildSYS({ phil: philosophers, lang: row.lang }, { outputMode: "mode" });
   const onDelta = (delta: string, totalChars: number): void => {
@@ -822,7 +822,7 @@ export async function startEnrichment(
     } catch (err) {
       reportStreamError(synthesisId, userId, streamKey, err);
     }
-  });
+  }, { quota: "enrichments" }); // 6.1: квота подписки
 }
 
 /** Запуск обоснования характеристики в собственном слоте (POST
@@ -841,7 +841,7 @@ export async function startJustification(
     } catch (err) {
       reportStreamError(synthesisId, userId, streamKey, err);
     }
-  });
+  }, { quota: "enrichments" }); // 6.1: квота подписки
 }
 
 /* ══ История ══════════════════════════════════════════════════════════ */

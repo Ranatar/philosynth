@@ -30,6 +30,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { syntheses } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
+import { billingCheck } from "../middleware/billing-check.js"; // 6.1
 import { isGenerationActive } from "../services/generation-service.js";
 import {
   TransformError,
@@ -89,10 +90,10 @@ async function postTransform(
   return c.json({ ok: true });
 }
 
-transformRoutes.post("/:id/transform/graph-to-theses", requireAuth, (c) =>
+transformRoutes.post("/:id/transform/graph-to-theses", requireAuth, billingCheck({ quota: "regenerations" }), (c) =>
   postTransform(c, c.req.param("id"), "graph_to_theses"),
 );
-transformRoutes.post("/:id/transform/theses-to-graph", requireAuth, (c) =>
+transformRoutes.post("/:id/transform/theses-to-graph", requireAuth, billingCheck({ quota: "regenerations" }), (c) =>
   postTransform(c, c.req.param("id"), "theses_to_graph"),
 );
 

@@ -573,6 +573,25 @@ async function appendCascadeSteps(
   });
 }
 
+/** 6.1: сколько единиц квоты regenerations стоит прогон плана с шага from —
+ *  подтверждённые шаги, требующие вызова Claude (regen / add /
+ *  regen_subsection / regen_mode); delete — бесплатно; минимум 1
+ *  (каскад может добавить шаги после — они не предоплачиваются). */
+export function countBillableSteps(
+  steps: readonly EditStep[],
+  fromIndex = 0,
+): number {
+  let n = 0;
+  for (let i = fromIndex; i < steps.length; i++) {
+    const st = steps[i];
+    if (!st) continue;
+    if (st.status !== "confirmed") continue;
+    if (st.type === "delete") continue;
+    n += 1;
+  }
+  return Math.max(1, n);
+}
+
 /* ══ executePlan [19514] ══════════════════════════════════════════════ */
 
 /**
@@ -618,7 +637,7 @@ export async function executePlan(
     await appendCascadeSteps(synthesisId, userId, planId, steps);
     await setPlanStatus(planId, "done");
     await sendPlanUpdated(synthesisId, planId, userId);
-  });
+  }, { quota: "regenerations", units: countBillableSteps(steps, 0) }); // 6.1: квота подписки
 }
 
 /** plan_updated с живой оценкой (форма getPlan). */
@@ -702,7 +721,7 @@ export async function confirmStep(
       await setPlanStatus(planId, "done");
     }
     await sendPlanUpdated(synthesisId, planId, userId);
-  });
+  }, { quota: "regenerations", units: countBillableSteps(steps, stepIndex) }); // 6.1: квота подписки
   return synthesisId;
 }
 
@@ -769,7 +788,7 @@ async function resumePlanExecutor(
     await appendCascadeSteps(synthesisId, userId, planId, steps);
     await setPlanStatus(planId, "done");
     await sendPlanUpdated(synthesisId, planId, userId);
-  });
+  }, { quota: "regenerations", units: countBillableSteps(steps, fromIndex) }); // 6.1: квота подписки
 }
 
 /* ══ Регистрация разъёма (побочный эффект импорта; образец 1.4b) ══════ */

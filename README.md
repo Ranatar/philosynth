@@ -112,7 +112,7 @@ MMD/JSON/PNG/MD + ExportError NO_GRAPH). Сейчас покрывает 0.1–0
 поднятых PG и Redis и засеянных prompt_templates, synthesis_configs
 и каталогов таксономии.
 
-## Статус: Фазы 0–5 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3; Фаза 5: 5.1–5.5, закрыта 2026-09-06)
+## Статус: Фазы 0–5 завершены + 6.1 (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3; Фаза 5: 5.1–5.5, закрыта 2026-09-06; Фаза 6: 6.1 закрыта 2026-09-06)
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -471,8 +471,23 @@ useTransformStream + TransformPanel/TransformHistory + «→ Тезисы» в
 tests/test-55-requests2-7.mjs 106 ✓ ×2 на моке Claude + браузер,
 check:integration += 2v/4af/5w; долги §12 «нормализация типов» и
 «парсер глоссария при lang ≠ Russian» закрыты); доки пропатчены
-scripts/patch-docs-conv55.py. Фаза 5 закрыта целиком; следующая по
-графу 07 — 6.1 (Billing Service).
+scripts/patch-docs-conv55.py. Фаза 5 закрыта целиком.
+Беседа 6.1 (Billing Service + API Key Management, бэкенд) ЗАКРЫТА
+2026-09-06: billing-service (resolveBilling — приоритет BYO → подписка →
+баланс, chargeUsage, истории) + api-key-service (AES-256-GCM, один
+активный ключ) + subscription-service (планы, атомарный consumeQuota,
+webhook) + stripe-client (тонкий fetch-клиент, STRIPE_API_BASE для мока)
++ middleware/billing-check на 11 роутах-стартерах + routes/billing §2.10
+(13) + routes/prompts §2.9 (8, admin) + разъём учёта в streamSection +
+billing на ручке generation-слота (все `env.anthropic.apiKey` сняты) +
+миграция 0002 (ON DELETE SET NULL истории) + per-session rate-limit +
+warmCache (смоук 54 ✓, tests/test-61-requests2-11.mjs 109 ✓ против живого
+сервера с BILLING_ENFORCE=true, моком Claude и моком Stripe;
+check:integration += 2w/4ag/5x; долги §12 BYO-Key / per-user rate-limit /
+warmCache / учёт обогащений закрыты); доки пропатчены
+scripts/patch-docs-conv61.py. Новые env: BILLING_ENFORCE,
+BILLING_MIN_RESERVE_USD, STRIPE_API_BASE. Следующая по графу 07 — 6.2
+(Billing UI + Admin Prompts Page).
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

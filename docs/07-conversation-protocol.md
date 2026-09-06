@@ -1,5 +1,24 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-09-06 (итоги беседы 6.1)**: Billing Service + API Key
+> Management закрыт (запрос 1 + смоук tests/smoke-61-request1.mjs 54 ✓ +
+> все тестовые запросы tests/test-61-requests2-11.mjs 109 ✓ против живого
+> сервера с BILLING_ENFORCE=true, моком Claude SSE и моком Stripe REST;
+> check:integration += 2w/4ag/5x). Дыры, закрытые этим патчем (глава
+> «По факту 6.1»): носитель решения биллинга — ручка generation-слота
+> (`handle.billing`), а не middleware; учёт каждого вызова Claude — разъём
+> `setStreamUsageRecorder` в streamSection; квота подписки потребляется
+> ОДИН раз на операцию при взятии слота (п.5 текста запроса «на каждый
+> usage» противоречил квоте «синтезов»); режим `BILLING_ENFORCE` (без него
+> 20 стендов бесед 1.4–5.5 требовали бы пополнения); гейт баланса —
+> порог `BILLING_MIN_RESERVE_USD` (точной оценки у middleware нет);
+> `api_usage`/`transactions.synthesis_id` → ON DELETE SET NULL (миграция
+> 0002 — иначе DELETE оплаченного синтеза падал на FK); имя поля
+> `encryptedKey` в 03 §2.10 (клиент шлёт открытый ключ — принято `key`,
+> `encryptedKey` синоним); ключи шаблонов режимов в 04 — `mode.{…}` без
+> `.prompt`; долги §12 BYO-Key / per-user rate-limit / warmCache / учёт
+> обогащений закрыты.
+
 > **Правки 2026-09-06 (итоги беседы 5.5)**: Representation Transformer
 > graph↔theses закрыт (запрос 1 + смоук tests/smoke-55-request1.mjs 56 ✓ +
 > все тестовые запросы tests/test-55-requests2-7.mjs 106 ✓ ×2 (живой
@@ -3846,7 +3865,8 @@ streaming-manager.
 Создай:
 1. server/services/api-key-service.ts:
    - storeApiKey(userId, apiKey):
-     a. Шифрование AES-256-GCM (ключ из env ENCRYPTION_KEY)
+     a. Шифрование AES-256-GCM (ключ из env API_KEY_ENCRYPTION_SECRET —
+        имя закреплено env.ts 0.1; текст ранее писал ENCRYPTION_KEY)
      b. Сохранение encrypted_key + key_prefix (первые 14 символов)
      c. Возвращает { keyId, prefix }
    - getDecryptedKey(userId):
@@ -3958,7 +3978,7 @@ streaming-manager.
 **Последующие запросы:**
 - «Протестируй BYO-Key: сохрани ключ → getDecryptedKey возвращает оригинал → billing-check пропускает с mode "byo"»
 - «Протестируй баланс: пополни $1.00 → сгенерируй раздел → баланс уменьшился на стоимость → transaction записан»
-- «Протестируй недостаток баланса: баланс $0.001, попытка генерации exhaustive — ошибка INSUFFICIENT_BALANCE»
+- «Протестируй недостаток баланса: баланс $0.001, попытка генерации exhaustive — ошибка INSUFFICIENT_BALANCE» (ФАКТ 6.1: порог — `BILLING_MIN_RESERVE_USD`, баланс 0 → `BILLING_REQUIRED`; строка синтеза не создаётся — middleware до INSERT)
 - «Протестируй шифрование: storeApiKey → перезапуск сервера → getDecryptedKey возвращает тот же ключ»
 - «Edge case: пользователь с BYO-Key И балансом — приоритет BYO-Key»
 - «Протестируй подписку: создать Starter план → subscribe → Stripe mock → подписка active → сгенерировать синтез → used_syntheses = 1»
@@ -3971,6 +3991,101 @@ streaming-manager.
 - «Скомпилируй проект (`tsc --noEmit` для server/ и shared/) — покажи и исправь все type errors, не меняя логику»
 - «Проверь интеграцию с файлами из предыдущих бесед: все импорты корректны (пути, имена экспортов)? Типы совместимы? Async/await правильно пробрасывается?»
 - «Ревью: все ли функции из карты переиспользования (04-code-reuse-map.md) для этого модуля портированы? Перечисли оставшиеся TODO и заглушки. Зафиксируй список файлов из этой беседы, которые нужно загрузить как контекст в следующие беседы»
+
+**По факту 6.1 (2026-09-06) — отступления от буквы первого запроса:**
+
+1. **Носитель решения биллинга — ручка generation-слота.** Все операции
+   с Claude (генерация, resume, регенерации, планы, режимы, обогащения,
+   трансформации) проходят через `withGenerationSlot(synthesisId, userId,
+   fn, { quota, units, estimatedCostUsd })`; под слотом вызывается
+   `resolveBilling(userId, { quota, units, consume: true })` →
+   `handle.billing = { billingMode, apiKey, subscriptionId?, enforced }`.
+   Все бывшие `env.anthropic.apiKey` (11 точек TODO(6.1)) заменены на
+   `handle.billing.apiKey` — BYO-Key закрыт одной точкой без смены
+   сигнатур. Middleware `billing-check` — ПРЕДПРОВЕРКА на HTTP-границе
+   (403 с кодами §4.3 до создания строк; `consume:false`), слот — гейт и
+   для WS (`start_*` без оплаты → `stream_error` с кодом). Гонка
+   «middleware пропустил, слот отказал» допустима — принцип
+   `assertCanStartGeneration` 1.4; сама `assertCanStartGeneration` больше
+   не проверяет серверный ключ (это `API_KEY_MISSING` резолвера).
+2. **Учёт каждого вызова Claude — в `streamSection`** через разъём
+   `setStreamUsageRecorder` (регистрирует billing-service побочным
+   эффектом импорта, как `setModeRegenerator` 4.1); контекст
+   `opts.billing` подставляют `streamWithRetries` и главный цикл из ручки
+   слота (`billingContextOf`). Учитывается и `max-tokens` (токены
+   потрачены). 'balance' → `chargeUsage`; 'subscription'/'byo' →
+   `recordApiUsage`. Разъём `setUsageRecorder` 5.3 остаётся no-op — иначе
+   двойной учёт обогащений; долг §12 «учёт обогащений» закрыт этим путём.
+3. **Квота потребляется ОДИН раз на операцию** при взятии слота
+   (`consumeQuota` — атомарный `UPDATE … WHERE used + n <= quota`, гонка
+   двух стартов не пробивает квоту), а не на каждый вызов Claude: синтез
+   из восьми разделов стоил бы восемь синтезов. Соответствие:
+   synthesis → `syntheses`; регенерация раздела/подраздела/добавление и
+   трансформация 5.5 → `regenerations`; план → `regenerations` × число
+   подтверждённых шагов с вызовом Claude (`countBillableSteps`, delete
+   бесплатно, каскад-дописки не предоплачиваются); режим и тихая
+   перегенерация режима → `modes`; обогащение/обоснование →
+   `enrichments`; resume/продолжение после паузы → без квоты
+   (`quota:null`, режим и ключ определяются заново).
+4. **`BILLING_ENFORCE`** (env; дефолт true в production, иначе false):
+   без принуждения при отсутствии источника оплаты операция идёт
+   серверным ключом в режиме 'balance' и списывается с баланса, который
+   уходит в минус (учёт честный, гейта нет) — иначе двадцать стендов
+   бесед 1.4–5.5 (пользователи с нулевым балансом, мок Claude)
+   потребовали бы пополнения. Тесты 6.1 гоняются с `BILLING_ENFORCE=true`.
+5. **Гейт баланса — порог `BILLING_MIN_RESERVE_USD`** (дефолт $0.05), а
+   не estimatedCost: точная оценка есть только у POST /syntheses и
+   вычисляется ПОСЛЕ разбора тела (middleware стоит до). Различие кодов:
+   баланс > 0, но ниже порога → `INSUFFICIENT_BALANCE`
+   (details.balanceUsd/requiredUsd); подписка есть, квота исчерпана,
+   баланса нет → `QUOTA_EXCEEDED` (details.quotaType/used/quota); ничего
+   нет → `BILLING_REQUIRED`. Списание — по факту после usage, баланс
+   может уйти в минус на одну операцию (pre-check — порог).
+6. **Стоимость.** `api_usage.cost_usd` — себестоимость по ставкам
+   оценщика (`PRICE_IN`/`PRICE_OUT`, та же формула, что `bumpTotals`);
+   `transactions.amount_usd` для 'usage' — себестоимость ×
+   `BILLING_MARKUP` (01 §6 «по себестоимости API + наценка»). В
+   `GET /usage` totals.costUsd НЕ включает строки 'byo' (02 §2.21),
+   добавлен `byMode`.
+7. **Stripe — тонкий fetch-клиент `stripe-client.ts`** (05 его не
+   называл, 01 писал «Stripe SDK»): шесть вызовов + проверка подписи
+   webhook (HMAC `t.body`, допуск 300 с); база API подменяется
+   `STRIPE_API_BASE` (мок в тестах). Пустой `STRIPE_SECRET_KEY` →
+   пополнение/подписка отвечают 503 `STRIPE_UNAVAILABLE`, BYO и баланс
+   работают. Пустой `STRIPE_WEBHOOK_SECRET` — подпись не проверяется
+   только вне production. Webhook — без сессии, читает сырое тело,
+   отвечает 200 и на необработанные события. `users.stripe_customer_id` в
+   02 нет — Customer создаётся на каждую подписку с metadata.userId
+   (долг §12 → 6.2/схема). Ретрай Stripe того же периода счётчики не
+   сбрасывает (`already_current`).
+8. **BYO-ключ: активный ОДИН** — новый деактивирует прежние (история
+   остаётся `is_active=false`); формат валидируется (`sk-ant-…`, ≥20,
+   без пробелов), живость — первым стримом (auth-пауза). Шифрование
+   AES-256-GCM, ключ выводится SHA-256 из `API_KEY_ENCRYPTION_SECRET`
+   (имя из env.ts 0.1; текст запроса писал `ENCRYPTION_KEY`), упаковка
+   iv‖tag‖ciphertext в одну BYTEA-колонку. Тело POST /api-key принимает
+   `key` (текст 6.1) и `encryptedKey` (03 §2.10) как синонимы.
+9. **Реестр (03 §2.9):** `createVersion`/`createConfigVersion` создают
+   черновик (`is_active=false`) — и для ПЕРВОЙ версии нового ключа (без
+   ревью активный шаблон не появляется); `activateConfigVersion` — зеркало
+   `activateVersion` со сбросом `config_cache`. `warmCache` подключён в
+   index.ts (долг §12 0.3).
+10. **Схема (миграция `0002_billing_history_set_null`):**
+    `api_usage.synthesis_id` и `transactions.synthesis_id` → ON DELETE SET
+    NULL — иначе DELETE /syntheses/:id оплаченного синтеза падал бы на FK
+    (500). По `user_id` обе таблицы остаются RESTRICT (02): удаление
+    пользователя с финансовой историей блокируется — процедура удаления
+    аккаунта не специфицирована (долг §12).
+11. **Per-user rate-limit (долг §12 1.6):** идентичность лимитера —
+    userId (если уже есть), иначе SHA-256 cookie-сессии (лимитер стоит
+    ДО requireAuth и в БД не ходит; сессия ≡ пользователю в Lucia-модели;
+    разные сессии одного пользователя считаются раздельно — принято),
+    иначе IP.
+12. **Грабли стенда:** PG/Redis не переживают паузу между ходами —
+    поднимать перед прогоном; полный прогон test-61 ≈ 3,5 мин —
+    запускать в фоне с логом; уборка следов идёт `user_subscriptions →
+    subscription_plans`, `api_usage/transactions → users` (FK); ключи
+    шаблонов режимов — `mode.adversarial` (04 писал `mode.{…}.prompt`).
 
 ---
 
@@ -4298,17 +4413,19 @@ streaming-manager.
 | Серверный импорт концепт-файлов | 4.3 | 1.5b | ЗАКРЫТ 4.3 (2026-08-30): POST /syntheses/import + import-service принимают standalone-файлы и экспорт сервиса (шаги a–m: syntheses/sections/граф/тезисы/глоссарий/логи/lineage/режимы, откат CASCADE при сбое); клиентский остаток — строкой ниже |
 | Авто-импорт файловых ☑-концепций при сабмите формы синтеза (SynthesisForm: файл → POST /syntheses/import → участник type='synthesis' с полученным id; снятие гейта 1.5b/3.2) | 6.2 | 4.3 | внесён 2026-08-30 |
 | `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 | 2.4 | ЗАКРЫТ 4.2 (2026-08-29): `server/services/prompt-reconstruction.ts` (4 async-функции), подключён в formatPromptsForExport — rc один раз на форматирование, needsReconstruction → baseCtx+skeleton; TODO(4.2) в log-formatter сняты |
-| BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | в тексте 6.1; точки замены — все `env.anthropic.apiKey` с меткой TODO(6.1): generation-service, mode-service, element-enrichment (5.3), representation-transformer (5.5) |
+| BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | ЗАКРЫТ 6.1 (2026-09-06): все 11 точек `env.anthropic.apiKey` → `handle.billing.apiKey` (решение `resolveBilling` под слотом; см. «По факту 6.1» п.1); 4ag сторожит невозврат `env.anthropic.apiKey` в сервисы |
 | Форма ввода ключа в auth-модалке `PauseModal` | 6.2 | 1.4b (адресовался 6.1) | внесён 2026-07-31 |
-| Per-user HTTP-лимитирование (подсчёт после auth; сейчас фактически per-IP — 03 §3.4) | 6.1 | 1.6 | внесён 2026-08-02 |
+| Per-user HTTP-лимитирование (подсчёт после auth; сейчас фактически per-IP — 03 §3.4) | 6.1 | 1.6 | ЗАКРЫТ 6.1 (2026-09-06): идентичность лимитера — SHA-256 cookie-сессии до auth (≡ пользователю в Lucia-модели), иначе IP («По факту 6.1» п.11) |
 | `makeSectionCtxDisclosure` — disclosure секционного контекста в документе (sec_context отдаётся в SectionFull, UI не показывает) | 2.3 | 1.6b | ЗАКРЫТ 2.3 (2026-08-20): details.sec-disclosure в SectionView при непустом secContext |
 | Экспорт графа MMD/PNG/JSON (кнопки GraphModal — заглушки, метки TODO(4.2) в GraphModal.tsx; серверные services/export/*) | 4.2 | 1.7 | ЗАКРЫТ 4.2 (2026-08-29): серверные `services/export/*` (mmd/png/json/md/html + graph-model/style/physics/filename/common) + 5 роутов `routes/export.ts`; GraphModal → downloadExport (exportStub снят), меню «⤓ Экспорт» в SynthesisPage + `client/src/api/export.ts` |
-
 | Админские update/delete пользовательских типов каталога (`POST` есть с 0.3b, изменение и удаление не специфицированы — 03 §2.13) | 6.2 | 0.3b | внесён 2026-09-02 (аудит фаз 5–6, п.19); 5.4 НЕ сделала (2026-09-05): эндпоинтов и спецификации нет, а UI-адресат — админка 6.2 (AdminPromptsPage/каталоги); в TaxonomySelector — только создание |
-| Прогрев кэша Prompt Registry при старте (`warmCache` реализован в 0.3, в index.ts не подключён) | 6.1 | 0.3 | внесён 2026-09-02 (п.19) |
+| Прогрев кэша Prompt Registry при старте (`warmCache` реализован в 0.3, в index.ts не подключён) | 6.1 | 0.3 | ЗАКРЫТ 6.1 (2026-09-06): `void warmCache()` в index.ts после connectRedis, fail-open с логом |
 | Ролевая защита маршрута `/admin/prompts` на клиенте (сейчас только RequireAuth) | 6.2 | 0.4 | внесён 2026-09-02 (п.19) |
 | UI подписок в BillingPage (бэкенд готов: 02 §2.22–2.23, 03 §2.10, subscription-service 6.1) | 6.2 | 6.1 | внесён 2026-09-02 (п.8) |
-| Учёт обогащений в биллинге (api_usage + used_enrichments; разъём в 5.3, наполнение — после 6.1) | 6.1 | 5.3 | внесён 2026-09-02 (п.10); разъём `setUsageRecorder` (element-enrichment) СДЕЛАН 5.3 (2026-09-04), контекст несёт userId/synthesisId/streamKey/usage с посчитанной стоимостью |
+| Учёт обогащений в биллинге (api_usage + used_enrichments; разъём в 5.3, наполнение — после 6.1) | 6.1 | 5.3 | ЗАКРЫТ 6.1 (2026-09-06) ИНЫМ ПУТЁМ: api_usage пишет универсальный разъём streamSection (`setStreamUsageRecorder`), `used_enrichments` потребляется при взятии слота (`quota: "enrichments"`); разъём `setUsageRecorder` 5.3 остаётся no-op (иначе двойной учёт) |
+| `users.stripe_customer_id` — в 02 нет; Stripe Customer создаётся на каждую подписку (metadata.userId); добавить колонку и переиспользовать Customer (и для topup) | 6.2 | 6.1 | внесён 2026-09-06 |
+| Точная оценка стоимости для гейта POST /syntheses (сейчас порог `BILLING_MIN_RESERVE_USD`; оценка вычислима роутом после разбора тела — сверять с балансом там) | 6.2 | 6.1 | внесён 2026-09-06 |
+| Процедура удаления аккаунта с финансовой историей (`api_usage`/`transactions.user_id` — RESTRICT по 02; DELETE /auth/me не специфицирован) | 6.2 | 6.1 | внесён 2026-09-06 |
 | Запуск обоснования характеристики по WS: `start_enrichment` (03 §3.1) не несёт characteristic/value — пока только HTTP `POST /justify-characteristic`; либо расширить сообщение в 5.4, либо зафиксировать «только HTTP» в §3.1 | 5.4 | 5.3 | ЗАКРЫТ 5.4 (2026-09-05) решением «только HTTP»: клиент запускает обогащения и обоснования REST-роутами (синхронные коды ошибок), WS — только доставка; `start_enrichment` остаётся в §3.1 как необязательный путь, §3.1 зафиксирован |
 | Показ `htmlSync.pending`/`sectionMissing` в UI редактора (обоснование тезиса без абзаца, termCategory глоссария — в html_content не отражены; сервер 5.1 отдаёт список, клиент обязан предупредить и предложить перегенерацию) | 5.2 | 5.1 | ЗАКРЫТ 5.2 (2026-09-04): `.callout.warning` с полем и разделом в блоке «Анализ влияния» ElementEditor; раздел-хозяин добавляется в «Перегенерировать затронутые» (EditModal.initialRegen) |
 | `CATEGORY_TYPES` в CategoryEditor — клиентская копия 14 типов промпта графа (select типа категории); заменить TaxonomySelector по каталогу 0.3b (18 = 14 + расширенные) с индикатором «из каталога / свободный текст»; расширенные по методу — `EXTRA_CATEGORY_TYPES` | 5.4 | 5.2 | ЗАКРЫТ 5.4 (2026-09-05): константа удалена, TaxonomySelector в CategoryEditor и NodePanel; 4ac сторожит невозврат константы, 4ae — селектор |

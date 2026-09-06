@@ -121,3 +121,51 @@ export interface SubscriptionOverview {
     enrichments: number;
   };
 }
+
+/* ── DTO эндпоинтов §2.10 (беседа 6.1; потребитель — client/api/billing.ts 6.2) ── */
+
+/** POST /billing/api-key → */
+export interface StoredApiKey {
+  keyId: string;
+  prefix: string;
+}
+
+/** POST /billing/topup → (Stripe PaymentIntent для Stripe Elements) */
+export interface TopupIntent {
+  clientSecret: string;
+  paymentIntentId: string;
+  amountUsd: number;
+}
+
+/** POST /billing/topup/confirm → */
+export interface TopupResult {
+  balanceUsd: number;
+  transaction: Transaction;
+}
+
+/** GET /billing/usage → */
+export interface UsageHistory {
+  entries: ApiUsage[];
+  /** Сводка; costUsd БЕЗ строк 'byo' (02 §2.21 — там себестоимость чужого ключа) */
+  totals: UsageTotals;
+  /** Итоги по режимам биллинга */
+  byMode: Record<BillingMode, UsageTotals>;
+}
+
+/** GET /billing/transactions → */
+export interface TransactionHistory {
+  items: Transaction[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/** POST /billing/subscribe → */
+export interface SubscribeResult {
+  clientSecret: string;
+  subscriptionId: string;
+  subscription: UserSubscription;
+}
+
+/** Квоты подписки — колонки used_… и quota_… (02 §2.22–2.23) */
+export type QuotaType = "syntheses" | "regenerations" | "modes" | "enrichments";

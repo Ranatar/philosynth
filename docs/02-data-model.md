@@ -552,7 +552,7 @@ CREATE TABLE transactions (
   type          TEXT NOT NULL,  -- 'topup'|'usage'|'refund'
   amount_usd    NUMERIC(10, 6) NOT NULL,
   balance_after NUMERIC(10, 4) NOT NULL,
-  synthesis_id  UUID REFERENCES syntheses(id),
+  synthesis_id  UUID REFERENCES syntheses(id) ON DELETE SET NULL,  -- миграция 0002 (6.1): история переживает удаление синтеза
   section_key   TEXT,
   stripe_id     TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -566,8 +566,8 @@ CREATE INDEX idx_transactions_user ON transactions(user_id);
 ```sql
 CREATE TABLE api_usage (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID NOT NULL REFERENCES users(id),
-  synthesis_id  UUID REFERENCES syntheses(id),
+  user_id       UUID NOT NULL REFERENCES users(id),   -- RESTRICT: удаление аккаунта с историей блокируется (долг §12 6.2)
+  synthesis_id  UUID REFERENCES syntheses(id) ON DELETE SET NULL,  -- миграция 0002 (6.1)
   section_key   TEXT,
   billing_mode  TEXT NOT NULL,  -- 'byo'|'subscription'|'balance'
     -- Правка 2026-09-02 (аудит фаз 5–6, п.7): три режима по приоритету

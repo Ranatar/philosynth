@@ -139,11 +139,11 @@
 | B1 | BYO-Key: пользователь вводит ключ, проксирование через бэкенд | MVP |
 | B2 | Отображение стоимости в реальном времени (tokenы + USD) | MVP |
 | B3 | История использования API (по синтезам, разделам) | MVP |
-| B4 | Баланс сервиса (pay-as-you-go): пополнение, списание, история транзакций | Фаза 6 |
-| B6 | Подписки (Stripe Subscriptions): тарифные планы, квоты, управление подпиской | Фаза 6 |
-| B7 | Приоритет биллинга: BYO-Key → подписка → баланс → ошибка | Фаза 6 |
-| B8 | Webhook Stripe: обработка invoice.paid, subscription.updated/deleted | Фаза 6 |
-| B5 | Rate limiting по пользователю | MVP |
+| B4 | Баланс сервиса (pay-as-you-go): пополнение, списание, история транзакций | Фаза 6 — сервер СДЕЛАН 6.1 (2026-09-06), UI — 6.2 |
+| B6 | Подписки (Stripe Subscriptions): тарифные планы, квоты, управление подпиской | Фаза 6 — сервер СДЕЛАН 6.1 (квота потребляется один раз на операцию при взятии слота), UI — 6.2 |
+| B7 | Приоритет биллинга: BYO-Key → подписка → баланс → ошибка | Фаза 6 — СДЕЛАНО 6.1 (`resolveBilling`: middleware — предпроверка, generation-слот — гейт для HTTP и WS; `BILLING_ENFORCE=false` вне production — режим balance в долг) |
+| B8 | Webhook Stripe: обработка invoice.paid, subscription.updated/deleted | Фаза 6 — СДЕЛАНО 6.1 |
+| B5 | Rate limiting по пользователю | MVP — per-IP с 0.2; per-session (≡ per-user) с 6.1 |
 
 ### 1.12. Таксономия и обогащение элементов
 
@@ -774,8 +774,11 @@ GET    /prompts                 ?prefix=method.&activeOnly=true
 GET    /prompts/:key/versions   → { versions: PromptVersion[] }
 
 POST   /prompts/:key            { body: string, description?: string }
-                                → { template: PromptTemplate }
-                                // Создаёт новую версию (не активную)
+                                → { template: PromptTemplate }   // 201
+                                // Создаёт новую версию (не активную) — и для
+                                // ПЕРВОЙ версии нового ключа (ФАКТ 6.1: без
+                                // ревью активный шаблон не появляется);
+                                // пустое body → 400; ключ [A-Za-z0-9._:-]
 
 POST   /prompts/:key/activate   { version: number }
                                 → { template: PromptTemplate }
@@ -803,18 +806,29 @@ POST   /configs/:key/activate   { version: number }
 
 ```
 GET    /billing/usage           ?from=2026-01-01&to=2026-04-01&synthesisId=...
-                                → { entries: ApiUsage[], totals: UsageTotals }
+                                → { entries: ApiUsage[], totals: UsageTotals,
+                                   byMode: Record<BillingMode, UsageTotals> }
+                                // ФАКТ 6.1: totals.costUsd без строк 'byo'
+                                // (02 §2.21); невалидные from/to/synthesisId
+                                // → 400 VALIDATION_ERROR
 
-POST   /billing/api-key         { encryptedKey: string }
-                                → { keyId: string, prefix: string }
+POST   /billing/api-key         { key: string }
+                                → { keyId: string, prefix: string }   // 201
+                                // ФАКТ 6.1: клиент шлёт ОТКРЫТЫЙ ключ по TLS,
+                                // шифрует сервер (AES-256-GCM); прежнее имя
+                                // поля encryptedKey принимается как синоним.
+                                // Формат sk-ant-…, ≥20 симв. → иначе 400.
+                                // Активный ключ ОДИН — новый деактивирует прежние
 
 DELETE /billing/api-key/:id     → { ok: true }
 
 GET    /billing/api-key         → { keys: { id, prefix, isActive, createdAt }[] }
 
-POST   /billing/topup           { amountUsd: number }
-                                → { clientSecret: string }
-                                // Stripe PaymentIntent
+POST   /billing/topup           { amountUsd: number }   // 1 ≤ amountUsd ≤ 1000
+                                → { clientSecret: string, paymentIntentId: string,
+                                   amountUsd: number }
+                                // Stripe PaymentIntent; Stripe не настроен →
+                                // 503 STRIPE_UNAVAILABLE (ФАКТ 6.1)
 
 POST   /billing/topup/confirm   { paymentIntentId: string }
                                 → { balanceUsd: number, transaction: Transaction }
@@ -841,8 +855,12 @@ POST   /billing/subscription/resume
                                 → { subscription: UserSubscription }
                                 // cancel_at_period_end = false
 
-POST   /billing/webhook          (Stripe webhook endpoint)
+POST   /billing/webhook          (Stripe webhook endpoint; БЕЗ сессии — единственный
+                                // роут /billing вне requireAuth; подпись Stripe-Signature
+                                // по СЫРОМУ телу; 400 WEBHOOK_SIGNATURE_INVALID; 200
+                                // { received, handled, action? } и на необработанные)
                                 // invoice.paid → сброс счётчиков при новом периоде
+                                //   (ретрай того же периода — already_current)
                                 // customer.subscription.updated → обновить статус
                                 // customer.subscription.deleted → status = 'canceled'
 
@@ -1283,15 +1301,22 @@ FORBIDDEN            — нет доступа к ресурсу
 NOT_FOUND            — ресурс не найден
 VALIDATION_ERROR     — невалидные данные (details содержит поля)
 RATE_LIMIT           — превышен лимит запросов
-INSUFFICIENT_BALANCE — недостаточно средств (режим «баланс сервиса»)
+INSUFFICIENT_BALANCE — недостаточно средств (режим «баланс сервиса»): баланс > 0,
+                       но ниже порога BILLING_MIN_RESERVE_USD (ФАКТ 6.1; details:
+                       balanceUsd, requiredUsd)
 API_KEY_INVALID      — невалидный API-ключ (режим BYO-Key)
 API_KEY_MISSING      — API-ключ не задан
 GENERATION_IN_PROGRESS — генерация уже запущена для этого синтеза
 PLAN_CONFLICT        — попытка исполнить план при активной генерации
 IMPORT_INVALID       — невалидный файл импорта
 INCOMPATIBLE_SECTIONS — несовместимая комбинация разделов
-QUOTA_EXCEEDED      — исчерпана квота подписки (тип квоты в details)
-BILLING_REQUIRED    — нет ни ключа, ни подписки, ни баланса
+QUOTA_EXCEEDED      — исчерпана квота подписки (тип квоты в details) И баланса
+                      нет (при балансе ≥ порога — fallback на balance); details:
+                      quotaType, used, quota (ФАКТ 6.1)
+BILLING_REQUIRED    — нет ни ключа, ни подписки, ни баланса (баланс = 0)
+STRIPE_UNAVAILABLE  — Stripe не настроен (STRIPE_SECRET_KEY пуст) — 503 у
+                      пополнения/подписки (6.1)
+WEBHOOK_SIGNATURE_INVALID — подпись Stripe webhook не сходится — 400 (6.1)
 GENERATION_PAUSED   — генерация в pausedState; действия — через resume_generation (v11)
 RESUME_INVALID      — resume_generation/resume_plan без pausedState или с чужим mode (v11)
 NO_PARTICIPANTS_SEED_REQUIRED — свободный синтез без seed (v11)

@@ -23,6 +23,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { syntheses } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
+import { billingCheck } from "../middleware/billing-check.js"; // 6.1
 import {
   getAffectedModes,
   getCrossSecDependents,
@@ -89,6 +90,7 @@ async function ownerGate(
 generationRoutes.post(
   "/:id/regenerate/:sectionKey",
   requireAuth,
+  billingCheck({ quota: "regenerations" }), // 6.1
   async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
@@ -114,6 +116,7 @@ generationRoutes.post(
 generationRoutes.post(
   "/:id/regenerate-subsection",
   requireAuth,
+  billingCheck({ quota: "regenerations" }), // 6.1
   async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");

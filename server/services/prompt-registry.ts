@@ -17,7 +17,7 @@
  * Версионирование: каждая правка — новая строка (key, version),
  * is_active — только у одной версии ключа.
  */
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, like } from "drizzle-orm";
 import type {
   PromptTemplate,
   PromptVersion,
@@ -214,6 +214,65 @@ export async function activateVersion(
   };
 }
 
+/**
+ * Новая версия-черновик шаблона (беседа 6.1; 03 §2.9 POST /prompts/:key):
+ * version = max(version)+1 по ключу, is_active=false. Первая версия
+ * НОВОГО ключа тоже черновик — активировать явно (иначе тихо появлялся бы
+ * активный шаблон без ревью). Пустое тело → TemplateRenderError-подобной
+ * ошибки нет: валидация — на роуте (VALIDATION_ERROR).
+ */
+export async function createVersion(
+  key: string,
+  body: string,
+  description = "",
+  createdBy: string | null = null,
+): Promise<PromptTemplate> {
+  const row = await db.transaction(async (tx) => {
+    const [last] = await tx
+      .select({ version: promptTemplates.version })
+      .from(promptTemplates)
+      .where(eq(promptTemplates.key, key))
+      .orderBy(desc(promptTemplates.version))
+      .limit(1);
+    const version = (last?.version ?? 0) + 1;
+    const [inserted] = await tx
+      .insert(promptTemplates)
+      .values({ key, version, body, description, isActive: false, createdBy })
+      .returning();
+    return inserted as typeof promptTemplates.$inferSelect;
+  });
+  return toTemplateDto(row);
+}
+
+/** Активные шаблоны по префиксу ключа (GET /prompts ?prefix&activeOnly). */
+export async function listTemplates(opts: {
+  prefix?: string | undefined;
+  activeOnly?: boolean | undefined;
+} = {}): Promise<PromptTemplate[]> {
+  const conds = [];
+  if (opts.prefix) conds.push(like(promptTemplates.key, `${opts.prefix.replace(/[%_]/g, "\\$&")}%`));
+  if (opts.activeOnly !== false) conds.push(eq(promptTemplates.isActive, true));
+  const rows = await db
+    .select()
+    .from(promptTemplates)
+    .where(conds.length ? and(...conds) : undefined)
+    .orderBy(asc(promptTemplates.key), desc(promptTemplates.version));
+  return rows.map(toTemplateDto);
+}
+
+function toTemplateDto(r: typeof promptTemplates.$inferSelect): PromptTemplate {
+  return {
+    id: r.id,
+    key: r.key,
+    version: r.version,
+    body: r.body,
+    isActive: r.isActive,
+    description: r.description,
+    createdAt: r.createdAt.toISOString(),
+    createdBy: r.createdBy,
+  };
+}
+
 /* ─────────────────────────────── Конфиги ───────────────────────────── */
 
 /**
@@ -265,6 +324,78 @@ export async function listConfigVersions(
   if (rows.length === 0)
     throw new RegistryNotFoundError("config", key, "нет ни одной версии");
   return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+}
+
+/** Все активные конфиги (GET /configs; значения включены — они нужны
+ *  редактору 6.2). */
+export async function listConfigs(activeOnly = true): Promise<SynthesisConfig[]> {
+  const rows = await db
+    .select()
+    .from(synthesisConfigs)
+    .where(activeOnly ? eq(synthesisConfigs.isActive, true) : undefined)
+    .orderBy(asc(synthesisConfigs.key), desc(synthesisConfigs.version));
+  return rows.map(toConfigDto);
+}
+
+/** Новая версия-черновик конфига (PUT /configs/:key, §2.9). */
+export async function createConfigVersion(
+  key: string,
+  value: unknown,
+  description = "",
+): Promise<SynthesisConfig> {
+  const row = await db.transaction(async (tx) => {
+    const [last] = await tx
+      .select({ version: synthesisConfigs.version })
+      .from(synthesisConfigs)
+      .where(eq(synthesisConfigs.key, key))
+      .orderBy(desc(synthesisConfigs.version))
+      .limit(1);
+    const version = (last?.version ?? 0) + 1;
+    const [inserted] = await tx
+      .insert(synthesisConfigs)
+      .values({ key, version, value, description, isActive: false })
+      .returning();
+    return inserted as typeof synthesisConfigs.$inferSelect;
+  });
+  return toConfigDto(row);
+}
+
+/** Активация версии конфига — зеркало activateVersion; сбрасывает
+ *  config_cache:{key} (правка 2026-09-02 п.9). */
+export async function activateConfigVersion(
+  key: string,
+  version: number,
+): Promise<SynthesisConfig> {
+  const activated = await db.transaction(async (tx) => {
+    const target = await tx.query.synthesisConfigs.findFirst({
+      where: and(eq(synthesisConfigs.key, key), eq(synthesisConfigs.version, version)),
+    });
+    if (!target)
+      throw new RegistryNotFoundError("config", key, `версии ${version} нет`);
+    await tx
+      .update(synthesisConfigs)
+      .set({ isActive: false })
+      .where(and(eq(synthesisConfigs.key, key), eq(synthesisConfigs.isActive, true)));
+    await tx
+      .update(synthesisConfigs)
+      .set({ isActive: true })
+      .where(eq(synthesisConfigs.id, target.id));
+    return target;
+  });
+  await invalidateCache(key);
+  return toConfigDto({ ...activated, isActive: true });
+}
+
+function toConfigDto(r: typeof synthesisConfigs.$inferSelect): SynthesisConfig {
+  return {
+    id: r.id,
+    key: r.key,
+    version: r.version,
+    value: r.value,
+    isActive: r.isActive,
+    description: r.description,
+    createdAt: r.createdAt.toISOString(),
+  };
 }
 
 /* ─────────────────────────── Кэш: сброс/прогрев ────────────────────── */

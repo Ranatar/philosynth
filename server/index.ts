@@ -2,6 +2,7 @@
  * Точка входа сервера PhiloSynth.
  * Беседа 0.1: health-check + graceful shutdown.
  * Беседа 0.2: CORS, формат ошибок, auth-роуты, rate-limiter, WebSocket.
+ * Беседа 6.1: billing/prompts-роуты, прогрев кэша реестра.
  * Дальше: syntheses/sections/… — беседы 1.x+.
  */
 import { serve } from "@hono/node-server";
@@ -26,6 +27,9 @@ import { enrichmentRoutes } from "./routes/enrichment.js";
 import { taxonomyRoutes } from "./routes/taxonomy.js";
 import { transformRoutes } from "./routes/transforms.js";
 import { importRoutes } from "./routes/import.js";
+import { billingRoutes } from "./routes/billing.js"; // беседа 6.1
+import { promptsRoutes } from "./routes/prompts.js"; // беседа 6.1
+import { warmCache } from "./services/prompt-registry.js";
 import {
   lineageRoutes,
   lineageSearchRoutes,
@@ -86,6 +90,8 @@ app.route("/api/v1/lineage", lineageSearchRoutes); // беседа 3.1 (03 §2.8
 app.route("/api/v1/syntheses", enrichmentRoutes); // беседа 5.3 (03 §2.14)
 app.route("/api/v1/taxonomy", taxonomyRoutes); // беседа 5.3 (03 §2.13; дыра 0.3b)
 app.route("/api/v1/syntheses", transformRoutes); // беседа 5.5 (03 §2.15)
+app.route("/api/v1/billing", billingRoutes); // беседа 6.1 (03 §2.10; /webhook без сессии)
+app.route("/api/v1", promptsRoutes); // беседа 6.1 (03 §2.9: /prompts, /configs — admin)
 
 /* ── WebSocket (auth до upgrade — внутри registerWebSocket) ──────────── */
 
@@ -94,6 +100,10 @@ const { injectWebSocket } = registerWebSocket(app);
 /* ── Старт ───────────────────────────────────────────────────────────── */
 
 void connectRedis();
+// Прогрев кэша Prompt Registry (01 §4.1; долг §12 0.3 → 6.1): fail-open
+void warmCache()
+  .then((r) => console.log(`[prompt-registry] кэш прогрет: ${r.templates} шаблонов, ${r.configs} конфигов`))
+  .catch((err) => console.warn("[prompt-registry] прогрев кэша:", (err as Error).message));
 
 const server = serve({ fetch: app.fetch, port: env.port }, (info) => {
   console.log(`PhiloSynth server: http://localhost:${info.port}/api/v1/health`);

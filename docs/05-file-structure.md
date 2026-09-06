@@ -79,6 +79,8 @@ philosynth-service/
 │   │   ├── auth.ts                     # Lucia Auth: проверка сессии
 │   │   ├── rate-limiter.ts             # Redis-based rate limiting
 │   │   ├── billing-check.ts            # Проверка баланса / API-ключа перед генерацией
+│   │   │                               # (СДЕЛАНО 6.1: предпроверка consume:false на 11 роутах-
+│   │   │                               #  стартерах; гейт — withGenerationSlot)
 │   │   └── admin-only.ts               # Проверка role === 'admin'
 │   │
 │   ├── routes/
@@ -103,10 +105,12 @@ philosynth-service/
 │   │   ├── modes.ts                    # POST run, GET results, DELETE
 │   │   ├── lineage.ts                  # GET ancestors, descendants, search
 │   │   ├── prompts.ts                  # Admin: CRUD prompt_templates, synthesis_configs
+│   │   │                               # (СДЕЛАНО 6.1: 8 эндпоинтов §2.9, requireAdmin)
 │   │   │                               # (создаёт беседа 6.1 — до 2026-07-30
 │   │   │                               #  модуль не был назначен ни одной беседе;
 │   │   │                               #  клиентский api/prompts.ts — 6.2)
-│   │   ├── billing.ts                  # API keys, topup, transactions, usage
+│   │   ├── billing.ts                  # API keys, topup, transactions, usage (СДЕЛАНО 6.1:
+│   │   │                               #  13 эндпоинтов §2.10; /webhook вне requireAuth)
 │   │   ├── export.ts                   # GET /export/html, /mmd, /png, /json, /md
 │   │   ├── import.ts                   # POST /syntheses/import
 │   │   └── logs.ts                     # GET /logs/generation, /context, /formatted
@@ -215,9 +219,16 @@ philosynth-service/
 │   │   │                               # activateVersion, testDraft (НОВОЕ)
 │   │   │
 │   │   ├── billing-service.ts          # Stripe PaymentIntents, транзакции, проверка баланса
+│   │   │                               # (СДЕЛАНО 6.1: + resolveBilling — единый резолвер
+│   │   │                               #  приоритета, + recordStreamUsage — рекордер
+│   │   │                               #  разъёма streaming-manager)
 │   │   ├── subscription-service.ts    # Stripe Subscriptions: планы, квоты, счётчики, webhook
+│   │   │                               # (СДЕЛАНО 6.1: + consumeQuota — атомарная проверка+инкремент)
+│   │   ├── stripe-client.ts            # Тонкий fetch-клиент Stripe REST + проверка подписи
+│   │   │                               # webhook; STRIPE_API_BASE для мока (НОВОЕ 6.1, без SDK)
 │   │   │
 │   │   ├── api-key-service.ts          # Шифрование/дешифрование, проксирование (НОВОЕ)
+│   │   │                               # (СДЕЛАНО 6.1: активный ключ один)
 │   │   │
 │   │   ├── lineage-service.ts          # Рекурсивные CTE для навигации по графу (НОВОЕ)
 │   │   │
@@ -280,7 +291,8 @@ philosynth-service/
 │   │   ├── text.ts                     # truncateText, tableToText (truncateText(), tableToText())
 │   │   ├── css-audit.ts                # auditCSS (auditCSS())
 │   │   ├── html-parser.ts              # Обёртка над linkedom для серверного DOM-парсинга
-│   │   └── crypto.ts                   # AES-256 шифрование API-ключей
+│   │   └── crypto.ts                   # AES-256-GCM шифрование API-ключей (СДЕЛАНО 6.1:
+│   │   │                               #  deriveKey SHA-256 из секрета, pack iv‖tag‖ciphertext)
 │   │
 │   └── ws/
 │       ├── handler.ts                  # WebSocket upgrade + маршрутизация сообщений
