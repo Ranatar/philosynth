@@ -20,6 +20,10 @@
  * Беседа 5.3: start_enrichment → startEnrichment (element-enrichment);
  * enrichment_delta/enrichment_done шлёт сервис по userId; ошибки —
  * stream_error с sectionKey "enrich:{elementType}:{elementId}".
+ * Беседа 5.5: start_transform → startTransform (representation-transformer);
+ * дельты stream_delta "transform:{direction}", transform_started/
+ * transform_done шлёт сервис; операцию СОЗДАЁТ HTTP-роут §2.15, WS —
+ * альтернативный вход (п.5 03 §3.1), идемпотентный через слот.
  */
 import { createNodeWebSocket } from "@hono/node-ws";
 import type { Hono } from "hono";
@@ -58,6 +62,11 @@ import {
   enrichmentStreamKey,
   startEnrichment,
 } from "../services/element-enrichment.js";
+import {
+  isTransformDirection,
+  startTransform,
+  transformStreamKey,
+} from "../services/representation-transformer.js";
 import { PlanError } from "../services/edit-planner.js";
 import {
   computePauseEstimates,
@@ -80,6 +89,7 @@ const CLIENT_MESSAGE_TYPES: ReadonlySet<WsClientMessage["type"]> = new Set([
   "resume_plan",
   "cancel",
   "start_enrichment",
+  "start_transform",
   "ping",
 ] satisfies WsClientMessage["type"][]);
 
@@ -454,6 +464,31 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
           await startEnrichment(
             msg.synthesisId, user.id, msg.elementType, msg.elementId, msg.enrichmentType,
           );
+        },
+      );
+      return;
+
+    // Трансформация представлений — беседа 5.5 (representation-transformer).
+    // Владелец проверяется явно (паритет ownerEditGate роута §2.15);
+    // пустой источник даст stream_error из start-обёртки (VALIDATION_ERROR).
+    case "start_transform":
+      void handleBackground(
+        ws, user, msg.synthesisId,
+        isTransformDirection(msg.direction) ? transformStreamKey(msg.direction) : "transform:?",
+        async () => {
+          if (!isTransformDirection(msg.direction))
+            throw new GenerationError("VALIDATION_ERROR", "direction: ожидается graph_to_theses | theses_to_graph");
+          if (!isUuid(msg.synthesisId))
+            throw new GenerationError("NOT_FOUND", "Синтез не найден");
+          const [row] = await db
+            .select({ userId: syntheses.userId })
+            .from(syntheses)
+            .where(eq(syntheses.id, msg.synthesisId))
+            .limit(1);
+          if (!row) throw new GenerationError("NOT_FOUND", "Синтез не найден");
+          if (row.userId !== user.id)
+            throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
+          await startTransform(msg.synthesisId, user.id, msg.direction);
         },
       );
       return;

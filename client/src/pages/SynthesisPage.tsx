@@ -36,6 +36,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getCategories, getGlossary, getTheses } from "../api/elements";
+import { getSynthesis } from "../api/syntheses";
 import {
   ElementEditor,
   type EditableElement,
@@ -46,6 +47,7 @@ import { getAncestors } from "../api/lineage";
 import { DocumentView } from "../components/document/DocumentView";
 import { GenealogyTree } from "../components/lineage/GenealogyTree";
 import { EditModal } from "../components/edit/EditModal";
+import { TransformPanel } from "../components/edit/TransformPanel";
 import { ContextLogViewer } from "../components/logs/ContextLogViewer";
 import GraphModal from "../components/graph/GraphModal";
 import { downloadExport, EXPORT_FORMATS } from "../api/export";
@@ -62,6 +64,7 @@ import { getModes } from "../api/modes";
 import { useSynthesisStore } from "../stores/synthesis-store";
 
 import type { GraphData } from "@philosynth/shared/types/graph";
+import type { TransformDirection } from "@philosynth/shared/types/elements";
 import type { ModeKey } from "@philosynth/shared/types/modes";
 import {
   lineageNodeToGenealogy,
@@ -222,6 +225,28 @@ export function SynthesisPage() {
     void reloadSections();
     void refreshGraphData();
   }, [reloadSections, refreshGraphData]);
+
+  /* ── Беседа 5.5 (п. 7): трансформация представлений graph↔theses.
+     Вход — «→ Тезисы» в тулбаре GraphModal (модалка графа закрывается,
+     открывается TransformPanel) и «→ Граф» над разделом тезисов. После
+     transform_done / отката перечитываются разделы (html_content раздела
+     заменён), граф (категории/связи) и сам синтез (total_cost_usd — в
+     футере; трансформация входит в стоимость документа). ── */
+  const [transformDir, setTransformDir] = useState<TransformDirection | null>(null);
+  const openTransform = useCallback((direction: TransformDirection) => {
+    setGraphOpen(false);
+    setInlineEdit(null);
+    setTransformDir(direction);
+  }, []);
+  // НЕРАЗРУШАЮЩЕЕ обновление синтеза (грабля R3 EditModal 2.3: store.load
+  // переключает loading → спиннер → TransformPanel размонтируется и теряет
+  // summary) — reloadSections + точечный applySynthesis
+  const applySynthesis = useSynthesisStore((s) => s.applySynthesis);
+  const handleTransformed = useCallback(() => {
+    void reloadSections();
+    void refreshGraphData();
+    if (id) void getSynthesis(id).then(applySynthesis).catch(() => {});
+  }, [reloadSections, refreshGraphData, id, applySynthesis]);
 
   /* ── Беседа 4.1: режимы. Видимость кнопок — порт updateModeButtons
      [11799]: hasCapsule = capsule в sectionOrder И capsuleHTML непуст;
@@ -548,6 +573,19 @@ export function SynthesisPage() {
         onOpenLog={() => setLogOpen(true)}
         editable={isOwner && !live}
         onRowEdit={(row) => void openInlineEditor(row)}
+        sectionActionsFor={(key) =>
+          key === "theses" && isOwner && !live ? (
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => openTransform("theses_to_graph")}
+              title="Трансформировать тезисы в граф (Representation Transformer)"
+              data-testid="theses-transform-btn"
+            >
+              → Граф
+            </button>
+          ) : undefined
+        }
         inlineEditorFor={(key) =>
           inlineEdit && inlineEdit.sectionKey === key ? (
             <ElementEditor
@@ -658,7 +696,20 @@ export function SynthesisPage() {
         editDisabled={isOwner && live}
         onElementSaved={handleGraphElementSaved}
         onRegenerateAffected={handleRegenerateAffected}
+        onTransform={openTransform}
       />
+
+      {/* Беседа 5.5: панель трансформации представлений */}
+      {transformDir && (
+        <TransformPanel
+          open
+          synthesisId={synthesis.id}
+          initialDirection={transformDir}
+          disabled={!isOwner || live}
+          onTransformed={handleTransformed}
+          onClose={() => setTransformDir(null)}
+        />
+      )}
     </div>
   );
 }

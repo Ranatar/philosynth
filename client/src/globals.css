@@ -4721,6 +4721,104 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 5.5 — трансформация представлений graph↔theses ═════════
+ * В исходнике подсистемы нет. Блок 9 (transform-row / -arrow / -warn)
+ * перенесён из docs/fragments-for-conversations/5-6-ui-kit.css дословно;
+ * ниже — только чего нет в киte: раскладка строки истории трансформаций
+ * поверх .version-item (четыре колонки: направление · summary · дата ·
+ * кнопка; курсор обычный — строка не выбирается), живой предпросмотр
+ * стрима, строка действий над разделом документа (кнопка «→ Граф»),
+ * секция «Трансформации» в модалке редактирования. Идиома та же: прямые
+ * углы, моноширинные микро-подписи, палитра :root.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* — 5-6-ui-kit.css, блок 9: трансформер представлений — */
+  /* ═══ 9. Трансформер представлений (5.5: TransformPanel) ══════════════
+   * Направление преобразования и предупреждение о перезаписи.
+   */
+
+  .transform-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+  }
+
+  .transform-arrow {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--blue-corp);
+  }
+
+  .transform-warn {
+    border-left: 3px solid var(--red);
+    background: #fff5f5;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--red);
+  }
+
+  /* — дополнения 5.5 — */
+  .version-item.transform-item {
+    grid-template-columns: auto 1fr auto auto;
+    cursor: default;
+  }
+
+  .version-item.transform-item:hover {
+    background: transparent;
+  }
+
+  .transform-item .version-preview {
+    white-space: normal;
+  }
+
+  .transform-live {
+    max-height: 260px;
+    overflow: auto;
+    margin-top: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--rule);
+    font-size: 12px;
+    opacity: 0.85;
+  }
+
+  .transform-summary {
+    margin-top: 12px;
+  }
+
+  .section-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 4px 0 0;
+  }
+
+  .transform-section {
+    margin-top: 12px;
+    padding: 14px 18px;
+    border: 2px solid var(--blue-corp);
+    background: var(--blue-light);
+  }
+
+  .transform-section-title {
+    margin-bottom: 4px;
+  }
+}
+
+@media (max-width: 700px) {
+  .version-item.transform-item {
+    grid-template-columns: auto 1fr;
+  }
+
+  .version-item.transform-item .version-meta,
+  .version-item.transform-item .transform-item-actions {
+    grid-column: 2;
+  }
+}
+
 /* Каретка стриминга карточки обогащения (кит, блок 8) — вне @layer */
 @keyframes enrich-caret {
   50% {

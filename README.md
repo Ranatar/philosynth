@@ -112,7 +112,7 @@ MMD/JSON/PNG/MD + ExportError NO_GRAPH). Сейчас покрывает 0.1–0
 поднятых PG и Redis и засеянных prompt_templates, synthesis_configs
 и каталогов таксономии.
 
-## Статус: Фазы 0–4 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3); Фаза 5 начата — 5.1, 5.2 и 5.3 закрыты (2026-09-04)
+## Статус: Фазы 0–5 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3; Фаза 5: 5.1–5.5, закрыта 2026-09-06)
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -462,7 +462,17 @@ NodePanel/EdgePanel/GraphModal/CategoryEditor (смоук 36 ✓,
 tests/test-54-requests2-6.mjs 79 ✓ ×2 в браузере на моке Claude,
 check:integration += 2u/4ae; долги §12 CATEGORY_TYPES и WS-запуск
 обоснования закрыты); доки пропатчены scripts/patch-docs-conv54.py.
-Следующие по графу 07 — 5.5 (Representation Transformer) либо 6.1.
+Беседа 5.5 (Representation Transformer graph↔theses, бэкенд + клиент)
+ЗАКРЫТА 2026-09-06: representation-transformer + routes/transforms
+§2.15 + 2 шаблона transform.* + нормализация типов на каталог в
+saveGraphToDb + WS start_transform; клиент: api/transforms +
+useTransformStream + TransformPanel/TransformHistory + «→ Тезисы» в
+графе / «→ Граф» у раздела тезисов / секция в EditModal (смоук 56 ✓,
+tests/test-55-requests2-7.mjs 106 ✓ ×2 на моке Claude + браузер,
+check:integration += 2v/4af/5w; долги §12 «нормализация типов» и
+«парсер глоссария при lang ≠ Russian» закрыты); доки пропатчены
+scripts/patch-docs-conv55.py. Фаза 5 закрыта целиком; следующая по
+графу 07 — 6.1 (Billing Service).
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

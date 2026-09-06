@@ -745,6 +745,14 @@ CREATE TABLE representation_transforms (
     -- трансформации (для аудита), target_snapshot — представление-ЦЕЛЬ
     -- до того, как его заменили (именно из него делается откат).
     -- Для graph_to_theses: source = граф, target = прежние тезисы.
+    -- ФАКТ 5.5 (2026-09-06): форма JSON — GraphSnapshot { kind:'graph',
+    -- categories, edges, clusters, sectionHtml } | ThesesSnapshot
+    -- { kind:'theses', theses, sectionHtml }: строки БД целиком (с id —
+    -- откат восстанавливает прежние id, полиморфные ссылки
+    -- element_versions/element_enrichments снова живы) + html_content
+    -- раздела-хозяина (null — раздела не было). Строка-откат: тот же
+    -- direction, result_summary.rollback = 1, токены 0, source =
+    -- восстановленный снимок, target = состояние до отката.
   
   -- Результат
   result_summary  JSONB NOT NULL DEFAULT '{}',

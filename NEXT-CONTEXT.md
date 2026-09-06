@@ -4445,3 +4445,146 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
   истории расходов).
 - **6.1 (billing)**: `useEnrichmentStream` шлёт только REST — учёт
   обогащений в `api_usage` целиком серверный (`setUsageRecorder`).
+
+---
+
+# Беседа 5.5 — Representation Transformer graph↔theses (бэкенд + клиент) [ЗАКРЫТА 2026-09-06]
+
+> Запрос 1 + смоук tests/smoke-55-request1.mjs (56 ✓, без БД/сети/браузера:
+> шаблоны transform.* и их плейсхолдеры, константы направлений/ключей стрима,
+> блоки источника, DTO, роуты, нормализация типов, WS-типы, пути api ≡ роутам
+> через перехват fetch, тексты панели/истории, интеграция, блок 9 кита
+> дословно, парсер глоссария по data-section) + все тестовые запросы R2–R7
+> одним заходом tests/test-55-requests2-7.mjs (106 ✓ ×2: сервер :3000 + vite
+> :5199 + PG16/Redis, мок Claude SSE :3855 через ANTHROPIC_BASE_URL,
+> puppeteer-core 23 + системный Chromium /opt/google/chrome/chrome) +
+> завершение: typecheck (все конфиги) 0, audit ✓, check:integration +=
+> 2v/4af/5w → INTEGRATION OK, check-map-04 0 расхождений, css-parity A/B = 0
+> (раздел C — только доисторический gm-hint), vite build чисто; доки —
+> scripts/patch-docs-conv55.py (32 правки, повтор skip×32). Исходник не
+> нужен — функциональность новая. Фаза 5 закрыта целиком.
+
+## Что создано
+
+- `server/config/transform-templates.ts` — `SEED_TRANSFORM_TEMPLATES` (2:
+  `transform.graph_to_theses`, `transform.theses_to_graph`) +
+  `transformPromptKey(direction)`. Шаблон задаёт ТОЛЬКО режим трансформации
+  (источник — единственный вход; запрет зерна/прочих разделов/прежнего
+  представления; правила конверсии: типы тезисов из типов категорий, тип связи
+  из логической формы тезиса, полное покрытие источника). Форма результата —
+  `{{section_task}}`: готовое задание раздела-цели из `buildSectionDefs`.
+  Плейсхолдеры: `synthesis_context`, `graph_block` | `theses_block`,
+  `section_task` (дрейф-контроль 4af в обе стороны). Сеется seed-prompts
+  (итого 261 шаблон).
+- `server/services/representation-transformer.ts` — 20 экспортов:
+  `TRANSFORM_DIRECTIONS` / `TRANSFORM_TARGET_SECTION` / `TRANSFORM_SOURCE_SECTION`
+  / `isTransformDirection` / `transformStreamKey` ("transform:{direction}") /
+  `emptySourceMessage` / `hasSourceRepresentation` / `snapshotGraph` /
+  `snapshotTheses` / `buildGraphBlock` / `buildThesesBlock` /
+  `buildTransformContextText` / `transformGraphToTheses(handle)` /
+  `transformThesesToGraph(handle)` (под уже занятым слотом) /
+  `startTransform(sid, uid, direction)` (свой слот `withGenerationSlot`;
+  ошибки внутри → `stream_error`) / `getTransformHistory` (DESC) /
+  `rollbackTransform` / `toTransformDto` / `targetSectionLabel` /
+  `TransformError` (NOT_FOUND | VALIDATION_ERROR). Конвейер: снимки →
+  `buildEditInfra(rowForInfra)` (ключ раздела-цели добавляется в sectionOrder,
+  если его нет) → def.prompt → `renderTemplate(transform.*)` →
+  `buildSYS(p, { outputMode: "full" })` → `generation_log` (source 'edit',
+  метка «[трансформация …]», promptSkeleton/sys в metadata) →
+  `streamWithRetries` с дельтами `stream_delta` → парсер → замена строк
+  (`saveElementsToDb` / `saveGraphToDb`) → `writeSectionHtml` целиком +
+  `applyElementUpdateToHtml` по таблицам → строка `representation_transforms`
+  → `transform_done`. `bumpTotals` и на успехе, и на обрыве (как режимы).
+- `server/routes/transforms.ts` — `transformRoutes` (смонтирован на
+  `/api/v1/syntheses`): POST `/transform/graph-to-theses` |
+  `/transform/theses-to-graph` → `{ ok: true }` фоном (ownerEditGate: не-UUID
+  → 404, чужой → 403, `isGenerationActive` → 409; пустой источник → 400
+  `VALIDATION_ERROR` синхронно), GET `/transforms` (владелец/публичный), POST
+  `/transforms/:transformId/rollback` → `{ ok, transform, summary }`
+  (синхронный; 404 на чужой/неизвестный id; 409 при активной).
+- `server/services/graph-parser.ts` += `normalizeGraphTypesToCatalog(sid)`
+  (категории и связи без `type_catalog_id` → `normalizeType` element-taxonomy
+  → id по key каталога; кэш по тексту типа; fail-open в warnings) и вызов из
+  `saveGraphToDb(sid, parsed, { normalizeTypes? })` ПОСЛЕ транзакции;
+  `SaveGraphResult` += `categoriesNormalized`/`edgesNormalized`. Долг §12 T3
+  закрыт для генерации (1.4), импорта (4.3) и трансформаций разом.
+- `server/services/element-parser.ts` += `GLOSSARY_TABLE_SECTION` и поиск
+  таблицы глоссария сначала по `[data-section="Таблица определений"]`, затем
+  по th «термин» (долг §12 «lang ≠ Russian» закрыт).
+- WS: `WsStartTransform` в `WsClientMessage`; `ws/handler.ts` —
+  `start_transform` (владелец проверяется явно; при активной операции →
+  `stream_error` без второй операции); `WsTransformDone.summary` — состав
+  описан в типе.
+- Клиент: `api/transforms.ts` (5 функций), `hooks/useTransformStream.ts`
+  (паритет useEnrichmentStream: REST-запуск, свой WS; `transform_started` →
+  started, `stream_delta transform:*` → liveHtml/liveChars, `transform_done`
+  → lastDone + `onDone`, `stream_error` → error; `messageOfTransformError`),
+  `components/edit/TransformPanel.tsx` (направление, `.transform-warn` с
+  превью потерь из GET /theses + GET /categories, `sourceEmptyText` блокирует
+  кнопку, двухшаговое подтверждение, `.edit-regen-progress` + `.transform-live`
+  предпросмотр, summary `.cascade-panel`, вложенная история; закрытие
+  заблокировано при стриме), `components/edit/TransformHistory.tsx`
+  (`.version-item.transform-item`, `summaryText`, `window.confirm`
+  «Восстановить [граф/тезисы] на момент …», ответ rollback пополняет список
+  без GET). Интеграция: `GraphModal.onTransform` + кнопка «→ Тезисы»
+  (editable && категории есть); `SectionView.actions` /
+  `DocumentView.sectionActionsFor` → «→ Граф» над theses (isOwner && !live);
+  `SynthesisPage`: `transformDir` state, модалка графа закрывается при открытии
+  панели, `handleTransformed` = reloadSections + refreshGraphData +
+  `getSynthesis→applySynthesis` (НЕ store.load); `EditModal`: секция
+  «Трансформации» с TransformHistory; `useStreamingGeneration` guard
+  `transform:`; globals.css часть 3 += блок 9 кита дословно + дополнения.
+
+## Решения/адаптации (все — в шапках модулей и «По факту 5.5» в 07)
+
+- Откат — из `target_snapshot` (02 §2.28); 03 §2.15 и текст запроса писали
+  «source_snapshot» — исправлено патчем. Строка-откат: source =
+  восстановленный снимок, target = состояние до отката → «откат отката»
+  возвращает результат трансформации (первый вариант — наоборот — не
+  давал undo-undo; поймано тестом R5).
+- Замена раздела целиком vs «перерисовать через element-renderer»: буква
+  запроса оставила бы старую прозу при новых таблицах; сделано и то и то.
+- Стоимость трансформации входит в totals (в отличие от обогащений 01 §4.9).
+- Форма результата из buildSectionDefs: единственная точка правды о столбцах
+  таблиц — section-templates; парсеры не разъедутся с трансформацией.
+
+## Знания/грабли, добытые в 5.5
+
+- Грабля R3 (2.3) повторилась в новом месте: `store.load()` после финала
+  фоновой операции размонтирует любую модалку страницы — только
+  reloadSections + applySynthesis. 4af сторожит `handleTransformed` текстом.
+- Ожидания WS-сообщений в харнессе — только «с момента» (`mark()`/`since`):
+  предикат по типу без индекса подхватывает старые transform_started/done,
+  тест зеленеет ложно, следующие падают каскадом (409-проверка прошла
+  «случайно», обрыв стрима не воспроизвёлся).
+- `pkill -f index.ts` убивает собственную оболочку bash_tool — искать
+  `ps aux | grep -E "[s]erver/index|[v]ite --port|[c]hrome"`.
+- Фоновый прогон: `nohup tsx tests/… > /tmp/log &` и `sleep`; лог без
+  «ИТОГ» при исчезнувшем процессе — прогон убит лимитом времени вызова.
+- Мок Claude трансформаций детерминирован: категории — из первых двух слов
+  формулировок (`graphFromThesesAnswer`), тезисы — по одному на категорию
+  блока графа + сводный (`thesesFromGraphAnswer`); номер § читается из
+  `section_task` промпта — так проверяется цикл R4 без реального Claude.
+- В ParsedGraph поля узла — `cen/cert/orig`, топология — `topology.clusters`
+  (имя → индексы) + `clusterLabels` (5w сначала писался по DTO-именам).
+- css-parity-audit собирает ЛЮБЫЕ строковые литералы внутри `className={…}` —
+  сравнение `direction === "graph_to_theses"` в выражении класса даёт ложный
+  «класс без правил»; выносить вычисление класса в переменную до JSX.
+
+## Открытые TODO после 5.5 (все — в §12 07)
+
+- Нет новых. BYO-Key в трансформациях — в общей строке §12 6.1 (точки
+  `env.anthropic.apiKey` перечислены). Фаза 5 закрыта; следующая — 6.1.
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **6.1 (billing)**: `representation-transformer.ts` (streamTransform — точка
+  учёта usage/cost трансформации; `bumpTotals`), `element-enrichment.ts`
+  (`setUsageRecorder`), `mode-service.ts`, `generation-service.ts` — все
+  точки `env.anthropic.apiKey` с TODO(6.1) для BYO-Key.
+- **6.2 (AdminPromptsPage)**: `server/config/transform-templates.ts` +
+  `enrichment-templates.ts` — шаблоны, чьи плейсхолдеры сторожат 4ad/4af
+  (редактор должен показывать обязательный набор), `TransformPanel.tsx` /
+  `TransformHistory.tsx` (образец панели операции с подтверждением и
+  историей), `TaxonomySelector.tsx` + `api/taxonomy.ts` (update/delete
+  типов — долг).

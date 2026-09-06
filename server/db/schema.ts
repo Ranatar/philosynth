@@ -1065,12 +1065,16 @@ export const representationTransforms = pgTable(
       enum: ["graph_to_theses", "theses_to_graph"],
     }).notNull(),
 
-    // Снимки до трансформации (для отката)
-    /** Граф или тезисы ДО трансформации */
+    // Снимки до трансформации (для отката); семантика — 02 §2.28 (правка
+    // 2026-09-02): source — представление-ИСТОЧНИК на момент
+    // трансформации (аудит), target — представление-ЦЕЛЬ до замены (из
+    // него откат). Форма JSON — GraphSnapshot | ThesesSnapshot
+    // (representation-transformer 5.5: строки БД целиком + sectionHtml)
+    /** Представление-источник на момент трансформации */
     sourceSnapshot: jsonb("source_snapshot")
       .$type<Record<string, unknown>>()
       .notNull(),
-    /** Граф или тезисы ПОСЛЕ (старые, которые были заменены) */
+    /** Представление-цель ДО замены — из него делается откат */
     targetSnapshot: jsonb("target_snapshot")
       .$type<Record<string, unknown>>()
       .notNull(),

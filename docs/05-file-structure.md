@@ -92,7 +92,7 @@ philosynth-service/
 │   │   │                               # остальное СДЕЛАНО 5.1: PATCH категорий/
 │   │   │                               # связей/тезисов/глоссария, DELETE связи,
 │   │   │                               # versions/rollback, auto-rename, capsule
-│   │   ├── transforms.ts               # POST transform graph-to-theses / theses-to-graph, history, rollback
+│   │   ├── transforms.ts               # POST transform graph-to-theses / theses-to-graph, history, rollback (5.5 СДЕЛАНО 2026-09-06)
 │   │   ├── taxonomy.ts                 # GET/POST category-types, relationship-types, normalize
 │   │   │                               # (СДЕЛАНО 5.3; монтируется на /api/v1/taxonomy)
 │   │   ├── enrichment.ts               # POST enrich/category, enrich/edge, justify-characteristic
@@ -196,6 +196,7 @@ philosynth-service/
 │   │   │
 │   │   ├── representation-transformer.ts # Трансформация graph↔theses: прямая конверсия
 │   │   │                               # представлений без каскадной перегенерации
+│   │   │                               # (5.5 СДЕЛАНО 2026-09-06: снимки, откат, слот)
 │   │   │                               # (НОВОЕ, из предыдущего проекта)
 │   │   │
 │   │   ├── element-enrichment.ts       # Точечные Claude-запросы: обогащение категорий,
@@ -266,8 +267,11 @@ philosynth-service/
 │   │   │                              # PARENT_CONTEXT_SCHEMA_ID/VERSION (v11)
 │   │   ├── cardinality-prompts.ts     # MD_BY_CARD (6×3), SD_BY_CARD (3×3) (v11)
 │   │   ├── mode-deps.ts               # MODE_DEPS (v11)
-│   │   └── enrichment-templates.ts    # 6 шаблонов enrichment.* (5.3; новые тексты,
-│   │                                  # не из исходника; JUSTIFICATION_SECTIONS)
+│   │   ├── enrichment-templates.ts    # 6 шаблонов enrichment.* (5.3; новые тексты,
+│   │   │                              # не из исходника; JUSTIFICATION_SECTIONS)
+│   │   └── transform-templates.ts     # 2 шаблона transform.* (5.5; новые тексты —
+│   │                                  # режим трансформации; форма результата —
+│   │                                  # {{section_task}} из buildSectionDefs)
 │   │
 │   ├── utils/
 │   │   ├── deep-merge.ts               # deepMergeUniq (deepMergeUniq())
@@ -311,7 +315,7 @@ philosynth-service/
 │   │   │   │                           # auto-rename)
 │   │   │   ├── taxonomy.ts             # каталоги типов + normalize + createCustomType (5.4 СДЕЛАНО 2026-09-05; кэш на сессию)
 │   │   │   ├── enrichment.ts           # обогащения и обоснования — 5 функций §2.14 (5.4 СДЕЛАНО 2026-09-05)
-│   │   │   ├── transforms.ts           # graph↔theses, история, откат (5.5)
+│   │   │   ├── transforms.ts           # graph↔theses, история, откат (5.5 СДЕЛАНО 2026-09-06)
 │   │   │   ├── prompts.ts              # админка Prompt Registry (6.2)
 │   │   │   ├── import.ts               # multipart-обёртка импорта (4.3)
 │   │   │   ├── generation.ts
@@ -335,6 +339,8 @@ philosynth-service/
 │   │   │   ├── useStreamingGeneration.ts  # Подписка на стриминг генерации
 │   │   │   ├── useEnrichmentStream.ts  # Канал обогащений/обоснований: свой WS,
 │   │   │   │                           # REST-запуск, enrichment_delta/done (5.4)
+│   │   │   ├── useTransformStream.ts   # Канал трансформаций graph↔theses: свой WS,
+│   │   │   │                           # REST-запуск, stream_delta transform:*/done (5.5)
 │   │   │   ├── useEditPlan.ts          # Состояние плана редактирования
 │   │   │   └── useGraphData.ts         # Загрузка и подготовка данных графа
 │   │   │
@@ -394,6 +400,7 @@ philosynth-service/
 │   │   │   │                               # 5.2 (СДЕЛАНО 2026-09-04), Characteristic/
 │   │   │   │                               # Enrichment/Taxonomy/EdgeEditor — 5.4
 │   │   │   │                               # (СДЕЛАНО 2026-09-05), Transform* — 5.5
+│   │   │   │                               # (СДЕЛАНО 2026-09-06)
 │   │   │   │   ├── EditModal.tsx           # Модальное окно редактирования
 │   │   │   │   ├── EditSectionCard.tsx     # Карточка раздела (перегенерация/удаление)
 │   │   │   │   ├── SubsectionRegenPanel.tsx # Перегенерация подраздела
@@ -414,6 +421,7 @@ philosynth-service/
 │   │   │   │   ├── TaxonomySelector.tsx    # Комбобокс каталога + normalize + создание типа,
 │   │   │   │   │                           # индикатор «из каталога / свободный текст» (5.4)
 │   │   │   │   └── TransformPanel.tsx      # Кнопки graph→theses / theses→graph, превью, история
+│   │   │   │                               # (5.5; двухшаговое подтверждение, живой предпросмотр)
 │   │   │   │
 │   │   │   ├── modes/
 │   │   │   │   ├── ModeModal.tsx           # Модальное окно режима

@@ -151,7 +151,7 @@
 |---|---|---|
 | T1 | Каталог типов категорий (18 системных + пользовательские) | Фаза 0 (сделано 0.3b) |
 | T2 | Каталог типов связей (29 системных + пользовательские) | Фаза 0 (сделано 0.3b) |
-| T3 | Нормализация типов при парсинге ответа Claude (маппинг на каталог) | Фаза 0 (сделано 0.3b — ТОЛЬКО сервис `normalizeType`; ФАКТ 5.4: в конвейере парсинга не вызывается, `typeCatalogId` остаётся null — долг §12 → 5.5) |
+| T3 | Нормализация типов при парсинге ответа Claude (маппинг на каталог) | Фаза 0 (сервис `normalizeType` — 0.3b; вызов из конвейера `saveGraphToDb` — СДЕЛАНО 5.5 (2026-09-06): `normalizeGraphTypesToCatalog`, fail-open, текст типа не меняется) |
 | T5 | Поиск и фильтрация по типам в каталоге концепций | Фаза 3 |
 | EN1 | Точечное обогащение категории через Claude (описание, аналоги, трактовки) | Фаза 5 |
 | EN2 | Точечное обоснование связи через Claude (философское обоснование, контраргументы) | Фаза 5 |
@@ -497,7 +497,8 @@ PATCH  /syntheses/:id/glossary/:termId
 // ФАКТ 5.4 (2026-09-05): выбор из каталога пишет type = name_ru в
 // написании документа (строчная первая буква) + typeCatalogId; ввод
 // руками — typeCatalogId: null. У сгенерированных элементов typeCatalogId
-// всегда null (парсер 1.4 на каталог не нормализует — долг §12 → 5.5).
+// с 5.5 (2026-09-06) заполняется нормализацией в saveGraphToDb (до 5.5 —
+// всегда null); нет совпадения с каталогом (порог 0.75) → null.
 PATCH  /syntheses/:id/categories/:catId
                                 { …, typeCatalogId?: string | null }
 PATCH  /syntheses/:id/edges/:edgeId
@@ -946,20 +947,40 @@ POST   /syntheses/:id/transform/graph-to-theses
                                 // Стриминг через WebSocket.
                                 // Генерирует тезисы из текущего графа (categories + edges).
                                 // Заменяет существующие тезисы. Снимок сохраняется.
+                                // ФАКТ 5.5 (2026-09-06): операция исполняется ФОНОМ под
+                                // generation-слотом; гейты: не-UUID → 404, чужой → 403,
+                                // активная операция → 409 GENERATION_IN_PROGRESS, пустой
+                                // источник → 400 VALIDATION_ERROR "No graph to transform"
+                                // (синхронно, до запуска). Поток: transform_started →
+                                // stream_delta "transform:{direction}" → transform_done;
+                                // обрыв → stream_error. Раздел-хозяин замещается целиком,
+                                // таблицы перерисовываются; входит в total_cost_usd.
 
 POST   /syntheses/:id/transform/theses-to-graph
                                 → { ok: true }
                                 // Стриминг через WebSocket.
                                 // Строит граф из текущих тезисов.
                                 // Заменяет существующий граф. Снимок сохраняется.
+                                // ФАКТ 5.5: те же гейты; пустой источник → 400
+                                // "No theses to transform"; типы нормализуются на каталог
+                                // (saveGraphToDb); без раздела graph в документе —
+                                // только таблицы, resultSummary.sectionMissing = 1.
 
 GET    /syntheses/:id/transforms
                                 → { transforms: RepresentationTransform[] }
-                                // История трансформаций
+                                // История трансформаций (новые первыми;
+                                // владелец ИЛИ публичный синтез — правило 1.6)
 
 POST   /syntheses/:id/transforms/:transformId/rollback
-                                → { ok: true }
-                                // Откат: восстанавливает source_snapshot
+                                → { ok: true, transform, summary }
+                                // Откат: восстанавливает target_snapshot (представление-
+                                // цель до замены — 02 §2.28; до правки 2026-09-06 здесь
+                                // ошибочно стояло «source_snapshot»), прежние id строк и
+                                // html раздела из снимка. Синхронно (без Claude); только
+                                // владелец, под 409-гейтом; чужой/неизвестный id → 404.
+                                // Пишется строкой-откатом (resultSummary.rollback = 1,
+                                // source = восстановленный снимок, target = состояние до
+                                // отката → откат отката возможен); ответ несёт её.
 ```
 
 **RepresentationTransform:**
@@ -974,7 +995,12 @@ POST   /syntheses/:id/transforms/:transformId/rollback
     edgesRemoved?: number;
     thesesCreated?: number;
     thesesRemoved?: number;
+    // ФАКТ 5.5: + clustersCreated, categoriesNormalized, edgesNormalized
+    // (theses→graph), sectionMissing (1 — раздела-хозяина нет в
+    // документе), rollback (1 — строка-откат)
   };
+  // ФАКТ 5.5: DTO несёт также synthesisId, sourceSnapshot, targetSnapshot
+  // (GraphSnapshot | ThesesSnapshot, см. 02 §2.28) — shared/types/elements
   inputTokens: number;
   outputTokens: number;
   costUsd: number;

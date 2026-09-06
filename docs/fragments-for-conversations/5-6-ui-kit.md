@@ -14,7 +14,7 @@
 |---|---|
 | 5.2 | ElementEditor, CategoryEditor, ThesisEditor, GlossaryTermEditor, VersionHistory с diff |
 | 5.4 | CharacteristicSlider, EnrichmentPanel, TaxonomySelector (+ EdgeEditor) — СДЕЛАНО 2026-09-05: блоки 1, 2, 8 перенесены в часть 3 `globals.css` дословно; дополнения (части обоснования, строка комбобокса, форма нового типа, шапка панели, тёмные переопределения `.gm-info-panel`) — там же с комментариями |
-| 5.5 | TransformPanel (graph ↔ theses) |
+| 5.5 | TransformPanel (graph ↔ theses) — СДЕЛАНО 2026-09-06: блок 9 перенесён в часть 3 `globals.css` дословно; дополнения (строка истории `.transform-item` поверх `.version-item`, живой предпросмотр `.transform-live`, строка действий раздела `.section-actions`, секция `.transform-section` в модалке) — там же с комментариями |
 | 6.2 | BillingPage (ключ, баланс, история, транзакции), AdminPromptsPage (дерево ключей, редактор, версии, JSON-конфиги) |
 
 Протокол описывает их поведение и поля, но не вид. Без общей заготовки
@@ -68,7 +68,7 @@
 | 6 | `.key-tree(-group/-item.active)`, `.code-editor(.invalid)`, `.code-status(.ok/.err)`, `.placeholder-chip(.filled)` | 6.2: дерево ключей, тело шаблона, JSON-конфиг, предпросмотр подстановки |
 | 7 | `.inline-edit-btn`, `.inline-edit-form/-actions/-dirty` | 5.2: правка строки таблицы по месту; ✎ появляется по наведению, как `.doc-title-edit-btn` |
 | 8 | `.enrich-card(.streaming)`, `.enrich-card-head/-type/-body` | 5.4: карточка обогащения и его история |
-| 9 | `.transform-row`, `.transform-arrow`, `.transform-warn` | 5.5: направление преобразования и предупреждение о перезаписи |
+| 9 | `.transform-row`, `.transform-arrow`, `.transform-warn` | 5.5: направление преобразования и предупреждение о перезаписи (СДЕЛАНО 2026-09-06; превью потерь — в тексте `.transform-warn`, подтверждение — второй шаг кнопок, не confirm) |
 
 Плюс блок 10 — узкие экраны для всего перечисленного.
 

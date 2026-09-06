@@ -57,6 +57,7 @@ import { CascadePanel } from "./CascadePanel";
 import { EditPlanPanel } from "./EditPlanPanel";
 import { EditSectionCard } from "./EditSectionCard";
 import { ModeResultsPanel } from "./ModeResultsPanel";
+import { TransformHistory } from "./TransformHistory";
 import { SubsectionRegenPanel } from "./SubsectionRegenPanel";
 
 /** ALL_SECTION_KEYS [20906] без «sum» — клиентская копия перечня
@@ -553,6 +554,28 @@ export function EditModal({ open, onClose, initialRegen }: EditModalProps) {
             onToggleRemove={toggleModeRemove}
             disabled={controlsDisabled}
           />
+
+          {/* Беседа 5.5 (п. 7): секция «Трансформации» — история graph↔theses
+              с откатом; после отката разделы и синтез перечитываются тем же
+              неразрушающим путём (reloadSections + applySynthesis), граф
+              SynthesisPage перечитает при открытии модалки графа */}
+          <div className="transform-section" data-testid="edit-transforms">
+            <div className="form-label transform-section-title">⇄ Трансформации</div>
+            <div className="form-sublabel">
+              Прямая конверсия граф ↔ тезисы (Representation Transformer). Запуск —
+              кнопками «→ Тезисы» в графе и «→ Граф» у раздела тезисов; здесь —
+              история и откат.
+            </div>
+            <TransformHistory
+              synthesisId={synthesisId}
+              disabled={controlsDisabled || subRegenBusy || structureBusy}
+              onRolledBack={() => {
+                void reloadSections();
+                void getSynthesis(synthesisId).then(applySynthesis).catch(() => {});
+              }}
+              compact
+            />
+          </div>
 
           {/* Панель добавления */}
           <AddSectionPanel

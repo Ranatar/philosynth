@@ -28,6 +28,10 @@
  * только на экране, html_content в БД не меняется). Клик ловится
  * делегированием на обёртке; редактор рендерится слотом inlineEditor ПОД
  * HTML раздела (внутрь dangerouslySetInnerHTML React-узел не вставить).
+ *
+ * Беседа 5.5 (п. 7): слот actions — строка действий раздела НАД HTML
+ * (кнопка «→ Граф» у раздела theses); рендерит хозяин через
+ * DocumentView.sectionActionsFor. Тот же приём слота, что inlineEditor.
  */
 import { useMemo, type MouseEvent, type ReactNode } from "react";
 
@@ -57,6 +61,8 @@ export interface SectionViewProps {
   onRowEdit?: ((row: EditableRowRef) => void) | undefined;
   /** Слот редактора по месту — рендерится под HTML раздела */
   inlineEditor?: ReactNode;
+  /** Беседа 5.5: строка действий раздела — над HTML (кнопка «→ Граф») */
+  actions?: ReactNode;
 }
 
 /** Таблица тезисов: подраздел «Сводная таблица тезисов» (locatorsFor
@@ -173,6 +179,7 @@ export function SectionView({
   editable = false,
   onRowEdit,
   inlineEditor,
+  actions,
 }: SectionViewProps) {
   const enrichedHtml = useMemo(
     () =>
@@ -209,6 +216,7 @@ export function SectionView({
   return (
     <div className="doc-body">
       <a id={`sec-${section.key}`} />
+      {actions && <div className="section-actions">{actions}</div>}
       <div dangerouslySetInnerHTML={{ __html: enrichedHtml }} onClick={handleClick} />
       {inlineEditor}
       {/* Долг 1.6b → 2.3: порт makeSectionCtxDisclosure [11482] —

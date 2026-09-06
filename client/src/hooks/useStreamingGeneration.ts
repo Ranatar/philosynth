@@ -232,10 +232,14 @@ export function useStreamingGeneration(
       // Беседа 5.4: поток ОБОГАЩЕНИЙ (stream_error с sectionKey
       // "enrich:…") ведёт useEnrichmentStream — иначе обрыв обогащения
       // стал бы «ошибкой генерации» страницы
+      // Беседа 5.5: поток ТРАНСФОРМАЦИЙ (stream_delta/stream_error с
+      // sectionKey "transform:{direction}") ведёт useTransformStream
       if (
         "sectionKey" in msg &&
         typeof msg.sectionKey === "string" &&
-        (msg.sectionKey.startsWith("mode:") || msg.sectionKey.startsWith("enrich:"))
+        (msg.sectionKey.startsWith("mode:") ||
+          msg.sectionKey.startsWith("enrich:") ||
+          msg.sectionKey.startsWith("transform:"))
       ) {
         return;
       }

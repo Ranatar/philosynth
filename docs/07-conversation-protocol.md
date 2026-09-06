@@ -1,5 +1,24 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-09-06 (итоги беседы 5.5)**: Representation Transformer
+> graph↔theses закрыт (запрос 1 + смоук tests/smoke-55-request1.mjs 56 ✓ +
+> все тестовые запросы tests/test-55-requests2-7.mjs 106 ✓ ×2 (живой
+> сервер + мок Claude SSE + браузер); check:integration += 2v/4af/5w с
+> дрейф-контролем «плейсхолдеры transform.* ↔ переменные сервиса», «пути
+> api/transforms ↔ роуты», «ключ стрима клиент ↔ сервер»). Дыры, закрытые
+> этим патчем (глава «По факту 5.5»): откат — из `target_snapshot`
+> (03 §2.15 и текст запроса говорили «source_snapshot» вопреки 02 §2.28);
+> «перерисовать раздел через element-renderer» оставляло бы прежние
+> обоснования при новых таблицах — раздел замещается целиком и таблицы
+> перерисовываются; форма результата — задание раздела из
+> buildSectionDefs, шаблон задаёт только режим; долги §12 «нормализация
+> типов на каталог» и «парсер глоссария при lang ≠ Russian» закрыты;
+> `start_transform` не было в `WsClientMessage`/хендлере. Грабли стенда:
+> `store.load()` после `transform_done` размонтирует панель (грабля R3
+> 2.3 повторилась) — только reloadSections + applySynthesis; ожидания
+> WS-сообщений в харнессе — с индексом «с какого момента» (`mark()`),
+> иначе подхватываются старые transform_started/done.
+>
 > **Правки 2026-09-05 (итоги беседы 5.4)**: UI характеристик, обогащения
 > и таксономии закрыт (запрос 1 + смоук tests/smoke-54-request1.mjs 36 ✓ +
 > все тестовые запросы tests/test-54-requests2-6.mjs 79 ✓ ×2 (браузер +
@@ -3581,7 +3600,7 @@ update/delete типов — 6.2), `client/src/api/taxonomy.ts` / `api/enrichmen
 ### Беседа 5.5: Representation Transformer — graph↔theses (бэкенд + клиент)
 
 **Контекст для загрузки:**
-- `01-architecture.md` (секция 4.10 Representation Transformer)
+- `01-architecture.md` (секция 4.11 Representation Transformer)
 - `02-data-model.md` (таблица representation_transforms)
 - `03-specification.md` (секция 2.15 Transforms API, требования RT1–RT5)
 - Из предыдущих бесед: `server/services/graph-parser.ts` (из 1.4), `server/services/element-parser.ts` (из 1.4), `server/services/element-taxonomy.ts` (из 0.3b), `server/services/streaming-manager.ts` (из 1.4), `server/services/prompt-registry.ts` (из 0.3), `server/db/schema.ts`
@@ -3611,8 +3630,9 @@ element-parser.ts, element-taxonomy.ts, streaming-manager.ts, prompt-registry.ts
      b. Формирует промпт из Registry: "transform.graph_to_theses"
         (отличается от промпта раздела "theses" — здесь вход: чистый граф,
         без зерна/контекста/secCtx, задача: вывести утверждения из структуры)
-     c. Делает снимок текущих тезисов → source_snapshot
-     d. Делает снимок текущего графа → для аудита
+     c. Делает снимок текущих тезисов → target_snapshot (цель до замены —
+        из него откат; 02 §2.28)
+     d. Делает снимок текущего графа → source_snapshot (источник, аудит)
      e. Стримит через streaming-manager
      f. Парсит результат → theses (через element-parser)
      g. Заменяет тезисы в БД (DELETE old + INSERT new)
@@ -3624,7 +3644,7 @@ element-parser.ts, element-taxonomy.ts, streaming-manager.ts, prompt-registry.ts
      b. Промпт из Registry: "transform.theses_to_graph"
         (вход: список тезисов с формулировками и обоснованиями,
         задача: вывести категории, связи, кластеры, роли)
-     c. Снимок текущего графа → source_snapshot
+     c. Снимок текущего графа → target_snapshot, тезисов → source_snapshot
      d. Стримит → парсит HTML → parseGraphFromHTML → saveGraphToDb
      e. Нормализация типов через element-taxonomy
      f. Сохраняет в representation_transforms
@@ -3634,9 +3654,9 @@ element-parser.ts, element-taxonomy.ts, streaming-manager.ts, prompt-registry.ts
      SELECT из representation_transforms ORDER BY created_at DESC
 
    - rollbackTransform(transformId):
-     a. Загружает source_snapshot
+     a. Загружает target_snapshot (представление-цель до замены; 02 §2.28)
      b. Определяет direction: если graph_to_theses → восстанавливает тезисы
-        из source_snapshot; если theses_to_graph → восстанавливает граф
+        из target_snapshot; если theses_to_graph → восстанавливает граф
      c. Записывает rollback как новую трансформацию (для аудита)
 
 2. Промптовые шаблоны (добавить в seed или Admin UI):
@@ -3662,6 +3682,9 @@ element-parser.ts, element-taxonomy.ts, streaming-manager.ts, prompt-registry.ts
    - После замены тезисов/графа в БД перерисовать соответствующий раздел
      в sections.html_content через element-renderer (02 §3, решение п.1):
      иначе документ покажет прежний текст
+     (ФАКТ 5.5: html раздела-хозяина замещается ЦЕЛИКОМ сгенерированной
+     секцией — ответ и есть полный раздел, — а затем таблицы
+     перерисовываются рендерером из строк БД; см. «По факту 5.5» п.2)
 
 КЛИЕНТ:
 5. client/components/edit/TransformPanel.tsx:
@@ -3686,8 +3709,108 @@ element-parser.ts, element-taxonomy.ts, streaming-manager.ts, prompt-registry.ts
      getTransformHistory, rollbackTransform
 ```
 
+Файлы 5.5 для следующих бесед (факт): `server/services/representation-transformer.ts`
+(образец операции «свой снимок + замена раздела целиком»), `server/config/
+transform-templates.ts` (шаблоны, которые правит админка 6.2 — плейсхолдеры
+под дрейф-контролем 4af), `client/src/hooks/useTransformStream.ts` +
+`client/src/components/edit/TransformPanel.tsx` (образец панели операции с
+подтверждением и историей — для BillingPage/AdminPromptsPage 6.2).
+
+**По факту 5.5 (2026-09-06) — отступления от буквы первого запроса:**
+
+1. **Форма результата — не из шаблона, а из buildSectionDefs.** П. 2
+   просил шаблон «выдели категории, связи, кластеры, роли…». Описывать
+   столбцы таблиц в шаблоне значило бы дублировать section-templates 1.2
+   и разъехаться с парсерами при первой правке админом (6.2). Шаблон
+   `transform.{direction}` задаёт ТОЛЬКО режим трансформации (источник —
+   единственный вход, запрет зерна/прочих разделов, правила конверсии), а в
+   `{{section_task}}` подставляется готовое задание раздела-цели из
+   `buildSectionDefs` (тот же `p`, что у правок — `buildEditInfra`). SYS —
+   `buildSYS(p, { outputMode: "full" })`: ответ — целый `<div
+   class="doc-section">` раздела, парсится штатными
+   `parseThesesFromHTML` / `parseGraphFromHTML`. Плейсхолдеры:
+   `synthesis_context`, `graph_block` | `theses_block`, `section_task`.
+2. **Замена html раздела целиком + перерисовка таблиц.** П. 4 велел
+   «перерисовать раздел через element-renderer». Перерисовка одной таблицы
+   оставила бы прежние обоснования тезисов и комментарии к кластерам при
+   новых строках — тот рассинхрон, о котором 02 §3. Раздел-хозяин, если он
+   есть в `sections`, замещается сгенерированной секцией (паритет
+   `regenerateSection`), после чего таблицы дополнительно перерисовываются
+   `applyElementUpdateToHtml` из строк БД (тождество БД↔HTML после
+   нормализаций парсера; номер § берётся из существующей строки sections).
+   Раздела нет (тезисы/граф никогда не генерировались) → только гранулярные
+   таблицы, `resultSummary.sectionMissing = 1` (паритет htmlSync 5.1).
+3. **Снимки — по 02 §2.28, а не по 03 §2.15.** `source_snapshot` —
+   представление-ИСТОЧНИК на момент трансформации, `target_snapshot` —
+   представление-ЦЕЛЬ до замены; откат — из `target_snapshot` (03 и текст
+   запроса говорили «source_snapshot»; исправлено этим патчем). Снимок несёт
+   строки БД целиком (с id — откат восстанавливает прежние id, и
+   полиморфные ссылки `element_versions` / `element_enrichments` снова
+   живы) и `sectionHtml` раздела-хозяина (откат возвращает и прозу):
+   `GraphSnapshot { kind:"graph", categories, edges, clusters, sectionHtml }`
+   | `ThesesSnapshot { kind:"theses", theses, sectionHtml }`.
+4. **Строка-откат** пишется с тем же `direction`, `resultSummary.rollback = 1`,
+   токены 0; её `source_snapshot` — восстановленный снимок (вход отката),
+   `target_snapshot` — состояние цели ДО отката. Поэтому откат строки-отката
+   возвращает состояние до неё («откат отката»). Ответ `POST …/rollback`
+   аддитивно к `{ ok: true }` несёт `transform` (строку-откат) и `summary`.
+5. **Стоимость.** 01 §4.9 исключает из `total_cost_usd` только обогащения;
+   трансформация замещает раздел документа → входит в totals (`bumpTotals`)
+   и пишет `generation_log` с `source: 'edit'` (enum иного не даёт) и меткой
+   «[трансформация граф → тезисы]» в `section_label`; `section_key` —
+   раздел-цель. Ключ API — из env (BYO-Key — 6.1, как у всех операций).
+6. **Нормализация типов на каталог — в saveGraphToDb**, не только в
+   трансформациях: `normalizeGraphTypesToCatalog(synthesisId)` после
+   транзакции вставки (fail-open, текст типа не меняется, опция
+   `{ normalizeTypes: false }` для round-trip-смоуков). Закрыт долг §12
+   (T3 03 §1.1) для генерации, импорта и трансформаций сразу.
+7. **Пустой источник → 400 синхронно** на роуте (`hasSourceRepresentation`),
+   до запуска фона: `{ error: "No theses to transform" | "No graph to
+   transform", code: VALIDATION_ERROR }`. Гейты как у обогащений: не-UUID →
+   404, чужой → 403, активная операция → 409 `GENERATION_IN_PROGRESS`
+   (и на rollback — гонка с генерацией). GET истории — владелец ИЛИ
+   публичный синтез.
+8. **WS `start_transform`** не был в `WsClientMessage` и в
+   `CLIENT_MESSAGE_TYPES` хендлера (03 §3.1 его описывал) — добавлен как
+   альтернативный вход с проверкой владельца; при активной операции даёт
+   `stream_error` с `sectionKey "transform:{direction}"`, второй операции не
+   создаёт. Клиент запускает REST (`POST /transform/*` → `{ ok }`), ответ
+   слушает по собственному WS-каналу (`useTransformStream`, паритет
+   `useEnrichmentStream` 5.4): `transform_started` → `stream_delta
+   "transform:{direction}"` (живой предпросмотр HTML) → `transform_done`
+   (summary, usage); обрыв → `stream_error`. Guard `transform:` добавлен в
+   `useStreamingGeneration`.
+9. **Подтверждение в панели — явный второй шаг** («Преобразовать» → «Да,
+   преобразовать»), не `window.confirm`: решение о перезаписи целого
+   раздела заслуживает видимого предупреждения с превью потерь (счётчики
+   тезисов / категорий и связей из GET /theses, GET /categories). Откат в
+   истории — `window.confirm` (паритет VersionHistory 5.2). Закрытие панели
+   во время стрима заблокировано.
+10. **Неразрушающее обновление после финала**: `reloadSections` +
+    `getSynthesis → applySynthesis` (total_cost_usd в футере) + перечитка
+    графа; `store.load()` размонтировал бы панель со summary (грабля R3 2.3
+    повторилась и поймана тестом).
+11. **Слот действий над разделом** — `SectionView.actions` /
+    `DocumentView.sectionActionsFor` (кнопка «→ Граф» над theses у
+    владельца при status ≠ generating); «→ Тезисы» в тулбаре GraphModal
+    только при `editable` и непустом графе; секция «Трансформации» в
+    EditModal — история с откатом (запуск оттуда не дублируется).
+12. **Долг §12 «парсер глоссария при lang ≠ Russian»** закрыт попутно:
+    `parseGlossaryFromHTML` сначала ищет таблицу внутри
+    `[data-section="Таблица определений"]` (константа
+    `GLOSSARY_TABLE_SECTION` ≡ `TABLE_SUBSECTIONS.glossary` рендерера), затем
+    прежний путь по th «термин».
+13. **Грабли стенда 5.5.** Ожидания WS-сообщений в харнессе обязаны быть
+    «с момента» (`mark()`/`since`): без индекса подхватываются старые
+    `transform_started/done` и тесты зеленеют ложно, а следующие падают
+    каскадом. `pkill -f index.ts` убивает собственную оболочку — искать
+    процессы `ps aux | grep "[s]erver/index"`. Мок Claude для
+    трансформаций детерминирован: категории — из первых двух слов
+    формулировок, тезисы — по одному на категорию из блока графа (так
+    проверяется влияние правки тезиса №2).
+
 **Последующие запросы:**
-- «Протестируй graph→theses: синтез с 10 категориями и 5 тезисами → трансформация → новые тезисы (количество может отличаться) → старые тезисы в source_snapshot → representation_transforms содержит запись»
+- «Протестируй graph→theses: синтез с 10 категориями и 5 тезисами → трансформация → новые тезисы (количество может отличаться) → старые тезисы в target_snapshot, граф в source_snapshot → representation_transforms содержит запись»
 - «Протестируй theses→graph: синтез с 8 тезисами → трансформация → новый граф → categories заменены → нормализация типов через taxonomy → representation_transforms содержит запись»
 - «Протестируй итеративный цикл: graph→theses → изменить тезис №2 (PATCH) → theses→graph → проверить что граф изменился → graph→theses → проверить что тезис №2 повлиял на результат»
 - «Протестируй rollback: после graph→theses → rollback → тезисы восстановлены из snapshot → запись rollback создана»
@@ -4175,7 +4298,7 @@ streaming-manager.
 | Серверный импорт концепт-файлов | 4.3 | 1.5b | ЗАКРЫТ 4.3 (2026-08-30): POST /syntheses/import + import-service принимают standalone-файлы и экспорт сервиса (шаги a–m: syntheses/sections/граф/тезисы/глоссарий/логи/lineage/режимы, откат CASCADE при сбое); клиентский остаток — строкой ниже |
 | Авто-импорт файловых ☑-концепций при сабмите формы синтеза (SynthesisForm: файл → POST /syntheses/import → участник type='synthesis' с полученным id; снятие гейта 1.5b/3.2) | 6.2 | 4.3 | внесён 2026-08-30 |
 | `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 | 2.4 | ЗАКРЫТ 4.2 (2026-08-29): `server/services/prompt-reconstruction.ts` (4 async-функции), подключён в formatPromptsForExport — rc один раз на форматирование, needsReconstruction → baseCtx+skeleton; TODO(4.2) в log-formatter сняты |
-| BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | в тексте 6.1 |
+| BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | в тексте 6.1; точки замены — все `env.anthropic.apiKey` с меткой TODO(6.1): generation-service, mode-service, element-enrichment (5.3), representation-transformer (5.5) |
 | Форма ввода ключа в auth-модалке `PauseModal` | 6.2 | 1.4b (адресовался 6.1) | внесён 2026-07-31 |
 | Per-user HTTP-лимитирование (подсчёт после auth; сейчас фактически per-IP — 03 §3.4) | 6.1 | 1.6 | внесён 2026-08-02 |
 | `makeSectionCtxDisclosure` — disclosure секционного контекста в документе (sec_context отдаётся в SectionFull, UI не показывает) | 2.3 | 1.6b | ЗАКРЫТ 2.3 (2026-08-20): details.sec-disclosure в SectionView при непустом secContext |
@@ -4189,9 +4312,9 @@ streaming-manager.
 | Запуск обоснования характеристики по WS: `start_enrichment` (03 §3.1) не несёт characteristic/value — пока только HTTP `POST /justify-characteristic`; либо расширить сообщение в 5.4, либо зафиксировать «только HTTP» в §3.1 | 5.4 | 5.3 | ЗАКРЫТ 5.4 (2026-09-05) решением «только HTTP»: клиент запускает обогащения и обоснования REST-роутами (синхронные коды ошибок), WS — только доставка; `start_enrichment` остаётся в §3.1 как необязательный путь, §3.1 зафиксирован |
 | Показ `htmlSync.pending`/`sectionMissing` в UI редактора (обоснование тезиса без абзаца, termCategory глоссария — в html_content не отражены; сервер 5.1 отдаёт список, клиент обязан предупредить и предложить перегенерацию) | 5.2 | 5.1 | ЗАКРЫТ 5.2 (2026-09-04): `.callout.warning` с полем и разделом в блоке «Анализ влияния» ElementEditor; раздел-хозяин добавляется в «Перегенерировать затронутые» (EditModal.initialRegen) |
 | `CATEGORY_TYPES` в CategoryEditor — клиентская копия 14 типов промпта графа (select типа категории); заменить TaxonomySelector по каталогу 0.3b (18 = 14 + расширенные) с индикатором «из каталога / свободный текст»; расширенные по методу — `EXTRA_CATEGORY_TYPES` | 5.4 | 5.2 | ЗАКРЫТ 5.4 (2026-09-05): константа удалена, TaxonomySelector в CategoryEditor и NodePanel; 4ac сторожит невозврат константы, 4ae — селектор |
-| Серверная нормализация типов на каталог при парсинге (T3 03 §1.1 числится «сделано 0.3b», но graph-parser 1.4 пишет только lower-case текста — `typeCatalogId` у всех сгенерированных категорий/связей null; клиент 5.4 предлагает привязку «≈» вручную) — вызывать `normalizeType` в `saveGraphToDb` (и в трансформациях) | 5.5 | 5.4 (дыра 1.4/0.3b) | внесён 2026-09-05 |
+| Серверная нормализация типов на каталог при парсинге (T3 03 §1.1 числится «сделано 0.3b», но graph-parser 1.4 пишет только lower-case текста — `typeCatalogId` у всех сгенерированных категорий/связей null; клиент 5.4 предлагает привязку «≈» вручную) — вызывать `normalizeType` в `saveGraphToDb` (и в трансформациях) | 5.5 | 5.4 (дыра 1.4/0.3b) | ЗАКРЫТ 5.5 (2026-09-06): `normalizeGraphTypesToCatalog` в graph-parser, вызывается из `saveGraphToDb` после транзакции (генерация, импорт, трансформации; fail-open; опция `normalizeTypes:false`); текст типа не меняется; 5w проверяет на посеянном каталоге |
 | Создание связи из UI (EdgeEditor правит существующие; эндпоинта `POST /syntheses/:id/edges` в §2.4 нет — концы связи менять нельзя, только удалить и создать) | 6.2 | 5.4 | внесён 2026-09-05 |
-| Парсер глоссария 1.4 ищет таблицу по первому th «термин» [8027], а рендерер 5.1 — ещё и по data-section «Таблица определений»; при `lang ≠ Russian` заголовок переведён и парсер таблицу НЕ найдёт (глоссарий такого документа не попадает в glossary_terms) — унифицировать поиск по data-section | 5.5 | 5.1 (дыра 1.4) | внесён 2026-09-03 |
+| Парсер глоссария 1.4 ищет таблицу по первому th «термин» [8027], а рендерер 5.1 — ещё и по data-section «Таблица определений»; при `lang ≠ Russian` заголовок переведён и парсер таблицу НЕ найдёт (глоссарий такого документа не попадает в glossary_terms) — унифицировать поиск по data-section | 5.5 | 5.1 (дыра 1.4) | ЗАКРЫТ 5.5 (2026-09-06): `parseGlossaryFromHTML` ищет сначала таблицу в `[data-section="Таблица определений"]` (`GLOSSARY_TABLE_SECTION` ≡ `TABLE_SUBSECTIONS.glossary` рендерера), затем по th «термин» |
 
 Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,
 помечено в 03 §2.1; `POST /syntheses/estimate` и `/advice` — реализованы

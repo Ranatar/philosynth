@@ -33,6 +33,9 @@
  *    характеристик, тип из каталога, обогащение) — строка categories по
  *    GNode.dbId и общий канал useEnrichmentStream модалки; EdgePanel
  *    получает onEdit → ElementEditor kind='edge' (EdgeEditor) по GEdge.dbId.
+ *  - Беседа 5.5 (п. 7): кнопка «→ Тезисы» в тулбаре (только editable —
+ *    владелец, не генерация) → onTransform("graph_to_theses"); хозяин
+ *    (SynthesisPage) закрывает модалку и открывает TransformPanel.
  */
 
 import { downloadExport } from "../../api/export";
@@ -90,6 +93,8 @@ export interface GraphModalProps {
   onElementSaved?: ((outcome: SaveOutcome) => void) | undefined;
   /** «Перегенерировать затронутые» — только через планы (EditModal 2.3) */
   onRegenerateAffected?: ((sectionKeys: string[]) => void) | undefined;
+  /** Беседа 5.5 (п. 7): «→ Тезисы» — трансформация графа в тезисы */
+  onTransform?: ((direction: "graph_to_theses") => void) | undefined;
 }
 
 export default function GraphModal({
@@ -101,6 +106,7 @@ export default function GraphModal({
   editDisabled = false,
   onElementSaved,
   onRegenerateAffected,
+  onTransform,
   onClose,
 }: GraphModalProps) {
   // Беседа 5.2: редактируемая категория (модалка редактора поверх графа)
@@ -341,6 +347,16 @@ export default function GraphModal({
               2D
             </button>
           </div>
+          {editable && onTransform && data && data.categories.length > 0 && (
+            <button
+              className="gm-btn gold"
+              onClick={() => onTransform("graph_to_theses")}
+              title="Трансформировать граф в тезисы (Representation Transformer)"
+              data-testid="gm-transform-btn"
+            >
+              → Тезисы
+            </button>
+          )}
           <div className={"gm-export-wrap" + (exportOpen ? " open" : "")}>
             <button
               className="gm-btn gold"

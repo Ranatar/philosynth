@@ -118,6 +118,19 @@ export interface WsStartEnrichment {
   enrichmentType: string;
 }
 
+/**
+ * Запуск трансформации представлений graph↔theses (беседа 5.5; 03-spec
+ * §3.1, правка 2026-09-02 п.5). Альтернативный вход для клиента с
+ * открытым сокетом: операцию создаёт HTTP-роут §2.15; WS-сообщение
+ * идемпотентно при активной операции (GENERATION_IN_PROGRESS →
+ * stream_error с sectionKey "transform:{direction}").
+ */
+export interface WsStartTransform {
+  type: "start_transform";
+  synthesisId: string;
+  direction: "graph_to_theses" | "theses_to_graph";
+}
+
 export interface WsPing {
   type: "ping";
 }
@@ -133,6 +146,7 @@ export type WsClientMessage =
   | WsResumePlan
   | WsCancel
   | WsStartEnrichment
+  | WsStartTransform
   | WsPing;
 
 /* ── Сервер → Клиент (03-spec §3.2) ──────────────────────────────────── */
@@ -254,6 +268,10 @@ export interface WsTransformDone {
   type: "transform_done";
   synthesisId: string;
   direction: "graph_to_theses" | "theses_to_graph";
+  /** По факту 5.5: thesesCreated/thesesRemoved | categoriesCreated/
+   *  categoriesRemoved/edgesCreated/edgesRemoved/clustersCreated/
+   *  categoriesNormalized/edgesNormalized; sectionMissing=1 — раздела-
+   *  хозяина нет в документе (заменены только гранулярные таблицы) */
   summary: Record<string, number>;
   usage: TokenUsage;
 }

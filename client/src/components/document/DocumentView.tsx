@@ -33,6 +33,8 @@ export interface DocumentViewProps {
   onRowEdit?: ((row: EditableRowRef) => void) | undefined;
   /** Редактор по месту для раздела с этим ключом */
   inlineEditorFor?: ((sectionKey: string) => React.ReactNode) | undefined;
+  /** Беседа 5.5 (п. 7): строка действий над разделом («→ Граф» у theses) */
+  sectionActionsFor?: ((sectionKey: string) => React.ReactNode) | undefined;
 }
 
 export function DocumentView({
@@ -44,6 +46,7 @@ export function DocumentView({
   editable = false,
   onRowEdit,
   inlineEditorFor,
+  sectionActionsFor,
 }: DocumentViewProps) {
   const byKey = new Map(
     sections.filter((s) => s.key !== "capsule").map((s) => [s.key, s]),
@@ -74,6 +77,7 @@ export function DocumentView({
             editable={editable}
             onRowEdit={onRowEdit}
             inlineEditor={inlineEditorFor?.(section.key)}
+            actions={sectionActionsFor?.(section.key)}
           />
         ))}
       </div>

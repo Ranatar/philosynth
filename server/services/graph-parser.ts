@@ -25,7 +25,16 @@
  *    здесь они возвращаются в warnings;
  *  - categories.has_reflexive: в исходнике рефлексивность читается при
  *    рендере из направления ребра; в БД поле денормализовано — true, если
- *    есть ребро узла с направлением «рефлексивная» (self-loop или явное).
+ *    есть ребро узла с направлением «рефлексивная» (self-loop или явное);
+ *  - беседа 5.5 (долг §12, заведён 5.4): после INSERT типы категорий и
+ *    связей нормализуются на каталоги Element Taxonomy (0.3b) —
+ *    normalizeGraphTypesToCatalog пишет type_catalog_id при fuzzy-match
+ *    (01 §4.8 / T3 03 §1.12; до 5.5 конвейер писал только lower-case
+ *    текста и typeCatalogId у сгенерированных элементов был всегда null).
+ *    Текст типа (type/edge_type) НЕ меняется — документ и рендер таблиц
+ *    остаются словами Claude. Fail-open: сбой каталога/Redis не роняет
+ *    сохранение графа (предупреждение в warnings). Отключается опцией
+ *    { normalizeTypes: false } (round-trip-смоуки 5.1 без каталогов).
  */
 import { eq } from "drizzle-orm";
 
@@ -34,6 +43,11 @@ import { normalizeName, normalizeType } from "@philosynth/shared/utils/normalize
 import { db } from "../db/index.js";
 import { categories, categoryEdges, clusterLabels } from "../db/schema.js";
 import { parseFragment, type HtmlElement } from "../utils/html-parser.js";
+import {
+  getCategoryTypes,
+  getRelationshipTypes,
+  normalizeType as normalizeTypeToCatalog,
+} from "./element-taxonomy.js";
 
 /* ── Типы результата парсинга (форма G исходника) ────────────────────── */
 
@@ -388,8 +402,95 @@ export interface SaveGraphResult {
   categoriesInserted: number;
   edgesInserted: number;
   clustersInserted: number;
+  /** Категорий/связей, получивших type_catalog_id (5.5) */
+  categoriesNormalized: number;
+  edgesNormalized: number;
   /** Рёбра с концами вне таблицы категорий и прочие пропуски */
   warnings: string[];
+}
+
+export interface SaveGraphOptions {
+  /** Нормализовать типы на каталог (по умолчанию true; 5.5) */
+  normalizeTypes?: boolean | undefined;
+}
+
+export interface NormalizeGraphTypesResult {
+  categoriesNormalized: number;
+  edgesNormalized: number;
+  warnings: string[];
+}
+
+/**
+ * normalizeGraphTypesToCatalog(synthesisId) — проставить type_catalog_id
+ * категориям и связям синтеза по нечёткому сопоставлению текста типа с
+ * каталогом (element-taxonomy.normalizeType: точное → включение →
+ * Левенштейн ≥ 0.75). Уже привязанные строки не трогаются; текст типа не
+ * меняется. Одинаковые тексты нормализуются один раз (кэш по типу).
+ * Fail-open: любая ошибка каталога → warnings, строки без привязки.
+ */
+export async function normalizeGraphTypesToCatalog(
+  synthesisId: string,
+): Promise<NormalizeGraphTypesResult> {
+  const res: NormalizeGraphTypesResult = {
+    categoriesNormalized: 0,
+    edgesNormalized: 0,
+    warnings: [],
+  };
+  try {
+    const [catTypes, relTypes] = await Promise.all([
+      getCategoryTypes(),
+      getRelationshipTypes(),
+    ]);
+    const catIdByKey = new Map(catTypes.map((t) => [t.key, t.id]));
+    const relIdByKey = new Map(relTypes.map((t) => [t.key, t.id]));
+
+    const resolve = async (
+      text: string,
+      kind: "category" | "relationship",
+      cache: Map<string, string | null>,
+    ): Promise<string | null> => {
+      const key = text.trim().toLowerCase();
+      if (!key) return null;
+      if (cache.has(key)) return cache.get(key) ?? null;
+      const { match } = await normalizeTypeToCatalog(key, kind);
+      const id = match
+        ? ((kind === "category" ? catIdByKey : relIdByKey).get(match.key) ?? null)
+        : null;
+      cache.set(key, id);
+      return id;
+    };
+
+    const catCache = new Map<string, string | null>();
+    const catRows = await db
+      .select({ id: categories.id, type: categories.type, typeCatalogId: categories.typeCatalogId })
+      .from(categories)
+      .where(eq(categories.synthesisId, synthesisId));
+    for (const r of catRows) {
+      if (r.typeCatalogId) continue;
+      const id = await resolve(r.type, "category", catCache);
+      if (!id) continue;
+      await db.update(categories).set({ typeCatalogId: id }).where(eq(categories.id, r.id));
+      res.categoriesNormalized += 1;
+    }
+
+    const relCache = new Map<string, string | null>();
+    const edgeRows = await db
+      .select({ id: categoryEdges.id, edgeType: categoryEdges.edgeType, typeCatalogId: categoryEdges.typeCatalogId })
+      .from(categoryEdges)
+      .where(eq(categoryEdges.synthesisId, synthesisId));
+    for (const r of edgeRows) {
+      if (r.typeCatalogId) continue;
+      const id = await resolve(r.edgeType, "relationship", relCache);
+      if (!id) continue;
+      await db.update(categoryEdges).set({ typeCatalogId: id }).where(eq(categoryEdges.id, r.id));
+      res.edgesNormalized += 1;
+    }
+  } catch (err) {
+    res.warnings.push(
+      `нормализация типов на каталог пропущена: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  return res;
 }
 
 /**
@@ -400,10 +501,11 @@ export interface SaveGraphResult {
 export async function saveGraphToDb(
   synthesisId: string,
   parsed: ParsedGraph,
+  opts: SaveGraphOptions = {},
 ): Promise<SaveGraphResult> {
   const warnings: string[] = [];
 
-  return db.transaction(async (tx) => {
+  const saved = await db.transaction(async (tx) => {
     // Замена: рёбра удалятся и CASCADE'ом по категориям, DELETE явный —
     // для рёбер, чьи категории могли быть добавлены вручную и уцелеть.
     await tx
@@ -524,8 +626,20 @@ export async function saveGraphToDb(
       clustersInserted = inserted.length;
     }
 
-    return { categoriesInserted, edgesInserted, clustersInserted, warnings };
+    return { categoriesInserted, edgesInserted, clustersInserted };
   });
+
+  // 5.5: нормализация на каталог — ВНЕ транзакции (каталог читается через
+  // Redis/БД, fail-open), после фиксации строк.
+  let categoriesNormalized = 0;
+  let edgesNormalized = 0;
+  if (opts.normalizeTypes !== false && saved.categoriesInserted > 0) {
+    const n = await normalizeGraphTypesToCatalog(synthesisId);
+    categoriesNormalized = n.categoriesNormalized;
+    edgesNormalized = n.edgesNormalized;
+    warnings.push(...n.warnings);
+  }
+  return { ...saved, categoriesNormalized, edgesNormalized, warnings };
 }
 
 /** Служебное: проверка наличия категорий (используется тестами/роутами). */

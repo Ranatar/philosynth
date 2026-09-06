@@ -168,26 +168,41 @@ const GLOSSARY_CATEGORY_SECTIONS: ReadonlyArray<[string, string]> = [
   ["Термины, порождённые проблемой", "problem_generated"],
 ];
 
+/** data-section подраздела-хозяина таблицы глоссария (section.glossary.sub.table). */
+export const GLOSSARY_TABLE_SECTION = "Таблица определений";
+
 /**
  * parseGlossaryFromHTML(html) → ParsedGlossaryTerm[].
  * Таблица ищется как в extractGlossaryCompact [8027]: первая
  * table.doc-table, чей ПЕРВЫЙ th содержит «термин». Столбцы ≥2 сверх
  * «Термин | Определение» уходят в extraColumns под фактическими
  * заголовками thead (их состав задаёт level.{level}.glossary_col).
+ *
+ * Беседа 5.5 (долг §12, заведён 5.1): при lang ≠ Russian заголовки
+ * переведены и «термин» не найдётся — поиск унифицирован с рендерером 5.1
+ * (element-renderer TABLE_SUBSECTIONS.glossary): СНАЧАЛА первая таблица внутри
+ * [data-section="Таблица определений"] (атрибут — константа шаблона, язык
+ * его не меняет), затем прежний путь по th «термин» как запасной.
  */
 export function parseGlossaryFromHTML(html: string): ParsedGlossaryTerm[] {
   const ct = parseFragment(html);
-  const tables = Array.from(ct.querySelectorAll("table.doc-table"));
+  const thsOf = (t: HtmlElement): string[] =>
+    Array.from(t.querySelectorAll("thead th")).map((th) => (th.textContent ?? "").trim());
   let table: HtmlElement | null = null;
   let headers: string[] = [];
-  for (const t of tables) {
-    const ths = Array.from(t.querySelectorAll("thead th")).map((th) =>
-      (th.textContent ?? "").trim(),
-    );
-    if (ths.length >= 2 && (ths[0] ?? "").toLowerCase().includes("термин")) {
-      table = t;
-      headers = ths;
-      break;
+  const host = ct.querySelector(`[data-section="${GLOSSARY_TABLE_SECTION}"]`);
+  const hosted = host?.querySelector("table.doc-table") ?? null;
+  if (hosted && thsOf(hosted).length >= 2) {
+    table = hosted;
+    headers = thsOf(hosted);
+  } else {
+    for (const t of Array.from(ct.querySelectorAll("table.doc-table"))) {
+      const ths = thsOf(t);
+      if (ths.length >= 2 && (ths[0] ?? "").toLowerCase().includes("термин")) {
+        table = t;
+        headers = ths;
+        break;
+      }
     }
   }
   if (!table) return [];
