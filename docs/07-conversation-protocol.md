@@ -1,5 +1,21 @@
 # PhiloSynth Service — Протокол бесед
 
+> **Правки 2026-09-07 (итоги беседы 7.1)**: долги реестра §12 закрыты
+> целиком (запрос 1 — все семь групп + смоук tests/smoke-71-request1.mjs
+> 68 ✓; тестовые запросы tests/test-71-requests2-8.mjs 105 ✓ ×2 против
+> живого сервера с BILLING_ENFORCE=true, моками Claude SSE/Stripe REST и
+> браузерной частью; check:integration += 2y/4ai/5y). Миграция 0003:
+> ON DELETE SET NULL у `created_by` (prompt_templates и ОБА каталога типов —
+> `synthesis_configs.created_by` в схеме НЕТ, п.11 «По факту 6.2» ошибочен)
+> и у `type_catalog_id` (categories/category_edges), `users.stripe_customer_id`
+> unique; тела/value в `/versions`; PATCH/DELETE типов каталога (admin,
+> is_system → 403, key неизменяем) + вкладка «Каталоги»; `POST /syntheses/:id/edges`
+> (201 без version) + EdgeCreateForm; авто-импорт файловых ☑-концепций
+> (гейт 1.5b/3.2 снят); точная оценка в гейте POST /syntheses (balance+enforce,
+> fail-open к порогу, → слот); `DELETE /auth/me` — анонимизация users при
+> сохранённой RESTRICT-истории; typecheck:scripts в корневом typecheck.
+> Фаза 7 закрыта. Глава «По факту 7.1».
+>
 > **Правки 2026-09-07 (итоги беседы 6.2)**: Billing UI + Admin Prompts Page
 > закрыт (запрос 1 + смоук tests/smoke-62-request1.mjs 84 ✓ + все тестовые
 > запросы tests/test-62-requests2-7.mjs 101 ✓ ×2 в браузере против живого
@@ -4333,6 +4349,80 @@ diff версий без обхода; CRUD типов с гейтом is_system
 
 **Завершение беседы:** стандартное (§10) + вычеркнуть закрытые строки §12.
 
+**По факту 7.1 (2026-09-07) — отступления от буквы запроса и найденное:**
+
+1. **`synthesis_configs.created_by` не существует** — ни в 02 §2.18, ни в
+   `schema.ts`, ни в 0000_initial. Пункт 1 запроса, примечание 02 §2.17 и
+   строка §12 (п.11 «По факту 6.2») ошибочны; править нечего. Зато тот же
+   голый REFERENCES был у `category_type_catalog.created_by` и
+   `relationship_type_catalog.created_by` — включены в 0003 как тот же класс.
+   Туда же `categories.type_catalog_id` и `category_edges.type_catalog_id`:
+   0000_initial давал им `no action`, что противоречило требованию п.3
+   «удаление при ссылках → SET NULL». Итого 0003: пять DROP/ADD CONSTRAINT +
+   `users.stripe_customer_id text UNIQUE`
+   (`0003_set_null_fks_stripe_customer.sql`, тег переименован из генерата).
+2. **Stripe Customer** — `ensureStripeCustomer(userId)` в subscription-service
+   (billing-service его импортирует, цикла нет): читает колонку, при пустой
+   создаёт Customer (email + metadata.userId) и пишет условным
+   `UPDATE … WHERE stripe_customer_id IS NULL`; при гонке побеждает первый,
+   лишний Customer в Stripe остаётся пустым. `createTopup` теперь шлёт
+   PaymentIntent с `customer`. Известное ограничение: Customer, удалённый
+   на стороне Stripe, не переоткрывается — колонку нужно обнулить руками.
+3. **/versions** — вместо `/:key/versions/:version` выбраны полные строки в
+   `/versions` (`PromptVersion = PromptTemplate`, `ConfigVersion =
+   SynthesisConfig`); клиентские `getTemplateVersions`/`getConfigVersionsFull`
+   сохранены как имена (AdminPromptsPage, 4ah), стали прямыми вызовами.
+4. **Каталоги** — `key` типа неизменяем (на него завязаны алиасы
+   нормализации и посев): PATCH правит nameRu/description и для связей
+   defaultDirection. Удаление отвязывает ссылки самой БД (FK SET NULL);
+   `unlinked` в ответе считается ДО удаления. Вкладка «Каталоги» — две
+   `.data-table`, правка по месту, confirm перед удалением; системные типы
+   только на чтение.
+5. **POST /edges** — в ответе НЕТ `version` (состояния «до» у новой строки не
+   существует) — единственное отличие от PATCH/DELETE; `SaveOutcome.version`
+   клиента стал необязательным. Совпадение концов допустимо только у
+   рефлексивной связи; `position = max+1`, `source_origin = 'manual'`;
+   таблица связей (и топологии при петле) перерисовывается. Логика
+   `addEdge` исходника не портировалась — новый код.
+6. **Авто-импорт** — `pool-store.attachSynthesisId` переводит файловую запись
+   в каталожную (rawHTML сохранён — предпросмотр жив); `buildInput` читает
+   участников из СВЕЖЕГО состояния стора (замыкание рендера новых id не
+   видит). Сбой импорта одного файла останавливает сабмит; уже
+   импортированные при повторе не дублируются.
+7. **Точный гейт** — конвейер оценки вынесен из `/estimate` в
+   `estimateSynthesisCost` и переиспользован в POST: только при решении
+   `billingCheck` `balance` под принуждением (BYO/подписка баланса не
+   требуют), сверка `resolveBilling(…, estimatedCostUsd = себестоимость ×
+   BILLING_MARKUP)`; `INSUFFICIENT_BALANCE` несёт `details.estimatedChargeUsd`;
+   сбой оценки — fail-open к порогу. Оценка передаётся слоту
+   (`GenerateSynthesisOptions.estimatedCostUsd`), чтобы повторный гейт не
+   вернулся к порогу. Следствие для стендов: мета-синтез шести разделов
+   дороже $1 — тестовым пользователям нужен баланс с запасом.
+8. **DELETE /auth/me** — строка users НЕ удаляется (RESTRICT `api_usage`/
+   `transactions.user_id` по 02 §2.20–2.21), а анонимизируется: email
+   `deleted-<id>@deleted.invalid`, bcrypt-хэш случайного секрета,
+   display_name/stripe_customer_id → null, role → user, balance_usd как есть;
+   удаляются сессии, BYO-ключи, синтезы (CASCADE); подписка →
+   cancel_at_period_end в Stripe (fail-open) + строки canceled. Активная
+   генерация → 409 GENERATION_IN_PROGRESS (гейт видит только процессы
+   ЭТОГО инстанса). Подтверждение паролем — единый 401, как у
+   password-change; клиент шлёт с skipUnauthorizedHandler.
+9. **typecheck:scripts** ломали два дефекта: невалидные enum-значения в
+   `scripts/test-31-requests2-4.ts` и `scripts/smoke-31.ts`
+   (`synthLevel: "integrative"` — это метод, `status: "created"`) и
+   кросс-мировой статический импорт `PauseModal.tsx` из
+   `tests/smoke-1.4b.mts` (грабля правок Фазы 0 — заменён путём-переменной).
+10. Старые секции integration-check подправлены под новую реальность: 4m
+   (срез /estimate начинается с хелпера), 4n (гейт файловых — регресс, а не
+   норма), 4ag (квота слота с estimatedCostUsd); `PageStub.tsx`, объявленный
+   удалённым в 6.2, всё ещё лежал в дереве — удалён.
+11. Грабли стенда: демоны PG/Redis не переживают пауз между ходами;
+   фоновый `npm install` гибнет с вызовом инструмента (только передний
+   план); уборка `deleted-*@deleted.invalid` требует сначала снести
+   `api_usage`/`transactions`; капитель `.action-btn` («◈ ГРАФ») — сравнения
+   регистронезависимо; проверка «нет ✗» в выводе дочерних смоуков ложно
+   ловит строку «0 ✗».
+
 ---
 
 ---
@@ -4550,29 +4640,29 @@ diff версий без обхода; CRUD типов с гейтом is_system
 | `applyReplacement` / `updateCompatAdvisor` / `toggleCompatPanel` | 3.2 | 1.1 (адресовался 1.5, затем «2.x») | ЗАКРЫТ 3.2 (2026-08-21): кнопки замен + orderAdvice + автораскрытие при конфликте в CompatAdvisor.tsx; onApplyReplacement меняет method/synthLevel/generationOrder формы — пересчёт советов/предупреждений/оценки через deps эффектов |
 | Отрисовка `estimate-diff` в `FullBudgetPreview` | 3.2 | 1.5b | ЗАКРЫТ 3.2 (2026-08-21): /estimate дважды (с участниками и без, дебаунс 600 мс), строка «Оценка с родителями: … · без: … · разница: …» |
 | Серверный импорт концепт-файлов | 4.3 | 1.5b | ЗАКРЫТ 4.3 (2026-08-30): POST /syntheses/import + import-service принимают standalone-файлы и экспорт сервиса (шаги a–m: syntheses/sections/граф/тезисы/глоссарий/логи/lineage/режимы, откат CASCADE при сбое); клиентский остаток — строкой ниже |
-| Авто-импорт файловых ☑-концепций при сабмите формы синтеза (SynthesisForm: файл → POST /syntheses/import → участник type='synthesis' с полученным id; снятие гейта 1.5b/3.2) | 7.1 | 4.3 | внесён 2026-08-30; 6.2 НЕ делала (2026-09-07): требует правки SynthesisForm 1.5b/3.2 — переадресован 7.1 |
+| Авто-импорт файловых ☑-концепций при сабмите формы синтеза (SynthesisForm: файл → POST /syntheses/import → участник type='synthesis' с полученным id; снятие гейта 1.5b/3.2) | 7.1 | 4.3 | ЗАКРЫТ 7.1 (2026-09-07): при сабмите каждая ☑-файловая концепция → importFile → `pool-store.attachSynthesisId` → участник type='synthesis'; гейт 1.5b/3.2 снят; R6 test-71 |
 | `reconstructSkeleton` как fallback в `formatPromptsForExport` | 4.2 | 2.4 | ЗАКРЫТ 4.2 (2026-08-29): `server/services/prompt-reconstruction.ts` (4 async-функции), подключён в formatPromptsForExport — rc один раз на форматирование, needsReconstruction → baseCtx+skeleton; TODO(4.2) в log-formatter сняты |
 | BYO-Key (ключ пользователя вместо env) | 6.1 | 1.4 | ЗАКРЫТ 6.1 (2026-09-06): все 11 точек `env.anthropic.apiKey` → `handle.billing.apiKey` (решение `resolveBilling` под слотом; см. «По факту 6.1» п.1); 4ag сторожит невозврат `env.anthropic.apiKey` в сервисы |
 | Форма ввода ключа в auth-модалке `PauseModal` | 6.2 | 1.4b (адресовался 6.1) | ЗАКРЫТ 6.2 (2026-09-07): auth-рендерер — поле ключа + «✓ Сохранить и продолжить» (storeApiKey → resume retry; порт `_resumeWithNewApiKey`), «Повторить»/«Остановить» сохранены; R9 test-62 — пауза auth → новый ключ → синтез ready |
 | Per-user HTTP-лимитирование (подсчёт после auth; сейчас фактически per-IP — 03 §3.4) | 6.1 | 1.6 | ЗАКРЫТ 6.1 (2026-09-06): идентичность лимитера — SHA-256 cookie-сессии до auth (≡ пользователю в Lucia-модели), иначе IP («По факту 6.1» п.11) |
 | `makeSectionCtxDisclosure` — disclosure секционного контекста в документе (sec_context отдаётся в SectionFull, UI не показывает) | 2.3 | 1.6b | ЗАКРЫТ 2.3 (2026-08-20): details.sec-disclosure в SectionView при непустом secContext |
 | Экспорт графа MMD/PNG/JSON (кнопки GraphModal — заглушки, метки TODO(4.2) в GraphModal.tsx; серверные services/export/*) | 4.2 | 1.7 | ЗАКРЫТ 4.2 (2026-08-29): серверные `services/export/*` (mmd/png/json/md/html + graph-model/style/physics/filename/common) + 5 роутов `routes/export.ts`; GraphModal → downloadExport (exportStub снят), меню «⤓ Экспорт» в SynthesisPage + `client/src/api/export.ts` |
-| Админские update/delete пользовательских типов каталога (`POST` есть с 0.3b, изменение и удаление не специфицированы — 03 §2.13) | 6.2 | 0.3b | внесён 2026-09-02 (аудит фаз 5–6, п.19); 5.4 НЕ сделала (2026-09-05): эндпоинтов и спецификации нет, а UI-адресат — админка 6.2 (AdminPromptsPage/каталоги); в TaxonomySelector — только создание; 6.2 НЕ делала (2026-09-07): серверных эндпоинтов и спецификации по-прежнему нет — переадресован 7.1 (сервер + вкладка «Каталоги» AdminPromptsPage) |
+| Админские update/delete пользовательских типов каталога (`POST` есть с 0.3b, изменение и удаление не специфицированы — 03 §2.13) | 6.2 | 0.3b | внесён 2026-09-02 (аудит фаз 5–6, п.19); 5.4 НЕ сделала (2026-09-05): эндпоинтов и спецификации нет, а UI-адресат — админка 6.2 (AdminPromptsPage/каталоги); в TaxonomySelector — только создание; 6.2 НЕ делала (2026-09-07): серверных эндпоинтов и спецификации по-прежнему нет — ЗАКРЫТ 7.1 (2026-09-07): `updateCustomType`/`deleteCustomType` + PATCH/DELETE `/taxonomy/{category|relationship}-types/:id` под requireAdmin (is_system → 403, key неизменяем, unlinked в ответе; FK SET NULL 0003) + вкладка «Каталоги»; R4 test-71 |
 | Прогрев кэша Prompt Registry при старте (`warmCache` реализован в 0.3, в index.ts не подключён) | 6.1 | 0.3 | ЗАКРЫТ 6.1 (2026-09-06): `void warmCache()` в index.ts после connectRedis, fail-open с логом |
 | Ролевая защита маршрута `/admin/prompts` на клиенте (сейчас только RequireAuth) | 6.2 | 0.4 | ЗАКРЫТ 6.2 (2026-09-07): `RequireAdmin` в App.tsx поверх RequireAuth → `/catalog`; 4ah сторожит |
 | UI подписок в BillingPage (бэкенд готов: 02 §2.22–2.23, 03 §2.10, subscription-service 6.1) | 6.2 | 6.1 | ЗАКРЫТ 6.2 (2026-09-07): секция «Подписка» (план/статус/период, квоты, тарифы → subscribe → Elements или «ожидает оплаты» до webhook, отмена/возобновление) + `client/api/subscription.ts`; R8 test-62 |
 | Учёт обогащений в биллинге (api_usage + used_enrichments; разъём в 5.3, наполнение — после 6.1) | 6.1 | 5.3 | ЗАКРЫТ 6.1 (2026-09-06) ИНЫМ ПУТЁМ: api_usage пишет универсальный разъём streamSection (`setStreamUsageRecorder`), `used_enrichments` потребляется при взятии слота (`quota: "enrichments"`); разъём `setUsageRecorder` 5.3 остаётся no-op (иначе двойной учёт) |
-| `users.stripe_customer_id` — в 02 нет; Stripe Customer создаётся на каждую подписку (metadata.userId); добавить колонку и переиспользовать Customer (и для topup) | 7.1 | 6.1 | внесён 2026-09-06; 6.2 НЕ делала (клиентская беседа) — переадресован 7.1 |
-| Точная оценка стоимости для гейта POST /syntheses (сейчас порог `BILLING_MIN_RESERVE_USD`; оценка вычислима роутом после разбора тела — сверять с балансом там) | 7.1 | 6.1 | внесён 2026-09-06; 6.2 НЕ делала (клиентская беседа) — переадресован 7.1 |
-| Процедура удаления аккаунта с финансовой историей (`api_usage`/`transactions.user_id` — RESTRICT по 02; DELETE /auth/me не специфицирован) | 7.1 | 6.1 | внесён 2026-09-06; 6.2 НЕ делала — переадресован 7.1 (вместе с FK created_by ниже) |
+| `users.stripe_customer_id` — в 02 нет; Stripe Customer создаётся на каждую подписку (metadata.userId); добавить колонку и переиспользовать Customer (и для topup) | 7.1 | 6.1 | ЗАКРЫТ 7.1 (2026-09-07): миграция 0003 + `ensureStripeCustomer` (условный UPDATE, гонка безопасна), createTopup с `customer`; R2в test-71 |
+| Точная оценка стоимости для гейта POST /syntheses (сейчас порог `BILLING_MIN_RESERVE_USD`; оценка вычислима роутом после разбора тела — сверять с балансом там) | 7.1 | 6.1 | ЗАКРЫТ 7.1 (2026-09-07): `estimateSynthesisCost` общий для /estimate и POST; resolveBilling с оценкой×наценкой при balance+enforce, details.estimatedChargeUsd, оценка → слот; R7 test-71 |
+| Процедура удаления аккаунта с финансовой историей (`api_usage`/`transactions.user_id` — RESTRICT по 02; DELETE /auth/me не специфицирован) | 7.1 | 6.1 | ЗАКРЫТ 7.1 (2026-09-07): `services/account-deletion.ts` — анонимизация users, удаление сессий/ключей/синтезов, отмена подписки; `DELETE /auth/me { password }`; ProfilePage; R7 test-71 |
 | Запуск обоснования характеристики по WS: `start_enrichment` (03 §3.1) не несёт characteristic/value — пока только HTTP `POST /justify-characteristic`; либо расширить сообщение в 5.4, либо зафиксировать «только HTTP» в §3.1 | 5.4 | 5.3 | ЗАКРЫТ 5.4 (2026-09-05) решением «только HTTP»: клиент запускает обогащения и обоснования REST-роутами (синхронные коды ошибок), WS — только доставка; `start_enrichment` остаётся в §3.1 как необязательный путь, §3.1 зафиксирован |
 | Показ `htmlSync.pending`/`sectionMissing` в UI редактора (обоснование тезиса без абзаца, termCategory глоссария — в html_content не отражены; сервер 5.1 отдаёт список, клиент обязан предупредить и предложить перегенерацию) | 5.2 | 5.1 | ЗАКРЫТ 5.2 (2026-09-04): `.callout.warning` с полем и разделом в блоке «Анализ влияния» ElementEditor; раздел-хозяин добавляется в «Перегенерировать затронутые» (EditModal.initialRegen) |
 | `CATEGORY_TYPES` в CategoryEditor — клиентская копия 14 типов промпта графа (select типа категории); заменить TaxonomySelector по каталогу 0.3b (18 = 14 + расширенные) с индикатором «из каталога / свободный текст»; расширенные по методу — `EXTRA_CATEGORY_TYPES` | 5.4 | 5.2 | ЗАКРЫТ 5.4 (2026-09-05): константа удалена, TaxonomySelector в CategoryEditor и NodePanel; 4ac сторожит невозврат константы, 4ae — селектор |
 | Серверная нормализация типов на каталог при парсинге (T3 03 §1.1 числится «сделано 0.3b», но graph-parser 1.4 пишет только lower-case текста — `typeCatalogId` у всех сгенерированных категорий/связей null; клиент 5.4 предлагает привязку «≈» вручную) — вызывать `normalizeType` в `saveGraphToDb` (и в трансформациях) | 5.5 | 5.4 (дыра 1.4/0.3b) | ЗАКРЫТ 5.5 (2026-09-06): `normalizeGraphTypesToCatalog` в graph-parser, вызывается из `saveGraphToDb` после транзакции (генерация, импорт, трансформации; fail-open; опция `normalizeTypes:false`); текст типа не меняется; 5w проверяет на посеянном каталоге |
-| Создание связи из UI (EdgeEditor правит существующие; эндпоинта `POST /syntheses/:id/edges` в §2.4 нет — концы связи менять нельзя, только удалить и создать) | 7.1 | 5.4 | внесён 2026-09-05; 6.2 НЕ делала (нужен серверный эндпоинт §2.4) — переадресован 7.1 |
-| `prompt_templates.created_by` (и `synthesis_configs.created_by`, 02 §2.17–2.18) — голые REFERENCES users(id): удаление админа, создавшего черновик, падает по FK 23503 (класс миграции 0002) → миграция 0003 ON DELETE SET NULL | 7.1 | 6.2 | внесён 2026-09-07 («По факту 6.2» п.11) |
-| `GET /prompts/:key/versions` и `GET /configs/:key/versions` без тел/значений — diff версий в AdminPromptsPage строится обходом (`?prefix=key&activeOnly=false`); дать тела в `/versions` либо `GET /…/:key/versions/:version` и убрать обход из `client/api/prompts.ts` | 7.1 | 6.2 | внесён 2026-09-07 («По факту 6.2» п.1) |
-| `npm run typecheck:scripts` сломан: `scripts/test-31-requests2-4.ts` — 5× TS2769 (`userId` в insert syntheses после правок схемы); в корневой `typecheck` не входит, регресс не ловится — починить и включить в `typecheck` | 7.1 | 6.2 (дефект ≥ 5.x) | внесён 2026-09-07 |
+| Создание связи из UI (EdgeEditor правит существующие; эндпоинта `POST /syntheses/:id/edges` в §2.4 нет — концы связи менять нельзя, только удалить и создать) | 7.1 | 5.4 | ЗАКРЫТ 7.1 (2026-09-07): `createCategoryEdge` + `POST /syntheses/:id/edges` (201 без version) + EdgeCreateForm («+ Связь» в GraphModal/NodePanel); R5 test-71 |
+| `prompt_templates.created_by` (и `synthesis_configs.created_by`, 02 §2.17–2.18) — голые REFERENCES users(id): удаление админа, создавшего черновик, падает по FK 23503 (класс миграции 0002) → миграция 0003 ON DELETE SET NULL | 7.1 | 6.2 | ЗАКРЫТ 7.1 (2026-09-07) С ПОПРАВКОЙ: `synthesis_configs.created_by` не существует; SET NULL получили prompt_templates и ОБА каталога типов + type_catalog_id категорий/связей; R2 test-71 |
+| `GET /prompts/:key/versions` и `GET /configs/:key/versions` без тел/значений — diff версий в AdminPromptsPage строится обходом (`?prefix=key&activeOnly=false`); дать тела в `/versions` либо `GET /…/:key/versions/:version` и убрать обход из `client/api/prompts.ts` | 7.1 | 6.2 | ЗАКРЫТ 7.1 (2026-09-07): полные строки с телами/value в `/versions`; обход снят; R3 test-71 |
+| `npm run typecheck:scripts` сломан: `scripts/test-31-requests2-4.ts` — 5× TS2769 (`userId` в insert syntheses после правок схемы); в корневой `typecheck` не входит, регресс не ловится — починить и включить в `typecheck` | 7.1 | 6.2 (дефект ≥ 5.x) | ЗАКРЫТ 7.1 (2026-09-07): enum-значения в test-31/smoke-31 исправлены, кросс-мировой импорт в smoke-1.4b — путём-переменной; `typecheck:scripts` в корневом `typecheck`; R8 test-71 |
 | Парсер глоссария 1.4 ищет таблицу по первому th «термин» [8027], а рендерер 5.1 — ещё и по data-section «Таблица определений»; при `lang ≠ Russian` заголовок переведён и парсер таблицу НЕ найдёт (глоссарий такого документа не попадает в glossary_terms) — унифицировать поиск по data-section | 5.5 | 5.1 (дыра 1.4) | ЗАКРЫТ 5.5 (2026-09-06): `parseGlossaryFromHTML` ищет сначала таблицу в `[data-section="Таблица определений"]` (`GLOSSARY_TABLE_SECTION` ≡ `TABLE_SUBSECTIONS.glossary` рендерера), затем по th «термин» |
 
 Долги, снятые как «не долг»: `POST /auth/password-reset/*` — вне MVP,

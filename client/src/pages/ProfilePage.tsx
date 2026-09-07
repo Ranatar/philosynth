@@ -2,6 +2,9 @@
  * Страница профиля (беседа 0.6, требование A3):
  *   - секция «Профиль»: email (read-only), displayName → PATCH /auth/me;
  *   - секция «Смена пароля»: POST /auth/password-change (беседа 0.5);
+ *   - секция «Удаление аккаунта» (7.1): DELETE /auth/me { password } —
+ *     confirm + пароль; после успеха store анонимен, RequireAuth уводит на
+ *     /login;
  *     повтор нового пароля проверяется на клиенте; 401 сервера →
  *     «Неверный текущий пароль» (auth-store), details — по полям;
  *     при успехе — уведомление «Пароль изменён; прочие сессии завершены».
@@ -57,6 +60,30 @@ export function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const changePassword = useAuthStore((s) => s.changePassword);
+  const deleteAccount = useAuthStore((s) => s.deleteAccount);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+
+  async function handleDeleteSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!deletePassword) {
+      setDeleteError("Введите пароль для подтверждения");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, " +
+          "подписка отменена. История платежей сохраняется обезличенной.",
+      )
+    )
+      return;
+    setDeletePending(true);
+    setDeleteError(null);
+    const result = await deleteAccount(deletePassword);
+    setDeletePending(false);
+    if (!result.ok) setDeleteError(result.error);
+  }
 
   /* ── Секция «Профиль» ── */
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
@@ -221,6 +248,40 @@ export function ProfilePage() {
           style={{ alignSelf: "flex-start", marginTop: 4 }}
         >
           {passwordPending ? "Смена…" : "Сменить пароль"}
+        </button>
+      </form>
+
+      {/* ── Удаление аккаунта (7.1) ── */}
+      <form onSubmit={handleDeleteSubmit} className="input-form" data-testid="delete-account-form">
+        <div className="form-section-title">Удаление аккаунта</div>
+        <div className="form-sublabel">
+          Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история
+          платежей и использования остаётся обезличенной. Действие необратимо.
+        </div>
+        <Field
+          label="Пароль для подтверждения"
+          type="password"
+          autoComplete="current-password"
+          value={deletePassword}
+          onChange={(v) => {
+            setDeletePassword(v);
+            if (deleteError) setDeleteError(null);
+          }}
+          error={undefined}
+        />
+        {deleteError && (
+          <p role="alert" className="callout warning">
+            {deleteError}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={deletePending}
+          className="action-btn"
+          style={{ alignSelf: "flex-start", marginTop: 4, color: "var(--red)", borderColor: "var(--red)" }}
+          data-testid="delete-account-btn"
+        >
+          {deletePending ? "Удаление…" : "✕ Удалить аккаунт"}
         </button>
       </form>
     </div>

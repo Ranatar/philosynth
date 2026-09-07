@@ -18,9 +18,14 @@
  *    (.code-editor; валидация JSON.parse с текстом ошибки, .invalid),
  *    версии/diff/активация симметрично шаблонам.
  *
- * Тела версий: /versions отдаёт метаданные без тел — берутся через
- * listPrompts({prefix:key, activeOnly:false}) с точной фильтрацией
- * (дыра контракта, см. api/prompts.ts). Подсветка синтаксиса JSON —
+ *  - «Каталоги» (7.1, долг §12 5.4): типы категорий и связей из
+ *    element-taxonomy — таблица (.data-table), системные только на
+ *    чтение, пользовательские — правка nameRu/description/направления по
+ *    месту и удаление (PATCH/DELETE §2.13; удаление отвязывает
+ *    typeCatalogId у элементов, текст типа остаётся — unlinked в ответе).
+ *
+ * Тела версий: с 7.1 /versions отдаёт тела и value напрямую (обход 6.2
+ * через listPrompts({prefix}) снят). Подсветка синтаксиса JSON —
  * без библиотеки (решение 6.2: .code-editor даёт раму и .invalid; тяжёлая
  * зависимость ради админской textarea не оправдана).
  *
@@ -32,6 +37,15 @@ import type { PromptTemplate, SynthesisConfig } from "@philosynth/shared/types/p
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "../api/client";
+import {
+  type CatalogType,
+  type RelationshipDirection,
+  type TaxonomyKind,
+  deleteCustomType,
+  getCategoryTypes,
+  getRelationshipTypes,
+  updateCustomType,
+} from "../api/taxonomy";
 import {
   activateConfigVersion,
   activateVersion,
@@ -839,9 +853,280 @@ function ConfigsTab() {
   );
 }
 
+/* ── Вкладка «Каталоги» (7.1) ────────────────────────────────────────── */
+
+const DIRECTIONS: RelationshipDirection[] = ["unidirectional", "bidirectional", "reflexive"];
+const DIRECTION_LABELS: Record<RelationshipDirection, string> = {
+  unidirectional: "однонаправленная",
+  bidirectional: "двунаправленная",
+  reflexive: "рефлексивная",
+};
+
+function directionOf(t: CatalogType): RelationshipDirection | null {
+  const d = (t as { defaultDirection?: string }).defaultDirection;
+  return d && (DIRECTIONS as string[]).includes(d) ? (d as RelationshipDirection) : null;
+}
+
+/** Класс строки-бейджа происхождения типа (литералы — вне JSX, см. tabClass) */
+function originClass(system: boolean): string {
+  return system ? "cert-badge" : "cert-badge gold";
+}
+
+interface CatalogEditState {
+  id: string;
+  nameRu: string;
+  description: string;
+  defaultDirection: RelationshipDirection | null;
+}
+
+function CatalogTable({ kind }: { kind: TaxonomyKind }) {
+  const [rows, setRows] = useState<CatalogType[] | null>(null);
+  const [search, setSearch] = useState("");
+  const [edit, setEdit] = useState<CatalogEditState | null>(null);
+  const [pending, setPending] = useState(false);
+  const [status, setStatus] = useState<StatusMsg>(null);
+  const isRel = kind === "relationship";
+
+  const load = useCallback(async () => {
+    try {
+      setRows(isRel ? await getRelationshipTypes() : await getCategoryTypes());
+    } catch (err) {
+      setStatus({ text: errText(err, "Не удалось загрузить каталог"), kind: "err" });
+    }
+  }, [isRel]);
+
+  useEffect(() => {
+    setEdit(null);
+    void load();
+  }, [load]);
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (rows ?? []).filter(
+      (t) => !q || t.key.toLowerCase().includes(q) || t.nameRu.toLowerCase().includes(q),
+    );
+  }, [rows, search]);
+
+  function startEdit(t: CatalogType): void {
+    setStatus(null);
+    setEdit({ id: t.id, nameRu: t.nameRu, description: t.description, defaultDirection: directionOf(t) });
+  }
+
+  async function saveEdit(): Promise<void> {
+    if (!edit) return;
+    if (!edit.nameRu.trim()) {
+      setStatus({ text: "Русское название типа обязательно", kind: "err" });
+      return;
+    }
+    setPending(true);
+    setStatus(null);
+    try {
+      const t = await updateCustomType(kind, edit.id, {
+        nameRu: edit.nameRu.trim(),
+        description: edit.description.trim(),
+        ...(isRel && edit.defaultDirection ? { defaultDirection: edit.defaultDirection } : {}),
+      });
+      await load();
+      setEdit(null);
+      setStatus({ text: `Тип «${t.key}» сохранён; кэш каталога сброшен`, kind: "ok" });
+    } catch (err) {
+      setStatus({ text: errText(err, "Не удалось сохранить тип"), kind: "err" });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function remove(t: CatalogType): Promise<void> {
+    if (
+      !window.confirm(
+        `Удалить тип «${t.key}» (${t.nameRu})? Ссылающиеся ${isRel ? "связи" : "категории"} сохранят текст типа, но потеряют привязку к каталогу.`,
+      )
+    )
+      return;
+    setPending(true);
+    setStatus(null);
+    try {
+      const r = await deleteCustomType(kind, t.id);
+      await load();
+      if (edit?.id === t.id) setEdit(null);
+      setStatus({
+        text: `Тип «${t.key}» удалён; отвязано ${isRel ? "связей" : "категорий"}: ${r.unlinked}`,
+        kind: "ok",
+      });
+    } catch (err) {
+      setStatus({ text: errText(err, "Не удалось удалить тип"), kind: "err" });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const testId = isRel ? "catalog-relationship" : "catalog-category";
+
+  return (
+    <div className="data-table-wrap" data-testid={testId}>
+      <div className="data-table-toolbar">
+        <input
+          className="form-input"
+          placeholder="поиск по ключу или названию…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Поиск по каталогу"
+          data-testid={`${testId}-search`}
+        />
+        <span className="form-sublabel">
+          {rows ? `${rows.length} типов, системных: ${rows.filter((t) => t.isSystem).length}` : ""}
+        </span>
+      </div>
+      {status && (
+        <div className={status.kind === "ok" ? "pool-status ok" : "pool-status err"} data-testid={`${testId}-status`}>
+          {status.text}
+        </div>
+      )}
+      {rows === null ? (
+        <div className="pool-status">Загрузка…</div>
+      ) : visible.length === 0 ? (
+        <div className="data-table-empty">типов нет</div>
+      ) : (
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Ключ</th>
+              <th>Название</th>
+              <th>Описание</th>
+              {isRel && <th>Направление</th>}
+              <th>Происхождение</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((t) =>
+              edit && edit.id === t.id ? (
+                <tr key={t.id} data-testid={`${testId}-row-${t.key}`} data-editing="true">
+                  <td>
+                    <code>{t.key}</code>
+                  </td>
+                  <td>
+                    <input
+                      className="form-input"
+                      value={edit.nameRu}
+                      onChange={(e) => setEdit({ ...edit, nameRu: e.target.value })}
+                      aria-label="Название типа"
+                      data-testid={`${testId}-edit-name`}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="form-input"
+                      value={edit.description}
+                      onChange={(e) => setEdit({ ...edit, description: e.target.value })}
+                      aria-label="Описание типа"
+                      data-testid={`${testId}-edit-description`}
+                    />
+                  </td>
+                  {isRel && (
+                    <td>
+                      <select
+                        className="form-select"
+                        value={edit.defaultDirection ?? "unidirectional"}
+                        onChange={(e) =>
+                          setEdit({ ...edit, defaultDirection: e.target.value as RelationshipDirection })
+                        }
+                        aria-label="Направление по умолчанию"
+                        data-testid={`${testId}-edit-direction`}
+                      >
+                        {DIRECTIONS.map((d) => (
+                          <option key={d} value={d}>
+                            {DIRECTION_LABELS[d]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  )}
+                  <td>
+                    <span className={originClass(t.isSystem)}>{t.isSystem ? "системный" : "пользовательский"}</span>
+                  </td>
+                  <td className="num">
+                    <button
+                      type="button"
+                      className="action-btn primary"
+                      disabled={pending}
+                      onClick={() => void saveEdit()}
+                      data-testid={`${testId}-edit-save`}
+                    >
+                      Сохранить
+                    </button>{" "}
+                    <button type="button" className="action-btn" disabled={pending} onClick={() => setEdit(null)}>
+                      Отмена
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={t.id} data-testid={`${testId}-row-${t.key}`}>
+                  <td>
+                    <code>{t.key}</code>
+                  </td>
+                  <td>{t.nameRu}</td>
+                  <td>{t.description}</td>
+                  {isRel && <td>{(() => { const d = directionOf(t); return d ? DIRECTION_LABELS[d] : ""; })()}</td>}
+                  <td>
+                    <span className={originClass(t.isSystem)}>{t.isSystem ? "системный" : "пользовательский"}</span>
+                  </td>
+                  <td className="num">
+                    {!t.isSystem && (
+                      <>
+                        <button
+                          type="button"
+                          className="action-btn"
+                          disabled={pending}
+                          onClick={() => startEdit(t)}
+                          data-testid={`${testId}-edit-${t.key}`}
+                        >
+                          ✎ Изменить
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="action-btn"
+                          disabled={pending}
+                          onClick={() => void remove(t)}
+                          data-testid={`${testId}-delete-${t.key}`}
+                        >
+                          ✕ Удалить
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ),
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function CatalogsTab() {
+  return (
+    <div className="form-grid" data-testid="catalogs-tab">
+      <div className="form-group full">
+        <div className="form-label">Типы категорий</div>
+        <div className="form-sublabel">
+          Системные типы (посев 0.3b) неизменяемы; пользовательские — созданные из TaxonomySelector —
+          можно переименовать или удалить. Ключ типа не меняется: на него завязаны алиасы нормализации.
+        </div>
+        <CatalogTable kind="category" />
+      </div>
+      <div className="form-group full">
+        <div className="form-label">Типы связей</div>
+        <CatalogTable kind="relationship" />
+      </div>
+    </div>
+  );
+}
+
 /* ── Страница ────────────────────────────────────────────────────────── */
 
-type Tab = "templates" | "configs";
+type Tab = "templates" | "configs" | "catalogs";
 
 /** Класс кнопки-вкладки (литералы вне className — css-parity-audit ловит
  *  строки внутри выражения className как имена классов) */
@@ -852,6 +1137,8 @@ function tabClass(active: boolean): string {
 export function AdminPromptsPage() {
   const [tab, setTab] = useState<Tab>("templates");
   const isTemplates = tab === "templates";
+  const isConfigs = tab === "configs";
+  const isCatalogs = tab === "catalogs";
   return (
     <div className="input-form" data-testid="admin-prompts-page">
       <h1 className="form-section-title">Prompt Registry</h1>
@@ -869,19 +1156,31 @@ export function AdminPromptsPage() {
         <button
           type="button"
           role="tab"
-          aria-selected={!isTemplates}
-          className={tabClass(!isTemplates)}
+          aria-selected={isConfigs}
+          className={tabClass(isConfigs)}
           onClick={() => setTab("configs")}
           data-testid="tab-configs"
         >
           Конфиги
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isCatalogs}
+          className={tabClass(isCatalogs)}
+          onClick={() => setTab("catalogs")}
+          data-testid="tab-catalogs"
+        >
+          Каталоги
+        </button>
       </div>
-      <div className="form-sublabel" style={{ marginBottom: 10 }}>
-        Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация
-        сбрасывает кэш реестра — следующая генерация берёт новый текст.
-      </div>
-      {isTemplates ? <TemplatesTab /> : <ConfigsTab />}
+      {!isCatalogs && (
+        <div className="form-sublabel" style={{ marginBottom: 10 }}>
+          Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация
+          сбрасывает кэш реестра — следующая генерация берёт новый текст.
+        </div>
+      )}
+      {isTemplates ? <TemplatesTab /> : isConfigs ? <ConfigsTab /> : <CatalogsTab />}
     </div>
   );
 }

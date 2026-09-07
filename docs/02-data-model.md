@@ -46,10 +46,18 @@ CREATE TABLE users (
   display_name  TEXT,
   role          TEXT NOT NULL DEFAULT 'user',  -- 'user' | 'admin'
   balance_usd   NUMERIC(10, 4) NOT NULL DEFAULT 0,
+  stripe_customer_id TEXT UNIQUE,  -- 7.1 (миграция 0003): один Stripe Customer на пользователя,
+                                   -- создаётся при первом topup/подписке (ensureStripeCustomer)
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
+
+> **7.1:** удаление аккаунта (`DELETE /auth/me`) НЕ удаляет строку — RESTRICT
+> `api_usage`/`transactions.user_id` (§2.20–2.21) сохраняет финансовую
+> историю; строка анонимизируется (email `deleted-<id>@deleted.invalid`,
+> случайный password_hash, display_name/stripe_customer_id → NULL,
+> role → 'user'); сессии, api_keys, syntheses удаляются, подписки → canceled.
 
 ### 2.2. sessions
 
@@ -216,7 +224,7 @@ CREATE TABLE categories (
   breadth            REAL NOT NULL DEFAULT 0,       -- широта (0–1, v10)
   depth_score        REAL NOT NULL DEFAULT 0,       -- глубина (0–1, v10; «depth_score» чтобы не конфликтовать с SQL)
   applicability      REAL NOT NULL DEFAULT 0,       -- применимость (0–1, v10)
-  type_catalog_id  UUID REFERENCES category_type_catalog(id),  -- ссылка на каталог типов (нормализованный)
+  type_catalog_id  UUID REFERENCES category_type_catalog(id) ON DELETE SET NULL,  -- ссылка на каталог типов (нормализованный); SET NULL — миграция 0003 (7.1)
   origin         TEXT NOT NULL DEFAULT '',  -- столбец «Происхождение/Генеалогия/Преодолённые ограничения»
   
   -- Топология (из parseTopology)
@@ -252,7 +260,7 @@ CREATE TABLE category_edges (
   logical_necessity  REAL NOT NULL DEFAULT 0.5,  -- логическая необходимость
   innovation_degree  INT NOT NULL DEFAULT 1,        -- степень инновации связи (1–5, v10)
   context_dependency REAL NOT NULL DEFAULT 0.5,     -- контекстозависимость (0–1, v10)
-  type_catalog_id    UUID REFERENCES relationship_type_catalog(id),
+  type_catalog_id    UUID REFERENCES relationship_type_catalog(id) ON DELETE SET NULL,  -- SET NULL — миграция 0003 (7.1)
   position      INT NOT NULL DEFAULT 0,
   source_origin TEXT NOT NULL DEFAULT 'generated',  -- 'generated'|'manual'
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -488,11 +496,12 @@ CREATE INDEX idx_ctxlog_synthesis ON context_log(synthesis_id);
 
 ### 2.17. prompt_templates
 
-> **Примечание 6.2 (2026-09-07):** `created_by UUID REFERENCES users(id)` без
-> `ON DELETE SET NULL` — удаление админа, создавшего хоть один черновик,
-> падает по FK 23503 (тот же класс, что миграция 0002 закрыла для
-> `api_usage`/`transactions.synthesis_id`). То же у `synthesis_configs`
-> (§2.18). Долг 7.1 — миграция 0003 `ON DELETE SET NULL`.
+> **7.1 (2026-09-07, миграция 0003):** `created_by … ON DELETE SET NULL` —
+> удаление автора черновика больше не падает по FK 23503 (класс миграции
+> 0002). Примечание 6.2 ошибочно относило это и к `synthesis_configs` —
+> колонки `created_by` там НЕТ (§2.18); зато тот же голый REFERENCES был у
+> `category_type_catalog`/`relationship_type_catalog.created_by` — исправлен
+> той же миграцией.
 
 ```sql
 CREATE TABLE prompt_templates (
@@ -503,7 +512,7 @@ CREATE TABLE prompt_templates (
   is_active   BOOLEAN NOT NULL DEFAULT false,
   description TEXT NOT NULL DEFAULT '',
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_by  UUID REFERENCES users(id),
+  created_by  UUID REFERENCES users(id) ON DELETE SET NULL,  -- 7.1, миграция 0003
   
   UNIQUE(key, version)
 );
@@ -652,7 +661,7 @@ CREATE TABLE category_type_catalog (
   name_ru     TEXT NOT NULL,          -- 'Онтологическая', 'Эпистемологическая', ...
   description TEXT NOT NULL DEFAULT '',
   is_system   BOOLEAN NOT NULL DEFAULT true,  -- системный (предзаполненный) или пользовательский
-  created_by  UUID REFERENCES users(id),
+  created_by  UUID REFERENCES users(id) ON DELETE SET NULL,  -- 7.1, миграция 0003
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
@@ -671,7 +680,7 @@ CREATE TABLE relationship_type_catalog (
   description      TEXT NOT NULL DEFAULT '',
   default_direction TEXT NOT NULL DEFAULT 'unidirectional',
   is_system        BOOLEAN NOT NULL DEFAULT true,
-  created_by       UUID REFERENCES users(id),
+  created_by       UUID REFERENCES users(id) ON DELETE SET NULL,  -- 7.1, миграция 0003
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```

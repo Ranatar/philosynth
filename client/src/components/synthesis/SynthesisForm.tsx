@@ -29,10 +29,13 @@
  * ГЕЙТ МЕТА-СИНТЕЗА (1.5b → 3.2): сервер принимает участников-концепции
  * {type:'synthesis', synthesisId} с беседы 3.1 — блокировка сабмита СНЯТА
  * для концепций ИЗ КАТАЛОГА (у них есть synthesisId; долг §12 закрыт).
- * ФАЙЛОВЫЕ концепции по-прежнему блокируются: серверный импорт файлов
- * ГОТОВ (4.3: POST /syntheses/import), но авто-импорт при сабмите
- * (файл → импорт → участник type='synthesis' с полученным id) — долг
- * §12 за беседой 6.2 — TODO(6.2).
+ * ФАЙЛОВЫЕ концепции (беседа 7.1, долг §12 закрыт): при сабмите каждая
+ * ☑-файловая концепция без synthesisId импортируется в каталог
+ * (importFile → POST /syntheses/import, 4.3), запись пула получает
+ * synthesisId (pool-store.attachSynthesisId), и участник уходит как
+ * type='synthesis'. Сбой импорта останавливает сабмит с текстом ошибки
+ * (уже импортированные к этому моменту файлы синтезами остаются —
+ * повторный сабмит их не дублирует). Гейт 1.5b/3.2 снят.
  *
  * Беседа 3.2, дополнительно:
  *  - предполётная проверка генеалогических пересечений ☑-концепций
@@ -59,6 +62,7 @@ import {
   type SynthesisAdvice,
   type SynthesisEstimate,
 } from "../../api/syntheses";
+import { importFile } from "../../api/import";
 import { getAncestors } from "../../api/lineage";
 import { usePoolStore } from "../../stores/pool-store";
 import {
@@ -396,11 +400,12 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       input.sectionContexts = sectionContexts;
     if (conceptParticipants.length > 0) input.keepFullBudget = keepFullBudget;
     // Беседа 3.2: каталожные ☑-концепции → ParticipantInput (сервер 3.1
-    // принимает type='synthesis'); файловые (без synthesisId) не
-    // представимы до авто-импорта при сабмите (долг §12 за 6.2; серверный
-    // POST /syntheses/import готов с 4.3) — наличие блокирует сабмит
-    const catalogParticipants: ParticipantInput[] = conceptParticipants
-      .filter((p) => p.synthesisId)
+    // принимает type='synthesis'); файловые получают synthesisId при
+    // авто-импорте в handleSubmit (7.1) — читаем СВЕЖЕЕ состояние стора,
+    // замыкание рендера этих id ещё не видит
+    const catalogParticipants: ParticipantInput[] = usePoolStore
+      .getState()
+      .conceptParticipants.filter((p) => p.synthesisId)
       .map((p) => ({ type: "synthesis", synthesisId: p.synthesisId! }));
     if (catalogParticipants.length > 0)
       input.participants = catalogParticipants;
@@ -481,21 +486,43 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       );
       return;
     }
-    // Гейт 1.5b СУЖЕН беседой 3.2: сервер принимает каталожные концепции
-    // (type='synthesis', беседа 3.1); блокируются только ФАЙЛОВЫЕ —
-    // до авто-импорта файлов при сабмите (долг §12 за 6.2)
-    const fileConcepts = conceptParticipants.filter((p) => !p.synthesisId);
-    if (fileConcepts.length > 0) {
-      setFormError(
-        "Файловые концепции пока не поддержаны как участники мета-синтеза: " +
-          "их нужно сначала импортировать в каталог (серверный импорт — " +
-          "в разработке). Снимите ☑ с файловых концепций (" +
-          fileConcepts.map((p) => "«" + p.name + "»").join(", ") +
-          ") либо добавьте участников кнопкой «+ Из каталога».",
-      );
-      return;
-    }
     setFormError(null);
+
+    // 7.1: авто-импорт ФАЙЛОВЫХ ☑-концепций (гейт 1.5b/3.2 снят). Каждый
+    // файл → POST /syntheses/import → synthesisId в записи пула; ошибка
+    // одного файла останавливает сабмит (остальные файлы уже в каталоге —
+    // при повторе не импортируются заново).
+    const fileEntries = usePoolStore
+      .getState()
+      .concepts.filter((c) => c.isSynthParticipant && !c.synthesisId);
+    if (fileEntries.length > 0) {
+      setSubmitChecking(true);
+      try {
+        for (const entry of fileEntries) {
+          if (!entry.rawHTML) {
+            setFormError(
+              "Концепция «" + entry.name + "» не содержит HTML файла — импорт невозможен; снимите ☑.",
+            );
+            return;
+          }
+          const blob = new Blob([entry.rawHTML], { type: "text/html" });
+          const file = new File([blob], entry.filename || entry.name + ".html", { type: "text/html" });
+          try {
+            const res = await importFile(file);
+            usePoolStore.getState().attachSynthesisId(entry.id, res.id);
+            usePoolStore
+              .getState()
+              .setPoolStatus("✓ «" + entry.name + "» импортирована в каталог", "ok");
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            setFormError("Импорт файловой концепции «" + entry.name + "» не удался: " + msg);
+            return;
+          }
+        }
+      } finally {
+        setSubmitChecking(false);
+      }
+    }
 
     // Пересечения предков → confirm (см. комментарий выше)
     if (conceptParticipants.length > 0) {

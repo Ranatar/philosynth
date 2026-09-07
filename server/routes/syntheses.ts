@@ -45,6 +45,12 @@ import { normalizeSectionKey } from "../services/parent-context.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { billingCheck } from "../middleware/billing-check.js"; // 6.1
 import {
+  BillingError,
+  billingErrorStatus,
+  computeChargeUsd,
+  resolveBilling,
+} from "../services/billing-service.js"; // 7.1: точный гейт оценки
+import {
   assertCanStartGeneration,
   generateSynthesis,
   GenerationError,
@@ -565,6 +571,61 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
   const genealogyWarnings =
     conceptIds.length > 0 ? await checkGenealogyOverlaps(overlapParticipants) : [];
 
+  /* ── 7.1: точная оценка стоимости для гейта баланса (долг §12 6.1).
+        billingCheck перед разбором тела мог сверить баланс лишь с порогом
+        BILLING_MIN_RESERVE_USD; здесь параметры известны — считаем
+        estimateCost и сверяем баланс с ожидаемым СПИСАНИЕМ (себестоимость
+        × BILLING_MARKUP). Только для режима 'balance' под принуждением
+        (BYO/подписка баланса не требуют); сбой оценки — fail-open к порогу.
+        Оценка передаётся и слоту (withGenerationSlot повторяет гейт). ── */
+  const billingCtx = c.get("billing");
+  let estimatedChargeUsd: number | undefined;
+  if (billingCtx?.billingMode === "balance" && billingCtx.enforced) {
+    try {
+      const est = await estimateSynthesisCost(user.id, {
+        seed,
+        philosophers: allPhilosophers,
+        conceptIds,
+        sections,
+        method,
+        synthLevel,
+        depth,
+        generationOrder,
+        extGraphMetrics: body.extGraphMetrics === true,
+        context: typeof body.context === "string" ? body.context : "",
+        lang: typeof body.lang === "string" && body.lang.trim() ? body.lang.trim() : "Russian",
+        keepFullBudget: body.keepFullBudget === true,
+        secCtx: sectionContexts,
+      });
+      estimatedChargeUsd = computeChargeUsd(est.cost);
+    } catch (err) {
+      console.warn("[syntheses] точная оценка гейта недоступна, порог по умолчанию:", err);
+    }
+    if (estimatedChargeUsd !== undefined) {
+      try {
+        await resolveBilling(user.id, {
+          quota: "syntheses",
+          estimatedCostUsd: estimatedChargeUsd,
+          consume: false,
+        });
+      } catch (err) {
+        if (err instanceof BillingError) {
+          return c.json(
+            {
+              error: err.message,
+              code: err.code,
+              ...(err.details !== undefined
+                ? { details: { ...err.details, estimatedChargeUsd } }
+                : { details: { estimatedChargeUsd } }),
+            },
+            billingErrorStatus(err.code),
+          );
+        }
+        throw err;
+      }
+    }
+  }
+
   /* ── Предпроверки старта ДО создания строки ── */
   try {
     assertCanStartGeneration(user.id);
@@ -621,7 +682,10 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
 
   /* ── Запуск генерации в фоне (§2.2: «Генерация начинается, клиент
         подключается по WebSocket») ── */
-  void generateSynthesis(synthesisId, user.id, { sectionContexts }).catch(
+  void generateSynthesis(synthesisId, user.id, {
+    sectionContexts,
+    estimatedCostUsd: estimatedChargeUsd,
+  }).catch(
     async (err) => {
       const message =
         err instanceof Error ? err.message : "Не удалось запустить генерацию";
@@ -722,6 +786,138 @@ synthesesRoutes.post("/advice", requireAuth, async (c) => {
   }
 });
 
+/* ── Оценка стоимости по параметрам формы (беседа 1.5; вынесена 7.1) ──
+   Общее ядро POST /estimate и точного гейта баланса POST /syntheses:
+   зеркалит конвейер generation-service (resolveContextDeps →
+   buildEffectiveDeps → buildDynamicOrder → buildSectionDefs → groupPasses →
+   buildSYS/baseCtxStatic → estimateCost) без записей в БД. Недоступные
+   концепции для оценки молча пропускаются (оценка — не гейт доступа). */
+
+interface EstimateInput {
+  seed: string;
+  philosophers: string[];
+  conceptIds: string[];
+  sections: string[];
+  method: string;
+  synthLevel: string;
+  depth: string;
+  generationOrder: string;
+  extGraphMetrics: boolean;
+  context: string;
+  lang: string;
+  keepFullBudget: boolean;
+  secCtx: Record<string, string> | undefined;
+}
+
+async function estimateSynthesisCost(
+  userId: string,
+  input: EstimateInput,
+): Promise<Awaited<ReturnType<typeof estimateCost>>> {
+  // Участники-концепции с полями (для веса родителей в оценке)
+  const estimateConcepts = [];
+  for (const cid of [...new Set(input.conceptIds)]) {
+    const access = await loadSynthesisForRead(cid, userId);
+    if (access.access !== "ok") continue; // см. комментарий выше
+    try {
+      estimateConcepts.push(await loadConceptContext(cid));
+    } catch (err) {
+      console.warn("[syntheses] estimate: loadConceptContext:", err);
+    }
+  }
+
+  // Конвейер 1.1/1.2 — как runGenerationPasses [12078–12183], без БД-записей
+  const p = {
+    seed: input.seed,
+    phil: input.philosophers,
+    participants: [
+      ...input.philosophers.map((name) => ({
+        type: "philosopher" as const,
+        name,
+      })),
+      ...estimateConcepts,
+    ],
+    isMetaSynthesis: estimateConcepts.length > 0,
+    sec: input.sections,
+    method: input.method as Parameters<typeof buildSectionDefs>[0]["method"],
+    synthLevel:
+      input.synthLevel as Parameters<typeof buildSectionDefs>[0]["synthLevel"],
+    depth: input.depth as Parameters<typeof buildSectionDefs>[0]["depth"],
+    generationOrder:
+      input.generationOrder as Parameters<
+        typeof buildSectionDefs
+      >[0]["generationOrder"],
+    extGraphMetrics: input.extGraphMetrics,
+    ctx: input.context,
+    lang: input.lang,
+    keepFullBudget: input.keepFullBudget,
+  };
+
+  {
+    const resolvedDeps = await resolveContextDeps(p);
+    const effectiveDeps = await buildEffectiveDeps(
+      p.sec,
+      resolvedDeps,
+      p.generationOrder,
+    );
+    const dynamicOrder = buildDynamicOrder(
+      effectiveDeps,
+      p.sec,
+      resolvedDeps,
+      p.generationOrder,
+    );
+    p.sec = dynamicOrder.filter((k) => k !== "sum");
+
+    const baseDefs = await buildSectionDefs(p);
+    patchPromptsWithSecCtx(baseDefs, input.secCtx);
+    const defsMap = new Map(baseDefs.map((d) => [d.key, d]));
+    const defs = dynamicOrder
+      .map((key) => defsMap.get(key))
+      .filter((d): d is NonNullable<typeof d> => d !== undefined);
+    const passes = groupPasses(defs);
+
+    const SYS = await buildSYS(p);
+    // Ориентир 1.1: baseCtxStatic при концепциях-участниках, иначе полный
+    // baseCtx (с 3.1 ветки различаются: родителей считает
+    // parentOverheadForSection ниже, а не baseCtx)
+    const baseStatic = hasConceptParticipants(p)
+      ? await baseCtxStatic(p)
+      : await baseCtx(p);
+
+    // 3.1: вес родительского контекста по разделам (01 §4.13 ч. II) —
+    // предвычисляем (estimateCost ждёт синхронный колбэк)
+    const overheadBySection: Record<string, number> = {};
+    if (estimateConcepts.length > 0) {
+      for (const key of dynamicOrder) {
+        overheadBySection[key] = await parentOverheadForSection(
+          estimateConcepts,
+          key,
+          p.generationOrder,
+          p.synthLevel,
+          p.method,
+        );
+      }
+    }
+
+    const est = await estimateCost({
+      params: {
+        depth: p.depth,
+        generationOrder: p.generationOrder,
+        keepFullBudget: p.keepFullBudget,
+      },
+      passes: passes.map((pass) =>
+        pass.map((d) => ({ key: d.key, prompt: d.prompt, title: d.title })),
+      ),
+      effectiveDeps,
+      sysChars: SYS.length,
+      baseStaticChars: baseStatic.length,
+      parentOverheadForSection: (sectionKey) =>
+        overheadBySection[normalizeSectionKey(sectionKey)] ?? 0,
+    });
+
+    return est;
+  }
+}
+
 /* ── POST /syntheses/estimate (беседа 1.5; G3 «Оценка стоимости до
       генерации») ──────────────────────────────────────────────────────────
    Принимает те же параметры, что POST /syntheses, но НЕ создаёт записей и
@@ -808,107 +1004,22 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
       ? (body.sectionContexts as Record<string, string>)
       : undefined;
 
-  // Участники-концепции с полями (для веса родителей в оценке)
-  const estimateConcepts = [];
-  for (const cid of [...new Set(estimateConceptIds)]) {
-    const access = await loadSynthesisForRead(cid, user.id);
-    if (access.access !== "ok") continue; // см. комментарий выше
-    try {
-      estimateConcepts.push(await loadConceptContext(cid));
-    } catch (err) {
-      console.warn("[syntheses] estimate: loadConceptContext:", err);
-    }
-  }
-
-  // Конвейер 1.1/1.2 — как runGenerationPasses [12078–12183], без БД-записей
-  const p = {
-    seed,
-    phil: allPhil,
-    participants: [
-      ...allPhil.map((name) => ({
-        type: "philosopher" as const,
-        name,
-      })),
-      ...estimateConcepts,
-    ],
-    isMetaSynthesis: estimateConcepts.length > 0,
-    sec: sections,
-    method: method as Parameters<typeof buildSectionDefs>[0]["method"],
-    synthLevel:
-      synthLevel as Parameters<typeof buildSectionDefs>[0]["synthLevel"],
-    depth: depth as Parameters<typeof buildSectionDefs>[0]["depth"],
-    generationOrder:
-      generationOrder as Parameters<
-        typeof buildSectionDefs
-      >[0]["generationOrder"],
-    extGraphMetrics: body.extGraphMetrics === true,
-    ctx: typeof body.context === "string" ? body.context : "",
-    lang: typeof body.lang === "string" && body.lang.trim() ? body.lang : "Russian",
-    keepFullBudget: body.keepFullBudget === true,
-  };
-
   try {
-    const resolvedDeps = await resolveContextDeps(p);
-    const effectiveDeps = await buildEffectiveDeps(
-      p.sec,
-      resolvedDeps,
-      p.generationOrder,
-    );
-    const dynamicOrder = buildDynamicOrder(
-      effectiveDeps,
-      p.sec,
-      resolvedDeps,
-      p.generationOrder,
-    );
-    p.sec = dynamicOrder.filter((k) => k !== "sum");
-
-    const baseDefs = await buildSectionDefs(p);
-    patchPromptsWithSecCtx(baseDefs, secCtx);
-    const defsMap = new Map(baseDefs.map((d) => [d.key, d]));
-    const defs = dynamicOrder
-      .map((key) => defsMap.get(key))
-      .filter((d): d is NonNullable<typeof d> => d !== undefined);
-    const passes = groupPasses(defs);
-
-    const SYS = await buildSYS(p);
-    // Ориентир 1.1: baseCtxStatic при концепциях-участниках, иначе полный
-    // baseCtx (с 3.1 ветки различаются: родителей считает
-    // parentOverheadForSection ниже, а не baseCtx)
-    const baseStatic = hasConceptParticipants(p)
-      ? await baseCtxStatic(p)
-      : await baseCtx(p);
-
-    // 3.1: вес родительского контекста по разделам (01 §4.13 ч. II) —
-    // предвычисляем (estimateCost ждёт синхронный колбэк)
-    const overheadBySection: Record<string, number> = {};
-    if (estimateConcepts.length > 0) {
-      for (const key of dynamicOrder) {
-        overheadBySection[key] = await parentOverheadForSection(
-          estimateConcepts,
-          key,
-          p.generationOrder,
-          p.synthLevel,
-          p.method,
-        );
-      }
-    }
-
-    const est = await estimateCost({
-      params: {
-        depth: p.depth,
-        generationOrder: p.generationOrder,
-        keepFullBudget: p.keepFullBudget,
-      },
-      passes: passes.map((pass) =>
-        pass.map((d) => ({ key: d.key, prompt: d.prompt, title: d.title })),
-      ),
-      effectiveDeps,
-      sysChars: SYS.length,
-      baseStaticChars: baseStatic.length,
-      parentOverheadForSection: (sectionKey) =>
-        overheadBySection[normalizeSectionKey(sectionKey)] ?? 0,
+    const est = await estimateSynthesisCost(user.id, {
+      seed,
+      philosophers: allPhil,
+      conceptIds: estimateConceptIds,
+      sections,
+      method,
+      synthLevel,
+      depth,
+      generationOrder,
+      extGraphMetrics: body.extGraphMetrics === true,
+      context: typeof body.context === "string" ? body.context : "",
+      lang: typeof body.lang === "string" && body.lang.trim() ? body.lang : "Russian",
+      keepFullBudget: body.keepFullBudget === true,
+      secCtx,
     });
-
     return c.json({ estimate: est });
   } catch (err) {
     // Оценка — вспомогательная: сбой Registry/конфигов не должен ронять форму

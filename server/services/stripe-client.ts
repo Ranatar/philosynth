@@ -187,12 +187,16 @@ export const stripe = {
   createPaymentIntent(params: {
     amountCents: number;
     currency?: string;
+    /** 7.1: Customer пользователя (users.stripe_customer_id) — платежи
+     *  пополнения и подписки видны под одним Customer */
+    customerId?: string;
     metadata?: Record<string, string>;
   }): Promise<StripePaymentIntent> {
     return request<StripePaymentIntent>("POST", "/v1/payment_intents", {
       amount: params.amountCents,
       currency: params.currency ?? "usd",
       automatic_payment_methods: { enabled: true },
+      ...(params.customerId ? { customer: params.customerId } : {}),
       metadata: params.metadata ?? {},
     });
   },

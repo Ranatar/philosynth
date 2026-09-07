@@ -8,7 +8,7 @@
  *      (activeOnly по умолчанию true на сервере; false — ВСЕ версии
  *      всех ключей, с телами)
  *  - getVersions      → GET  /prompts/:key/versions → { versions }
- *      (метаданные БЕЗ тел; 404 — ключа нет)
+ *      (7.1: полные строки С ТЕЛАМИ, новые первыми; 404 — ключа нет)
  *  - createVersion    → POST /prompts/:key { body, description? } → 201 { template }
  *      (черновик is_active=false — и для первой версии нового ключа;
  *      пустое body → 400; ключ [A-Za-z0-9._:-])
@@ -17,16 +17,14 @@
  *  - listConfigs      → GET  /configs ?activeOnly → { configs } (значения включены)
  *  - updateConfig     → PUT  /configs/:key { value, description? } → 201 { config }
  *      (черновик, симметрично шаблонам)
- *  - getConfigVersions → GET /configs/:key/versions → { versions } (без value)
+ *  - getConfigVersions → GET /configs/:key/versions → { versions } (7.1: с value)
  *  - activateConfigVersion → POST /configs/:key/activate { version } → { config }
  *
- * ДЫРА КОНТРАКТА (найдена 6.2): diff двух версий требует ТЕЛ, а
- * /versions отдаёт только метаданные. Без правки сервера тела берутся
- * через listPrompts({ prefix: key, activeOnly: false }) — LIKE 'key%'
- * захватывает и более длинные ключи, поэтому getTemplateVersions
- * фильтрует по точному key на клиенте. Для конфигов — listConfigs(false)
- * с той же фильтрацией. Кандидат в патч доков: GET /prompts/:key/versions
- * → с телами либо GET /prompts/:key/versions/:version.
+ * Дыра контракта 6.2 (тела для diff брались обходом
+ * listPrompts({ prefix: key, activeOnly: false }) с фильтрацией по точному
+ * ключу) ЗАКРЫТА 7.1: /versions отдаёт тела и value. getTemplateVersions /
+ * getConfigVersionsFull оставлены как имена для AdminPromptsPage и
+ * integration-check 4ah, но теперь — прямые вызовы /versions.
  */
 
 import type {
@@ -60,12 +58,9 @@ export function getVersions(key: string): Promise<PromptVersion[]> {
   );
 }
 
-/** Все версии ключа С ТЕЛАМИ (обход дыры контракта, см. шапку); новые первыми. */
-export async function getTemplateVersions(key: string): Promise<PromptTemplate[]> {
-  const rows = await listPrompts({ prefix: key, activeOnly: false });
-  return rows
-    .filter((t) => t.key === key)
-    .sort((a, b) => b.version - a.version);
+/** Все версии ключа с телами, новые первыми (7.1: = getVersions). */
+export function getTemplateVersions(key: string): Promise<PromptTemplate[]> {
+  return getVersions(key);
 }
 
 export function createVersion(
@@ -87,7 +82,7 @@ export function activateVersion(key: string, version: number): Promise<PromptTem
 
 /* ── Конфиги ─────────────────────────────────────────────────────────── */
 
-export type ConfigVersion = Omit<SynthesisConfig, "value">;
+export type ConfigVersion = SynthesisConfig;
 
 export function listConfigs(activeOnly = true): Promise<SynthesisConfig[]> {
   return apiGet<{ configs: SynthesisConfig[] }>("/configs", { activeOnly }).then(
@@ -112,10 +107,9 @@ export function getConfigVersions(key: string): Promise<ConfigVersion[]> {
   );
 }
 
-/** Все версии конфига СО ЗНАЧЕНИЯМИ (обход дыры контракта); новые первыми. */
-export async function getConfigVersionsFull(key: string): Promise<SynthesisConfig[]> {
-  const rows = await listConfigs(false);
-  return rows.filter((c) => c.key === key).sort((a, b) => b.version - a.version);
+/** Все версии конфига со значениями, новые первыми (7.1: = getConfigVersions). */
+export function getConfigVersionsFull(key: string): Promise<SynthesisConfig[]> {
+  return getConfigVersions(key);
 }
 
 export function activateConfigVersion(

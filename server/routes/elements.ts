@@ -6,6 +6,8 @@
  *
  *   GET    /:id/categories/:catId
  *   PATCH  /:id/categories/:catId          → updateCategory
+ *   POST   /:id/edges                      → createCategoryEdge (7.1, §2.4:
+ *          { sourceId, targetId, …поля PATCH } → 201 { edge, impact, htmlSync })
  *   PATCH  /:id/edges/:edgeId              → updateCategoryEdge
  *   DELETE /:id/edges/:edgeId              → deleteCategoryEdge (АДДИТИВНО:
  *          edge case протокола 5.1 требует удаление связи, в §2.4 его нет)
@@ -43,6 +45,7 @@ import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import {
   ElementEditorError,
   autoRenameReferences,
+  createCategoryEdge,
   deleteCategoryEdge,
   rollbackElement,
   toCategoryDto,
@@ -275,6 +278,21 @@ elementsRoutes.patch("/:id/categories/:catId", requireAuth, async (c) => {
   try {
     const result = await updateCategory(id, catId, await readJson(c));
     return c.json(result);
+  } catch (err) {
+    return serviceError(c, err);
+  }
+});
+
+/* ── POST /:id/edges (7.1) ───────────────────────────────────────────── */
+
+elementsRoutes.post("/:id/edges", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const gate = await ownerEditGate(c, id, user.id);
+  if (gate) return gate;
+  try {
+    const result = await createCategoryEdge(id, await readJson(c));
+    return c.json(result, 201);
   } catch (err) {
     return serviceError(c, err);
   }

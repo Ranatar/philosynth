@@ -202,6 +202,18 @@ POST   /auth/password-change   { currentPassword, newPassword }
                                 // ответ, анти-enumeration). Все прочие сессии
                                 // пользователя инвалидируются, текущая живёт.
 
+DELETE /auth/me                { password } → { ok: true, deletedSyntheses,
+                                                subscriptionCanceled }
+                                // Беседа 7.1. Подтверждение паролем: неверный →
+                                // 401 AUTH_REQUIRED (единый ответ). Активная
+                                // генерация → 409 GENERATION_IN_PROGRESS. Строка
+                                // users АНОНИМИЗИРУЕТСЯ (email deleted-<id>@
+                                // deleted.invalid, случайный хэш, display_name/
+                                // stripe_customer_id → null, role → user) —
+                                // api_usage/transactions RESTRICT остаются;
+                                // сессии, BYO-ключи, синтезы удаляются, подписка
+                                // → cancel_at_period_end. Cookie очищается.
+
 POST   /auth/password-reset/request  { email }              // A2a, Фаза 3
                                 // ВНИМАНИЕ: «Фаза 3» здесь — фаза
                                 // ПРОДУКТА (таблица возможностей §1),
@@ -259,6 +271,15 @@ POST   /syntheses              { seed, philosophers?: string[], sections: string
                                 // warnings (3.1, аддитивно): неблокирующие
                                 // генеалогические пересечения (M3 §1.6;
                                 // confirm исходника жил на клиенте)
+                                // 7.1: точный гейт баланса — при решении
+                                //   billingCheck 'balance' под BILLING_ENFORCE
+                                //   роут считает estimateCost по параметрам
+                                //   (общий конвейер с /estimate) и сверяет
+                                //   баланс с себестоимость×BILLING_MARKUP →
+                                //   403 INSUFFICIENT_BALANCE с details.
+                                //   estimatedChargeUsd; сбой оценки — порог
+                                //   BILLING_MIN_RESERVE_USD; BYO/подписка не
+                                //   затронуты; оценка передаётся слоту
                                 // Генерация начинается, клиент подключается по WebSocket
 
 POST   /syntheses/estimate     тело = телу POST /syntheses (беседа 1.5)
@@ -558,6 +579,20 @@ POST   /syntheses/:id/elements/auto-rename
 
 // ── По факту 5.1 (2026-09-03) ──────────────────────────────────────────
 
+// Создание связи (беседа 7.1; долг §12 5.4 — концы связи PATCH не меняет).
+// sourceId/targetId — категории ЭТОГО синтеза (иначе 400 details по полю);
+// совпадение концов только у direction 'рефлексивная'; прочие поля как в
+// PATCH, незаданные берут дефолты схемы; position — следующий за максимумом,
+// source_origin 'manual'; has_reflexive и таблицы связей/топологии
+// пересчитываются. Ответ БЕЗ version — состояния «до» у новой строки нет.
+POST   /syntheses/:id/edges     { sourceId, targetId, edgeType?, direction?,
+                                  description?, strength?, certainty?,
+                                  historicalSupport?, logicalNecessity?,
+                                  innovationDegree?, contextDependency?,
+                                  typeCatalogId? }
+                                → 201 { edge: CategoryEdge, impact: ImpactAnalysis,
+                                        htmlSync: HtmlSyncInfo }
+
 // Удаление связи. Edge case протокола 5.1 требовал его, эндпоинта не
 // было. Снимок ребра остаётся версией (elementType 'edge', 'manual');
 // has_reflexive концов пересчитывается, таблицы связей/топологии
@@ -772,12 +807,11 @@ GET    /prompts                 ?prefix=method.&activeOnly=true
                                 → { templates: PromptTemplate[] }
 
 GET    /prompts/:key/versions   → { versions: PromptVersion[] }
-                                // ФАКТ 6.2: метаданные БЕЗ тел — diff версий
-                                // в админке строится обходом
-                                // GET /prompts?prefix=key&activeOnly=false
-                                // (точная фильтрация по key на клиенте);
-                                // долг 7.1 — тела здесь либо
-                                // GET /prompts/:key/versions/:version
+                                // ФАКТ 7.1: PromptVersion = PromptTemplate —
+                                // полные строки С ТЕЛАМИ, новые первыми
+                                // (до 7.1 — метаданные, и diff в админке
+                                // строился обходом ?prefix=&activeOnly=false;
+                                // обход снят). Ключ без версий → 404.
 
 POST   /prompts/:key            { body: string, description?: string }
                                 → { template: PromptTemplate }   // 201
@@ -801,8 +835,8 @@ PUT    /configs/:key            { value: any, description?: string }
 // is_active (02 §2.18), «версионирование аналогично шаблонам» требует
 // 6.2 — но эндпоинтов не было.
 GET    /configs/:key/versions   → { versions: ConfigVersion[] }
-                                // ФАКТ 6.2: без value — обход
-                                // GET /configs?activeOnly=false (долг 7.1)
+                                // ФАКТ 7.1: ConfigVersion = SynthesisConfig —
+                                // с value (обход через GET /configs снят)
 
 POST   /configs/:key/activate   { version: number }
                                 → { config: SynthesisConfig }
@@ -818,6 +852,12 @@ POST   /configs/:key/activate   { version: number }
 > без Elements (мок Stripe отдаёт PaymentIntent `succeeded`). Подписка
 > confirm-эндпоинта не имеет — статус меняет webhook, UI перечитывает
 > `GET /billing/subscription` по кнопке «Обновить».
+>
+> **ФАКТ 7.1:** Stripe Customer — один на пользователя
+> (`users.stripe_customer_id`, миграция 0003; `ensureStripeCustomer` в
+> subscription-service): `POST /topup` создаёт PaymentIntent с `customer`,
+> `POST /subscribe` переиспользует его же. `DELETE /auth/me` обнуляет колонку
+> (Customer остаётся у истории платежей в Stripe).
 
 ```
 GET    /billing/usage           ?from=2026-01-01&to=2026-04-01&synthesisId=...
@@ -922,6 +962,18 @@ POST   /taxonomy/relationship-types { key, nameRu, description, defaultDirection
                                     // POST → 201; дубликат ключа → 400
                                     // VALIDATION_ERROR (контракт 0.3b).
                                     // Роуты смонтированы на /api/v1/taxonomy.
+
+// Беседа 7.1 (долг §12 0.3b/5.4): правка и удаление пользовательских типов —
+// только admin. key НЕИЗМЕНЯЕМ (алиасы нормализации, посев). is_system →
+// 403 FORBIDDEN; неизвестный id (или не UUID) → 404 NOT_FOUND. Удаление
+// обнуляет type_catalog_id у ссылающихся categories/category_edges (FK
+// ON DELETE SET NULL, миграция 0003), текст type сохраняется; unlinked —
+// их число; кэш каталога сбрасывается. UI — вкладка «Каталоги» AdminPromptsPage.
+PATCH  /taxonomy/category-types/:id     { nameRu?, description? } → { type }
+DELETE /taxonomy/category-types/:id     → { ok: true, unlinked: number }
+PATCH  /taxonomy/relationship-types/:id { nameRu?, description?,
+                                          defaultDirection? } → { type }
+DELETE /taxonomy/relationship-types/:id → { ok: true, unlinked: number }
 
 POST   /taxonomy/normalize          { text: string, kind: "category"|"relationship" }
                                     → { match: TypeMatch | null, suggestions: TypeMatch[] }
@@ -1318,7 +1370,8 @@ VALIDATION_ERROR     — невалидные данные (details содерж
 RATE_LIMIT           — превышен лимит запросов
 INSUFFICIENT_BALANCE — недостаточно средств (режим «баланс сервиса»): баланс > 0,
                        но ниже порога BILLING_MIN_RESERVE_USD (ФАКТ 6.1; details:
-                       balanceUsd, requiredUsd)
+                       balanceUsd, requiredUsd); у POST /syntheses с 7.1 порог —
+                       точная оценка (details += estimatedChargeUsd)
 API_KEY_INVALID      — невалидный API-ключ (режим BYO-Key)
 API_KEY_MISSING      — API-ключ не задан
 GENERATION_IN_PROGRESS — генерация уже запущена для этого синтеза

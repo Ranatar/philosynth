@@ -57,6 +57,7 @@ import { stripe, StripeError } from "./stripe-client.js";
 import {
   checkQuota,
   consumeQuota,
+  ensureStripeCustomer,
   findBillableSubscription,
   type QuotaType,
 } from "./subscription-service.js";
@@ -154,8 +155,11 @@ export async function createTopup(
   const amountCents = Math.round(amountUsd * 100);
   let pi;
   try {
+    // 7.1: PaymentIntent под Customer пользователя (users.stripe_customer_id)
+    const customerId = await ensureStripeCustomer(userId);
     pi = await stripe.createPaymentIntent({
       amountCents,
+      customerId,
       metadata: { userId, purpose: "topup" },
     });
   } catch (err) {

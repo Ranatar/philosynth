@@ -98,7 +98,7 @@
 
 | Объект | Целевой модуль |
 |---|---|
-| `STATE` (списки философов — 106 позиций (+36 в v10), ML, SL, DL и т.д.) | `shared/constants/philosophers.ts` (106, сверено в беседе 0.1), `shared/constants/labels.ts` |
+| `STATE` (списки философов — 106 позиций (+36 в v10), ML, SL, DL и т.д.) | `shared/constants/philosophers.ts` (106 исходника, сверено в беседе 0.1; сервис дополнил до 110 — 2026-09-07: Шелер, Николай Гартман, Башляр, Семён Франк), `shared/constants/labels.ts` |
 | `_EXTRA_CATEGORY_TYPES`, `_EXTRA_EDGE_TYPES`, `_SYNTH_LEVEL_TYPE_PHRASING`, `_buildExtraTypesBlock()` | `server/config/extra-types.ts` (→ БД) (v10) |
 | `KEY_LABELS`, `SECTION_LABELS` | `shared/constants/section-labels.ts` |
 | `REVERSE_ML`, `REVERSE_DL`, `REVERSE_SL` | `shared/constants/labels.ts` |

@@ -35,7 +35,7 @@
  * импорт допустим: модуль — лист графа (его импортируют только роуты),
  * цикла нет (грабля 2.1).
  */
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import {
@@ -713,6 +713,114 @@ export async function updateCategoryEdge(
   );
   const impact = await computeElementImpact("edge", row.id, synthesisId);
   return { edge: toEdgeDto(row), impact, version, htmlSync: sync };
+}
+
+/* ── createCategoryEdge (7.1) ────────────────────────────────────────── */
+
+export interface CreateEdgeResult {
+  edge: CategoryEdge;
+  impact: ImpactAnalysis;
+  htmlSync: HtmlSyncInfo;
+}
+
+/**
+ * Создание связи (7.1, долг §12 5.4: EdgeEditor правил существующие,
+ * концы менять нельзя было — «удалить и создать» без «создать»).
+ * Вход: sourceId/targetId — категории ЭТОГО синтеза (иначе VALIDATION_ERROR,
+ * details по полю); совпадение концов допустимо только у рефлексивной
+ * связи; edgeType/direction/характеристики/typeCatalogId — как в PATCH,
+ * незаданные берут дефолты схемы (strength 0.5 и т.д.). position —
+ * следующий за максимальным. source_origin='manual'. Версии-снимка нет:
+ * состояния «до» у новой строки не существует (в ответе version
+ * отсутствует — отличие от PATCH/DELETE). Перерисовываются таблицы связей
+ * (и топологии, если направление рефлексивное и has_reflexive изменился).
+ */
+export async function createCategoryEdge(
+  synthesisId: string,
+  input: unknown,
+): Promise<CreateEdgeResult> {
+  if (!isObj(input)) fail({ body: "ожидается объект" });
+  const d: Details = {};
+  const values: Partial<typeof categoryEdges.$inferInsert> = {};
+  const set = <K extends keyof typeof values>(k: K, v: (typeof values)[K]) => {
+    if (v !== undefined) values[k] = v;
+  };
+  const idOf = (field: string): string | undefined => {
+    const v = input[field];
+    if (typeof v !== "string" || !/^[0-9a-f-]{36}$/i.test(v)) {
+      d[field] = "ожидается id категории";
+      return undefined;
+    }
+    return v;
+  };
+  const sourceId = idOf("sourceId");
+  const targetId = idOf("targetId");
+  set("description", str(input["description"], "description", d, { allowEmpty: true }));
+  set("edgeType", str(input["edgeType"], "edgeType", d, { allowEmpty: true, max: 200 }));
+  let direction: (typeof DIRECTIONS)[number] = "однонаправленная";
+  if (input["direction"] !== undefined) {
+    const dir = input["direction"];
+    if (typeof dir !== "string" || !(DIRECTIONS as readonly string[]).includes(dir))
+      d["direction"] = "одно из: " + DIRECTIONS.join(" | ");
+    else direction = dir as (typeof DIRECTIONS)[number];
+  }
+  set("strength", num(input["strength"], "strength", d, 0, 1));
+  set("certainty", num(input["certainty"], "certainty", d, 0, 1));
+  set("historicalSupport", num(input["historicalSupport"], "historicalSupport", d, 0, 1));
+  set("logicalNecessity", num(input["logicalNecessity"], "logicalNecessity", d, 0, 1));
+  set("innovationDegree", num(input["innovationDegree"], "innovationDegree", d, 1, 5, true));
+  set("contextDependency", num(input["contextDependency"], "contextDependency", d, 0, 1));
+  const tc = await catalogIdOrNull(input["typeCatalogId"], "typeCatalogId", d, relationshipTypeCatalog);
+  if (tc !== undefined) values.typeCatalogId = tc;
+  if (sourceId && targetId && sourceId === targetId && direction !== "рефлексивная")
+    d["targetId"] = "совпадение концов допустимо только у рефлексивной связи";
+  if (Object.keys(d).length) fail(d);
+
+  const { row, reflexiveChanged } = await db.transaction(async (tx) => {
+    const ends = await tx
+      .select({ id: categories.id })
+      .from(categories)
+      .where(
+        and(
+          eq(categories.synthesisId, synthesisId),
+          inArray(categories.id, [sourceId!, targetId!]),
+        ),
+      );
+    const found = new Set(ends.map((e) => e.id));
+    const dd: Details = {};
+    if (!found.has(sourceId!)) dd["sourceId"] = "категория не найдена в этом синтезе";
+    if (!found.has(targetId!)) dd["targetId"] = "категория не найдена в этом синтезе";
+    if (Object.keys(dd).length) fail(dd);
+    const [last] = await tx
+      .select({ position: categoryEdges.position })
+      .from(categoryEdges)
+      .where(eq(categoryEdges.synthesisId, synthesisId))
+      .orderBy(desc(categoryEdges.position))
+      .limit(1);
+    const [row] = await tx
+      .insert(categoryEdges)
+      .values({
+        ...values,
+        synthesisId,
+        sourceId: sourceId!,
+        targetId: targetId!,
+        direction,
+        position: (last?.position ?? -1) + 1,
+        sourceOrigin: "manual",
+      })
+      .returning();
+    if (!row) throw new ElementEditorError("NOT_FOUND", "Связь не создана");
+    const reflexiveChanged =
+      direction === "рефлексивная"
+        ? await recomputeReflexive(synthesisId, [row.sourceId, row.targetId], tx)
+        : false;
+    return { row, reflexiveChanged };
+  });
+
+  const sync = emptySync();
+  await renderTables(synthesisId, reflexiveChanged ? ["edges", "topology"] : ["edges"], sync);
+  const impact = await computeElementImpact("edge", row.id, synthesisId);
+  return { edge: toEdgeDto(row), impact, htmlSync: sync };
 }
 
 /**

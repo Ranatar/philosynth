@@ -70,6 +70,10 @@ export const users = pgTable("users", {
   balanceUsd: numeric("balance_usd", { precision: 10, scale: 4 })
     .notNull()
     .default("0"),
+  /** Stripe Customer пользователя (миграция 0003, беседа 7.1): создаётся
+   *  один раз при первом пополнении или подписке и переиспользуется
+   *  (до 7.1 Customer создавался на каждую подписку — 02 §2.1). */
+  stripeCustomerId: text("stripe_customer_id").unique(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -298,9 +302,12 @@ export const categories = pgTable(
     depthScore: real("depth_score").notNull().default(0),
     /** Применимость (0–1, v10) */
     applicability: real("applicability").notNull().default(0),
-    /** Ссылка на каталог типов (нормализованный) */
+    /** Ссылка на каталог типов (нормализованный). ON DELETE SET NULL —
+     *  миграция 0003 (7.1): удаление пользовательского типа отвязывает
+     *  категории, текст type остаётся */
     typeCatalogId: uuid("type_catalog_id").references(
       () => categoryTypeCatalog.id,
+      { onDelete: "set null" },
     ),
     /** Столбец «Происхождение/Генеалогия/Преодолённые ограничения» */
     origin: text("origin").notNull().default(""),
@@ -372,8 +379,10 @@ export const categoryEdges = pgTable(
     innovationDegree: integer("innovation_degree").notNull().default(1),
     /** Контекстозависимость (0–1, v10) */
     contextDependency: real("context_dependency").notNull().default(0.5),
+    /** ON DELETE SET NULL — миграция 0003 (7.1), см. categories */
     typeCatalogId: uuid("type_catalog_id").references(
       () => relationshipTypeCatalog.id,
+      { onDelete: "set null" },
     ),
     position: integer("position").notNull().default(0),
     sourceOrigin: text("source_origin", { enum: ["generated", "manual"] })
@@ -736,7 +745,11 @@ export const promptTemplates = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    createdBy: uuid("created_by").references(() => users.id),
+    /** Автор черновика. ON DELETE SET NULL — миграция 0003 (7.1): голый
+     *  REFERENCES валил удаление админа по FK 23503 («По факту 6.2» п.11). */
+    createdBy: uuid("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
   },
   (t) => [
     uniqueIndex("prompt_templates_key_version_unique").on(t.key, t.version),
@@ -950,7 +963,10 @@ export const categoryTypeCatalog = pgTable("category_type_catalog", {
   description: text("description").notNull().default(""),
   /** Системный (предзаполненный) или пользовательский */
   isSystem: boolean("is_system").notNull().default(true),
-  createdBy: uuid("created_by").references(() => users.id),
+  /** ON DELETE SET NULL — миграция 0003 (7.1), тот же класс, что prompt_templates */
+  createdBy: uuid("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -967,7 +983,10 @@ export const relationshipTypeCatalog = pgTable("relationship_type_catalog", {
   description: text("description").notNull().default(""),
   defaultDirection: text("default_direction").notNull().default("unidirectional"),
   isSystem: boolean("is_system").notNull().default(true),
-  createdBy: uuid("created_by").references(() => users.id),
+  /** ON DELETE SET NULL — миграция 0003 (7.1) */
+  createdBy: uuid("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

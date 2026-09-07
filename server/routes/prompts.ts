@@ -5,12 +5,12 @@
  * (6.2, client/api/prompts.ts).
  *
  *   GET  /prompts                  ?prefix=method.&activeOnly=true → { templates }
- *   GET  /prompts/:key/versions    → { versions: PromptVersion[] }
+ *   GET  /prompts/:key/versions    → { versions: PromptVersion[] } (7.1: с телами)
  *   POST /prompts/:key             { body, description? } → { template } (черновик)
  *   POST /prompts/:key/activate    { version } → { template }
  *   GET  /configs                  ?activeOnly=true → { configs }
  *   PUT  /configs/:key             { value, description? } → { config } (черновик)
- *   GET  /configs/:key/versions    → { versions }
+ *   GET  /configs/:key/versions    → { versions } (7.1: с value)
  *   POST /configs/:key/activate    { version } → { config }
  *
  * Все — requireAuth + requireAdmin (0.2). Активация сбрасывает кэш

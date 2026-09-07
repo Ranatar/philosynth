@@ -1,6 +1,7 @@
 /**
  * PHIL_FILENAME — транслитерация имён философов для имён файлов экспорта.
- * Дословный порт из philosynth.html (~17325–17432), порядок исходника.
+ * Дословный порт из philosynth.html (~17325–17432), порядок исходника;
+ * четыре записи добавлены 2026-09-07 вместе с философами (см. philosophers.ts).
  * Используется getDocFilename() (server/services/export/filename.ts).
  */
 
@@ -111,4 +112,8 @@ export const PHIL_FILENAME: Readonly<Record<string, string>> = {
   "Флоренский": "Florensky",
   "Шестов": "Shestov",
   "Лосев": "Losev",
+  "Шелер": "Scheler",
+  "Николай Гартман": "Hartmann",
+  "Башляр": "Bachelard",
+  "Семён Франк": "Frank",
 } as const;

@@ -235,6 +235,11 @@ export function isGenerationActive(synthesisId: string): boolean {
   return activeRuns.has(synthesisId);
 }
 
+/** 7.1: есть ли у пользователя активная операция (DELETE /auth/me → 409). */
+export function hasActiveGenerationForUser(userId: string): boolean {
+  return activeRunsOfUser(userId) > 0;
+}
+
 function activeRunsOfUser(userId: string): number {
   let n = 0;
   for (const run of activeRuns.values()) if (run.userId === userId) n += 1;
@@ -569,6 +574,9 @@ async function upsertSection(
 export interface GenerateSynthesisOptions {
   /** secCtx поверх сохранённого в sections.sec_context (POST-роут, запрос 2) */
   sectionContexts?: Record<string, string> | undefined;
+  /** 7.1: ожидаемое списание из точной оценки POST /syntheses — порог
+   *  баланса для гейта слота (вместо BILLING_MIN_RESERVE_USD) */
+  estimatedCostUsd?: number | undefined;
 }
 
 /**
@@ -705,7 +713,7 @@ export async function generateSynthesis(
       // 6.1: ключ — из решения биллинга (BYO пользователя или серверный)
       await runGenerationPasses(handle, row, philosophers, secCtx, handle.billing.apiKey);
     },
-    { quota: "syntheses" },
+    { quota: "syntheses", estimatedCostUsd: opts.estimatedCostUsd },
   );
 }
 

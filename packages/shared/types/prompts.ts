@@ -24,13 +24,13 @@ export interface PromptTemplate {
 }
 
 /** GET /prompts/:key/versions — версия без тела (список) */
-export interface PromptVersion {
-  version: number;
-  isActive: boolean;
-  description: string;
-  createdAt: string;
-  createdBy: string | null;
-}
+/** Элемент GET /prompts/:key/versions. 7.1: несёт ТЕЛО (прежде — только
+ *  метаданные, и diff версий в админке строился обходом
+ *  `?prefix=key&activeOnly=false`); по форме совпадает с PromptTemplate. */
+export type PromptVersion = PromptTemplate;
+
+/** Элемент GET /configs/:key/versions — с value (7.1). */
+export type ConfigVersion = SynthesisConfig;
 
 /** Известные ключи synthesis_configs (расширяемый список;
  *  v11-ключи — 01-arch §4.13–4.15) */

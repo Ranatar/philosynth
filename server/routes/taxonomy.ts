@@ -9,12 +9,20 @@
  *   POST /taxonomy/relationship-types   { key, nameRu, description,
  *                                         defaultDirection? } → { type }
  *   POST /taxonomy/normalize            { text, kind } → { match, suggestions }
+ *   PATCH  /taxonomy/category-types/:id     { nameRu?, description? } → { type }   (7.1, admin)
+ *   DELETE /taxonomy/category-types/:id     → { ok, unlinked }                     (7.1, admin)
+ *   PATCH  /taxonomy/relationship-types/:id { nameRu?, description?,
+ *                                             defaultDirection? } → { type }       (7.1, admin)
+ *   DELETE /taxonomy/relationship-types/:id → { ok, unlinked }                     (7.1, admin)
+ *     is_system → 403 FORBIDDEN; нет id (или не UUID) → 404 NOT_FOUND; удаление
+ *     обнуляет typeCatalogId у ссылающихся categories/edges (FK SET NULL,
+ *     миграция 0003), unlinked — их число; кэш каталога сбрасывается.
  *
  * Решения:
  *  - все эндпоинты требуют сессии (правило §2 «все, кроме auth»); чтение
  *    каталога — любому пользователю, создание — любому (01 §4.8:
- *    «пользователь и админ могут добавлять новые типы»); админ-update/
- *    delete не специфицированы — долг §12 за 5.4;
+ *    «пользователь и админ могут добавлять новые типы»); правка и
+ *    удаление пользовательских типов — только admin (7.1, долг §12 5.4);
  *  - валидация тел: строки обязательны (key/nameRu/text), description по
  *    умолчанию ""; defaultDirection ∈ RELATIONSHIP_DIRECTIONS либо
  *    отсутствует; kind ∈ category|relationship; ошибки сервиса
@@ -27,11 +35,15 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 
+import { requireAdmin } from "../middleware/admin-only.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import {
   RELATIONSHIP_DIRECTIONS,
+  TaxonomyAccessError,
   TaxonomyValidationError,
   createCustomType,
+  deleteCustomType,
+  updateCustomType,
   getCategoryTypes,
   getRelationshipTypes,
   normalizeType,
@@ -77,7 +89,28 @@ function readTypeBody(body: Record<string, unknown>):
 function serviceError(c: Context, err: unknown): Response {
   if (err instanceof TaxonomyValidationError)
     return validationJson(c, err.details ?? {}, err.message);
+  if (err instanceof TaxonomyAccessError)
+    return c.json({ error: err.message, code: err.code }, err.code === "FORBIDDEN" ? 403 : 404);
   throw err;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Тело PATCH типа: все поля необязательны, но если есть — строки. */
+function readPatchBody(body: Record<string, unknown>):
+  | { ok: true; nameRu?: string; description?: string }
+  | { ok: false; details: Record<string, string> } {
+  const details: Record<string, string> = {};
+  if (body.nameRu !== undefined && (typeof body.nameRu !== "string" || !body.nameRu.trim()))
+    details.nameRu = "Непустая строка";
+  if (body.description !== undefined && typeof body.description !== "string")
+    details.description = "Ожидается строка";
+  if (Object.keys(details).length) return { ok: false, details };
+  return {
+    ok: true,
+    ...(typeof body.nameRu === "string" ? { nameRu: body.nameRu } : {}),
+    ...(typeof body.description === "string" ? { description: body.description } : {}),
+  };
 }
 
 /* ── category-types ──────────────────────────────────────────────────── */
@@ -95,6 +128,28 @@ taxonomyRoutes.post("/category-types", requireAuth, async (c) => {
       parsed.key, parsed.nameRu, parsed.description, "category", user.id,
     );
     return c.json({ type }, 201);
+  } catch (err) {
+    return serviceError(c, err);
+  }
+});
+
+taxonomyRoutes.patch("/category-types/:id", requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  if (!UUID_RE.test(id)) return c.json({ error: "Тип категории не найден", code: "NOT_FOUND" }, 404);
+  const parsed = readPatchBody(await readJson(c));
+  if (!parsed.ok) return validationJson(c, parsed.details);
+  try {
+    return c.json({ type: await updateCustomType("category", id, parsed) });
+  } catch (err) {
+    return serviceError(c, err);
+  }
+});
+
+taxonomyRoutes.delete("/category-types/:id", requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  if (!UUID_RE.test(id)) return c.json({ error: "Тип категории не найден", code: "NOT_FOUND" }, 404);
+  try {
+    return c.json(await deleteCustomType("category", id));
   } catch (err) {
     return serviceError(c, err);
   }
@@ -128,6 +183,43 @@ taxonomyRoutes.post("/relationship-types", requireAuth, async (c) => {
       parsed.key, parsed.nameRu, parsed.description, "relationship", user.id, defaultDirection,
     );
     return c.json({ type }, 201);
+  } catch (err) {
+    return serviceError(c, err);
+  }
+});
+
+taxonomyRoutes.patch("/relationship-types/:id", requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  if (!UUID_RE.test(id)) return c.json({ error: "Тип связи не найден", code: "NOT_FOUND" }, 404);
+  const body = await readJson(c);
+  const parsed = readPatchBody(body);
+  if (!parsed.ok) return validationJson(c, parsed.details);
+  let defaultDirection: RelationshipDirection | undefined;
+  if (body.defaultDirection !== undefined) {
+    if (
+      typeof body.defaultDirection !== "string" ||
+      !(RELATIONSHIP_DIRECTIONS as readonly string[]).includes(body.defaultDirection)
+    ) {
+      return validationJson(c, {
+        defaultDirection: `Ожидается ${RELATIONSHIP_DIRECTIONS.join(" | ")}`,
+      });
+    }
+    defaultDirection = body.defaultDirection as RelationshipDirection;
+  }
+  try {
+    return c.json({
+      type: await updateCustomType("relationship", id, { ...parsed, defaultDirection }),
+    });
+  } catch (err) {
+    return serviceError(c, err);
+  }
+});
+
+taxonomyRoutes.delete("/relationship-types/:id", requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  if (!UUID_RE.test(id)) return c.json({ error: "Тип связи не найден", code: "NOT_FOUND" }, 404);
+  try {
+    return c.json(await deleteCustomType("relationship", id));
   } catch (err) {
     return serviceError(c, err);
   }

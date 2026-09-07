@@ -143,6 +143,14 @@ export type EdgeDirectionInput =
   | "двунаправленная"
   | "рефлексивная";
 
+/** POST /syntheses/:id/edges (7.1): концы обязательны — категории этого
+ *  синтеза; остальное как в PATCH, незаданное берёт дефолты схемы.
+ *  Совпадение концов допустимо только у рефлексивной связи. */
+export interface EdgeCreateInput extends EdgeUpdateInput {
+  sourceId: string;
+  targetId: string;
+}
+
 /** PATCH /syntheses/:id/theses/:thesisId */
 export interface ThesisUpdateInput {
   formulation?: string;

@@ -149,9 +149,13 @@ const ctx2: Record<string, unknown> = {};
 vm.createContext(ctx2);
 vm.runInContext(fmtCode, ctx2, { filename: "_fmtCost" });
 const jsFmt = ctx2._fmtCost as (c: unknown) => string;
-const { fmtCost } = await import(
-  "../client/src/components/synthesis/PauseModal.js"
-);
+// 7.1: путь — переменной, иначе typecheck:scripts (NodeNext) пытается
+// типизировать клиентский .tsx (TS2835/TS18046 — грабля «кросс-мировых
+// импортов», правки Фазы 0: только clientModule(путь-переменная))
+const pauseModalPath = "../client/src/components/synthesis/PauseModal.js";
+const { fmtCost } = (await import(pauseModalPath)) as {
+  fmtCost: (c: number) => string;
+};
 for (const v of [null, undefined, 0, 0.0042, 0.009999, 0.01, 0.1234, 1.5]) {
   check(`fmtCost(${String(v)}) = «${jsFmt(v)}»`, fmtCost(v as number) === jsFmt(v));
 }

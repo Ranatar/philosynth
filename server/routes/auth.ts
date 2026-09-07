@@ -11,6 +11,14 @@
  *      401 AUTH_REQUIRED единым ответом; прочие сессии пользователя
  *      инвалидируются, текущая остаётся живой)
  *
+ *   DELETE /auth/me { password } → { ok: true, deletedSyntheses,
+ *     subscriptionCanceled } (беседа 7.1, долг §12 6.1): подтверждение
+ *     паролем (неверный → 401 AUTH_REQUIRED единым ответом); активная
+ *     генерация → 409 GENERATION_IN_PROGRESS; строка users анонимизируется
+ *     (финансовая история RESTRICT остаётся), сессии/ключи/синтезы удаляются,
+ *     подписка отменяется — см. services/account-deletion.ts; cookie сессии
+ *     очищается.
+ *
  * Формат ошибок: { error, code, details? }; коды — §4.3.
  * Примечания к кодам (в §4.3 нет отдельных кодов для конфликтов/кредов):
  *   - занятый email → 409 VALIDATION_ERROR (details.email);
@@ -34,6 +42,7 @@ import {
   verifyPassword,
   type AuthEnv,
 } from "../middleware/auth.js";
+import { AccountDeletionError, deleteAccount } from "../services/account-deletion.js"; // 7.1
 
 /* ── Валидация тела запроса ──────────────────────────────────────────── */
 
@@ -251,6 +260,45 @@ authRoutes.post("/password-change", requireAuth, async (c) => {
   });
 
   return c.json({ ok: true });
+});
+
+authRoutes.delete("/me", requireAuth, async (c) => {
+  // 7.1: удаление аккаунта — подтверждение текущим паролем
+  const body = await readJson(c);
+  const password = typeof body?.password === "string" ? body.password : "";
+  if (!password) {
+    return c.json(
+      { error: "Невалидные данные", code: "VALIDATION_ERROR", details: { password: "Обязательное поле" } },
+      400,
+    );
+  }
+  const user = c.get("user");
+  const rows = await db.query.users.findMany({
+    where: (u, { eq: eqOp }) => eqOp(u.id, user.id),
+    limit: 1,
+  });
+  const dbUser = rows[0];
+  const valid = dbUser ? await verifyPassword(password, dbUser.passwordHash) : false;
+  if (!dbUser || !valid) {
+    return c.json({ error: "Неверный пароль", code: "AUTH_REQUIRED" }, 401);
+  }
+  try {
+    const result = await deleteAccount(user.id);
+    clearSessionCookie(c);
+    return c.json({
+      ok: true,
+      deletedSyntheses: result.deletedSyntheses,
+      subscriptionCanceled: result.subscriptionCanceled,
+    });
+  } catch (err) {
+    if (err instanceof AccountDeletionError) {
+      return c.json(
+        { error: err.message, code: err.code },
+        err.code === "GENERATION_IN_PROGRESS" ? 409 : 404,
+      );
+    }
+    throw err;
+  }
 });
 
 authRoutes.get("/me", requireAuth, (c) => {

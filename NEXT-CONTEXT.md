@@ -4814,3 +4814,133 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
   `subscription-service.ts` / `stripe-client.ts` (Customer), `routes/auth.ts`
   (DELETE /auth/me), `scripts/test-31-requests2-4.ts`,
   `tests/test-62-requests2-7.mjs` (харнесс браузер + моки — переиспользовать).
+
+---
+
+# Беседа 7.1 — Долги реестра §12 и доводка (бэкенд + клиент) [ЗАКРЫТА 2026-09-07]
+
+> Запрос 1 — все семь групп одним заходом + смоук tests/smoke-71-request1.mjs
+> (68 ✓, без сервера/БД/браузера: миграция и схема, тела в /versions,
+> каталоги, POST /edges, авто-импорт, гейт и удаление аккаунта, инструменты)
+> + все тестовые запросы R2–R8 одним заходом tests/test-71-requests2-8.mjs
+> (105 ✓ ×2: живой сервер :3000 с BILLING_ENFORCE=true + PG16/Redis + мок
+> Claude SSE :3855 + мок Stripe REST :3866 (PaymentIntent сразу succeeded,
+> customer в форме) + vite :5199 + puppeteer-core/Chrome 131; R2а — отдельная
+> БД philosynth_mig71 с ручным прогоном 0000–0002 → 0003) + завершение:
+> typecheck (все конфиги, включая scripts) 0, audit ✓, check:integration
+> += 2y/4ai/5y → INTEGRATION OK (старые 4m/4n/4ag подправлены под новую
+> реальность), check-map-04 0 расхождений, css-parity 0/586 (раздел C —
+> только довоенный gm-hint), vite build чисто; доки —
+> scripts/patch-docs-conv71.py (35 правок, повтор skip×35). Исходник не
+> нужен: всё — новый код. Полный текст решений — «По факту 7.1» в 07.
+> Реестр долгов §12 ПУСТ.
+
+## Что создано / изменено
+
+- `server/db/schema.ts` + `server/db/migrations/0003_set_null_fks_stripe_customer.sql`
+  (+ снапшот, журнал; тег переименован из генерата drizzle-kit): SET NULL у
+  `created_by` (prompt_templates, category_type_catalog,
+  relationship_type_catalog) и `type_catalog_id` (categories,
+  category_edges); `users.stripe_customer_id text UNIQUE`.
+  **`synthesis_configs.created_by` не существует** — п.11 «По факту 6.2» был
+  ошибкой.
+- `services/subscription-service.ts` += `ensureStripeCustomer` (условный
+  UPDATE `WHERE stripe_customer_id IS NULL`); `createSubscription` и
+  `billing-service.createTopup` через него; `stripe-client.createPaymentIntent`
+  += `customerId?`.
+- `services/prompt-registry.ts`: `listVersions` → `PromptTemplate[]` с телами,
+  `listConfigVersions` → `SynthesisConfig[]` с value; shared
+  `PromptVersion = PromptTemplate`, `ConfigVersion = SynthesisConfig`;
+  `client/api/prompts.ts` — обход снят, `getTemplateVersions`/
+  `getConfigVersionsFull` остались именами-делегатами.
+- `services/element-taxonomy.ts` += `updateCustomType`/`deleteCustomType`/
+  `TaxonomyAccessError`; `routes/taxonomy.ts` += PATCH/DELETE ×2 под
+  `requireAdmin`; `client/api/taxonomy.ts` += 2; `AdminPromptsPage` += вкладка
+  «Каталоги» (`CatalogTable`, `originClass` — литералы классов вне JSX).
+- `services/element-editor.ts` += `createCategoryEdge`; `routes/elements.ts`
+  += `POST /:id/edges` (201, `ownerEditGate`); shared `EdgeCreateInput`;
+  `client/api/elements.createEdge`; новый
+  `client/src/components/edit/EdgeCreateForm.tsx`; `GraphModal` («+ Связь»
+  в тулбаре, `EdgeCreateForm`, `NodePanel.onAddEdge`); `SaveOutcome.version`
+  необязателен.
+- `SynthesisForm.tsx`: гейт 1.5b/3.2 снят — авто-импорт файловых
+  ☑-концепций (`importFile` → `pool-store.attachSynthesisId`); `buildInput`
+  читает `usePoolStore.getState()` (не замыкание рендера).
+- `routes/syntheses.ts`: конвейер оценки вынесен в `estimateSynthesisCost`
+  (общий для `/estimate` и точного гейта POST); гейт только при
+  `billing.billingMode === 'balance' && enforced`, `resolveBilling` с
+  `estimatedCostUsd = computeChargeUsd(est.cost)`, `details.estimatedChargeUsd`,
+  fail-open к порогу; `GenerateSynthesisOptions.estimatedCostUsd` → слот.
+- Новый `services/account-deletion.ts` (`deleteAccount`, `AccountDeletionError`,
+  `anonymizedEmailFor`) + `generation-service.hasActiveGenerationForUser`;
+  `routes/auth.ts` += `DELETE /me { password }`; `auth-store.deleteAccount`
+  (skipUnauthorizedHandler); `ProfilePage` += секция удаления с confirm.
+- `package.json`: `typecheck` += `typecheck:scripts`; `scripts/test-31-requests2-4.ts`
+  и `scripts/smoke-31.ts` — enum-значения исправлены; `tests/smoke-1.4b.mts`
+  — импорт PauseModal путём-переменной. `client/src/pages/PageStub.tsx`
+  (числился удалённым в 6.2) удалён фактически.
+
+## Решения/адаптации (все — в шапках модулей и «По факту 7.1» в 07)
+
+1. Тела — полными строками в `/versions`, а не отдельным `/:version`.
+2. `key` типа каталога неизменяем; `unlinked` считается до удаления, само
+   обнуление делает FK.
+3. `POST /edges` без `version` (нет состояния «до»).
+4. Удаление аккаунта — анонимизация, не DELETE; гейт активной генерации
+   видит только процессы этого инстанса.
+5. Точный гейт не трогает BYO/подписку; оценка передаётся слоту.
+6. Файловые концепции после импорта остаются в пуле с rawHTML (предпросмотр
+   жив), но ведут себя как каталожные.
+
+## Знания/грабли, добытые в 7.1
+
+- Демоны PG/Redis не переживают паузу между ходами — перед прогоном
+  `pg_ctlcluster 16 main start` + `redis-server --daemonize yes`;
+  фоновый `npm install` (`&` в вызове инструмента) гибнет вместе с вызовом —
+  ставить в переднем плане (≈10 с на 302 пакета).
+- В песочнике PG16 ставится `apt-get install postgresql-16` после
+  `rm /etc/apt/sources.list.d/nodesource.sources` (403).
+- Уборка `deleted-*@deleted.invalid` — сначала `api_usage`/`transactions`
+  (RESTRICT), иначе 23503.
+- Точный гейт делает старые стенды дороже: мета-синтез шести разделов
+  > $1 — тестовым пользователям баланс с запасом ($50 в R6).
+- `.action-btn` капителью: «◈ ГРАФ» — искать `/граф/i` в `.actions-bar button`.
+- Проверка «в выводе нет ✗» ложно срабатывает на строке итога «0 ✗».
+- Статический `await import("../client/…tsx")` в `.mts` под `typecheck:scripts`
+  (NodeNext) даёт TS2835/TS18046 — только путь-переменная (грабля Фазы 0).
+- `drizzle-kit generate` даёт случайный тег миграции — переименовывать файл
+  И тег в `meta/_journal.json`; сгенерированный SQL для смены FK-действия —
+  пара DROP/ADD CONSTRAINT.
+
+## Открытые TODO после 7.1
+
+- Реестр §12 пуст. Известные ограничения без адресата (не долги):
+  Customer, удалённый на стороне Stripe, не переоткрывается автоматически;
+  гейт `GENERATION_IN_PROGRESS` у `DELETE /auth/me` — только в пределах
+  инстанса; лишний пустой Customer при гонке двух первых пополнений.
+- P4 §1.10 (тестовый запуск раздела с черновиком шаблона) — адресата
+  по-прежнему нет (вне MVP).
+
+## Помодульно: что прикладывать в следующие беседы
+
+- Новых бесед в протоколе нет: Фазы 0–7 закрыты. При открытии Фазы 8
+  начинать с `docs/07` §12 (пуст), `NEXT-CONTEXT` главы 7.1 и
+  `tests/test-71-requests2-8.mjs` (харнесс: живой сервер + оба мока +
+  браузер + отдельная БД для миграций — переиспользовать).
+
+---
+
+# Правка каталога философов (2026-09-07, после 7.1)
+
+- `packages/shared/constants/philosophers.ts` += Шелер («Рубеж XIX–XX»),
+  Николай Гартман и Башляр («XX Век (первая половина)»), Семён Франк
+  («Русская») — 110 позиций, `PHILOSOPHER_COUNT = 110`; `phil-filename.ts`
+  += Scheler/Hartmann/Bachelard/Frank. Двусловные имена там, где фамилия
+  неоднозначна (два Гартмана, не один Франк); «Шелер» — с одной «л».
+- Список живёт только в shared: чекбоксы `PhilosopherPicker` (110 в
+  браузере проверено), `datalist` `LineageSearch` (рендерится в развёрнутом
+  блоке «Поиск по генеалогии» каталога), транслитерация имён файлов
+  экспорта. В БД и промптах списка нет — сервер принимает любые строки.
+- integration-check (блок shared) += целостность: `PHILOSOPHERS` ≡ ключам
+  `PHIL_FILENAME` 1:1, без дублей, счётчик верен — раньше проверялись
+  только экспорты.

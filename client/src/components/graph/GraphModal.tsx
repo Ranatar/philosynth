@@ -33,6 +33,10 @@
  *    характеристик, тип из каталога, обогащение) — строка categories по
  *    GNode.dbId и общий канал useEnrichmentStream модалки; EdgePanel
  *    получает onEdit → ElementEditor kind='edge' (EdgeEditor) по GEdge.dbId.
+ *  - Беседа 7.1: «+ Связь» в тулбаре (владелец, есть категории) →
+ *    EdgeCreateForm поверх графа (POST /edges); из NodePanel источник
+ *    предвыбран текущим узлом (onAddEdge). После 201 хозяин перечитывает
+ *    граф и разделы через onElementSaved (kind 'edge', version нет).
  *  - Беседа 5.5 (п. 7): кнопка «→ Тезисы» в тулбаре (только editable —
  *    владелец, не генерация) → onTransform("graph_to_theses"); хозяин
  *    (SynthesisPage) закрывает модалку и открывает TransformPanel.
@@ -52,6 +56,7 @@ import Graph2D from "./Graph2D";
 import Graph3D from "./Graph3D";
 import GraphLegend from "./GraphLegend";
 import EdgePanel from "./EdgePanel";
+import { EdgeCreateForm } from "../edit/EdgeCreateForm";
 import NodePanel from "./NodePanel";
 import {
   buildGFromGraphData,
@@ -113,6 +118,8 @@ export default function GraphModal({
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   // Беседа 5.4: редактируемая связь + канал обогащений панели узла
   const [editEdge, setEditEdge] = useState<CategoryEdge | null>(null);
+  // Беседа 7.1: форма новой связи (null — закрыта; строка — id предвыбранного источника)
+  const [createEdgeFrom, setCreateEdgeFrom] = useState<string | null | false>(false);
   const enrichment = useEnrichmentStream({
     synthesisId: synthesisId ?? "",
     enabled: open && editable && !!synthesisId,
@@ -137,6 +144,7 @@ export default function GraphModal({
     setPanel(null);
     setEditCategory(null);
     setEditEdge(null);
+    setCreateEdgeFrom(false);
     clearLegendFilter();
     document.body.style.overflow = "hidden";
     return () => {
@@ -347,6 +355,16 @@ export default function GraphModal({
               2D
             </button>
           </div>
+          {editable && synthesisId && data && data.categories.length > 0 && (
+            <button
+              className="gm-btn gold"
+              onClick={() => setCreateEdgeFrom(null)}
+              title="Создать связь между категориями (7.1)"
+              data-testid="gm-add-edge-btn"
+            >
+              + Связь
+            </button>
+          )}
           {editable && onTransform && data && data.categories.length > 0 && (
             <button
               className="gm-btn gold"
@@ -441,6 +459,11 @@ export default function GraphModal({
                     ? () => openEditor(panel.d)
                     : undefined
                 }
+                onAddEdge={
+                  editable && synthesisId && panelCategory
+                    ? () => setCreateEdgeFrom(panelCategory.id)
+                    : undefined
+                }
                 editDisabled={editDisabled}
                 edit={
                   // 5.4: владелец при генерации (editDisabled) видит блок в
@@ -490,6 +513,25 @@ export default function GraphModal({
             onRegenerateAffected?.(keys);
           }}
           onClose={() => setEditCategory(null)}
+        />
+      ) : null}
+      {/* Беседа 7.1: создание связи поверх графа */}
+      {createEdgeFrom !== false && synthesisId && data ? (
+        <EdgeCreateForm
+          synthesisId={synthesisId}
+          categories={data.categories}
+          initialSourceId={createEdgeFrom ?? undefined}
+          disabled={editDisabled}
+          onCreated={(res) => {
+            setCreateEdgeFrom(false);
+            onElementSaved?.({
+              kind: "edge",
+              element: res.edge,
+              impact: res.impact,
+              htmlSync: res.htmlSync,
+            });
+          }}
+          onClose={() => setCreateEdgeFrom(false)}
         />
       ) : null}
       {/* Беседа 5.4: редактор связи поверх графа (EdgeEditor) */}

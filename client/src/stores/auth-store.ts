@@ -70,6 +70,9 @@ interface AuthState {
     currentPassword: string,
     newPassword: string,
   ): Promise<ProfileActionResult>;
+  /** DELETE /auth/me { password } (7.1): аккаунт анонимизирован, сессии
+   *  сброшены — при ok store переходит в anonymous */
+  deleteAccount(password: string): Promise<ProfileActionResult>;
 }
 
 async function fetchMe(): Promise<AuthUser> {
@@ -178,6 +181,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { ok: true };
     } catch (err) {
       return toActionFailure(err, "Не удалось сохранить профиль");
+    }
+  },
+
+  async deleteAccount(password) {
+    try {
+      await api<{ ok: true }>("/auth/me", {
+        method: "DELETE",
+        body: { password },
+        skipUnauthorizedHandler: true, // 401 — неверный пароль при живой сессии
+      });
+      set({ user: null, status: "anonymous", error: null });
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "AUTH_REQUIRED") {
+        return { ok: false, error: "Неверный пароль" };
+      }
+      if (err instanceof ApiError && err.code === "GENERATION_IN_PROGRESS") {
+        return { ok: false, error: err.message };
+      }
+      return toActionFailure(err, "Не удалось удалить аккаунт");
     }
   },
 

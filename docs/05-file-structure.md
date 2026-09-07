@@ -25,7 +25,7 @@ philosynth-service/
 │       ├── tsconfig.json
 │       │
 │       ├── constants/
-│       │   ├── philosophers.ts         # Список философов — 106 позиций (+36 в v10; сверено в беседе 0.1)
+│       │   ├── philosophers.ts         # Список философов — 110 позиций (106 исходника, сверено в 0.1; + Шелер, Николай Гартман, Башляр, Семён Франк 2026-09-07)
 │       │   ├── labels.ts               # ML, SL, DL, REVERSE_ML и т.д. (ML, SL, DL, REVERSE_*, KEY_LABELS)
 │       │   ├── section-labels.ts       # KEY_LABELS, SECTION_LABELS (KEY_LABELS, SECTION_LABELS)
 │       │   ├── ctx-keys.ts             # CTX_LABELS (ALL_CTX_KEYS удалён в v11; перечень ключей — из CTX_LABELS)
@@ -196,7 +196,8 @@ philosynth-service/
 │   │   ├── element-versioning.ts       # Создание версий, откат (НОВОЕ)
 │   │   │
 │   │   ├── element-taxonomy.ts         # Каталог типов категорий/связей, нечёткая нормализация,
-│   │   │                               # справочник для поиска/фильтрации (НОВОЕ, из предыдущего проекта)
+│   │   │                               # справочник для поиска/фильтрации (НОВОЕ, из предыдущего проекта;
+│   │   │                               #  7.1: updateCustomType/deleteCustomType — админ-правки, key неизменяем)
 │   │   │
 │   │   ├── representation-transformer.ts # Трансформация graph↔theses: прямая конверсия
 │   │   │                               # представлений без каскадной перегенерации
@@ -223,7 +224,10 @@ philosynth-service/
 │   │   │                               #  приоритета, + recordStreamUsage — рекордер
 │   │   │                               #  разъёма streaming-manager)
 │   │   ├── subscription-service.ts    # Stripe Subscriptions: планы, квоты, счётчики, webhook
-│   │   │                               # (СДЕЛАНО 6.1: + consumeQuota — атомарная проверка+инкремент)
+│   │   │                               # (СДЕЛАНО 6.1: + consumeQuota — атомарная проверка+инкремент;
+│   │   │                               #  7.1: ensureStripeCustomer — один Customer на пользователя)
+│   │   ├── account-deletion.ts        # 7.1: DELETE /auth/me — анонимизация users при сохранённой
+│   │   │                               # RESTRICT-истории, удаление сессий/ключей/синтезов, отмена подписки
 │   │   ├── stripe-client.ts            # Тонкий fetch-клиент Stripe REST + проверка подписи
 │   │   │                               # webhook; STRIPE_API_BASE для мока (НОВОЕ 6.1, без SDK)
 │   │   │
@@ -340,10 +344,10 @@ philosynth-service/
 │   │   │   └── export.ts
 │   │   │
 │   │   ├── stores/
-│   │   │   ├── auth-store.ts           # Zustand: user, session
+│   │   │   ├── auth-store.ts           # Zustand: user, session (0.6: updateProfile/changePassword; 7.1: deleteAccount)
 │   │   │   ├── synthesis-store.ts      # Zustand: текущий синтез, разделы, элементы
 │   │   │   ├── generation-store.ts     # Zustand: состояние генерации, стриминг
-│   │   │   ├── pool-store.ts           # Zustand: Unified Concept Pool (беседа 1.5b)
+│   │   │   ├── pool-store.ts           # Zustand: Unified Concept Pool (беседа 1.5b; 7.1: attachSynthesisId — файловая → каталожная после авто-импорта)
 │   │   │   └── ui-store.ts            # Zustand: модалки, sidebar, theme
 │   │   │
 │   │   ├── hooks/
@@ -364,8 +368,8 @@ philosynth-service/
 │   │   │   ├── SynthesisPage.tsx       # Просмотр синтеза
 │   │   │   ├── ImportPage.tsx
 │   │   │   ├── BillingPage.tsx         # 6.2 СДЕЛАНО: секции API-ключ / баланс (Stripe Elements или dev-режим) / подписка / история использования / транзакции
-│   │   │   ├── ProfilePage.tsx         # Профиль: displayName + смена пароля (A3, беседа 0.6)
-│   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin
+│   │   │   ├── ProfilePage.tsx         # Профиль: displayName + смена пароля (A3, беседа 0.6); 7.1: + удаление аккаунта (DELETE /auth/me)
+│   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin; 7.1: + вкладка «Каталоги» (типы категорий/связей, правка и удаление пользовательских)
 │   │   │
 │   │   ├── components/
 │   │   │   ├── layout/
@@ -427,6 +431,8 @@ philosynth-service/
 │   │   │   │   ├── TransformHistory.tsx    # История трансформаций + откат (5.5)
 │   │   │   │   ├── EdgeEditor.tsx          # Поля связи: тип (TaxonomySelector), направление,
 │   │   │   │   │                           # шесть слайдеров; kind='edge' ElementEditor (5.4)
+│   │   │   │   ├── EdgeCreateForm.tsx      # 7.1: создание связи поверх графа — select'ы концов +
+│   │   │   │   │                           # EdgeEditor → POST /syntheses/:id/edges («+ Связь» GraphModal/NodePanel)
 │   │   │   │   ├── CharacteristicSlider.tsx # Слайдер характеристики + «?» → обоснование под
 │   │   │   │   │                           # слайдером; CharacteristicSliderGroup (5.4)
 │   │   │   │   ├── EnrichmentPanel.tsx     # Панель обогащения: запуск по типу, стрим, история (5.4)

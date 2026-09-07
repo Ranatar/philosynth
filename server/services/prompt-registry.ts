@@ -147,21 +147,20 @@ export async function renderTemplate(
 }
 
 /** Все версии шаблона по ключу (без тел), новые первыми. */
+/** Все версии ключа С ТЕЛАМИ (7.1; до этого — только метаданные), новые
+ *  первыми. */
 export async function listVersions(key: string): Promise<PromptVersion[]> {
   const rows = await db
-    .select({
-      version: promptTemplates.version,
-      isActive: promptTemplates.isActive,
-      description: promptTemplates.description,
-      createdAt: promptTemplates.createdAt,
-      createdBy: promptTemplates.createdBy,
-    })
+    .select()
     .from(promptTemplates)
     .where(eq(promptTemplates.key, key))
     .orderBy(desc(promptTemplates.version));
   if (rows.length === 0) throw new RegistryNotFoundError("template", key, "нет ни одной версии");
   return rows.map((r) => ({
+    id: r.id,
+    key: r.key,
     version: r.version,
+    body: r.body,
     isActive: r.isActive,
     description: r.description,
     createdAt: r.createdAt.toISOString(),
@@ -306,24 +305,27 @@ export async function getConfig<T = unknown>(
 }
 
 /** Все версии конфига (метаданные без значения), новые первыми. */
+/** Все версии конфига СО ЗНАЧЕНИЯМИ (7.1; до этого — без value), новые
+ *  первыми. */
 export async function listConfigVersions(
   key: SynthesisConfigKey,
-): Promise<Omit<SynthesisConfig, "value">[]> {
+): Promise<SynthesisConfig[]> {
   const rows = await db
-    .select({
-      id: synthesisConfigs.id,
-      key: synthesisConfigs.key,
-      version: synthesisConfigs.version,
-      isActive: synthesisConfigs.isActive,
-      description: synthesisConfigs.description,
-      createdAt: synthesisConfigs.createdAt,
-    })
+    .select()
     .from(synthesisConfigs)
     .where(eq(synthesisConfigs.key, key))
     .orderBy(desc(synthesisConfigs.version));
   if (rows.length === 0)
     throw new RegistryNotFoundError("config", key, "нет ни одной версии");
-  return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+  return rows.map((r) => ({
+    id: r.id,
+    key: r.key as SynthesisConfigKey,
+    version: r.version,
+    value: r.value,
+    isActive: r.isActive,
+    description: r.description,
+    createdAt: r.createdAt.toISOString(),
+  }));
 }
 
 /** Все активные конфиги (GET /configs; значения включены — они нужны

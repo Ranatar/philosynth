@@ -159,6 +159,8 @@ export interface NodePanelProps {
   /** Беседа 5.2 (п. 6): кнопка «✎ Редактировать» → CategoryEditor узла.
    *  Не передан — кнопки нет (чужой/публичный синтез, нет dbId) */
   onEdit?: (() => void) | undefined;
+  /** 7.1: «+ Связь» — новая связь от этого узла (EdgeCreateForm) */
+  onAddEdge?: (() => void) | undefined;
   editDisabled?: boolean | undefined;
   /** Беседа 5.4 (п. 4): правка по месту — слайдеры, тип, обогащение.
    *  Не передан — панель только для чтения (чужой синтез, нет dbId) */
@@ -182,6 +184,7 @@ export default function NodePanel({
   clusterLabels,
   onClose,
   onEdit,
+  onAddEdge,
   editDisabled = false,
   edit,
 }: NodePanelProps) {
@@ -283,6 +286,21 @@ export default function NodePanel({
           >
             ✎ Редактировать
           </button>
+          {onAddEdge ? (
+            <button
+              type="button"
+              className="gm-btn gm-panel-edit-btn"
+              disabled={editDisabled}
+              title={editDisabled ? "Идёт генерация — правки заблокированы" : "Новая связь от этой категории"}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddEdge();
+              }}
+              data-testid="gm-panel-add-edge"
+            >
+              + Связь
+            </button>
+          ) : null}
         </div>
       ) : null}
       {edit ? <InlineEditBlock edit={edit} /> : null}

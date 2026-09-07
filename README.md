@@ -112,7 +112,7 @@ MMD/JSON/PNG/MD + ExportError NO_GRAPH). Сейчас покрывает 0.1–0
 поднятых PG и Redis и засеянных prompt_templates, synthesis_configs
 и каталогов таксономии.
 
-## Статус: Фазы 0–6 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3; Фаза 5: 5.1–5.5, закрыта 2026-09-06; Фаза 6: 6.1 закрыта 2026-09-06, 6.2 закрыта 2026-09-07); впереди Фаза 7 (7.1 — долги §12)
+## Статус: Фазы 0–7 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3; Фаза 5: 5.1–5.5, закрыта 2026-09-06; Фаза 6: 6.1 закрыта 2026-09-06, 6.2 закрыта 2026-09-07; Фаза 7: 7.1 закрыта 2026-09-07 — реестр долгов §12 пуст)
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -500,6 +500,16 @@ text-diff/template-placeholders/format/stripe + RequireAdmin +
 пропатчены scripts/patch-docs-conv62.py. Новый env клиента:
 VITE_STRIPE_PUBLISHABLE_KEY. Долги 6.2 с серверной работой → Фаза 7,
 беседа 7.1 (07 §8, §11, §12).
+Беседа 7.1 (долги реестра §12 и доводка) ЗАКРЫТА 2026-09-07: миграция
+0003 (ON DELETE SET NULL у created_by ×3 и type_catalog_id ×2,
+users.stripe_customer_id) + ensureStripeCustomer; тела/value в /versions;
+PATCH/DELETE типов каталога + вкладка «Каталоги»; POST /syntheses/:id/edges +
+EdgeCreateForm; авто-импорт файловых ☑-концепций (гейт снят); точная
+оценка в гейте POST /syntheses; DELETE /auth/me (анонимизация) +
+ProfilePage; typecheck:scripts в корневом typecheck (смоук 68 ✓,
+tests/test-71-requests2-8.mjs 105 ✓ ×2 против живого сервера с моками и
+браузером; check:integration += 2y/4ai/5y); доки пропатчены
+scripts/patch-docs-conv71.py. Реестр долгов §12 пуст.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

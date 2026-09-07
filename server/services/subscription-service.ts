@@ -25,8 +25,10 @@
  *    regenerations, режим → modes, обогащение → enrichments; план —
  *    по числу подтверждённых шагов регенерации), а не на каждый вызов
  *    Claude: иначе синтез из восьми разделов стоил бы восемь синтезов;
- *  - users.stripe_customer_id в 02 нет: Stripe Customer создаётся на
- *    каждую подписку с metadata.userId (дыра доков — в патч).
+ *  - 7.1: Stripe Customer ОДИН на пользователя — `ensureStripeCustomer`
+ *    читает/заполняет users.stripe_customer_id (миграция 0003) и
+ *    переиспользуется подпиской и пополнением (billing-service); до 7.1
+ *    Customer создавался на каждую подписку.
  */
 import { and, desc, eq, gt, inArray, sql as dsql } from "drizzle-orm";
 import type {
@@ -278,7 +280,43 @@ function tsToDate(sec: number | undefined, fallback: Date): Date {
 export type CreateSubscriptionResult = SubscribeResult;
 
 /**
- * a. Stripe Customer (email пользователя) → Subscription
+ * Stripe Customer пользователя (7.1). Возвращает users.stripe_customer_id,
+ * при пустом — создаёт Customer (email + metadata.userId) и записывает id
+ * условным UPDATE (… WHERE stripe_customer_id IS NULL): при гонке двух
+ * запросов побеждает первый, второй перечитывает колонку (лишний Customer в
+ * Stripe остаётся пустым — безвредно). Ошибки Stripe пробрасываются
+ * (StripeError STRIPE_UNAVAILABLE при пустом ключе).
+ */
+export async function ensureStripeCustomer(userId: string): Promise<string> {
+  const [u] = await db
+    .select({ email: users.email, customerId: users.stripeCustomerId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!u) throw new SubscriptionError("NOT_FOUND", "Пользователь не найден");
+  if (u.customerId) return u.customerId;
+
+  const customer = await stripe.createCustomer({
+    email: u.email,
+    metadata: { userId },
+  });
+  const [saved] = await db
+    .update(users)
+    .set({ stripeCustomerId: customer.id, updatedAt: new Date() })
+    .where(and(eq(users.id, userId), dsql`${users.stripeCustomerId} IS NULL`))
+    .returning({ customerId: users.stripeCustomerId });
+  if (saved?.customerId) return saved.customerId;
+  // гонка: колонку успел заполнить параллельный запрос
+  const [again] = await db
+    .select({ customerId: users.stripeCustomerId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return again?.customerId ?? customer.id;
+}
+
+/**
+ * a. Stripe Customer пользователя (ensureStripeCustomer, 7.1) → Subscription
  *    (default_incomplete, expand latest_invoice.payment_intent);
  * b. строка user_subscriptions со статусом Stripe (обычно 'incomplete' —
  *    до оплаты первого инвойса подписка операций не оплачивает;
@@ -304,19 +342,9 @@ export async function createSubscription(
     );
   }
 
-  const [u] = await db
-    .select({ email: users.email })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  if (!u) throw new SubscriptionError("NOT_FOUND", "Пользователь не найден");
-
-  const customer = await stripe.createCustomer({
-    email: u.email,
-    metadata: { userId },
-  });
+  const customerId = await ensureStripeCustomer(userId);
   const sub = await stripe.createSubscription({
-    customerId: customer.id,
+    customerId,
     priceId: plan.stripePriceId,
     metadata: { userId, planId: plan.id, planName: plan.name },
   });

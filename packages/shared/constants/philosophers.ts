@@ -1,8 +1,10 @@
 /**
- * Каталог философов — 106 позиций (+36 в v10), сгруппированных по эпохам.
- * Источник: чекбоксы формы philosynth.html (#philBox) — порядок и группы
- * воспроизведены дословно; целостность сверена с PHIL_FILENAME
- * (см. phil-filename.ts и тест integrity в этом пакете).
+ * Каталог философов — 110 позиций (106 исходника v10 + 4 добавлены
+ * 2026-09-07: Шелер, Николай Гартман, Башляр, Семён Франк), сгруппированных
+ * по эпохам. Источник: чекбоксы формы philosynth.html (#philBox) — порядок
+ * и группы исходника воспроизведены дословно, добавления — в конец своих
+ * эпох; целостность сверена с PHIL_FILENAME (см. phil-filename.ts и
+ * проверку в integration-check).
  */
 
 export interface PhilosopherEpoch {
@@ -56,7 +58,7 @@ export const PHILOSOPHER_EPOCHS: readonly PhilosopherEpoch[] = [
     philosophers: [
       "Фреге", "Мейнонг", "Фрейд", "Юнг",
       "Гуссерль", "Бергсон", "Дьюи", "Уайтхед",
-      "Рассел", "Кассирер",
+      "Рассел", "Кассирер", "Шелер",
     ],
   },
   {
@@ -68,6 +70,7 @@ export const PHILOSOPHER_EPOCHS: readonly PhilosopherEpoch[] = [
       "Арендт", "Левинас", "Мерло-Понти", "Куайн",
       "Поппер", "Остин", "Райл", "Кун",
       "Лакатос", "Дэвидсон", "Крипке", "Камю",
+      "Николай Гартман", "Башляр",
     ],
   },
   {
@@ -88,16 +91,16 @@ export const PHILOSOPHER_EPOCHS: readonly PhilosopherEpoch[] = [
     label: "Русская",
     philosophers: [
       "Чаадаев", "Соловьёв", "Лосский", "Бердяев",
-      "Флоренский", "Шестов", "Лосев",
+      "Флоренский", "Шестов", "Лосев", "Семён Франк",
     ],
   },
 ] as const;
 
-/** Плоский список всех философов в порядке формы (106 позиций) */
+/** Плоский список всех философов в порядке формы (110 позиций) */
 export const PHILOSOPHERS: readonly string[] =
   PHILOSOPHER_EPOCHS.flatMap((e) => [...e.philosophers]);
 
-export const PHILOSOPHER_COUNT = 106;
+export const PHILOSOPHER_COUNT = 110;
 
 /** Быстрая проверка принадлежности каталогу */
 const PHIL_SET: ReadonlySet<string> = new Set(PHILOSOPHERS);

@@ -56,7 +56,7 @@ async function makeConcept(
       userId,
       title,
       method: "dialectical",
-      synthLevel: "integrative",
+      synthLevel: "transformative",
       depth: "standard",
       status: "ready",
       sectionOrder: keys,
@@ -135,7 +135,7 @@ async function main(): Promise<void> {
       userId,
       title: "Мета-синтез: опыт как забота",
       method: "dialectical",
-      synthLevel: "integrative",
+      synthLevel: "transformative",
       depth: "standard",
       status: "ready",
       sectionOrder: ["sum"],
@@ -178,7 +178,7 @@ async function main(): Promise<void> {
   );
   const meta2 = await db
     .insert(syntheses)
-    .values({ userId, title: "Второй потомок A", method: "dialectical", synthLevel: "integrative", depth: "standard", status: "ready", sectionOrder: ["sum"], capsuleHtml: "<p>м</p>" })
+    .values({ userId, title: "Второй потомок A", method: "dialectical", synthLevel: "transformative", depth: "standard", status: "ready", sectionOrder: ["sum"], capsuleHtml: "<p>м</p>" })
     .returning({ id: syntheses.id });
   const meta2Id = (meta2[0] as { id: string }).id;
   await createLineageRecords(meta2Id, [{ type: "synthesis", synthesisId: aId }]);
@@ -193,7 +193,7 @@ async function main(): Promise<void> {
   );
 
   console.log("8. Блоки родительского контекста");
-  const pBlk = { participants: parts, isMetaSynthesis: true, synthLevel: "integrative", method: "dialectical" };
+  const pBlk = { participants: parts, isMetaSynthesis: true, synthLevel: "transformative", method: "dialectical" };
   const full = conceptContextBlockFull(pBlk);
   check("Full: обе концепции и капсула", full.includes("КОНЦЕПЦИЯ-УЧАСТНИК") && full.includes("Экзистенциальная аналитика") && full.includes("КАПСУЛА"), full.slice(0, 120));
   check("Full: квирк — нет PORTRAITS", !full.includes("ПОРТРЕТ"));

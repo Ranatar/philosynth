@@ -142,8 +142,10 @@ const HTML_SYNC_FIELD_LABELS: Record<string, string> = {
 const labelOf = (key: string): string =>
   (KEY_LABELS as Record<string, string>)[key] ?? key;
 
-export interface SaveOutcome extends ElementMutationMeta {
+export interface SaveOutcome extends Omit<ElementMutationMeta, "version"> {
   kind: EditableKind;
+  /** Версия-снимок «до». Отсутствует у создания связи (7.1, POST /edges) */
+  version?: ElementMutationMeta["version"] | undefined;
   /** Обновлённый элемент (после PATCH/отката) */
   element: Category | CategoryEdge | Thesis | GlossaryTerm;
   /** Категория переименована — доступна автозамена */

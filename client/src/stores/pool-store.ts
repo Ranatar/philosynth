@@ -57,6 +57,11 @@ interface PoolState {
   /** Перед генерацией (беседа 1.5, п. интеграции): refreshAll + сброс
    *  индикатора просмотра (снимок текущей — N/A, см. шапку) */
   prepareForGeneration: () => void;
+  /** 7.1: файловая концепция импортирована в каталог при сабмите формы
+   *  (POST /syntheses/import) — запись и её participant получают
+   *  synthesisId, дальше она ведёт себя как каталожная (rawHTML остаётся —
+   *  ◉-предпросмотр по-прежнему доступен) */
+  attachSynthesisId: (id: string, synthesisId: string) => void;
 }
 
 /** syncConceptParticipants [4881–4899]: фильтр ☑ + перенос generationOrder */
@@ -106,6 +111,22 @@ export const usePoolStore = create<PoolState>((set, get) => {
     status: null,
 
     setPoolStatus: (text, cls = "") => set({ status: { text, cls } }),
+
+    attachSynthesisId: (id, synthesisId) => {
+      const { concepts } = get();
+      if (!concepts.some((c) => c.id === id)) return;
+      commit(
+        concepts.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                synthesisId,
+                participant: c.participant ? { ...c.participant, synthesisId } : c.participant,
+              }
+            : c,
+        ),
+      );
+    },
 
     // addToPool [4676–4687]
     addToPool: (entry) => {

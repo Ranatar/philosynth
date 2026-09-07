@@ -1,7 +1,7 @@
 /**
  * Выбор философов. Беседа 1.5 (запрос 1, п. 3).
  *
- * Чекбоксы из shared/constants/philosophers.ts (106 позиций, +36 в v10),
+ * Чекбоксы из shared/constants/philosophers.ts (110 позиций: 106 исходника + 4 добавлены 2026-09-07),
  * группировка по эпохам — как #philBox исходника (phil-group-label +
  * checkboxes-row). Разметка — React, HTML исходника только референс.
  *

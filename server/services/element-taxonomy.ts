@@ -9,7 +9,7 @@
  * Кэширование: Redis, ключи taxonomy_cache:category_types /
  * taxonomy_cache:relationship_types (расширение схемы DATA LAYER,
  * 01-architecture §3). TTL бесконечный; инвалидация — при createCustomType
- * (и будущих админ-правках каталога, Фаза 2). Политика отказа Redis —
+ * и админ-правках каталога (updateCustomType/deleteCustomType, 7.1). Политика отказа Redis —
  * fail-open, как у prompt-registry (беседа 0.3): читаем из БД, не кэшируем.
  *
  * Нормализация (normalizeType): точное совпадение key / name_ru / алиаса →
@@ -18,7 +18,7 @@
  * ошибкой: вызывающий (graph-parser, беседа 1.4) сохраняет их свободным
  * текстом с fallback-стилизацией.
  */
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import type {
   CategoryType,
   RelationshipType,
@@ -28,7 +28,8 @@ import type {
 import { db, schema } from "../db/index.js";
 import { redis } from "../redis.js";
 
-const { categoryTypeCatalog, relationshipTypeCatalog } = schema;
+const { categoryTypeCatalog, relationshipTypeCatalog, categories, categoryEdges } =
+  schema;
 
 export type TaxonomyKind = "category" | "relationship";
 
@@ -407,4 +408,133 @@ export async function createCustomType(
     .returning();
   await invalidateTaxonomyCache("relationship");
   return mapRelationshipType(row!);
+}
+
+/* ────────────────── Админ-правки каталога (беседа 7.1) ─────────────────── */
+
+/** Ошибка доступа/наличия при правке каталога: FORBIDDEN (системный тип
+ *  неизменяем) или NOT_FOUND (нет такого id) — роут маппит на 403/404. */
+export class TaxonomyAccessError extends Error {
+  constructor(
+    readonly code: "FORBIDDEN" | "NOT_FOUND",
+    message: string,
+  ) {
+    super(message);
+    this.name = "TaxonomyAccessError";
+  }
+}
+
+export interface CustomTypePatch {
+  nameRu?: string | undefined;
+  description?: string | undefined;
+  /** только kind='relationship' */
+  defaultDirection?: RelationshipDirection | undefined;
+}
+
+async function loadTypeRow(
+  kind: TaxonomyKind,
+  id: string,
+): Promise<CategoryTypeRow | RelationshipTypeRow> {
+  const row =
+    kind === "category"
+      ? await db.query.categoryTypeCatalog.findFirst({ where: eq(categoryTypeCatalog.id, id) })
+      : await db.query.relationshipTypeCatalog.findFirst({
+          where: eq(relationshipTypeCatalog.id, id),
+        });
+  if (!row)
+    throw new TaxonomyAccessError(
+      "NOT_FOUND",
+      kind === "category" ? "Тип категории не найден" : "Тип связи не найден",
+    );
+  if (row.isSystem)
+    throw new TaxonomyAccessError(
+      "FORBIDDEN",
+      "Системный тип каталога изменять и удалять нельзя",
+    );
+  return row;
+}
+
+/**
+ * Правка пользовательского типа (admin). Ключ (key) неизменяем — на него
+ * завязаны алиасы нормализации и посев; меняются nameRu/description и,
+ * для связей, defaultDirection. Пустой patch → возвращает тип как есть.
+ * @throws TaxonomyAccessError NOT_FOUND | FORBIDDEN (is_system)
+ * @throws TaxonomyValidationError пустое nameRu
+ */
+export async function updateCustomType(
+  kind: TaxonomyKind,
+  id: string,
+  patch: CustomTypePatch,
+): Promise<CategoryType | RelationshipType> {
+  const row = await loadTypeRow(kind, id);
+  const set: Record<string, string> = {};
+  if (patch.nameRu !== undefined) {
+    const t = patch.nameRu.trim();
+    if (!t)
+      throw new TaxonomyValidationError("Русское название типа обязательно", {
+        nameRu: patch.nameRu,
+      });
+    set.nameRu = t;
+  }
+  if (patch.description !== undefined) set.description = patch.description.trim();
+  if (kind === "relationship" && patch.defaultDirection !== undefined)
+    set.defaultDirection = patch.defaultDirection;
+
+  if (Object.keys(set).length === 0)
+    return kind === "category"
+      ? mapCategoryType(row)
+      : mapRelationshipType(row as RelationshipTypeRow);
+
+  if (kind === "category") {
+    const [upd] = await db
+      .update(categoryTypeCatalog)
+      .set(set)
+      .where(eq(categoryTypeCatalog.id, id))
+      .returning();
+    await invalidateTaxonomyCache("category");
+    return mapCategoryType(upd!);
+  }
+  const [upd] = await db
+    .update(relationshipTypeCatalog)
+    .set(set)
+    .where(eq(relationshipTypeCatalog.id, id))
+    .returning();
+  await invalidateTaxonomyCache("relationship");
+  return mapRelationshipType(upd!);
+}
+
+export interface DeleteCustomTypeResult {
+  ok: true;
+  /** Сколько категорий/связей ссылалось на тип — их typeCatalogId стал
+   *  null (FK ON DELETE SET NULL, миграция 0003); текст type сохранён */
+  unlinked: number;
+}
+
+/**
+ * Удаление пользовательского типа (admin). Ссылки categories/category_edges
+ * .type_catalog_id обнуляются самой БД (ON DELETE SET NULL); число
+ * отвязанных элементов считается до удаления и возвращается.
+ * @throws TaxonomyAccessError NOT_FOUND | FORBIDDEN (is_system)
+ */
+export async function deleteCustomType(
+  kind: TaxonomyKind,
+  id: string,
+): Promise<DeleteCustomTypeResult> {
+  await loadTypeRow(kind, id);
+  if (kind === "category") {
+    const [n] = await db
+      .select({ n: count() })
+      .from(categories)
+      .where(eq(categories.typeCatalogId, id));
+    await db.delete(categoryTypeCatalog).where(eq(categoryTypeCatalog.id, id));
+    await invalidateTaxonomyCache("category");
+    return { ok: true, unlinked: Number(n?.n ?? 0) };
+  }
+  const [n] = await db
+    .select({ n: count() })
+    .from(categoryEdges)
+    .where(eq(categoryEdges.typeCatalogId, id));
+  await db.delete(relationshipTypeCatalog).where(eq(relationshipTypeCatalog.id, id));
+  await invalidateTaxonomyCache("relationship");
+  return { ok: true, unlinked: Number(n?.n ?? 0) };
 }

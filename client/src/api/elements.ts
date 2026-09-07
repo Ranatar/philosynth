@@ -12,6 +12,8 @@
  *      PATCH …; ответ несёт элемент, impact, АДДИТИВНО version и htmlSync
  *      (какие таблицы перерисованы, какие поля до документа не дошли);
  *  - deleteEdge → DELETE /edges/:edgeId → { ok, impact, version, htmlSync };
+ *  - createEdge → POST /edges { sourceId, targetId, … } → 201 { edge, impact,
+ *      htmlSync } (7.1; version нет — состояния «до» у новой строки нет);
  *  - getVersionHistory → GET /elements/:type/:elementId/versions →
  *      { versions } (version DESC);
  *  - rollbackToVersion → POST …/rollback { version } →
@@ -35,6 +37,7 @@ import type {
   AutoRenameInput,
   AutoRenameResult,
   CategoryUpdateInput,
+  EdgeCreateInput,
   EdgeUpdateInput,
   ElementVersion,
   GlossaryTerm,
@@ -102,6 +105,10 @@ export interface UpdateGlossaryTermResponse extends ElementMutationMeta {
 export interface DeleteEdgeResponse extends ElementMutationMeta {
   ok: true;
 }
+/** 7.1: без version — см. createEdge */
+export interface CreateEdgeResponse extends Omit<ElementMutationMeta, "version"> {
+  edge: CategoryEdge;
+}
 export interface RollbackResponse extends ElementMutationMeta {
   /** DTO типа элемента (Category | CategoryEdge | Thesis | GlossaryTerm),
    *  для section/dialogue_turn — снимок строки */
@@ -132,6 +139,13 @@ export function updateEdge(
     `${base(synthesisId)}/edges/${encodeURIComponent(edgeId)}`,
     body,
   );
+}
+
+export function createEdge(
+  synthesisId: string,
+  body: EdgeCreateInput,
+): Promise<CreateEdgeResponse> {
+  return apiPost<CreateEdgeResponse>(`${base(synthesisId)}/edges`, body);
 }
 
 export function deleteEdge(
