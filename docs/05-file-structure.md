@@ -328,15 +328,15 @@ philosynth-service/
 │   │   │   ├── taxonomy.ts             # каталоги типов + normalize + createCustomType (5.4 СДЕЛАНО 2026-09-05; кэш на сессию)
 │   │   │   ├── enrichment.ts           # обогащения и обоснования — 5 функций §2.14 (5.4 СДЕЛАНО 2026-09-05)
 │   │   │   ├── transforms.ts           # graph↔theses, история, откат (5.5 СДЕЛАНО 2026-09-06)
-│   │   │   ├── prompts.ts              # админка Prompt Registry (6.2)
+│   │   │   ├── prompts.ts              # админка Prompt Registry (6.2 СДЕЛАНО 2026-09-07: 10 функций §2.9; getTemplateVersions/getConfigVersionsFull — обход /versions без тел, долг 7.1)
 │   │   │   ├── import.ts               # multipart-обёртка импорта (4.3)
 │   │   │   ├── generation.ts
 │   │   │   ├── logs.ts                 # GET /logs/* (беседа 2.4)
 │   │   │   ├── plans.ts
 │   │   │   ├── modes.ts
 │   │   │   ├── lineage.ts
-│   │   │   ├── billing.ts
-│   │   │   ├── subscription.ts
+│   │   │   ├── billing.ts              # 7 функций §2.10: ключ, пополнение, истории (6.2 СДЕЛАНО 2026-09-07)
+│   │   │   ├── subscription.ts         # 5 функций §2.10: подписка/тарифы/subscribe/cancel/resume (6.2 СДЕЛАНО)
 │   │   │   └── export.ts
 │   │   │
 │   │   ├── stores/
@@ -363,9 +363,9 @@ philosynth-service/
 │   │   │   ├── CreateSynthesisPage.tsx  # Форма создания (НОВОЕ)
 │   │   │   ├── SynthesisPage.tsx       # Просмотр синтеза
 │   │   │   ├── ImportPage.tsx
-│   │   │   ├── BillingPage.tsx
+│   │   │   ├── BillingPage.tsx         # 6.2 СДЕЛАНО: секции API-ключ / баланс (Stripe Elements или dev-режим) / подписка / история использования / транзакции
 │   │   │   ├── ProfilePage.tsx         # Профиль: displayName + смена пароля (A3, беседа 0.6)
-│   │   │   └── AdminPromptsPage.tsx
+│   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin
 │   │   │
 │   │   ├── components/
 │   │   │   ├── layout/
@@ -477,7 +477,10 @@ philosynth-service/
 │   │       │                               # resolveConceptName (FIX [а-яё]), lineageNodeToGenealogy
 │   │       ├── graph-physics.ts            # tick(), warmup() (tick(), warmup())
 │   │       ├── graph-geometry.ts           # nodeGeometry3D, mkSprite (nodeGeometry3D(), mkSprite())
-│   │       └── format.ts                  # Форматирование чисел, дат
+│   │       ├── format.ts                  # Форматирование чисел, дат (создан 6.2: fmtUsd/fmtMoney/fmtInt/fmtDateShort/fmtDateLong/toIsoDate)
+│   │       ├── text-diff.ts               # Построчный LCS-diff со свёрткой контекста (6.2; версии шаблонов и конфигов)
+│   │       ├── template-placeholders.ts   # {{плейсхолдеры}} шаблонов: PLACEHOLDER_RE ≡ реестру, SAMPLE_VALUES предпросмотра (6.2)
+│   │       └── stripe.ts                  # Загрузчик Stripe.js без npm + VITE_STRIPE_PUBLISHABLE_KEY + appearance (6.2)
 │   │
 │   └── public/
 │       └── favicon.svg

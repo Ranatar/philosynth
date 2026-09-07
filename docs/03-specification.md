@@ -126,21 +126,21 @@
 
 | ID | Требование | Приоритет |
 |---|---|---|
-| P1 | Список шаблонов с поиском по ключу | Фаза 2 |
-| P2 | Редактирование шаблона с preview | Фаза 2 |
-| P3 | Версионирование: создание версии, активация, откат | Фаза 2 |
-| P4 | Тестовый запуск: генерация одного раздела с черновиком шаблона | Фаза 3 |
-| P5 | Редактирование конфигов (context_deps, compat_matrix и т.д.) | Фаза 2 |
+| P1 | Список шаблонов с поиском по ключу | Фаза 2 — СДЕЛАНО 6.2 (дерево ключей по родительскому сегменту, поиск, activeOnly) |
+| P2 | Редактирование шаблона с preview | Фаза 2 — СДЕЛАНО 6.2 (чипы плейсхолдеров, предпросмотр на тестовых значениях SAMPLE_VALUES) |
+| P3 | Версионирование: создание версии, активация, откат | Фаза 2 — СДЕЛАНО 6.2 (черновик → активация → откат, построчный diff; тела версий — обходом, см. §2.9) |
+| P4 | Тестовый запуск: генерация одного раздела с черновиком шаблона | Фаза 3 — не сделано (не в тексте 6.2; адресата нет) |
+| P5 | Редактирование конфигов (context_deps, compat_matrix и т.д.) | Фаза 2 — СДЕЛАНО 6.2 (JSON-редактор с валидацией/позицией ошибки, версии/diff/активация) |
 
 ### 1.11. Биллинг
 
 | ID | Требование | Приоритет |
 |---|---|---|
-| B1 | BYO-Key: пользователь вводит ключ, проксирование через бэкенд | MVP |
+| B1 | BYO-Key: пользователь вводит ключ, проксирование через бэкенд | MVP — сервер 6.1, UI СДЕЛАН 6.2 (секция «API-ключ» BillingPage + форма ключа в PauseModal auth) |
 | B2 | Отображение стоимости в реальном времени (tokenы + USD) | MVP |
-| B3 | История использования API (по синтезам, разделам) | MVP |
-| B4 | Баланс сервиса (pay-as-you-go): пополнение, списание, история транзакций | Фаза 6 — сервер СДЕЛАН 6.1 (2026-09-06), UI — 6.2 |
-| B6 | Подписки (Stripe Subscriptions): тарифные планы, квоты, управление подпиской | Фаза 6 — сервер СДЕЛАН 6.1 (квота потребляется один раз на операцию при взятии слота), UI — 6.2 |
+| B3 | История использования API (по синтезам, разделам) | MVP — сервер 6.1, UI СДЕЛАН 6.2 (фильтры период/синтез, итоги, byMode) |
+| B4 | Баланс сервиса (pay-as-you-go): пополнение, списание, история транзакций | Фаза 6 — сервер СДЕЛАН 6.1 (2026-09-06), UI СДЕЛАН 6.2 (Stripe Payment Element при `VITE_STRIPE_PUBLISHABLE_KEY`, иначе dev-режим подтверждения) |
+| B6 | Подписки (Stripe Subscriptions): тарифные планы, квоты, управление подпиской | Фаза 6 — сервер СДЕЛАН 6.1 (квота потребляется один раз на операцию при взятии слота), UI СДЕЛАН 6.2 (секция «Подписка») |
 | B7 | Приоритет биллинга: BYO-Key → подписка → баланс → ошибка | Фаза 6 — СДЕЛАНО 6.1 (`resolveBilling`: middleware — предпроверка, generation-слот — гейт для HTTP и WS; `BILLING_ENFORCE=false` вне production — режим balance в долг) |
 | B8 | Webhook Stripe: обработка invoice.paid, subscription.updated/deleted | Фаза 6 — СДЕЛАНО 6.1 |
 | B5 | Rate limiting по пользователю | MVP — per-IP с 0.2; per-session (≡ per-user) с 6.1 |
@@ -772,6 +772,12 @@ GET    /prompts                 ?prefix=method.&activeOnly=true
                                 → { templates: PromptTemplate[] }
 
 GET    /prompts/:key/versions   → { versions: PromptVersion[] }
+                                // ФАКТ 6.2: метаданные БЕЗ тел — diff версий
+                                // в админке строится обходом
+                                // GET /prompts?prefix=key&activeOnly=false
+                                // (точная фильтрация по key на клиенте);
+                                // долг 7.1 — тела здесь либо
+                                // GET /prompts/:key/versions/:version
 
 POST   /prompts/:key            { body: string, description?: string }
                                 → { template: PromptTemplate }   // 201
@@ -795,6 +801,8 @@ PUT    /configs/:key            { value: any, description?: string }
 // is_active (02 §2.18), «версионирование аналогично шаблонам» требует
 // 6.2 — но эндпоинтов не было.
 GET    /configs/:key/versions   → { versions: ConfigVersion[] }
+                                // ФАКТ 6.2: без value — обход
+                                // GET /configs?activeOnly=false (долг 7.1)
 
 POST   /configs/:key/activate   { version: number }
                                 → { config: SynthesisConfig }
@@ -803,6 +811,13 @@ POST   /configs/:key/activate   { version: number }
 ```
 
 ### 2.10. Billing
+
+> **ФАКТ 6.2 (клиент):** publishable key Stripe — `VITE_STRIPE_PUBLISHABLE_KEY`
+> (env vite, `.env.example`); при пустом значении BillingPage работает в
+> dev-режиме: `POST /topup` → кнопка «Подтвердить платёж» → `POST /topup/confirm`
+> без Elements (мок Stripe отдаёт PaymentIntent `succeeded`). Подписка
+> confirm-эндпоинта не имеет — статус меняет webhook, UI перечитывает
+> `GET /billing/subscription` по кнопке «Обновить».
 
 ```
 GET    /billing/usage           ?from=2026-01-01&to=2026-04-01&synthesisId=...

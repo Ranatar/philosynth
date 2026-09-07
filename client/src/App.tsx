@@ -7,6 +7,13 @@
  * через GET /auth/me) и при её отсутствии redirect'ят на /login,
  * запоминая исходный путь. 401 из любого API-запроса сбрасывает
  * пользователя в auth-store → этот же guard срабатывает повторно.
+ *
+ * RequireAdmin (беседа 6.2, п. 5; долг §12 «Ролевая защита /admin/prompts»):
+ * поверх RequireAuth — при role !== 'admin' redirect на /catalog
+ * (protocol 07: «redirect на 403 или каталог» — выбран каталог: страницы
+ * 403 в приложении нет, а серверные роуты §2.9 всё равно отвечают 403
+ * FORBIDDEN). Ссылка «Промпты» в Sidebar admin-only с 0.4 — прямой ввод
+ * URL до 6.2 показывал заглушку любому вошедшему.
  */
 import { useEffect } from "react";
 import {
@@ -53,6 +60,12 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const role = useAuthStore((s) => s.user?.role);
+  if (role !== "admin") return <Navigate to="/catalog" replace />;
+  return <>{children}</>;
+}
+
 export function App() {
   const restore = useAuthStore((s) => s.restore);
 
@@ -83,7 +96,14 @@ export function App() {
           <Route path="/import" element={<ImportPage />} />
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/admin/prompts" element={<AdminPromptsPage />} />
+          <Route
+            path="/admin/prompts"
+            element={
+              <RequireAdmin>
+                <AdminPromptsPage />
+              </RequireAdmin>
+            }
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

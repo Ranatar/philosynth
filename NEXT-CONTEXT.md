@@ -4701,3 +4701,116 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
   рендерер — сюда форма ключа), `ProfilePage.tsx` (образец пополевых
   ошибок), `tests/test-61-requests2-11.mjs` (мок Stripe — переиспользовать
   в браузерных тестах 6.2).
+
+---
+
+# Беседа 6.2 — Billing UI + Admin Prompts Page (клиент) [ЗАКРЫТА 2026-09-07]
+
+> Запрос 1 + смоук tests/smoke-62-request1.mjs (84 ✓, без сервера/БД/
+> браузера: LCS-diff, плейсхолдеры ≡ реестру, форматирование, дерево
+> ключей, validateJson, маска ключа, пути api/* ≡ роутам, RequireAdmin,
+> форма ключа PauseModal, блоки кита дословно) + все тестовые запросы
+> R2–R7 (+ R8 подписка п.5b, R9 PauseModal п.6) одним заходом
+> tests/test-62-requests2-7.mjs (101 ✓ ×2: puppeteer-core + Chrome 131,
+> живой сервер :3000 с BILLING_ENFORCE=true + PG16/Redis + мок Claude SSE
+> :3855 (пишет x-api-key и system; BAD_USER_KEY → 401) + мок Stripe REST
+> :3866 (PaymentIntent сразу succeeded) + vite :5199 без publishable key)
+> + завершение: typecheck (все конфиги) 0, audit ✓, check:integration +=
+> 2x/4ah → INTEGRATION OK, check-map-04 0 расхождений, css-parity 0/586
+> (раздел C — только довоенный gm-hint), vite build чисто; доки —
+> scripts/patch-docs-conv62.py (32 правки, повтор skip×32). Исходник
+> не нужен: единственный порт — _resumeWithNewApiKey [25028] в
+> PauseModal. Полный текст решений — «По факту 6.2» в 07.
+
+## Что создано / изменено
+
+- `client/src/api/billing.ts` (7), `api/subscription.ts` (5),
+  `api/prompts.ts` (10; `getTemplateVersions`/`getConfigVersionsFull` —
+  обход `/versions` без тел через `?prefix=key&activeOnly=false`).
+- `client/src/utils/text-diff.ts` (LCS построчно, свёртка контекста,
+  `diffStats`), `template-placeholders.ts` (`PLACEHOLDER_RE` ≡ реестру,
+  `SAMPLE_VALUES` покрывают все плейсхолдеры `server/config/*` — 4ah),
+  `format.ts` (fmtUsd/fmtMoney/fmtInt/fmtDateShort/fmtDateLong/toIsoDate),
+  `stripe.ts` (загрузчик Stripe.js вставкой `<script>`, минимальные типы,
+  `stripeConfigured()` по `VITE_STRIPE_PUBLISHABLE_KEY`, appearance с hex
+  палитры :root — Stripe iframe CSS-переменных страницы не видит).
+- `client/src/pages/BillingPage.tsx` — секции API-ключ / баланс /
+  подписка / история / транзакции; `StripePaymentBox` (Payment Element,
+  `redirect:'if_required'`); экспорт `maskApiKey`, `billingErrorText`.
+- `client/src/pages/AdminPromptsPage.tsx` — вкладки «Шаблоны»/«Конфиги»;
+  экспорт `keyGroup`, `groupKeys`, `validateJson`, `prettyJson`.
+- `App.tsx` += `RequireAdmin` (→ /catalog); `PauseModal.tsx` auth-рендерер
+  += форма ключа (хуки до раннего return); `globals.css` часть 3 += блоки
+  3/4/6 кита дословно + медиаправила блока 10; `PageStub.tsx` удалён;
+  `.env.example` + `vite-env.d.ts` += `VITE_STRIPE_PUBLISHABLE_KEY`.
+- `server/integration-check.mts` += 2x/4ah; 5k/5m избавлены от зависимости
+  от пустого ANTHROPIC_API_KEY (латентный конфликт с 4ag, см. грабли).
+
+## Решения/адаптации (все — в шапках модулей и «По факту 6.2» в 07)
+
+1. Diff версий — обходом: сервер не трогали (клиентская беседа).
+2. Stripe Elements — без npm, ключ через env vite; нет ключа → dev-режим
+   подтверждения `/topup/confirm`; подписка — только через webhook.
+3. PauseModal делает один вызов API (`storeApiKey`) — отступление от 1.4b.
+4. RequireAdmin → `/catalog` (403-страницы нет).
+5. Статусы «сохранено/активировано» — после перечитывания списков.
+6. Подсветка JSON — без библиотеки; `validateJson` понимает
+   `at position N` и `(line N column M)`.
+7. Названия разделов в истории — `KEY_LABELS`, служебные ключи как есть.
+
+## Знания/грабли, добытые в 6.2
+
+1. **css-parity-audit** считает классами ВСЕ строковые литералы внутри
+   `className={…}` — сравнения `x === "topup"` в выражении дают ложные
+   «классы без правил». Литералы выносить в хелперы вне JSX.
+2. **Капитель**: `.action-btn`/`.code-status`/`.form-label` — uppercase;
+   `innerText` в puppeteer возвращает капитель → сравнения только /i.
+3. **«Node is detached from document»** при `page.click` по элементам
+   списков, которые React перерисовал между `$` и кликом — кликать через
+   `$eval(sel, el => el.click())`.
+4. **Гонка статуса**: сообщение об успехе до перечитывания списка → тест
+   видит новый статус при старом списке. Статус — после `await load*`.
+5. **V8 JSON.parse**: новые Chrome/Node пишут `Unexpected token ',',
+   ..."фрагмент"... is not valid JSON` без `position`; иногда с
+   `(line N column M)`.
+6. **Тесты под tsx импортируют .tsx-страницы** без DOM — можно, пока не
+   рендерится JSX; `import.meta.env` под tsx отсутствует (`utils/stripe`
+   это учитывает).
+7. **Стенд**: PG/Redis гибнут между ходами; полный прогон ≈ 2,5 мин —
+   в фоне с логом; уборка `t62-*`: сначала `user_subscriptions` и
+   `UPDATE prompt_templates SET created_by = NULL` (FK без SET NULL),
+   версии `system`/`context_budget` > 1 удалить, v1 активировать.
+8. **integration-check 5k/5m** зависели от пустого ANTHROPIC_API_KEY в
+   окружении (в 6.1 ключ был в shell → ветки не исполнялись) — 5k
+   противоречила 4ag, 5m получала 403 от billingCheck до валидации.
+9. **`typecheck:scripts` сломан** (`scripts/test-31-requests2-4.ts`,
+   5× TS2769) и не входит в корневой `typecheck` → долг 7.1.
+10. Мок Claude для паузы auth: 401 JSON по конкретному x-api-key —
+    streaming-manager классифицирует `resp.status === 401` как 'auth';
+    модалка снапшота из БД открывается по бейджу `.progress-pause-badge`.
+
+## Открытые TODO после 6.2 (все — в §12 07, адресат 7.1)
+
+- Тела в `GET /prompts/:key/versions` (или `/:version`) и `value` в
+  `/configs/:key/versions`; убрать обход в `client/api/prompts.ts`.
+- Миграция 0003: `ON DELETE SET NULL` для `created_by`
+  (prompt_templates, synthesis_configs); `users.stripe_customer_id`.
+- Update/delete типов каталога (сервер + вкладка «Каталоги» админки).
+- `POST /syntheses/:id/edges` + создание связи из UI.
+- Авто-импорт файловых ☑-концепций в SynthesisForm (гейт 1.5b/3.2).
+- Точная оценка в гейте POST /syntheses; DELETE /auth/me.
+- `typecheck:scripts` починить и включить в корневой `typecheck`.
+- P4 §1.10 (тестовый запуск раздела с черновиком шаблона) — адресата нет.
+
+## Помодульно: что прикладывать в следующие беседы
+
+- **7.1 (долги §12)**: `server/db/schema.ts` + миграции 0000–0002,
+  `routes/prompts.ts` + `prompt-registry.ts` (listVersions без тел),
+  `client/api/prompts.ts` (что убрать), `AdminPromptsPage.tsx` (куда
+  вкладку «Каталоги»), `routes/taxonomy.ts` + `element-taxonomy.ts`,
+  `routes/elements.ts` (§2.4, куда `POST /edges`), `EdgeEditor.tsx`,
+  `SynthesisForm.tsx` (гейт файловых концепций), `routes/syntheses.ts` +
+  `middleware/billing-check.ts` (гейт оценки), `billing-service.ts` /
+  `subscription-service.ts` / `stripe-client.ts` (Customer), `routes/auth.ts`
+  (DELETE /auth/me), `scripts/test-31-requests2-4.ts`,
+  `tests/test-62-requests2-7.mjs` (харнесс браузер + моки — переиспользовать).

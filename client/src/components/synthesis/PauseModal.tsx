@@ -20,10 +20,16 @@
  *    список успевших подразделов показывается без размеров;
  *  - costHint «оценочная стоимость продолжения» [24801] опущен — те же
  *    числа несут кнопки (skipRemaining/wholeSection/fillMissingSubs);
- *  - auth-рендерер: форма ввода нового ключа (_resumeWithNewApiKey
- *    [25028]) — TODO(6.1) BYO-Key; ключ серверный (env), из модалки его
- *    не сменить — предлагаются «Повторить» (после замены ключа на
- *    сервере) и «Остановить»;
+ *  - auth-рендерер: форма ввода нового ключа — порт _resumeWithNewApiKey
+ *    [25028] СДЕЛАН беседой 6.2 (долг §12 «Форма ввода ключа в
+ *    auth-модалке»): ключ сохраняется POST /billing/api-key (BYO-Key 6.1,
+ *    становится активным), затем resume 'retry' — resolveBilling под
+ *    слотом возьмёт новый ключ; сброс reasonKind → 'pre-stream' исходника
+ *    не нужен: сервер переопределяет режим/ключ при каждом resume
+ *    («По факту 6.1» п.3). Отступление от «модалка не ходит в API сама»
+ *    (1.4b): ОДИН вызов storeApiKey здесь — иначе форму пришлось бы
+ *    прокидывать через три хоста; кнопки «Повторить» (ключ уже заменён
+ *    на странице биллинга) и «Остановить» сохранены;
  *  - confirm деградации зависимостей при skip [25686] — реализовано в
  *    2.2: сервер кладёт skipDegrades (потребители пропускаемых по
  *    effectiveDeps, computeSkipDegrades) в pausedState и
@@ -50,6 +56,10 @@ import type {
   ResumeGenerationMode,
   ResumePlanMode,
 } from "@philosynth/shared/types/ws-messages";
+import { useState } from "react";
+
+import { storeApiKey } from "../../api/billing";
+import { ApiError } from "../../api/client";
 
 const LABELS = KEY_LABELS as Record<string, string>;
 
@@ -463,7 +473,14 @@ function BillingFooter({
 
 /* ── auth: API-ключ недействителен [24998] ───────────────────────────── */
 
-function AuthContent({ ps }: { ps: PausedState }) {
+interface AuthKeyForm {
+  value: string;
+  setValue: (v: string) => void;
+  pending: boolean;
+  error: string | null;
+}
+
+function AuthContent({ ps, form }: { ps: PausedState; form: AuthKeyForm }) {
   const context =
     ps.kind === "gen" ? (
       <>
@@ -481,12 +498,31 @@ function AuthContent({ ps }: { ps: PausedState }) {
         {context}.
       </p>
       <ReasonBox reason={ps.reason} />
+      <p>
+        Введите новый ключ — он будет сохранён как ваш ключ (BYO-Key), и
+        генерация продолжится с прерванного места:
+      </p>
+      <div className="pause-apikey-row">
+        <input
+          type="password"
+          autoComplete="off"
+          placeholder="sk-ant-api..."
+          aria-label="Новый API-ключ Anthropic"
+          value={form.value}
+          disabled={form.pending}
+          onChange={(e) => form.setValue(e.target.value)}
+          data-testid="pause-new-api-key"
+        />
+      </div>
+      {form.error && (
+        <div className="pause-reason-box" role="alert" data-testid="pause-api-key-error">
+          {form.error}
+        </div>
+      )}
       <Subtle>
-        {/* Адаптация: ввод нового ключа в модалке (_resumeWithNewApiKey) —
-            TODO(6.1) BYO-Key; сейчас ключ задаётся на сервере (env). */}
-        Замените ключ на сервере (переменная ANTHROPIC_API_KEY) и нажмите
-        «Повторить». Если ключа нет — выберите «Остановить»: текущее
-        состояние будет сохранено, и вы сможете возобновить позже.
+        Если ключ уже заменён на странице «Биллинг» — нажмите «Повторить».
+        Если нового ключа нет — выберите «Остановить»: текущее состояние
+        будет сохранено, и вы сможете возобновить позже.
       </Subtle>
     </div>
   );
@@ -494,10 +530,14 @@ function AuthContent({ ps }: { ps: PausedState }) {
 
 function AuthFooter({
   ps,
+  form,
+  onSaveKey,
   onResumeGeneration,
   onResumePlan,
 }: {
   ps: PausedState;
+  form: AuthKeyForm;
+  onSaveKey: () => void;
   onResumeGeneration: (mode: ResumeGenerationMode) => void;
   onResumePlan: (mode: ResumePlanMode) => void;
 }) {
@@ -505,13 +545,20 @@ function AuthFooter({
     ps.kind === "plan" ? onResumePlan("retry") : onResumeGeneration("retry");
   const stop = (): void =>
     ps.kind === "plan" ? onResumePlan("stop") : onResumeGeneration("stop");
+  const hasKey = form.value.trim().length > 0;
   return (
     <>
-      <PauseBtn
-        kind="primary"
-        title="Повторить после замены ключа на сервере"
-        onClick={retry}
+      <button
+        type="button"
+        className="pause-btn primary"
+        title="Сохранить новый ключ и возобновить"
+        disabled={form.pending || !hasKey}
+        onClick={onSaveKey}
+        data-testid="pause-save-key"
       >
+        {form.pending ? "Сохранение…" : "✓ Сохранить и продолжить"}
+      </button>
+      <PauseBtn title="Повторить с текущим ключом" onClick={retry}>
         ↻ Повторить
       </PauseBtn>
       <PauseBtn
@@ -569,7 +616,50 @@ export function PauseModal({
   onResumePlan,
   onClose,
 }: PauseModalProps) {
+  // Состояние формы ключа auth-рендерера (6.2) — хуки до раннего return
+  const [newKey, setNewKey] = useState("");
+  const [keyPending, setKeyPending] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+
   if (!open || !ps) return null;
+
+  const keyForm: AuthKeyForm = {
+    value: newKey,
+    setValue: (v) => {
+      setNewKey(v);
+      setKeyError(null);
+    },
+    pending: keyPending,
+    error: keyError,
+  };
+
+  /* Порт _resumeWithNewApiKey [25028]: сохранить ключ → возобновить retry.
+     Валидация формата — серверная (sk-ant-…, ≥ 20 символов, 400 с
+     details.key); клиент лишь не шлёт пустое. */
+  const saveKeyAndRetry = async (): Promise<void> => {
+    const key = newKey.trim();
+    if (!key) return;
+    setKeyPending(true);
+    setKeyError(null);
+    try {
+      await storeApiKey(key);
+      setNewKey("");
+      if (ps.kind === "plan") onResumePlan("retry");
+      else onResumeGeneration("retry");
+    } catch (err) {
+      const details =
+        err instanceof ApiError && err.details && typeof err.details === "object"
+          ? (err.details as Record<string, unknown>).key
+          : undefined;
+      setKeyError(
+        err instanceof ApiError
+          ? `${err.message}${typeof details === "string" ? `: ${details}` : ""}`
+          : "Не удалось сохранить ключ",
+      );
+    } finally {
+      setKeyPending(false);
+    }
+  };
 
   /* Confirm деградации при skip [25686] (беседа 2.2, долг §12):
      сервер кладёт в pausedState/generation_paused список разделов,
@@ -607,10 +697,12 @@ export function PauseModal({
     footer = <BillingFooter onResume={resumeGenConfirmed} />;
   } else if (ps.reasonKind === "auth") {
     title = "🔑 API-ключ недействителен";
-    body = <AuthContent ps={ps} />;
+    body = <AuthContent ps={ps} form={keyForm} />;
     footer = (
       <AuthFooter
         ps={ps}
+        form={keyForm}
+        onSaveKey={() => void saveKeyAndRetry()}
         onResumeGeneration={onResumeGeneration}
         onResumePlan={onResumePlan}
       />

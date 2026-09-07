@@ -112,7 +112,7 @@ MMD/JSON/PNG/MD + ExportError NO_GRAPH). Сейчас покрывает 0.1–0
 поднятых PG и Redis и засеянных prompt_templates, synthesis_configs
 и каталогов таксономии.
 
-## Статус: Фазы 0–5 завершены + 6.1 (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3; Фаза 5: 5.1–5.5, закрыта 2026-09-06; Фаза 6: 6.1 закрыта 2026-09-06)
+## Статус: Фазы 0–6 завершены (Фаза 2: 2.1, 2.2, 2.4, 2.3; Фаза 3: 3.1, 3.2; Фаза 4: 4.1, 4.2, 4.3; Фаза 5: 5.1–5.5, закрыта 2026-09-06; Фаза 6: 6.1 закрыта 2026-09-06, 6.2 закрыта 2026-09-07); впереди Фаза 7 (7.1 — долги §12)
 
 - **0.1 — скелет монорепо + БД.** Workspace (packages/shared, server,
   client), tsconfig'и, docker-compose, полная Drizzle-схема — 28 таблиц со
@@ -486,8 +486,20 @@ warmCache (смоук 54 ✓, tests/test-61-requests2-11.mjs 109 ✓ проти�
 check:integration += 2w/4ag/5x; долги §12 BYO-Key / per-user rate-limit /
 warmCache / учёт обогащений закрыты); доки пропатчены
 scripts/patch-docs-conv61.py. Новые env: BILLING_ENFORCE,
-BILLING_MIN_RESERVE_USD, STRIPE_API_BASE. Следующая по графу 07 — 6.2
-(Billing UI + Admin Prompts Page).
+BILLING_MIN_RESERVE_USD, STRIPE_API_BASE.
+Беседа 6.2 (Billing UI + Admin Prompts Page, клиент) ЗАКРЫТА 2026-09-07:
+BillingPage (API-ключ, баланс с Stripe Payment Element / dev-режимом,
+подписка, история использования, транзакции) + AdminPromptsPage (дерево
+ключей, редактор с плейсхолдерами и предпросмотром, версии/diff/откат,
+JSON-конфиги) + api/billing, api/subscription, api/prompts + utils
+text-diff/template-placeholders/format/stripe + RequireAdmin +
+форма ключа в PauseModal (порт _resumeWithNewApiKey) + блоки 3/4/6 UI-кита
+(смоук 84 ✓, tests/test-62-requests2-7.mjs 101 ✓ ×2 в браузере против
+живого сервера с моками Claude/Stripe; check:integration += 2x/4ah;
+долги §12 форма ключа / RequireAdmin / UI подписок закрыты); доки
+пропатчены scripts/patch-docs-conv62.py. Новый env клиента:
+VITE_STRIPE_PUBLISHABLE_KEY. Долги 6.2 с серверной работой → Фаза 7,
+беседа 7.1 (07 §8, §11, §12).
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу

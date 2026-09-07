@@ -488,6 +488,12 @@ CREATE INDEX idx_ctxlog_synthesis ON context_log(synthesis_id);
 
 ### 2.17. prompt_templates
 
+> **Примечание 6.2 (2026-09-07):** `created_by UUID REFERENCES users(id)` без
+> `ON DELETE SET NULL` — удаление админа, создавшего хоть один черновик,
+> падает по FK 23503 (тот же класс, что миграция 0002 закрыла для
+> `api_usage`/`transactions.synthesis_id`). То же у `synthesis_configs`
+> (§2.18). Долг 7.1 — миграция 0003 `ON DELETE SET NULL`.
+
 ```sql
 CREATE TABLE prompt_templates (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

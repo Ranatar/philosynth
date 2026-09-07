@@ -4826,6 +4826,305 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 6.2 — биллинг и админка Prompt Registry ═════════════════
+ * В исходнике ни биллинга, ни реестра промптов нет (свой ключ в поле
+ * формы, стоимость в футере, промпты захардкожены). Блоки 3 (таблица
+ * данных, пейджер), 4 (сводные показатели, маскированный ключ, выбор
+ * суммы) и 6 (дерево ключей, редактор кода, плейсхолдер-чипы) перенесены
+ * из docs/fragments-for-conversations/5-6-ui-kit.css дословно, плюс
+ * медиаправила блока 10 для этих классов. Блок 5 (версии, diff) — с 5.2.
+ * Своих правил ниже кита нет: вкладки админки собраны из .action-btn.
+ * Идиома та же: прямые углы, моноширинные микро-подписи, палитра :root.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* — 5-6-ui-kit.css, блок 3: таблица данных — */
+  /* ═══ 3. Таблица данных (6.2: история использования, транзакции) ══════
+   * Отличается от .doc-table: это интерфейс, а не тело документа —
+   * компактнее, с липкой шапкой и панелью фильтров.
+   */
+
+  .data-table-wrap {
+    border: 1px solid var(--rule);
+    background: var(--paper);
+  }
+
+  .data-table-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--off);
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .data-table th {
+    position: sticky;
+    top: 0;
+    background: var(--off);
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    text-align: left;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+
+  .data-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  .data-table tbody tr:hover {
+    background: var(--white);
+  }
+
+  .data-table .num {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .data-table tfoot td {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--off);
+    border-top: 1px solid var(--rule-strong);
+    border-bottom: none;
+  }
+
+  .data-table-empty {
+    padding: 24px 12px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--ink-dim);
+  }
+
+  /* — 5-6-ui-kit.css, блок 4: сводные показатели, ключ, сумма — */
+  /* ═══ 4. Сводные показатели (6.2: баланс, итоги) ══════════════════════ */
+
+  .stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 12px 0;
+  }
+
+  .stat-value {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--blue-corp);
+    line-height: 1.2;
+  }
+
+  .stat-value.gold {
+    color: var(--gold);
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-top: 2px;
+  }
+
+  /* Маскированный API-ключ (6.1/6.2: BYO-Key) */
+  .masked-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink);
+    background: var(--white);
+    border: 1px solid var(--rule);
+    padding: 5px 10px;
+  }
+
+  .masked-key-status {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .masked-key-status.active {
+    color: var(--green-check);
+  }
+
+  .masked-key-status.absent {
+    color: var(--ink-dim);
+  }
+
+  /* Выбор суммы пополнения */
+  .amount-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .amount-choice .action-btn.active {
+    background: var(--blue-corp);
+    color: #fff;
+    border-color: var(--blue-corp);
+  }
+
+  /* — 5-6-ui-kit.css, блок 6: дерево ключей и редактор кода — */
+  /* ═══ 6. Дерево ключей и редактор кода (6.2: AdminPromptsPage) ════════ */
+
+  .key-tree {
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  .key-tree-group {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    padding: 8px 12px 4px;
+    background: var(--off);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .key-tree-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 12px 5px 22px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mid);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+
+  .key-tree-item:hover {
+    background: var(--white);
+  }
+
+  .key-tree-item.active {
+    background: var(--blue-light);
+    border-left-color: var(--blue-corp);
+    color: var(--blue-corp);
+  }
+
+  .key-tree-item .version-meta {
+    flex-shrink: 0;
+  }
+
+  /* Моноширинный редактор (тело шаблона, JSON конфига) */
+  .code-editor {
+    width: 100%;
+    min-height: 220px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--ink);
+    background: var(--white);
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+    resize: vertical;
+    tab-size: 2;
+  }
+
+  .code-editor:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.15);
+  }
+
+  .code-editor.invalid {
+    border-color: var(--red);
+  }
+
+  .code-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 5px 0;
+  }
+
+  .code-status.ok {
+    color: var(--green-check);
+  }
+
+  .code-status.err {
+    color: var(--red);
+  }
+
+  /* Плейсхолдер {{…}} в предпросмотре шаблона */
+  .placeholder-chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--violet);
+    background: var(--violet-light);
+    padding: 0 3px;
+    border-bottom: 1px solid var(--violet);
+  }
+
+  .placeholder-chip.filled {
+    color: var(--blue-corp);
+    background: var(--blue-light);
+    border-bottom-color: var(--blue-corp);
+  }
+}
+
+/* — 5-6-ui-kit.css, блок 10 (часть для 6.2): узкие экраны — */
+@media (max-width: 700px) {
+  .data-table th,
+  .data-table td {
+    padding: 6px 8px;
+  }
+
+  .stat-row {
+    gap: 16px;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;
