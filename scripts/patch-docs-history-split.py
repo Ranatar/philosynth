@@ -131,6 +131,49 @@ def demote(line):
     return "##" + line if m else line
 
 
+
+# ─────────────────────────────────────────────────────────────────────
+# Хвостовые правки: счёт документов в комплекте и висячие ссылки.
+# Выполняются независимо от основного переезда (свои applied/skip).
+# ─────────────────────────────────────────────────────────────────────
+TAIL_FIXES = [
+    (README, "README: состав docs/",
+     "docs/              7 проектных документов + fragments-for-conversations/",
+     "docs/              9 проектных документов (01\u201307 \u2014 проект,\n"
+     "                   08 \u2014 история, 09 \u2014 уроки и грабли)\n"
+     "                   + fragments-for-conversations/"),
+    (PROTO, "07 \u00a71.1: размер комплекта",
+     "Семь проектных документов \u2014 ещё ~230 КБ.",
+     "Комплект проектных документов 01\u201307 \u2014 ещё ~705 КБ (на 2026-09-07; "
+     "история 08 и уроки 09 в беседу целиком не грузятся: 09 \u2014 да, 08 \u2014 "
+     "только нужная глава)."),
+    (PROTO, "07 \u00a710: уточнение комплекта",
+     "- [ ] Загрузил все 7 проектных документов (комплект самодостаточен)",
+     "- [ ] Загрузил все 7 проектных документов 01\u201307 (комплект\n"
+     "      самодостаточен; история 08 \u2014 только нужные главы)"),
+    (os.path.join(ROOT, "docs", "03-specification.md"),
+     "03 \u00a7: ссылка на переехавшую главу 1.4b",
+     "// = null. В NEXT-CONTEXT (гл. 1.4b)",
+     "// = null. В истории 08 (гл. 1.4b)"),
+]
+
+
+def apply_tail_fixes():
+    for path, label, old, new in TAIL_FIXES:
+        if not os.path.exists(path):
+            failed.append(f"{label}: нет файла")
+            continue
+        text = read(path)
+        if new in text:
+            skipped.append(label)
+            continue
+        if old not in text:
+            failed.append(f"{label}: якорь не найден")
+            continue
+        write(path, text.replace(old, new, 1))
+        applied.append(label)
+
+
 # ─────────────────────────────────────────────────────────────────────
 def main():
     for p in (README, PROTO, NEXTC):
@@ -152,8 +195,9 @@ def main():
         for name in ("docs/08-history.md", "docs/09-lessons.md", "README.md",
                      "docs/07-conversation-protocol.md", "NEXT-CONTEXT.md"):
             skipped.append(name)
+        apply_tail_fixes()
         report()
-        return 0
+        return 1 if failed else 0
     if already or readme_clean or proto_clean or nextc_clean:
         failed.append("частично применённое состояние — нужен ручной разбор "
                       f"(08/09={already}, README={readme_clean}, "
@@ -511,6 +555,8 @@ def main():
                     "README.md (хроника вырезана, статус → таблица)",
                     "docs/07-conversation-protocol.md (шапка вырезана, §10 дополнен)",
                     "NEXT-CONTEXT.md (перезаписан)"])
+
+    apply_tail_fixes()
 
     # ── приёмка ──────────────────────────────────────────────────────
     hist_t, less_t = read(HIST), read(LESS)

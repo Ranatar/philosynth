@@ -35,7 +35,9 @@ scripts/           эксплуатационные скрипты: extract-seed
                    extract-section-templates.mjs, seed-prompts/-configs/
                    -taxonomy, идемпотентные патч-скрипты доков
                    (patch-docs-*.py)
-docs/              7 проектных документов + fragments-for-conversations/
+docs/              9 проектных документов (01–07 — проект,
+                   08 — история, 09 — уроки и грабли)
+                   + fragments-for-conversations/
 tests/             ВСЕ тесты бесед (0.3b–3.2): vm-смоуки байтовой сверки
                    с исходником (smoke-*.mjs/.mts), API-тесты (mini-Hono),
                    браузерные (puppeteer + системный Chromium). Запуск из

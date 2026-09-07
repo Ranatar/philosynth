@@ -370,7 +370,7 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
                                         // computePauseEstimates(id, ps)
                                         // из pause-resume-service (1.4b),
                                         // fail-open {}; null при pausedState
-                                        // = null. В NEXT-CONTEXT (гл. 1.4b)
+                                        // = null. В истории 08 (гл. 1.4b)
                                         // поле названо просто estimates —
                                         // здесь развёрнуто, чтобы не путать
                                         // с оценкой стоимости /estimate
