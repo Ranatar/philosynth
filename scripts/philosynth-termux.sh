@@ -7,26 +7,42 @@
 #   bash philosynth-termux.sh stop       остановить всё
 #   bash philosynth-termux.sh status     что сейчас живо
 #   bash philosynth-termux.sh doctor     только диагностика окружения
+#   bash philosynth-termux.sh canvas     только сборка/проверка node-canvas
 #
 # Отчёт в стиле патч-скриптов доков: created / skip / fail.
 # Повторный прогон на готовой машине обязан дать одни skip.
+#
+# Ревизия 2026-09-08 (репозиторий после беседы 7.1):
+#  - server зависит от canvas@3 (беседа 4.2, PNG-экспорт). Пребилдов под
+#    android нет — аддон собирается из исходников; отсюда cairo/pango/
+#    build-essential в пакетах и отдельный шаг сборки. Без собранного
+#    canvas сервер НЕ СТАРТУЕТ вовсе: index.ts статически тянет
+#    routes/export.ts → services/export/png-exporter.ts → import "canvas".
+#  - .env: добавлена генерация API_KEY_ENCRYPTION_SECRET (BYO-Key, 6.1).
+#  - счётчики сидов приведены к факту (261 шаблон).
 
 set -euo pipefail
 
 # ── Параметры ────────────────────────────────────────────────────────────
 REPO_URL="${REPO_URL:-https://github.com/Ranatar/philosynth.git}"
 REPO_DIR="${REPO_DIR:-$HOME/philosynth}"
-PGDATA="${PGDATA:-$PREFIX/var/lib/postgresql}"
-REDIS_DIR="$PREFIX/var/lib/redis"
-LOG_DIR="$PREFIX/var/log"
+# ${PREFIX:-}, а не $PREFIX: вне Termux переменной нет, и при set -u скрипт
+# падал здесь «unbound variable», не доходя до внятной проверки в doctor.
+PGDATA="${PGDATA:-${PREFIX:-}/var/lib/postgresql}"
+REDIS_DIR="${PREFIX:-}/var/lib/redis"
+LOG_DIR="${PREFIX:-}/var/log"
 DB_NAME="philosynth"
 DB_ROLE="philosynth"
 DB_PASS="philosynth_dev"          # обязан совпадать с дефолтом server/env.ts
 NODE_MIN_MAJOR=22
 NODE_MIN_MINOR=18
-PKGS="postgresql redis git python curl"
+# python и build-essential нужны node-gyp; cairo/pango/libpng — самому canvas.
+PKGS="postgresql redis git python curl build-essential pkg-config cairo pango libpng"
 
 export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2048}"
+# Параллелизм сборки нативного аддона: телефону хватает двух заданий,
+# иначе clang выедает память вместе с постгресом.
+export JOBS="${JOBS:-2}"
 
 C_OK=$'\033[32m'; C_SKIP=$'\033[90m'; C_WARN=$'\033[33m'; C_ERR=$'\033[31m'; C_0=$'\033[0m'
 n_created=0; n_skip=0; n_fail=0
@@ -57,7 +73,9 @@ doctor() {
   mem_gb=$((mem_kb / 1024 / 1024))
   printf '    RAM:           ~%s ГБ\n' "$mem_gb"
   [ "$mem_gb" -lt 5 ] && warn "меньше 6 ГБ: 'tsc -b' и 'vite build' вероятно упрутся в OOM.
-      Dev-режим (tsx watch + vite dev) обычно проходит. NODE_OPTIONS уже = $NODE_OPTIONS"
+      Dev-режим (tsx watch + vite dev) обычно проходит. Сборка canvas идёт
+      в $JOBS задания — при OOM повторить с JOBS=1.
+      NODE_OPTIONS уже = $NODE_OPTIONS"
 
   # df на Android возвращает ненулевой код из-за недоступных точек монтирования
   # (stderr скрыт, но статус остаётся) — с pipefail+errexit это молча убивало скрипт.
@@ -65,7 +83,7 @@ doctor() {
   local free_kb free_mb
   free_kb="$(df -Pk "$HOME" 2>/dev/null | awk 'NR==2{print $4}')" || free_kb=""
   if [ -n "$free_kb" ]; then free_mb=$((free_kb / 1024)); else free_mb="?"; fi
-  printf '    Свободно:      %s МБ (нужно ~1500 под node_modules + БД)\n' "$free_mb"
+  printf '    Свободно:      %s МБ (нужно ~2000 под node_modules, БД и сборку canvas)\n' "$free_mb"
 
   local rel; rel="$(getprop ro.build.version.release 2>/dev/null || echo '?')"
   local sdk; sdk="$(getprop ro.build.version.sdk 2>/dev/null || echo 0)"
@@ -101,7 +119,8 @@ step_packages() {
   else
     if command -v node >/dev/null 2>&1; then
       die "node $(node -v) слишком стар (нужен >=$NODE_MIN_MAJOR.$NODE_MIN_MINOR:
-      shared экспортирует .ts напрямую, это работает только через type stripping).
+      packages/shared экспортирует .ts напрямую, это работает только через
+      type stripping).
       Обновить:  pkg uninstall nodejs nodejs-lts && pkg install nodejs-lts"
     fi
     pkg install -y nodejs-lts >/dev/null 2>&1 || pkg install -y nodejs-lts
@@ -121,7 +140,17 @@ step_packages() {
     pkg install -y $missing
     ok "пакеты установлены:$missing"
   else
-    skip "postgresql / redis / git / python уже стоят"
+    skip "postgresql / redis / git / python / оснастка сборки уже стоят"
+  fi
+
+  # Шрифты нужны pango: без них node-canvas нарисует пустые прямоугольники
+  # вместо подписей. Пакет необязателен — только предупреждаем.
+  if command -v fc-match >/dev/null 2>&1 && fc-match sans >/dev/null 2>&1; then
+    skip "fontconfig видит шрифты — подписи в PNG отрисуются"
+  else
+    warn "шрифтов не видно (fontconfig). PNG-экспорт соберётся, но текст будет
+      пустым. Лечится любым ttf: pkg install ttf-dejavu — либо положить .ttf
+      в ~/.fonts и выполнить fc-cache -f"
   fi
 
   printf '    postgres %s · redis %s\n' \
@@ -214,13 +243,44 @@ step_repo() {
   fi
   cd "$REPO_DIR"
 
+  # Артефакты этого скрипта не должны мусорить в git status.
+  local excl=".git/info/exclude"
+  if [ ! -f "$excl" ] || grep -q '^\.termux-' "$excl"; then
+    skip "исключения для .termux-* уже прописаны"
+  else
+    printf '\n# philosynth-termux.sh\n.termux-npm-stamp\n.termux-server.pid\n.termux-client.pid\nlogs/\n' >> "$excl"
+    ok "артефакты скрипта внесены в .git/info/exclude"
+  fi
+
   if [ -f .env ]; then
     skip ".env на месте"
   else
     cp .env.example .env
-    ok ".env создан из .env.example (ANTHROPIC_API_KEY пуст — генерация недоступна,
-      остальное работает; вписать позже)"
+    ok ".env создан из .env.example"
   fi
+
+  # API_KEY_ENCRYPTION_SECRET (беседа 6.1): пустой секрет — CryptoConfigError
+  # при первой же попытке сохранить свой ключ Anthropic. На телефоне BYO-Key
+  # обычно и есть способ платить за генерацию, поэтому генерируем сразу.
+  if grep -q '^API_KEY_ENCRYPTION_SECRET=..*' .env; then
+    skip "API_KEY_ENCRYPTION_SECRET задан"
+  else
+    local secret
+    secret="$(node -e 'console.log(require("node:crypto").randomBytes(32).toString("hex"))')"
+    awk -v s="$secret" '/^API_KEY_ENCRYPTION_SECRET=/{print "API_KEY_ENCRYPTION_SECRET=" s; next} {print}' \
+      .env > .env.tmp && mv .env.tmp .env
+    grep -q '^API_KEY_ENCRYPTION_SECRET=..*' .env \
+      || die "не удалось вписать API_KEY_ENCRYPTION_SECRET в .env"
+    ok "сгенерирован API_KEY_ENCRYPTION_SECRET (32 байта hex; смена секрета
+      делает уже сохранённые ключи нечитаемыми — не трогать без нужды)"
+  fi
+
+  grep -q '^ANTHROPIC_API_KEY=..*' .env \
+    || warn "ANTHROPIC_API_KEY пуст — серверная генерация недоступна.
+      Либо вписать ключ в .env, либо ввести свой в интерфейсе (BYO-Key)."
+  grep -q '^STRIPE_SECRET_KEY=..*' .env \
+    || warn "STRIPE_SECRET_KEY пуст — пополнение баланса и подписки отвечают 503.
+      BYO-Key и списание с баланса работают (BILLING_ENFORCE вне production = false)."
 }
 
 # ── 5. Зависимости ───────────────────────────────────────────────────────
@@ -233,11 +293,58 @@ step_npm() {
     skip "node_modules соответствуют package-lock.json"
     return
   fi
-  printf '    15–30 минут, ~1 ГБ. Нативные части — только esbuild и rollup,\n'
-  printf '    их android-пребилды уже прописаны в lock-файле; компилировать нечего.\n'
-  npm install
-  echo "$cur" > "$stamp"
-  ok "зависимости установлены"
+  printf '    20–60 минут, ~1.2 ГБ. Android-пребилды esbuild и rollup прописаны\n'
+  printf '    в lock-файле, а вот canvas@3 (PNG-экспорт, беседа 4.2) их не имеет\n'
+  printf '    и компилируется из исходников — это самая долгая часть,\n'
+  printf '    подробности следующим шагом.\n'
+  if npm install; then
+    echo "$cur" > "$stamp"
+    ok "зависимости установлены"
+  else
+    warn "npm install завершился с ошибкой — почти наверняка на сборке canvas.
+      Дерево при этом установлено; аддон разбираем отдельным шагом."
+  fi
+}
+
+# ── 5b. node-canvas ──────────────────────────────────────────────────────
+canvas_loads() { node -e 'require("canvas").createCanvas(2,2)' >/dev/null 2>&1; }
+
+step_canvas() {
+  head_ "node-canvas (PNG-экспорт)"
+  cd "$REPO_DIR"
+
+  if canvas_loads; then
+    skip "аддон собран и грузится"
+    return
+  fi
+
+  # Библиотеки проверяем ДО сборки: иначе node-gyp падает на середине
+  # с малочитаемым выводом компоновщика.
+  local lib
+  for lib in cairo pango pangocairo; do
+    pkg-config --exists "$lib" 2>/dev/null \
+      || die "нет $lib (pkg-config его не видит).
+      Поставьте: pkg install build-essential pkg-config cairo pango libpng"
+  done
+
+  printf '    Пребилдов node-canvas под android нет (публикуются только macOS\n'
+  printf '    x64/arm64, Linux x86-64 glibc и Windows) — собираем из исходников:\n'
+  printf '    10–40 минут, JOBS=%s.\n' "$JOBS"
+  printf '    Без аддона сервер не стартует ВООБЩЕ: index.ts статически тянет\n'
+  printf '    routes/export.ts → png-exporter.ts → import "canvas".\n'
+
+  # build_from_source именно переменной окружения: prebuild-install читает
+  # npm_config_*, а незнакомый ключ командной строки npm встречает руганью.
+  npm_config_build_from_source=true npm rebuild canvas --foreground-scripts \
+    || die "сборка canvas не прошла. Что смотреть:
+      1) память — повторить с JOBS=1;
+      2) node-gyp тянет заголовки node с nodejs.org, нужна сеть;
+      3) ошибки компоновки в логе выше обычно означают недостающий пакет
+         (libpng / cairo / pango)."
+
+  canvas_loads || die "canvas собрался, но не грузится; покажите вывод:
+      node -e 'require(\"canvas\")'"
+  ok "canvas собран из исходников и загружается"
 }
 
 # ── 6. Миграция и сиды ───────────────────────────────────────────────────
@@ -247,13 +354,18 @@ step_db_content() {
   set -a; . ./.env; set +a          # сиды читают process.env, .env знает только drizzle-kit
 
   npx --yes drizzle-kit migrate
-  ok "миграции применены (drizzle ведёт учёт сам — повторный прогон no-op)"
+  ok "миграции применены — 0000_initial … 0003 (drizzle ведёт учёт сам,
+      повторный прогон no-op)"
 
   # Сиды идемпотентны по построению: created/updated/skip/fail.
   npm run seed:prompts
   npm run seed:configs
   npm run seed:taxonomy
-  ok "сиды прогнаны (253 шаблона, 27 конфигов, 18+29 типов таксономии)"
+  ok "сиды прогнаны (261 шаблон: 107 базовых + 146 разделов + 6 обогащения
+      + 2 трансформации; 27 конфигов; 18+29 типов таксономии)"
+
+  warn "subscription_plans не сеется ничем — страница подписок будет пустой;
+      это ожидаемо, планы заводятся отдельно."
 }
 
 # ── 7. Старт / стоп / статус ─────────────────────────────────────────────
@@ -267,6 +379,11 @@ cmd_start() {
   mkdir -p logs
   step_postgres                   # оба шага идемпотентны — на живой системе дадут skip
   step_redis
+
+  # Дешёвая проверка: без аддона сервер упадёт на импорте, а в логе будет
+  # ERR_DLOPEN_FAILED — лучше сказать об этом здесь.
+  canvas_loads || warn "canvas не грузится — сервер не поднимется.
+      Почините: bash $0 canvas"
 
   command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock || true
 
@@ -319,6 +436,8 @@ cmd_status() {
   head_ "Статус"
   pg_running && ok "postgres слушает" || skip "postgres не запущен"
   redis-cli ping >/dev/null 2>&1 && ok "redis отвечает" || skip "redis не запущен"
+  ( cd "$REPO_DIR" 2>/dev/null && canvas_loads ) && ok "canvas грузится" \
+    || skip "canvas не собран (bash $0 canvas)"
   alive "$PID_SERVER" && ok "dev:server pid $(cat "$PID_SERVER")" || skip "dev:server не запущен"
   alive "$PID_CLIENT" && ok "dev:client pid $(cat "$PID_CLIENT")" || skip "dev:client не запущен"
 }
@@ -331,13 +450,14 @@ summary() {
 case "${1:-setup}" in
   setup)
     doctor; step_packages; step_postgres; step_redis
-    step_repo; step_npm; step_db_content
+    step_repo; step_npm; step_canvas; step_db_content
     summary
     printf '\nДальше:  bash %s start\n' "$0"
     ;;
-  start)  cmd_start;  summary ;;
-  stop)   cmd_stop;   summary ;;
-  status) cmd_status; summary ;;
-  doctor) doctor;     summary ;;
-  *) printf 'Использование: bash %s [setup|start|stop|status|doctor]\n' "$0"; exit 2 ;;
+  start)  cmd_start;   summary ;;
+  stop)   cmd_stop;    summary ;;
+  status) cmd_status;  summary ;;
+  doctor) doctor;      summary ;;
+  canvas) step_canvas; summary ;;
+  *) printf 'Использование: bash %s [setup|start|stop|status|doctor|canvas]\n' "$0"; exit 2 ;;
 esac
