@@ -13,6 +13,10 @@ philosynth-service/
 ├── docker-compose.yml              # PostgreSQL + Redis для dev
 ├── .gitignore                      # node_modules, dist, .env (пароль БД
 │                                   # и ключи API), dump.rdb, архивы
+├── .env.local.example              # 8.2: окружение ЛОКАЛЬНОГО СТЕНДА биллинга
+│                                   # (мок Stripe, фиктивные ключи, BILLING_ENFORCE=true,
+│                                   # пустой VITE_STRIPE_PUBLISHABLE_KEY); копируется в
+│                                   # .env.local скриптом tools/dev-billing.sh
 ├── .env.example                    # ВСЕ переменные server/env.ts;
 │                                   # пароль БД обязан совпадать с дефолтом
 │                                   # env.ts — .env читает только drizzle-kit,
@@ -521,9 +525,19 @@ philosynth-service/
 │   ├── tsconfig.json                   # Типочек scripts/*.ts + tests/*.ts|*.mts (typecheck:scripts)
 │   └── migrate-html-files.ts           # Массовый импорт HTML-файлов в БД (Фаза 4)
 │
+├── tools/                              # 8.2: оснастка разработчика (не продукт, не тесты)
+│   ├── stripe-mock.mjs                 # мок Stripe REST — модуль (createStripeMock) и процесс;
+│   │                                   # вынесен из test-61, + /v1/products и /v1/prices под 8.3
+│   ├── stripe-emit.mjs                 # отправщик webhook-событий invoice.paid /
+│   │                                   # customer.subscription.updated|deleted (подпись при
+│   │                                   # непустом STRIPE_WEBHOOK_SECRET)
+│   └── dev-billing.sh                  # стенд: .env.local → мок → сервер :3000 → vite :5199;
+│                                       # заслон sk_live_, --stop / --status, created/skip/fail
+│
 └── tests/                              # ВСЕ тесты бесед; запуск из корня репо
     ├── smoke-*.mjs / smoke-*.mts       # vm-смоуки байтовой сверки порта с исходником
-    ├── test-XX-*.mjs                   # API- и браузерные тесты запросов бесед (puppeteer)
+    ├── test-XX-*.mjs                   # API- и браузерные тесты запросов бесед (puppeteer);
+    │                                   # test-61/62/71 берут мок Stripe из tools/stripe-mock.mjs (8.2)
     ├── test-*-0.3b.ts                  # Регрессионные смоуки таксономии
     └── package.json                    # Маркер type=module
 ```

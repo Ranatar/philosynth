@@ -895,7 +895,9 @@ POST   /configs/:key/activate   { version: number }
 > **ФАКТ 6.2 (клиент):** publishable key Stripe — `VITE_STRIPE_PUBLISHABLE_KEY`
 > (env vite, `.env.example`); при пустом значении BillingPage работает в
 > dev-режиме: `POST /topup` → кнопка «Подтвердить платёж» → `POST /topup/confirm`
-> без Elements (мок Stripe отдаёт PaymentIntent `succeeded`). Подписка
+> без Elements (мок Stripe отдаёт PaymentIntent `succeeded`). Подсказка о
+> dev-режиме показывается только после `POST /topup`, внутри блока намерения
+> (уточнено 8.2); проверять баланс — по `balance-value`. Подписка
 > confirm-эндпоинта не имеет — статус меняет webhook, UI перечитывает
 > `GET /billing/subscription` по кнопке «Обновить».
 >

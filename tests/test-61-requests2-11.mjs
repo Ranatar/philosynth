@@ -38,6 +38,8 @@ import http from "node:http";
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import { createStripeMock } from "../tools/stripe-mock.mjs";
+
 import WebSocket from "ws";
 
 const SERVER_PORT = 3000;
@@ -159,60 +161,14 @@ function startClaudeMock() {
   return new Promise((r) => srv.listen(MOCK_PORT, "127.0.0.1", () => r(srv)));
 }
 
-/* ══ Мок Stripe REST ═══════════════════════════════════════════════════ */
-const stripeState = { pis: new Map(), subs: new Map(), customers: [], requests: [] };
+/* ══ Мок Stripe REST — общий модуль оснастки (8.2), поведение test-61 ═══ */
+// PaymentIntent рождается requires_payment_method (тест переводит его в
+// succeeded руками — так проверяется отказ confirm неоплаченного); ключ и
+// порт — как до выноса.
+const stripeMock = createStripeMock({ port: STRIPE_PORT, bearer: "sk_test_mock61", paymentIntentStatus: "requires_payment_method" });
+const stripeState = stripeMock.state; // pis/subs/customers/requests — тот же объект, что читают проверки ниже
 const nowSec = () => Math.floor(Date.now() / 1000);
-function parseForm(body) {
-  const out = {};
-  for (const [k, v] of new URLSearchParams(body)) {
-    const path = k.replace(/\]/g, "").split("[");
-    let cur = out;
-    path.forEach((p, i) => { if (i === path.length - 1) cur[p] = v; else cur = cur[p] ??= {}; });
-  }
-  return out;
-}
-function startStripeMock() {
-  const srv = http.createServer((req, res) => {
-    let body = "";
-    req.on("data", (d) => (body += d));
-    req.on("end", () => {
-      const auth = req.headers.authorization;
-      stripeState.requests.push({ method: req.method, url: req.url, auth });
-      const send = (code, obj) => { res.writeHead(code, { "content-type": "application/json" }); res.end(J(obj)); };
-      if (auth !== "Bearer sk_test_mock61") return send(401, { error: { message: "bad key" } });
-      const form = parseForm(body);
-      const u = req.url;
-      if (req.method === "POST" && u === "/v1/payment_intents") {
-        const id = `pi_${stripeState.pis.size + 1}`;
-        const pi = { id, object: "payment_intent", amount: Number(form.amount), currency: form.currency, status: "requires_payment_method", client_secret: `${id}_secret`, metadata: form.metadata ?? {} };
-        stripeState.pis.set(id, pi); return send(200, pi);
-      }
-      let m;
-      if (req.method === "GET" && (m = u.match(/^\/v1\/payment_intents\/([^/?]+)/))) {
-        const pi = stripeState.pis.get(m[1]); return pi ? send(200, pi) : send(404, { error: { message: "No such payment_intent", code: "resource_missing" } });
-      }
-      if (req.method === "POST" && u === "/v1/customers") {
-        const c = { id: `cus_${stripeState.customers.length + 1}`, object: "customer", email: form.email, metadata: form.metadata ?? {} };
-        stripeState.customers.push(c); return send(200, c);
-      }
-      if (req.method === "POST" && u === "/v1/subscriptions") {
-        const id = `sub_${stripeState.subs.size + 1}`;
-        const s = { id, object: "subscription", customer: form.customer, status: "incomplete", current_period_start: nowSec(), current_period_end: nowSec() + 30 * 86400,
-          cancel_at_period_end: false, metadata: form.metadata ?? {}, items: form.items,
-          latest_invoice: { id: `in_${id}`, object: "invoice", subscription: id, payment_intent: { id: `pi_${id}`, object: "payment_intent", status: "requires_payment_method", client_secret: `pi_${id}_secret` } } };
-        stripeState.subs.set(id, s); return send(200, s);
-      }
-      if ((m = u.match(/^\/v1\/subscriptions\/([^/?]+)/))) {
-        const s = stripeState.subs.get(m[1]);
-        if (!s) return send(404, { error: { message: "No such subscription", code: "resource_missing" } });
-        if (req.method === "POST" && form.cancel_at_period_end !== undefined) s.cancel_at_period_end = form.cancel_at_period_end === "true";
-        return send(200, s);
-      }
-      send(404, { error: { message: `unknown ${u}` } });
-    });
-  });
-  return new Promise((r) => srv.listen(STRIPE_PORT, "127.0.0.1", () => r(srv)));
-}
+const startStripeMock = () => stripeMock.start();
 
 /* ══ Процессы ═════════════════════════════════════════════════════════ */
 let serverProc, claudeSrv, stripeSrv;

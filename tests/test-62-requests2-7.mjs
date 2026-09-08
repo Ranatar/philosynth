@@ -34,6 +34,8 @@ import http from "node:http";
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import { createStripeMock } from "../tools/stripe-mock.mjs";
+
 import puppeteer from "puppeteer-core";
 
 const SERVER_PORT = 3000;
@@ -160,58 +162,12 @@ function startClaudeMock() {
   return new Promise((r) => srv.listen(MOCK_PORT, "127.0.0.1", () => r(srv)));
 }
 
-/* ══ Мок Stripe REST (PaymentIntent сразу succeeded — оплата «в Elements» вне стенда) ═ */
-const stripeState = { pis: new Map(), subs: new Map(), customers: [] };
+/* ══ Мок Stripe REST — общий модуль оснастки (8.2); PaymentIntent сразу succeeded
+   (оплата «в Elements» вне стенда — так работает dev-режим BillingPage) ═══ */
+const stripeMock = createStripeMock({ port: STRIPE_PORT, bearer: "sk_test_mock62", paymentIntentStatus: "succeeded" });
+const stripeState = stripeMock.state; // pis/subs/customers/requests — тот же объект, что читают проверки ниже
 const nowSec = () => Math.floor(Date.now() / 1000);
-function parseForm(body) {
-  const out = {};
-  for (const [k, v] of new URLSearchParams(body)) {
-    const path = k.replace(/\]/g, "").split("[");
-    let cur = out;
-    path.forEach((p, i) => { if (i === path.length - 1) cur[p] = v; else cur = cur[p] ??= {}; });
-  }
-  return out;
-}
-function startStripeMock() {
-  const srv = http.createServer((req, res) => {
-    let body = "";
-    req.on("data", (d) => (body += d));
-    req.on("end", () => {
-      const send = (code, obj) => { res.writeHead(code, { "content-type": "application/json" }); res.end(J(obj)); };
-      if (req.headers.authorization !== "Bearer sk_test_mock62") return send(401, { error: { message: "bad key" } });
-      const form = parseForm(body);
-      const u = req.url;
-      let m;
-      if (req.method === "POST" && u === "/v1/payment_intents") {
-        const id = `pi_${stripeState.pis.size + 1}`;
-        const pi = { id, object: "payment_intent", amount: Number(form.amount), currency: form.currency, status: "succeeded", client_secret: `${id}_secret`, metadata: form.metadata ?? {} };
-        stripeState.pis.set(id, pi); return send(200, pi);
-      }
-      if (req.method === "GET" && (m = u.match(/^\/v1\/payment_intents\/([^/?]+)/))) {
-        const pi = stripeState.pis.get(m[1]); return pi ? send(200, pi) : send(404, { error: { message: "No such payment_intent", code: "resource_missing" } });
-      }
-      if (req.method === "POST" && u === "/v1/customers") {
-        const c = { id: `cus_${stripeState.customers.length + 1}`, object: "customer", email: form.email, metadata: form.metadata ?? {} };
-        stripeState.customers.push(c); return send(200, c);
-      }
-      if (req.method === "POST" && u === "/v1/subscriptions") {
-        const id = `sub_${stripeState.subs.size + 1}`;
-        const s = { id, object: "subscription", customer: form.customer, status: "incomplete", current_period_start: nowSec(), current_period_end: nowSec() + 30 * 86400,
-          cancel_at_period_end: false, metadata: form.metadata ?? {}, items: form.items,
-          latest_invoice: { id: `in_${id}`, object: "invoice", subscription: id, payment_intent: { id: `pi_${id}`, object: "payment_intent", status: "requires_payment_method", client_secret: `pi_${id}_secret` } } };
-        stripeState.subs.set(id, s); return send(200, s);
-      }
-      if ((m = u.match(/^\/v1\/subscriptions\/([^/?]+)/))) {
-        const s = stripeState.subs.get(m[1]);
-        if (!s) return send(404, { error: { message: "No such subscription", code: "resource_missing" } });
-        if (req.method === "POST" && form.cancel_at_period_end !== undefined) s.cancel_at_period_end = form.cancel_at_period_end === "true";
-        return send(200, s);
-      }
-      send(404, { error: { message: `unknown ${u}` } });
-    });
-  });
-  return new Promise((r) => srv.listen(STRIPE_PORT, "127.0.0.1", () => r(srv)));
-}
+const startStripeMock = () => stripeMock.start();
 
 /* ══ Процессы ═════════════════════════════════════════════════════════ */
 let serverProc, viteProc, browser, claudeSrv, stripeSrv;
@@ -365,6 +321,9 @@ try {
     await page.goto(`${UI}/billing`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(T("billing-page"), { timeout: 20000 });
     await page.waitForFunction(() => { const el = document.querySelector('[data-testid="billing-api-key"]'); return el && !/Загрузка…/.test(el.innerText); }, { timeout: 20000 });
+    // 8.2: секция подписки грузится СВОИМ запросом (GET /billing/subscription) — ждать и её,
+    // иначе проверка sub-absent/sub-plan бежит наперегонки с «Загрузка…» (флак R8, пойман 2-м прогоном)
+    await page.waitForFunction(() => { const el = document.querySelector('[data-testid="billing-subscription"]'); return el && !/Загрузка…/.test(el.innerText); }, { timeout: 20000 });
   };
 
   await login(A);
@@ -593,7 +552,10 @@ try {
   await page.click(T("sub-choose"));
   await page.waitForSelector(T("sub-plan-starter"), { timeout: 15000 });
   const planRow = await rows(page, `${T("sub-plans")} table`);
-  ok(planRow.length === 1 && planRow[0][0] === "Starter" && /\$9\.00/.test(planRow[0][1]) && intOf(planRow[0][2]) === 3, "таблица тарифов: Starter $9.00 / 3 синтеза", J(planRow));
+  // 8.2: строка ищется по имени, а не «единственная»: на общей БД лежат планы других стендов
+  // (test-71 оставляет starter71 — у него подписка анонимизированного пользователя, FK)
+  const starterRow = planRow.find((r) => r[0] === "Starter");
+  ok(!!starterRow && /\$9\.00/.test(starterRow[1]) && intOf(starterRow[2]) === 3, "таблица тарифов: Starter $9.00 / 3 синтеза", J(planRow));
   await page.click(T("sub-plan-starter"));
   await page.waitForSelector(T("sub-status"), { timeout: 15000 });
   ok(/ожидает оплаты/i.test(await text(page, T("sub-status"))), "после «Оформить» — статус «ожидает оплаты» (incomplete)");

@@ -434,6 +434,18 @@ tests/test-81-requests2-10.mjs 107 ✓ ×3 против живого серве�
 пустой БД + браузер; check:integration += 2z/4aj/5z; PageStub.tsx, лежавший в
 HEAD вопреки 6.2/7.1, удалён); доки пропатчены scripts/patch-docs-conv81.py.
 Реестр долгов §12 пуст.
+Беседа 8.2 (локальный стенд биллинга без Stripe — оснастка) ЗАКРЫТА 2026-09-08:
+tools/stripe-mock.mjs (единый мок Stripe REST — модуль createStripeMock +
+процесс; вынесен из test-61, три копии 61/62/71 сведены в надмножество;
++ /v1/products и /v1/prices с lookup_key под 8.3; метка запуска в id),
+tools/stripe-emit.mjs (webhook-события invoice.paid / subscription.updated|
+deleted, подпись при непустом STRIPE_WEBHOOK_SECRET), tools/dev-billing.sh
+(мок → сервер :3000 → vite :5199, .env.local из .env.local.example, заслон
+sk_live_, --stop/--status, setsid-группы, seed:plans условно), 09 §9 «Стенд
+биллинга» (тесты 61/62/71 на общем моке — 109/101/105 ✓ ×2; tests/
+test-82-requests2-6.mjs 50 ✓ ×2 против настоящего стенда с браузером;
+check:integration += 4ak; продуктовый код не тронут); доки пропатчены
+scripts/patch-docs-conv82.py. Реестр долгов §12 пуст.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
@@ -4763,6 +4775,68 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
 - **8.3 (стенд)**: `tests/test-81-requests2-10.mjs` — образец стенда на
   отдельной пустой БД с drizzle-kit migrate (в дополнение к test-71 с
   моками); `tests/test-71-requests2-8.mjs` — моки Claude/Stripe.
+
+---
+
+### Беседа 8.2 — Локальный стенд биллинга без Stripe (оснастка) [ЗАКРЫТА 2026-09-08]
+
+> Запрос 1 целиком (tools/stripe-mock.mjs + tools/stripe-emit.mjs + перевод
+> test-61/62/71 на общий мок + .env.local.example + tools/dev-billing.sh +
+> 09 §9) + все тестовые запросы R2–R6 одним заходом: прогоны 61/62/71 на
+> общем моке (109 ✓ ×2 / 101 ✓ ×2 / 105 ✓) и tests/test-82-requests2-6.mjs
+> (50 ✓ ×2 за ~2,5 мин: стенд руками через puppeteer-core 23 + Chrome против
+> НАСТОЯЩЕГО dev-billing.sh, заслон, emit, teardown) + завершение: typecheck
+> (все конфиги) 0, audit ✓, check:integration OK (+ 4ak). Продуктовый код
+> (server/, client/) не менялся. Патчи к 9f15d6d выданы по ходу:
+> philosynth-conv82-request1.patch, philosynth-conv82-requests1-6.patch,
+> итоговый philosynth-conv82-full.patch.
+
+**Сделано:**
+
+- `tools/stripe-mock.mjs` — `createStripeMock({ port, bearer,
+  paymentIntentStatus, idTag, verbose })` → `{ state, start(), stop() }` и
+  CLI (`--port/--bearer/--pi-status/--id-tag/--verbose`, env
+  `STRIPE_MOCK_PORT/SECRET_KEY/PI_STATUS/ID_TAG`). Шесть маршрутов 6.1/7.1
+  дословно (`parseForm` `a[b][c]` тот же), `GET /__mock/health` без Bearer,
+  под 8.3 — `POST/GET /v1/products[/:id]`, `POST/GET /v1/prices[/:id]`,
+  `GET /v1/prices?lookup_keys[]=…&active&product` (обе записи списка),
+  `lookup_key` с отказом на дубликат и `transfer_lookup_key`.
+- `tools/stripe-emit.mjs` — `invoice.paid` (тело с `lines[0].period` — его
+  читает `invoicePeriod`), `customer.subscription.updated|deleted`,
+  `payment_intent.succeeded`; `--period-days/--status/--cancel-at-period-end/
+  --dry-run`; подпись HMAC как `signWebhookPayload` при непустом секрете.
+- test-61/62/71 — собственные копии мока удалены (−55/−53/−54 строк),
+  `stripeState = mock.state`; различия копий сведены («По факту» п.3).
+- `.env.local.example` + `tools/dev-billing.sh` (`start/--stop/--status/
+  --verbose`; created/skip/fail; `.env.local` из образца; заслон `sk_live_`
+  до любого действия; сервер строго :3000, vite :5199; демоны `setsid`
+  собственными группами, гашение группой, чужие процессы на портах
+  называются, не убиваются; `seed:plans` только если есть в package.json;
+  напоминание `seed:admin`); `.dev-billing/` в `.gitignore`.
+- `docs/09-lessons.md` §9 «Стенд биллинга» (п.1–9); 05 += `tools/`,
+  `.env.local.example`; 03 §2.10 уточнение; 07 «По факту 8.2»; всё —
+  `scripts/patch-docs-conv82.py` (идемпотентен).
+- `server/integration-check.mts` — секция 4ak (единственность мока,
+  импорты тестов, маршруты 8.3, метка id, подпись emit ≡ stripe-client,
+  заслон/порт/обёртки dev-billing, пустой publishable key в образце).
+
+**Найдено по ходу (детали — «По факту 8.2» в 07 и 09 §9 п.6–9):** счётчики
+мока против UNIQUE `users.stripe_customer_id`; связь тестов 61/62/71 через
+общую БД (`starter71`, t62-пользователь); флак R8 test-62; PG гибнет
+посреди длинного хода.
+
+**Для следующих бесед:**
+- **8.3 (тарифы)**: `tools/stripe-mock.mjs` (маршруты products/prices уже
+  есть — `createProduct/createPrice/listPrices` в stripe-client пишутся под
+  них; своей копии не заводить), `tools/dev-billing.sh` (зовёт `npm run
+  seed:plans`, как только тот появится), `.env.local.example`
+  (`STRIPE_PRICE_*` — сюда), `tests/test-82-requests2-6.mjs` (образец
+  харнесса против стенда; R5 показывает полный цикл подписки через
+  `stripe-emit` на плане, заведённом руками — 8.3 заменяет ручной insert
+  посевом).
+- **Все стендовые беседы**: перед прогоном — `pg_ctlcluster 16 main start`
+  + `redis-server --daemonize yes --save ''`; тесты на общей БД не должны
+  считать строки таблиц «ровно N» и завязываться на точные id мока.
 
 ---
 
