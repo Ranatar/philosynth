@@ -34,6 +34,8 @@ export type ApiErrorCode =
   | "STRIPE_UNAVAILABLE" // 6.1: Stripe не настроен (503)
   | "STRIPE_ERROR" // 6.1: ошибка Stripe (502)
   | "WEBHOOK_SIGNATURE_INVALID" // 6.1
+  | "LAST_ADMIN" // 8.1: понижение/уход последнего администратора (409)
+  | "SELF_ROLE_CHANGE" // 8.1: своя роль через POST /auth/users/:id/role (409)
   | "GENERATION_PAUSED"
   | "RESUME_INVALID"
   | "NO_PARTICIPANTS_SEED_REQUIRED"

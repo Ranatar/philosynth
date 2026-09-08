@@ -71,6 +71,8 @@ const PAIRS: Pair[] = [
   { table: "representationTransforms", file: "elements.ts", iface: "RepresentationTransform" },
   { table: "promptTemplates", file: "prompts.ts", iface: "PromptTemplate" },
   { table: "synthesisConfigs", file: "prompts.ts", iface: "SynthesisConfig" },
+  // 8.1: журнал администратора (02 §2.29)
+  { table: "adminAudit", file: "admin.ts", iface: "AdminAuditEntry", typeOnly: ["actorEmail"] },
 ];
 
 let problems = 0;

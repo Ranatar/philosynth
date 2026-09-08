@@ -24,6 +24,7 @@
     "seed:prompts": "tsx scripts/seed-prompts.ts",
     "seed:configs": "tsx scripts/seed-configs.ts",
     "seed:taxonomy": "tsx scripts/seed-taxonomy.ts",
+    "seed:admin": "tsx scripts/bootstrap-admin.ts",
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json"
   },
   "devDependencies": {

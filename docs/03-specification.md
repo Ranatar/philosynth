@@ -28,6 +28,7 @@
 | A4 | Привязка Anthropic API-ключа (BYO-Key) | MVP |
 | A5 | Баланс сервиса: пополнение через Stripe | Фаза 2 |
 | A6 | OAuth (Google, GitHub) | Фаза 3 |
+| A7 | Роли: первый администратор скриптом, назначение/снятие роли администратором, журнал действий | Фаза 8 — СДЕЛАНО 8.1 (`seed:admin`, `POST /auth/users/:id/role`, `admin_audit`, вкладка «Доступ») |
 
 ### 1.2. Каталог концепций
 
@@ -206,7 +207,13 @@ DELETE /auth/me                { password } → { ok: true, deletedSyntheses,
                                                 subscriptionCanceled }
                                 // Беседа 7.1. Подтверждение паролем: неверный →
                                 // 401 AUTH_REQUIRED (единый ответ). Активная
-                                // генерация → 409 GENERATION_IN_PROGRESS. Строка
+                                // генерация → 409 GENERATION_IN_PROGRESS.
+                                // 8.1: единственный администратор → 409
+                                // LAST_ADMIN («сначала назначьте второго»);
+                                // проверка ДО отмены подписки и повторно в
+                                // транзакции удаления; пишется admin_audit
+                                // account.deleted, затем actor_id всех строк
+                                // пользователя → NULL (02 §2.1/§2.29). Строка
                                 // users АНОНИМИЗИРУЕТСЯ (email deleted-<id>@
                                 // deleted.invalid, случайный хэш, display_name/
                                 // stripe_customer_id → null, role → user) —
@@ -225,6 +232,45 @@ POST   /auth/password-reset/request  { email }              // A2a, Фаза 3
 POST   /auth/password-reset/confirm  { token, newPassword } // A2a, Фаза 3
                                 → { ok: true }
 ```
+
+// ── Управление доступом (беседа 8.1; requireAuth + requireAdmin) ─────────
+// Роли — две ('user' | 'admin'); третья не заводится (07 §8, врезка Фазы 8).
+// Первый администратор — ТОЛЬКО скриптом scripts/bootstrap-admin.ts
+// (npm run seed:admin; пароль из BOOTSTRAP_ADMIN_PASSWORD, не доводом;
+// заслон: другой администратор уже есть → отказ).
+
+GET    /auth/users             ?query=&limit=20&offset=0
+                                → { users: AdminUserRow[], total }
+                                // AdminUserRow = { id, email, displayName, role,
+                                // createdAt } — минимум для назначения роли.
+                                // query — подстрока email/displayName (ILIKE);
+                                // limit 1..100; анонимизированные строки
+                                // deleted-*@deleted.invalid (7.1) не отдаются.
+
+POST   /auth/users/:id/role    { role: 'user' | 'admin' }
+                                → { user: { id, email, displayName, role,
+                                            balanceUsd, createdAt }, changed }
+                                // роль вне двух значений → 400 VALIDATION_ERROR
+                                //   (details.role); :id не UUID / не найден →
+                                //   404 NOT_FOUND; своя роль → 409
+                                //   SELF_ROLE_CHANGE (иначе единственный
+                                //   администратор понижает сам себя);
+                                //   понижение последнего администратора → 409
+                                //   LAST_ADMIN (при requireAdmin +
+                                //   SELF_ROLE_CHANGE ветка защитная: актор —
+                                //   другой админ); та же роль → 200,
+                                //   changed:false, строки журнала нет.
+                                // Успех: UPDATE + строка admin_audit
+                                //   user.role.changed { from, to, email } одной
+                                //   транзакцией под pg_advisory_xact_lock
+                                //   (сериализация операций над множеством
+                                //   администраторов — общая с DELETE /auth/me
+                                //   и bootstrap-admin).
+
+GET    /auth/audit             ?limit=50 → { entries: AdminAuditEntry[] }
+                                // Последние строки admin_audit (02 §2.29),
+                                // новые первыми; limit 1..500. Потребитель —
+                                // вкладка «Доступ» AdminPromptsPage.
 
 Формы ошибок auth (зафиксированы в 0.2, вне §4.3): неверные креды login →
 401 AUTH_REQUIRED единым ответом (анти-enumeration); занятый email register →
@@ -1388,6 +1434,9 @@ WEBHOOK_SIGNATURE_INVALID — подпись Stripe webhook не сходитс�
 GENERATION_PAUSED   — генерация в pausedState; действия — через resume_generation (v11)
 RESUME_INVALID      — resume_generation/resume_plan без pausedState или с чужим mode (v11)
 NO_PARTICIPANTS_SEED_REQUIRED — свободный синтез без seed (v11)
+LAST_ADMIN          — понижение или удаление аккаунта последнего администратора —
+                      409 (8.1; подсказка «сначала назначьте второго»)
+SELF_ROLE_CHANGE    — POST /auth/users/:id/role на самого себя — 409 (8.1)
 ```
 
 > Примечание (беседа 1.4b): отдельного кода «операция ещё не

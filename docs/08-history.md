@@ -423,6 +423,17 @@ ProfilePage; typecheck:scripts в корневом typecheck (смоук 68 ✓,
 tests/test-71-requests2-8.mjs 105 ✓ ×2 против живого сервера с моками и
 браузером; check:integration += 2y/4ai/5y); доки пропатчены
 scripts/patch-docs-conv71.py. Реестр долгов §12 пуст.
+Беседа 8.1 (администратор — заведение, передача, след) ЗАКРЫТА 2026-09-08:
+shared/constants/auth (единый свод правил аккаунта), миграция 0004
+admin_audit + services/admin-audit (writeAudit транзакцией вызывающего,
+ADMIN_ACTIONS ×9, advisory-lock), журнал в prompt-registry/element-taxonomy/
+смене роли/account-deletion, GET /auth/users + POST /auth/users/:id/role +
+GET /auth/audit, LAST_ADMIN у DELETE /auth/me, scripts/bootstrap-admin
+(seed:admin), client/api/admin + вкладка «Доступ» (смоук 87 ✓,
+tests/test-81-requests2-10.mjs 107 ✓ ×3 против живого сервера на отдельной
+пустой БД + браузер; check:integration += 2z/4aj/5z; PageStub.tsx, лежавший в
+HEAD вопреки 6.2/7.1, удалён); доки пропатчены scripts/patch-docs-conv81.py.
+Реестр долгов §12 пуст.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
@@ -4674,6 +4685,84 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
   начинать с `docs/07` §12 (пуст), `NEXT-CONTEXT` главы 7.1 и
   `tests/test-71-requests2-8.mjs` (харнесс: живой сервер + оба мока +
   браузер + отдельная БД для миграций — переиспользовать).
+
+---
+
+### Беседа 8.1 — Администратор: заведение, передача, след (бэкенд + клиент) [ЗАКРЫТА 2026-09-08]
+
+> Запрос 1 целиком + смоук tests/smoke-81-request1.mjs (87 ✓, без сервера/
+> БД/браузера: единый свод правил, миграция 0004 и журнал, ADMIN_ACTIONS ≡
+> union, точки записи внутри транзакций, роуты доступа, клиент, bootstrap,
+> доки) + все тестовые запросы R2–R10 одним заходом
+> tests/test-81-requests2-10.mjs (107 ✓ ×3 за ~20 с: живой сервер :3000 на
+> ОТДЕЛЬНОЙ пустой БД philosynth_t81 (пересоздаётся, миграции drizzle-kit),
+> PG16/Redis, vite :5199, puppeteer-core 23 + Chrome; моки Claude/Stripe не
+> нужны) + завершение: typecheck (все конфиги) 0, audit ✓ (+ пара adminAudit
+> с typeOnly actorEmail), check:integration += 2z/4aj/5z → INTEGRATION OK,
+> check-map-04 0 расхождений, css-parity 0/586, vite build чисто; доки —
+> scripts/patch-docs-conv81.py (запрос 1 — 17 правок, закрытие — ещё 12;
+> повтор skip). Исходник не нужен: всё — новый код. Полный текст решений —
+> «По факту 8.1» в 07.
+
+#### Что создано / изменено
+
+- `packages/shared/constants/auth.ts` — `PASSWORD_MIN_LENGTH`, `EMAIL_RE`,
+  `DISPLAY_NAME_MAX_LENGTH`, `PASSWORD_TOO_SHORT_MESSAGE`; `routes/auth.ts`
+  и `RegisterPage.tsx` переведены на них.
+- `server/db/migrations/0004_admin_audit.sql` (+ снапшот, журнал; тег
+  переименован из генерата) и `schema.adminAudit` (actor_id SET NULL,
+  индексы actor_id/created_at); `packages/shared/types/admin.ts`
+  (`AdminAction`, `AdminAuditEntry` += `actorEmail`, `AdminUserRow`,
+  `UserRole`).
+- `server/services/admin-audit.ts` — `writeAudit(exec, …)` (db или tx
+  вызывающего), `ADMIN_ACTIONS` (frozen, 9), `listAudit` (LEFT JOIN users),
+  `clientIpOf`, `ADMIN_SET_LOCK_KEY`.
+- Точки записи: `prompt-registry` (createVersion/activateVersion/
+  createConfigVersion/activateConfigVersion — `actorId`, журнал внутри tx,
+  `previousVersion` у активаций; роуты передают `user.id`);
+  `element-taxonomy` (`updateCustomType`/`deleteCustomType` — транзакции,
+  `changed {from,to}` / `unlinked`); смена роли; `account-deletion`.
+- `routes/auth.ts` += `GET /users` (ILIKE email/displayName, limit/offset,
+  total, без анонимизированных), `POST /users/:id/role` (400/404/409
+  SELF_ROLE_CHANGE/409 LAST_ADMIN, advisory-lock + FOR UPDATE, `changed`),
+  `GET /audit`; `DELETE /me` маппит LAST_ADMIN → 409 и передаёт ip.
+- `services/account-deletion.ts` — заслон LAST_ADMIN дважды (до Stripe и
+  в tx под lock), строка `account.deleted`, `actor_id → NULL` у строк
+  пользователя.
+- `scripts/bootstrap-admin.ts` + `seed:admin` — пароль из env,
+  created/updated/skip/fail, заслон «другой админ уже есть», журнал
+  `user.bootstrapped`; `readBootstrapEnv`/`bootstrapAdmin` экспортированы.
+- Клиент: `api/client.ts` += коды, `api/admin.ts` (3), вкладка «Доступ» в
+  `AdminPromptsPage` (поиск с дебаунсом, роль с confirm, своя строка без
+  кнопки, журнал 50 строк, статус после списка И журнала).
+- `server/audit.mts` += пара adminAudit; `integration-check.mts` +=
+  2z/4aj/5z, 4ai под новый вызов deleteAccount; `client/src/pages/PageStub.tsx`
+  удалён фактически.
+
+#### Решения/адаптации (все — в шапках модулей и «По факту 8.1» в 07)
+
+1. actor_id обнуляется руками при анонимизации (эффект SET NULL).
+2. LAST_ADMIN у смены роли — защитная ветка; достижим у DELETE /auth/me.
+3. Advisory-lock на операциях над множеством администраторов.
+4. actorEmail в DTO журнала; GET /auth/audit доопределён.
+5. Та же роль → changed:false без строки; пустой PATCH типа без строки.
+6. Стенд на отдельной пустой БД.
+
+#### Открытые TODO после 8.1
+
+- Реестр §12 пуст. Ограничения без адресата — в §12 (запись 8.1).
+
+#### Помодульно: что прикладывать в следующие беседы
+
+- **8.2 (тарифы)**: `server/services/subscription-service.ts`,
+  `stripe-client.ts`, `scripts/seed-taxonomy.ts` и `scripts/bootstrap-admin.ts`
+  (образцы идемпотентных скриптов с created/updated/skip/fail и заслоном),
+  `services/admin-audit.ts` (если посев тарифов админом — писать журнал той же
+  транзакцией; ADMIN_ACTIONS расширяется без миграции), `client/pages/
+  BillingPage.tsx` + `api/subscription.ts`.
+- **8.3 (стенд)**: `tests/test-81-requests2-10.mjs` — образец стенда на
+  отдельной пустой БД с drizzle-kit migrate (в дополнение к test-71 с
+  моками); `tests/test-71-requests2-8.mjs` — моки Claude/Stripe.
 
 ---
 

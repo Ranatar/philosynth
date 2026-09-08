@@ -19,16 +19,44 @@
  *     подписка отменяется — см. services/account-deletion.ts; cookie сессии
  *     очищается.
  *
+ *   Управление доступом (беседа 8.1; requireAuth + requireAdmin):
+ *   GET  /auth/users ?query=&limit=&offset= → { users: AdminUserRow[], total }
+ *     минимальный список для назначения роли (id, email, displayName,
+ *     role, createdAt); query — подстрока email/displayName (ILIKE);
+ *     анонимизированные deleted-*@deleted.invalid (7.1) не показываются.
+ *   POST /auth/users/:id/role { role: 'user' | 'admin' } → { user }
+ *     роль вне двух значений → 400 VALIDATION_ERROR (details.role);
+ *     :id не UUID / не найден → 404 NOT_FOUND; своя роль → 409
+ *     SELF_ROLE_CHANGE; понижение последнего администратора → 409
+ *     LAST_ADMIN; та же роль → 200 без изменений и без строки журнала;
+ *     успех → полный user + строка admin_audit user.role.changed
+ *     { from, to } — той же транзакцией (services/admin-audit.ts);
+ *     транзакция держит pg_advisory_xact_lock(ADMIN_SET_LOCK_KEY), чтобы
+ *     две параллельные смены не насчитали лишнего администратора.
+ *   GET  /auth/audit ?limit=50 → { entries: AdminAuditEntry[] } — последние
+ *     строки журнала, новые первыми (limit 1..500).
+ *
+ * Правила пароля/email/имени — @philosynth/shared/constants/auth (8.1 п.1:
+ * второго свода правил быть не должно — bootstrap-admin проверяет то же).
+ *
  * Формат ошибок: { error, code, details? }; коды — §4.3.
  * Примечания к кодам (в §4.3 нет отдельных кодов для конфликтов/кредов):
  *   - занятый email → 409 VALIDATION_ERROR (details.email);
  *   - неверные креды → 401 AUTH_REQUIRED (сессия не выдана), текст ошибки
  *     не раскрывает, существует ли email.
  */
-import { and, eq, ne } from "drizzle-orm";
+import {
+  DISPLAY_NAME_MAX_LENGTH,
+  EMAIL_RE,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_TOO_SHORT_MESSAGE,
+} from "@philosynth/shared/constants/auth";
+import type { AdminUserRow, UserRole } from "@philosynth/shared/types/admin";
+import { and, count, desc, eq, ilike, ne, notLike, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { db, schema } from "../db/index.js";
+import { requireAdmin } from "../middleware/admin-only.js";
 import {
   clearSessionCookie,
   createSession,
@@ -43,12 +71,17 @@ import {
   type AuthEnv,
 } from "../middleware/auth.js";
 import { AccountDeletionError, deleteAccount } from "../services/account-deletion.js"; // 7.1
+import {
+  ADMIN_ACTIONS,
+  ADMIN_SET_LOCK_KEY,
+  clientIpOf,
+  listAudit,
+  writeAudit,
+} from "../services/admin-audit.js"; // 8.1
 
 /* ── Валидация тела запроса ──────────────────────────────────────────── */
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN_LENGTH = 8;
-const DISPLAY_NAME_MAX_LENGTH = 100;
+// EMAIL_RE / PASSWORD_MIN_LENGTH / DISPLAY_NAME_MAX_LENGTH — из shared (8.1)
 
 interface CredentialsBody {
   email: string;
@@ -86,7 +119,7 @@ function parseCredentials(
 
   if (!password) details.password = "Обязательное поле";
   else if (opts.validateStrength && password.length < PASSWORD_MIN_LENGTH) {
-    details.password = `Минимальная длина пароля — ${PASSWORD_MIN_LENGTH} символов`;
+    details.password = PASSWORD_TOO_SHORT_MESSAGE;
   }
 
   let displayName: string | undefined;
@@ -211,7 +244,7 @@ authRoutes.post("/password-change", requireAuth, async (c) => {
   if (!currentPassword) details.currentPassword = "Обязательное поле";
   if (!newPassword) details.newPassword = "Обязательное поле";
   else if (newPassword.length < PASSWORD_MIN_LENGTH) {
-    details.newPassword = `Минимальная длина пароля — ${PASSWORD_MIN_LENGTH} символов`;
+    details.newPassword = PASSWORD_TOO_SHORT_MESSAGE;
   }
   if (Object.keys(details).length > 0) {
     return c.json(
@@ -283,7 +316,7 @@ authRoutes.delete("/me", requireAuth, async (c) => {
     return c.json({ error: "Неверный пароль", code: "AUTH_REQUIRED" }, 401);
   }
   try {
-    const result = await deleteAccount(user.id);
+    const result = await deleteAccount(user.id, { ip: clientIpOf(c) });
     clearSessionCookie(c);
     return c.json({
       ok: true,
@@ -292,9 +325,10 @@ authRoutes.delete("/me", requireAuth, async (c) => {
     });
   } catch (err) {
     if (err instanceof AccountDeletionError) {
+      // 8.1: LAST_ADMIN — единственный администратор не может уйти
       return c.json(
         { error: err.message, code: err.code },
-        err.code === "GENERATION_IN_PROGRESS" ? 409 : 404,
+        err.code === "GENERATION_IN_PROGRESS" || err.code === "LAST_ADMIN" ? 409 : 404,
       );
     }
     throw err;
@@ -369,4 +403,168 @@ authRoutes.patch("/me", requireAuth, async (c) => {
       balanceUsd: Number(updated.balanceUsd),
     },
   });
+});
+
+/* ── Управление доступом (беседа 8.1) ────────────────────────────────── */
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const USER_ROLES: readonly UserRole[] = ["user", "admin"];
+/** Анонимизированные 7.1 строки — назначать им нечего, из списка убраны */
+const DELETED_EMAIL_PATTERN = "deleted-%@deleted.invalid";
+
+function toAdminUserRow(u: {
+  id: string;
+  email: string;
+  displayName: string | null;
+  role: UserRole;
+  createdAt: Date;
+}): AdminUserRow {
+  return {
+    id: u.id,
+    email: u.email,
+    displayName: u.displayName,
+    role: u.role,
+    createdAt: u.createdAt.toISOString(),
+  };
+}
+
+function parseIntParam(raw: string | undefined, fallback: number, min: number, max: number): number {
+  if (raw === undefined || raw === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+authRoutes.get("/users", requireAuth, requireAdmin, async (c) => {
+  const query = (c.req.query("query") ?? "").trim();
+  const limit = parseIntParam(c.req.query("limit"), 20, 1, 100);
+  const offset = parseIntParam(c.req.query("offset"), 0, 0, 1_000_000);
+
+  const notDeleted = notLike(schema.users.email, DELETED_EMAIL_PATTERN);
+  const where = query
+    ? and(
+        notDeleted,
+        or(
+          ilike(schema.users.email, `%${query}%`),
+          ilike(schema.users.displayName, `%${query}%`),
+        ),
+      )
+    : notDeleted;
+
+  const [rows, [totalRow]] = await Promise.all([
+    db
+      .select({
+        id: schema.users.id,
+        email: schema.users.email,
+        displayName: schema.users.displayName,
+        role: schema.users.role,
+        createdAt: schema.users.createdAt,
+      })
+      .from(schema.users)
+      .where(where)
+      .orderBy(desc(schema.users.createdAt), desc(schema.users.id))
+      .limit(limit)
+      .offset(offset),
+    db.select({ n: count() }).from(schema.users).where(where),
+  ]);
+  return c.json({ users: rows.map(toAdminUserRow), total: Number(totalRow?.n ?? 0) });
+});
+
+authRoutes.post("/users/:id/role", requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  if (!UUID_RE.test(id)) {
+    return c.json({ error: "Пользователь не найден", code: "NOT_FOUND" }, 404);
+  }
+  const body = await readJson(c);
+  const role = body?.role;
+  if (typeof role !== "string" || !(USER_ROLES as readonly string[]).includes(role)) {
+    return c.json(
+      {
+        error: "Невалидные данные",
+        code: "VALIDATION_ERROR",
+        details: { role: "Ожидается 'user' или 'admin'" },
+      },
+      400,
+    );
+  }
+  const actor = c.get("user");
+  if (id === actor.id) {
+    // Иначе единственный администратор понижает сам себя
+    return c.json(
+      {
+        error: "Свою роль изменить нельзя — попросите другого администратора",
+        code: "SELF_ROLE_CHANGE",
+      },
+      409,
+    );
+  }
+
+  type Outcome =
+    | { kind: "not_found" }
+    | { kind: "last_admin" }
+    | { kind: "ok"; changed: boolean; user: typeof schema.users.$inferSelect };
+
+  const outcome = await db.transaction(async (tx): Promise<Outcome> => {
+    // Сериализация операций над множеством администраторов (см. admin-audit.ts)
+    await tx.execute(sql`select pg_advisory_xact_lock(${ADMIN_SET_LOCK_KEY})`);
+    const [target] = await tx
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, id))
+      .for("update")
+      .limit(1);
+    if (!target) return { kind: "not_found" };
+    if (target.role === role) return { kind: "ok", changed: false, user: target };
+    if (target.role === "admin" && role === "user") {
+      const [adm] = await tx
+        .select({ n: count() })
+        .from(schema.users)
+        .where(eq(schema.users.role, "admin"));
+      if (Number(adm?.n ?? 0) <= 1) return { kind: "last_admin" };
+    }
+    const [updated] = await tx
+      .update(schema.users)
+      .set({ role: role as UserRole, updatedAt: new Date() })
+      .where(eq(schema.users.id, id))
+      .returning();
+    await writeAudit(tx, {
+      actorId: actor.id,
+      action: ADMIN_ACTIONS.USER_ROLE_CHANGED,
+      targetType: "user",
+      targetId: id,
+      details: { from: target.role, to: role, email: target.email },
+      ip: clientIpOf(c),
+    });
+    return { kind: "ok", changed: true, user: updated! };
+  });
+
+  if (outcome.kind === "not_found") {
+    return c.json({ error: "Пользователь не найден", code: "NOT_FOUND" }, 404);
+  }
+  if (outcome.kind === "last_admin") {
+    return c.json(
+      {
+        error: "Нельзя понизить последнего администратора — сначала назначьте второго",
+        code: "LAST_ADMIN",
+      },
+      409,
+    );
+  }
+  const u = outcome.user;
+  return c.json({
+    user: {
+      id: u.id,
+      email: u.email,
+      displayName: u.displayName,
+      role: u.role,
+      balanceUsd: Number(u.balanceUsd),
+      createdAt: u.createdAt.toISOString(),
+    },
+    changed: outcome.changed,
+  });
+});
+
+authRoutes.get("/audit", requireAuth, requireAdmin, async (c) => {
+  const limit = parseIntParam(c.req.query("limit"), 50, 1, 500);
+  return c.json({ entries: await listAudit(limit) });
 });

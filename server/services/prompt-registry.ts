@@ -16,6 +16,11 @@
  *
  * Версионирование: каждая правка — новая строка (key, version),
  * is_active — только у одной версии ключа.
+ *
+ * След (беседа 8.1): createVersion/activateVersion/createConfigVersion/
+ * activateConfigVersion пишут строку admin_audit ТОЙ ЖЕ транзакцией
+ * (services/admin-audit.ts); актор пробрасывается из роутов —
+ * у активации это активировавший, а не автор версии.
  */
 import { and, asc, desc, eq, like } from "drizzle-orm";
 import type {
@@ -27,6 +32,7 @@ import type {
 
 import { db, schema } from "../db/index.js";
 import { redis } from "../redis.js";
+import { ADMIN_ACTIONS, writeAudit } from "./admin-audit.js"; // 8.1: след админ-действий
 
 const { promptTemplates, synthesisConfigs } = schema;
 
@@ -176,6 +182,8 @@ export async function listVersions(key: string): Promise<PromptVersion[]> {
 export async function activateVersion(
   key: string,
   version: number,
+  /** 8.1: актор — активировавший, не автор версии; null — вызов вне роутов */
+  actorId: string | null = null,
 ): Promise<PromptTemplate> {
   const activated = await db.transaction(async (tx) => {
     const target = await tx.query.promptTemplates.findFirst({
@@ -187,6 +195,13 @@ export async function activateVersion(
     if (!target)
       throw new RegistryNotFoundError("template", key, `версии ${version} нет`);
 
+    const [prev] = await tx
+      .select({ version: promptTemplates.version })
+      .from(promptTemplates)
+      .where(
+        and(eq(promptTemplates.key, key), eq(promptTemplates.isActive, true)),
+      )
+      .limit(1);
     await tx
       .update(promptTemplates)
       .set({ isActive: false })
@@ -197,6 +212,14 @@ export async function activateVersion(
       .update(promptTemplates)
       .set({ isActive: true })
       .where(eq(promptTemplates.id, target.id));
+    // 8.1: журнал — в той же транзакции, что и активация
+    await writeAudit(tx, {
+      actorId,
+      action: ADMIN_ACTIONS.PROMPT_VERSION_ACTIVATED,
+      targetType: "prompt_template",
+      targetId: key,
+      details: { version, previousVersion: prev?.version ?? null },
+    });
     return target;
   });
 
@@ -238,6 +261,14 @@ export async function createVersion(
       .insert(promptTemplates)
       .values({ key, version, body, description, isActive: false, createdBy })
       .returning();
+    // 8.1: актор = автор черновика (createdBy), той же транзакцией
+    await writeAudit(tx, {
+      actorId: createdBy,
+      action: ADMIN_ACTIONS.PROMPT_VERSION_CREATED,
+      targetType: "prompt_template",
+      targetId: key,
+      details: { version, bodyChars: body.length },
+    });
     return inserted as typeof promptTemplates.$inferSelect;
   });
   return toTemplateDto(row);
@@ -344,6 +375,8 @@ export async function createConfigVersion(
   key: string,
   value: unknown,
   description = "",
+  /** 8.1: актор из роута (у synthesis_configs колонки created_by НЕТ — 7.1) */
+  actorId: string | null = null,
 ): Promise<SynthesisConfig> {
   const row = await db.transaction(async (tx) => {
     const [last] = await tx
@@ -357,6 +390,13 @@ export async function createConfigVersion(
       .insert(synthesisConfigs)
       .values({ key, version, value, description, isActive: false })
       .returning();
+    await writeAudit(tx, {
+      actorId,
+      action: ADMIN_ACTIONS.CONFIG_VERSION_CREATED,
+      targetType: "synthesis_config",
+      targetId: key,
+      details: { version },
+    });
     return inserted as typeof synthesisConfigs.$inferSelect;
   });
   return toConfigDto(row);
@@ -367,6 +407,8 @@ export async function createConfigVersion(
 export async function activateConfigVersion(
   key: string,
   version: number,
+  /** 8.1: актор — активировавший */
+  actorId: string | null = null,
 ): Promise<SynthesisConfig> {
   const activated = await db.transaction(async (tx) => {
     const target = await tx.query.synthesisConfigs.findFirst({
@@ -374,6 +416,11 @@ export async function activateConfigVersion(
     });
     if (!target)
       throw new RegistryNotFoundError("config", key, `версии ${version} нет`);
+    const [prev] = await tx
+      .select({ version: synthesisConfigs.version })
+      .from(synthesisConfigs)
+      .where(and(eq(synthesisConfigs.key, key), eq(synthesisConfigs.isActive, true)))
+      .limit(1);
     await tx
       .update(synthesisConfigs)
       .set({ isActive: false })
@@ -382,6 +429,13 @@ export async function activateConfigVersion(
       .update(synthesisConfigs)
       .set({ isActive: true })
       .where(eq(synthesisConfigs.id, target.id));
+    await writeAudit(tx, {
+      actorId,
+      action: ADMIN_ACTIONS.CONFIG_VERSION_ACTIVATED,
+      targetType: "synthesis_config",
+      targetId: key,
+      details: { version, previousVersion: prev?.version ?? null },
+    });
     return target;
   });
   await invalidateCache(key);

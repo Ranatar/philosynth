@@ -139,7 +139,7 @@ taxonomyRoutes.patch("/category-types/:id", requireAuth, requireAdmin, async (c)
   const parsed = readPatchBody(await readJson(c));
   if (!parsed.ok) return validationJson(c, parsed.details);
   try {
-    return c.json({ type: await updateCustomType("category", id, parsed) });
+    return c.json({ type: await updateCustomType("category", id, parsed, c.get("user").id) });
   } catch (err) {
     return serviceError(c, err);
   }
@@ -149,7 +149,7 @@ taxonomyRoutes.delete("/category-types/:id", requireAuth, requireAdmin, async (c
   const id = c.req.param("id");
   if (!UUID_RE.test(id)) return c.json({ error: "Тип категории не найден", code: "NOT_FOUND" }, 404);
   try {
-    return c.json(await deleteCustomType("category", id));
+    return c.json(await deleteCustomType("category", id, c.get("user").id));
   } catch (err) {
     return serviceError(c, err);
   }
@@ -208,7 +208,12 @@ taxonomyRoutes.patch("/relationship-types/:id", requireAuth, requireAdmin, async
   }
   try {
     return c.json({
-      type: await updateCustomType("relationship", id, { ...parsed, defaultDirection }),
+      type: await updateCustomType(
+        "relationship",
+        id,
+        { ...parsed, defaultDirection },
+        c.get("user").id,
+      ),
     });
   } catch (err) {
     return serviceError(c, err);
@@ -219,7 +224,7 @@ taxonomyRoutes.delete("/relationship-types/:id", requireAuth, requireAdmin, asyn
   const id = c.req.param("id");
   if (!UUID_RE.test(id)) return c.json({ error: "Тип связи не найден", code: "NOT_FOUND" }, 404);
   try {
-    return c.json(await deleteCustomType("relationship", id));
+    return c.json(await deleteCustomType("relationship", id, c.get("user").id));
   } catch (err) {
     return serviceError(c, err);
   }

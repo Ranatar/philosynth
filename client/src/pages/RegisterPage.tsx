@@ -3,6 +3,7 @@
  * Валидация полей — серверная (routes/auth.ts: email-формат,
  * пароль ≥ 8 символов); клиент показывает error + details.
  */
+import { PASSWORD_MIN_LENGTH } from "@philosynth/shared/constants/auth";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -53,7 +54,7 @@ export function RegisterPage() {
           </label>
 
           <label className="form-group">
-            <span className="form-label">Пароль (не короче 8 символов)</span>
+            <span className="form-label">Пароль (не короче {PASSWORD_MIN_LENGTH} символов)</span>
             <input
               type="password"
               required

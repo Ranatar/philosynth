@@ -27,6 +27,7 @@ import type {
 
 import { db, schema } from "../db/index.js";
 import { redis } from "../redis.js";
+import { ADMIN_ACTIONS, writeAudit, type DbExecutor } from "./admin-audit.js"; // 8.1
 
 const { categoryTypeCatalog, relationshipTypeCatalog, categories, categoryEdges } =
   schema;
@@ -434,11 +435,12 @@ export interface CustomTypePatch {
 async function loadTypeRow(
   kind: TaxonomyKind,
   id: string,
+  exec: DbExecutor = db,
 ): Promise<CategoryTypeRow | RelationshipTypeRow> {
   const row =
     kind === "category"
-      ? await db.query.categoryTypeCatalog.findFirst({ where: eq(categoryTypeCatalog.id, id) })
-      : await db.query.relationshipTypeCatalog.findFirst({
+      ? await exec.query.categoryTypeCatalog.findFirst({ where: eq(categoryTypeCatalog.id, id) })
+      : await exec.query.relationshipTypeCatalog.findFirst({
           where: eq(relationshipTypeCatalog.id, id),
         });
   if (!row)
@@ -457,7 +459,11 @@ async function loadTypeRow(
 /**
  * Правка пользовательского типа (admin). Ключ (key) неизменяем — на него
  * завязаны алиасы нормализации и посев; меняются nameRu/description и,
- * для связей, defaultDirection. Пустой patch → возвращает тип как есть.
+ * для связей, defaultDirection. Пустой patch → возвращает тип как есть
+ * (строки журнала при этом нет — действия не было).
+ * 8.1: UPDATE и строка admin_audit (taxonomy.type.updated, details
+ * { kind, key, changed: { поле: { from, to } } }) — одной транзакцией;
+ * actorId — из роута (requireAdmin).
  * @throws TaxonomyAccessError NOT_FOUND | FORBIDDEN (is_system)
  * @throws TaxonomyValidationError пустое nameRu
  */
@@ -465,6 +471,7 @@ export async function updateCustomType(
   kind: TaxonomyKind,
   id: string,
   patch: CustomTypePatch,
+  actorId: string | null = null,
 ): Promise<CategoryType | RelationshipType> {
   const row = await loadTypeRow(kind, id);
   const set: Record<string, string> = {};
@@ -485,22 +492,42 @@ export async function updateCustomType(
       ? mapCategoryType(row)
       : mapRelationshipType(row as RelationshipTypeRow);
 
+  const before = row as unknown as Record<string, unknown>;
+  const changed: Record<string, { from: unknown; to: unknown }> = {};
+  for (const [k, v] of Object.entries(set)) changed[k] = { from: before[k] ?? null, to: v };
+  const auditRow = (exec: DbExecutor) =>
+    writeAudit(exec, {
+      actorId,
+      action: ADMIN_ACTIONS.TAXONOMY_TYPE_UPDATED,
+      targetType: "taxonomy_type",
+      targetId: id,
+      details: { kind, key: row.key, changed },
+    });
+
   if (kind === "category") {
-    const [upd] = await db
-      .update(categoryTypeCatalog)
-      .set(set)
-      .where(eq(categoryTypeCatalog.id, id))
-      .returning();
+    const upd = await db.transaction(async (tx) => {
+      const [u] = await tx
+        .update(categoryTypeCatalog)
+        .set(set)
+        .where(eq(categoryTypeCatalog.id, id))
+        .returning();
+      await auditRow(tx);
+      return u!;
+    });
     await invalidateTaxonomyCache("category");
-    return mapCategoryType(upd!);
+    return mapCategoryType(upd);
   }
-  const [upd] = await db
-    .update(relationshipTypeCatalog)
-    .set(set)
-    .where(eq(relationshipTypeCatalog.id, id))
-    .returning();
+  const upd = await db.transaction(async (tx) => {
+    const [u] = await tx
+      .update(relationshipTypeCatalog)
+      .set(set)
+      .where(eq(relationshipTypeCatalog.id, id))
+      .returning();
+    await auditRow(tx);
+    return u!;
+  });
   await invalidateTaxonomyCache("relationship");
-  return mapRelationshipType(upd!);
+  return mapRelationshipType(upd);
 }
 
 export interface DeleteCustomTypeResult {
@@ -514,27 +541,37 @@ export interface DeleteCustomTypeResult {
  * Удаление пользовательского типа (admin). Ссылки categories/category_edges
  * .type_catalog_id обнуляются самой БД (ON DELETE SET NULL); число
  * отвязанных элементов считается до удаления и возвращается.
+ * 8.1: подсчёт, DELETE и строка admin_audit (taxonomy.type.deleted, details
+ * { kind, key, nameRu, unlinked }) — одной транзакцией; actorId из роута.
  * @throws TaxonomyAccessError NOT_FOUND | FORBIDDEN (is_system)
  */
 export async function deleteCustomType(
   kind: TaxonomyKind,
   id: string,
+  actorId: string | null = null,
 ): Promise<DeleteCustomTypeResult> {
-  await loadTypeRow(kind, id);
-  if (kind === "category") {
-    const [n] = await db
-      .select({ n: count() })
-      .from(categories)
-      .where(eq(categories.typeCatalogId, id));
-    await db.delete(categoryTypeCatalog).where(eq(categoryTypeCatalog.id, id));
-    await invalidateTaxonomyCache("category");
-    return { ok: true, unlinked: Number(n?.n ?? 0) };
-  }
-  const [n] = await db
-    .select({ n: count() })
-    .from(categoryEdges)
-    .where(eq(categoryEdges.typeCatalogId, id));
-  await db.delete(relationshipTypeCatalog).where(eq(relationshipTypeCatalog.id, id));
-  await invalidateTaxonomyCache("relationship");
-  return { ok: true, unlinked: Number(n?.n ?? 0) };
+  const unlinked = await db.transaction(async (tx) => {
+    const row = await loadTypeRow(kind, id, tx);
+    const [n] =
+      kind === "category"
+        ? await tx.select({ n: count() }).from(categories).where(eq(categories.typeCatalogId, id))
+        : await tx
+            .select({ n: count() })
+            .from(categoryEdges)
+            .where(eq(categoryEdges.typeCatalogId, id));
+    const unlinkedN = Number(n?.n ?? 0);
+    if (kind === "category")
+      await tx.delete(categoryTypeCatalog).where(eq(categoryTypeCatalog.id, id));
+    else await tx.delete(relationshipTypeCatalog).where(eq(relationshipTypeCatalog.id, id));
+    await writeAudit(tx, {
+      actorId,
+      action: ADMIN_ACTIONS.TAXONOMY_TYPE_DELETED,
+      targetType: "taxonomy_type",
+      targetId: id,
+      details: { kind, key: row.key, nameRu: row.nameRu, unlinked: unlinkedN },
+    });
+    return unlinkedN;
+  });
+  await invalidateTaxonomyCache(kind);
+  return { ok: true, unlinked };
 }

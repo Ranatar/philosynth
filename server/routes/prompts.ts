@@ -13,6 +13,9 @@
  *   GET  /configs/:key/versions    → { versions } (7.1: с value)
  *   POST /configs/:key/activate    { version } → { config }
  *
+ * 8.1: каждый вызов реестра получает актора (c.get("user").id) — реестр
+ * пишет admin_audit той же транзакцией; активацию журналит активировавший.
+ *
  * Все — requireAuth + requireAdmin (0.2). Активация сбрасывает кэш
  * реестра (prompt_cache и config_cache — иначе генерация продолжит
  * брать старый шаблон). Ключи содержат точки (`method.dialectical.graph`) —
@@ -116,7 +119,7 @@ promptsRoutes.post("/prompts/:key/activate", async (c) => {
     );
   }
   try {
-    return c.json({ template: await activateVersion(key, version) });
+    return c.json({ template: await activateVersion(key, version, c.get("user").id) });
   } catch (err) {
     if (err instanceof RegistryNotFoundError)
       return c.json({ error: err.message, code: "NOT_FOUND" }, 404);
@@ -154,7 +157,7 @@ promptsRoutes.put("/configs/:key", async (c) => {
     );
   }
   const description = typeof body.description === "string" ? body.description : "";
-  const config = await createConfigVersion(key, body.value, description);
+  const config = await createConfigVersion(key, body.value, description, c.get("user").id);
   return c.json({ config }, 201);
 });
 
@@ -170,7 +173,7 @@ promptsRoutes.post("/configs/:key/activate", async (c) => {
     );
   }
   try {
-    return c.json({ config: await activateConfigVersion(key, version) });
+    return c.json({ config: await activateConfigVersion(key, version, c.get("user").id) });
   } catch (err) {
     if (err instanceof RegistryNotFoundError)
       return c.json({ error: err.message, code: "NOT_FOUND" }, 404);

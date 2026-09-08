@@ -28,7 +28,8 @@ users ─────────────┐
   │
   ├── api_keys (encrypted)
   ├── transactions
-  └── api_usage
+  ├── api_usage
+  └── admin_audit (actor_id → users, SET NULL; 8.1)
   
 prompt_templates ──── (глобальные, не привязаны к пользователю)
 synthesis_configs ─── (глобальные)
@@ -58,6 +59,18 @@ CREATE TABLE users (
 > историю; строка анонимизируется (email `deleted-<id>@deleted.invalid`,
 > случайный password_hash, display_name/stripe_customer_id → NULL,
 > role → 'user'); сессии, api_keys, syntheses удаляются, подписки → canceled.
+>
+> **8.1:** роли по-прежнему две (решение при заведении Фазы 8, 07 §8).
+> Первый `admin` заводится только скриптом `scripts/bootstrap-admin.ts`
+> (`npm run seed:admin`), дальнейшие — `POST /auth/users/:id/role`.
+> Единственный администратор не может ни понизить себя (409
+> SELF_ROLE_CHANGE — свою роль не меняет никто), ни удалить аккаунт (409
+> LAST_ADMIN); проверки идут под `pg_advisory_xact_lock` в одной транзакции
+> с действием. Поскольку строка users при удалении анонимизируется, а не
+> удаляется, `admin_audit.actor_id … ON DELETE SET NULL` (§2.29) сам не
+> срабатывает — `account-deletion` обнуляет `actor_id` строк этого
+> пользователя явно, той же транзакцией: след действий остаётся,
+> привязка к личности снимается.
 
 ### 2.2. sessions
 
@@ -783,6 +796,53 @@ CREATE TABLE representation_transforms (
 CREATE INDEX idx_transforms_synthesis ON representation_transforms(synthesis_id);
 CREATE INDEX idx_transforms_direction ON representation_transforms(synthesis_id, direction);
 ```
+
+### 2.29. admin_audit
+
+Журнал административных действий (беседа 8.1, миграция `0004_admin_audit`).
+Пишется только через `server/services/admin-audit.ts` (`writeAudit`) — в
+ТОЙ ЖЕ транзакции, что и само действие: журнал, который может разойтись с
+делом, хуже отсутствующего.
+
+```sql
+CREATE TABLE admin_audit (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id    UUID REFERENCES users(id) ON DELETE SET NULL,
+    -- SET NULL, а не CASCADE: след действий переживает актора.
+    -- 7.1 анонимизирует users вместо удаления — account-deletion обнуляет
+    -- actor_id явно (см. примечание 8.1 в §2.1)
+  action      TEXT NOT NULL,
+    -- ADMIN_ACTIONS (замороженная константа сервиса, не SQL-enum —
+    -- пополнение без миграции): prompt.version.created,
+    -- prompt.version.activated, config.version.created,
+    -- config.version.activated, taxonomy.type.updated,
+    -- taxonomy.type.deleted, user.role.changed, user.bootstrapped,
+    -- account.deleted
+  target_type TEXT NOT NULL,   -- 'prompt_template'|'synthesis_config'|'taxonomy_type'|'user'
+  target_id   TEXT,            -- ключ шаблона/конфига, id типа, id пользователя
+  details     JSONB NOT NULL DEFAULT '{}',
+    -- { version, previousVersion } у активаций; { from, to, email } у смены
+    -- роли; { kind, key, changed | unlinked } у каталогов; { source:
+    -- 'bootstrap', outcome } у первого администратора; { deletedSyntheses,
+    -- subscriptionCanceled, wasAdmin } у удаления аккаунта.
+    -- jsonb не хранит порядок ключей — сверять через canonical() (09 §1)
+  ip          TEXT,            -- X-Forwarded-For → X-Real-IP → адрес сокета
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_admin_audit_actor   ON admin_audit(actor_id);
+CREATE INDEX idx_admin_audit_created ON admin_audit(created_at);
+```
+
+Точки записи: `prompt-registry` (createVersion — актор = автор черновика;
+activateVersion / createConfigVersion / activateConfigVersion — актор из
+роута, у активации это активировавший, а не автор версии),
+`element-taxonomy` (updateCustomType, deleteCustomType), смена роли
+(`routes/auth.ts`), `account-deletion.ts`, `scripts/bootstrap-admin.ts`
+(actor_id = самому себе). Чтение — `GET /auth/audit?limit=` (03 §2.1);
+DTO `AdminAuditEntry` несёт дополнительно `actorEmail` (LEFT JOIN users по
+actor_id, не колонка; null у снятого актора) — вкладка «Доступ» показывает
+email вместо uuid.
 
 ## 3. Извлечение гранулярных элементов из HTML
 

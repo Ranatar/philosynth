@@ -2,7 +2,7 @@
  * PhiloSynth Service — Drizzle-схема БД.
  * Источник истины: docs/02-data-model.md (ревизия 2026-07-22, v11).
  *
- * 28 таблиц (§2.1–2.28):
+ * 29 таблиц (§2.1–2.29; admin_audit — беседа 8.1):
  *   users, sessions, syntheses, synthesis_lineage, sections,
  *   categories, category_edges, cluster_labels, theses, glossary_terms,
  *   dialogue_turns, element_versions, edit_plans, mode_results,
@@ -10,7 +10,7 @@
  *   api_keys, transactions, api_usage, subscription_plans,
  *   user_subscriptions, category_type_catalog, relationship_type_catalog,
  *   element_enrichments, characteristic_justifications,
- *   representation_transforms.
+ *   representation_transforms, admin_audit.
  *
  * v10: ext_graph_metrics, structure_sections (syntheses);
  *      clarity, breadth, depth_score, applicability (categories);
@@ -1125,5 +1125,43 @@ export const representationTransforms = pgTable(
   (t) => [
     index("idx_transforms_synthesis").on(t.synthesisId),
     index("idx_transforms_direction").on(t.synthesisId, t.direction),
+  ],
+);
+
+/* ───────────────────────── 2.29. admin_audit ────────────────────────── */
+
+/**
+ * Журнал административных действий (беседа 8.1; 02 §2.29, миграция 0004).
+ * Пишется ТОЛЬКО через services/admin-audit.ts (writeAudit) — в той же
+ * транзакции, что и само действие. actor_id — ON DELETE SET NULL, не
+ * CASCADE: след действий обязан пережить исчезновение актора (7.1
+ * анонимизирует строку users, а не удаляет её — writeAudit-потребитель
+ * account-deletion сам обнуляет actor_id, воспроизводя эффект SET NULL).
+ * action — значение из ADMIN_ACTIONS (замороженная константа сервиса,
+ * enum колонки намеренно не задан: список расширяется без миграции).
+ */
+export const adminAudit = pgTable(
+  "admin_audit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+    /** prompt.version.created | … | user.role.changed | user.bootstrapped | account.deleted */
+    action: text("action").notNull(),
+    /** 'prompt_template' | 'synthesis_config' | 'taxonomy_type' | 'user' */
+    targetType: text("target_type").notNull(),
+    /** Ключ шаблона/конфига, id типа каталога, id пользователя; null — нет цели */
+    targetId: text("target_id"),
+    details: jsonb("details")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    ip: text("ip"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_admin_audit_actor").on(t.actorId),
+    index("idx_admin_audit_created").on(t.createdAt),
   ],
 );

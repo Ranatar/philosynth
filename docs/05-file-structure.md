@@ -31,10 +31,13 @@ philosynth-service/
 │       │   ├── ctx-keys.ts             # CTX_LABELS (ALL_CTX_KEYS удалён в v11; перечень ключей — из CTX_LABELS)
 │       │   ├── phil-filename.ts        # PHIL_FILENAME (PHIL_FILENAME)
 │       │   ├── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (METHOD_CODE, LEVEL_CODE)
-│       │   └── characteristics.ts      # Характеристики категорий (8) и связей (6) с
-│       │                               # диапазонами, resolveCharacteristic (алиасы
-│       │                               # depth/camelCase), validateCharacteristicValue
-│       │                               # (5.3; нужны серверу и слайдерам 5.4)
+│       │   ├── characteristics.ts      # Характеристики категорий (8) и связей (6) с
+│       │   │                           # диапазонами, resolveCharacteristic (алиасы
+│       │   │                           # depth/camelCase), validateCharacteristicValue
+│       │   │                           # (5.3; нужны серверу и слайдерам 5.4)
+│       │   └── auth.ts                 # 8.1: PASSWORD_MIN_LENGTH, EMAIL_RE,
+│       │                               # DISPLAY_NAME_MAX_LENGTH — единый свод правил
+│       │                               # аккаунта (routes/auth, bootstrap-admin, RegisterPage)
 │       │
 │       ├── types/
 │       │   ├── synthesis.ts            # SynthesisParams, SynthesisFull, SynthesisPreview
@@ -47,6 +50,7 @@ philosynth-service/
 │       │   ├── modes.ts                # ModeConfig, ModeResult
 │       │   ├── billing.ts              # ApiUsage, Transaction
 │       │   ├── prompts.ts              # PromptTemplate, SynthesisConfig
+│       │   ├── admin.ts                # 8.1: AdminAction, AdminAuditEntry, AdminUserRow, UserRole
 │       │   └── ws-messages.ts          # Все типы WebSocket-сообщений (клиент↔сервер)
 │       │                               # v11: + resume_generation/resume_plan,
 │       │                               #   generation_paused (estimates), generation_resumed
@@ -73,6 +77,8 @@ philosynth-service/
 │   │   ├── index.ts                    # Подключение к БД
 │   │   └── migrations/                 # SQL-миграции Drizzle
 │   │       ├── 0000_initial.sql
+│   │       ├── …                       # 0001 (5.x), 0002 (6.1), 0003 (7.1)
+│   │       ├── 0004_admin_audit.sql    # 8.1: таблица admin_audit (тег переименован из генерата)
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -85,6 +91,8 @@ philosynth-service/
 │   │
 │   ├── routes/
 │   │   ├── auth.ts                     # POST /auth/register, /login, /logout, GET /me
+│   │   │                               # 8.1: + GET /auth/users, POST /auth/users/:id/role,
+│   │   │                               #  GET /auth/audit (requireAdmin)
 │   │   ├── syntheses.ts                # CRUD /syntheses, /syntheses/:id
 │   │   ├── sections.ts                 # GET /syntheses/:id/sections, /:key, /:key/context
 │   │   │                               # (создаёт беседа 1.6 — до 2026-07-30
@@ -228,6 +236,9 @@ philosynth-service/
 │   │   │                               #  7.1: ensureStripeCustomer — один Customer на пользователя)
 │   │   ├── account-deletion.ts        # 7.1: DELETE /auth/me — анонимизация users при сохранённой
 │   │   │                               # RESTRICT-истории, удаление сессий/ключей/синтезов, отмена подписки
+│   │   │                               # 8.1: заслон LAST_ADMIN, строка account.deleted, actor_id → NULL
+│   │   ├── admin-audit.ts             # 8.1: writeAudit(exec, …) — db или tx вызывающего, ADMIN_ACTIONS
+│   │   │                               # (замороженный список), listAudit, ADMIN_SET_LOCK_KEY
 │   │   ├── stripe-client.ts            # Тонкий fetch-клиент Stripe REST + проверка подписи
 │   │   │                               # webhook; STRIPE_API_BASE для мока (НОВОЕ 6.1, без SDK)
 │   │   │
@@ -340,6 +351,7 @@ philosynth-service/
 │   │   │   ├── modes.ts
 │   │   │   ├── lineage.ts
 │   │   │   ├── billing.ts              # 7 функций §2.10: ключ, пополнение, истории (6.2 СДЕЛАНО 2026-09-07)
+│   │   │   ├── admin.ts                # 8.1: listUsers / setUserRole / getAuditLog (вкладка «Доступ»)
 │   │   │   ├── subscription.ts         # 5 функций §2.10: подписка/тарифы/subscribe/cancel/resume (6.2 СДЕЛАНО)
 │   │   │   └── export.ts
 │   │   │
@@ -369,7 +381,7 @@ philosynth-service/
 │   │   │   ├── ImportPage.tsx
 │   │   │   ├── BillingPage.tsx         # 6.2 СДЕЛАНО: секции API-ключ / баланс (Stripe Elements или dev-режим) / подписка / история использования / транзакции
 │   │   │   ├── ProfilePage.tsx         # Профиль: displayName + смена пароля (A3, беседа 0.6); 7.1: + удаление аккаунта (DELETE /auth/me)
-│   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin; 7.1: + вкладка «Каталоги» (типы категорий/связей, правка и удаление пользовательских)
+│   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin; 7.1: + вкладка «Каталоги» (типы категорий/связей, правка и удаление пользовательских); 8.1: + вкладка «Доступ» (поиск пользователей, роль с подтверждением, последние 50 строк admin_audit)
 │   │   │
 │   │   ├── components/
 │   │   │   ├── layout/
@@ -499,6 +511,9 @@ philosynth-service/
 │   ├── seed-prompts.ts                 # Начальное заполнение prompt_templates из исходника
 │   ├── seed-configs.ts                 # Начальное заполнение synthesis_configs из исходника
 │   ├── seed-taxonomy.ts                # Заполнение каталогов типов (18 категорий + 29 связей)
+│   ├── bootstrap-admin.ts              # 8.1: первый администратор (npm run seed:admin) — пароль из
+│   │                                   # BOOTSTRAP_ADMIN_PASSWORD, created/updated/skip/fail, заслон
+│   │                                   # «другой админ уже есть», строка user.bootstrapped
 │   ├── extract-seed-data.mjs           # vm-извлечение конфигов/промптов из исходника
 │   ├── extract-section-templates.mjs   # Генерация section.* шаблонов Registry
 │   ├── patch-docs-*.py                 # Идемпотентные патчи доков по итогам бесед (skip/fail-отчёт)

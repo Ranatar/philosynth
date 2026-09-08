@@ -24,6 +24,13 @@
  *    месту и удаление (PATCH/DELETE §2.13; удаление отвязывает
  *    typeCatalogId у элементов, текст типа остаётся — unlinked в ответе).
  *
+ *  - «Доступ» (8.1): поиск пользователей по email/имени (GET /auth/users),
+ *    список с ролью, переключение роли с window.confirm (POST
+ *    /auth/users/:id/role; свою роль менять нельзя — 409 SELF_ROLE_CHANGE,
+ *    кнопка у себя не рисуется), последние 50 строк admin_audit (GET
+ *    /auth/audit). Статус успеха ставится ПОСЛЕ перечитывания списка и
+ *    журнала (грабля 6.2 п.7); клики тестов — через el.click().
+ *
  * Тела версий: с 7.1 /versions отдаёт тела и value напрямую (обход 6.2
  * через listPrompts({prefix}) снят). Подсветка синтаксиса JSON —
  * без библиотеки (решение 6.2: .code-editor даёт раму и .invalid; тяжёлая
@@ -33,9 +40,11 @@
  * .pool-status) + блоки 5–6 UI-кита (5 — с 5.2, 6 — перенесён этой
  * беседой в globals.css часть 3).
  */
+import type { AdminAuditEntry, AdminUserRow, UserRole } from "@philosynth/shared/types/admin";
 import type { PromptTemplate, SynthesisConfig } from "@philosynth/shared/types/prompts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { getAuditLog, listUsers, setUserRole } from "../api/admin";
 import { ApiError } from "../api/client";
 import {
   type CatalogType,
@@ -56,6 +65,7 @@ import {
   listPrompts,
   updateConfig,
 } from "../api/prompts";
+import { useAuthStore } from "../stores/auth-store";
 import { fmtDateShort } from "../utils/format";
 import {
   extractPlaceholders,
@@ -1124,9 +1134,246 @@ function CatalogsTab() {
   );
 }
 
+/* ── Вкладка «Доступ» (8.1) ──────────────────────────────────────────── */
+
+const AUDIT_LIMIT = 50;
+const USERS_PAGE = 50;
+
+const ROLE_LABELS: Record<UserRole, string> = { user: "пользователь", admin: "администратор" };
+
+const ACTION_LABELS: Record<string, string> = {
+  "prompt.version.created": "версия шаблона создана",
+  "prompt.version.activated": "версия шаблона активирована",
+  "config.version.created": "версия конфига создана",
+  "config.version.activated": "версия конфига активирована",
+  "taxonomy.type.updated": "тип каталога изменён",
+  "taxonomy.type.deleted": "тип каталога удалён",
+  "user.role.changed": "роль изменена",
+  "user.bootstrapped": "первый администратор заведён",
+  "account.deleted": "аккаунт удалён",
+};
+
+/** Класс бейджа роли (литералы вне JSX — css-parity-audit) */
+function roleClass(role: UserRole): string {
+  return role === "admin" ? "cert-badge gold" : "cert-badge";
+}
+
+function auditDetails(e: AdminAuditEntry): string {
+  const d = e.details ?? {};
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(d)) {
+    if (v === null || v === undefined) continue;
+    parts.push(`${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
+  }
+  return parts.join(" · ");
+}
+
+function actorLabel(e: AdminAuditEntry): string {
+  if (!e.actorId) return "— (аккаунт удалён)";
+  return e.actorEmail ?? e.actorId.slice(0, 8) + "…";
+}
+
+function AccessTab() {
+  const me = useAuthStore((s) => s.user);
+  const [search, setSearch] = useState("");
+  const [users, setUsers] = useState<AdminUserRow[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [audit, setAudit] = useState<AdminAuditEntry[] | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const [status, setStatus] = useState<StatusMsg>(null);
+
+  const loadUsers = useCallback(async (q: string) => {
+    const r = await listUsers({ query: q, limit: USERS_PAGE });
+    setUsers(r.users);
+    setTotal(r.total);
+  }, []);
+  const loadAudit = useCallback(async () => {
+    setAudit(await getAuditLog(AUDIT_LIMIT));
+  }, []);
+
+  // Поиск — с задержкой 300 мс, чтобы не бить API каждой буквой
+  useEffect(() => {
+    const q = search.trim();
+    const t = setTimeout(() => {
+      loadUsers(q).catch((err) =>
+        setStatus({ text: errText(err, "Не удалось загрузить пользователей"), kind: "err" }),
+      );
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search, loadUsers]);
+
+  useEffect(() => {
+    loadAudit().catch((err) =>
+      setStatus({ text: errText(err, "Не удалось загрузить журнал"), kind: "err" }),
+    );
+  }, [loadAudit]);
+
+  async function toggleRole(u: AdminUserRow): Promise<void> {
+    const to: UserRole = u.role === "admin" ? "user" : "admin";
+    const verb = to === "admin" ? "Назначить администратором" : "Снять права администратора у";
+    if (
+      !window.confirm(
+        `${verb} ${u.email}? ${
+          to === "admin"
+            ? "Администратор правит шаблоны промптов — активированная версия меняет генерацию у всех."
+            : "Пользователь потеряет доступ к админке; синтезы и баланс не затрагиваются."
+        }`,
+      )
+    )
+      return;
+    setPending(u.id);
+    setStatus(null);
+    try {
+      const r = await setUserRole(u.id, to);
+      // Статус — ПОСЛЕ перечитывания (грабля 6.2 п.7)
+      await Promise.all([loadUsers(search.trim()), loadAudit()]);
+      setStatus({
+        text: r.changed
+          ? `${r.user.email}: роль теперь «${ROLE_LABELS[r.user.role]}»`
+          : `${r.user.email}: роль уже была «${ROLE_LABELS[r.user.role]}»`,
+        kind: "ok",
+      });
+    } catch (err) {
+      setStatus({ text: errText(err, "Не удалось изменить роль"), kind: "err" });
+    } finally {
+      setPending(null);
+    }
+  }
+
+  const admins = (users ?? []).filter((u) => u.role === "admin").length;
+
+  return (
+    <div className="form-grid" data-testid="access-tab">
+      <div className="form-group full">
+        <div className="form-label">Пользователи и роли</div>
+        <div className="form-sublabel">
+          Ролей две: пользователь и администратор. Свою роль изменить нельзя — единственный
+          администратор не может понизить сам себя; последнего администратора не понизит никто.
+          Первый администратор заводится только скриптом <code>npm run seed:admin</code>.
+        </div>
+        <div className="data-table-wrap" data-testid="access-users">
+          <div className="data-table-toolbar">
+            <input
+              className="form-input"
+              placeholder="поиск по email или имени…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Поиск пользователей"
+              data-testid="access-search"
+            />
+            <span className="form-sublabel" data-testid="access-users-count">
+              {users ? `показано ${users.length} из ${total}, администраторов в выдаче: ${admins}` : ""}
+            </span>
+          </div>
+          {status && (
+            <div
+              className={status.kind === "ok" ? "pool-status ok" : "pool-status err"}
+              role={status.kind === "err" ? "alert" : "status"}
+              data-testid="access-status"
+            >
+              {status.text}
+            </div>
+          )}
+          {users === null ? (
+            <div className="pool-status">Загрузка…</div>
+          ) : users.length === 0 ? (
+            <div className="data-table-empty">пользователей нет</div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Имя</th>
+                  <th>Роль</th>
+                  <th>Зарегистрирован</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => {
+                  const isMe = me?.id === u.id;
+                  return (
+                    <tr key={u.id} data-testid={`access-row-${u.email}`} data-role={u.role}>
+                      <td>
+                        <code>{u.email}</code>
+                        {isMe && <span className="form-sublabel"> (вы)</span>}
+                      </td>
+                      <td>{u.displayName ?? ""}</td>
+                      <td>
+                        <span className={roleClass(u.role)}>{ROLE_LABELS[u.role]}</span>
+                      </td>
+                      <td>{fmtDateShort(u.createdAt)}</td>
+                      <td className="num">
+                        {!isMe && (
+                          <button
+                            type="button"
+                            className="action-btn"
+                            disabled={pending !== null}
+                            onClick={() => void toggleRole(u)}
+                            data-testid={`access-toggle-${u.email}`}
+                          >
+                            {u.role === "admin" ? "↓ Снять права" : "↑ Назначить администратором"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      <div className="form-group full">
+        <div className="form-label">Журнал действий</div>
+        <div className="form-sublabel">
+          Последние {AUDIT_LIMIT} строк admin_audit: версии шаблонов и конфигов, правки каталогов,
+          смены ролей, удаления аккаунтов. Строка пишется той же транзакцией, что и действие.
+        </div>
+        <div className="data-table-wrap" data-testid="access-audit">
+          {audit === null ? (
+            <div className="pool-status">Загрузка…</div>
+          ) : audit.length === 0 ? (
+            <div className="data-table-empty">журнал пуст</div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Когда</th>
+                  <th>Кто</th>
+                  <th>Действие</th>
+                  <th>Цель</th>
+                  <th>Подробности</th>
+                </tr>
+              </thead>
+              <tbody>
+                {audit.map((e) => (
+                  <tr key={e.id} data-testid="access-audit-row" data-action={e.action}>
+                    <td>{fmtDateShort(e.createdAt)}</td>
+                    <td>{actorLabel(e)}</td>
+                    <td>{ACTION_LABELS[e.action] ?? e.action}</td>
+                    <td>
+                      <code>
+                        {e.targetType}
+                        {e.targetId ? `:${e.targetId}` : ""}
+                      </code>
+                    </td>
+                    <td>{auditDetails(e)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Страница ────────────────────────────────────────────────────────── */
 
-type Tab = "templates" | "configs" | "catalogs";
+type Tab = "templates" | "configs" | "catalogs" | "access";
 
 /** Класс кнопки-вкладки (литералы вне className — css-parity-audit ловит
  *  строки внутри выражения className как имена классов) */
@@ -1139,6 +1386,7 @@ export function AdminPromptsPage() {
   const isTemplates = tab === "templates";
   const isConfigs = tab === "configs";
   const isCatalogs = tab === "catalogs";
+  const isAccess = tab === "access";
   return (
     <div className="input-form" data-testid="admin-prompts-page">
       <h1 className="form-section-title">Prompt Registry</h1>
@@ -1173,14 +1421,32 @@ export function AdminPromptsPage() {
         >
           Каталоги
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isAccess}
+          className={tabClass(isAccess)}
+          onClick={() => setTab("access")}
+          data-testid="tab-access"
+        >
+          Доступ
+        </button>
       </div>
-      {!isCatalogs && (
+      {!isCatalogs && !isAccess && (
         <div className="form-sublabel" style={{ marginBottom: 10 }}>
           Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация
           сбрасывает кэш реестра — следующая генерация берёт новый текст.
         </div>
       )}
-      {isTemplates ? <TemplatesTab /> : isConfigs ? <ConfigsTab /> : <CatalogsTab />}
+      {isTemplates ? (
+        <TemplatesTab />
+      ) : isConfigs ? (
+        <ConfigsTab />
+      ) : isCatalogs ? (
+        <CatalogsTab />
+      ) : (
+        <AccessTab />
+      )}
     </div>
   );
 }
