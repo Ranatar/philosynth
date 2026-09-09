@@ -60,6 +60,7 @@ npm run db:migrate            # миграция 0000_initial (28 таблиц)
 npm run seed:prompts          # 107 шаблонов prompt_templates
 npm run seed:configs          # 26 конфигов synthesis_configs
 npm run seed:taxonomy         # каталоги типов: 18 категорий + 29 связей
+npm run seed:plans            # тарифы (3 плана; активны только с STRIPE_PRICE_* — см. «Как поднять биллинг»)
 npm run dev:server            # http://localhost:3000/api/v1/health
 npm run dev:client            # http://localhost:5173 (прокси /api и /ws → :3000)
 ```
@@ -72,6 +73,35 @@ skip). Изменение схемы: править `server/db/schema.ts` → `
 Примечание: миграция 0000 включает `CREATE EXTENSION pg_trgm`
 (триграммный индекс поиска по `syntheses.title`) — роль БД должна иметь
 право создавать расширения (в dev-контейнере — да).
+
+## Как поднять биллинг
+
+Подписки требуют аккаунта Stripe владельца службы; описание тарифов живёт
+в `server/config/plans.ts`, а их Price ID — только в Stripe. Четыре шага:
+
+1. **Ключи Stripe.** В `.env` — `STRIPE_SECRET_KEY` (секретный ключ из
+   Dashboard → Developers → API keys) и `STRIPE_WEBHOOK_SECRET` (подпись
+   endpoint'а `POST /api/v1/billing/webhook`, события `invoice.paid`,
+   `customer.subscription.updated`, `customer.subscription.deleted`); в
+   клиент — `VITE_STRIPE_PUBLISHABLE_KEY` (без него BillingPage в dev-режиме).
+2. **Prices.** `npm run stripe:create-prices` заводит Product и Price по
+   каждому тарифу (идемпотентно: повтор находит цену по `lookup_key
+   philosynth_<name>` и не создаёт второй) и печатает готовые строки.
+   Пустой ключ → отказ до первого запроса. Изменили цену в `plans.ts` —
+   `npm run stripe:create-prices -- --transfer` (Price в Stripe неизменяем:
+   новая цена, ключ переезжает, прежняя деактивируется).
+3. **`STRIPE_PRICE_*` в `.env`** — строки из шага 2
+   (`STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_ACADEMIC`).
+4. **`npm run seed:plans`** — планы попадают в `subscription_plans`
+   активными; без переменной план заводится `is_active=false` с громким
+   предупреждением и в `GET /billing/plans` не попадает. Повторный прогон —
+   skip; правка квот/цены — updated; смена Price у плана с живыми
+   подписками — fail (строка не тронута).
+
+Без аккаунта Stripe биллинг проверяется на локальном стенде:
+`bash tools/dev-billing.sh` (мок Stripe, `.env.local` с фиктивными
+`STRIPE_PRICE_*`, подписку активирует `node tools/stripe-emit.mjs
+invoice.paid <sub_…>`).
 
 ## Регрессионные проверки
 
@@ -126,15 +156,16 @@ MMD/JSON/PNG/MD + ExportError NO_GRAPH). Сейчас покрывает 0.1–0
 | 5 — inline-редактирование элементов | 5.1–5.5 | 2026-09-06 |
 | 6 — биллинг и админка | 6.1, 6.2 | 2026-09-07 |
 | 7 — долги и доводка | 7.1 | 2026-09-07 |
-| 8 — пусковая пригодность | 8.1–8.5 | открыта 2026-09-08; 8.1, 8.2 закрыты 2026-09-08 |
+| 8 — пусковая пригодность | 8.1–8.5 | открыта 2026-09-08; 8.1, 8.2 закрыты 2026-09-08; 8.3 закрыта 2026-09-09 |
 
 Реестр открытых долгов (07 §12) пуст. Фаза 8 ОТКРЫТА 2026-09-08 по
 итогам первого прогона на чистой машине и сплошной сверки серверных
 маршрутов с вызовами клиента: 8.1 — первый администратор,
 смена роли и журнал админских действий (роль `admin` была недостижима);
-8.2 — посев тарифов и заведение Prices в Stripe (`subscription_plans`
-не сеялась ничем); 8.3 — локальный стенд биллинга без аккаунта Stripe.
-Тексты бесед — 07 §8, узлы — §11.
+8.2 — локальный стенд биллинга без аккаунта Stripe (оснастка); 8.3 —
+посев тарифов и заведение Prices в Stripe (`subscription_plans` не
+сеялась ничем); 8.4 — управление своим содержимым; 8.5 — родословная
+при импорте. Тексты бесед — 07 §8, узлы — §11.
 
 Подробности: `docs/08-history.md` — единственное место хроники
 (Часть I — краткая по беседам, Часть II — итоги бесед, Часть III —

@@ -19,14 +19,16 @@ export type AdminAction =
   | "taxonomy.type.deleted"
   | "user.role.changed"
   | "user.bootstrapped"
-  | "account.deleted";
+  | "account.deleted"
+  | "plan.seeded";
 
 /** Род цели действия (admin_audit.target_type). */
 export type AdminAuditTargetType =
   | "prompt_template"
   | "synthesis_config"
   | "taxonomy_type"
-  | "user";
+  | "user"
+  | "subscription_plan";
 
 /** Строка admin_audit (GET /auth/audit). */
 export interface AdminAuditEntry {

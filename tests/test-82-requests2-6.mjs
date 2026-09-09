@@ -11,7 +11,8 @@
  *  R4  заслон: STRIPE_SECRET_KEY=sk_live_… → dev-billing.sh отказывается
  *      (rc≠0, ни один процесс не запущен и не убит);
  *  R5  edge: stripe-emit с несуществующим sub_… → webhook 200 { handled:false },
- *      user_subscriptions не изменились; с настоящим sub_… → active;
+ *      user_subscriptions не изменились; с настоящим sub_… → active (план — из
+ *      посева стенда, 8.3; прежний ручной insert t82plan снят);
  *  R6  teardown: --stop гасит vite, сервер и мок, порты 5199/3000/3866 свободны;
  *      повторный старт проходит без «порт занят», повторный --stop чист.
  * Запуск из корня: node_modules/.bin/tsx tests/test-82-requests2-6.mjs
@@ -106,7 +107,7 @@ try {
   let dv = devBilling();
   ok(dv.rc === 0 && dv.fail === 0, `dev-billing.sh: rc=${dv.rc}, created=${dv.created} skip=${dv.skip} fail=${dv.fail}`, dv.out.slice(-1200));
   ok(existsSync(ENV_LOCAL) && /\.env\.local создан из \.env\.local\.example/.test(dv.out), ".env.local создан из образца");
-  ok(/seed:plans нет/.test(dv.out) && /не отказ стенда/.test(dv.out), "seed:plans нет → предупреждение о пустом разделе подписки, не отказ");
+  ok(/тарифы (?:уже )?посеяны \(npm run seed:plans/.test(dv.out), "стенд сеет тарифы (npm run seed:plans, 8.3; до 8.3 — предупреждение о пустом разделе)");
   ok(/seed:admin/.test(dv.out), "напоминание про seed:admin (8.1)");
   ok(await httpOk(`${MOCK}/__mock/health`) && await httpOk(`${API}/health`) && await httpOk(`${UI}/`), "мок :3866, сервер :3000, vite :5199 отвечают");
   const health = await (await fetch(`${MOCK}/__mock/health`)).json();
@@ -148,7 +149,7 @@ try {
   await page.waitForFunction(() => { const el = document.querySelector('[data-testid="billing-subscription"]'); return el && !/Загрузка…/.test(el.innerText); }, { timeout: 20000 });
   const balBox = await text(page, T("balance-value"));
   ok(/\$0\.00/.test(balBox), "баланс на странице $0.00", balBox);
-  ok(/подписки нет/i.test(await text(page, T("billing-subscription"))), "раздел подписки: «подписки нет» (тарифы не посеяны — 8.3)", await text(page, T("billing-subscription")));
+  ok(/подписки нет/i.test(await text(page, T("billing-subscription"))), "раздел подписки: «подписки нет» (у нового пользователя; тарифы посеяны стендом с 8.3)", await text(page, T("billing-subscription")));
   // пополнение $5: кнопка суммы → «Пополнить» → «Подтвердить платёж»
   await page.$eval(T("amount-5"), (el) => el.click());
   ok(true, "выбрана сумма $5 (amount-5)");
@@ -198,13 +199,11 @@ try {
   ok(em.rc === 2 && /вне/.test(em.out), "невалидный --status → отказ до отправки (rc=2)");
   em = emit("nope.event", "sub_x");
   ok(em.rc === 2 && /неизвестное событие/.test(em.out), "неизвестное событие → rc=2");
-  // настоящая подписка: план заводится в БД руками (тарифы — 8.3, стенд их не сеет),
+  // настоящая подписка: с 8.3 план берётся из ПОСЕВА стенда (npm run seed:plans,
+  // STRIPE_PRICE_* из .env.local — price_mock_*), ручной insert снят;
   // подписка через API → incomplete → emit invoice.paid → active → deleted → canceled
-  for (const old of await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, "t82plan"))) {
-    await db.delete(userSubscriptions).where(eq(userSubscriptions.planId, old.id));
-  }
-  await db.delete(subscriptionPlans).where(eq(subscriptionPlans.name, "t82plan"));
-  const [plan] = await db.insert(subscriptionPlans).values({ name: "t82plan", displayName: "T82", priceUsd: "9.00", billingPeriod: "month", quotaSyntheses: 3, quotaRegenerations: 10, quotaModes: 5, quotaEnrichments: 20, stripePriceId: "price_t82" }).returning();
+  const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, "starter"));
+  ok(!!plan && plan.isActive && plan.stripePriceId === "price_mock_starter", "план starter посеян стендом активным с price_mock_starter", J(plan));
   const subRes = await page.evaluate(async (planId) => { const r = await fetch("/api/v1/billing/subscribe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ planId }) }); return { status: r.status, json: await r.json() }; }, plan.id);
   ok(subRes.status === 201 && subRes.json.subscription?.status === "incomplete" && /^sub_/.test(subRes.json.subscriptionId), "POST /subscribe на стенде → incomplete (webhook некому прислать)", J(subRes.json));
   em = emit("invoice.paid", subRes.json.subscriptionId);
@@ -244,7 +243,6 @@ try {
 
   /* ── уборка ──────────────────────────────────────────────────────── */
   await db.delete(userSubscriptions).where(eq(userSubscriptions.userId, row.id));
-  await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, plan.id));
   await db.delete(transactions).where(eq(transactions.userId, row.id));
   await db.delete(users).where(eq(users.id, row.id));
 } catch (e) {

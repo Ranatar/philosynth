@@ -49,6 +49,9 @@ export const ADMIN_ACTIONS = Object.freeze({
   USER_ROLE_CHANGED: "user.role.changed",
   USER_BOOTSTRAPPED: "user.bootstrapped",
   ACCOUNT_DELETED: "account.deleted",
+  /** 8.3: строка subscription_plans создана/обновлена посевом seed-plans
+   *  (actor_id NULL — действие скрипта, не пользователя; skip строки не даёт) */
+  PLAN_SEEDED: "plan.seeded",
 } as const satisfies Record<string, AdminAction>);
 
 /** Все значения ADMIN_ACTIONS — для проверок и фильтров. */

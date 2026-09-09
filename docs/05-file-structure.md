@@ -16,11 +16,16 @@ philosynth-service/
 ├── .env.local.example              # 8.2: окружение ЛОКАЛЬНОГО СТЕНДА биллинга
 │                                   # (мок Stripe, фиктивные ключи, BILLING_ENFORCE=true,
 │                                   # пустой VITE_STRIPE_PUBLISHABLE_KEY); копируется в
-│                                   # .env.local скриптом tools/dev-billing.sh
+│                                   # .env.local скриптом tools/dev-billing.sh.
+│                                   # 8.3: + STRIPE_PRICE_*=price_mock_* — мок не проверяет
+│                                   # Price, планы сеются активными (файл воссоздан 8.3:
+│                                   # в HEAD 83aaf2b его не было — upload не перенёс dotfile)
 ├── .env.example                    # ВСЕ переменные server/env.ts;
 │                                   # пароль БД обязан совпадать с дефолтом
 │                                   # env.ts — .env читает только drizzle-kit,
-│                                   # tsx-скрипты берут process.env
+│                                   # tsx-скрипты берут process.env.
+│                                   # 8.3: + STRIPE_PRICE_STARTER/PRO/ACADEMIC (читает
+│                                   # seed-plans напрямую из process.env, не env.ts)
 ├── drizzle.config.ts               # Конфигурация Drizzle ORM
 │
 ├── packages/
@@ -245,6 +250,8 @@ philosynth-service/
 │   │   │                               # (замороженный список), listAudit, ADMIN_SET_LOCK_KEY
 │   │   ├── stripe-client.ts            # Тонкий fetch-клиент Stripe REST + проверка подписи
 │   │   │                               # webhook; STRIPE_API_BASE для мока (НОВОЕ 6.1, без SDK)
+│   │   │                               # 8.3: + Products/Prices (createProduct, listProducts,
+│   │   │                               # createPrice, updatePrice, listPrices) для заведения тарифов
 │   │   │
 │   │   ├── api-key-service.ts          # Шифрование/дешифрование, проксирование (НОВОЕ)
 │   │   │                               # (СДЕЛАНО 6.1: активный ключ один)
@@ -297,6 +304,10 @@ philosynth-service/
 │   │   │                              # PARENT_CONTEXT_SCHEMA_ID/VERSION (v11)
 │   │   ├── cardinality-prompts.ts     # MD_BY_CARD (6×3), SD_BY_CARD (3×3) (v11)
 │   │   ├── mode-deps.ts               # MODE_DEPS (v11)
+│   │   ├── plans.ts                   # 8.3: тарифы БЕЗ stripe_price_id (PLANS: starter/pro/
+│   │   │                              # academic), priceEnvVarFor, stripeLookupKeyFor,
+│   │   │                              # опорные стоимости операций из констант cost-estimator,
+│   │   │                              # assertPlanEconomics (цена ≥ Σ квот × cost × наценка)
 │   │   ├── enrichment-templates.ts    # 6 шаблонов enrichment.* (5.3; новые тексты,
 │   │   │                              # не из исходника; JUSTIFICATION_SECTIONS)
 │   │   └── transform-templates.ts     # 2 шаблона transform.* (5.5; новые тексты —
@@ -518,6 +529,14 @@ philosynth-service/
 │   ├── bootstrap-admin.ts              # 8.1: первый администратор (npm run seed:admin) — пароль из
 │   │                                   # BOOTSTRAP_ADMIN_PASSWORD, created/updated/skip/fail, заслон
 │   │                                   # «другой админ уже есть», строка user.bootstrapped
+│   ├── seed-plans.ts                   # 8.3: четвёртый сид — subscription_plans из config/plans.ts
+│   │                                   # (npm run seed:plans); stripe_price_id из STRIPE_PRICE_*,
+│   │                                   # без переменной — is_active=false + громкое предупреждение;
+│   │                                   # заслон смены Price при живых подписках; admin_audit plan.seeded
+│   ├── stripe-create-prices.ts         # 8.3: Product+Price в Stripe по каждому тарифу ключом
+│   │                                   # владельца (npm run stripe:create-prices [-- --transfer]);
+│   │                                   # идемпотентно по lookup_key philosynth_<name>; печатает
+│   │                                   # STRIPE_PRICE_*; пустой ключ → отказ до первого запроса
 │   ├── extract-seed-data.mjs           # vm-извлечение конфигов/промптов из исходника
 │   ├── extract-section-templates.mjs   # Генерация section.* шаблонов Registry
 │   ├── patch-docs-*.py                 # Идемпотентные патчи доков по итогам бесед (skip/fail-отчёт)
@@ -532,12 +551,17 @@ philosynth-service/
 │   │                                   # customer.subscription.updated|deleted (подпись при
 │   │                                   # непустом STRIPE_WEBHOOK_SECRET)
 │   └── dev-billing.sh                  # стенд: .env.local → мок → сервер :3000 → vite :5199;
-│                                       # заслон sk_live_, --stop / --status, created/skip/fail
+│                                       # заслон sk_live_, --stop / --status, created/skip/fail;
+│                                       # 8.3: зовёт npm run seed:plans (STRIPE_PRICE_* из .env.local),
+│                                       # повтор → skip по отчёту посева (created=0, updated=0)
 │
 └── tests/                              # ВСЕ тесты бесед; запуск из корня репо
     ├── smoke-*.mjs / smoke-*.mts       # vm-смоуки байтовой сверки порта с исходником
     ├── test-XX-*.mjs                   # API- и браузерные тесты запросов бесед (puppeteer);
-    │                                   # test-61/62/71 берут мок Stripe из tools/stripe-mock.mjs (8.2)
+    │                                   # test-61/62/71 берут мок Stripe из tools/stripe-mock.mjs (8.2);
+    │                                   # test-82/83 — против настоящего стенда dev-billing.sh; с 8.3
+    │                                   # план в test-82 — из посева (starter), в test-62 — starter62
+    │                                   # (не сносить посеянный starter)
     ├── test-*-0.3b.ts                  # Регрессионные смоуки таксономии
     └── package.json                    # Маркер type=module
 ```

@@ -617,6 +617,27 @@ CREATE INDEX idx_usage_synthesis ON api_usage(synthesis_id);
 
 Тарифные планы.
 
+> **8.3 (2026-09-09) — откуда берутся строки.** Таблица сеется ТОЛЬКО
+> `scripts/seed-plans.ts` (`npm run seed:plans`) из описания
+> `server/config/plans.ts` — три тарифа (`starter`, `pro`, `academic`:
+> displayName, цена, период, четыре квоты) БЕЗ `stripe_price_id`. Price
+> существует лишь в аккаунте Stripe владельца: его заводит
+> `scripts/stripe-create-prices.ts` (`npm run stripe:create-prices`,
+> идемпотентно по `lookup_key = philosynth_<name>`) и печатает строки
+> `STRIPE_PRICE_<NAME_UPPER>=price_…` для `.env`; посев читает их из
+> окружения. Переменной нет → строка заводится/остаётся с
+> `is_active=false` (сохранённый `stripe_price_id` не затирается — колонка
+> NOT NULL, при первом посеве пишется пустая строка) и громким
+> предупреждением; в `GET /billing/plans` такой план не попадает.
+> Идемпотентность по `name` (UNIQUE): created / updated / skip / fail.
+> Заслон: смена `stripe_price_id` у плана с подписками в статусе ≠
+> `canceled` (включая `incomplete`) → fail, строка не тронута — Price
+> живой подписки в Stripe сменить нельзя, а FK `user_subscriptions.plan_id`
+> держит план. Квоты сверяются с ценой: `Σ quota × себестоимость операции
+> (ставки cost-estimator 1.1, верхняя модель) × BILLING_MARKUP ≤ price_usd`,
+> иначе fail — убыточный тариф не заводится. Каждая created/updated пишет
+> `admin_audit` `plan.seeded` (actor_id NULL, §2.29).
+
 ```sql
 CREATE TABLE subscription_plans (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -817,8 +838,9 @@ CREATE TABLE admin_audit (
     -- prompt.version.activated, config.version.created,
     -- config.version.activated, taxonomy.type.updated,
     -- taxonomy.type.deleted, user.role.changed, user.bootstrapped,
-    -- account.deleted
+    -- account.deleted, plan.seeded (8.3: посев тарифов, actor_id NULL)
   target_type TEXT NOT NULL,   -- 'prompt_template'|'synthesis_config'|'taxonomy_type'|'user'
+                               -- |'subscription_plan' (8.3; target_id = name плана)
   target_id   TEXT,            -- ключ шаблона/конфига, id типа, id пользователя
   details     JSONB NOT NULL DEFAULT '{}',
     -- { version, previousVersion } у активаций; { from, to, email } у смены

@@ -446,6 +446,21 @@ sk_live_, --stop/--status, setsid-группы, seed:plans условно), 09 �
 test-82-requests2-6.mjs 50 ✓ ×2 против настоящего стенда с браузером;
 check:integration += 4ak; продуктовый код не тронут); доки пропатчены
 scripts/patch-docs-conv82.py. Реестр долгов §12 пуст.
+Беседа 8.3 (тарифы — посев и заведение Prices в Stripe) ЗАКРЫТА 2026-09-09:
+server/config/plans.ts (три тарифа без stripe_price_id, опорные стоимости из
+констант cost-estimator, assertPlanEconomics: цена ≥ Σ квот × себестоимость ×
+BILLING_MARKUP), scripts/seed-plans.ts (четвёртый сид; STRIPE_PRICE_* из env,
+без переменной — is_active=false + громкое предупреждение, заслон смены Price
+при подписках ≠ canceled, admin_audit plan.seeded), scripts/stripe-create-prices.ts
+(Product+Price ключом владельца, идемпотентно по lookup_key philosynth_<name>,
+--transfer, печатает STRIPE_PRICE_*, отказ до запроса при пустом ключе),
+stripe-client += Products/Prices, npm seed:plans / stripe:create-prices,
+.env.example += STRIPE_PRICE_*, .env.local.example воссоздан (+ price_mock_*),
+.gitignore += .dev-billing/, dev-billing.sh сеет идемпотентно, termux →
+seed:plans, README «Как поднять биллинг»; test-62 → starter62, test-82 — план
+из посева (смоук 81 ✓, tests/test-83-requests2-8.mjs 88 ✓ ×3 против стенда с
+браузером; test-82 51 ✓, test-62 101 ✓; check:integration += 2aa/4al/5aa);
+доки пропатчены scripts/patch-docs-conv83.py. Реестр долгов §12 пуст.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
@@ -4840,6 +4855,83 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
 
 ---
 
+### Беседа 8.3 — Тарифы: посев и заведение Prices в Stripe (бэкенд + скрипты) [ЗАКРЫТА 2026-09-09]
+
+> Запрос 1 целиком (server/config/plans.ts + scripts/seed-plans.ts +
+> scripts/stripe-create-prices.ts + stripe-client Products/Prices + обвязка
+> + доки) → патч philosynth-conv83-request1.patch; все тестовые запросы
+> R2–R8 одним харнессом tests/test-83-requests2-8.mjs (88 ✓ ×3 за ~2 мин
+> против НАСТОЯЩЕГО dev-billing.sh: сиды дочерними tsx с явным окружением,
+> браузер puppeteer-core 23 + Chrome) → патч philosynth-conv83-request1-8.patch;
+> завершение: typecheck (все конфиги) 0, audit ✓, check:integration OK
+> (+ 2aa/4al/5aa). Продуктовый код: только stripe-client (+5 методов) и
+> ADMIN_ACTIONS (+plan.seeded); subscription-service и BillingPage не
+> тронуты — секция «Подписка» ожила сама, как и обещала 6.2.
+
+**Сделано:**
+
+- `server/config/plans.ts` — `PLANS` (starter $9.99 3/5/5/10, pro $29.99
+  9/15/15/25, academic $79.99 24/35/35/80; месяц) БЕЗ `stripePriceId`;
+  `priceEnvVarFor` (`STRIPE_PRICE_<NAME>`), `stripeLookupKeyFor`
+  (`philosynth_<name>`); `REFERENCE_OPERATION_COST_USD` из констант
+  оценщика (верхняя модель `standard`): синтез ≈ $1.90, перегенерация ≈
+  $0.25, режим ≈ $0.07, обогащение ≈ $0.035; `computePlanEconomics` /
+  `assertPlanEconomics` — `price ≥ Σ quota × cost × markup` (запас 8–11 %
+  при 1.2; при 3 — отказ); `validatePlanDefinition` (допуск 1e-6 на цене).
+- `scripts/seed-plans.ts` (`npm run seed:plans`; `seedPlans()` экспортирован)
+  — created/updated/skip/fail по `name`; `stripe_price_id` только из
+  `process.env` в момент запуска; без переменной — `is_active=false`, price
+  не затирается, жёлтое предупреждение с именами переменных и подсказкой
+  `stripe:create-prices`; заслон: смена Price у плана с подписками ≠
+  `canceled` → fail, строка не тронута; экономика — до записи; каждая
+  created/updated — `admin_audit` `plan.seeded` (actor NULL) в tx.
+- `scripts/stripe-create-prices.ts` (`npm run stripe:create-prices
+  [-- --transfer]`; `createPrices()` экспортирован) — Product
+  (`metadata.philosynth_plan`) + Price (`lookup_key`) на тариф; повтор —
+  skip по `GET /v1/prices?lookup_keys[]`; расхождение цены → fail с
+  подсказкой `--transfer` (новая цена, ключ переезжает, прежняя
+  `active=false`); печатает `STRIPE_PRICE_*=price_…`; пустой ключ → отказ
+  до первого запроса; БД не нужна.
+- `stripe-client.ts` += `StripeProduct/StripePrice/StripeList`, `withQuery`,
+  `createProduct/listProducts/createPrice/updatePrice/listPrices`.
+- `ADMIN_ACTIONS.PLAN_SEEDED` + `AdminAuditTargetType` `subscription_plan`.
+- Обвязка: `.env.example` += три пустые `STRIPE_PRICE_*`;
+  `.env.local.example` ВОССОЗДАН (в HEAD не было) с `price_mock_*`;
+  `.gitignore` += `.dev-billing/` (тоже не было); `philosynth-termux.sh`
+  зовёт `seed:plans`; `tools/dev-billing.sh` — skip посева по отчёту.
+- Тесты: `tests/smoke-83-request1.mjs` (81 ✓, мок поднимается смоуком);
+  `tests/test-83-requests2-8.mjs` (88 ✓ ×3); test-62 → `starter62`;
+  test-82 → план из посева (51 ✓); test-62 101 ✓.
+- Доки: 02 §2.22 (источник строк, заслон, экономика) и §2.29
+  (`plan.seeded`); 03 §2.10 (`GET /billing/plans` пустой → `[]`); 04 §4
+  строка 8.3; 05 (plans.ts, seed-plans, stripe-create-prices, env,
+  stripe-client, dev-billing, tests); README (быстрый старт, раздел «Как
+  поднять биллинг» из четырёх шагов, порядок 8.2/8.3 под таблицей); 07
+  «По факту 8.3» + §12 + врезка; 08; 09 §2/§3/§4/§9 — всё
+  `scripts/patch-docs-conv83.py` (идемпотентен).
+- `server/integration-check.mts` — 2aa/4al (экспорты, контракты plans /
+  seed / create-prices / обвязки, дрейф-контроль DEFAULT_SECTIONS формы ⊆
+  опорного состава, тесты не сносят starter) + 5aa живьём (seedPlans на
+  текущем состоянии без fail → повтор skip ×3, журнал = created+updated,
+  строки ≡ plans.ts, is_active ⇔ STRIPE_PRICE_*, убыточная квота → fail
+  без записи, getPlans ≡ активным строкам).
+
+**Найдено по ходу (детали — «По факту 8.3» в 07 и 09 §2/§3/§4/§9):**
+dotfile и `.gitignore`, потерянные загрузкой; float-сравнение цены;
+неидемпотентный посев стенда 8.2; связь test-62 с посеянным `starter`;
+статус-сообщение раньше `reload()`; `/__mock/health` считается запросом.
+
+**Для следующих бесед:**
+- **8.4 / 8.5** — тарифов не касаются; из 8.3 им ничего не нужно.
+- **Владелец службы**: README «Как поднять биллинг» — ключи →
+  `stripe:create-prices` → `STRIPE_PRICE_*` → `seed:plans`. Новый тариф —
+  правка `plans.ts` (заслон экономики) + те же два скрипта.
+- **Все стендовые беседы**: `dev-billing.sh` сеет тарифы сам
+  (`price_mock_*`), тесты на общей БД планы `starter/pro/academic` не
+  удаляют и не пересоздают — свои планы под уникальными `name`.
+
+---
+
 ### Правка каталога философов (2026-09-07, после 7.1)
 
 - `packages/shared/constants/philosophers.ts` += Шелер («Рубеж XIX–XX»),
@@ -4862,6 +4954,22 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
 Шапка `docs/07-conversation-protocol.md` дословно: датированные врезки
 по итогам бесед, от свежих к старым.
 
+> **Правки 2026-09-09 (итоги беседы 8.3)**: тарифы — посев и заведение
+> Prices в Stripe закрыты (запрос 1 + смоук tests/smoke-83-request1.mjs
+> 81 ✓ + все тестовые запросы tests/test-83-requests2-8.mjs 88 ✓ ×3 против
+> НАСТОЯЩЕГО стенда dev-billing.sh с браузером; check:integration +=
+> 2aa/4al/5aa). 02 §2.22 — источник строк subscription_plans (plans.ts →
+> seed-plans, STRIPE_PRICE_* из env, неактивность без переменной, заслон
+> Price при подписках ≠ canceled, экономика цена ≥ Σ квот × себестоимость ×
+> наценка), §2.29 += plan.seeded/subscription_plan; 03 §2.10 — GET
+> /billing/plans при пустой таблице → []; 04 §4 строка 8.3; 05 — plans.ts,
+> seed-plans.ts, stripe-create-prices.ts, STRIPE_PRICE_* в env-образцах,
+> dev-billing идемпотентный посев, test-83; README — «Как поднять биллинг»,
+> порядок 8.2/8.3 под таблицей исправлен; 09 §2 (dotfile при загрузке),
+> §3 (float цены, сид с ключом из env), §4 (харнесс), §9 п.10. Дыры
+> выкладки закрыты: .env.local.example и .dev-billing/ в .gitignore
+> воссозданы. Глава «По факту 8.3».
+>
 > **Правки 2026-09-07 (итоги беседы 7.1)**: долги реестра §12 закрыты
 > целиком (запрос 1 — все семь групп + смоук tests/smoke-71-request1.mjs
 > 68 ✓; тестовые запросы tests/test-71-requests2-8.mjs 105 ✓ ×2 против

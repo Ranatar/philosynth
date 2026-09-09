@@ -25,6 +25,8 @@
     "seed:configs": "tsx scripts/seed-configs.ts",
     "seed:taxonomy": "tsx scripts/seed-taxonomy.ts",
     "seed:admin": "tsx scripts/bootstrap-admin.ts",
+    "seed:plans": "tsx scripts/seed-plans.ts",
+    "stripe:create-prices": "tsx scripts/stripe-create-prices.ts",
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json"
   },
   "devDependencies": {

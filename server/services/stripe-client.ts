@@ -9,6 +9,13 @@
  * env STRIPE_API_BASE (мок в тестах — тот же приём, что
  * ANTHROPIC_BASE_URL беседы 1.4).
  *
+ * 8.3: + Products/Prices для заведения тарифов владельцем службы
+ * (scripts/stripe-create-prices.ts): createProduct, listProducts,
+ * createPrice (recurring[interval], lookup_key, transfer_lookup_key),
+ * listPrices (lookup_keys[] — обе записи списка Stripe принимает и
+ * мок 8.2). Те же приёмы: encodeForm, STRIPE_API_BASE, StripeError.
+ * GET с параметрами — через query-строку в том же формате `a[0]=…`.
+ *
  * Пустой STRIPE_SECRET_KEY → StripeError STRIPE_UNAVAILABLE (роуты
  * пополнения/подписки отвечают 503; BYO-Key и баланс, начисленный
  * иначе, работают без Stripe).
@@ -115,6 +122,41 @@ export interface StripeSubscription {
   metadata?: Record<string, string>;
 }
 
+/** Product (8.3) — одна карточка на тариф; metadata.philosynth_plan = name. */
+export interface StripeProduct {
+  id: string;
+  object: "product";
+  name: string;
+  active: boolean;
+  description?: string | null;
+  metadata?: Record<string, string>;
+}
+
+/** Price (8.3) — цена за период; lookup_key — ключ идемпотентности заведения. */
+export interface StripePrice {
+  id: string;
+  object: "price";
+  active: boolean;
+  currency: string;
+  /** id продукта (без expand) */
+  product: string;
+  /** центы; null у метрических цен */
+  unit_amount: number | null;
+  recurring: { interval: "day" | "week" | "month" | "year"; interval_count: number } | null;
+  type: "recurring" | "one_time";
+  lookup_key: string | null;
+  nickname?: string | null;
+  metadata?: Record<string, string>;
+}
+
+/** Список Stripe: { object:'list', data, has_more }. */
+export interface StripeList<T> {
+  object: "list";
+  data: T[];
+  has_more: boolean;
+  url?: string;
+}
+
 export interface StripeEvent {
   id: string;
   object: "event";
@@ -126,6 +168,13 @@ export interface StripeEvent {
 
 export function isStripeConfigured(): boolean {
   return env.stripe.secretKey.length > 0;
+}
+
+/** Query-строка GET в формате формы Stripe (`lookup_keys[0]=…`). */
+function withQuery(path: string, query?: FormObject): string {
+  if (!query) return path;
+  const qs = encodeForm(query);
+  return qs ? `${path}${path.includes("?") ? "&" : "?"}${qs}` : path;
 }
 
 async function request<T>(
@@ -250,6 +299,92 @@ export const stripe = {
       "POST",
       `/v1/subscriptions/${encodeURIComponent(id)}`,
       params as FormObject,
+    );
+  },
+
+  /* ── Products / Prices (8.3, заведение тарифов) ─────────────────── */
+
+  createProduct(params: {
+    name: string;
+    description?: string;
+    metadata?: Record<string, string>;
+  }): Promise<StripeProduct> {
+    return request<StripeProduct>("POST", "/v1/products", {
+      name: params.name,
+      ...(params.description ? { description: params.description } : {}),
+      metadata: params.metadata ?? {},
+    });
+  },
+
+  /** Активные продукты (limit ≤ 100; пагинация заведению тарифов не нужна —
+   *  продуктов три). */
+  listProducts(params: { active?: boolean; limit?: number } = {}): Promise<StripeList<StripeProduct>> {
+    return request<StripeList<StripeProduct>>(
+      "GET",
+      withQuery("/v1/products", {
+        ...(params.active !== undefined ? { active: params.active } : {}),
+        limit: params.limit ?? 100,
+      }),
+    );
+  },
+
+  /**
+   * Price за период. lookupKey хранит сам Stripe — по нему заведение
+   * идемпотентно; transferLookupKey=true переносит ключ с прежней цены
+   * (иначе Stripe отвечает resource_already_exists).
+   */
+  createPrice(params: {
+    productId: string;
+    unitAmountCents: number;
+    currency?: string;
+    interval: "month" | "year";
+    intervalCount?: number;
+    lookupKey?: string;
+    transferLookupKey?: boolean;
+    nickname?: string;
+    metadata?: Record<string, string>;
+  }): Promise<StripePrice> {
+    return request<StripePrice>("POST", "/v1/prices", {
+      product: params.productId,
+      unit_amount: params.unitAmountCents,
+      currency: params.currency ?? "usd",
+      recurring: { interval: params.interval, interval_count: params.intervalCount ?? 1 },
+      ...(params.lookupKey ? { lookup_key: params.lookupKey } : {}),
+      ...(params.transferLookupKey ? { transfer_lookup_key: true } : {}),
+      ...(params.nickname ? { nickname: params.nickname } : {}),
+      metadata: params.metadata ?? {},
+    });
+  },
+
+  /** Правка Price: у Stripe изменяемы только active/nickname/metadata/lookup_key
+   *  (сумма и период неизменяемы — новая цена вместо старой). */
+  updatePrice(
+    id: string,
+    params: { active?: boolean; nickname?: string; lookupKey?: string; transferLookupKey?: boolean },
+  ): Promise<StripePrice> {
+    return request<StripePrice>("POST", `/v1/prices/${encodeURIComponent(id)}`, {
+      ...(params.active !== undefined ? { active: params.active } : {}),
+      ...(params.nickname !== undefined ? { nickname: params.nickname } : {}),
+      ...(params.lookupKey !== undefined ? { lookup_key: params.lookupKey } : {}),
+      ...(params.transferLookupKey ? { transfer_lookup_key: true } : {}),
+    });
+  },
+
+  /** Цены по lookup_keys[] (и/или продукту); active по умолчанию не фильтруется. */
+  listPrices(params: {
+    lookupKeys?: string[];
+    productId?: string;
+    active?: boolean;
+    limit?: number;
+  } = {}): Promise<StripeList<StripePrice>> {
+    return request<StripeList<StripePrice>>(
+      "GET",
+      withQuery("/v1/prices", {
+        ...(params.lookupKeys?.length ? { lookup_keys: params.lookupKeys } : {}),
+        ...(params.productId ? { product: params.productId } : {}),
+        ...(params.active !== undefined ? { active: params.active } : {}),
+        limit: params.limit ?? 100,
+      }),
     );
   },
 };

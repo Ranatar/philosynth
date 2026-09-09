@@ -945,6 +945,14 @@ GET    /billing/subscription    → { subscription: UserSubscription | null,
                                    quotas: { syntheses, regenerations, modes, enrichments } }
 
 GET    /billing/plans            → { plans: SubscriptionPlan[] }
+                                // Только is_active = true, по возрастанию
+                                // цены. Пустая таблица или все планы
+                                // неактивны (посев без STRIPE_PRICE_*, 8.3)
+                                // → 200 { plans: [] }, НЕ ошибка: UI
+                                // показывает «тарифов нет». Строки — только
+                                // из npm run seed:plans (02 §2.22).
+                                // POST /subscribe на неактивный/неизвестный
+                                // planId → 404 NOT_FOUND (6.1).
 
 POST   /billing/subscribe        { planId: string }
                                 → { clientSecret: string, subscriptionId: string }

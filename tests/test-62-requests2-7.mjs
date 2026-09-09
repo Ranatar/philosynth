@@ -537,12 +537,12 @@ try {
 
   /* ══ R8: подписка (п. 5b) ══ */
   console.log("\n■ R8: UI подписки");
-  for (const old of await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, "starter"))) {
+  for (const old of await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, "starter62"))) {
     await db.delete(userSubscriptions).where(eq(userSubscriptions.planId, old.id));
   }
-  await db.delete(subscriptionPlans).where(eq(subscriptionPlans.name, "starter"));
+  await db.delete(subscriptionPlans).where(eq(subscriptionPlans.name, "starter62"));
   const [plan] = await db.insert(subscriptionPlans).values({
-    name: "starter", displayName: "Starter", priceUsd: "9.00", billingPeriod: "month",
+    name: "starter62", displayName: "Starter62", priceUsd: "9.00", billingPeriod: "month",
     quotaSyntheses: 3, quotaRegenerations: 10, quotaModes: 5, quotaEnrichments: 20, stripePriceId: "price_starter_62",
   }).returning();
   await logout();
@@ -550,16 +550,16 @@ try {
   await openBilling();
   ok(await exists(page, T("sub-absent")), "подписки нет — «не оформлена»");
   await page.click(T("sub-choose"));
-  await page.waitForSelector(T("sub-plan-starter"), { timeout: 15000 });
+  await page.waitForSelector(T("sub-plan-starter62"), { timeout: 15000 });
   const planRow = await rows(page, `${T("sub-plans")} table`);
   // 8.2: строка ищется по имени, а не «единственная»: на общей БД лежат планы других стендов
-  // (test-71 оставляет starter71 — у него подписка анонимизированного пользователя, FK)
-  const starterRow = planRow.find((r) => r[0] === "Starter");
-  ok(!!starterRow && /\$9\.00/.test(starterRow[1]) && intOf(starterRow[2]) === 3, "таблица тарифов: Starter $9.00 / 3 синтеза", J(planRow));
-  await page.click(T("sub-plan-starter"));
+  // (test-71 оставляет starter71 — у него подписка анонимизированного пользователя, FK; с 8.3 план назван starter62, чтобы не сносить посеянный `starter`)
+  const starterRow = planRow.find((r) => r[0] === "Starter62");
+  ok(!!starterRow && /\$9\.00/.test(starterRow[1]) && intOf(starterRow[2]) === 3, "таблица тарифов: Starter62 $9.00 / 3 синтеза", J(planRow));
+  await page.click(T("sub-plan-starter62"));
   await page.waitForSelector(T("sub-status"), { timeout: 15000 });
   ok(/ожидает оплаты/i.test(await text(page, T("sub-status"))), "после «Оформить» — статус «ожидает оплаты» (incomplete)");
-  ok(/Starter/.test(await text(page, T("sub-plan"))), "тариф Starter показан");
+  ok(/Starter62/.test(await text(page, T("sub-plan"))), "тариф Starter62 показан");
   const subRow = (await db.select().from(userSubscriptions).where(eq(userSubscriptions.userId, A.id)).orderBy(desc(userSubscriptions.createdAt)))[0];
   const wh = await webhook({ type: "invoice.paid", object: { id: "in_x", subscription: subRow.stripeSubscriptionId, period_start: nowSec(), period_end: nowSec() + 30 * 86400, lines: { data: [{ period: { start: nowSec(), end: nowSec() + 30 * 86400 } }] } } });
   ok(wh.status === 200, "webhook invoice.paid принят");

@@ -9,16 +9,19 @@
 `docs/09-lessons.md`. Здесь остались два правила, которые не стареют,
 и комплект следующей беседы.
 
-## Состояние на 2026-09-08
+## Состояние на 2026-09-09
 
 Фазы 0–7 закрыты, реестр долгов 07 §12 пуст. Фаза 8 «Пусковая
-пригодность» ОТКРЫТА: 8.1 (администратор) и 8.2 (локальный стенд
-биллинга — оснастка) ЗАКРЫТЫ 2026-09-08 — см. «По факту 8.1» / «По факту
-8.2» в 07 и главы 8.1 / 8.2 в 08. Ближайшая беседа — 8.3 (тарифы: посев и
-заведение Prices в Stripe); тарифы проверяются на моке `tools/stripe-mock.mjs`
-и стенде `tools/dev-billing.sh` из 8.2. Беседы 8.4 (управление своим
-содержимым) и 8.5 (родословная при импорте) независимы от всех прочих —
-порядок любой. Тексты — `07` §8, узлы графа — `07` §11.
+пригодность» ОТКРЫТА: 8.1 (администратор), 8.2 (локальный стенд
+биллинга — оснастка) и 8.3 (тарифы: посев и заведение Prices в Stripe)
+ЗАКРЫТЫ — см. «По факту 8.1» / «8.2» / «8.3» в 07 и главы 8.1–8.3 в 08.
+Остались 8.4 (управление своим содержимым — клиент) и 8.5 (родословная
+при импорте); они независимы от всех прочих и друг от друга — порядок
+любой. Ближайшая — 8.4. Тексты — `07` §8, узлы графа — `07` §11.
+
+Владельцу службы для запуска биллинга: README «Как поднять биллинг»
+(ключи Stripe → `npm run stripe:create-prices` → `STRIPE_PRICE_*` в `.env`
+→ `npm run seed:plans`).
 
 ## Универсальный минимум любой серверной беседы
 
@@ -36,74 +39,69 @@
   schema↔types↔constants
 - `server/integration-check.mts` (`npm run check:integration -w server`) —
   импорты/экспорты/async; расширять списком новых модулей беседы
-  (8.1 — секции 2z/4aj/5z; 8.2 — 4ak; следующая серия — 2aa/4al/5aa).
+  (8.1 — секции 2z/4aj/5z; 8.2 — 4ak; 8.3 — 2aa/4al/5aa; следующая серия —
+  2ab/4am/5ab). Проверять на СВЕЖЕМ клоне, не в песочнице с накопленными
+  файлами: 8.3 нашла, что `.env.local.example` и `.dev-billing/` в
+  `.gitignore` не пережили выкладку, а 4ak на них завязана (09 §2, 8.3).
   Требует посевов prompts/configs/taxonomy в рабочей БД и живого Redis;
   ≈ 100 с — в фоне (`setsid nohup … &` + `sleep`).
 - Перед любым прогоном в песочнице — `pg_ctlcluster 16 main start` (снимает
   stale pid) + `redis-server --daemonize yes --save ''`: демоны гибнут и между
   ходами, и посреди длинного хода (09 §1, §9 п.9).
 
-## Комплект ближайшей беседы — 8.3 (тарифы)
+## Комплект ближайшей беседы — 8.4 (управление своим содержимым, клиент)
 
-Сверх универсального минимума выше (schema.ts, db/index.ts, env.ts,
-package.json + tsconfig'и):
+Сервер эта беседа НЕ ПРАВИТ. Сверх универсального минимума выше (нужен
+только для чтения форм ответов):
 
-- документы 01–05 целиком + `docs/09-lessons.md` целиком (07 §10; §9
-  «Стенд биллинга» — обязательно: мок, стенд, связь тестов через общую БД);
-  06 в беседу НЕ грузится — он для подготовительного шага;
-  из 07 — §1, §9–12, врезка «Фаза 8», текст 8.3 и блоки «По факту 6.1»,
-  «По факту 7.1», «По факту 8.1», «По факту 8.2»; из 08 — главы 6.1, 6.2,
-  7.1, 8.1, 8.2;
-- `server/services/subscription-service.ts` (6.1/7.1 — планы,
-  ensureStripeCustomer), `server/services/stripe-client.ts` (6.1 — тонкий
-  REST-клиент; сюда добавляются `createProduct`/`createPrice`/`listPrices`
-  под маршруты, которые мок 8.2 УЖЕ отдаёт: `POST /v1/products`, `POST
-  /v1/prices` (`recurring[interval]`, `lookup_key`, `transfer_lookup_key`),
-  `GET /v1/prices?lookup_keys[]=…`), `server/services/billing-service.ts`
-  (потребитель планов);
-- `server/routes/billing.ts` (GET /billing/plans — потребитель посева);
-- `scripts/seed-taxonomy.ts` и `scripts/bootstrap-admin.ts` — образцы
-  идемпотентных скриптов (created/updated/skip/fail, заслон, 23505 через
-  `err.cause.code`); `scripts/seed-configs.ts` — `canonical()` для сверки
-  jsonb;
-- `server/services/admin-audit.ts` (8.1) — если посев/правка тарифов
-  оставляет след: `writeAudit(tx, …)` той же транзакцией, `ADMIN_ACTIONS`
-  расширяется без миграции (замороженная константа + union
-  `shared/types/admin.ts`);
-- `client/pages/BillingPage.tsx`, `client/api/subscription.ts` — потребитель
-  тарифов в UI;
-- оснастка 8.2: `tools/stripe-mock.mjs` (единственный мок Stripe — своей
-  копии НЕ заводить; `createStripeMock({ port, bearer, paymentIntentStatus,
-  idTag })`, `mock.state.products/prices` для проверок), `tools/stripe-emit.mjs`
-  (активация подписки на стенде — `invoice.paid <sub_…>`),
-  `tools/dev-billing.sh` (зовёт `npm run seed:plans`, как только он появится
-  в package.json — сейчас предупреждает о пустом разделе подписки),
-  `.env.local.example` (переменные стенда; `STRIPE_PRICE_*` — сюда),
-  `tests/test-82-requests2-6.mjs` (харнесс против настоящего стенда с
-  браузером; R5 — полный цикл подписки через emit на плане, заведённом
-  руками: 8.3 заменяет ручной insert посевом) и `tests/test-61-requests2-11.mjs`
-  (R7 — планы/подписки на моке, API);
-- `tests/test-81-requests2-10.mjs` — стенд на отдельной пустой БД с
-  `drizzle-kit migrate`, если посев проверять на чистой базе.
+- документы 01–05 целиком + `docs/09-lessons.md` целиком (07 §10; в тексте
+  8.4 перечислены грабли §2/§4/§8, которые беседа заденет заведомо); 06 в
+  беседу НЕ грузится; из 07 — §1, §9–12, врезка «Фаза 8», текст 8.4 и
+  блоки «По факту 1.6b», «По факту 5.4», «По факту 5.5», «По факту 7.1»;
+  из 08 — главы 1.6b (каталог/просмотр), 5.4 (правка связи), 5.5
+  (TransformPanel — образец подтверждения вторым шагом), 7.1
+  (EdgeCreateForm, авто-импорт);
+- `docs/fragments-for-conversations/5-6-ui-kit.md` + `.css` + `.html` —
+  беседа вводит НОВЫЕ элементы интерфейса (строка действий карточки,
+  двухшаговое подтверждение, правка по месту); сверяться обязательно;
+- клиент: `client/src/pages/CatalogPage.tsx` и
+  `client/src/components/catalog/SynthesisCard.tsx` (1.6b; фильтр потомков
+  3.2), `client/src/api/syntheses.ts` (1.6b), `client/src/api/elements.ts`
+  (5.1/5.2/5.4 — `updateCapsule`, `deleteEdge` написаны и не вызываются),
+  `client/src/api/lineage.ts` (3.2 — `GET /lineage/descendants` для числа
+  потомков), `client/src/api/transforms.ts` + `client/src/hooks/useTransformStream.ts`
+  (5.5) и `client/src/api/prompts.ts` (6.2/7.1) — только для уборки мёртвых
+  функций, `client/src/components/graph/EdgePanel.tsx` и `GraphModal.tsx`
+  (1.7; правка связи — 5.4), `client/src/components/document/DocumentHeader.tsx`
+  (1.6b), `client/src/components/edit/TransformPanel.tsx` (5.5);
+- сервер ТОЛЬКО ДЛЯ ЧТЕНИЯ: `server/routes/syntheses.ts` (1.6 — DELETE,
+  duplicate, PATCH title) и `server/routes/elements.ts` (5.1 — capsule,
+  edges), `server/routes/lineage.ts` (3.1 — descendants);
+- харнессы-образцы: `tests/test-62-requests2-7.mjs` и
+  `tests/test-83-requests2-8.mjs` (браузер против живого сервера; клики по
+  перерисованным спискам через `$eval(sel, el => el.click())`, ожидание
+  каждой секции по своему `data-testid`); `python3 scripts/css-parity-audit.py` перед
+  правкой оформления (05, «Единство стилей»).
 
-Исходник `philosynth.html` не нужен: беседа целиком новая.
+Исходник `philosynth.html` не нужен: в одностраничнике управления
+концепциями нет — портировать нечего, оформление из UI-кита.
 
-## Что 8.2 оставила 8.3 знать
+## Что 8.3 оставила знать всем стендовым беседам
 
-- Мок ставит в id метку запуска (`pi_<метка>_N`, `cus_…`, `sub_…`,
-  `prod_…`, `price_…`): на точные id не завязываться, `--id-tag ""` даёт
-  голые `pi_1` только для ручной отладки.
-- Тесты на общей БД связаны: не считать строки таблиц «ровно N»
-  (test-71 оставляет план `starter71`, test-62 — пользователя с
-  `stripe_customer_id`); уборка планов упирается в RESTRICT-историю
-  подписок — сеять под уникальными `name`, искать по имени.
-- Секции BillingPage грузятся своими запросами (`GET /billing/subscription`
-  отдельно от ключа и баланса): в браузерных тестах ждать каждую секцию;
-  баланс — по `balance-value`, подсказка о dev-режиме — только после
-  `POST /topup`.
+- `tools/dev-billing.sh` сеет тарифы сам (`npm run seed:plans`,
+  `STRIPE_PRICE_*=price_mock_*` из `.env.local.example`): планы
+  `starter/pro/academic` на общей БД активны — тесты их не удаляют и не
+  пересоздают (test-62 — `starter62`, test-82 подписывается на посеянный
+  `starter`); повторный старт стенда — одни skip (по отчёту посева).
+- Сиды читают внешние ключи из `process.env` в момент запуска: дочерний
+  `tsx` с явным окружением, а не правка `.env`; «без переменной» — удалить
+  её из копии env.
+- Мок ставит в id метку запуска; `/__mock/health` сам считается запросом
+  (дельта +1); секции BillingPage грузятся своими запросами — ждать целевой
+  `data-testid`, не фразу статуса (она появляется до `reload()`).
 - Роли — две; `admin` достижим только через `npm run seed:admin`
   (BOOTSTRAP_ADMIN_EMAIL/PASSWORD из env). Стендам проще `UPDATE users SET
   role='admin'` (как test-71) либо дочерний запуск bootstrap с
   `DATABASE_URL` стенда (как test-81).
-- Каждое админ-действие — строка `admin_audit`; `TRUNCATE users CASCADE`
-  снесёт и журнал.
+- Каждое админ-действие и каждый посев тарифов — строка `admin_audit`
+  (`plan.seeded`, actor NULL); `TRUNCATE users CASCADE` снесёт и журнал.
