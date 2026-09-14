@@ -20,7 +20,9 @@ philosynth-service/
 │                                   # 8.3: + STRIPE_PRICE_*=price_mock_* — мок не проверяет
 │                                   # Price, планы сеются активными (файл воссоздан 8.3:
 │                                   # в HEAD 83aaf2b его не было — upload не перенёс dotfile;
-│                                   # и СНОВА воссоздан 8.4 — в HEAD 8f9bae0 его опять нет)
+│                                   # и СНОВА воссоздан 8.4 — в HEAD 8f9bae0 его опять нет;
+│                                   # и В ТРЕТИЙ РАЗ воссоздан 8.5 — HEAD cd46374, вместе с
+│                                   # .dev-billing/ в .gitignore и STRIPE_PRICE_* в .env.example)
 ├── .env.example                    # ВСЕ переменные server/env.ts;
 │                                   # пароль БД обязан совпадать с дефолтом
 │                                   # env.ts — .env читает только drizzle-kit,
@@ -122,6 +124,8 @@ philosynth-service/
 │   │   ├── plans.ts                    # CRUD /plans, POST execute
 │   │   ├── modes.ts                    # POST run, GET results, DELETE
 │   │   ├── lineage.ts                  # GET ancestors, descendants, search
+│   │   │                               # 8.5: + POST /:id/lineage/link (владелец обоих,
+│   │   │                               #  LINEAGE_SELF/CYCLE/EXISTS)
 │   │   ├── prompts.ts                  # Admin: CRUD prompt_templates, synthesis_configs
 │   │   │                               # (СДЕЛАНО 6.1: 8 эндпоинтов §2.9, requireAdmin)
 │   │   │                               # (создаёт беседа 6.1 — до 2026-07-30
@@ -233,6 +237,8 @@ philosynth-service/
 │   │   ├── import-service.ts           # importHTML, extractMetadata, extractSections,
 │   │   │                               # buildDocStateFromImport
 │   │   │                               # (importHTML … buildDocStateFromImport)
+│   │   │                               # 8.5: ImportResult += lineageCandidates — родители без
+│   │   │                               #  UUID сопоставляются по имени предложением (ветка UUID цела)
 │   │   │
 │   │   ├── prompt-registry.ts          # getTemplate, renderTemplate, listVersions,
 │   │   │                               # activateVersion, testDraft (НОВОЕ)
@@ -258,6 +264,8 @@ philosynth-service/
 │   │   │                               # (СДЕЛАНО 6.1: активный ключ один)
 │   │   │
 │   │   ├── lineage-service.ts          # Рекурсивные CTE для навигации по графу (НОВОЕ)
+│   │   │                               # 8.5: + normalizeConceptTitle, findSameOwnerSynthesesByTitle
+│   │   │                               #  (сопоставление родителя по имени), isDescendantOf, linkParent
 │   │   │
 │   │   ├── plan-order-builder.ts       # buildPlanOrder — единый топопорядок (v10)
 │   │   ├── structure-tracker.ts        # refreshSumDef, structureSections (v10)
@@ -365,7 +373,7 @@ philosynth-service/
 │   │   │   ├── logs.ts                 # GET /logs/* (беседа 2.4)
 │   │   │   ├── plans.ts
 │   │   │   ├── modes.ts
-│   │   │   ├── lineage.ts
+│   │   │   ├── lineage.ts              # 3.2: ancestors/descendants/search; 8.5: + linkParent
 │   │   │   ├── billing.ts              # 7 функций §2.10: ключ, пополнение, истории (6.2 СДЕЛАНО 2026-09-07)
 │   │   │   ├── admin.ts                # 8.1: listUsers / setUserRole / getAuditLog (вкладка «Доступ»)
 │   │   │   ├── subscription.ts         # 5 функций §2.10: подписка/тарифы/subscribe/cancel/resume (6.2 СДЕЛАНО)
@@ -394,7 +402,8 @@ philosynth-service/
 │   │   │   ├── CatalogPage.tsx         # Каталог (свои + публичные)
 │   │   │   ├── CreateSynthesisPage.tsx  # Форма создания (НОВОЕ)
 │   │   │   ├── SynthesisPage.tsx       # Просмотр синтеза
-│   │   │   ├── ImportPage.tsx
+│   │   │   ├── ImportPage.tsx          # 4.3; 8.5: блок предложения родителя (LineageCandidateBlock:
+│   │   │   │                           #  .callout.note, «Связать» вторым шагом / «Пропустить»)
 │   │   │   ├── BillingPage.tsx         # 6.2 СДЕЛАНО: секции API-ключ / баланс (Stripe Elements или dev-режим) / подписка / история использования / транзакции
 │   │   │   ├── ProfilePage.tsx         # Профиль: displayName + смена пароля (A3, беседа 0.6); 7.1: + удаление аккаунта (DELETE /auth/me)
 │   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin; 7.1: + вкладка «Каталоги» (типы категорий/связей, правка и удаление пользовательских); 8.1: + вкладка «Доступ» (поиск пользователей, роль с подтверждением, последние 50 строк admin_audit)
@@ -568,7 +577,9 @@ philosynth-service/
     │                                   # план в test-82 — из посева (starter), в test-62 — starter62
     │                                   # (не сносить посеянный starter);
     │                                   # test-84 — браузер против сервера :3000 + vite :5199, мок
-    │                                   # Claude :3884 держит стрим по маркеру SLOW84 (слот занят → 409)
+    │                                   # Claude :3884 держит стрим по маркеру SLOW84 (слот занят → 409);
+    │                                   # test-85 — фикстуры из живого файла одностраничника (T85_FILE),
+    │                                   # без мока Claude; smoke-85 — чистые ядра + живая БД
     ├── test-*-0.3b.ts                  # Регрессионные смоуки таксономии
     └── package.json                    # Маркер type=module
 ```

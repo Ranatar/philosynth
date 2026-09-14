@@ -7,7 +7,12 @@
  *  - getDescendants(id, maxDepth) — потомки (список поддеревьев);
  *  - searchByPhilosophers(names)  — синтезы, в генеалогии которых есть ВСЕ
  *    указанные философы (транзитивно; HAVING count = names.length);
- *  - createLineageRecords         — запись генеалогии при создании синтеза.
+ *  - createLineageRecords         — запись генеалогии при создании синтеза;
+ *  - 8.5: normalizeConceptTitle / findSameOwnerSynthesesByTitle — сопоставление
+ *    концепции-родителя ПО ИМЕНИ среди синтезов того же владельца
+ *    (предложением, без записи); isDescendantOf + linkParent —
+ *    POST /syntheses/:id/lineage/link с заслонами LINEAGE_SELF /
+ *    LINEAGE_CYCLE / идемпотентный отказ на существующую пару.
  *
  * Прародителей в исходнике нет (клиентская генеалогия жила в объектах
  * genealogy концепт-файлов — reconstructGenealogy, беседа 3.2); здесь
@@ -19,12 +24,14 @@
  * синтезы, роут отсекает невидимые поддеревья.
  */
 
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray, ne, sql as dsql } from "drizzle-orm";
 
 import { db, sql } from "../db/index.js";
 import { syntheses, synthesisLineage } from "../db/schema.js";
 import type {
+  LineageCandidateMatch,
   LineageNode,
+  LineageRecord,
   ParticipantInput,
 } from "@philosynth/shared/types/lineage";
 
@@ -277,4 +284,173 @@ export async function createLineageRecords(
           },
     ),
   );
+}
+
+/* ══ 8.5: сопоставление родителя по имени ═════════════════════════════ */
+
+/**
+ * Нормализация названия концепции для сопоставления по имени (07, беседа
+ * 8.5, п.2): схлопнуть пробелы, снять кавычки-ёлочки и обычные (в том
+ * числе „лапки“ и типографские “”), привести регистр. НЕ идентификатор —
+ * результат сравнения служит только предложению, связь по нему молча не
+ * создаётся.
+ */
+export function normalizeConceptTitle(title: string): string {
+  return title
+    .replace(/[«»"„“”‟']/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Синтезы владельца, чьё название совпадает с parentName после
+ * нормализации; excludeId — только что созданный синтез (сам себе не
+ * родитель). Нормализация выполняется в TS, а не в SQL: одна функция —
+ * один источник истины для сравнения; синтезов у владельца — десятки/сотни,
+ * одна выборка заголовков дешевле подбора регулярных выражений PG.
+ */
+export async function findSameOwnerSynthesesByTitle(
+  userId: string,
+  parentName: string,
+  excludeId?: string,
+): Promise<LineageCandidateMatch[]> {
+  const wanted = normalizeConceptTitle(parentName);
+  if (!wanted) return [];
+  const rows = await db
+    .select({
+      id: syntheses.id,
+      title: syntheses.title,
+      createdAt: syntheses.createdAt,
+    })
+    .from(syntheses)
+    .where(
+      excludeId
+        ? and(eq(syntheses.userId, userId), ne(syntheses.id, excludeId))
+        : eq(syntheses.userId, userId),
+    )
+    .orderBy(syntheses.createdAt);
+  return rows
+    .filter((r) => normalizeConceptTitle(r.title) === wanted)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      createdAt: r.createdAt.toISOString(),
+    }));
+}
+
+/* ══ 8.5: POST /syntheses/:id/lineage/link ═════════════════════════════ */
+
+/**
+ * Есть ли candidateId среди ПОТОМКОВ rootId (транзитивно, без потолка
+ * глубины CTE 02 §2.4 — цикл создаётся привязкой родителя, который сам
+ * происходит от нас, и проверять надо именно потомков, а не предков;
+ * защитный потолок 100 на случай уже испорченных данных).
+ */
+export async function isDescendantOf(
+  rootId: string,
+  candidateId: string,
+): Promise<boolean> {
+  const rows = await sql<{ found: number }[]>`
+    WITH RECURSIVE descendants AS (
+      SELECT sl.synthesis_id AS child_id, 1 AS depth
+      FROM synthesis_lineage sl
+      WHERE sl.parent_synthesis_id = ${rootId}
+        AND sl.parent_type = 'synthesis'
+
+      UNION ALL
+
+      SELECT sl.synthesis_id, d.depth + 1
+      FROM synthesis_lineage sl
+      JOIN descendants d ON sl.parent_synthesis_id = d.child_id
+      WHERE sl.parent_type = 'synthesis' AND d.depth < 100
+    )
+    SELECT 1 AS found FROM descendants WHERE child_id = ${candidateId} LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+export type LineageLinkErrorCode =
+  | "LINEAGE_SELF"
+  | "LINEAGE_CYCLE"
+  | "LINEAGE_EXISTS";
+
+/** Отказ связывания; статус/код HTTP назначает роут (03 §4.3). */
+export class LineageLinkError extends Error {
+  constructor(
+    readonly code: LineageLinkErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "LineageLinkError";
+  }
+}
+
+/**
+ * Привязка концепции-родителя к существующему синтезу (беседа 8.5, п.3):
+ * строка synthesis_lineage parent_type='synthesis', position — в конец
+ * существующих родителей. Заслоны здесь — только структурные (self /
+ * пара уже есть / цикл через потомков); владение обоими синтезами
+ * проверяет роут (403 FORBIDDEN), как и прочий доступ в этом сервисе.
+ * Существующая пара → LINEAGE_EXISTS (идемпотентный отказ, строка не
+ * дублируется).
+ */
+export async function linkParent(
+  synthesisId: string,
+  parentSynthesisId: string,
+): Promise<LineageRecord> {
+  if (synthesisId === parentSynthesisId) {
+    throw new LineageLinkError(
+      "LINEAGE_SELF",
+      "Концепция не может быть собственным родителем",
+    );
+  }
+  const [dup] = await db
+    .select({ id: synthesisLineage.id })
+    .from(synthesisLineage)
+    .where(
+      and(
+        eq(synthesisLineage.synthesisId, synthesisId),
+        eq(synthesisLineage.parentType, "synthesis"),
+        eq(synthesisLineage.parentSynthesisId, parentSynthesisId),
+      ),
+    )
+    .limit(1);
+  if (dup) {
+    throw new LineageLinkError(
+      "LINEAGE_EXISTS",
+      "Эта концепция уже указана родителем",
+    );
+  }
+  if (await isDescendantOf(synthesisId, parentSynthesisId)) {
+    throw new LineageLinkError(
+      "LINEAGE_CYCLE",
+      "Нельзя назначить родителем собственного потомка — родословная замкнётся в цикл",
+    );
+  }
+  const [pos] = await db
+    .select({
+      next: dsql<number>`coalesce(max(${synthesisLineage.position}), -1) + 1`,
+    })
+    .from(synthesisLineage)
+    .where(eq(synthesisLineage.synthesisId, synthesisId));
+  const position = Number(pos?.next ?? 0);
+  const [row] = await db
+    .insert(synthesisLineage)
+    .values({
+      synthesisId,
+      parentType: "synthesis",
+      parentSynthesisId,
+      position,
+    })
+    .returning();
+  if (!row) throw new Error("synthesis_lineage: строка связи не создана");
+  return {
+    id: row.id,
+    synthesisId: row.synthesisId,
+    parentType: row.parentType,
+    parentName: row.parentName,
+    parentSynthesisId: row.parentSynthesisId,
+    position: row.position,
+  };
 }

@@ -23,6 +23,12 @@
  * Харнесс: сервер :3000 + vite :5199 + PG16/Redis, мок Claude SSE :3854
  * (ANTHROPIC_BASE_URL), puppeteer-core + системный Chrome.
  * Запуск: node_modules/.bin/tsx tests/test-54-requests2-6.mjs
+ *
+ * Правка 8.5 (долг оснастки §12 8.4): с 5.5 saveGraphToDb нормализует типы
+ * на каталог — ожидания «typeCatalogId=null» и «свободный текст» перевёрнуты
+ * под факт («из каталога»), а R5b выбирает ДРУГОЙ тип каталога вместо
+ * ожидания «≈» (normalize не предлагается, когда тип уже из каталога —
+ * это и был таймаут R5b).
  */
 import http from "node:http";
 import { spawn } from "node:child_process";
@@ -269,7 +275,9 @@ try {
   const bytie = cats0.find((c) => c.name === "Бытие");
   const [edge0] = await db.select().from(categoryEdges).where(eq(categoryEdges.synthesisId, sid));
   ok(!!bytie && cats0.length === 2 && !!edge0, "фикстура: 2 категории, 1 связь");
-  ok(bytie.typeCatalogId === null, "ФАКТ: typeCatalogId после парсинга — null (нормализации в конвейере нет)");
+  // ФАКТ 5.5 (перевёрнуто 8.5, долг §12 8.4): saveGraphToDb нормализует типы на каталог
+  const [ont0] = await db.select().from(categoryTypeCatalog).where(eq(categoryTypeCatalog.key, "ontological"));
+  ok(bytie.typeCatalogId === ont0.id, "ФАКТ 5.5: typeCatalogId после парсинга — каталог ontological (нормализация в saveGraphToDb)", J([bytie.type, bytie.typeCatalogId]));
 
   browser = await puppeteer.launch({ executablePath: CHROME, headless: "shell", args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   const page = await browser.newPage();
@@ -304,7 +312,7 @@ try {
   ok(await page.$(`${P} [data-testid=node-enrich-toggle]`) !== null, "кнопка «Обогатить» в панели");
   ok(await page.$(`${P} .combobox input[role=combobox]`) !== null, "TaxonomySelector типа в панели");
   const origin0 = await textOf(page, `${P} [data-testid=type-origin]`);
-  ok(has(origin0, "свободный текст"), "индикатор: «свободный текст» (typeCatalogId=null)", origin0);
+  ok(has(origin0, "из каталога"), "индикатор: «из каталога» (typeCatalogId заполнен нормализацией 5.5)", origin0);
   const cenLabel = await textOf(page, `${P} .char-slider[data-characteristic=centrality]`);
   ok(has(cenLabel, "Центральность") && has(cenLabel, "0.90"), "подпись + значение слайдера centrality", cenLabel);
   const whyCount = await page.$$eval(`${P} .char-slider-why`, (els) => els.length);
@@ -401,17 +409,19 @@ try {
 
   /* ══ R5b: тип из каталога в NodePanel → PATCH typeCatalogId ══ */
   console.log("\n■ R5b: TaxonomySelector в NodePanel — выбор из каталога → PATCH");
+  // 8.5 (долг §12 8.4): тип УЖЕ из каталога (5.5) — normalize не зовётся,
+  // строк «≈» нет, список — весь каталог; выбираем ДРУГОЙ тип → PATCH
   await page.click(`${P} .combobox input[role=combobox]`);
   await page.waitForSelector(`${P} .combobox-list .combobox-item`, { timeout: 8000 });
-  await waitText(page, `${P} .combobox-list`, "≈");
   const listTxt = await textOf(page, `${P} .combobox-list`);
-  ok(has(listTxt, "Онтологическая") && has(listTxt, "ontological"), "normalize «онтологическая» → «≈ Онтологическая · ontological»", listTxt.slice(0, 120));
-  await page.evaluate((p) => [...document.querySelectorAll(`${p} .combobox-item`)].find((e) => e.innerText.includes("Онтологическая"))?.click(), P);
+  ok(!has(listTxt, "≈"), "тип из каталога → список без «≈» (normalize не предлагается)", listTxt.slice(0, 120));
+  ok(has(listTxt, "Метафизическая") && has(listTxt, "metaphysical"), "список — каталог: «Метафизическая · metaphysical»", listTxt.slice(0, 160));
+  await page.evaluate((p) => [...document.querySelectorAll(`${p} .combobox-item`)].find((e) => e.innerText.includes("Метафизическая"))?.click(), P);
   await page.waitForFunction((s) => document.querySelector(s)?.innerText.toLowerCase().includes("из каталога"), { timeout: 10000 }, `${P} [data-testid=type-origin]`);
+  const [meta] = await db.select().from(categoryTypeCatalog).where(eq(categoryTypeCatalog.key, "metaphysical"));
   let c3;
-  for (let i = 0; i < 30; i++) { [c3] = await db.select().from(categories).where(eq(categories.id, bytie.id)); if (c3.typeCatalogId) break; await sleep(200); }
-  const [ont] = await db.select().from(categoryTypeCatalog).where(eq(categoryTypeCatalog.key, "ontological"));
-  ok(c3.typeCatalogId === ont.id && c3.type === "онтологическая", "БД: typeCatalogId = каталог ontological, type — написание документа", J([c3.type, c3.typeCatalogId === ont.id]));
+  for (let i = 0; i < 30; i++) { [c3] = await db.select().from(categories).where(eq(categories.id, bytie.id)); if (c3.typeCatalogId === meta.id) break; await sleep(200); }
+  ok(c3.typeCatalogId === meta.id && c3.type === "метафизическая", "БД: typeCatalogId = каталог metaphysical, type — написание документа", J([c3.type, c3.typeCatalogId === meta.id]));
 
   /* ══ R4 + EdgeEditor: EdgePanel → ✎ → тип связи ══ */
   console.log("\n■ R4 + По факту: EdgePanel → «✎ Редактировать» → EdgeEditor → TaxonomySelector связи");

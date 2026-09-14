@@ -49,6 +49,13 @@
  *     (файловые концепции без записи в БД дают предупреждение — глубокое
  *     дерево файла живёт лишь в embedded state и в БД не персистится:
  *     модели lineage для него недостаточно).
+ *     8.5: файлы одностраничника UUID не несут вовсе (в живом файле 0
+ *     вхождений synthesisId) — ветка UUID для них мертва. ПОСЛЕ её
+ *     неудачи родитель сопоставляется ПО ИМЕНИ среди синтезов того же
+ *     владельца (normalizeConceptTitle) и отдаётся ПРЕДЛОЖЕНИЕМ в
+ *     ImportResult.lineageCandidates; связь при импорте не создаётся даже
+ *     при единственном совпадении — имя не идентификатор. Ветка UUID
+ *     сохранена без изменений (файлы экспорта 4.2 UUID несут).
  *  6. Разделы-дубликаты по key: UNIQUE(synthesis_id, key) — первый
  *     побеждает, повтор уходит в warnings (исходник складывал все в
  *     DOM, dbIdx перетирался последним).
@@ -95,6 +102,7 @@ import {
   parseGraphFromHTML,
   saveGraphToDb,
 } from "./graph-parser.js";
+import { findSameOwnerSynthesesByTitle } from "./lineage-service.js";
 import {
   parseGlossaryFromHTML,
   parseThesesFromHTML,
@@ -105,6 +113,7 @@ import type {
   ContextEntry as ContextLogEntry,
   ParentSpecLog,
 } from "@philosynth/shared/types/generation";
+import type { LineageCandidate } from "@philosynth/shared/types/lineage";
 import type {
   Depth,
   ImportWarning,
@@ -879,6 +888,8 @@ const UUID_RE =
 export interface ImportResult {
   synthesisId: string;
   warnings: ImportWarning[];
+  /** 8.5: концепции-родители, не связанные веткой UUID, с совпадениями по имени */
+  lineageCandidates: LineageCandidate[];
 }
 
 function strArray(v: unknown): string[] | null {
@@ -1062,6 +1073,7 @@ export async function importHTML(
     .returning({ id: syntheses.id });
   if (!created) throw new Error("Импорт: запись syntheses не создана");
   const synthesisId = created.id;
+  const lineageCandidates: LineageCandidate[] = [];
 
   // Сбой любого следующего шага — откат: удаление строки (CASCADE чистит
   // детей). Единой транзакции нет: saveGraphToDb/saveElementsToDb ведут
@@ -1185,6 +1197,7 @@ export async function importHTML(
     }
 
     // ── l. Генеалогия → synthesis_lineage [21728–21734] + санация имён ──
+    // (8.5: lineageCandidates заведён снаружи try — уходит в ответ)
     let genealogy = reconstructGenealogy(meta, embeddedState, doc);
     restoreCapsulesFromHTML(genealogy, doc); // порт [21729]; в БД капсулы
     // родителей не пишутся (не персистятся lineage-моделью) — вызов
@@ -1221,9 +1234,21 @@ export async function importHTML(
           continue;
         }
       }
+      // 8.5: ветка UUID не сработала — сопоставление ПО ИМЕНИ среди синтезов
+      // того же владельца, ПРЕДЛОЖЕНИЕМ (связь не пишется). Позиция —
+      // та, что заняла бы связь в порядке participants файла.
+      const matches = await findSameOwnerSynthesesByTitle(
+        userId,
+        p.name,
+        synthesisId,
+      );
+      lineageCandidates.push({ parentName: p.name, position: position++, matches });
       warnings.push({
         field: "lineage",
-        message: `Концепция-родитель «${p.name}» не найдена в базе — связь генеалогии не создана (дерево файла сохранено только во встроенном состоянии).`,
+        message:
+          matches.length > 0
+            ? `Концепция-родитель «${p.name}» не связана автоматически: в базе найдено ${matches.length} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).`
+            : `Концепция-родитель «${p.name}» в базе не найдена — связь генеалогии не создана. Родителя можно импортировать отдельно и привязать позже (дерево файла сохранено во встроенном состоянии).`,
         critical: false,
       });
     }
@@ -1283,5 +1308,5 @@ export async function importHTML(
     embeddedState ? "восстановлено" : "реконструировано",
   );
 
-  return { synthesisId, warnings };
+  return { synthesisId, warnings, lineageCandidates };
 }

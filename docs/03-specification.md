@@ -415,7 +415,26 @@ POST   /syntheses/:id/duplicate → { id: string }
                                 // генерация → 409 GENERATION_IN_PROGRESS.
 
 POST   /syntheses/import       multipart/form-data: file (HTML)
-                                → { id: string, warnings: ImportWarning[] }
+                                → { id: string, warnings: ImportWarning[],
+                                    lineageCandidates: LineageCandidate[] }
+                                // 8.5: файлы одностраничника UUID не несут
+                                // (в живом файле 0 вхождений synthesisId) —
+                                // ветка UUID (4.3) для них мертва. После её
+                                // неудачи концепция-родитель из genealogy
+                                // сопоставляется ПО ИМЕНИ среди синтезов ТОГО
+                                // ЖЕ владельца (normalizeConceptTitle: схлопнуть
+                                // пробелы, снять «»/""/„“, регистр) и отдаётся
+                                // ПРЕДЛОЖЕНИЕМ: LineageCandidate = { parentName,
+                                // position, matches: { id, title, createdAt }[] }.
+                                // Связь при импорте НЕ создаётся даже при
+                                // единственном совпадении (имя — не идентификатор);
+                                // matches пуст — совпадений нет, предупреждение
+                                // говорит о возможности привязать позже. Файлы
+                                // экспорта 4.2 (с UUID) связываются прежней
+                                // веткой, lineageCandidates для них пуст.
+                                // Клиент (ImportPage): блок на каждого родителя,
+                                // «Связать» вторым шагом кнопок → POST
+                                // /syntheses/:id/lineage/link (§2.8).
 ```
 
 **SynthesisFull:**
@@ -875,6 +894,27 @@ GET    /syntheses/:id/lineage/descendants?depth=5
 GET    /lineage/search          ?philosopher=Кант&philosopher=Хайдеггер
                                 → { syntheses: SynthesisPreview[] }
                                 // Концепции, в генеалогии которых есть ВСЕ указанные философы
+
+POST   /syntheses/:id/lineage/link { parentName, parentSynthesisId }
+                                → { ok: true, record: LineageRecord }
+                                // Беседа 8.5. Строка synthesis_lineage
+                                // parent_type='synthesis', position — в конец
+                                // существующих родителей. parentName — имя из
+                                // файла (обязателен, в БД НЕ пишется: parent_name
+                                // модели — имя философа). Заслоны по порядку:
+                                // тело без полей → 400 VALIDATION_ERROR (details);
+                                // :id не найден → 404; :id не свой → 403 FORBIDDEN;
+                                // :id === parentSynthesisId → 400 LINEAGE_SELF;
+                                // parentSynthesisId не UUID/не найден → 404;
+                                // родитель принадлежит ДРУГОМУ пользователю → 403
+                                // (сопоставление шло по имени — чужая одноимённая
+                                // концепция дала бы ложную связь; публичность не
+                                // помогает); пара уже есть → 409 LINEAGE_EXISTS
+                                // (идемпотентный отказ, строка не дублируется);
+                                // parentSynthesisId среди ПОТОМКОВ :id → 409
+                                // LINEAGE_CYCLE (проверяются потомки, не предки:
+                                // цикл создаётся привязкой родителя, который сам
+                                // происходит от нас). Отвязки (DELETE) нет.
 ```
 
 Клиентские потребители (беседа 3.2): `client/api/lineage.ts`
@@ -1489,6 +1529,11 @@ NO_PARTICIPANTS_SEED_REQUIRED — свободный синтез без seed (v
 LAST_ADMIN          — понижение или удаление аккаунта последнего администратора —
                       409 (8.1; подсказка «сначала назначьте второго»)
 SELF_ROLE_CHANGE    — POST /auth/users/:id/role на самого себя — 409 (8.1)
+LINEAGE_SELF        — POST /lineage/link: концепция — собственный родитель — 400 (8.5)
+LINEAGE_CYCLE       — POST /lineage/link: родитель среди потомков — 409 (8.5)
+LINEAGE_EXISTS      — POST /lineage/link: такая пара уже есть — 409, идемпотентный
+                      отказ без дубликата строки (8.5; код не назван текстом
+                      беседы — заведён по образцу пары выше)
 ```
 
 > Примечание (беседа 1.4b): отдельного кода «операция ещё не

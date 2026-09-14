@@ -37,3 +37,32 @@ export interface LineageNode {
   /** Родители узла (для ancestors) либо потомки (для descendants) */
   children: LineageNode[];
 }
+
+/* ══ Беседа 8.5: сопоставление родителя при импорте ══════════════════ */
+
+/** Совпадение по имени среди синтезов ТОГО ЖЕ владельца */
+export interface LineageCandidateMatch {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
+/**
+ * Предложение родителя из ответа POST /syntheses/import (03 §2.2):
+ * концепция-родитель из genealogy файла, которую ветка UUID не связала.
+ * matches пуст — совпадений по имени нет; связь при импорте НЕ создаётся
+ * даже при единственном совпадении (имя — не идентификатор).
+ */
+export interface LineageCandidate {
+  /** Имя концепции-родителя, как оно записано в файле */
+  parentName: string;
+  /** Позиция среди participants файла (какое место заняла бы связь) */
+  position: number;
+  matches: LineageCandidateMatch[];
+}
+
+/** Тело POST /syntheses/:id/lineage/link (03 §2.8) */
+export interface LinkParentInput {
+  parentName: string;
+  parentSynthesisId: string;
+}

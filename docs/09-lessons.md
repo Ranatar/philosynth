@@ -358,6 +358,13 @@ bash-вызовом; секции интеграции с БД — строго 
 - В песочнике PG16 ставится `apt-get install postgresql-16` после
   `rm /etc/apt/sources.list.d/nodesource.sources` (403).
 
+### Беседа 8.5
+- **integration-check.mts упёрся в TS2563** («The containing function or
+  module body is too large for control flow analysis») — после этого tsc
+  теряет вывод типов и сыпет TS7006 в чужих секциях. Новые секции (с 8.5)
+  заводить `async function sectionNN()` + `await sectionNN()`, не блоками
+  `{ … }` на верхнем уровне; старые не переписывать.
+
 ## 2. Патч-скрипты доков и оснастка извлечения
 
 ### Беседа 3.2
@@ -395,6 +402,16 @@ bash-вызовом; секции интеграции с БД — строго 
 10. Мок Claude для паузы auth: 401 JSON по конкретному x-api-key —
     streaming-manager классифицирует `resp.status === 401` как 'auth';
     модалка снапшота из БД открывается по бейджу `.progress-pause-badge`.
+
+### Беседа 8.5
+
+- **Dotfile-грабля — ТРЕТИЙ раз подряд** (HEAD cd46374): те же три потери
+  (`.env.local.example`, `.dev-billing/` в `.gitignore`, `STRIPE_PRICE_*` в
+  `.env.example`). Абзацы в 09 не помогают — файлы теряются не по забывчивости,
+  а способом выкладки. Кандидат в решение: держать `.env.local.example` под
+  именем без точки (`env.local.example`) с копированием в dev-billing.sh, а
+  `.dev-billing/` вместо `.gitignore` — в `.git/info/exclude` или переименовать
+  папку стенда в `dev-billing-state/`. Решать при 8.6.
 
 ### Беседа 8.4
 
@@ -787,6 +804,21 @@ bash-вызовом; секции интеграции с БД — строго 
   иначе флак 1/2 (R10).
 - `setsid nohup … &` + `sleep` в одном вызове инструмента работает для
   прогонов до ~2 мин; полный `check:integration` ≈ 100 с — тем же приёмом.
+
+### Беседа 8.5
+- **`summary` шапки документа (`.header-disclosure`) — капителью**:
+  `innerText` отдаёт «ГЕНЕАЛОГИЧЕСКОЕ ДРЕВО», ожидание по `innerText` висит до
+  таймаута; сверять `textContent` (та же грабля 1.5/6.2 в новом месте).
+- **Файла родителя у беседы нет — строить из присланного**: STATE_RE по
+  `<script type="application/json" id="philosynth-state">`, править
+  `genealogy.name`/`participants`/`params.phil` и `id="docTitle"`; второй
+  родитель — ещё один `{type:'concept'}` в `genealogy.participants`. Путь к
+  живому файлу — `T85_FILE`; фикстуры кладутся в /tmp/t85-*.html.
+- **Импорт файла 1,1 МБ — ~0,4 с на сервере**: фон прогона нужен по лимиту
+  вызова инструмента (~2 мин), а не из-за файла.
+- **Гигиена сирот перед прогоном**: `ps aux | grep -E "[s]erver/index|[v]ite
+  --port" | awk '{print $2}' | xargs -r kill -9` — без pkill по маске, которая
+  убивает собственную оболочку (грабли 1.7/5.2/5.5).
 
 ## 5. Node, TypeScript, сборка
 

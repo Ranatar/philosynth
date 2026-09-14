@@ -179,6 +179,14 @@ CREATE INDEX idx_lineage_parent_name ON synthesis_lineage(parent_name)
   WHERE parent_type = 'philosopher';
 ```
 
+> **8.5 (2026-09-14):** у строк `parent_type='synthesis'` колонка
+> `parent_name` остаётся NULL и при привязке через `POST
+> /syntheses/:id/lineage/link` — имя родителя из файла в БД не пишется,
+> имя даёт JOIN с `syntheses.title`. Импорт файлов одностраничника
+> (без UUID) строк `synthesis` не создаёт вовсе: родителя выбирает человек по
+> предложению `lineageCandidates` (03 §2.2/§2.8), `position` у такой строки —
+> `max(position)+1` среди родителей синтеза.
+
 **Рекурсивный запрос — все предки концепции:**
 ```sql
 WITH RECURSIVE ancestors AS (

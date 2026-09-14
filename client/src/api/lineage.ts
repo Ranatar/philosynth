@@ -12,11 +12,19 @@
  *    философы (транзитивно); только видимые (свои ИЛИ публичные).
  *
  * depth зажимается сервером в 1..10 (clampDepth) — клиент не валидирует.
+ *
+ * Беседа 8.5: linkParent → POST /syntheses/:id/lineage/link — привязка
+ * концепции-родителя по выбору человека (предложение ImportPage); коды
+ * LINEAGE_SELF (400) / LINEAGE_CYCLE / LINEAGE_EXISTS (409), 403 у чужого.
  */
-import type { LineageNode } from "@philosynth/shared/types/lineage";
+import type {
+  LineageNode,
+  LineageRecord,
+  LinkParentInput,
+} from "@philosynth/shared/types/lineage";
 import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
 
-import { apiGet } from "./client";
+import { apiGet, apiPost } from "./client";
 
 export function getAncestors(
   id: string,
@@ -48,4 +56,16 @@ export function searchByPhilosophers(
   return apiGet<{ syntheses: SynthesisPreview[] }>(
     `/lineage/search?${qs}`,
   ).then((r) => r.syntheses);
+}
+
+export function linkParent(
+  synthesisId: string,
+  parentName: string,
+  parentSynthesisId: string,
+): Promise<LineageRecord> {
+  const body: LinkParentInput = { parentName, parentSynthesisId };
+  return apiPost<{ ok: true; record: LineageRecord }>(
+    `/syntheses/${encodeURIComponent(synthesisId)}/lineage/link`,
+    body,
+  ).then((r) => r.record);
 }

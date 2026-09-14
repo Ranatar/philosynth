@@ -11,11 +11,14 @@
  */
 import { ApiError, type ApiErrorCode } from "./client";
 
+import type { LineageCandidate } from "@philosynth/shared/types/lineage";
 import type { ImportWarning } from "@philosynth/shared/types/synthesis";
 
 export interface ImportFileResult {
   id: string;
   warnings: ImportWarning[];
+  /** 8.5: предложения родителя (ветка UUID не сработала) */
+  lineageCandidates: LineageCandidate[];
 }
 
 export async function importFile(file: File): Promise<ImportFileResult> {
@@ -68,5 +71,10 @@ export async function importFile(file: File): Promise<ImportFileResult> {
     throw new ApiError(message, code, response.status, errBody.details);
   }
 
-  return data as ImportFileResult;
+  const res = data as Partial<ImportFileResult>;
+  return {
+    id: res.id ?? "",
+    warnings: res.warnings ?? [],
+    lineageCandidates: res.lineageCandidates ?? [],
+  };
 }

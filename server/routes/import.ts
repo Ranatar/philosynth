@@ -2,7 +2,8 @@
  * Роут импорта (беседа 4.3; 03-spec §2.2):
  *
  *   POST /syntheses/import — multipart/form-data, поле file (HTML)
- *                          → { id, warnings: ImportWarning[] }
+ *                          → { id, warnings: ImportWarning[],
+ *                              lineageCandidates: LineageCandidate[] } (8.5)
  *
  * Решения:
  *  - requireAuth: импорт создаёт синтез владельцем-пользователем сессии.
@@ -67,8 +68,12 @@ importRoutes.post("/import", async (c) => {
   const html = await file.text();
 
   try {
-    const { synthesisId, warnings } = await importHTML(html, user.id, file.name);
-    return c.json({ id: synthesisId, warnings });
+    const { synthesisId, warnings, lineageCandidates } = await importHTML(
+      html,
+      user.id,
+      file.name,
+    );
+    return c.json({ id: synthesisId, warnings, lineageCandidates });
   } catch (err) {
     if (err instanceof ImportError) {
       return c.json({ error: err.message, code: "IMPORT_INVALID" }, 400);

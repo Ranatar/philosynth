@@ -36,6 +36,9 @@ export type ApiErrorCode =
   | "WEBHOOK_SIGNATURE_INVALID" // 6.1
   | "LAST_ADMIN" // 8.1: понижение/уход последнего администратора (409)
   | "SELF_ROLE_CHANGE" // 8.1: своя роль через POST /auth/users/:id/role (409)
+  | "LINEAGE_SELF" // 8.5: концепция — собственный родитель (400)
+  | "LINEAGE_CYCLE" // 8.5: родитель среди потомков — цикл родословной (409)
+  | "LINEAGE_EXISTS" // 8.5: пара уже есть — идемпотентный отказ (409)
   | "GENERATION_PAUSED"
   | "RESUME_INVALID"
   | "NO_PARTICIPANTS_SEED_REQUIRED"

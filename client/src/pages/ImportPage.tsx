@@ -16,17 +16,189 @@
  *  - redirect на /synthesis/:id — сразу при пустых warnings, иначе по
  *    кнопке «Перейти к синтезу».
  * I2 (импорт по URL с CORS-прокси) — Фаза 2, здесь не реализуется.
+ *
+ * Беседа 8.5 — блок предложения родителя. Файлы одностраничника UUID не
+ * несут, сервер сопоставляет концепцию-родителя ПО ИМЕНИ среди синтезов
+ * владельца и отдаёт lineageCandidates; связь создаёт ТОЛЬКО человек:
+ *  - на каждого родителя с совпадениями — свой блок (.callout.note):
+ *    «В файле указана концепция-родитель „X“. В базе найдено:» + список
+ *    (название · дата) с «Связать» / «Пропустить»; блоки решаются
+ *    независимо;
+ *  - «Связать» — ВТОРЫМ ШАГОМ кнопок («Точно связать?» / «Отмена», клик мимо
+ *    блока сбрасывает — правило 8.4): отвязки родителя нет, действие
+ *    необратимо;
+ *  - родитель без совпадений блока не получает — о нём говорит
+ *    предупреждение сервера («можно импортировать и привязать позже»);
+ *  - когда все блоки решены и хотя бы один связан — переход к синтезу
+ *    (дерево уже рисуется: isMetaSynthesis по parentSyntheses, 3.2);
+ *    иначе остаётся кнопка «Перейти к синтезу».
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import { importFile } from "../api/import";
+import { linkParent } from "../api/lineage";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
 
+import type { LineageCandidate } from "@philosynth/shared/types/lineage";
 import type { ImportWarning } from "@philosynth/shared/types/synthesis";
 
 type Phase = "idle" | "uploading" | "done";
+
+/** Состояние одного блока предложения родителя (8.5) */
+type CandidateState =
+  | { kind: "pending"; arm: string | null; busy: boolean; error: string | null }
+  | { kind: "linked"; matchId: string }
+  | { kind: "skipped" };
+
+function linkErrorText(err: unknown): string {
+  if (!(err instanceof ApiError)) return "Связать не удалось. Попробуйте ещё раз.";
+  switch (err.code) {
+    case "LINEAGE_SELF":
+      return "Концепция не может быть собственным родителем.";
+    case "LINEAGE_CYCLE":
+      return "Эта концепция — потомок импортированной: связь замкнула бы родословную в цикл.";
+    case "LINEAGE_EXISTS":
+      return "Эта концепция уже указана родителем.";
+    case "FORBIDDEN":
+      return "Концепция принадлежит другому пользователю — в родители не идёт.";
+    case "NOT_FOUND":
+      return "Концепция-родитель не найдена (удалена?).";
+    default:
+      return err.message;
+  }
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+interface CandidateBlockProps {
+  candidate: LineageCandidate;
+  state: CandidateState;
+  onLink: (matchId: string) => Promise<void>;
+  onSkip: () => void;
+  onArm: (matchId: string | null) => void;
+}
+
+function LineageCandidateBlock({
+  candidate,
+  state,
+  onLink,
+  onSkip,
+  onArm,
+}: CandidateBlockProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Второй шаг сбрасывается кликом МИМО блока (правило кита / 8.4)
+  useEffect(() => {
+    if (state.kind !== "pending" || !state.arm || state.busy) return;
+    const onDown = (ev: MouseEvent) => {
+      const el = ref.current;
+      if (el && ev.target instanceof Node && !el.contains(ev.target)) onArm(null);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [state, onArm]);
+
+  const label = `Концепция-родитель „${candidate.parentName}“`;
+
+  if (state.kind === "linked") {
+    const m = candidate.matches.find((x) => x.id === state.matchId);
+    return (
+      <div className="callout gold" data-testid="lineage-candidate" data-state="linked">
+        <span className="callout-label">{label}</span>
+        Связана с «{m?.title ?? "…"}».
+      </div>
+    );
+  }
+  if (state.kind === "skipped") {
+    return (
+      <div className="callout" data-testid="lineage-candidate" data-state="skipped">
+        <span className="callout-label">{label}</span>
+        Пропущено — связь не создана; родителя можно привязать позже.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="callout note"
+      data-testid="lineage-candidate"
+      data-state="pending"
+      data-parent-name={candidate.parentName}
+    >
+      <span className="callout-label">{label}</span>
+      В файле указана концепция-родитель „{candidate.parentName}“. В базе найдено:
+      <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+        {candidate.matches.map((m) => {
+          const armed = state.arm === m.id;
+          return (
+            <li key={m.id} data-testid="lineage-match" data-match-id={m.id}>
+              <span>
+                {m.title} · {fmtDate(m.createdAt)}
+              </span>{" "}
+              {armed ? (
+                <>
+                  <button
+                    type="button"
+                    className="action-btn primary"
+                    disabled={state.busy}
+                    onClick={() => void onLink(m.id)}
+                    data-testid="lineage-link-confirm"
+                  >
+                    Точно связать?
+                  </button>{" "}
+                  <button
+                    type="button"
+                    className="action-btn"
+                    disabled={state.busy}
+                    onClick={() => onArm(null)}
+                    data-testid="lineage-link-cancel"
+                  >
+                    Отмена
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="action-btn primary"
+                    disabled={state.busy || state.arm !== null}
+                    onClick={() => onArm(m.id)}
+                    data-testid="lineage-link"
+                  >
+                    Связать
+                  </button>{" "}
+                  <button
+                    type="button"
+                    className="action-btn"
+                    disabled={state.busy || state.arm !== null}
+                    onClick={onSkip}
+                    data-testid="lineage-skip"
+                  >
+                    Пропустить
+                  </button>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {state.error && (
+        <div role="alert" className="sec-warning-item" style={{ marginTop: 6 }}>
+          <span className="warn-icon">⚠</span>
+          <span>{state.error}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ImportPage() {
   const navigate = useNavigate();
@@ -38,11 +210,16 @@ export function ImportPage() {
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<ImportWarning[]>([]);
   const [resultId, setResultId] = useState<string | null>(null);
+  // 8.5: предложения родителя (только с совпадениями) и их состояния
+  const [candidates, setCandidates] = useState<LineageCandidate[]>([]);
+  const [candStates, setCandStates] = useState<CandidateState[]>([]);
 
   function pick(f: File | null | undefined) {
     setError(null);
     setWarnings([]);
     setResultId(null);
+    setCandidates([]);
+    setCandStates([]);
     if (!f) return;
     if (!/\.html?$/i.test(f.name)) {
       setError("Ожидается HTML-файл PhiloSynth (.html)");
@@ -63,6 +240,8 @@ export function ImportPage() {
     setError(null);
     setWarnings([]);
     setResultId(null);
+    setCandidates([]);
+    setCandStates([]);
     setPhase("idle");
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -72,14 +251,19 @@ export function ImportPage() {
     setPhase("uploading");
     setError(null);
     try {
-      const { id, warnings: w } = await importFile(file);
-      if (w.length === 0) {
-        // Без предупреждений — сразу к документу
+      const { id, warnings: w, lineageCandidates } = await importFile(file);
+      const withMatches = lineageCandidates.filter((c) => c.matches.length > 0);
+      if (w.length === 0 && withMatches.length === 0) {
+        // Без предупреждений и предложений — сразу к документу
         navigate(`/synthesis/${id}`);
         return;
       }
       setResultId(id);
       setWarnings(w);
+      setCandidates(withMatches);
+      setCandStates(
+        withMatches.map(() => ({ kind: "pending", arm: null, busy: false, error: null })),
+      );
       setPhase("done");
     } catch (err) {
       setPhase("idle");
@@ -94,6 +278,36 @@ export function ImportPage() {
   const criticals = warnings.filter((w) => w.critical);
   const infos = warnings.filter((w) => !w.critical);
 
+  const setCand = (i: number, upd: (s: CandidateState) => CandidateState) =>
+    setCandStates((list) => list.map((s, j) => (j === i ? upd(s) : s)));
+
+  async function linkCandidate(i: number, matchId: string) {
+    const cand = candidates[i];
+    if (!resultId || !cand) return;
+    setCand(i, (s) => (s.kind === "pending" ? { ...s, busy: true, error: null } : s));
+    try {
+      await linkParent(resultId, cand.parentName, matchId);
+      setCand(i, () => ({ kind: "linked", matchId }));
+    } catch (err) {
+      // LINEAGE_EXISTS — пара уже есть: цель достигнута, считаем связанной
+      if (err instanceof ApiError && err.code === "LINEAGE_EXISTS") {
+        setCand(i, () => ({ kind: "linked", matchId }));
+        return;
+      }
+      setCand(i, (s) =>
+        s.kind === "pending" ? { ...s, busy: false, arm: null, error: linkErrorText(err) } : s,
+      );
+    }
+  }
+
+  // Все блоки решены и хотя бы один связан → к синтезу (п.5 запроса)
+  useEffect(() => {
+    if (phase !== "done" || !resultId || candStates.length === 0) return;
+    const allDecided = candStates.every((s) => s.kind !== "pending");
+    const anyLinked = candStates.some((s) => s.kind === "linked");
+    if (allDecided && anyLinked) navigate(`/synthesis/${resultId}`);
+  }, [phase, resultId, candStates, navigate]);
+
   return (
     <div className="input-form">
       <h1 className="form-section-title">Импорт HTML-файла PhiloSynth</h1>
@@ -105,9 +319,25 @@ export function ImportPage() {
       {phase === "done" && resultId && (
         <div className="form-group full">
           <div className="submit-note">
-            Импорт завершён. Обнаружены проблемы с метаданными — документ
-            отображается, проверьте параметры перед перегенерацией.
+            {warnings.length > 0
+              ? "Импорт завершён. Обнаружены проблемы с метаданными — документ отображается, проверьте параметры перед перегенерацией."
+              : "Импорт завершён."}
           </div>
+          {candidates.map((cand, i) => {
+            const st = candStates[i];
+            return st ? (
+              <LineageCandidateBlock
+                key={`${cand.parentName}#${cand.position}`}
+                candidate={cand}
+                state={st}
+                onArm={(matchId) =>
+                  setCand(i, (s) => (s.kind === "pending" ? { ...s, arm: matchId, error: null } : s))
+                }
+                onLink={(matchId) => linkCandidate(i, matchId)}
+                onSkip={() => setCand(i, () => ({ kind: "skipped" }))}
+              />
+            ) : null;
+          })}
           {criticals.length > 0 && (
             <div className="sec-warnings">
               {criticals.map((w, i) => (

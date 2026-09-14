@@ -477,6 +477,19 @@ renameSynthesis (транспорты 1.6 впервые вызваны); Synthe
 браузере; регресс test-55 106 ✓; check:integration += 2ab/4am); доки
 пропатчены scripts/patch-docs-conv84.py. §12: один долг оснастки (test-54
 устарел с 5.5) → 8.5.
+Беседа 8.5 (родословная при импорте — сопоставление родителя; бэкенд +
+клиент) ЗАКРЫТА 2026-09-14: диагноз подтверждён на живом файле PS-6933-6RIK
+(0 UUID — ветка UUID 4.3 мертва для файлов одностраничника, сохранена для
+экспорта 4.2); lineage-service += normalizeConceptTitle/
+findSameOwnerSynthesesByTitle/isDescendantOf/linkParent; import-service →
+lineageCandidates ПРЕДЛОЖЕНИЕМ (связь по имени не пишется даже при единственном
+совпадении); POST /syntheses/:id/lineage/link (владелец обоих, LINEAGE_SELF /
+LINEAGE_EXISTS / LINEAGE_CYCLE по потомкам); ImportPage — блок предложения
+родителя (.callout.note, «Связать» вторым шагом, «Пропустить», авто-переход);
+дерево 3.2 рисуется без правок (смоук 45 ✓, tests/test-85-requests2-8.mjs
+53 ✓ ×2 в браузере; check:integration += 2ac/4an/5ab; долг оснастки test-54
+закрыт — 80 ✓); доки пропатчены scripts/patch-docs-conv85.py. Реестр §12
+пуст. Первоначальный состав Фазы 8 (8.1–8.5) закрыт; остались 8.6/8.7.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
@@ -4871,6 +4884,58 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
 
 ---
 
+### Беседа 8.5 — Родословная при импорте: сопоставление родителя (бэкенд + клиент) [ЗАКРЫТА 2026-09-14]
+
+> Запрос 1 целиком (shared/types/lineage + lineage-service + import-service
+> шаг l + routes/lineage POST link + routes/import + клиент api/lineage,
+> api/import, client.ts, ImportPage + scripts/patch-docs-conv85.py, 14 правок)
+> → патч philosynth-conv85-request1.patch; тестовые запросы R2–R8 одним
+> харнессом tests/test-85-requests2-8.mjs (53 ✓ ×2 за ~1,5 мин: сервер :3000 +
+> vite :5199 + PG16/Redis + Chrome, без мока Claude — генерация не
+> запускается); блок завершения: typecheck 0, check:integration += 2ac/4an/5ab
+> → INTEGRATION OK, audit/check-map/css-parity чисты (gm-hint — чужой
+> предсуществующий), долг оснастки test-54 закрыт (80 ✓). Первое дело беседы —
+> dotfile-грабля выкладки в третий раз (HEAD cd46374).
+
+#### Что сделано
+- `packages/shared/types/lineage.ts` += LineageCandidate/LineageCandidateMatch/
+  LinkParentInput.
+- `server/services/lineage-service.ts` += `normalizeConceptTitle` (ёлочки,
+  лапки, обычные кавычки → пусто; пробелы схлопнуты; регистр),
+  `findSameOwnerSynthesesByTitle(userId, name, excludeId)` (ТОЛЬКО тот же
+  владелец; нормализация в TS — один источник истины),
+  `isDescendantOf(root, candidate)` (CTE по ПОТОМКАМ, потолок 100 защитный),
+  `linkParent` (position = max+1; LineageLinkError: LINEAGE_SELF →
+  LINEAGE_EXISTS → LINEAGE_CYCLE).
+- `server/services/import-service.ts` шаг l: ветка UUID 4.3 без изменений;
+  после её неудачи — совпадения по имени → `ImportResult.lineageCandidates`,
+  связь не пишется; предупреждение lineage в две ветки («N совпадений —
+  выберите» / «не найдена — импортировать и привязать позже»).
+- `server/routes/lineage.ts` += `POST /:id/lineage/link` — тело → 404 ребёнка
+  → 403 не владелец → 400 LINEAGE_SELF → 404 родителя → 403 чужой родитель
+  (публичность не право) → 409 LINEAGE_EXISTS → 409 LINEAGE_CYCLE.
+- Клиент: `ApiErrorCode` += 3 кода; `api/lineage.linkParent`; `api/import`
+  терпим к ответу без lineageCandidates; `ImportPage` — LineageCandidateBlock
+  на классах кита (.callout.note/.action-btn): по блоку на родителя с
+  совпадениями, «Связать» вторым шагом со сбросом кликом мимо, «Пропустить»,
+  LINEAGE_EXISTS = связана, авто-переход при «все решены и ≥1 связан».
+- integration-check 5ab (живьём) и 2ac/4an (контракты) — async-функциями
+  (TS2563 у тела модуля).
+- test-54 (долг §12 8.4) переведён на факт 5.5.
+
+#### Решения (см. «По факту 8.5»)
+Третий код LINEAGE_EXISTS; владение — в роуте; parentName не пишется;
+второй шаг у «Связать»; авто-переход только при связи; фикстуры R3/R5 из
+живого файла (T85_FILE).
+
+#### Для следующих бесед
+- **8.6** (публичность): `routes/lineage.ts` теперь несёт POST link с
+  проверкой владения ОБОИХ — при переписывании loadSynthesisForRead под
+  visibility эту проверку оставить владельческой (сопоставление по имени —
+  чужие не идут); `pruneInvisible` потомков — под новую модель.
+- Любая работа с импортом: import-service шаг l (lineageCandidates),
+  ImportPage (блок), test-85 (фикстуры из живого файла).
+
 ### Беседа 8.4 — Управление своим содержимым: каталог, капсула, связь (клиент) [ЗАКРЫТА 2026-09-14]
 
 > Запрос 1 целиком (api/syntheses + SynthesisCard/SynthesisList/CatalogPage +
@@ -5053,6 +5118,18 @@ dotfile и `.gitignore`, потерянные загрузкой; float-срав
 Шапка `docs/07-conversation-protocol.md` дословно: датированные врезки
 по итогам бесед, от свежих к старым.
 
+> **Правки 2026-09-14 (итоги беседы 8.5)**: родословная при импорте закрыта
+> (запрос 1 + смоук tests/smoke-85-request1.mjs 45 ✓ + все тестовые запросы
+> tests/test-85-requests2-8.mjs 53 ✓ ×2 в браузере; check:integration +=
+> 2ac/4an/5ab). 03 §2.2 — POST /import += lineageCandidates, §2.8 — POST
+> /syntheses/:id/lineage/link, §4.3 — LINEAGE_SELF/CYCLE/EXISTS; 02 §2.4 —
+> примечание 8.5; 04 §4 строка 8.5; 05 — routes/lineage, lineage-service,
+> import-service, api/lineage, ImportPage, tests, .env.local.example ×3; 07 —
+> текст 8.5 (02 §2.4, routes/import.ts, «По факту 3.1»), «По факту 8.5»,
+> врезка Фазы 8, §12 (test-54 закрыт, 8.5 без долгов); 09 §1 (TS2563 —
+> секции функциями), §2 (dotfile ×3), §4 (капитель summary, фикстуры из
+> живого файла), §8 («заметное время» неверно).
+>
 > **Правки 2026-09-14 (итоги беседы 8.4)**: управление своим содержимым
 > закрыто (запрос 1 + смоук tests/smoke-84-request1.mjs 61 ✓ + все тестовые
 > запросы tests/test-84-requests2-10.mjs 89 ✓ ×2 в браузере против живого
