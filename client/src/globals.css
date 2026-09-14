@@ -4826,6 +4826,107 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 8.4 — управление своим содержимым ═══════════════════════
+ * В исходнике управления концепциями нет (они живут в браузере), а
+ * каталог — экран сервиса (см. выше). Новые элементы собраны из готового:
+ * строка действий карточки — .action-btn в .catalog-card-foot, правка
+ * названия/капсулы по месту — .inline-edit-form кита (блок 7, часть 3
+ * с 5.2), предупреждение второго шага — .transform-warn (блок 9, с 5.5).
+ * Своего здесь два правила: (1) .action-btn.danger — кнопка опасного
+ * действия цветом --red (единственный цвет опасности закрытой палитры;
+ * у исходника красной кнопки нет — .pool-card-btn.remove красит текст,
+ * не кнопку действий); (2) раскладка строки действий и отступы вкладных
+ * блоков карточки. Подтверждение необратимого — второй шаг кнопок
+ * (правило кита), не confirm. Идиома та же: прямые углы, капитель.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* Кнопка опасного действия: контур --red, при наведении — заливка */
+  .action-btn.danger {
+    color: var(--red);
+    border-color: var(--red);
+  }
+
+  .action-btn.danger:hover {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--red);
+  }
+
+  .action-btn.danger:disabled {
+    opacity: 0.45;
+    cursor: default;
+    background: transparent;
+    color: var(--red);
+  }
+
+  /* Строка действий карточки каталога (публикация · переименовать ·
+     дублировать · удалить) — переносится на узких экранах */
+  .catalog-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .catalog-card-actions .action-btn {
+    padding: 4px 12px;
+  }
+
+  /* Вкладные блоки карточки: поле переименования и предупреждение
+     второго шага удаления — под превью, над строкой действий */
+  .catalog-card-rename,
+  .catalog-card-danger {
+    margin-top: 10px;
+  }
+
+  .catalog-card-rename .form-label {
+    margin-bottom: 4px;
+  }
+
+  /* Тёмная панель связи графа: кнопка опасного действия и записка
+     второго шага (примитивы кита писаны под светлый .input-form) */
+  .gm-panel-edit-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .gm-panel-edit-btn.danger {
+    border-color: var(--red);
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .gm-panel-edit-btn.danger:hover:not(:disabled) {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+
+  .gm-panel-danger-note {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 1px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.7);
+    border-left: 2px solid var(--red);
+    padding: 4px 8px;
+  }
+
+  /* Кнопка ✎ в summary капсулы — как у названия, но без сдвига summary */
+  .header-disclosure-capsule summary .doc-title-edit-btn {
+    font-size: 12px;
+    padding: 0 5px;
+    margin-left: 6px;
+  }
+
+  .header-disclosure-capsule summary .doc-title-edit-btn:disabled {
+    opacity: 0.25;
+    cursor: default;
+    border-color: transparent;
+  }
+}
+
 /* ═══ Беседа 6.2 — биллинг и админка Prompt Registry ═════════════════
  * В исходнике ни биллинга, ни реестра промптов нет (свой ключ в поле
  * формы, стоимость в футере, промпты захардкожены). Блоки 3 (таблица

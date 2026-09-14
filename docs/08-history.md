@@ -461,6 +461,22 @@ seed:plans, README «Как поднять биллинг»; test-62 → starter
 из посева (смоук 81 ✓, tests/test-83-requests2-8.mjs 88 ✓ ×3 против стенда с
 браузером; test-82 51 ✓, test-62 101 ✓; check:integration += 2aa/4al/5aa);
 доки пропатчены scripts/patch-docs-conv83.py. Реестр долгов §12 пуст.
+Беседа 8.4 (управление своим содержимым — каталог, капсула, связь; клиент)
+ЗАКРЫТА 2026-09-14: api/syntheses += deleteSynthesis/duplicateSynthesis/
+renameSynthesis (транспорты 1.6 впервые вызваны); SynthesisCard — строка
+действий владельца (только «Мои»: Опубликовать · Переименовать по месту ·
+Дублировать · Удалить), подтверждение вторым шагом кнопок с текстом CASCADE и
+числом прямых потомков (descendants depth=1), 409 строкой; CatalogPage —
+тихая перечитка после действий, без автоперехода; DocumentHeader — ✎ капсулы
+(isOwner, disabled при generating) + textarea + updateCapsule (5.1, впервые
+вызвана), utils/capsule-html.ts собирает HTML из текста с сохранением обёртки
+секции; EdgePanel.onDelete вторым шагом → GraphModal.deleteEdge (5.4, впервые
+вызвана) → путь onElementSaved + пересборка видов 2D/3D по key(data); уборка
+пяти мёртвых функций api/*; globals.css блок 8.4 (--red, без новых hex);
+сервер не тронут (смоук 61 ✓, tests/test-84-requests2-10.mjs 89 ✓ ×2 в
+браузере; регресс test-55 106 ✓; check:integration += 2ab/4am); доки
+пропатчены scripts/patch-docs-conv84.py. §12: один долг оснастки (test-54
+устарел с 5.5) → 8.5.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
@@ -4855,6 +4871,89 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
 
 ---
 
+### Беседа 8.4 — Управление своим содержимым: каталог, капсула, связь (клиент) [ЗАКРЫТА 2026-09-14]
+
+> Запрос 1 целиком (api/syntheses + SynthesisCard/SynthesisList/CatalogPage +
+> DocumentHeader + utils/capsule-html + EdgePanel/GraphModal + уборка api/* +
+> CSS блок 8.4 + integration-check 4ac/4af/4ah под уборку) → патч
+> philosynth-conv84-request1.patch; все тестовые запросы R2–R10 одним
+> харнессом tests/test-84-requests2-10.mjs (89 ✓ ×2 за ~2,5 мин: браузер
+> puppeteer-core 23 + Chromium против живого сервера :3000 + vite :5199 +
+> PG16/Redis, мок Claude :3884 держит стрим по маркеру SLOW84); завершение:
+> typecheck (все конфиги) 0, audit ✓, check-map-04 0, css-parity A/B 0,
+> check:integration OK (+ 2ab/4am). Сервер не правился — все пять транспортов
+> были готовы с 1.6/5.1/5.4 и просто не вызывались.
+
+**Сделано:**
+
+- `client/src/api/syntheses.ts` += `deleteSynthesis`, `duplicateSynthesis`
+  (201 `{ id }`), `renameSynthesis` (обёртка PATCH `{ title }`).
+- `SynthesisCard.tsx` — строка действий `.catalog-card-actions` в
+  `.catalog-card-foot` только при `actions` (вкладка «Мои»); все кнопки
+  внутри `Link` гасят клик (`preventDefault`+`stopPropagation`);
+  переименование по месту (`.inline-edit-form` кита: Enter/Esc,
+  `details.title` под полем); удаление — второй шаг «Точно удалить?» +
+  «Отмена» в `.transform-warn` с текстом о CASCADE и числом прямых потомков
+  (`descendantsPhrase`/`deleteWarningText`), сброс по `mousedown` мимо
+  карточки; 409/403 — `.pool-status.err`, карточка остаётся.
+  `SynthesisList` пробрасывает `actions`.
+- `CatalogPage.tsx` — `cardActions` (`onRename`/`onDuplicate`/`onDelete`/
+  `countDescendants` — `getDescendants(id, 1)`, только `synthesis`),
+  `actionErrorText` (details.title / 409 / 403), `fetchList({ silent })` —
+  перечитка после действий без спиннера, автоперехода на копию нет.
+- `DocumentHeader.tsx` — ✎ у капсулы (`.doc-title-edit-btn` в `summary`,
+  `preventDefault`, чтобы не сворачивать `details`), textarea с текстом,
+  `buildCapsuleHtml` → `updateCapsule` → `applySynthesis`; только
+  `isOwner`, disabled при `generating`; ✎ названия тоже под `isOwner`;
+  `capsuleErrorText`.
+- `client/src/utils/capsule-html.ts` — `buildCapsuleHtml(originalHtml,
+  text)` (DOMParser; обёртка секции и `<h4>` сохраняются, содержимое
+  `[data-section="Капсула"]` → `<p>`; пустой исходник → минимальная секция
+  с тем же якорем), `capsuleParagraphs`, `paragraphsToHtml`.
+- `EdgePanel.tsx` — проп `onDelete`, «✕ Удалить связь» в
+  `.gm-panel-edit-row` вторым шагом с записью `.gm-panel-danger-note`,
+  сброс по клику мимо панели, ошибка строкой; `GraphModal.tsx` —
+  `handleDeleteEdge` (`deleteEdge` по `GEdge.dbId`, панель закрывается,
+  путь `onElementSaved` kind `'edge'` — перечитка графа и разделов),
+  `messageOfEdgeDeleteError`; виды 2D/3D получают `key` от ссылки `data`.
+- Уборка: `getCategory` (elements), `transformGraphToTheses`/
+  `transformThesesToGraph` (transforms — инлайн в `startTransformRequest`
+  через `TRANSFORM_PATH`), `getVersions`/`getConfigVersions` (prompts —
+  инлайн в `getTemplateVersions`/`getConfigVersionsFull`); `exportUrl`,
+  `invalidateTaxonomyCache` не тронуты; grep по `client/src` чист.
+- `globals.css` — блок 8.4 в части 3 перед 6.2: `.action-btn.danger`
+  (`--red`), `.catalog-card-actions`, `.catalog-card-rename/-danger`,
+  `.gm-panel-edit-btn.danger`, `.gm-panel-danger-note` (по образцу
+  `.gm-btn.close:hover` исходника), ✎ в summary капсулы; новых hex нет.
+- `server/integration-check.mts` — 4ac/4af/4ah под уборку; новая 2ab/4am
+  (модули/экспорты, отсутствие пяти имён в дереве, пути 9 клиентских
+  вызовов ≡ роутам перехватом fetch, чистые ядра, текстовые контракты
+  компонентов, CSS без новых hex, наличие тестов).
+- Тесты: `tests/smoke-84-request1.mjs` (61 ✓, linkedom для DOMParser);
+  `tests/test-84-requests2-10.mjs` (89 ✓ ×2).
+- Доки: 03 §2.2/§2.4 (клиентская сторона пяти транспортов, лимит 300,
+  капсула текстом); 04 §4 строка 8.4; 05 (capsule-html, catalog/, tests);
+  07 «По факту 8.4» + §12 + врезка + §10; 08; 09 §1/§3/§4/§6 — всё
+  `scripts/patch-docs-conv84.py` (идемпотентен).
+
+**Найдено по ходу (детали — «По факту 8.4» и 09):** спиннер `fetchList`
+размонтировал карточки; виды графа не пересобирались по перечитке данных
+(удалённая связь оставалась на экране — касалось 5.4/7.1); наивный стрип
+комментариев съедает код после `// … services/export/*`; `clickBtn` по
+`.actions-bar` цепляет шапку, а вкладки каталога — во втором `.actions-bar`;
+test-54 устарел с 5.5.
+
+**Для следующих бесед:**
+- **8.5** — из 8.4 ничего не нужно, кроме долга оснастки test-54 (§12).
+  Образец второго шага кнопок для новых необратимых действий — SynthesisCard
+  8.4 (клик мимо сбрасывает) и TransformPanel 5.5.
+- **Все клиентские беседы**: перечитка списков после действий — тихая
+  (`fetchList({ silent: true })`), иначе спиннер размонтирует элементы, на
+  которых висит состояние; виды графа пересобираются сменой `key` при новой
+  ссылке `data`.
+
+---
+
 ### Беседа 8.3 — Тарифы: посев и заведение Prices в Stripe (бэкенд + скрипты) [ЗАКРЫТА 2026-09-09]
 
 > Запрос 1 целиком (server/config/plans.ts + scripts/seed-plans.ts +
@@ -4954,6 +5053,19 @@ dotfile и `.gitignore`, потерянные загрузкой; float-срав
 Шапка `docs/07-conversation-protocol.md` дословно: датированные врезки
 по итогам бесед, от свежих к старым.
 
+> **Правки 2026-09-14 (итоги беседы 8.4)**: управление своим содержимым
+> закрыто (запрос 1 + смоук tests/smoke-84-request1.mjs 61 ✓ + все тестовые
+> запросы tests/test-84-requests2-10.mjs 89 ✓ ×2 в браузере против живого
+> сервера; check:integration += 2ab/4am; сервер не правился). 03 §2.2 —
+> клиентская сторона DELETE/duplicate/PATCH title (лимит title 300, не 200;
+> второй шаг кнопок; число прямых потомков; 409 только от активной операции),
+> §2.4 — PATCH /capsule правится текстом (capsule-html сохраняет обёртку
+> секции) и DELETE edge из панели с пересборкой видов графа; 04 §4 строка
+> 8.4; 05 — capsule-html.ts, catalog/, test-84; 07 §10 — задачи беседы из
+> 07 §8, не из 06; §12 — долг оснастки test-54 → 8.5; 09 §1 (Redis), §3
+> (стрип комментариев — строчные первыми), §4 (харнесс 8.4), §6 (виды графа,
+> спиннер списка). Глава «По факту 8.4».
+>
 > **Правки 2026-09-09 (итоги беседы 8.3)**: тарифы — посев и заведение
 > Prices в Stripe закрыты (запрос 1 + смоук tests/smoke-83-request1.mjs
 > 81 ✓ + все тестовые запросы tests/test-83-requests2-8.mjs 88 ✓ ×3 против

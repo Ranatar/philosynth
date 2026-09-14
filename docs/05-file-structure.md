@@ -19,7 +19,8 @@ philosynth-service/
 │                                   # .env.local скриптом tools/dev-billing.sh.
 │                                   # 8.3: + STRIPE_PRICE_*=price_mock_* — мок не проверяет
 │                                   # Price, планы сеются активными (файл воссоздан 8.3:
-│                                   # в HEAD 83aaf2b его не было — upload не перенёс dotfile)
+│                                   # в HEAD 83aaf2b его не было — upload не перенёс dotfile;
+│                                   # и СНОВА воссоздан 8.4 — в HEAD 8f9bae0 его опять нет)
 ├── .env.example                    # ВСЕ переменные server/env.ts;
 │                                   # пароль БД обязан совпадать с дефолтом
 │                                   # env.ts — .env читает только drizzle-kit,
@@ -483,8 +484,10 @@ philosynth-service/
 │   │   │   │   └── PoolSummary.tsx          # Саммари пула (1.5b: реализован строкой внутри ConceptPool.tsx — отдельный файл не понадобился)
 │   │   │   │
 │   │   │   ├── catalog/
-│   │   │   │   ├── SynthesisList.tsx       # Список карточек синтезов
-│   │   │   │   ├── SynthesisCard.tsx       # Карточка синтеза в каталоге
+│   │   │   │   ├── SynthesisList.tsx       # Список карточек синтезов (8.4: проброс actions)
+│   │   │   │   ├── SynthesisCard.tsx       # Карточка синтеза в каталоге; 8.4: строка действий
+│   │   │   │   │                           # владельца (Опубликовать · Переименовать по месту ·
+│   │   │   │   │                           # Дублировать · Удалить вторым шагом с числом потомков)
 │   │   │   │   └── CatalogFilters.tsx      # Фильтры и поиск (C5 — Фаза 2;
 │   │   │   │                               #  в беседе 1.6b не создаётся,
 │   │   │   │                               #  поиск живёт в CatalogPage)
@@ -505,6 +508,8 @@ philosynth-service/
 │   │   └── utils/
 │   │       ├── concept-file.ts             # Парсинг концепт-файлов пула (1.5b, клиентские порты;
 │   │       │                               # 3.2: += catalogPreviewToPoolEntry, genealogy заполняется)
+│   │       ├── capsule-html.ts             # 8.4: пересборка HTML капсулы из текста
+│   │       │                               # (обёртка секции и <h4> сохраняются, содержимое → <p>)
 │   │       ├── genealogy.ts                # Порты генеалогии (3.2): reconstructGenealogy,
 │   │       │                               # restoreCapsulesFromHTML, checkGenealogyOverlaps,
 │   │       │                               # resolveConceptName (FIX [а-яё]), lineageNodeToGenealogy
@@ -561,7 +566,9 @@ philosynth-service/
     │                                   # test-61/62/71 берут мок Stripe из tools/stripe-mock.mjs (8.2);
     │                                   # test-82/83 — против настоящего стенда dev-billing.sh; с 8.3
     │                                   # план в test-82 — из посева (starter), в test-62 — starter62
-    │                                   # (не сносить посеянный starter)
+    │                                   # (не сносить посеянный starter);
+    │                                   # test-84 — браузер против сервера :3000 + vite :5199, мок
+    │                                   # Claude :3884 держит стрим по маркеру SLOW84 (слот занят → 409)
     ├── test-*-0.3b.ts                  # Регрессионные смоуки таксономии
     └── package.json                    # Маркер type=module
 ```

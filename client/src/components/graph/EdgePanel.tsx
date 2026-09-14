@@ -15,9 +15,17 @@
  * Беседа 5.4 (п. 5): проп onEdit — кнопка «✎ Редактировать» под бейджами
  * (открывает EdgeEditor связи поверх GraphModal, как NodePanel.onEdit 5.2);
  * связь находится по GEdge.dbId. В исходнике правки связей не было.
+ *
+ * Беседа 8.4 (п. 7): проп onDelete — кнопка «Удалить связь» в той же
+ * .gm-panel-edit-row, подтверждение ВТОРЫМ ШАГОМ КНОПОК («Точно
+ * удалить?» + «Отмена», клик мимо панели возвращает назад — образец
+ * TransformPanel 5.5 и правило UI-кита), без window.confirm. Вызов
+ * deleteEdge и обновление графа/документа — у хозяина (GraphModal);
+ * блокировка при генерации — та же editDisabled, что у правки. Сбой —
+ * строкой в панели (.pool-status.err), панель не закрывается.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   CPAL,
@@ -145,6 +153,9 @@ export interface EdgePanelProps {
   /** Беседа 5.4: «✎ Редактировать» → EdgeEditor; не передан — кнопки нет */
   onEdit?: (() => void) | undefined;
   editDisabled?: boolean | undefined;
+  /** Беседа 8.4: «Удалить связь» → DELETE /edges/:edgeId у хозяина;
+   *  резолвится текстом ошибки либо null (успех — хозяин закрывает панель) */
+  onDelete?: (() => Promise<string | null>) | undefined;
 }
 
 export default function EdgePanel({
@@ -154,6 +165,7 @@ export default function EdgePanel({
   onClose,
   onEdit,
   editDisabled = false,
+  onDelete,
 }: EdgePanelProps) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -161,6 +173,38 @@ export default function EdgePanel({
     const raf = requestAnimationFrame(() => setVisible(true));
     return () => cancelAnimationFrame(raf);
   }, [edgeData]);
+
+  // Беседа 8.4: второй шаг удаления связи
+  const [armed, setArmed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setArmed(false);
+    setDeleting(false);
+    setDeleteError(null);
+  }, [edgeData]);
+  useEffect(() => {
+    if (!armed || deleting) return;
+    const onDown = (ev: MouseEvent) => {
+      const el = panelRef.current;
+      if (el && ev.target instanceof Node && !el.contains(ev.target)) setArmed(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [armed, deleting]);
+  const confirmDelete = async () => {
+    if (!onDelete || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const err = await onDelete();
+    if (err) {
+      setDeleteError(err);
+      setDeleting(false);
+      setArmed(false);
+    }
+    // успех: хозяин закрывает панель — связи больше нет
+  };
 
   const { color: edgeColor, dash } = edgeTypeStyle(edgeData.type);
 
@@ -181,7 +225,7 @@ export default function EdgePanel({
   const strPct = Math.round((edgeData.str || 0.5) * 100);
 
   return (
-    <div className={"gm-info-panel" + (visible ? " visible" : "")}>
+    <div ref={panelRef} className={"gm-info-panel" + (visible ? " visible" : "")}>
       <div className="gm-panel-header">
         <svg width="18" height="12" style={{ flexShrink: 0, marginTop: 2 }}>
           <line
@@ -215,24 +259,83 @@ export default function EdgePanel({
           {dirIcon} {dirLabel}
         </span>
       </div>
-      {onEdit ? (
+      {onEdit || onDelete ? (
         <div className="gm-panel-edit-row">
-          <button
-            type="button"
-            className="gm-btn gm-panel-edit-btn"
-            disabled={editDisabled}
-            title={
-              editDisabled
-                ? "Идёт генерация — правки заблокированы"
-                : "Редактировать связь"
-            }
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-          >
-            ✎ Редактировать
-          </button>
+          {onEdit && !armed ? (
+            <button
+              type="button"
+              className="gm-btn gm-panel-edit-btn"
+              disabled={editDisabled || deleting}
+              title={
+                editDisabled
+                  ? "Идёт генерация — правки заблокированы"
+                  : "Редактировать связь"
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+            >
+              ✎ Редактировать
+            </button>
+          ) : null}
+          {onDelete && !armed ? (
+            <button
+              type="button"
+              className="gm-btn gm-panel-edit-btn danger"
+              disabled={editDisabled || deleting}
+              title={
+                editDisabled
+                  ? "Идёт генерация — правки заблокированы"
+                  : "Удалить связь"
+              }
+              data-testid="edge-delete"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteError(null);
+                setArmed(true);
+              }}
+            >
+              ✕ Удалить связь
+            </button>
+          ) : null}
+          {onDelete && armed ? (
+            <>
+              <div className="gm-panel-danger-note" data-testid="edge-delete-warn">
+                Связь будет удалена; таблица связей документа перерисуется.
+                Снимок останется в истории версий.
+              </div>
+              <button
+                type="button"
+                className="gm-btn gm-panel-edit-btn danger"
+                disabled={deleting}
+                data-testid="edge-delete-confirm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void confirmDelete();
+                }}
+              >
+                {deleting ? "Удаляю…" : "Точно удалить?"}
+              </button>
+              <button
+                type="button"
+                className="gm-btn gm-panel-edit-btn"
+                disabled={deleting}
+                data-testid="edge-delete-cancel"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setArmed(false);
+                }}
+              >
+                Отмена
+              </button>
+            </>
+          ) : null}
+          {deleteError ? (
+            <div className="pool-status err" role="alert" data-testid="edge-delete-error">
+              {deleteError}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {edgeData.desc ? (

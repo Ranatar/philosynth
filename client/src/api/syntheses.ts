@@ -15,7 +15,7 @@ import type {
   SynthesisPreview,
 } from "@philosynth/shared/types/synthesis";
 
-import { apiGet, apiPatch, apiPost } from "./client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 
 /** Тело POST /syntheses и POST /syntheses/estimate (03-spec §2.2, v11:
  *  philosophers/participants опциональны — оба пусты = свободный синтез,
@@ -211,4 +211,39 @@ export function updateSynthesis(
     `/syntheses/${encodeURIComponent(id)}`,
     patch,
   ).then((r) => r.synthesis);
+}
+
+/* ── Управление своим содержимым (беседа 8.4) ─────────────────────────
+ *
+ * Три транспорта готовы на сервере с 1.6 (routes/syntheses.ts) и до 8.4
+ * не вызывались ни разу. Контракт: 03 §2.2. Все три — только владелец
+ * (403 FORBIDDEN у чужого). */
+
+/** DELETE /syntheses/:id → { ok: true }. Жёсткое удаление: сервер сносит
+ *  CASCADE разделы, элементы, логи и родословную, у потомков
+ *  parent_synthesis_id → NULL (02 §2.4). Активная генерация → 409
+ *  GENERATION_IN_PROGRESS; несуществующий/не-UUID id → 404. */
+export function deleteSynthesis(id: string): Promise<{ ok: true }> {
+  return apiDelete<{ ok: true }>(`/syntheses/${encodeURIComponent(id)}`);
+}
+
+/** POST /syntheses/:id/duplicate → 201 { id } — копия с новым doc_num,
+ *  title += « (копия)», is_public=false; копируются разделы, элементы и
+ *  генеалогия РОДИТЕЛЕЙ, lineage-связи «копия → оригинал» нет (1.6).
+ *  Генерация ещё идёт → 409 GENERATION_IN_PROGRESS. */
+export function duplicateSynthesis(id: string): Promise<{ id: string }> {
+  return apiPost<{ id: string }>(
+    `/syntheses/${encodeURIComponent(id)}/duplicate`,
+  );
+}
+
+/** Переименование — тонкая обёртка над PATCH { title } (updateSynthesis):
+ *  сервер делает trim; пустая строка или длиннее 300 знаков → 400
+ *  VALIDATION_ERROR с details.title (03 §2.2; в тексте беседы 8.4 стоит
+ *  «200» — расхождение доков, клиент своего лимита не заводит). */
+export function renameSynthesis(
+  id: string,
+  title: string,
+): Promise<SynthesisFull> {
+  return updateSynthesis(id, { title });
 }

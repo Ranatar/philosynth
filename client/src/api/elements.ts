@@ -1,6 +1,8 @@
 /**
  * API-функции гранулярных элементов. Беседа 1.7 (запрос 1, п. 10) +
  * расширение беседы 5.2 (запрос 1, п. 8).
+ * Беседа 8.4 (п. 8): обёртка одиночного GET /categories/:catId убрана как
+ * мёртвая — везде берётся список; сам роут 1.6 живёт (§2.4).
  *
  * Контракт: 03-specification §2.4 (+ «По факту 5.1») и
  * server/routes/elements.ts:
@@ -58,15 +60,6 @@ const base = (synthesisId: string): string =>
 
 export function getCategories(synthesisId: string): Promise<GraphData> {
   return apiGet<GraphData>(`${base(synthesisId)}/categories`);
-}
-
-export function getCategory(
-  synthesisId: string,
-  categoryId: string,
-): Promise<Category> {
-  return apiGet<{ category: Category }>(
-    `${base(synthesisId)}/categories/${encodeURIComponent(categoryId)}`,
-  ).then((r) => r.category);
 }
 
 export function getTheses(synthesisId: string): Promise<Thesis[]> {

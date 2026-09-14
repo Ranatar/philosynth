@@ -366,9 +366,28 @@ DELETE /syntheses/:id          → { ok: true }
                                 // Только владелец (иначе 403).
                                 // Активная генерация → 409
                                 // GENERATION_IN_PROGRESS (беседа 1.6).
+                                // Клиент (8.4): «Удалить» в карточке
+                                // каталога, подтверждение ВТОРЫМ ШАГОМ
+                                // кнопок («Точно удалить?»/«Отмена»,
+                                // не confirm) с текстом о CASCADE и
+                                // числом прямых потомков
+                                // (GET /lineage/descendants?depth=1 —
+                                // именно они теряют parent_synthesis_id);
+                                // 409 — строкой в карточке. Заметьте:
+                                // 409 даёт только АКТИВНАЯ операция
+                                // процесса, не status='generating'
+                                // сам по себе.
 
 PATCH  /syntheses/:id          { title?, isPublic?, extGraphMetrics? }
                                 → { synthesis: SynthesisFull }
+                                // title: trim, непустой, ≤ 300 знаков
+                                // (VALIDATION_ERROR с details.title;
+                                // текст беседы 8.4 говорил «200» —
+                                // верно 300). Клиент 8.4: переименование
+                                // ПО МЕСТУ в карточке каталога
+                                // (Enter/Esc, details.title под полем)
+                                // и ✎ у названия документа — оба
+                                // только у владельца (isOwner).
                                 // Только владелец. Единственный способ
                                 // опубликовать синтез — без него вкладка
                                 // «Публичные» недостижима из UI.
@@ -379,6 +398,10 @@ PATCH  /syntheses/:id          { title?, isPublic?, extGraphMetrics? }
                                 // DOC_STATE.params напрямую [18475]).
 
 POST   /syntheses/:id/duplicate → { id: string }
+                                // Ответ 201. Клиент (8.4): «Дублировать»
+                                // в карточке — список каталога
+                                // перечитывается (копия встаёт по своему
+                                // createdAt), автоперехода на копию НЕТ.
                                 // Реализация — беседа 1.6 (сервер).
                                 // До аудита 2026-07-30 эндпоинт не был
                                 // упомянут в протоколе 07 ни разу.
@@ -577,6 +600,18 @@ PATCH  /syntheses/:id/categories/:catId
                                   clusterIndices? }
 PATCH  /syntheses/:id/capsule   { html: string }
                                 → { capsuleHtml: string }
+                                // Клиент (8.4): ✎ у капсулы в
+                                // DocumentHeader (только isOwner,
+                                // disabled при status='generating'),
+                                // textarea с ТЕКСТОМ капсулы (абзацы
+                                // через пустую строку); html собирает
+                                // client/utils/capsule-html.ts:
+                                // исходная секция сохраняется целиком
+                                // (номер, заголовок, <h4>), заменяется
+                                // содержимое [data-section="Капсула"]
+                                // (или .doc-content) абзацами <p>, так
+                                // что extractCapsuleText и capsule:full
+                                // находят её по прежним якорям.
                                 // capsule_html живёт в syntheses;
                                 // PATCH /syntheses/:id (§2.2) правит
                                 // только title/isPublic/extGraphMetrics
@@ -647,6 +682,13 @@ DELETE /syntheses/:id/edges/:edgeId
                                 → { ok: true, impact: ImpactAnalysis,
                                     version: ElementVersion,
                                     htmlSync: HtmlSyncInfo }
+                                // Клиент (8.4): «✕ Удалить связь» в
+                                // панели связи графа (EdgePanel),
+                                // второй шаг кнопок; после успеха
+                                // панель закрывается, хозяин идёт путём
+                                // onElementSaved kind='edge' (перечитка
+                                // графа и разделов), виды 2D/3D
+                                // пересобираются по смене data.
 
 // Все PATCH элементов, DELETE связи и rollback АДДИТИВНО несут
 //   version: ElementVersion   — созданная версия-снимок;

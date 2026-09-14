@@ -37,11 +37,18 @@
  *    EdgeCreateForm поверх графа (POST /edges); из NodePanel источник
  *    предвыбран текущим узлом (onAddEdge). После 201 хозяин перечитывает
  *    граф и разделы через onElementSaved (kind 'edge', version нет).
+ *  - Беседа 8.4 (п. 7): EdgePanel получает onDelete → deleteEdge
+ *    (api/elements, 5.4; до 8.4 не вызывалась) по GEdge.dbId; после
+ *    успеха панель закрывается, а хозяин идёт тем же путём, что после
+ *    PATCH связи 5.4 — onElementSaved (перечитка графа и разделов);
+ *    409/403 — строкой в панели (messageOfEdgeDeleteError).
  *  - Беседа 5.5 (п. 7): кнопка «→ Тезисы» в тулбаре (только editable —
  *    владелец, не генерация) → onTransform("graph_to_theses"); хозяин
  *    (SynthesisPage) закрывает модалку и открывает TransformPanel.
  */
 
+import { ApiError } from "../../api/client";
+import { deleteEdge } from "../../api/elements";
 import { downloadExport } from "../../api/export";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -102,6 +109,16 @@ export interface GraphModalProps {
   onTransform?: ((direction: "graph_to_theses") => void) | undefined;
 }
 
+/** Текст ошибки удаления связи (8.4): коды 03 §4.3 */
+export function messageOfEdgeDeleteError(err: unknown): string {
+  if (!(err instanceof ApiError)) return "Не удалось удалить связь.";
+  if (err.code === "GENERATION_IN_PROGRESS")
+    return "Генерация ещё идёт — правки заблокированы.";
+  if (err.code === "FORBIDDEN") return "Связь может удалить только владелец.";
+  if (err.code === "NOT_FOUND") return "Связь уже удалена.";
+  return err.message || "Не удалось удалить связь.";
+}
+
 export default function GraphModal({
   open,
   data,
@@ -135,6 +152,12 @@ export default function GraphModal({
   useMemo(() => {
     if (open && data) buildGFromGraphData(data, extGraphMetrics);
   }, [open, data, extGraphMetrics]);
+  // Беседа 8.4: виды 2D/3D собираются один раз при монтировании (как в
+  // исходнике), поэтому после перечитки графа хозяином (новая ссылка data —
+  // удалённая связь, новая связь 7.1, правка 5.4) вид пересобирается
+  // сменой key — иначе удалённая связь оставалась бы на экране до
+  // переключения 2D↔3D.
+  const dataKey = useMemo(() => Math.random().toString(36).slice(2), [data]);
 
   // openGraph(): открытие — всегда 3D, скролл страницы заблокирован
   useEffect(() => {
@@ -278,6 +301,40 @@ export default function GraphModal({
       if (edge) setEditEdge(edge);
     },
     [data, nameToId],
+  );
+
+  // Беседа 8.4 (п. 7): удаление связи из EdgePanel — DELETE /edges/:edgeId
+  const handleDeleteEdge = useCallback(
+    async (e: GEdge): Promise<string | null> => {
+      if (!data || !synthesisId) return "Связь не найдена в данных графа.";
+      const edge =
+        (e.dbId ? data.edges.find((x) => x.id === e.dbId) : undefined) ??
+        data.edges.find(
+          (x) =>
+            x.sourceId === nameToId.get(e.src.toLowerCase().trim()) &&
+            x.targetId === nameToId.get(e.tgt.toLowerCase().trim()) &&
+            x.edgeType === e.type,
+        );
+      if (!edge) return "Связь не найдена в данных графа.";
+      try {
+        const res = await deleteEdge(synthesisId, edge.id);
+        setPanel(null);
+        setEditEdge(null);
+        // Тот же путь обновления, что после PATCH связи (5.4): хозяин
+        // перечитывает граф (getCategories → data) и разделы документа
+        onElementSaved?.({
+          kind: "edge",
+          element: edge,
+          impact: res.impact,
+          version: res.version,
+          htmlSync: res.htmlSync,
+        });
+        return null;
+      } catch (err) {
+        return messageOfEdgeDeleteError(err);
+      }
+    },
+    [data, synthesisId, nameToId, onElementSaved],
   );
 
   // Строка categories узла для правки по месту в NodePanel (5.4)
@@ -431,9 +488,9 @@ export default function GraphModal({
         ) : (
           <>
             {mode === "3d" ? (
-              <Graph3D key="3d" tooltipRef={tooltipRef} panels={panels} />
+              <Graph3D key={`3d-${dataKey}`} tooltipRef={tooltipRef} panels={panels} />
             ) : (
-              <Graph2D key="2d" panels={panels} />
+              <Graph2D key={`2d-${dataKey}`} panels={panels} />
             )}
             <div className="gm-hint">
               {mode === "3d"
@@ -492,6 +549,11 @@ export default function GraphModal({
                     : undefined
                 }
                 editDisabled={editDisabled}
+                onDelete={
+                  editable && synthesisId && data
+                    ? () => handleDeleteEdge(panel.edgeData)
+                    : undefined
+                }
               />
             ) : null}
           </>

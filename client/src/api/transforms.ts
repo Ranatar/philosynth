@@ -3,8 +3,9 @@
  * Беседа 5.5 (запрос 1, п. 8).
  *
  * Контракт: 03-specification §2.15 + server/routes/transforms.ts:
- *  - transformGraphToTheses → POST /syntheses/:id/transform/graph-to-theses
- *  - transformThesesToGraph → POST /syntheses/:id/transform/theses-to-graph
+ *  - startTransformRequest(id, direction) → POST /syntheses/:id/transform/
+ *    graph-to-theses | theses-to-graph (8.4: две пофункциональные обёртки
+ *    убраны как мёртвые — единственный вход остался один)
  *    Оба отвечают { ok: true } — операция исполняется ФОНОМ под
  *    generation-слотом синтеза, результат по WebSocket: transform_started
  *    → stream_delta с sectionKey "transform:{direction}" → transform_done
@@ -29,22 +30,19 @@ import { apiGet, apiPost } from "./client";
 const base = (synthesisId: string): string =>
   `/syntheses/${encodeURIComponent(synthesisId)}`;
 
-export function transformGraphToTheses(synthesisId: string): Promise<{ ok: true }> {
-  return apiPost<{ ok: true }>(`${base(synthesisId)}/transform/graph-to-theses`);
-}
+/** Пути POST по направлению (8.4: два одноимённых обёртки-предшественника
+ *  убраны — через startTransformRequest ходит useTransformStream 5.5). */
+const TRANSFORM_PATH: Readonly<Record<TransformDirection, string>> = {
+  graph_to_theses: "transform/graph-to-theses",
+  theses_to_graph: "transform/theses-to-graph",
+};
 
-export function transformThesesToGraph(synthesisId: string): Promise<{ ok: true }> {
-  return apiPost<{ ok: true }>(`${base(synthesisId)}/transform/theses-to-graph`);
-}
-
-/** Запуск по направлению (обёртка над двумя POST). */
+/** Запуск трансформации по направлению → { ok: true } (фон, WS). */
 export function startTransformRequest(
   synthesisId: string,
   direction: TransformDirection,
 ): Promise<{ ok: true }> {
-  return direction === "graph_to_theses"
-    ? transformGraphToTheses(synthesisId)
-    : transformThesesToGraph(synthesisId);
+  return apiPost<{ ok: true }>(`${base(synthesisId)}/${TRANSFORM_PATH[direction]}`);
 }
 
 export function getTransformHistory(synthesisId: string): Promise<RepresentationTransform[]> {

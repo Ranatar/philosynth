@@ -24,6 +24,21 @@
  *    (аддитивное поле транспорта, беседа 3.2);
  *  - блок «Поиск по генеалогии» (LineageSearch) — сворачиваемый, под
  *    строкой поиска.
+ *
+ * Беседа 8.4 (п. 2–5): действия владельца в карточке — только на
+ * вкладке «Мои» (как переключатель публикации):
+ *  - переименование → renameSynthesis (PATCH title); 400 → details.title
+ *    строкой под полем карточки, прочие ошибки — сообщением;
+ *  - дублирование → duplicateSynthesis → список ПЕРЕЧИТЫВАЕТСЯ, копия
+ *    встаёт по своему createdAt; автоперехода на копию нет (решение
+ *    протокола: пользователь остаётся в каталоге и выбирает сам);
+ *  - удаление → deleteSynthesis после второго шага в карточке; число
+ *    прямых потомков для подтверждения — GET /lineage/descendants?depth=1
+ *    (только они теряют parent_synthesis_id — SET NULL, 02 §2.4; чужие
+ *    приватные потомки сервером отсечены — число «видимых»); 409
+ *    GENERATION_IN_PROGRESS — строкой в карточке, карточка остаётся;
+ *    после успеха список перечитывается (грабля 6.2: статус — после
+ *    перечитки, не до).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -34,10 +49,14 @@ import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
 import { ApiError } from "../api/client";
 import { getDescendants } from "../api/lineage";
 import {
+  deleteSynthesis,
+  duplicateSynthesis,
   listPublicSyntheses,
   listSyntheses,
+  renameSynthesis,
   updateSynthesis,
 } from "../api/syntheses";
+import type { SynthesisCardActions } from "../components/catalog/SynthesisCard";
 import { SynthesisList } from "../components/catalog/SynthesisList";
 import { LineageSearch } from "../components/lineage/LineageSearch";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
@@ -58,6 +77,26 @@ function collectDescendantIds(nodes: readonly LineageNode[]): Set<string> {
   };
   walk(nodes);
   return ids;
+}
+
+/** Текст ошибки действия карточки (8.4): 400 с details[field] → сама
+ *  подсказка сервера; 409 GENERATION_IN_PROGRESS и 403 — по коду;
+ *  прочее — сообщение ApiError либо запасной текст. */
+export function actionErrorText(
+  err: unknown,
+  field: string | null,
+  fallback: string,
+): string {
+  if (!(err instanceof ApiError)) return fallback;
+  if (err.code === "VALIDATION_ERROR" && field) {
+    const d = err.details as Record<string, unknown> | undefined;
+    const v = d && typeof d === "object" ? d[field] : undefined;
+    if (typeof v === "string") return `Название: ${v}`;
+  }
+  if (err.code === "GENERATION_IN_PROGRESS")
+    return "Генерация ещё идёт — дождитесь завершения или остановите её.";
+  if (err.code === "FORBIDDEN") return "Действие доступно только владельцу.";
+  return err.message || fallback;
 }
 
 export function CatalogPage() {
@@ -107,9 +146,11 @@ export function CatalogPage() {
   }, [searchInput]);
 
   const reqSeq = useRef(0);
-  const fetchList = useCallback(async () => {
+  // silent (8.4): перечитка после действия карточки — без спиннера, чтобы
+  // список не «мигал» и соседние карточки не размонтировались
+  const fetchList = useCallback(async (opts: { silent?: boolean } = {}) => {
     const seq = ++reqSeq.current;
-    setLoading(true);
+    if (!opts.silent) setLoading(true);
     setError(null);
     try {
       const params = {
@@ -160,6 +201,53 @@ export function CatalogPage() {
       setTogglingId(null);
     }
   };
+
+  // Беседа 8.4: действия владельца. Каждый обработчик отдаёт текст
+  // ошибки либо null — карточка показывает его сама, без alert.
+  const cardActions = useMemo<SynthesisCardActions>(
+    () => ({
+      onRename: async (s, title) => {
+        try {
+          const updated = await renameSynthesis(s.id, title);
+          setItems((prev) =>
+            prev.map((it) =>
+              it.id === s.id ? { ...it, title: updated.title } : it,
+            ),
+          );
+          return null;
+        } catch (err) {
+          return actionErrorText(err, "title", "Не удалось переименовать.");
+        }
+      },
+      onDuplicate: async (s) => {
+        try {
+          await duplicateSynthesis(s.id);
+          await fetchList({ silent: true });
+          return null;
+        } catch (err) {
+          return actionErrorText(err, null, "Не удалось создать копию.");
+        }
+      },
+      onDelete: async (s) => {
+        try {
+          await deleteSynthesis(s.id);
+          await fetchList({ silent: true });
+          return null;
+        } catch (err) {
+          return actionErrorText(err, null, "Не удалось удалить концепцию.");
+        }
+      },
+      countDescendants: async (s) => {
+        try {
+          const children = await getDescendants(s.id, 1);
+          return children.filter((n) => n.type === "synthesis").length;
+        } catch {
+          return null;
+        }
+      },
+    }),
+    [fetchList],
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
 
@@ -285,6 +373,7 @@ export function CatalogPage() {
             }
             onTogglePublic={tab === "mine" ? handleTogglePublic : undefined}
             togglingId={togglingId}
+            actions={tab === "mine" ? cardActions : undefined}
           />
         )}
       </div>

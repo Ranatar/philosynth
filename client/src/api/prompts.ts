@@ -7,7 +7,7 @@
  *  - listPrompts      → GET  /prompts ?prefix&activeOnly → { templates }
  *      (activeOnly по умолчанию true на сервере; false — ВСЕ версии
  *      всех ключей, с телами)
- *  - getVersions      → GET  /prompts/:key/versions → { versions }
+ *  - getTemplateVersions → GET /prompts/:key/versions → { versions }
  *      (7.1: полные строки С ТЕЛАМИ, новые первыми; 404 — ключа нет)
  *  - createVersion    → POST /prompts/:key { body, description? } → 201 { template }
  *      (черновик is_active=false — и для первой версии нового ключа;
@@ -17,14 +17,15 @@
  *  - listConfigs      → GET  /configs ?activeOnly → { configs } (значения включены)
  *  - updateConfig     → PUT  /configs/:key { value, description? } → 201 { config }
  *      (черновик, симметрично шаблонам)
- *  - getConfigVersions → GET /configs/:key/versions → { versions } (7.1: с value)
+ *  - getConfigVersionsFull → GET /configs/:key/versions → { versions } (7.1: с value)
  *  - activateConfigVersion → POST /configs/:key/activate { version } → { config }
  *
  * Дыра контракта 6.2 (тела для diff брались обходом
  * listPrompts({ prefix: key, activeOnly: false }) с фильтрацией по точному
  * ключу) ЗАКРЫТА 7.1: /versions отдаёт тела и value. getTemplateVersions /
  * getConfigVersionsFull оставлены как имена для AdminPromptsPage и
- * integration-check 4ah, но теперь — прямые вызовы /versions.
+ * integration-check 4ah, но теперь — прямые вызовы /versions (8.4: их
+ * прежние внутренние обёртки убраны как мёртвые — имён в дереве нет).
  */
 
 import type {
@@ -52,15 +53,12 @@ export function listPrompts(query: ListPromptsQuery = {}): Promise<PromptTemplat
   }).then((r) => r.templates);
 }
 
-export function getVersions(key: string): Promise<PromptVersion[]> {
+/** Все версии ключа с телами, новые первыми (7.1; 8.4: прежняя
+ *  внутренняя обёртка убрана — вызов прямой). PromptVersion = PromptTemplate. */
+export function getTemplateVersions(key: string): Promise<PromptVersion[]> {
   return apiGet<{ versions: PromptVersion[] }>(`/prompts/${k(key)}/versions`).then(
     (r) => r.versions,
   );
-}
-
-/** Все версии ключа с телами, новые первыми (7.1: = getVersions). */
-export function getTemplateVersions(key: string): Promise<PromptTemplate[]> {
-  return getVersions(key);
 }
 
 export function createVersion(
@@ -101,15 +99,12 @@ export function updateConfig(
   }).then((r) => r.config);
 }
 
-export function getConfigVersions(key: string): Promise<ConfigVersion[]> {
+/** Все версии конфига со значениями, новые первыми (7.1; 8.4: прежняя
+ *  внутренняя обёртка убрана — вызов прямой). */
+export function getConfigVersionsFull(key: string): Promise<ConfigVersion[]> {
   return apiGet<{ versions: ConfigVersion[] }>(`/configs/${k(key)}/versions`).then(
     (r) => r.versions,
   );
-}
-
-/** Все версии конфига со значениями, новые первыми (7.1: = getConfigVersions). */
-export function getConfigVersionsFull(key: string): Promise<SynthesisConfig[]> {
-  return getConfigVersions(key);
 }
 
 export function activateConfigVersion(
