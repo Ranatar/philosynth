@@ -432,7 +432,7 @@ cmd_start() {
     if alive "$PID_CLIENT"; then
       skip "dev:client уже запущен (pid $(cat "$PID_CLIENT"))"
     else
-      nohup npm run dev:client -- --host > logs/client.log 2>&1 &
+      nohup npm run dev -w client -- --host > logs/client.log 2>&1 &
       echo $! > "$PID_CLIENT"; ok "dev:client → :$PORT_CLIENT (logs/client.log)"
     fi
   fi
