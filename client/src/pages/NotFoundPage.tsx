@@ -9,7 +9,8 @@ export function NotFoundPage() {
     <div className="input-form">
       <h1 className="form-section-title">Страница не найдена</h1>
       <p className="submit-note">
-        Такого маршрута нет. <Link to="/catalog">Вернуться в каталог</Link>
+        Такого маршрута нет. <Link to="/catalog">Вернуться в каталог</Link> ·{" "}
+        <Link to="/">на главную</Link>
       </p>
     </div>
   );

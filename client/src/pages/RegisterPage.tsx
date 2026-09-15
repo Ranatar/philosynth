@@ -97,6 +97,8 @@ export function RegisterPage() {
 
           <p className="submit-note" style={{ textAlign: "center", maxWidth: "100%" }}>
             Уже есть аккаунт? <Link to="/login">Войти</Link>
+            {" · "}
+            <Link to="/">На главную</Link>
           </p>
         </form>
       </div>

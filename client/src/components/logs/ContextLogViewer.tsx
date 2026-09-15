@@ -37,6 +37,10 @@ export interface ContextLogViewerProps {
    * перезапрос /logs/formatted.
    */
   refreshKey?: number;
+  /** 8.7 (п. 4d): «⤓ Скачать промпты» — только когда /logs/prompts
+   *  доступен смотрящему (владелец либо действенный show_prompts);
+   *  иначе кнопка не рисуется вместо неработающей. По умолчанию есть. */
+  promptsAvailable?: boolean | undefined;
   onClose: () => void;
 }
 
@@ -48,6 +52,7 @@ export function ContextLogViewer({
   docNum,
   title,
   refreshKey = 0,
+  promptsAvailable,
   onClose,
 }: ContextLogViewerProps) {
   const [text, setText] = useState("");
@@ -164,14 +169,17 @@ export function ContextLogViewer({
           <div className="raw-info">
             {text ? `${sectionCount} разделов · ${lineCount} строк` : "—"}
           </div>
-          <button
-            type="button"
-            className="raw-copy"
-            onClick={() => void handleDownloadPrompts()}
-            title="Скачать все промпты за сессию в файл .md"
-          >
-            ⤓ Скачать промпты
-          </button>
+          {promptsAvailable !== false && (
+            <button
+              type="button"
+              className="raw-copy"
+              onClick={() => void handleDownloadPrompts()}
+              title="Скачать все промпты за сессию в файл .md"
+              data-testid="log-prompts-btn"
+            >
+              ⤓ Скачать промпты
+            </button>
+          )}
           <button type="button" className="raw-copy" onClick={handleCopy}>
             {copyLabel}
           </button>

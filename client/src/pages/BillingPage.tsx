@@ -58,6 +58,7 @@ import {
   subscribe,
 } from "../api/subscription";
 import { listSyntheses } from "../api/syntheses";
+import { PlansTable, periodWord } from "../components/billing/PlansTable";
 import { useAuthStore } from "../stores/auth-store";
 import { fmtDateLong, fmtDateShort, fmtInt, fmtMoney, fmtUsd, toIsoDate } from "../utils/format";
 import {
@@ -549,10 +550,6 @@ const QUOTA_LABELS: Record<QuotaKey, string> = {
   enrichments: "обогащения",
 };
 
-function periodWord(p: SubscriptionPlan["billingPeriod"]): string {
-  return p === "year" ? "год" : "месяц";
-}
-
 function SubscriptionSection() {
   const [overview, setOverview] = useState<SubscriptionOverview | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null);
@@ -754,52 +751,22 @@ function SubscriptionSection() {
       {choosing && (
         <div className="form-group full" data-testid="sub-plans">
           <div className="form-label">Тарифы</div>
-          {plans === null ? (
-            <Hint text="Загрузка тарифов…" />
-          ) : plans.length === 0 ? (
-            <div className="data-table-empty">тарифов нет</div>
-          ) : (
-            <div className="data-table-wrap" style={{ overflowX: "auto" }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Тариф</th>
-                    <th className="num">Цена</th>
-                    <th className="num">Синтезы</th>
-                    <th className="num">Перегенерации</th>
-                    <th className="num">Режимы</th>
-                    <th className="num">Обогащения</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {plans.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.displayName}</td>
-                      <td className="num">
-                        {fmtMoney(p.priceUsd)} / {periodWord(p.billingPeriod)}
-                      </td>
-                      <td className="num">{fmtInt(p.quotaSyntheses)}</td>
-                      <td className="num">{fmtInt(p.quotaRegenerations)}</td>
-                      <td className="num">{fmtInt(p.quotaModes)}</td>
-                      <td className="num">{fmtInt(p.quotaEnrichments)}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="action-btn primary"
-                          disabled={pending || (billable && plan?.id === p.id)}
-                          onClick={() => void handleSubscribe(p.id)}
-                          data-testid={`sub-plan-${p.name}`}
-                        >
-                          Оформить
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {/* 8.7: таблица тарифов вынесена в components/billing/PlansTable —
+              та же разметка стоит на стартовой странице (цены без входа) */}
+          <PlansTable
+            plans={plans}
+            renderAction={(p) => (
+              <button
+                type="button"
+                className="action-btn primary"
+                disabled={pending || (billable && plan?.id === p.id)}
+                onClick={() => void handleSubscribe(p.id)}
+                data-testid={`sub-plan-${p.name}`}
+              >
+                Оформить
+              </button>
+            )}
+          />
           <div className="inline-edit-actions" style={{ borderTop: "none", paddingTop: 0 }}>
             <button type="button" className="action-btn" onClick={() => setChoosing(false)}>
               Закрыть

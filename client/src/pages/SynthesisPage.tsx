@@ -31,9 +31,27 @@
  *   разделы перечитываются транспортом чтения, граф — GET /categories;
  *   «Перегенерировать затронутые» открывает EditModal с предотмеченными
  *   разделами (единственный путь — планы §2.6).
+ * - Беседа 8.7 (п. 4): РЕЖИМ ПРОСМОТРА. Страница больше не рассчитана
+ *   только на своего: GET /syntheses/:id — гостевой путь (8.6), маршрут
+ *   вынесен из-под RequireAuth. Смотрящий — по ответу сервера:
+ *   isOwner / зарегистрированный (auth-store) / гость; scope 'full' или
+ *   'showcase'. У невладельца: полоса «Вы смотрите публичную концепцию»
+ *   (гостю — с кнопкой «Создать аккаунт»); при scope='showcase' DocumentView
+ *   рисует врезку вместо разделов; кнопок графа/правки/режимов/экспорта у
+ *   гостя нет (их пути под requireAuth), у зарегистрированного на витрине —
+ *   тоже (403); «◈ Лог» и «⤓ Скачать промпты» — по effectiveFlags
+ *   (shared/utils/visibility), а не по 403 постфактум; стоимость и токены
+ *   гостю в ответе НЕ приходят — футер их не рисует (8.6). WS-подписка,
+ *   GET /modes, GET /lineage/ancestors — только зарегистрированному (пути
+ *   под requireAuth). 403 у гостя → страница «концепция приватна» со
+ *   ссылкой на вход (state.from — возврат сюда после входа). Истёкшая на
+ *   открытом документе сессия (401 → auth-store 'anonymous') перечитывает
+ *   документ гостем: полоса меняется, страница не падает.
  */
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
+
+import { effectiveFlags } from "@philosynth/shared/utils/visibility";
 
 import { getCategories, getGlossary, getTheses } from "../api/elements";
 import { getSynthesis } from "../api/syntheses";
@@ -61,7 +79,9 @@ import { GenerationProgress } from "../components/synthesis/GenerationProgress";
 import { PauseModal } from "../components/synthesis/PauseModal";
 import { useStreamingGeneration } from "../hooks/useStreamingGeneration";
 import { getModes } from "../api/modes";
+import { useAuthStore } from "../stores/auth-store";
 import { useSynthesisStore } from "../stores/synthesis-store";
+import { visibilityBadge } from "../utils/visibility-text";
 
 import type { GraphData } from "@philosynth/shared/types/graph";
 import type { TransformDirection } from "@philosynth/shared/types/elements";
@@ -73,6 +93,13 @@ import {
 
 export function SynthesisPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  // Беседа 8.7: смотрящий. Гость = нет сессии в auth-store; владение —
+  // из ответа сервера (isOwner, 5.2). 'restoring' считаем гостем для UI
+  // (кнопок под requireAuth не рисуем), документ при этом уже грузится —
+  // cookie уходит с запросом независимо от состояния store.
+  const authStatus = useAuthStore((s) => s.status);
+  const isGuest = authStatus !== "authenticated";
 
   const synthesis = useSynthesisStore((s) => s.synthesis);
   const summaries = useSynthesisStore((s) => s.summaries);
@@ -128,6 +155,17 @@ export function SynthesisPage() {
     if (id) void load(id);
     return () => clear();
   }, [id, load, clear]);
+
+  // 8.7 (edge case): смена смотрящего на открытом документе — сессия
+  // истекла (401 → 'anonymous') или человек вошёл — перечитать документ
+  // тем, кем он теперь является; 'restoring' переходом не считается
+  const prevAuthRef = useRef(authStatus);
+  useEffect(() => {
+    const prev = prevAuthRef.current;
+    prevAuthRef.current = authStatus;
+    if (authStatus === "restoring" || prev === "restoring") return;
+    if (prev !== authStatus && id) void load(id);
+  }, [authStatus, id, load]);
 
   /* ── Беседа 5.2: ручное редактирование элементов ──
      Кнопки ✎ на строках таблиц (SectionView) и «✎ Редактировать» в
@@ -258,6 +296,7 @@ export function SynthesisPage() {
     (synthesis.sectionOrder ?? []).includes("capsule") &&
     !!synthesis.capsuleHtml;
   const synthesisIdForModes = synthesis?.id ?? null;
+  const isOwnerForModes = synthesis?.isOwner ?? false;
   // Стабильная ссылка (грабля R3: инлайн-колбэк в props модалки менял
   // идентичность её refetch каждый рендер); prev при том же счётчике —
   // без нового объекта, чтобы не гонять рендеры по кругу
@@ -270,7 +309,9 @@ export function SynthesisPage() {
   );
   useEffect(() => {
     setModeCounts({});
-    if (!synthesisIdForModes || !hasCapsule) return;
+    // 8.7: GET /modes — под requireAuth; кнопки режимов и так только
+    // владельцу — счётчики гоняем только ему
+    if (!synthesisIdForModes || !hasCapsule || !isOwnerForModes) return;
     if (editOpen) return; // пока модалка открыта, счётчики не гоняем
     let cancelled = false;
     getModes(synthesisIdForModes)
@@ -289,7 +330,7 @@ export function SynthesisPage() {
     // editOpen в deps: план с режимными шагами / подраздельный каскад
     // меняют результаты — закрытие EditModal перечитывает счётчики
     // (паритет updateModeButtons после applyEditPlan исходника)
-  }, [synthesisIdForModes, hasCapsule, editOpen]);
+  }, [synthesisIdForModes, hasCapsule, editOpen, isOwnerForModes]);
 
   /* ── Беседа 3.2 (п. 4): секция «Генеалогия» под шапкой документа ──
      Только для мета-синтезов (есть родители-концепции) — паритет
@@ -306,7 +347,9 @@ export function SynthesisPage() {
   const synthesisIdLoaded = synthesis?.id ?? null;
   useEffect(() => {
     setGenealogyTree(null);
-    if (!synthesisIdLoaded || !isMetaSynthesis) return;
+    // 8.7: /lineage/ancestors под requireAuth — гостю дерево не грузим,
+    // остаётся список родителей из SynthesisFull (метаданные витрины)
+    if (!synthesisIdLoaded || !isMetaSynthesis || isGuest) return;
     let cancelled = false;
     getAncestors(synthesisIdLoaded)
       .then((tree) => {
@@ -318,12 +361,21 @@ export function SynthesisPage() {
     return () => {
       cancelled = true;
     };
-  }, [synthesisIdLoaded, isMetaSynthesis]);
+  }, [synthesisIdLoaded, isMetaSynthesis, isGuest]);
 
   const live = synthesis?.status === "generating" || synthesis?.status === "paused";
   // Беседа 5.2 («По факту 5.2»): владение — из SynthesisFull.isOwner
   // (оптимизм «покажем всем, 403 решит» 2.3/4.1 снят тем же флагом)
   const isOwner = synthesis?.isOwner ?? false;
+  // 8.7: что доступно смотрящему. Контент-роуты (граф, экспорт, /sections)
+  // — под requireAuth и с гейтом витрины (8.6 «По факту» п.3):
+  // зарегистрированному на 'full' — да, гостю и на витрине — нет.
+  const scopeFull = synthesis?.scope === "full";
+  const contentAvailable = isOwner || (!isGuest && scopeFull);
+  // Логи и запросы — по действенности флагов, а не по 403 постфактум
+  const eff = synthesis ? effectiveFlags(synthesis) : null;
+  const logsAvailable = isOwner || (!isGuest && !!eff?.showLogs);
+  const promptsAvailable = isOwner || (!isGuest && !!eff?.showPrompts);
 
   // Смена синтеза — редактор по месту закрывается
   useEffect(() => {
@@ -338,7 +390,9 @@ export function SynthesisPage() {
   // события обновляют разделы (reloadSections ниже) и открытый лог
   // (refreshKey) — аналог refreshCtxLogIfOpen исходника [23306]
   const stream = useStreamingGeneration({
-    synthesisId: id ?? null,
+    // 8.7: WS — только зарегистрированному (гостю сокет закрыт сессией);
+    // события своего прогона доходят по userId и так (1.6)
+    synthesisId: !isGuest ? (id ?? null) : null,
     expectedSections: synthesis?.sectionOrder,
     viewOnly: true,
     onComplete: () => {
@@ -427,11 +481,33 @@ export function SynthesisPage() {
     );
   }
   if (errorCode === "FORBIDDEN") {
+    // 8.7 (п. 3): гостю — «концепция приватна» со ссылкой на вход и
+    // возвратом сюда (state.from, как у RequireAuth); зарегистрированному
+    // — прежний текст (чужая приватная)
     return (
       <PageError
         code="403"
-        text="Этот синтез приватный: доступен только владельцу."
-      />
+        text={
+          isGuest
+            ? "Эта концепция приватна: автор не открыл её посторонним."
+            : "Этот синтез приватный: доступен только владельцу."
+        }
+        testId="forbidden-page"
+      >
+        {isGuest && (
+          <p className="submit-note" style={{ maxWidth: "100%", textAlign: "center" }}>
+            Если это ваша концепция —{" "}
+            <Link
+              to="/login"
+              state={{ from: location.pathname + location.search }}
+              data-testid="forbidden-login"
+            >
+              войдите
+            </Link>
+            . Иначе — <Link to="/explore">публичный каталог</Link>.
+          </p>
+        )}
+      </PageError>
     );
   }
   if (errorCode) {
@@ -444,7 +520,24 @@ export function SynthesisPage() {
 
   return (
     <div>
-      {/* actions-bar [4134] — минимум 1.6b */}
+      {/* Беседа 8.7 (п. 4a): полоса режима просмотра у невладельца */}
+      {!isOwner && (
+        <div className="app-view-banner" data-testid="view-banner" data-viewer={isGuest ? "guest" : "user"}>
+          <span className="app-view-banner-text">
+            Вы смотрите публичную концепцию
+            {synthesis.scope === "showcase" ? " (витрина)" : ""}
+            {synthesis.authorName ? ` · автор: ${synthesis.authorName}` : ""}
+          </span>
+          {isGuest && (
+            <Link to="/register" className="action-btn primary" data-testid="view-banner-register">
+              Создать аккаунт
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* actions-bar [4134] — минимум 1.6b; 8.7: у гостя и на витрине
+          кнопок под requireAuth/гейтом витрины нет (не рисуем неработающие) */}
       <div className="actions-bar">
         <div
           style={{
@@ -454,17 +547,23 @@ export function SynthesisPage() {
             letterSpacing: 1,
           }}
         >
-          {live ? "ГЕНЕРАЦИЯ ДОКУМЕНТА" : "ДОКУМЕНТ СГЕНЕРИРОВАН"}
+          {isOwner
+            ? live
+              ? "ГЕНЕРАЦИЯ ДОКУМЕНТА"
+              : "ДОКУМЕНТ СГЕНЕРИРОВАН"
+            : `РЕЖИМ ПРОСМОТРА · ${visibilityBadge(synthesis.visibility).toUpperCase()}`}
         </div>
         <div className="actions-bar-btns">
-          <button
-            type="button"
-            className="action-btn"
-            onClick={() => void handleOpenGraph()}
-            disabled={graphLoading}
-          >
-            {graphLoading ? "Загрузка…" : "◈ Граф"}
-          </button>
+          {contentAvailable && (
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => void handleOpenGraph()}
+              disabled={graphLoading}
+            >
+              {graphLoading ? "Загрузка…" : "◈ Граф"}
+            </button>
+          )}
           {isOwner && (
             <button
               type="button"
@@ -489,47 +588,50 @@ export function SynthesisPage() {
                 {(modeCounts[mk] ?? 0) > 0 ? ` (${modeCounts[mk]})` : ""}
               </button>
             ))}
-          {/* Беседа 4.2: экспорт (скачивание с сервера, 03 §2.11) */}
-          <div style={{ position: "relative" }}>
-            <button
-              type="button"
-              className="action-btn"
-              onClick={() => setExportOpen((v) => !v)}
-              disabled={live}
-            >
-              ⤓ Экспорт
-            </button>
-            {exportOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: 0,
-                  zIndex: 50,
-                  display: "flex",
-                  flexDirection: "column",
-                  background: "var(--paper, #1a1814)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  minWidth: 130,
-                }}
+          {/* Беседа 4.2: экспорт (скачивание с сервера, 03 §2.11);
+              8.7: под requireAuth, витрина → 403 — только при contentAvailable */}
+          {contentAvailable && (
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                className="action-btn"
+                onClick={() => setExportOpen((v) => !v)}
+                disabled={live}
               >
-                {EXPORT_FORMATS.map(({ fmt, label }) => (
-                  <button
-                    key={fmt}
-                    type="button"
-                    className="action-btn"
-                    style={{ border: "none", textAlign: "left" }}
-                    onClick={() => {
-                      setExportOpen(false);
-                      downloadExport(id ?? "", fmt);
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                ⤓ Экспорт
+              </button>
+              {exportOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    right: 0,
+                    zIndex: 50,
+                    display: "flex",
+                    flexDirection: "column",
+                    background: "var(--paper, #1a1814)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    minWidth: 130,
+                  }}
+                >
+                  {EXPORT_FORMATS.map(({ fmt, label }) => (
+                    <button
+                      key={fmt}
+                      type="button"
+                      className="action-btn"
+                      style={{ border: "none", textAlign: "left" }}
+                      onClick={() => {
+                        setExportOpen(false);
+                        downloadExport(id ?? "", fmt);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <button
             type="button"
             className="action-btn"
@@ -540,7 +642,7 @@ export function SynthesisPage() {
         </div>
       </div>
 
-      {live && (
+      {live && isOwner && (
         <div style={{ marginBottom: 24 }}>
           <GenerationProgress
             sections={progressSections}
@@ -570,7 +672,7 @@ export function SynthesisPage() {
         synthesis={synthesis}
         summaries={summaries}
         sections={sections}
-        onOpenLog={() => setLogOpen(true)}
+        onOpenLog={logsAvailable ? () => setLogOpen(true) : undefined}
         editable={isOwner && !live}
         onRowEdit={(row) => void openInlineEditor(row)}
         sectionActionsFor={(key) =>
@@ -627,11 +729,14 @@ export function SynthesisPage() {
                     ))}
                   </div>
                 )}
-                <div className="doc-meta-key" style={{ marginTop: 8 }}>
-                  <Link to={`/catalog?descendantsOf=${synthesis.id}`}>
-                    ◈ Потомки этой концепции в каталоге
-                  </Link>
-                </div>
+                {/* 8.7: фильтр потомков зовёт /lineage/descendants (requireAuth) */}
+                {!isGuest && (
+                  <div className="doc-meta-key" style={{ marginTop: 8 }}>
+                    <Link to={`/catalog?descendantsOf=${synthesis.id}`}>
+                      ◈ Потомки этой концепции в каталоге
+                    </Link>
+                  </div>
+                )}
               </div>
             </details>
           ) : undefined
@@ -642,13 +747,14 @@ export function SynthesisPage() {
           УЖЕ существующим событиям завершения раздела (section_done через
           doneCount, generation_complete через stream.complete); новых
           WS-сообщений про лог нет (аудит 2026-07-30). */}
-      {id && (
+      {id && logsAvailable && (
         <ContextLogViewer
           open={logOpen}
           synthesisId={id}
           docNum={synthesis.docNum}
           title={synthesis.title}
           refreshKey={doneCount + (stream.complete ? 100000 : 0)}
+          promptsAvailable={promptsAvailable}
           onClose={() => setLogOpen(false)}
         />
       )}
@@ -664,7 +770,7 @@ export function SynthesisPage() {
       />
 
       <PauseModal
-        open={pauseModalOpen && paused}
+        open={pauseModalOpen && paused && isOwner}
         pausedState={pausedState}
         estimates={pauseEstimates}
         onResumeGeneration={handleResumeGeneration}
@@ -714,9 +820,19 @@ export function SynthesisPage() {
   );
 }
 
-function PageError({ code, text }: { code: string; text: string }) {
+function PageError({
+  code,
+  text,
+  testId,
+  children,
+}: {
+  code: string;
+  text: string;
+  testId?: string | undefined;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="input-form" style={{ textAlign: "center" }}>
+    <div className="input-form" style={{ textAlign: "center" }} data-testid={testId}>
       <div
         style={{
           fontFamily: "var(--serif)",
@@ -729,6 +845,7 @@ function PageError({ code, text }: { code: string; text: string }) {
       <div className="submit-note" style={{ maxWidth: "100%" }}>
         {text}
       </div>
+      {children}
     </div>
   );
 }

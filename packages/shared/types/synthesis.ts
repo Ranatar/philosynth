@@ -198,12 +198,10 @@ export interface SynthesisFull {
    *  pause-resume-service (1.4b), fail-open {}; null при pausedState=null.
    *  Не путать с оценкой стоимости /estimate (03 §2.2, беседа 1.6). */
   pauseEstimates: PauseEstimates | null;
-  /** @deprecated 8.6: ПРОИЗВОДНОЕ от visibility (!== 'private'); колонки
-   *  is_public в БД больше нет. Оставлено, пока клиент (8.7) не переведён на
-   *  visibility; на входе PATCH принимается как устаревший синоним. */
-  isPublic: boolean;
   /** 8.6: ступень и сырые флаги публичности (как в БД). У невладельца
-   *  видны — чтобы клиент 8.7 мог объяснить, почему логи/мета закрыты. */
+   *  видны — чтобы клиент 8.7 мог объяснить, почему логи/мета закрыты.
+   *  Производного isPublic больше нет (снят 8.7 вместе с синонимом PATCH):
+   *  «публична» = visibility !== 'private'. */
   visibility: SynthesisVisibility;
   showAuthor: boolean;
   showLogs: boolean;
@@ -250,9 +248,7 @@ export interface SynthesisPreview {
   synthLevel: SynthLevel;
   depth: Depth;
   status: SynthesisStatus;
-  /** @deprecated 8.6: производное от visibility (!== 'private'), см. SynthesisFull */
-  isPublic: boolean;
-  /** 8.6 */
+  /** 8.6; производный isPublic снят 8.7 — «публична» = visibility !== 'private' */
   visibility: SynthesisVisibility;
   /** 8.6: только при действенном show_author и непустом display_name */
   authorName?: string;
@@ -271,8 +267,8 @@ export interface SynthesisPreview {
 }
 
 /** Тело PATCH /syntheses/:id (8.6): visibility и четыре флага вместо
- *  isPublic; isPublic принимается синонимом (true → 'full', false →
- *  'private') до перевода клиента в 8.7. */
+ *  isPublic. Синоним isPublic снят 8.7: сервер отвечает 400 с
+ *  details.isPublic (клиент шлёт visibility). */
 export interface SynthesisPatchInput {
   title?: string;
   extGraphMetrics?: boolean;
@@ -281,8 +277,6 @@ export interface SynthesisPatchInput {
   showLogs?: boolean;
   showPrompts?: boolean;
   allowMeta?: boolean;
-  /** @deprecated 8.6 — синоним visibility */
-  isPublic?: boolean;
 }
 
 /* ── Импорт HTML-файла (беседа 4.3; 03-spec §2.2 POST /syntheses/import) ── */

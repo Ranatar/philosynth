@@ -29,7 +29,8 @@ export function effectiveFlags(row: VisibilityFlags): EffectiveFlags {
   };
 }
 
-/** Производный isPublic для клиента до 8.7 (@deprecated). */
+/** «Не приватна» — единственное место, где ступень схлопывается в булево
+ *  (списки, гейты). Производного поля isPublic в DTO с 8.7 нет. */
 export function isPublicOf(visibility: VisibilityFlags["visibility"]): boolean {
   return visibility !== "private";
 }

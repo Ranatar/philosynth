@@ -12,6 +12,7 @@
 import type { ParticipantInput } from "@philosynth/shared/types/lineage";
 import type {
   SynthesisFull,
+  SynthesisPatchInput,
   SynthesisPreview,
 } from "@philosynth/shared/types/synthesis";
 
@@ -194,18 +195,29 @@ export function listSyntheses(
   return apiGet<SynthesisListResult>("/syntheses", { ...params });
 }
 
-/** GET /syntheses/public — «Публичные» (is_public всех пользователей) */
+/** GET /syntheses/public — «Публичные» (все неприватные ступени —
+ *  visibility <> 'private', витрина тоже в списке; 8.6). Путь ГОСТЕВОЙ
+ *  (optionalAuth): без сессии сервер отдаёт items без totalCostUsd — это
+ *  источник карточек LandingPage и вкладки /explore (8.7). */
 export function listPublicSyntheses(
   params: PublicSynthesisListParams = {},
 ): Promise<SynthesisListResult> {
   return apiGet<SynthesisListResult>("/syntheses/public", { ...params });
 }
 
-/** PATCH /syntheses/:id { title?, isPublic? } — только владелец (403 иначе).
- *  Единственный способ опубликовать синтез (03 §2.2); title ≤ 300, trim. */
+/** Тело PATCH /syntheses/:id (8.7): ступень + четыре флага. Синоним
+ *  isPublic (8.6) снят и с клиента, и с сервера (там → 400). Флаги,
+ *  присланные вместе с витриной, сервер ПРИНИМАЕТ и хранит —
+ *  действенность решает effectiveFlags. */
+export type SynthesisClientPatch = SynthesisPatchInput;
+
+/** PATCH /syntheses/:id { title?, extGraphMetrics?, visibility?, флаги } —
+ *  только владелец (403 иначе). Единственный способ изменить ступень
+ *  публичности (03 §2.2); title ≤ 300, trim; visibility вне перечисления →
+ *  400 VALIDATION_ERROR с details.visibility. */
 export function updateSynthesis(
   id: string,
-  patch: { title?: string; isPublic?: boolean; extGraphMetrics?: boolean },
+  patch: SynthesisClientPatch,
 ): Promise<SynthesisFull> {
   return apiPatch<{ synthesis: SynthesisFull }>(
     `/syntheses/${encodeURIComponent(id)}`,
@@ -228,7 +240,7 @@ export function deleteSynthesis(id: string): Promise<{ ok: true }> {
 }
 
 /** POST /syntheses/:id/duplicate → 201 { id } — копия с новым doc_num,
- *  title += « (копия)», is_public=false; копируются разделы, элементы и
+ *  title += « (копия)», visibility='private' (8.6); копируются разделы, элементы и
  *  генеалогия РОДИТЕЛЕЙ, lineage-связи «копия → оригинал» нет (1.6).
  *  Генерация ещё идёт → 409 GENERATION_IN_PROGRESS. */
 export function duplicateSynthesis(id: string): Promise<{ id: string }> {

@@ -16,6 +16,19 @@
  * loadSeq — защита от гонки: параллельный load() старого id не должен
  * перезаписать состояние более позднего (React StrictMode двоит эффекты —
  * грабля 0.4).
+ *
+ * Беседа 8.7 (режим просмотра): GET /syntheses/:id теперь ГОСТЕВОЙ путь
+ * (8.6), а /sections — нет; порядок загрузки стал последовательным —
+ * сначала синтез, затем разделы, и откуда их брать, решает ответ:
+ *  - synthesis.sections присутствует (гость при scope='full' — «документ
+ *    одним ответом») → разделы оттуда, /sections не зовётся; сводки для
+ *    оглавления собираются из тех же тел (summariesFromSections);
+ *  - scope='showcase' (любой невладелец) → разделов нет ПО ПРАВУ, /sections
+ *    ответил бы 403 — не зовём вовсе;
+ *  - иначе (владелец, зарегистрированный на 'full') — /sections + /sections/:key,
+ *    как прежде.
+ * sectionsEmbedded помнит первый случай: reloadSections тогда перечитывает
+ * GET /:id (единственный доступный гостю транспорт), а не /sections.
  */
 import { create } from "zustand";
 
@@ -40,6 +53,9 @@ interface SynthesisStoreState {
   loading: boolean;
   /** Код ошибки загрузки (NOT_FOUND → 404-страница, FORBIDDEN → 403) */
   errorCode: ApiErrorCode | null;
+  /** 8.7: разделы пришли внутри GET /:id (гость, scope='full') —
+   *  /sections для этого смотрящего недоступен */
+  sectionsEmbedded: boolean;
 
   /** Полная загрузка синтеза + разделов; повторный вызов = перезагрузка */
   load: (id: string) => Promise<void>;
@@ -52,6 +68,43 @@ interface SynthesisStoreState {
 }
 
 let loadSeq = 0;
+
+/** 8.7: сводки для оглавления из тел разделов гостевого ответа —
+ *  SectionSummary без contextQualityScore (ctxLog гостю не отдаётся) */
+export function summariesFromSections(
+  list: readonly SectionFull[],
+  updatedAt: string,
+): SectionSummary[] {
+  return list.map((s) => ({
+    key: s.key,
+    sectionNum: s.sectionNum,
+    title: s.title,
+    isEdited: s.isEdited,
+    htmlChars: s.htmlContent.length,
+    contextQualityScore: null,
+    subsections: s.subsections,
+    updatedAt,
+  }));
+}
+
+/** 8.7: разделы по ответу GET /:id — см. шапку модуля */
+async function sectionsFor(
+  synthesis: SynthesisFull,
+): Promise<{ summaries: SectionSummary[]; sections: SectionFull[]; embedded: boolean }> {
+  if (synthesis.sections) {
+    const list = synthesis.sections.filter((s) => s.key !== "capsule");
+    return {
+      summaries: summariesFromSections(list, synthesis.updatedAt),
+      sections: list,
+      embedded: true,
+    };
+  }
+  if (synthesis.scope === "showcase") {
+    return { summaries: [], sections: [], embedded: false };
+  }
+  const { summaries, sections } = await fetchSections(synthesis.id);
+  return { summaries, sections, embedded: false };
+}
 
 async function fetchSections(
   id: string,
@@ -72,6 +125,7 @@ export const useSynthesisStore = create<SynthesisStoreState>((set, get) => ({
   sections: [],
   loading: false,
   errorCode: null,
+  sectionsEmbedded: false,
 
   async load(id) {
     const seq = ++loadSeq;
@@ -81,12 +135,17 @@ export const useSynthesisStore = create<SynthesisStoreState>((set, get) => ({
       errorCode: null,
     });
     try {
-      const [synthesis, { summaries, sections }] = await Promise.all([
-        getSynthesis(id),
-        fetchSections(id),
-      ]);
+      // Последовательно (8.7): откуда брать разделы, решает ответ GET /:id
+      const synthesis = await getSynthesis(id);
+      const { summaries, sections, embedded } = await sectionsFor(synthesis);
       if (seq !== loadSeq) return; // пришёл более поздний load
-      set({ synthesis, summaries, sections, loading: false });
+      set({
+        synthesis,
+        summaries,
+        sections,
+        loading: false,
+        sectionsEmbedded: embedded,
+      });
     } catch (err) {
       if (seq !== loadSeq) return;
       set({
@@ -94,6 +153,7 @@ export const useSynthesisStore = create<SynthesisStoreState>((set, get) => ({
         summaries: [],
         sections: [],
         loading: false,
+        sectionsEmbedded: false,
         errorCode: err instanceof ApiError ? err.code : "NETWORK_ERROR",
       });
     }
@@ -104,6 +164,15 @@ export const useSynthesisStore = create<SynthesisStoreState>((set, get) => ({
     if (!id) return;
     const seq = loadSeq;
     try {
+      if (get().sectionsEmbedded) {
+        // Гость: единственный транспорт — GET /:id целиком
+        const synthesis = await getSynthesis(id);
+        const { summaries, sections } = await sectionsFor(synthesis);
+        if (seq !== loadSeq) return;
+        set({ synthesis, summaries, sections });
+        return;
+      }
+      if (get().synthesis?.scope === "showcase") return;
       const { summaries, sections } = await fetchSections(id);
       if (seq !== loadSeq) return;
       set({ summaries, sections });
@@ -126,6 +195,7 @@ export const useSynthesisStore = create<SynthesisStoreState>((set, get) => ({
       sections: [],
       loading: false,
       errorCode: null,
+      sectionsEmbedded: false,
     });
   },
 }));

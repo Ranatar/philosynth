@@ -27,7 +27,8 @@
     "seed:admin": "tsx scripts/bootstrap-admin.ts",
     "seed:plans": "tsx scripts/seed-plans.ts",
     "stripe:create-prices": "tsx scripts/stripe-create-prices.ts",
-    "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json"
+    "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
+    "check:dotfiles": "node scripts/check-dotfiles.mjs"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.0",

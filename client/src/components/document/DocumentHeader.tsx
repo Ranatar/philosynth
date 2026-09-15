@@ -30,6 +30,11 @@
  * её нет вовсе; при status='generating' — disabled (сервер ответит 409).
  * Попутно под тот же гейт isOwner подведён ✎ названия (оптимизм 1.6b
  * «403 решит» с появлением флага 5.2 не нужен).
+ *
+ * Беседа 8.7 (п. 4): authorName — имя автора в сетке метаданных, только
+ * когда сервер его отдал (действенный show_author и непустой display_name,
+ * 8.6); иначе строки нет вовсе — не «—». Своего документа это не касается:
+ * владельцу поле тоже приходит, показываем как есть.
  */
 import { useMemo, useState } from "react";
 
@@ -287,6 +292,12 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
           <span className="doc-meta-key">Уровень синтеза</span>
           <span className="doc-meta-val gold">{SL[synthesis.synthLevel]}</span>
         </div>
+        {synthesis.authorName && (
+          <div className="doc-meta-item" data-testid="doc-author">
+            <span className="doc-meta-key">Автор</span>
+            <span className="doc-meta-val">{synthesis.authorName}</span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -505,6 +505,25 @@ PATCH visibility + флаги (isPublic — синоним до 8.7); экспо
 dev-billing-state/). Смоук 87 ✓, tests/test-86-requests2-14.mjs 102 ✓ ×2 на
 отдельной пустой БД, check:integration += 2ad/4ao/5ac; доки —
 scripts/patch-docs-conv86.py. Реестр §12 пуст; следующая — 8.7.
+Беседа 8.7 (витрина — стартовая страница, гостевая шапка и маршруты, режим
+просмотра, управление публичностью; клиент) ЗАКРЫТА 2026-09-15: LandingPage на
+«/» гостю (четыре опоры языком документа, живая витрина из GET /syntheses/public
+×4, цены через PlansTable — вынос из BillingPage, крупная «Создать аккаунт» в
+теле); Layout вне RequireAuth, защита на страницах, гостевые «/», «/explore»,
+«/synthesis/:id», гость на прочем → «/» со state.from; шапка гостя «Войти ·
+Регистрация» без меню; режим просмотра документа по смотрящему (полоса
+невладельца, разделы из ответа GET /:id последовательной загрузкой, витрина без
+разделов и без /sections, кнопки по effectiveFlags и смотрящему, WS/modes/
+lineage только вошедшему, 403 гостю → «приватна» + вход с возвратом, перечитка
+при смене сессии, authorName в шапке); VisibilityControl вместо «Опубликовать»
+(три ступени, галочки по ступеням — на витрине только авторство со
+строкой-пояснением, флаги из GET /:id, ОДИН PATCH, подпись audienceText);
+META_NOT_ALLOWED — названием и причиной в форме; CSS-блок 8.7 без новых hex;
+по решению пользователя (вариант б) isPublic снят с сервера и shared целиком
+(PATCH с isPublic → 400). Dotfile-грабля ×5 — воссозданы + scripts/check-
+dotfiles.mjs. Смоук 120 ✓, tests/test-87-requests2-12.mjs 101 ✓ ×2 в браузере,
+test-86 101 ✓, check:integration += 2ae/4ap; доки — scripts/patch-docs-conv87.py.
+Реестр §12 пуст; Фаза 8 закрыта целиком; следующая беседа не назначена.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
@@ -4898,6 +4917,47 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
   считать строки таблиц «ровно N» и завязываться на точные id мока.
 
 ---
+
+### Беседа 8.7 — Витрина: стартовая страница и управление публичностью (клиент) [ЗАКРЫТА 2026-09-15]
+
+> Запрос 1 целиком (App/Layout/Header, LandingPage, PlansTable,
+> VisibilityControl + visibility-text, SynthesisCard/List, CatalogPage
+> publicOnly, synthesis-store последовательная загрузка, SynthesisPage режим
+> просмотра, DocumentView/Header, ContextLogViewer.promptsAvailable,
+> CreateSynthesisPage.metaNotAllowedText, CSS-блок 8.7, dotfile воссозданы,
+> scripts/patch-docs-conv87.py) → патч philosynth-8.7-request1.patch; смоук
+> tests/smoke-87-request1.mjs 119 → 120 ✓; по выбору пользователя вариант (б):
+> isPublic снят с сервера/shared, PATCH с isPublic → 400 (integration 5n/5ac/
+> 4p/4ao/4t, smoke-86, test-86 переписаны — 101 ✓); тестовые запросы R2–R12
+> одним заходом tests/test-87-requests2-12.mjs 101 ✓ ×2 (браузер, ~90 с);
+> завершение: tsc -b 0, typecheck:checks/scripts 0, audit ✓, check-map 0,
+> css-parity 0/586 (C — gm-hint), check:integration += 2ae/4ap → INTEGRATION
+> OK, `npm run check:dotfiles`. Полный текст решений — «По факту 8.7» в 07.
+
+#### Что создано / изменено
+
+- `client/src/pages/LandingPage.tsx` (новый) — «/» гостю; вошедшего → /catalog
+- `client/src/components/billing/PlansTable.tsx` (новый) — вынос из BillingPage
+- `client/src/components/catalog/VisibilityControl.tsx` (новый) — ступени + галочки, один PATCH
+- `client/src/utils/visibility-text.ts` (новый) — тексты ступеней, `flagsShownFor`, `audienceText`
+- `client/src/App.tsx` — Layout вне RequireAuth, гостевые маршруты, гость → «/»
+- `client/src/components/layout/Layout.tsx`, `Header.tsx` — гостевая шапка, меню вошедшему
+- `client/src/pages/CatalogPage.tsx` (publicOnly, visibilityErrorText, один PATCH), `SynthesisCard.tsx`, `SynthesisList.tsx`
+- `client/src/stores/synthesis-store.ts` — последовательная загрузка, `summariesFromSections`, `sectionsEmbedded`
+- `client/src/pages/SynthesisPage.tsx` — полоса, гейты по effectiveFlags, WS/modes/lineage вошедшему, 403 гостю, перечитка при смене сессии
+- `client/src/components/document/DocumentView.tsx` (витрина), `DocumentHeader.tsx` (authorName), `logs/ContextLogViewer.tsx` (promptsAvailable)
+- `client/src/pages/CreateSynthesisPage.tsx` — `metaNotAllowedText`; `BillingPage.tsx` — PlansTable; Login/Register/NotFound — «на главную»
+- `client/src/api/syntheses.ts` — `SynthesisClientPatch`, комментарии 8.6/8.7
+- `client/src/globals.css` — блок 8.7 в части 3
+- `packages/shared/types/synthesis.ts`, `utils/visibility.ts`; `server/routes/syntheses.ts`, `server/audit.mts` — isPublic снят (вариант б)
+- `server/integration-check.mts` — 5n/5ac/4p/4ao/4t правки, += 2ae/4ap
+- `tests/smoke-87-request1.mjs`, `tests/test-87-requests2-12.mjs`; `tests/smoke-86-request1.mjs`, `tests/test-86-requests2-14.mjs` под (б)
+- `scripts/check-dotfiles.mjs` + `npm run check:dotfiles`; `.env.example`, `.gitignore` воссозданы
+- `scripts/patch-docs-conv87.py`
+
+#### Открытые TODO после 8.7
+
+Нет. Реестр §12 пуст. Фаза 8 закрыта целиком.
 
 ### Беседа 8.6 — Модель публичности и гостевой доступ (бэкенд) [ЗАКРЫТА 2026-09-15]
 

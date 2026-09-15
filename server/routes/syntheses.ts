@@ -134,10 +134,7 @@ import type {
 } from "@philosynth/shared/types/synthesis";
 import { SYNTHESIS_VISIBILITIES } from "@philosynth/shared/types/synthesis";
 import type { SectionFull } from "@philosynth/shared/types/section";
-import {
-  effectiveFlags,
-  isPublicOf,
-} from "@philosynth/shared/utils/visibility";
+import { effectiveFlags } from "@philosynth/shared/utils/visibility";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
 import type { PauseEstimates } from "@philosynth/shared/types/ws-messages";
 
@@ -381,7 +378,6 @@ export function toPreview(
     synthLevel: row.synthLevel,
     depth: row.depth,
     status: row.status,
-    isPublic: isPublicOf(row.visibility), // @deprecated производное (8.6)
     visibility: row.visibility,
     ...(authorName ? { authorName } : {}),
     philosophers,
@@ -575,7 +571,6 @@ async function buildSynthesisFull(
       row.parentContextSchema as SynthesisFull["parentContextSchema"],
     pausedState: ps,
     pauseEstimates,
-    isPublic: isPublicOf(row.visibility), // @deprecated производное (8.6)
     visibility: row.visibility,
     showAuthor: row.showAuthor,
     showLogs: row.showLogs,
@@ -1461,8 +1456,8 @@ synthesesRoutes.get("/:id", optionalAuth, async (c) => {
 /* Только владелец. visibility вне перечисления → 400 с details.visibility.
  * Флаг, присланный вместе с витриной, ПРИНИМАЕТСЯ и хранится (порядок
  * правки не важен; действенность решает effectiveFlags при чтении).
- * isPublic принимается как устаревший синоним (true → 'full', false →
- * 'private'; вместе с visibility — 400): клиент до 8.7 шлёт именно его.
+ * isPublic (синоним 8.6) с 8.7 не принимается — 400 с details.isPublic:
+ * клиент шлёт visibility; молчаливый no-op спрятал бы ошибку старого клиента.
  * extGraphMetrics добавлен беседой 2.3: чекбокс «Расширенные
  * характеристики» на карточке графа в EditModal пишет тот же флаг, что
  * читает перегенерация (исходник писал DOC_STATE.params напрямую [18475]). */
@@ -1501,11 +1496,8 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
     }
   }
   if (body.isPublic !== undefined) {
-    // @deprecated 8.6: синоним ступени для клиента до 8.7
-    if (typeof body.isPublic !== "boolean") details.isPublic = "boolean";
-    else if (body.visibility !== undefined)
-      details.isPublic = "устаревший синоним visibility — не вместе с ней";
-    else patch.visibility = body.isPublic ? "full" : "private";
+    // 8.7: синоним 8.6 снят — старому клиенту ясный ответ, не молчаливый no-op
+    details.isPublic = "снят в 8.7 — используйте visibility";
   }
   for (const flag of ["showAuthor", "showLogs", "showPrompts", "allowMeta"] as const) {
     if (body[flag] === undefined) continue;

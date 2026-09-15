@@ -4927,6 +4927,226 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 8.7 — витрина: стартовая страница, гость, публичность ═════
+ * В исходнике нет ни гостя, ни публикации: страница одна и открыта тому,
+ * кто держит файл. Здесь четыре новых элемента, все собраны из готового:
+ * (1) стартовая страница — .input-form/.form-section-title/.submit-btn
+ *     исходника; своё — ширина ленты, сетка «что это» и КРУПНЫЙ размер
+ *     кнопки «Создать аккаунт» (единственное действие гостя стоит в теле
+ *     страницы, не в углу шапки);
+ * (2) гостевые ссылки шапки — текст на тёмном .topbar, как .app-topbar-link,
+ *     но без сокрытия на узких экранах (у гостя иного входа нет);
+ * (3) полоса «режим просмотра» над документом невладельца — на мотивах
+ *     .callout.gold (золотая рама = внимание), кнопка — .action-btn.primary;
+ * (4) переключатель публичности в карточке — .inline-edit-form кита +
+ *     .action-btn для ступеней (active — заливка --blue-corp, как у вкладок
+ *     каталога), галочки — .checkboxes-row-подобная строка, пояснение и
+ *     подпись «что увидит посторонний» — микро-шрифт капителью / текст.
+ * Новых hex нет: только переменные :root. Прямые углы, без теней.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* — (1) Стартовая страница — */
+  .app-landing {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .app-landing-hero .form-section-title {
+    font-size: 22px;
+  }
+
+  .app-landing-lead {
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink-mid);
+    max-width: 780px;
+    margin: 12px 0 0;
+  }
+
+  .app-landing-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  /* Крупная кнопка единственного действия гостя — тот же .submit-btn,
+     увеличенный; как ссылка — без подчёркивания и с выравниванием текста */
+  .app-landing-cta,
+  .app-landing-cta:hover {
+    padding: 18px 44px;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-decoration: none;
+    color: #fff;
+    justify-content: center;
+  }
+
+  .app-landing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px 28px;
+  }
+
+  .app-landing-feature {
+    border-left: 3px solid var(--rule-strong);
+    padding-left: 14px;
+  }
+
+  .app-landing-feature .form-label {
+    color: var(--blue-corp);
+    margin-bottom: 6px;
+  }
+
+  .app-landing-feature-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--ink-mid);
+    margin: 0;
+  }
+
+  .app-landing-foot {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* — (2) Гостевые ссылки шапки — */
+  .app-guest-links {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .app-guest-link {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+  }
+
+  .app-guest-link:hover {
+    color: #fff;
+    text-decoration: none;
+  }
+
+  .app-guest-sep {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  /* — (3) Полоса режима просмотра — */
+  .app-view-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    border: 1px solid var(--gold);
+    border-left: 4px solid var(--gold);
+    background: var(--paper);
+    padding: 10px 16px;
+    margin-bottom: 14px;
+  }
+
+  .app-view-banner-text {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+
+  /* Врезка витрины под шапкой документа — .callout.note исходника,
+     только отступ сверху */
+  .app-showcase-notice {
+    margin-top: 18px;
+  }
+
+  /* — (4) Переключатель публичности в карточке каталога — */
+  .visibility-control {
+    margin-top: 10px;
+  }
+
+  .visibility-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .visibility-step.active {
+    background: var(--blue-corp);
+    color: #fff;
+    border-color: var(--blue-corp);
+  }
+
+  .visibility-step-desc {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-top: 6px;
+  }
+
+  .visibility-flags {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .visibility-flag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .visibility-flag input {
+    accent-color: var(--blue-corp);
+  }
+
+  .visibility-note {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+    color: var(--ink-dim);
+    margin-top: 8px;
+  }
+
+  /* «Что увидит посторонний» — словами, читаемым шрифтом, под золотой чертой */
+  .visibility-audience {
+    border-left: 3px solid var(--gold);
+    background: var(--paper);
+    padding: 8px 12px;
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--ink-mid);
+  }
+}
+
+@media (max-width: 700px) {
+  .app-landing-cta {
+    width: 100%;
+  }
+  .app-view-banner .action-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
 /* ═══ Беседа 6.2 — биллинг и админка Prompt Registry ═════════════════
  * В исходнике ни биллинга, ни реестра промптов нет (свой ключ в поле
  * формы, стоимость в футере, промпты захардкожены). Блоки 3 (таблица

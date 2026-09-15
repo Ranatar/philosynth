@@ -14,6 +14,16 @@
  * 403 в приложении нет, а серверные роуты §2.9 всё равно отвечают 403
  * FORBIDDEN). Ссылка «Промпты» в Sidebar admin-only с 0.4 — прямой ввод
  * URL до 6.2 показывал заглушку любому вошедшему.
+ *
+ * Беседа 8.7 (п. 2–3): гостевые маршруты. Layout больше не под RequireAuth
+ * целиком — защита стоит на конкретных страницах (RequireAuth оборачивает
+ * элемент маршрута). Гостю открыты «/» (LandingPage; вошедшего она сама
+ * шлёт в /catalog), «/explore» (публичный каталог — CatalogPage publicOnly)
+ * и «/synthesis/:id» (документ; доступ решает ответ сервера: 403 →
+ * «концепция приватна» со ссылкой на вход, 404 → NotFound). Гость на любом
+ * другом маршруте — редирект на «/» (исходный путь уходит в state.from —
+ * LoginPage вернёт туда после входа, как прежде). Боковое меню гостю не
+ * рисуется (Layout).
  */
 import { useEffect } from "react";
 import {
@@ -30,6 +40,7 @@ import { BillingPage } from "./pages/BillingPage";
 import { CatalogPage } from "./pages/CatalogPage";
 import { CreateSynthesisPage } from "./pages/CreateSynthesisPage";
 import { ImportPage } from "./pages/ImportPage";
+import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -49,9 +60,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     );
   }
   if (status === "anonymous") {
+    // 8.7: гостя встречает стартовая страница, а не форма входа; исходный
+    // путь сохраняется — LandingPage/LoginPage вернут туда после входа
     return (
       <Navigate
-        to="/login"
+        to="/"
         replace
         state={{ from: location.pathname + location.search }}
       />
@@ -81,30 +94,73 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Защищённые — внутри Layout */}
-        <Route
-          element={
-            <RequireAuth>
-              <Layout />
-            </RequireAuth>
-          }
-        >
-          <Route path="/" element={<Navigate to="/catalog" replace />} />
-          <Route path="/catalog" element={<CatalogPage />} />
-          <Route path="/synthesis/new" element={<CreateSynthesisPage />} />
+        {/* Общий каркас: шапка (гостевая или своя), меню — только вошедшему */}
+        <Route element={<Layout />}>
+          {/* Гостевые (8.7): стартовая, публичный каталог, документ */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/explore" element={<CatalogPage publicOnly />} />
           <Route path="/synthesis/:id" element={<SynthesisPage />} />
-          <Route path="/import" element={<ImportPage />} />
-          <Route path="/billing" element={<BillingPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+
+          {/* Защищённые */}
+          <Route
+            path="/catalog"
+            element={
+              <RequireAuth>
+                <CatalogPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/synthesis/new"
+            element={
+              <RequireAuth>
+                <CreateSynthesisPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/import"
+            element={
+              <RequireAuth>
+                <ImportPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/billing"
+            element={
+              <RequireAuth>
+                <BillingPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth>
+                <ProfilePage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/admin/prompts"
             element={
-              <RequireAdmin>
-                <AdminPromptsPage />
-              </RequireAdmin>
+              <RequireAuth>
+                <RequireAdmin>
+                  <AdminPromptsPage />
+                </RequireAdmin>
+              </RequireAuth>
             }
           />
-          <Route path="*" element={<NotFoundPage />} />
+          {/* Неизвестный маршрут: вошедшему — 404, гостю — на «/» */}
+          <Route
+            path="*"
+            element={
+              <RequireAuth>
+                <NotFoundPage />
+              </RequireAuth>
+            }
+          />
         </Route>
       </Routes>
     </BrowserRouter>

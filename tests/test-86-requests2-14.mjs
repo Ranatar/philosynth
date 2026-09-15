@@ -200,7 +200,7 @@ try {
     const ids = new Set(list.body.items.map((i) => i.id));
     ok(ids.has(sFull) && ids.has(sShow) && !ids.has(sPriv), "в каталоге full и showcase, приватной нет");
     ok(list.body.items.every((i) => !hasCost(i)), "элементы гостю без totalCostUsd");
-    ok(list.body.items.every((i) => "visibility" in i && typeof i.isPublic === "boolean"), "элементы несут visibility и производный isPublic");
+    ok(list.body.items.every((i) => "visibility" in i && !("isPublic" in i)), "элементы несут visibility, производного isPublic нет (8.7)");
     const g = await req("GET", `/syntheses/${sFull}`);
     ok(g.status === 200 && g.body?.synthesis?.id === sFull, "GET /:id публичной гостю → 200");
     const s = g.body?.synthesis ?? {};
@@ -378,7 +378,7 @@ try {
   {
     const s12 = await makeSynthesis(A, "Патч 86", { visibility: "private" });
     const r = await req("PATCH", `/syntheses/${s12}`, { cookie: A.cookie, body: { visibility: "full", showAuthor: true, showLogs: false, showPrompts: true, allowMeta: false } });
-    ok(r.status === 200 && r.body.synthesis.visibility === "full" && r.body.synthesis.showAuthor === true && r.body.synthesis.showLogs === false && r.body.synthesis.showPrompts === true && r.body.synthesis.allowMeta === false && r.body.synthesis.isPublic === true && r.body.synthesis.authorName === "Автор А", "владелец меняет visibility и флаги → отражено (+ производный isPublic, authorName)");
+    ok(r.status === 200 && r.body.synthesis.visibility === "full" && r.body.synthesis.showAuthor === true && r.body.synthesis.showLogs === false && r.body.synthesis.showPrompts === true && r.body.synthesis.allowMeta === false && !("isPublic" in r.body.synthesis) && r.body.synthesis.authorName === "Автор А", "владелец меняет visibility и флаги → отражено (без isPublic — 8.7, authorName)");
     ok(J(await dbVis(s12)) === J({ visibility: "full", show_author: true, show_logs: false, show_prompts: true, allow_meta: false }), "…и в БД");
     const f = await req("PATCH", `/syntheses/${s12}`, { cookie: B.cookie, body: { visibility: "private" } });
     ok(f.status === 403 && f.body.code === "FORBIDDEN", "чужой → 403");
@@ -386,12 +386,11 @@ try {
     ok(bad.status === 400 && bad.body.code === "VALIDATION_ERROR" && bad.body.details?.visibility, "visibility='mine' → 400 с details.visibility");
     const badFlag = await req("PATCH", `/syntheses/${s12}`, { cookie: A.cookie, body: { showLogs: "yes" } });
     ok(badFlag.status === 400 && badFlag.body.details?.showLogs, "флаг не boolean → 400 details.showLogs");
+    // 8.7 (вариант б): синоним 8.6 снят — 400 details.isPublic, состояние не меняется
     const syn = await req("PATCH", `/syntheses/${s12}`, { cookie: A.cookie, body: { isPublic: false } });
-    ok(syn.status === 200 && syn.body.synthesis.visibility === "private" && syn.body.synthesis.isPublic === false, "синоним isPublic:false → private");
-    const syn2 = await req("PATCH", `/syntheses/${s12}`, { cookie: A.cookie, body: { isPublic: true } });
-    ok(syn2.status === 200 && syn2.body.synthesis.visibility === "full", "синоним isPublic:true → full");
+    ok(syn.status === 400 && syn.body.details?.isPublic && (await dbVis(s12)).visibility === "full", "isPublic:false → 400 details.isPublic, ступень не тронута (8.7)");
     const both = await req("PATCH", `/syntheses/${s12}`, { cookie: A.cookie, body: { isPublic: true, visibility: "showcase" } });
-    ok(both.status === 400 && both.body.details?.isPublic, "isPublic вместе с visibility → 400");
+    ok(both.status === 400 && both.body.details?.isPublic && (await dbVis(s12)).visibility === "full", "isPublic вместе с visibility → 400, ничего не записано");
     const empty = await req("PATCH", `/syntheses/${s12}`, { cookie: A.cookie, body: {} });
     ok(empty.status === 400, "пустое тело → 400");
     const guest = await req("PATCH", `/syntheses/${s12}`, { body: { visibility: "private" } });

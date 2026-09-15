@@ -39,8 +39,22 @@ import { usePoolStore } from "../stores/pool-store";
 
 const REDIRECT_DELAY_MS = 1200;
 
-function serverErrorMessage(err: unknown): string {
+/** 8.7 (п. 6): 403 META_NOT_ALLOWED — название концепции и причина
+ *  словами, а не общий текст ошибки; details = { participants: id, title }
+ *  (03 §4.3, metaNotAllowedJson 8.6) */
+export function metaNotAllowedText(details: unknown): string {
+  const d = details && typeof details === "object"
+    ? (details as Record<string, unknown>)
+    : {};
+  const title = typeof d.title === "string" && d.title.trim() ? d.title.trim() : null;
+  return title
+    ? `Концепция «${title}»: автор не разрешил брать её в мета-синтез — уберите её из участников.`
+    : "Автор одной из концепций-участников не разрешил брать её в мета-синтез.";
+}
+
+export function serverErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
+    if (err.code === "META_NOT_ALLOWED") return metaNotAllowedText(err.details);
     const details =
       err.details && typeof err.details === "object"
         ? Object.entries(err.details as Record<string, unknown>)

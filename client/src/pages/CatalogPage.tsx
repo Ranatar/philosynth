@@ -6,9 +6,11 @@
  * - Поиск СЕРВЕРНЫЙ: параметр ?search= (ILIKE по title, gin_trgm);
  *   клиент ничего не фильтрует сам — только дебаунс ввода 400 мс
  *   (по образцу дебаунса совета в SynthesisForm, 1.5).
- * - Переключатель публикации: PATCH /syntheses/:id { isPublic } — только
- *   на вкладке «Мои» (403 у чужого всё равно не даст, но кнопку чужим
- *   не показываем: во вкладке «Публичные» есть и чужие синтезы).
+ * - Публичность (8.7, п. 5; прежде — переключатель PATCH { isPublic }
+ *   1.6b): VisibilityControl в карточке — только на вкладке «Мои»; сырые
+ *   флаги для него берутся GET /syntheses/:id (превью их не несёт), ОДИН
+ *   PATCH { visibility, showAuthor, showLogs, showPrompts, allowMeta },
+ *   после — тихая перечитка списка (грабля 6.2: статус после перечитки).
  * - Пагинация: limit 20 (default сервера), кнопки ← / → по total.
  *
  * CatalogFilters (метод/уровень/философы) — C5, Фаза 2.
@@ -39,6 +41,12 @@
  *    GENERATION_IN_PROGRESS — строкой в карточке, карточка остаётся;
  *    после успеха список перечитывается (грабля 6.2: статус — после
  *    перечитки, не до).
+ *
+ * Беседа 8.7 (п. 3): проп publicOnly — режим «/explore»: только публичный
+ * каталог (GET /syntheses/public — гостевой путь 8.6), без вкладки «Мои»,
+ * кнопки «Новый синтез» и поиска по генеалогии (/lineage/search под
+ * requireAuth). Гостю доступен без входа; зарегистрированному — тот же
+ * список, что вкладка «Публичные».
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -51,15 +59,20 @@ import { getDescendants } from "../api/lineage";
 import {
   deleteSynthesis,
   duplicateSynthesis,
+  getSynthesis,
   listPublicSyntheses,
   listSyntheses,
   renameSynthesis,
   updateSynthesis,
 } from "../api/syntheses";
-import type { SynthesisCardActions } from "../components/catalog/SynthesisCard";
+import type {
+  SynthesisCardActions,
+  SynthesisCardVisibility,
+} from "../components/catalog/SynthesisCard";
 import { SynthesisList } from "../components/catalog/SynthesisList";
 import { LineageSearch } from "../components/lineage/LineageSearch";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
+import { useAuthStore } from "../stores/auth-store";
 
 const PAGE_LIMIT = 20;
 const SEARCH_DEBOUNCE_MS = 400;
@@ -99,8 +112,27 @@ export function actionErrorText(
   return err.message || fallback;
 }
 
-export function CatalogPage() {
-  const [tab, setTab] = useState<CatalogTab>("mine");
+/** Текст ошибки сохранения публичности (8.7): details.visibility у 400,
+ *  403 — только владелец, прочее — сообщение сервера */
+export function visibilityErrorText(err: unknown): string {
+  if (!(err instanceof ApiError)) return "Не удалось изменить публичность.";
+  if (err.code === "VALIDATION_ERROR") {
+    const d = err.details as Record<string, unknown> | undefined;
+    const v = d && typeof d === "object" ? d.visibility : undefined;
+    if (typeof v === "string") return `Публичность: ${v}`;
+  }
+  if (err.code === "FORBIDDEN") return "Публичность меняет только владелец.";
+  return err.message || "Не удалось изменить публичность.";
+}
+
+export interface CatalogPageProps {
+  /** Беседа 8.7: режим «/explore» — только публичный каталог, без «Мои» */
+  publicOnly?: boolean | undefined;
+}
+
+export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
+  const authenticated = useAuthStore((s) => s.status === "authenticated");
+  const [tab, setTab] = useState<CatalogTab>(publicOnly ? "public" : "mine");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -109,7 +141,6 @@ export function CatalogPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Беседа 3.2: фильтр «Потомки концепции X» (?descendantsOf=<id>)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -181,26 +212,39 @@ export function CatalogPage() {
     void fetchList();
   }, [fetchList]);
 
-  // PATCH { isPublic } — единственный способ опубликовать синтез (03 §2.2)
-  const handleTogglePublic = async (s: SynthesisPreview) => {
-    setTogglingId(s.id);
-    try {
-      const updated = await updateSynthesis(s.id, { isPublic: !s.isPublic });
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === s.id ? { ...it, isPublic: updated.isPublic } : it,
-        ),
-      );
-    } catch (err) {
-      alert(
-        err instanceof ApiError && err.code === "FORBIDDEN"
-          ? "Публиковать синтез может только владелец."
-          : "Не удалось изменить публикацию.",
-      );
-    } finally {
-      setTogglingId(null);
-    }
-  };
+  // Беседа 8.7 (п. 5): управление публичностью — ОДИН PATCH со ступенью и
+  // флагами (updateSynthesis), затем тихая перечитка списка; сырые флаги
+  // для черновика — GET /syntheses/:id (владельцу отдаются все поля)
+  const cardVisibility = useMemo<SynthesisCardVisibility>(
+    () => ({
+      loadFlags: async (id) => {
+        const full = await getSynthesis(id);
+        return {
+          visibility: full.visibility,
+          showAuthor: full.showAuthor,
+          showLogs: full.showLogs,
+          showPrompts: full.showPrompts,
+          allowMeta: full.allowMeta,
+        };
+      },
+      onSave: async (id, flags) => {
+        try {
+          await updateSynthesis(id, {
+            visibility: flags.visibility,
+            showAuthor: flags.showAuthor,
+            showLogs: flags.showLogs,
+            showPrompts: flags.showPrompts,
+            allowMeta: flags.allowMeta,
+          });
+          await fetchList({ silent: true });
+          return null;
+        } catch (err) {
+          return visibilityErrorText(err);
+        }
+      },
+    }),
+    [fetchList],
+  );
 
   // Беседа 8.4: действия владельца. Каждый обработчик отдаёт текст
   // ошибки либо null — карточка показывает его сама, без alert.
@@ -285,27 +329,43 @@ export function CatalogPage() {
     <div>
       <div className="actions-bar">
         <h1 className="form-section-title" style={{ margin: 0, border: "none" }}>
-          Каталог концепций
+          {publicOnly ? "Публичные концепции" : "Каталог концепций"}
         </h1>
-        <Link to="/synthesis/new" className="action-btn primary">
-          Новый синтез
-        </Link>
+        {publicOnly ? (
+          authenticated ? (
+            <Link to="/catalog" className="action-btn">
+              Мой каталог
+            </Link>
+          ) : (
+            <Link to="/register" className="action-btn primary" data-testid="explore-register">
+              Создать аккаунт
+            </Link>
+          )
+        ) : (
+          <Link to="/synthesis/new" className="action-btn primary">
+            Новый синтез
+          </Link>
+        )}
       </div>
 
-      <div className="actions-bar">
+      <div className="actions-bar" data-testid="catalog-tabs">
         <div className="actions-bar-btns">
-          {tabBtn("mine", "Мои")}
-          {tabBtn("public", "Публичные")}
+          {!publicOnly && tabBtn("mine", "Мои")}
+          {!publicOnly && tabBtn("public", "Публичные")}
         </div>
         <div className="actions-bar-btns">
-          <button
-            type="button"
-            className="action-btn"
-            onClick={() => setLineageSearchOpen((v) => !v)}
-            title="Поиск концепций по философам-предкам"
-          >
-            {lineageSearchOpen ? "▾" : "▸"} Генеалогия
-          </button>
+          {/* Поиск по генеалогии — /lineage/search под requireAuth: гостю
+              и в режиме /explore не показывается */}
+          {authenticated && !publicOnly && (
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => setLineageSearchOpen((v) => !v)}
+              title="Поиск концепций по философам-предкам"
+            >
+              {lineageSearchOpen ? "▾" : "▸"} Генеалогия
+            </button>
+          )}
           <input
             type="search"
             value={searchInput}
@@ -318,7 +378,7 @@ export function CatalogPage() {
       </div>
 
       {/* Беседа 3.2 (п. 3): поиск по философам-предкам */}
-      {lineageSearchOpen && (
+      {lineageSearchOpen && authenticated && !publicOnly && (
         <LineageSearch />
       )}
 
@@ -371,8 +431,7 @@ export function CatalogPage() {
                     ? "У вас пока нет синтезов — начните с «Новый синтез»."
                     : "Публичных синтезов пока нет."
             }
-            onTogglePublic={tab === "mine" ? handleTogglePublic : undefined}
-            togglingId={togglingId}
+            visibility={tab === "mine" ? cardVisibility : undefined}
             actions={tab === "mine" ? cardActions : undefined}
           />
         )}

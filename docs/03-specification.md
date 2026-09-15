@@ -35,7 +35,7 @@
 | ID | Требование | Приоритет |
 |---|---|---|
 | C1 | Список своих синтезов (сортировка по дате, методу, статусу) | MVP |
-| C2 | Публичный каталог (is_public синтезы всех пользователей) | MVP |
+| C2 | Публичный каталог (неприватные ступени visibility всех пользователей — 8.6; гостю с 8.7 на `/explore`) | MVP |
 | C3 | Поиск по названию, философам, методу | MVP |
 | C4 | Карточка синтеза: метаданные, превью капсулы, граф наследования | MVP |
 | C5 | Фильтры: метод, уровень, глубина, философы, наличие мета-синтеза | Фаза 2 |
@@ -298,9 +298,14 @@ GET    /syntheses/public       ?page=1&limit=20&search=...&philosopher=Кант
                                 // 'private'): витрина тоже в списке — капсула и
                                 // метаданные суть её смысл, содержание закрыто
                                 // GET /:id. Гостю items без totalCostUsd
-                                // (SynthesisPreviewGuest); зарегистрированному —
-                                // с ним, флагом не управляется. authorName —
-                                // при действенном show_author.
+                                // (отдельного типа нет — поле опционально,
+                                // пересмотр 8.6); зарегистрированному — с ним,
+                                // флагом не управляется. authorName — при
+                                // действенном show_author. Четырёх сырых
+                                // флагов в превью НЕТ (они — состояние
+                                // владельца): переключатель публичности в
+                                // карточке (8.7) берёт их GET /:id при
+                                // открытии панели.
 // Семантика параметров (беседа 1.6): sort ∈ createdAt|updatedAt|title|
 // method|status (иное молча → createdAt), order ∈ asc|desc (default
 // desc), limit 1..100 (default 20), page ≥ 1; search — подстрока title
@@ -429,11 +434,10 @@ PATCH  /syntheses/:id          { title?, extGraphMetrics?,
                                 // присланный вместе с витриной, ПРИНИМАЕТСЯ и
                                 // хранится (порядок правки не важен;
                                 // действенность решает effectiveFlags при
-                                // чтении). isPublic принимается устаревшим
-                                // СИНОНИМОМ (true → 'full', false → 'private';
-                                // вместе с visibility → 400) — клиент до 8.7
-                                // шлёт именно его; в ответах isPublic —
-                                // производное visibility !== 'private'.
+                                // чтении). Синоним isPublic (8.6) СНЯТ 8.7:
+                                // тело с isPublic → 400 VALIDATION_ERROR с
+                                // details.isPublic («снят в 8.7 — используйте
+                                // visibility»); в ответах поля isPublic нет.
                                 // title: trim, непустой, ≤ 300 знаков
                                 // (VALIDATION_ERROR с details.title;
                                 // текст беседы 8.4 говорил «200» —
@@ -526,9 +530,8 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
                                         // поле названо просто estimates —
                                         // здесь развёрнуто, чтобы не путать
                                         // с оценкой стоимости /estimate
-  isPublic: boolean;                    // @deprecated 8.6: производное
-                                        // visibility !== 'private' — до
-                                        // перевода клиента в 8.7
+  // isPublic снят 8.7 целиком (был @deprecated производным 8.6):
+  // «публична» = visibility !== 'private' (shared isPublicOf)
   isOwner: boolean;                     // 5.2 («По факту 5.2»): текущий
                                         // пользователь — владелец; клиентские
                                         // гейты правок (✎, «Изменить», режимы)
@@ -562,7 +565,7 @@ SectionFull[]` — тела разделов ТОЛЬКО гостю при scop
 рисует строку стоимости только при определённых значениях (единственная
 правка client/ в 8.6 — устранение рассогласования типов, не витрина).
 SynthesisPreview += `visibility`, `authorName?`, `totalCostUsd?` (гостю в
-`/public` поля нет); `isPublic` в нём — тоже производное (@deprecated).
+`/public` поля нет); поля `isPublic` в нём с 8.7 нет.
 
 ### 2.3. Sections
 
@@ -645,7 +648,9 @@ GET    /syntheses/:id/sections/:key/context
 GET    /syntheses/:id/categories
                                 → { categories: Category[], edges: CategoryEdge[],
                                     clusters: ClusterLabel[], topology: TopologyInfo }
-                                // Доступ: владелец ИЛИ is_public = true.
+                                // Доступ: владелец ИЛИ scope='full' у
+                                // смотрящего (8.6: requireAuth + гейт
+                                // витрины → 403; гостю 401).
                                 // Реализация — беседа 1.6 (сервер): граф
                                 // нужен клиентской беседе 1.7, а остальной
                                 // routes/elements.ts (PATCH категорий,
@@ -716,7 +721,7 @@ PATCH  /syntheses/:id/capsule   { html: string }
                                 // находят её по прежним якорям.
                                 // capsule_html живёт в syntheses;
                                 // PATCH /syntheses/:id (§2.2) правит
-                                // только title/isPublic/extGraphMetrics
+                                // только title/visibility+флаги/extGraphMetrics (8.6; isPublic снят 8.7)
                                 // (extGraphMetrics — 2.3; уточнено 5.2)
 
 // п.2: версии элемента и откат (беседа 5.1; UI — VersionHistory, 5.2).
@@ -943,7 +948,8 @@ GET    /syntheses/:id/modes/:modeKey
                                 // (estimate; fail-open null) для модалки
                                 // — до 4.1 §2.7 их не специфицировал.
                                 // Чтение обоих GET — владелец ИЛИ
-                                // публичный синтез
+                                // scope='full' у зарегистрированного
+                                // (8.6: витрина → 403, гость → 401)
 
 POST   /syntheses/:id/modes/:modeKey/:index/regenerate
                                 → { ok: true }
@@ -1305,7 +1311,9 @@ POST   /syntheses/:id/transform/theses-to-graph
 GET    /syntheses/:id/transforms
                                 → { transforms: RepresentationTransform[] }
                                 // История трансформаций (новые первыми;
-                                // владелец ИЛИ публичный синтез — правило 1.6)
+                                // владелец ИЛИ scope='full' у
+                                // зарегистрированного — правило 1.6 в
+                                // модели 8.6: витрина → 403, гость → 401)
 
 POST   /syntheses/:id/transforms/:transformId/rollback
                                 → { ok: true, transform, summary }
@@ -1651,6 +1659,8 @@ META_NOT_ALLOWED    — POST /syntheses: чужая концепция в уча
                       ДЕЙСТВЕННОГО allow_meta (visibility='full' && allow_meta;
                       витрина — никогда) — 403; details: { participants: id,
                       title } (8.6). Своя концепция годится всегда.
+                      Клиент (8.7): форма создания показывает details.title
+                      и причину «автор не разрешил» (metaNotAllowedText).
 ```
 
 > Примечание (беседа 1.4b): отдельного кода «операция ещё не

@@ -116,14 +116,15 @@ try {
 
   console.log("── F. роуты: два источника правды не осталось ──");
   const srvFiles = ["syntheses", "logs", "export", "lineage", "billing", "sections", "elements", "modes", "transforms", "enrichment", "plans", "generation", "import", "auth"];
-  // Допустимые остатки isPublic в коде: производное поле DTO (isPublic: isPublicOf),
-  // синоним в теле PATCH (body.isPublic / details.isPublic). Колонки — ни одной.
+  // Допустимый остаток isPublic в коде (8.7): только отказ 400 в PATCH
+  // (body.isPublic / details.isPublic). Производного DTO-поля и колонки — ни одной.
   const leftovers = srvFiles.filter((f) => /\bisPublic\b|is_public/.test(
-    code(rd(`server/routes/${f}.ts`)).replace(/isPublic: isPublicOf\(row\.visibility\)/g, "").replace(/body\.isPublic|details\.isPublic/g, "")));
+    code(rd(`server/routes/${f}.ts`)).replace(/body\.isPublic|details\.isPublic/g, "")));
   const synSrc = rd("server/routes/syntheses.ts");
   t(!/row\.isPublic|syntheses\.isPublic|eq\(syntheses\.isPublic/.test(synSrc + rd("server/routes/lineage.ts")), "чтений колонки is_public в роутах нет");
-  t(/body\.isPublic[\s\S]*patch\.visibility = body\.isPublic \? "full" : "private"/.test(synSrc), "PATCH: isPublic — синоним ступени");
-  t(/isPublic: isPublicOf\(row\.visibility\)/.test(synSrc), "DTO: isPublic производный");
+  // 8.7 (вариант б): синоним снят — 400 details.isPublic; производного DTO-поля нет
+  t(/details\.isPublic = "снят в 8\.7/.test(synSrc) && !/patch\.visibility = body\.isPublic/.test(synSrc), "PATCH: isPublic снят (400 details.isPublic; 8.7)");
+  t(!/isPublic: isPublicOf\(row\.visibility\)/.test(synSrc), "DTO: производного isPublic нет (8.7)");
   t(synSrc.indexOf('synthesesRoutes.get("/public", optionalAuth') !== -1 && synSrc.indexOf('synthesesRoutes.get("/:id", optionalAuth') !== -1, "GET /public и GET /:id под optionalAuth");
   t(synSrc.indexOf('synthesesRoutes.get("/public"') < synSrc.indexOf('synthesesRoutes.get("/:id"'), "/public ДО /:id");
   t((code(synSrc).match(/, optionalAuth,/g) ?? []).length === 2, "optionalAuth в syntheses.ts ровно у двух роутов");
@@ -159,8 +160,8 @@ try {
   const he2 = rd("server/services/export/html-exporter.ts");
   t(/function renderDocFooter/.test(he2) && /docHTML \+= renderDocFooter\(s\)/.test(he2) && /id="footerCost"[^<]*Токены: /.test(he2) && /id="footerPhil"/.test(he2), "html-exporter: зеркало DocumentFooter восстановлено (futer с footerCost/footerPhil)");
   t(/visibility: SynthesisVisibility;[\s\S]*showAuthor: boolean;[\s\S]*allowMeta: boolean;[\s\S]*authorName\?: string;[\s\S]*scope: SynthesisScope;/.test(types), "SynthesisFull += visibility/флаги/authorName?/scope");
-  t(/@deprecated 8\.6/.test(types), "isPublic помечен @deprecated");
-  t(/"isPublic", "authorName", "scope", "sections"/.test(rd("server/audit.mts")), "audit.mts: typeOnly += isPublic/authorName/scope/sections");
+  t(!/isPublic: boolean/.test(types) && !/isPublic\?: boolean/.test(types), "isPublic снят из shared-типов (8.7)");
+  t(/"authorName", "scope", "sections"/.test(rd("server/audit.mts")) && !/"isPublic",/.test(rd("server/audit.mts")), "audit.mts: typeOnly += authorName/scope/sections (isPublic снят 8.7)");
   t(/"META_NOT_ALLOWED"/.test(rd("client/src/api/client.ts")), "ApiErrorCode += META_NOT_ALLOWED (велено п.8)");
   const clientDiff = ["client/src/components/catalog/SynthesisCard.tsx", "client/src/pages/CatalogPage.tsx", "client/src/components/document/DocumentFooter.tsx"];
   t(clientDiff.every((f) => existsSync(f)), "клиентские потребители isPublic/стоимости на месте (не правились)");

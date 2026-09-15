@@ -8,6 +8,13 @@
  * фильтр здесь — страховка на случай прямой передачи sections).
  * Разделы вне sectionOrder (не должно случаться) дорисовываются в конце —
  * лучше показать, чем потерять.
+ *
+ * Беседа 8.7 (п. 4b): режим витрины — synthesis.scope === 'showcase' у
+ * невладельца: шапка (капсула, метаданные, философы, даты) рисуется, ниже —
+ * врезка «Автор открыл только витрину» (.callout.note), а оглавления и
+ * разделов нет: сервер их не отдал ПО ПРАВУ, не по сбою. Футер остаётся —
+ * в нём философы и штамп; строку стоимости он и так рисует лишь при
+ * определённых полях (8.6).
  */
 import type { SectionFull, SectionSummary } from "@philosynth/shared/types/section";
 import type { SynthesisFull } from "@philosynth/shared/types/synthesis";
@@ -48,6 +55,7 @@ export function DocumentView({
   inlineEditorFor,
   sectionActionsFor,
 }: DocumentViewProps) {
+  const showcase = synthesis.scope === "showcase" && !synthesis.isOwner;
   const byKey = new Map(
     sections.filter((s) => s.key !== "capsule").map((s) => [s.key, s]),
   );
@@ -65,22 +73,31 @@ export function DocumentView({
     <div>
       <DocumentHeader synthesis={synthesis} />
       {afterHeader}
-      <div>
-        <TableOfContents
-          sectionOrder={synthesis.sectionOrder}
-          summaries={summaries}
-        />
-        {ordered.map((section) => (
-          <SectionView
-            key={section.key}
-            section={section}
-            editable={editable}
-            onRowEdit={onRowEdit}
-            inlineEditor={inlineEditorFor?.(section.key)}
-            actions={sectionActionsFor?.(section.key)}
+      {showcase ? (
+        <div className="callout note app-showcase-notice" data-testid="showcase-notice">
+          <span className="callout-label">Витрина</span>
+          Автор открыл только витрину этой концепции: капсулу, метаданные и
+          состав участников. Тела разделов, граф категорий, тезисы и глоссарий
+          закрыты для всех, кроме автора.
+        </div>
+      ) : (
+        <div>
+          <TableOfContents
+            sectionOrder={synthesis.sectionOrder}
+            summaries={summaries}
           />
-        ))}
-      </div>
+          {ordered.map((section) => (
+            <SectionView
+              key={section.key}
+              section={section}
+              editable={editable}
+              onRowEdit={onRowEdit}
+              inlineEditor={inlineEditorFor?.(section.key)}
+              actions={sectionActionsFor?.(section.key)}
+            />
+          ))}
+        </div>
+      )}
       <DocumentFooter synthesis={synthesis} onOpenLog={onOpenLog} />
     </div>
   );

@@ -42,11 +42,11 @@ const PAIRS: Pair[] = [
       "pauseEstimates",
       // 5.2: признак владения — userId === viewer, колонки нет (userId — schemaOnly)
       "isOwner",
-      // 8.6: isPublic — ПРОИЗВОДНОЕ от visibility (@deprecated до 8.7);
-      // authorName — users.display_name при действенном show_author;
-      // scope — объём смотрящего (loadSynthesisForRead)
-      // sections — тела разделов гостю при scope='full' (документ одним ответом)
-      "isPublic", "authorName", "scope", "sections"] },
+      // 8.6: authorName — users.display_name при действенном show_author;
+      // scope — объём смотрящего (loadSynthesisForRead);
+      // sections — тела разделов гостю при scope='full' (документ одним ответом).
+      // Производный isPublic снят 8.7.
+      "authorName", "scope", "sections"] },
   { table: "sections", file: "section.ts", iface: "SectionFull",
     schemaOnly: ["id", "synthesisId", "createdAt", "updatedAt"],
     typeOnly: ["subsections"], renamed: { secContext: "secContext" } },

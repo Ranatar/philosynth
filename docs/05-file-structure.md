@@ -29,6 +29,7 @@ philosynth-service/
 │                                   # и В ТРЕТИЙ РАЗ воссоздан 8.5 — HEAD cd46374, вместе с
 │                                   # .dev-billing/ в .gitignore и STRIPE_PRICE_* в .env.example;
 │                                   # в ЧЕТВЁРТЫЙ — 8.6, HEAD 32171a9, после чего переименован)
+├── scripts/check-dotfiles.mjs      # 8.7: сторож правок .env.example/.gitignore/env.local.example (npm run check:dotfiles) — dotfile-грабля ×5
 ├── dev-billing-state/              # 8.6: pid-файлы и логи стенда (в .gitignore; было
 │                                   # .dev-billing/ — строка .gitignore терялась при выкладке,
 │                                   # папка без точки переживает её)
@@ -424,9 +425,16 @@ philosynth-service/
 │   │   ├── pages/
 │   │   │   ├── LoginPage.tsx
 │   │   │   ├── RegisterPage.tsx
-│   │   │   ├── CatalogPage.tsx         # Каталог (свои + публичные)
+│   │   │   ├── LandingPage.tsx         # 8.7: стартовая «/» для гостя — что это, живая
+│   │   │   │                           #  витрина (GET /syntheses/public, 4 карточки), цены
+│   │   │   │                           #  (PlansTable), крупная «Создать аккаунт»; вошедшего → /catalog
+│   │   │   ├── CatalogPage.tsx         # Каталог (свои + публичные); 8.7: publicOnly — «/explore»
+│   │   │   │                           #  (гостю; без «Мои», «Новый синтез» и LineageSearch);
+│   │   │   │                           #  публичность карточки — один PATCH { visibility, флаги }
 │   │   │   ├── CreateSynthesisPage.tsx  # Форма создания (НОВОЕ)
-│   │   │   ├── SynthesisPage.tsx       # Просмотр синтеза
+│   │   │   ├── SynthesisPage.tsx       # Просмотр синтеза; 8.7: режим просмотра — маршрут вне
+│   │   │   │                           #  RequireAuth, полоса невладельца, гейты по effectiveFlags и
+│   │   │   │                           #  смотрящему, WS/modes/lineage только вошедшему, 403 гостю → «приватна»
 │   │   │   ├── ImportPage.tsx          # 4.3; 8.5: блок предложения родителя (LineageCandidateBlock:
 │   │   │   │                           #  .callout.note, «Связать» вторым шагом / «Пропустить»)
 │   │   │   ├── BillingPage.tsx         # 6.2 СДЕЛАНО: секции API-ключ / баланс (Stripe Elements или dev-режим) / подписка / история использования / транзакции
@@ -435,9 +443,10 @@ philosynth-service/
 │   │   │
 │   │   ├── components/
 │   │   │   ├── layout/
-│   │   │   │   ├── Header.tsx
+│   │   │   │   ├── Header.tsx              # 8.7: гостю «Войти · Регистрация», бренд → «/», выход → «/»
 │   │   │   │   ├── Sidebar.tsx
-│   │   │   │   └── Layout.tsx
+│   │   │   │   └── Layout.tsx              # 8.7: общий каркас гостя и вошедшего; меню/бургер — только вошедшему;
+│   │   │   │                               #  RequireAuth стоит на страницах, не на каркасе (гость → «/» со state.from)
 │   │   │   │
 │   │   │   ├── synthesis/
 │   │   │   │   ├── SynthesisForm.tsx       # Форма параметров (философы, метод, секции...)
@@ -518,11 +527,18 @@ philosynth-service/
 │   │   │   │   ├── PoolCard.tsx             # Карточка концепции в пуле
 │   │   │   │   └── PoolSummary.tsx          # Саммари пула (1.5b: реализован строкой внутри ConceptPool.tsx — отдельный файл не понадобился)
 │   │   │   │
+│   │   │   ├── billing/
+│   │   │   │   └── PlansTable.tsx          # 8.7: таблица тарифов — вынос из BillingPage 6.2, одна на
+│   │   │   │                               #  /billing и LandingPage; столбец действия — слот renderAction
 │   │   │   ├── catalog/
-│   │   │   │   ├── SynthesisList.tsx       # Список карточек синтезов (8.4: проброс actions)
+│   │   │   │   ├── SynthesisList.tsx       # Список карточек синтезов (8.4: проброс actions; 8.7: visibility)
 │   │   │   │   ├── SynthesisCard.tsx       # Карточка синтеза в каталоге; 8.4: строка действий
-│   │   │   │   │                           # владельца (Опубликовать · Переименовать по месту ·
-│   │   │   │   │                           # Дублировать · Удалить вторым шагом с числом потомков)
+│   │   │   │   │                           # владельца (Переименовать по месту · Дублировать · Удалить
+│   │   │   │   │                           # вторым шагом с числом потомков); 8.7: «Публичность» вместо
+│   │   │   │   │                           # «Опубликовать» → VisibilityControl; бейджи ступени и автора
+│   │   │   │   ├── VisibilityControl.tsx   # 8.7: три ступени + галочки по ступеням (витрина — только
+│   │   │   │   │                           #  авторство, остальные спрятаны со строкой-пояснением), флаги
+│   │   │   │   │                           #  из GET /:id, ОДИН PATCH по «Сохранить», подпись audienceText
 │   │   │   │   └── CatalogFilters.tsx      # Фильтры и поиск (C5 — Фаза 2;
 │   │   │   │                               #  в беседе 1.6b не создаётся,
 │   │   │   │                               #  поиск живёт в CatalogPage)
@@ -543,6 +559,8 @@ philosynth-service/
 │   │   └── utils/
 │   │       ├── concept-file.ts             # Парсинг концепт-файлов пула (1.5b, клиентские порты;
 │   │       │                               # 3.2: += catalogPreviewToPoolEntry, genealogy заполняется)
+│   │       ├── visibility-text.ts          # 8.7: тексты ступеней/галочек, flagsShownFor,
+│   │       │                               #  audienceText (через effectiveFlags shared), visibilityBadge
 │   │       ├── capsule-html.ts             # 8.4: пересборка HTML капсулы из текста
 │   │       │                               # (обёртка секции и <h4> сохраняются, содержимое → <p>)
 │   │       ├── genealogy.ts                # Порты генеалогии (3.2): reconstructGenealogy,

@@ -6,9 +6,14 @@
  * дата создания, статус, начало капсулы. Клик по карточке —
  * навигация на /synthesis/:id.
  *
- * На вкладке «Мои» показывается переключатель публикации
- * (PATCH /syntheses/:id { isPublic } — единственный способ попасть во
- * вкладку «Публичные», 03 §2.2); обработчик передаёт CatalogPage.
+ * Беседа 8.7 (п. 5): на месте кнопки «Опубликовать/Скрыть» (1.6b, PATCH
+ * { isPublic }) — кнопка «Публичность» → VisibilityControl под превью:
+ * три ступени private/showcase/full + галочки по ступеням, один PATCH
+ * { visibility, флаги } (обработчик visibility передаёт CatalogPage).
+ * Синоним isPublic клиент больше не шлёт. Ступень и авторство показаны
+ * бейджами и в чужих карточках (вкладка «Публичные», /explore, LandingPage):
+ * «витрина» — содержание закрыто, «публичная» — целиком; authorName —
+ * только при действенном show_author (сервер иначе поля не отдаёт).
  *
  * Беседа 8.4 (запрос 1, п. 2–5): строка действий владельца —
  * «Опубликовать/Скрыть» · «Переименовать» · «Дублировать» · «Удалить»
@@ -35,7 +40,13 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ML, SL } from "@philosynth/shared/constants/labels";
-import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
+import type {
+  SynthesisPreview,
+  VisibilityFlags,
+} from "@philosynth/shared/types/synthesis";
+
+import { visibilityBadge } from "../../utils/visibility-text";
+import { VisibilityControl } from "./VisibilityControl";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "черновик",
@@ -81,18 +92,26 @@ export interface SynthesisCardActions {
   countDescendants: (s: SynthesisPreview) => Promise<number | null>;
 }
 
+/** Беседа 8.7 (п. 5): управление публичностью — только на вкладке «Мои» */
+export interface SynthesisCardVisibility {
+  /** GET /syntheses/:id → сырые флаги владельца (превью их не несёт) */
+  loadFlags: (id: string) => Promise<VisibilityFlags>;
+  /** Один PATCH { visibility, showAuthor, showLogs, showPrompts, allowMeta };
+   *  строка ошибки либо null (хозяин перечитывает список) */
+  onSave: (id: string, flags: VisibilityFlags) => Promise<string | null>;
+}
+
 export interface SynthesisCardProps {
   synthesis: SynthesisPreview;
-  /** Есть только на вкладке «Мои»: переключатель публикации */
-  onTogglePublic?: ((s: SynthesisPreview) => void) | undefined;
-  /** id синтеза, чей PATCH публикации сейчас в полёте */
-  togglingId?: string | null | undefined;
+  /** Есть только на вкладке «Мои»: переключатель публичности (8.7) */
+  visibility?: SynthesisCardVisibility | undefined;
   /** Беседа 8.4: действия владельца (только на вкладке «Мои») */
   actions?: SynthesisCardActions | undefined;
 }
 
 type Mode =
   | { kind: "view" }
+  | { kind: "visibility" }
   | { kind: "rename"; value: string; error: string | null; busy: boolean }
   | {
       kind: "confirm-delete";
@@ -109,8 +128,7 @@ function stop(e: { preventDefault(): void; stopPropagation(): void }) {
 
 export function SynthesisCard({
   synthesis,
-  onTogglePublic,
-  togglingId,
+  visibility,
   actions,
 }: SynthesisCardProps) {
   const phil =
@@ -145,6 +163,8 @@ export function SynthesisCard({
     if (mode.kind === "rename") inputRef.current?.focus();
   }, [mode.kind]);
 
+  // Все вкладные состояния взаимоисключающие (8.4): открытие одного
+  // закрывает другое — переключатель публичности (8.7) тоже
   const startRename = () => {
     setStatus(null);
     setMode({ kind: "rename", value: synthesis.title, error: null, busy: false });
@@ -190,7 +210,8 @@ export function SynthesisCard({
     if (err) setStatus(err);
   };
 
-  const busy = duplicating || (mode.kind !== "view" && mode.busy);
+  const busy =
+    duplicating || ("busy" in mode && mode.busy);
 
   return (
     <Link
@@ -209,6 +230,13 @@ export function SynthesisCard({
           {synthesis.hasConceptParents && (
             <span className="cert-badge gold">◈ мета-синтез</span>
           )}
+          {/* Беседа 8.7: ступень публичности — у своих всегда, у чужих
+              видна разница «витрина / публичная» (приватных чужих нет) */}
+          {(visibility || synthesis.visibility !== "full") && (
+            <span className="cert-badge" data-testid="card-visibility">
+              {visibilityBadge(synthesis.visibility)}
+            </span>
+          )}
           <span className="cert-badge">
             {STATUS_LABELS[synthesis.status] ?? synthesis.status}
           </span>
@@ -220,9 +248,25 @@ export function SynthesisCard({
       </div>
 
       <div className="doc-content" style={{ marginTop: 6 }}>{phil}</div>
+      {synthesis.authorName && (
+        <div className="doc-meta-key" style={{ marginTop: 4 }} data-testid="card-author">
+          Автор: {synthesis.authorName}
+        </div>
+      )}
 
       {synthesis.capsulePreview && (
         <p className="catalog-card-preview">{synthesis.capsulePreview}</p>
+      )}
+
+      {/* Беседа 8.7 (п. 5): управление публичностью — вместо «Опубликовать» */}
+      {visibility && mode.kind === "visibility" && (
+        <VisibilityControl
+          synthesisId={synthesis.id}
+          currentVisibility={synthesis.visibility}
+          loadFlags={visibility.loadFlags}
+          onSave={visibility.onSave}
+          onClose={() => setMode({ kind: "view" })}
+        />
       )}
 
       {/* Беседа 8.4 (п. 3): переименование по месту */}
@@ -307,19 +351,21 @@ export function SynthesisCard({
 
       <div className="catalog-card-foot">
         <span className="doc-footer-left">{date}</span>
-        {(onTogglePublic || actions) && (
+        {(visibility || actions) && (
           <span className="catalog-card-actions" data-testid="card-actions">
-            {onTogglePublic && mode.kind !== "confirm-delete" && (
+            {visibility && mode.kind !== "confirm-delete" && (
               <button
                 type="button"
                 className="action-btn"
-                disabled={togglingId === synthesis.id || busy}
+                disabled={busy || mode.kind === "visibility"}
+                data-testid="card-visibility-btn"
                 onClick={(e) => {
                   stop(e);
-                  onTogglePublic(synthesis);
+                  setStatus(null);
+                  setMode({ kind: "visibility" });
                 }}
               >
-                {synthesis.isPublic ? "Скрыть" : "Опубликовать"}
+                Публичность
               </button>
             )}
             {actions && mode.kind === "confirm-delete" ? (
