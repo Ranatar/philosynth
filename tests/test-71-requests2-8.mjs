@@ -33,7 +33,7 @@
  *      canceled + cancel_at_period_end в Stripe, вход старыми кредами
  *      невозможен; + ProfilePage в браузере.
  *  R8  typecheck корневой (включая typecheck:scripts) — 0 ошибок;
- *      tests/smoke-1.4b.mts и scripts/test-31-requests2-4.ts исполняются.
+ *      tests/smoke-1.4b.mts и tests/test-31-requests2-4.ts исполняются.
  * Запуск: node_modules/.bin/tsx tests/test-71-requests2-8.mjs
  */
 import http from "node:http";
@@ -730,8 +730,8 @@ try {
   ok(tc.status === 0 && /typecheck:scripts/.test(tc.stdout), "npm run typecheck → 0 (включая typecheck:scripts)", (tc.stdout + tc.stderr).split("\n").filter((l) => /error/.test(l)).slice(0, 5).join(" | "));
   const s14 = spawnSync(join(ROOT, "node_modules/.bin/tsx"), ["tests/smoke-1.4b.mts"], { cwd: ROOT, encoding: "utf8", timeout: 300000, env: { ...process.env, DATABASE_URL: DB_URL } });
   ok(s14.status === 0 && /Итог: \d+ ✓, 0 ✗/.test(s14.stdout), "tests/smoke-1.4b.mts исполняется (импорт PauseModal путём-переменной)", (s14.stdout + s14.stderr).slice(-400));
-  const t31 = spawnSync(join(ROOT, "node_modules/.bin/tsx"), ["scripts/test-31-requests2-4.ts"], { cwd: ROOT, encoding: "utf8", timeout: 300000, env: { ...process.env, DATABASE_URL: DB_URL, REDIS_URL: "redis://localhost:6379" } });
-  ok(t31.status === 0 && !/\s✗ /.test(t31.stdout), "scripts/test-31-requests2-4.ts исполняется на живой БД", (t31.stdout + t31.stderr).slice(-400));
+  const t31 = spawnSync(join(ROOT, "node_modules/.bin/tsx"), ["tests/test-31-requests2-4.ts"], { cwd: ROOT, encoding: "utf8", timeout: 300000, env: { ...process.env, DATABASE_URL: DB_URL, REDIS_URL: "redis://localhost:6379" } });
+  ok(t31.status === 0 && !/\s✗ /.test(t31.stdout), "tests/test-31-requests2-4.ts исполняется на живой БД", (t31.stdout + t31.stderr).slice(-400));
 } catch (err) {
   failed++;
   console.error("\n!!! ИСКЛЮЧЕНИЕ:", err);

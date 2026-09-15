@@ -88,7 +88,7 @@ check("CHARACTERISTIC_PROMPT_KEY в каноне", CANON.includes(CHARACTERISTIC
 const others = new Set([...SEED_PROMPT_TEMPLATES, ...SEED_SECTION_TEMPLATES].map((t) => t.key));
 check("ключи не пересекаются с сидами 0.3/1.2", keys.every((k) => !others.has(k)));
 check("описания непустые", SEED_ENRICHMENT_TEMPLATES.every((t) => t.description.trim().length > 0));
-check("seed-prompts.ts сеет SEED_ENRICHMENT_TEMPLATES", read("scripts/seed-prompts.ts").includes("...SEED_ENRICHMENT_TEMPLATES"));
+check("seed-prompts.ts сеет SEED_ENRICHMENT_TEMPLATES", read("scripts/seed/seed-prompts.ts").includes("...SEED_ENRICHMENT_TEMPLATES"));
 
 /* ── 2. Плейсхолдеры ↔ переменные сервиса ───────────────────────────── */
 console.log("── Шаблоны ↔ переменные сервиса ──");

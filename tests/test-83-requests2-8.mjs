@@ -156,7 +156,7 @@ try {
 
   /* ── R2: без STRIPE_PRICE_* ──────────────────────────────────────── */
   console.log("\n── R2: seed-plans без STRIPE_PRICE_* ──");
-  const r2 = runScript("scripts/seed-plans.ts", childEnv());
+  const r2 = runScript("scripts/seed/seed-plans.ts", childEnv());
   ok(r2.rc === 0 && r2.fail === 0 && r2.updated === 3, `seed-plans без переменных: rc=0, updated=3 (isActive → false), fail=0`, r2.out.slice(-1200));
   ok(/ВНИМАНИЕ: 3 из 3 тарифов заведены НЕАКТИВНЫМИ/.test(r2.out), "громкое предупреждение: 3 из 3 неактивны");
   for (const p of PLANS) ok(new RegExp(`${priceEnvVarFor(p.name)} не задана → план «${p.name}» is_active=false`).test(r2.out), `предупреждение по ${priceEnvVarFor(p.name)}`);
@@ -167,12 +167,12 @@ try {
   ok(r2rows.map((p) => p.stripePriceId).join() === "price_mock_starter,price_mock_pro,price_mock_academic", "сохранённые stripe_price_id НЕ затёрты пустотой");
   const plansEmpty = await plansViaApi();
   ok(plansEmpty.status === 200 && Array.isArray(plansEmpty.json?.plans) && plansEmpty.json.plans.length === 0, "GET /billing/plans → 200 { plans: [] } (activeOnly), не ошибка", J(plansEmpty));
-  const r2b = runScript("scripts/seed-plans.ts", childEnv());
+  const r2b = runScript("scripts/seed/seed-plans.ts", childEnv());
   ok(r2b.rc === 0 && r2b.skip === 3 && /ВНИМАНИЕ/.test(r2b.out), "повтор без переменных: skip ×3, предупреждение по-прежнему громкое", r2b.out.slice(-600));
 
   /* ── R3: с STRIPE_PRICE_* ────────────────────────────────────────── */
   console.log("\n── R3: seed-plans с STRIPE_PRICE_* → активны → /plans → BillingPage ──");
-  const r3 = runScript("scripts/seed-plans.ts", childEnv(MOCK_PRICES));
+  const r3 = runScript("scripts/seed/seed-plans.ts", childEnv(MOCK_PRICES));
   ok(r3.rc === 0 && r3.updated === 3 && r3.fail === 0 && !/ВНИМАНИЕ/.test(r3.out), "seed-plans с переменными: updated ×3 (isActive → true), без предупреждения", r3.out.slice(-800));
   ok((r3.out.match(/изменены: isActive$/gm) ?? []).length === 3, "у каждого изменён ровно isActive");
   const r3rows = await plansInDb();
@@ -229,7 +229,7 @@ try {
   /* ── R4: идемпотентность ─────────────────────────────────────────── */
   console.log("\n── R4: идемпотентность и правка цены ──");
   const audit0 = await auditCount();
-  const r4 = runScript("scripts/seed-plans.ts", childEnv(MOCK_PRICES));
+  const r4 = runScript("scripts/seed/seed-plans.ts", childEnv(MOCK_PRICES));
   ok(r4.rc === 0 && r4.skip === 3 && r4.created === 0 && r4.updated === 0, "повторный прогон → skip ×3", r4.out.slice(-600));
   ok(await auditCount() === audit0, "skip не пишет строк admin_audit");
   const pricedUp = PLANS.map((p) => (p.name === "pro" ? { ...p, priceUsd: 34.99 } : p));
@@ -241,7 +241,7 @@ try {
   const [auditRow] = await db.select().from(adminAudit).where(eq(adminAudit.action, "plan.seeded")).orderBy(asc(adminAudit.createdAt)).then((rows) => rows.slice(-1));
   ok(auditRow?.targetType === "subscription_plan" && auditRow.targetId === "pro" && auditRow.actorId === null && auditRow.details.outcome === "updated" && J(auditRow.details.changed) === '["priceUsd"]', "admin_audit plan.seeded: target pro, actor NULL, details.changed=[priceUsd]", J(auditRow));
   ok(await auditCount() === audit0 + 1, "одна строка журнала на один updated");
-  const r4c = runScript("scripts/seed-plans.ts", childEnv(MOCK_PRICES));
+  const r4c = runScript("scripts/seed/seed-plans.ts", childEnv(MOCK_PRICES));
   ok(r4c.updated === 1 && r4c.skip === 2 && /updated pro:.*изменены: priceUsd/.test(r4c.out), "возврат к plans.ts → updated pro (цена назад), остальные skip", r4c.out.slice(-600));
   ok(Number((await plansInDb()).find((p) => p.name === "pro").priceUsd) === 29.99, "БД: pro снова 29.99");
 
@@ -250,7 +250,7 @@ try {
   const starterRow = (await plansInDb()).find((p) => p.name === "starter");
   const sub5 = await apiUser.call("POST", "/billing/subscribe", { planId: starterRow.id });
   ok(sub5.status === 201 && sub5.json.subscription?.status === "incomplete", "подписка API-пользователя на starter → incomplete", J(sub5.json));
-  const r5 = runScript("scripts/seed-plans.ts", childEnv({ ...MOCK_PRICES, STRIPE_PRICE_STARTER: "price_mock_starter_v2" }));
+  const r5 = runScript("scripts/seed/seed-plans.ts", childEnv({ ...MOCK_PRICES, STRIPE_PRICE_STARTER: "price_mock_starter_v2" }));
   ok(r5.rc === 1 && r5.fail === 1 && r5.skip === 2, "STRIPE_PRICE_STARTER изменён → fail ×1 (rc=1), соседи skip", r5.out.slice(-900));
   ok(/FAIL\s+starter: stripe_price_id плана «starter» уже price_mock_starter, а STRIPE_PRICE_STARTER=price_mock_starter_v2; на плане 1 действующих подписок/.test(r5.out) && /сменить Price у живой подписки нельзя/.test(r5.out), "объяснение: прежний и новый Price, число действующих подписок, почему нельзя");
   const starterAfter = (await plansInDb()).find((p) => p.name === "starter");
@@ -259,23 +259,23 @@ try {
   // incomplete тоже держит Price; canceled — отпускает
   const em5 = emit("customer.subscription.deleted", sub5.json.subscriptionId);
   ok(em5.rc === 0 && /"action":"canceled"/.test(em5.out), "emit subscription.deleted → подписка canceled");
-  const r5b = runScript("scripts/seed-plans.ts", childEnv({ ...MOCK_PRICES, STRIPE_PRICE_STARTER: "price_mock_starter_v2" }));
+  const r5b = runScript("scripts/seed/seed-plans.ts", childEnv({ ...MOCK_PRICES, STRIPE_PRICE_STARTER: "price_mock_starter_v2" }));
   ok(r5b.rc === 0 && r5b.updated === 1 && /updated starter:.*изменены: stripePriceId/.test(r5b.out), "после canceled смена Price разрешена (updated starter)", r5b.out.slice(-500));
-  const r5c = runScript("scripts/seed-plans.ts", childEnv(MOCK_PRICES));
+  const r5c = runScript("scripts/seed/seed-plans.ts", childEnv(MOCK_PRICES));
   ok(r5c.updated === 1 && (await plansInDb()).find((p) => p.name === "starter").stripePriceId === "price_mock_starter", "откат к price_mock_starter");
 
   /* ── R6: stripe-create-prices на моке ────────────────────────────── */
   console.log("\n── R6: stripe-create-prices против мока стенда ──");
   const h0 = await mockHealth();
   const scEnv = { ...process.env, STRIPE_SECRET_KEY: envLocal.STRIPE_MOCK_SECRET_KEY ?? "sk_test_mock", STRIPE_API_BASE: MOCK };
-  const r6 = runScript("scripts/stripe-create-prices.ts", scEnv);
+  const r6 = runScript("scripts/seed/stripe-create-prices.ts", scEnv);
   ok(r6.rc === 0 && r6.created === 3 && r6.fail === 0, "первый запуск: created ×3", r6.out.slice(-900));
   ok(/НЕ api\.stripe\.com — мок\/прокси/.test(r6.out) && /ключ test/.test(r6.out), "шапка: база API — мок, ключ test");
   const h1 = await mockHealth();
   ok(h1.counts.products === h0.counts.products + 3 && h1.counts.prices === h0.counts.prices + 3, "мок: +3 Product, +3 Price", J([h0.counts, h1.counts]));
   const lines6 = r6.out.match(/^\s*STRIPE_PRICE_(STARTER|PRO|ACADEMIC)=price_\S+$/gm) ?? [];
   ok(lines6.length === 3, "напечатаны три строки STRIPE_PRICE_*=price_…", J(lines6));
-  const r6b = runScript("scripts/stripe-create-prices.ts", scEnv);
+  const r6b = runScript("scripts/seed/stripe-create-prices.ts", scEnv);
   ok(r6b.rc === 0 && r6b.skip === 3 && r6b.created === 0, "второй запуск: skip ×3 по lookup_key", r6b.out.slice(-700));
   ok(/найден price_\S+ по lookup_key philosynth_starter/.test(r6b.out), "skip называет найденный price и lookup_key");
   const h2 = await mockHealth();
@@ -286,7 +286,7 @@ try {
   /* ── R7: edge cases ──────────────────────────────────────────────── */
   console.log("\n── R7: пустой STRIPE_SECRET_KEY; убыточная квота ──");
   const h3 = await mockHealth();
-  const r7 = runScript("scripts/stripe-create-prices.ts", { ...scEnv, STRIPE_SECRET_KEY: "" });
+  const r7 = runScript("scripts/seed/stripe-create-prices.ts", { ...scEnv, STRIPE_SECRET_KEY: "" });
   ok(r7.rc === 1 && /STRIPE_SECRET_KEY пуст/.test(r7.out) && /Ни одного запроса к Stripe не сделано/.test(r7.out), "пустой ключ → отказ с объяснением, rc=1", r7.out.slice(-500));
   // /__mock/health сам считается запросом мока: после h3 ровно +1 (наш опрос), ничего от скрипта
   ok(!/created=|skip=/.test(r7.out) && (await mockHealth()).counts.requests === h3.counts.requests + 1, "ни одного запроса к моку — отказ до первого запроса");
@@ -297,7 +297,7 @@ try {
   ok(starterFail.outcome === "fail" && /убыточен/.test(starterFail.error) && /BILLING_MARKUP 1\.2/.test(starterFail.error) && r7b.counts.skip === 2, "квота 100 синтезов при цене $9.99 → fail с расчётом, соседи skip", J(starterFail));
   ok(new RegExp(`\\$${econ.quotaChargeUsd.toFixed(2).replace(".", "\\.")}`).test(starterFail.error), "в объяснении — сумма квоты × наценки из computePlanEconomics", starterFail.error);
   ok((await plansInDb()).find((p) => p.name === "starter").quotaSyntheses === 3, "строка starter не тронута (quota_syntheses = 3)");
-  const r7c = runScript("scripts/seed-plans.ts", childEnv({ ...MOCK_PRICES, BILLING_MARKUP: "3" }));
+  const r7c = runScript("scripts/seed/seed-plans.ts", childEnv({ ...MOCK_PRICES, BILLING_MARKUP: "3" }));
   ok(r7c.rc === 1 && r7c.fail === 3 && /BILLING_MARKUP 3 =/.test(r7c.out), "BILLING_MARKUP=3 в окружении → все три тарифа fail (наценка читается при посеве)", r7c.out.slice(-700));
   ok((await plansInDb()).every((p) => p.isActive && Number(p.priceUsd) > 0), "БД после отказов — как была");
 

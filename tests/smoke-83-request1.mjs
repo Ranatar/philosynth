@@ -109,7 +109,7 @@ try {
   check("все запросы ушли с Bearer ключа", mock.state.requests.slice(before).every((r) => r.auth === `Bearer ${KEY}`));
 
   console.log("── 3. stripe-create-prices против мока ──");
-  const scp = await import("../scripts/stripe-create-prices.ts");
+  const scp = await import("../scripts/seed/stripe-create-prices.ts");
   check("экспорт createPrices/envLines/priceMatchesPlan/priceCents", ["createPrices", "envLines", "priceMatchesPlan", "priceCents"].every((k) => typeof scp[k] === "function"));
   check("main не запустился при импорте (продуктов только smoke)", mock.state.products.size === 1);
   check("priceCents(9.99) = 999, (79.99) = 7999", scp.priceCents(plans.PLANS[0]) === 999 && scp.priceCents(plans.PLANS[2]) === 7999);
@@ -139,15 +139,15 @@ try {
   check("новая цена — на том же продукте", newPro.product === oldPro.product);
   const r5 = await scp.createPrices({ plans: changed, transfer: true });
   check("повтор с --transfer после переезда → skip ×3", r5.counts.skip === 3, r5.counts);
-  const scpSrc = read("scripts/stripe-create-prices.ts");
+  const scpSrc = read("scripts/seed/stripe-create-prices.ts");
   check("пустой ключ проверяется до первого запроса (isStripeConfigured в main)", /if \(!isStripeConfigured\(\)\)[\s\S]*process\.exitCode = 1;\s*return;/.test(scpSrc));
   check("скрипт не импортирует db", !/server\/db\//.test(scpSrc));
   check("npm-скрипт stripe:create-prices упомянут в отказе", /npm run stripe:create-prices/.test(scpSrc));
 
   console.log("── 4. seed-plans (текст) ──");
-  const seedSrc = read("scripts/seed-plans.ts");
+  const seedSrc = read("scripts/seed/seed-plans.ts");
   const seedCode = stripComments(seedSrc);
-  const seedMod = await import("../scripts/seed-plans.ts");
+  const seedMod = await import("../scripts/seed/seed-plans.ts");
   check("экспорт seedPlans/printReport; main не запустился при импорте", typeof seedMod.seedPlans === "function" && typeof seedMod.printReport === "function");
   check("STRIPE_PRICE_* через priceEnvVarFor из envSource (не env.ts)", /envSource\[envVar\]/.test(seedCode) && /priceEnvVarFor\(plan\.name\)/.test(seedCode) && !/env\.STRIPE_PRICE/.test(seedCode));
   check("без переменной → isActive=false, сохранённый price не затирается", /const isActive = !priceMissing;/.test(seedCode) && /priceMissing \? existing\?\.stripePriceId \?\? "" : priceFromEnv/.test(seedCode));
@@ -170,14 +170,14 @@ try {
 
   console.log("── 6. Обвязка ──");
   const pkg = JSON.parse(read("package.json"));
-  check("npm seed:plans → tsx scripts/seed-plans.ts", pkg.scripts["seed:plans"] === "tsx scripts/seed-plans.ts");
-  check("npm stripe:create-prices", pkg.scripts["stripe:create-prices"] === "tsx scripts/stripe-create-prices.ts");
+  check("npm seed:plans → tsx scripts/seed/seed-plans.ts", pkg.scripts["seed:plans"] === "tsx scripts/seed/seed-plans.ts");
+  check("npm stripe:create-prices", pkg.scripts["stripe:create-prices"] === "tsx scripts/seed/stripe-create-prices.ts");
   const envEx = read(".env.example");
   check(".env.example: STRIPE_PRICE_STARTER/PRO/ACADEMIC пустые", ["STRIPE_PRICE_STARTER=", "STRIPE_PRICE_PRO=", "STRIPE_PRICE_ACADEMIC="].every((s) => new RegExp(`^${s}$`, "m").test(envEx)));
   const envLocal = read(".env.local.example");
   check(".env.local.example на месте, STRIPE_PRICE_*=price_mock_*, ключ мока, publishable пуст", /^STRIPE_PRICE_STARTER=price_mock_starter$/m.test(envLocal) && /^STRIPE_SECRET_KEY=sk_test_mock$/m.test(envLocal) && /^VITE_STRIPE_PUBLISHABLE_KEY=$/m.test(envLocal) && /^STRIPE_API_BASE=http:\/\/127\.0\.0\.1:3866$/m.test(envLocal));
   check(".env.local.example: BILLING_ENFORCE=true", /^BILLING_ENFORCE=true$/m.test(envLocal));
-  const termux = read("scripts/philosynth-termux.sh");
+  const termux = read("deploy/philosynth-termux.sh");
   check("termux-скрипт зовёт seed:plans вместо предупреждения", /npm run seed:plans/.test(termux) && !/не сеется ничем — страница подписок будет пустой/.test(termux));
   check("dev-billing.sh зовёт seed:plans при наличии скрипта", /seed:plans/.test(read("tools/dev-billing.sh")));
 

@@ -156,7 +156,7 @@ const auditWhere = (action) => db.select().from(adminAudit).where(eq(adminAudit.
 
 /** Запуск bootstrap-admin отдельным процессом (скрипт держит свой db-синглтон) */
 function runBootstrap(envVars) {
-  const r = spawnSync(TSX, ["scripts/bootstrap-admin.ts"], {
+  const r = spawnSync(TSX, ["scripts/seed/bootstrap-admin.ts"], {
     cwd: ROOT, encoding: "utf8", timeout: 60000,
     env: { ...process.env, DATABASE_URL: DB_URL, ...envVars },
   });

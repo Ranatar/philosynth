@@ -132,7 +132,7 @@ console.log("── 7. Инструменты ──");
 const pkg = JSON.parse(read("package.json"));
 check("typecheck включает typecheck:scripts", /typecheck:scripts/.test(pkg.scripts.typecheck));
 check("smoke-1.4b: клиентский импорт — путь переменной", /const pauseModalPath = /.test(read("tests/smoke-1.4b.mts")));
-for (const f of ["scripts/test-31-requests2-4.ts", "scripts/smoke-31.ts"])
+for (const f of ["tests/test-31-requests2-4.ts", "tests/smoke-31.ts"])
   check(`${f}: synthLevel из enum схемы, status из enum`, !/synthLevel: "integrative"/.test(read(f)) && !/status: "created"/.test(read(f)));
 
 console.log(`\nИТОГ: ${n - failed}/${n} ✓${failed ? `, ${failed} ✗` : ""}`);

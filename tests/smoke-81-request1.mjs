@@ -134,7 +134,7 @@ check("AccessTab: своя строка без кнопки", /\{!isMe && \(/.te
 check("AccessTab: литералы классов вне JSX (roleClass)", /function roleClass\(role: UserRole\)/.test(page));
 
 console.log("── 7. bootstrap-admin ──");
-const boot = await import("../scripts/bootstrap-admin.ts");
+const boot = await import("../scripts/seed/bootstrap-admin.ts");
 const bad1 = boot.readBootstrapEnv({ BOOTSTRAP_ADMIN_EMAIL: "a@b.co" });
 check("нет пароля → отказ с внятным текстом", !bad1.ok && bad1.errors.some((e) => /BOOTSTRAP_ADMIN_PASSWORD не задан/.test(e)), bad1);
 const bad2 = boot.readBootstrapEnv({ BOOTSTRAP_ADMIN_EMAIL: "a@b.co", BOOTSTRAP_ADMIN_PASSWORD: "short" });
@@ -145,16 +145,16 @@ const bad4 = boot.readBootstrapEnv({ BOOTSTRAP_ADMIN_PASSWORD: "longenough1" });
 check("нет email → отказ", !bad4.ok && bad4.errors.some((e) => /BOOTSTRAP_ADMIN_EMAIL не задан/.test(e)));
 const ok1 = boot.readBootstrapEnv({ BOOTSTRAP_ADMIN_EMAIL: " Admin@Example.org ", BOOTSTRAP_ADMIN_PASSWORD: "longenough1", BOOTSTRAP_ADMIN_NAME: "  " });
 check("валидно: email trim+lowercase, пустое имя → undefined", ok1.ok && ok1.value.email === "admin@example.org" && ok1.value.displayName === undefined, ok1);
-const bootSrc = read("scripts/bootstrap-admin.ts");
+const bootSrc = read("scripts/seed/bootstrap-admin.ts");
 check("bootstrap: пароль не из argv", !/process\.argv\.\w*\[?\d?\]?.*password/i.test(stripComments(bootSrc)) && bootSrc.includes("BOOTSTRAP_ADMIN_PASSWORD"));
-check("bootstrap: hashPassword из middleware/auth", /import \{ hashPassword \} from "\.\.\/server\/middleware\/auth\.js"/.test(bootSrc));
+check("bootstrap: hashPassword из middleware/auth", /import \{ hashPassword \} from "\.\.\/\.\.\/server\/middleware\/auth\.js"/.test(bootSrc));
 check("bootstrap: заслон «другой админ» → fail с подсказкой POST /auth/users/:id/role", /outcome: "fail"[\s\S]*POST \/auth\/users\/:id\/role/.test(bootSrc));
 check("bootstrap: skip / updated / created", ['outcome: "skip"', 'outcome: "updated"', 'outcome: "created"'].every((s) => bootSrc.includes(s)));
 check("bootstrap: user.bootstrapped, source bootstrap, actor = сам", (bootSrc.match(/USER_BOOTSTRAPPED/g) ?? []).length === 2 && bootSrc.includes('source: "bootstrap"') && /actorId: id,[\s\S]*targetId: id,/.test(bootSrc));
 check("bootstrap: 23505 через err.cause.code", /e\.cause\?\.code === "23505"/.test(bootSrc));
 check("bootstrap: advisory-lock", bootSrc.includes("pg_advisory_xact_lock(${ADMIN_SET_LOCK_KEY})"));
 const pkg = JSON.parse(read("package.json"));
-check("npm-скрипт seed:admin рядом с seed:*", pkg.scripts["seed:admin"] === "tsx scripts/bootstrap-admin.ts" && Object.keys(pkg.scripts).indexOf("seed:admin") === Object.keys(pkg.scripts).indexOf("seed:taxonomy") + 1);
+check("npm-скрипт seed:admin рядом с seed:*", pkg.scripts["seed:admin"] === "tsx scripts/seed/bootstrap-admin.ts" && Object.keys(pkg.scripts).indexOf("seed:admin") === Object.keys(pkg.scripts).indexOf("seed:taxonomy") + 1);
 
 console.log("── 8. Документация ──");
 const d03 = read("docs/03-specification.md");

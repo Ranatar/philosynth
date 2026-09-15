@@ -29,7 +29,7 @@ philosynth-service/
 │                                   # и В ТРЕТИЙ РАЗ воссоздан 8.5 — HEAD cd46374, вместе с
 │                                   # .dev-billing/ в .gitignore и STRIPE_PRICE_* в .env.example;
 │                                   # в ЧЕТВЁРТЫЙ — 8.6, HEAD 32171a9, после чего переименован)
-├── scripts/check-dotfiles.mjs      # 8.7: сторож правок .env.example/.gitignore/env.local.example (npm run check:dotfiles) — dotfile-грабля ×5
+├── scripts/checks/check-dotfiles.mjs # 8.7: сторож правок .env.example/.gitignore/env.local.example (npm run check:dotfiles) — dotfile-грабля ×5
 ├── dev-billing-state/              # 8.6: pid-файлы и логи стенда (в .gitignore; было
 │                                   # .dev-billing/ — строка .gitignore терялась при выкладке,
 │                                   # папка без точки переживает её)
@@ -576,31 +576,38 @@ philosynth-service/
 │   └── public/
 │       └── favicon.svg
 │
-├── scripts/
-│   ├── extract-by-name.py              # сборка фрагментов исходника ПО ИМЕНАМ
-│   │                                   # из 04-code-reuse-map (замена утраченного
-│   │                                   # extract-fragments.py); спецификации —
-│   │                                   # docs/fragments-for-conversations/*.spec
-│   ├── seed-prompts.ts                 # Начальное заполнение prompt_templates из исходника
-│   ├── seed-configs.ts                 # Начальное заполнение synthesis_configs из исходника
-│   ├── seed-taxonomy.ts                # Заполнение каталогов типов (18 категорий + 29 связей)
-│   ├── bootstrap-admin.ts              # 8.1: первый администратор (npm run seed:admin) — пароль из
-│   │                                   # BOOTSTRAP_ADMIN_PASSWORD, created/updated/skip/fail, заслон
-│   │                                   # «другой админ уже есть», строка user.bootstrapped
-│   ├── seed-plans.ts                   # 8.3: четвёртый сид — subscription_plans из config/plans.ts
-│   │                                   # (npm run seed:plans); stripe_price_id из STRIPE_PRICE_*,
-│   │                                   # без переменной — is_active=false + громкое предупреждение;
-│   │                                   # заслон смены Price при живых подписках; admin_audit plan.seeded
-│   ├── stripe-create-prices.ts         # 8.3: Product+Price в Stripe по каждому тарифу ключом
-│   │                                   # владельца (npm run stripe:create-prices [-- --transfer]);
-│   │                                   # идемпотентно по lookup_key philosynth_<name>; печатает
-│   │                                   # STRIPE_PRICE_*; пустой ключ → отказ до первого запроса
-│   ├── extract-seed-data.mjs           # vm-извлечение конфигов/промптов из исходника
-│   ├── extract-section-templates.mjs   # Генерация section.* шаблонов Registry
-│   ├── patch-docs-*.py                 # Идемпотентные патчи доков по итогам бесед (skip/fail-отчёт)
+├── scripts/                            # ПЕРЕЛОЖЕНО 2026-09-15: было 73 файла вповалку,
+│   │                                   # из них 50 — одноразовые патчи доков
+│   ├── seed/                           # наполнение базы (все — npm run seed:*)
+│   │   ├── seed-prompts.ts             # prompt_templates из исходника
+│   │   ├── seed-configs.ts             # synthesis_configs из исходника
+│   │   ├── seed-taxonomy.ts            # каталоги типов (18 категорий + 29 связей)
+│   │   ├── seed-plans.ts               # 8.3: subscription_plans из config/plans.ts;
+│   │   │                               # stripe_price_id из STRIPE_PRICE_*, без них
+│   │   │                               # is_active=false + громкое предупреждение
+│   │   ├── bootstrap-admin.ts          # 8.1: первый администратор (npm run seed:admin);
+│   │   │                               # пароль из BOOTSTRAP_ADMIN_PASSWORD, заслон
+│   │   │                               # «другой админ уже есть»
+│   │   └── stripe-create-prices.ts     # 8.3: Product+Price в Stripe ключом владельца,
+│   │                                   # идемпотентно по lookup_key philosynth_<name>
+│   ├── checks/                         # проверки, идущие без браузера
+│   │   ├── check-dotfiles.mjs          # 8.7: сторож правок .env.example/.gitignore
+│   │   ├── check-map-04.py             # сходимость карты 04 с фактом
+│   │   └── css-parity-audit.py         # единство globals.css с блоком <style> исходника
+│   ├── extract/                        # извлечение из одностраничника
+│   │   ├── extract-by-name.py          # фрагменты ПО ИМЕНАМ из 04-code-reuse-map;
+│   │   │                               # спецификации — docs/fragments-for-conversations/*.spec
+│   │   ├── extract-seed-data.mjs       # vm-извлечение конфигов и промптов
+│   │   ├── extract-section-templates.mjs
+│   │   └── extract-export-assets.mjs
+│   ├── patches/                        # 50 идемпотентных патчей доков по итогам бесед
+│   │   ├── patch-docs-*.py             # запускаются ИЗ КОРНЯ репозитория;
+│   │   │                               # осторожно с повторным прогоном старого патча:
+│   │   │                               # доки с тех пор менялись, и якорь может совпасть
+│   │   │                               # снова — тогда текст вставится вторично
+│   │   └── verify-patch-regression.py
 │   ├── package.json                    # Маркер type=module
-│   ├── tsconfig.json                   # Типочек scripts/*.ts + tests/*.ts|*.mts (typecheck:scripts)
-│   └── migrate-html-files.ts           # Массовый импорт HTML-файлов в БД (Фаза 4)
+│   └── tsconfig.json                   # Типочек scripts/seed/*.ts + tests/*.ts|*.mts
 │
 ├── tools/                              # 8.2: оснастка разработчика (не продукт, не тесты)
 │   ├── stripe-mock.mjs                 # мок Stripe REST — модуль (createStripeMock) и процесс;

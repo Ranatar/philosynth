@@ -502,7 +502,7 @@ try {
 
   /* ══ R12: css-parity и tsc ══ */
   console.log("\n■ R12: css-parity и tsc");
-  const cssRun = spawnSync("python3", ["scripts/css-parity-audit.py"], { cwd: ROOT, encoding: "utf8" });
+  const cssRun = spawnSync("python3", ["scripts/checks/css-parity-audit.py"], { cwd: ROOT, encoding: "utf8" });
   ok(/итого правил с расхождениями: 0/.test(cssRun.stdout) && /непокрытых правил 0 из/.test(cssRun.stdout), "css-parity: A и B нулевые");
   const cRows = (cssRun.stdout.split("═══ C.")[1] ?? "").split("═══ D.")[0];
   ok(/gm-hint/.test(cRows) && /без правил: 1\b/.test(cRows), "раздел C — только gm-hint");

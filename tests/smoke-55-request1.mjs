@@ -99,7 +99,7 @@ const gpSrc = readFileSync("server/services/graph-parser.ts", "utf8");
 check("saveGraphToDb принимает { normalizeTypes } и зовёт нормализацию после tx", /opts: SaveGraphOptions = \{\}/.test(gpSrc) && /opts\.normalizeTypes !== false/.test(gpSrc));
 const idx = readFileSync("server/index.ts", "utf8");
 check("transformRoutes смонтированы на /api/v1/syntheses", /app\.route\("\/api\/v1\/syntheses", transformRoutes\)/.test(idx));
-const seed = readFileSync("scripts/seed-prompts.ts", "utf8");
+const seed = readFileSync("scripts/seed/seed-prompts.ts", "utf8");
 check("seed-prompts сеет SEED_TRANSFORM_TEMPLATES", seed.includes("...SEED_TRANSFORM_TEMPLATES"));
 
 console.log("── долг §12: парсер глоссария при lang ≠ Russian ──");
