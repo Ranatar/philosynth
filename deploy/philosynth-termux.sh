@@ -474,7 +474,7 @@ cmd_start() {
   if alive "$PID_SERVER"; then
     skip "dev:server уже запущен (pid $(cat "$PID_SERVER"))"
   else
-    nohup npm run dev:server > logs/server.log 2>&1 &
+    setsid nohup npm run dev:server > logs/server.log 2>&1 &
     echo $! > "$PID_SERVER"
     ok "dev:server → http://localhost:3000  (logs/server.log)"
   fi
@@ -482,7 +482,7 @@ cmd_start() {
   if alive "$PID_CLIENT"; then
     skip "dev:client уже запущен (pid $(cat "$PID_CLIENT"))"
   else
-    nohup npm run dev:client > logs/client.log 2>&1 &
+    setsid nohup npm run dev -w client -- --host > logs/client.log 2>&1 &
     echo $! > "$PID_CLIENT"
     ok "dev:client → http://localhost:5173  (logs/client.log)"
   fi
@@ -494,7 +494,7 @@ cmd_start() {
     warn "health-check пока молчит — tsx поднимается небыстро, смотрите logs/server.log"
   fi
   printf '\n    Открывайте в браузере телефона: \033[1mhttp://localhost:5173\033[0m\n'
-  printf '    С другого устройства в той же сети: npm run dev:client -- --host\n'
+  printf '    С другого устройства в той же сети — по адресу выше\n'
   printf '\n    После 8.6/8.7 адрес можно давать кому угодно: без входа\n'
   printf '    открыты «/» (рассказ о проекте, живые карточки, цены),\n'
   printf '    «/explore» (публичный каталог) и «/synthesis/:id» (публичная\n'
@@ -506,8 +506,14 @@ cmd_stop() {
   cd "$REPO_DIR" 2>/dev/null || true
   for p in "$PID_CLIENT" "$PID_SERVER"; do
     if alive "$p"; then
-      pkill -P "$(cat "$p")" 2>/dev/null || true
-      kill "$(cat "$p")" 2>/dev/null || true
+      # Гасим ПРОЦЕССНУЮ ГРУППУ, а не одиночный pid: npm рождает внука
+      # (npm → sh → vite), и убийство родителя оставляет vite держать порт.
+      # Ровно так и вышло: старый vite на 127.0.0.1:5173 пережил stop, новый
+      # уехал на 5174, а проброс VirtualBox смотрел на 5173.
+      local pid; pid="$(cat "$p")"
+      kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+      sleep 2
+      kill -0 "$pid" 2>/dev/null && { kill -9 -- -"$pid" 2>/dev/null || true; }
       rm -f "$p"; ok "остановлен $(basename "$p" .pid)"
     else
       skip "$(basename "$p" .pid) не запущен"

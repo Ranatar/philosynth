@@ -426,13 +426,13 @@ cmd_start() {
     if alive "$PID_SERVER"; then
       skip "dev:server уже запущен (pid $(cat "$PID_SERVER"))"
     else
-      nohup npm run dev:server > logs/server.log 2>&1 &
+      setsid nohup npm run dev:server > logs/server.log 2>&1 &
       echo $! > "$PID_SERVER"; ok "dev:server → :$PORT_SERVER (logs/server.log)"
     fi
     if alive "$PID_CLIENT"; then
       skip "dev:client уже запущен (pid $(cat "$PID_CLIENT"))"
     else
-      nohup npm run dev -w client -- --host > logs/client.log 2>&1 &
+      setsid nohup npm run dev -w client -- --host > logs/client.log 2>&1 &
       echo $! > "$PID_CLIENT"; ok "dev:client → :$PORT_CLIENT (logs/client.log)"
     fi
   fi
@@ -446,7 +446,7 @@ cmd_start() {
 
   printf '\n    Локально:  \033[1mhttp://127.0.0.1:%s\033[0m\n' "$PORT_CLIENT"
   local lan; lan="$(hostname -I 2>/dev/null | awk '{print $1}')"
-  [ -n "$lan" ] && printf '    В сети:    http://%s:%s  (нужен npm run dev:client -- --host)\n' "$lan" "$PORT_CLIENT"
+  [ -n "$lan" ] && printf '    В сети:    http://%s:%s\n' "$lan" "$PORT_CLIENT"
   printf '\n    Без входа открыты «/», «/explore» и «/synthesis/:id» (8.6/8.7).\n'
   printf '    Гостю не показываются стоимость, токены, логи и запросы к\n'
   printf '    модели — это потолок, а не настройка автора.\n'
@@ -460,13 +460,31 @@ cmd_stop() {
   fi
   for p in "$PID_CLIENT" "$PID_SERVER"; do
     if alive "$p"; then
-      pkill -P "$(cat "$p")" 2>/dev/null || true
-      kill "$(cat "$p")" 2>/dev/null || true
+      # Гасим ПРОЦЕССНУЮ ГРУППУ, а не одиночный pid: npm рождает внука
+      # (npm → sh → vite), и убийство родителя оставляет vite держать порт.
+      # Ровно так и вышло: старый vite на 127.0.0.1:5173 пережил stop, новый
+      # уехал на 5174, а проброс VirtualBox смотрел на 5173.
+      local pid; pid="$(cat "$p")"
+      kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+      sleep 2
+      kill -0 "$pid" 2>/dev/null && { kill -9 -- -"$pid" 2>/dev/null || true; }
       rm -f "$p"; ok "остановлен $(basename "$p" .pid)"
     else
       skip "$(basename "$p" .pid) не запущен"
     fi
   done
+  # Заслон: если порт остался занят, следующий запуск уедет на 5174, и
+  # проброс VirtualBox (он смотрит строго на 5173) упрётся в чужой процесс.
+  local busy
+  busy="$( (ss -ltnp 2>/dev/null || true) | grep -E ":($PORT_CLIENT|$PORT_SERVER)\b" || true)"
+  if [ -n "$busy" ]; then
+    warn "порт ещё занят — следующий запуск уедет на соседний:
+$busy
+      Снимите вручную: kill <pid> (или kill -9), затем повторите start"
+  else
+    ok "порты $PORT_SERVER и $PORT_CLIENT свободны"
+  fi
+
   printf '  PostgreSQL и Redis НЕ гашу: они системные службы, их держат\n'
   printf '  другие потребители. Нужно — systemctl stop postgresql redis-server\n'
 }
