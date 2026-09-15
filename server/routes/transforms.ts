@@ -45,6 +45,7 @@ import {
   isUuid,
   loadSynthesisForRead,
   notFoundJson,
+  showcaseForbiddenJson,
 } from "./syntheses.js";
 
 export const transformRoutes = new Hono<AuthEnv>();
@@ -102,6 +103,8 @@ transformRoutes.get("/:id/transforms", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const transforms = await getTransformHistory(res.row.id);
   return c.json({ transforms });
 });

@@ -7,6 +7,18 @@
  * клиент подключается по WebSocket (subscribe_generation привяжет стрим,
  * но дельты и так идут по userId через connection-manager).
  *
+ * Беседа 8.6 (модель публичности, сервер): булев is_public заменён ступенью
+ * visibility ('private'|'showcase'|'full') и четырьмя флагами (миграция
+ * 0005). loadSynthesisForRead возвращает сверх доступа уровень смотрящего
+ * (viewer owner/user/guest) и объём (scope full/showcase); действенность
+ * флагов — ТОЛЬКО effectiveFlags (shared/utils/visibility); отсечение полей
+ * по смотрящему — ТОЛЬКО projectSynthesis/projectPreview. Гостю (без
+ * сессии, optionalAuth) открыты ровно два пути этого файла: GET /public и
+ * GET /:id (третий — GET /billing/plans); стоимость/токены/пауза гостю не
+ * отдаются никогда, зарегистрированному — всегда (флагом не управляются).
+ * Чужая концепция годится в участники мета-синтеза только при действенном
+ * allow_meta (403 META_NOT_ALLOWED); витрина — никогда.
+ *
  * Беседа 1.6 (транспорт чтения, сервер) добавила: GET / (список своих),
  * GET /public, GET /:id (SynthesisFull + pausedState + pauseEstimates),
  * PATCH /:id, DELETE /:id, POST /:id/duplicate; POST / заполняет doc_num
@@ -31,7 +43,7 @@
 import { Hono } from "hono";
 
 import { db } from "../db/index.js";
-import { syntheses, synthesisLineage } from "../db/schema.js";
+import { syntheses, synthesisLineage, users } from "../db/schema.js";
 import {
   checkGenealogyOverlaps,
   loadConceptContext,
@@ -42,7 +54,12 @@ import {
 import { createLineageRecords } from "../services/lineage-service.js";
 import { parentOverheadForSection } from "../services/context-builder.js";
 import { normalizeSectionKey } from "../services/parent-context.js";
-import { requireAuth, type AuthEnv } from "../middleware/auth.js";
+import {
+  optionalAuth,
+  requireAuth,
+  viewerOf,
+  type AuthEnv,
+} from "../middleware/auth.js";
 import { billingCheck } from "../middleware/billing-check.js"; // 6.1
 import {
   BillingError,
@@ -91,6 +108,7 @@ import {
   exists,
   ilike,
   inArray,
+  ne,
 } from "drizzle-orm";
 
 import {
@@ -106,10 +124,21 @@ import {
   computePauseEstimates,
 } from "../services/pause-resume-service.js";
 import type {
+  EffectiveFlags,
   PausedState,
   SynthesisFull,
   SynthesisPreview,
+  SynthesisScope,
+  SynthesisViewer,
+  SynthesisVisibility,
 } from "@philosynth/shared/types/synthesis";
+import { SYNTHESIS_VISIBILITIES } from "@philosynth/shared/types/synthesis";
+import type { SectionFull } from "@philosynth/shared/types/section";
+import {
+  effectiveFlags,
+  isPublicOf,
+} from "@philosynth/shared/utils/visibility";
+import { parseSubsectionsFromHTML } from "../services/generation-service.js";
 import type { PauseEstimates } from "@philosynth/shared/types/ws-messages";
 
 /* ── Допустимые значения (зеркало enum'ов схемы 02) ──────────────────── */
@@ -168,20 +197,35 @@ export const isUuid = (v: string): boolean => UUID_RE.test(v);
 /** Строка syntheses целиком (типизированный select * ). */
 type SynthesisRow = typeof syntheses.$inferSelect;
 
+/** Результат loadSynthesisForRead (8.6): к доступу добавлены уровень
+ *  смотрящего и объём. Потребители, требующие содержания (разделы,
+ *  элементы, режимы, преобразования, обогащение, экспорт), отказывают
+ *  невладельцу при scope='showcase' — иначе витрина течёт боковым ходом. */
+export type ReadAccess =
+  | {
+      access: "ok";
+      row: SynthesisRow;
+      viewer: SynthesisViewer;
+      scope: SynthesisScope;
+    }
+  | { access: "notfound" }
+  | { access: "forbidden" };
+
 /**
- * Загрузка синтеза + проверка доступа на ЧТЕНИЕ (решение аудита
- * 2026-07-30): владелец ИЛИ is_public = true; несуществующий/невалидный
- * id → 'notfound', чужой непубличный → 'forbidden'.
- * Используется и роутами sections.ts / elements.ts (беседа 1.6).
+ * Загрузка синтеза + проверка доступа на ЧТЕНИЕ (правило одно на весь
+ * транспорт; беседа 8.6 переписала правило 1.6 «владелец ИЛИ is_public»):
+ *  - владелец → 'ok' / viewer 'owner' / scope 'full' при любой ступени;
+ *  - visibility='private' и не владелец → 'forbidden';
+ *  - 'showcase' → 'ok' со scope 'showcase' (содержание не отдаётся);
+ *  - 'full' → 'ok' со scope 'full';
+ *  - userId=null (гость без сессии) → viewer 'guest'.
+ * Несуществующий/невалидный id → 'notfound' (guard до запроса к PG).
+ * Используется всеми роутами чтения (sections/elements/logs/export/…).
  */
 export async function loadSynthesisForRead(
   id: string,
-  userId: string,
-): Promise<
-  | { access: "ok"; row: SynthesisRow }
-  | { access: "notfound" }
-  | { access: "forbidden" }
-> {
+  userId: string | null,
+): Promise<ReadAccess> {
   if (!isUuid(id)) return { access: "notfound" };
   const [row] = await db
     .select()
@@ -189,8 +233,26 @@ export async function loadSynthesisForRead(
     .where(eq(syntheses.id, id))
     .limit(1);
   if (!row) return { access: "notfound" };
-  if (row.userId !== userId && !row.isPublic) return { access: "forbidden" };
-  return { access: "ok", row };
+  if (userId !== null && row.userId === userId) {
+    return { access: "ok", row, viewer: "owner", scope: "full" };
+  }
+  if (row.visibility === "private") return { access: "forbidden" };
+  return {
+    access: "ok",
+    row,
+    viewer: userId === null ? "guest" : "user",
+    scope: row.visibility === "showcase" ? "showcase" : "full",
+  };
+}
+
+/** Чужая концепция годится в участники мета-синтеза, только если
+ *  allow_meta ДЕЙСТВЕНЕН (effectiveFlags ⇒ visibility='full'); своя —
+ *  всегда; витрина — никогда (8.6 п.8: loadConceptContext читал бы
+ *  спрятанное от человека). */
+export function metaAllowedFor(
+  res: Extract<ReadAccess, { access: "ok" }>,
+): boolean {
+  return res.viewer === "owner" || effectiveFlags(res.row).allowMeta;
 }
 
 /** Единые JSON-ответы отказа доступа (03 §4.3). */
@@ -202,6 +264,20 @@ export const forbiddenJson = {
   error: "Нет доступа к синтезу",
   code: "FORBIDDEN",
 } as const;
+/** 8.6: витрина не раскрывает содержания — ответ контент-роутов
+ *  (разделы, элементы, режимы, преобразования, обогащение, экспорт)
+ *  невладельцу при scope='showcase'. Код тот же FORBIDDEN (§4.3). */
+export const showcaseForbiddenJson = {
+  error: "Концепция открыта витриной: доступны капсула и метаданные, содержание — нет",
+  code: "FORBIDDEN",
+} as const;
+/** 8.6 п.8: чужая концепция без действенного allow_meta в участниках. */
+export const metaNotAllowedJson = (title: string, synthesisId: string) =>
+  ({
+    error: `Автор концепции «${title}» не разрешил использовать её в мета-синтезе`,
+    code: "META_NOT_ALLOWED",
+    details: { participants: synthesisId, title },
+  }) as const;
 
 /** Превью капсулы для карточки каталога: HTML → плоский текст, 200 симв. */
 function capsulePreviewOf(capsuleHtml: string): string {
@@ -263,12 +339,40 @@ export async function loadConceptParentFlags(
   return flags;
 }
 
+/** 8.6: имена авторов (users.display_name) батчем по списку строк —
+ *  ТОЛЬКО для строк с действенным show_author (effectiveFlags); пустое
+ *  display_name → имени нет. Экспорт — для /lineage/search. */
+export async function loadAuthorNamesFor(
+  rows: SynthesisRow[],
+): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  const userIds = [
+    ...new Set(
+      rows.filter((r) => effectiveFlags(r).showAuthor).map((r) => r.userId),
+    ),
+  ];
+  if (userIds.length === 0) return names;
+  const urows = await db
+    .select({ id: users.id, displayName: users.displayName })
+    .from(users)
+    .where(inArray(users.id, userIds));
+  const byUser = new Map(urows.map((u) => [u.id, u.displayName]));
+  for (const r of rows) {
+    if (!effectiveFlags(r).showAuthor) continue;
+    const name = byUser.get(r.userId)?.trim();
+    if (name) names.set(r.id, name);
+  }
+  return names;
+}
+
 /** Экспорт — для /lineage/search (беседа 3.1). Третий параметр — признак
- *  родителей-концепций (беседа 3.2; loadConceptParentFlags). */
+ *  родителей-концепций (беседа 3.2; loadConceptParentFlags); четвёртый
+ *  (8.6) — имя автора при действенном show_author (loadAuthorNamesFor). */
 export function toPreview(
   row: SynthesisRow,
   philosophers: string[],
   hasConceptParents = false,
+  authorName?: string,
 ): SynthesisPreview {
   return {
     id: row.id,
@@ -277,7 +381,9 @@ export function toPreview(
     synthLevel: row.synthLevel,
     depth: row.depth,
     status: row.status,
-    isPublic: row.isPublic,
+    isPublic: isPublicOf(row.visibility), // @deprecated производное (8.6)
+    visibility: row.visibility,
+    ...(authorName ? { authorName } : {}),
     philosophers,
     hasConceptParents,
     capsulePreview: capsulePreviewOf(row.capsuleHtml),
@@ -287,6 +393,114 @@ export function toPreview(
   };
 }
 
+/** 8.6 п.5: отсечение полей превью по смотрящему — гость не получает
+ *  totalCostUsd. Зарегистрированный видит стоимость у любой неприватной
+ *  концепции (флагом не управляется). Экспорт — для /lineage/search. */
+export function projectPreview(
+  preview: SynthesisPreview,
+  viewer: SynthesisViewer,
+): SynthesisPreview {
+  if (viewer !== "guest") return preview;
+  const { totalCostUsd: _cost, ...guest } = preview;
+  return guest;
+}
+
+/**
+ * 8.6 п.5: отсечение полей SynthesisFull по смотрящему — ОДНОЙ функцией.
+ *  - guest: totalCostUsd/totalInputTokens/totalOutputTokens убраны;
+ *    pausedState/pauseEstimates → null (genParams несут зерно и secCtx —
+ *    рабочее состояние владельца); при scope='full' документ отдаётся
+ *    одним ответом — sections (тела разделов) вложены;
+ *  - user (чужой зарегистрированный): стоимость и токены видны всегда;
+ *    pausedState/pauseEstimates → null при scope='showcase';
+ *  - scope='showcase' (любой невладелец): sections не отдаются (элементы,
+ *    граф, тезисы, глоссарий живут в своих роутах и там гейтятся тем же
+ *    правилом); capsuleHtml, метаданные, философы, даты — отдаются;
+ *  - authorName — ТОЛЬКО при действенном show_author (flags) и непустом
+ *    display_name; иначе поля нет.
+ * Владелец получает всё без изменений.
+ */
+export function projectSynthesis(
+  full: SynthesisFull,
+  viewer: SynthesisViewer,
+  flags: EffectiveFlags,
+  extra: { authorName?: string | null; sections?: SectionFull[] } = {},
+): SynthesisFull {
+  const scope = full.scope;
+  const base: SynthesisFull = { ...full };
+  delete base.authorName;
+  if (flags.showAuthor && extra.authorName?.trim()) {
+    base.authorName = extra.authorName.trim();
+  }
+  if (viewer === "owner") return base;
+  if (scope === "showcase") {
+    base.pausedState = null;
+    base.pauseEstimates = null;
+  }
+  if (viewer === "user") return base;
+  // guest
+  const {
+    totalCostUsd: _c,
+    totalInputTokens: _i,
+    totalOutputTokens: _o,
+    ...guest
+  } = base;
+  const out: SynthesisFull = {
+    ...guest,
+    pausedState: null,
+    pauseEstimates: null,
+  };
+  if (scope === "full" && extra.sections) out.sections = extra.sections;
+  return out;
+}
+
+/** Тела разделов для гостевого «документа одним ответом» (8.6 п.6):
+ *  порядок sectionOrder, чужие ключи в хвост по sectionNum (как
+ *  routes/sections 1.6); капсула живёт в capsuleHtml и здесь исключается. */
+async function loadSectionsFull(row: SynthesisRow): Promise<SectionFull[]> {
+  const rows = await db
+    .select()
+    .from(sections)
+    .where(eq(sections.synthesisId, row.id))
+    .orderBy(asc(sections.sectionNum));
+  const order = (row.sectionOrder ?? []).filter((k) => k !== "capsule");
+  const idx = (k: string): number => {
+    const i = order.indexOf(k);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return rows
+    .filter((r) => r.key !== "capsule")
+    .sort((a, b) => idx(a.key) - idx(b.key) || a.sectionNum - b.sectionNum)
+    .map((r) => ({
+      key: r.key,
+      sectionNum: r.sectionNum,
+      title: r.title,
+      htmlContent: r.htmlContent,
+      secContext: r.secContext,
+      isEdited: r.isEdited,
+      subsections: subsectionNamesOf(r.htmlContent),
+    }));
+}
+
+/** Как listSubsections в routes/sections (1.6): уникальные data-section в
+ *  порядке появления, прогнанные через порт 1.4 (канонизация едина с
+ *  трекингом генерации). Дублировано локально: sections.ts импортирует
+ *  этот модуль — обратный импорт замкнул бы цикл. */
+function subsectionNamesOf(html: string): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  const re = /data-section="([^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const name = m[1] as string;
+    if (!seen.has(name)) {
+      seen.add(name);
+      names.push(name);
+    }
+  }
+  return parseSubsectionsFromHTML(html, names).map((x) => x.name);
+}
+
 /**
  * SynthesisFull (03 §2.2): строка + генеалогия + pauseEstimates.
  * Оценки паузы — только для kind='gen' (computePauseEstimates, 1.4b,
@@ -294,7 +508,8 @@ export function toPreview(
  */
 async function buildSynthesisFull(
   row: SynthesisRow,
-  viewerUserId: string,
+  viewerUserId: string | null,
+  scope: SynthesisScope = "full",
 ): Promise<SynthesisFull> {
   const lineageRows = await db
     .select()
@@ -360,11 +575,17 @@ async function buildSynthesisFull(
       row.parentContextSchema as SynthesisFull["parentContextSchema"],
     pausedState: ps,
     pauseEstimates,
-    isPublic: row.isPublic,
+    isPublic: isPublicOf(row.visibility), // @deprecated производное (8.6)
+    visibility: row.visibility,
+    showAuthor: row.showAuthor,
+    showLogs: row.showLogs,
+    showPrompts: row.showPrompts,
+    allowMeta: row.allowMeta,
+    scope,
     // Беседа 5.2 («По факту 5.2»): признак владения для клиентских гейтов
     // (✎ редактора, «Изменить», режимы). Именно флаг, а не userId — у
     // публичного синтеза id владельца читателю не раскрывается.
-    isOwner: row.userId === viewerUserId,
+    isOwner: viewerUserId !== null && row.userId === viewerUserId,
     docNum: row.docNum,
     sectionOrder: row.sectionOrder,
     version: {
@@ -384,6 +605,28 @@ async function buildSynthesisFull(
     parentSyntheses,
     childSyntheses,
   };
+}
+
+/** Имя автора одной строки при действенном show_author (8.6). */
+async function authorNameOf(row: SynthesisRow): Promise<string | null> {
+  const names = await loadAuthorNamesFor([row]);
+  return names.get(row.id) ?? null;
+}
+
+/** GET /:id целиком: SynthesisFull → projectSynthesis по смотрящему. */
+async function respondSynthesisFull(
+  res: Extract<ReadAccess, { access: "ok" }>,
+  viewerUserId: string | null,
+): Promise<SynthesisFull> {
+  const full = await buildSynthesisFull(res.row, viewerUserId, res.scope);
+  const flags = effectiveFlags(res.row);
+  const extra: { authorName?: string | null; sections?: SectionFull[] } = {
+    authorName: flags.showAuthor ? await authorNameOf(res.row) : null,
+  };
+  if (res.viewer === "guest" && res.scope === "full") {
+    extra.sections = await loadSectionsFull(res.row);
+  }
+  return projectSynthesis(full, res.viewer, flags, extra);
 }
 
 export const synthesesRoutes = new Hono<AuthEnv>();
@@ -540,6 +783,11 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
           },
           403,
         );
+      }
+      // 8.6 п.8: чужая концепция — только при ДЕЙСТВЕННОМ allow_meta
+      // (visibility='full' && allow_meta); своя — всегда; витрина — никогда.
+      if (!metaAllowedFor(access)) {
+        return c.json(metaNotAllowedJson(access.row.title, cid), 403);
       }
       const check = await validateConceptForMetaSynthesis(cid);
       if (!check.valid) {
@@ -818,6 +1066,7 @@ async function estimateSynthesisCost(
   for (const cid of [...new Set(input.conceptIds)]) {
     const access = await loadSynthesisForRead(cid, userId);
     if (access.access !== "ok") continue; // см. комментарий выше
+    if (!metaAllowedFor(access)) continue; // 8.6: недейственный allow_meta — молча, оценка не гейт
     try {
       estimateConcepts.push(await loadConceptContext(cid));
     } catch (err) {
@@ -1122,19 +1371,26 @@ synthesesRoutes.get("/", requireAuth, async (c) => {
   const ids = rows.map((r) => r.id);
   const philMap = await loadPhilosophersFor(ids);
   const metaFlags = await loadConceptParentFlags(ids); // беседа 3.2
+  const authors = await loadAuthorNamesFor(rows); // 8.6
   const items = rows.map((r) =>
-    toPreview(r, philMap.get(r.id) ?? [], metaFlags.has(r.id)),
+    toPreview(r, philMap.get(r.id) ?? [], metaFlags.has(r.id), authors.get(r.id)),
   );
   return c.json({ items, total });
 });
 
 /* ── GET /syntheses/public — публичный каталог (C2) ──────────────────── */
+/* 8.6: гостевой путь (optionalAuth) — сортировка и фильтры те же, для
+ * гостя поля урезаны projectPreview (без totalCostUsd). Каталог = все
+ * неприватные ступени: витрина тоже в списке (капсула и метаданные —
+ * её смысл), содержание закрыто GET /:id. Регистрируется ДО /:id. */
 
-synthesesRoutes.get("/public", requireAuth, async (c) => {
+synthesesRoutes.get("/public", optionalAuth, async (c) => {
+  const viewerUser = viewerOf(c);
+  const viewer: SynthesisViewer = viewerUser ? "user" : "guest";
   const q = c.req.query();
   const { page, limit, sortKey, orderDesc } = parseListQuery(q);
 
-  const conds = [eq(syntheses.isPublic, true)];
+  const conds = [ne(syntheses.visibility, "private")];
   if (q.search) conds.push(ilike(syntheses.title, `%${q.search}%`));
   if (q.philosopher) {
     // Точное имя философа в генеалогии (как в §2.8 lineage/search)
@@ -1172,36 +1428,53 @@ synthesesRoutes.get("/public", requireAuth, async (c) => {
   const ids = rows.map((r) => r.id);
   const philMap = await loadPhilosophersFor(ids);
   const metaFlags = await loadConceptParentFlags(ids); // беседа 3.2
+  const authors = await loadAuthorNamesFor(rows); // 8.6
   const items = rows.map((r) =>
-    toPreview(r, philMap.get(r.id) ?? [], metaFlags.has(r.id)),
+    projectPreview(
+      toPreview(r, philMap.get(r.id) ?? [], metaFlags.has(r.id), authors.get(r.id)),
+      viewer,
+    ),
   );
   return c.json({ items, total });
 });
 
-/* ── GET /syntheses/:id — SynthesisFull (владелец ИЛИ публичный) ─────── */
+/* ── GET /syntheses/:id — SynthesisFull по смотрящему (8.6 п.3–5) ─────── */
+/* Гостевой путь (optionalAuth): владелец — всё; чужой зарегистрированный —
+ * по ступени (витрина без разделов, стоимость видна); гость — без
+ * стоимости/токенов/паузы, при 'full' с телами разделов одним ответом. */
 
-synthesesRoutes.get("/:id", requireAuth, async (c) => {
-  const user = c.get("user");
-  const res = await loadSynthesisForRead(c.req.param("id"), user.id);
+synthesesRoutes.get("/:id", optionalAuth, async (c) => {
+  const viewerUser = viewerOf(c);
+  const res = await loadSynthesisForRead(
+    c.req.param("id"),
+    viewerUser?.id ?? null,
+  );
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
-  return c.json({ synthesis: await buildSynthesisFull(res.row, user.id) });
+  return c.json({
+    synthesis: await respondSynthesisFull(res, viewerUser?.id ?? null),
+  });
 });
 
-/* ── PATCH /syntheses/:id { title?, isPublic?, extGraphMetrics? } ────── */
-/* Только владелец. extGraphMetrics добавлен беседой 2.3: чекбокс
- * «Расширенные характеристики» на карточке графа в EditModal пишет тот же
- * флаг, что читает перегенерация (исходник писал DOC_STATE.params напрямую
- * [18475]; транспорта для этого поля до 2.3 не было — дыра доков). */
+/* ── PATCH /syntheses/:id { title?, extGraphMetrics?, visibility?,
+ *    showAuthor?, showLogs?, showPrompts?, allowMeta? } (8.6 п.9) ────── */
+/* Только владелец. visibility вне перечисления → 400 с details.visibility.
+ * Флаг, присланный вместе с витриной, ПРИНИМАЕТСЯ и хранится (порядок
+ * правки не важен; действенность решает effectiveFlags при чтении).
+ * isPublic принимается как устаревший синоним (true → 'full', false →
+ * 'private'; вместе с visibility — 400): клиент до 8.7 шлёт именно его.
+ * extGraphMetrics добавлен беседой 2.3: чекбокс «Расширенные
+ * характеристики» на карточке графа в EditModal пишет тот же флаг, что
+ * читает перегенерация (исходник писал DOC_STATE.params напрямую [18475]). */
 
 synthesesRoutes.patch("/:id", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   if (!isUuid(id)) return c.json(notFoundJson, 404);
 
-  let body: { title?: unknown; isPublic?: unknown; extGraphMetrics?: unknown };
+  let body: Record<string, unknown>;
   try {
-    body = (await c.req.json()) as typeof body;
+    body = (await c.req.json()) as Record<string, unknown>;
   } catch {
     return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
   }
@@ -1217,9 +1490,27 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
       patch.title = body.title.trim();
     }
   }
+  if (body.visibility !== undefined) {
+    if (
+      typeof body.visibility !== "string" ||
+      !(SYNTHESIS_VISIBILITIES as readonly string[]).includes(body.visibility)
+    ) {
+      details.visibility = "private | showcase | full";
+    } else {
+      patch.visibility = body.visibility as SynthesisVisibility;
+    }
+  }
   if (body.isPublic !== undefined) {
+    // @deprecated 8.6: синоним ступени для клиента до 8.7
     if (typeof body.isPublic !== "boolean") details.isPublic = "boolean";
-    else patch.isPublic = body.isPublic;
+    else if (body.visibility !== undefined)
+      details.isPublic = "устаревший синоним visibility — не вместе с ней";
+    else patch.visibility = body.isPublic ? "full" : "private";
+  }
+  for (const flag of ["showAuthor", "showLogs", "showPrompts", "allowMeta"] as const) {
+    if (body[flag] === undefined) continue;
+    if (typeof body[flag] !== "boolean") details[flag] = "boolean";
+    else patch[flag] = body[flag] as boolean;
   }
   if (body.extGraphMetrics !== undefined) {
     if (typeof body.extGraphMetrics !== "boolean")
@@ -1235,9 +1526,12 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
   if (Object.keys(patch).length === 0) {
     return c.json(
       {
-        error: "Нужно хотя бы одно из полей title, isPublic, extGraphMetrics",
+        error:
+          "Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta",
         code: "VALIDATION_ERROR",
-        details: { body: "title? | isPublic? | extGraphMetrics?" },
+        details: {
+          body: "title? | extGraphMetrics? | visibility? | showAuthor? | showLogs? | showPrompts? | allowMeta?",
+        },
       },
       400,
     );
@@ -1256,8 +1550,12 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
     .set({ ...patch, updatedAt: new Date() })
     .where(eq(syntheses.id, id))
     .returning();
+  const urow = updated as SynthesisRow;
   return c.json({
-    synthesis: await buildSynthesisFull(updated as SynthesisRow, user.id),
+    synthesis: await respondSynthesisFull(
+      { access: "ok", row: urow, viewer: "owner", scope: "full" },
+      user.id,
+    ),
   });
 });
 
@@ -1321,7 +1619,8 @@ synthesesRoutes.post("/:id/duplicate", requireAuth, async (c) => {
 
   const newId = await db.transaction(async (tx) => {
     /* Копия строки syntheses: новый doc_num, title += « (копия)»,
-       is_public = false (пункт 7). Контент и статистика копируются;
+       visibility = 'private' (пункт 7 1.6; 8.6: флаги публичности —
+       дефолты схемы, а не копия). Контент и статистика копируются;
        pausedState копируется (genParams не привязаны к id — resume
        у копии работоспособен). Логи generation_log/context_log НЕ
        копируются: это история генерации оригинала, а не контент. */
@@ -1341,7 +1640,7 @@ synthesesRoutes.post("/:id/duplicate", requireAuth, async (c) => {
         title: `${row.title} (копия)`,
         docNum: makeDocNum(),
         status: row.status,
-        isPublic: false,
+        visibility: "private",
         sectionOrder: row.sectionOrder,
         structureSections: row.structureSections ?? null,
         parentContextSchema: row.parentContextSchema,

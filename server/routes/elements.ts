@@ -20,7 +20,7 @@
  *   POST   /:id/elements/auto-rename { oldName, newName }
  *   PATCH  /:id/capsule { html }           (п.14 правки 2026-09-02)
  *
- * Доступ: чтение — владелец ИЛИ is_public (решение аудита 2026-07-30);
+ * Доступ: чтение — владелец ИЛИ неприватная ступень (8.6: visibility; витрина → 403 на содержание) (решение аудита 2026-07-30);
  * правка — только владелец (правило edit-операций 2.1) и не во время
  * активной генерации (409 GENERATION_IN_PROGRESS — иначе гонка с
  * saveGraphToDb/saveElementsToDb, которые ЗАМЕНЯЮТ строки). Не-UUID →
@@ -69,6 +69,7 @@ import {
   isUuid,
   loadSynthesisForRead,
   notFoundJson,
+  showcaseForbiddenJson,
 } from "./syntheses.js";
 
 import type {
@@ -88,6 +89,8 @@ elementsRoutes.get("/:id/categories", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const synthesisId = res.row.id;
 
   const [catRows, edgeRows, clusterRows] = await Promise.all([
@@ -255,6 +258,8 @@ elementsRoutes.get("/:id/categories/:catId", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const catId = c.req.param("catId");
   if (!isUuid(catId)) return c.json(invalidIdJson, 404);
   const [row] = await db
@@ -337,6 +342,8 @@ elementsRoutes.get("/:id/theses", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const rows = await db
     .select()
     .from(theses)
@@ -367,6 +374,8 @@ elementsRoutes.get("/:id/glossary", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const rows = await db
     .select()
     .from(glossaryTerms)
@@ -400,6 +409,8 @@ elementsRoutes.get(
     const res = await loadSynthesisForRead(c.req.param("id"), user.id);
     if (res.access === "notfound") return c.json(notFoundJson, 404);
     if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+    // 8.6: витрина невладельцу содержания не отдаёт
+    if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
     const elementType = c.req.param("elementType");
     const elementId = c.req.param("elementId");
     if (!isVersionedElementType(elementType))

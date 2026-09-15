@@ -41,7 +41,12 @@ const PAIRS: Pair[] = [
       // 1.6: оценки паузы вычисляются computePauseEstimates (1.4b), не колонка
       "pauseEstimates",
       // 5.2: признак владения — userId === viewer, колонки нет (userId — schemaOnly)
-      "isOwner"] },
+      "isOwner",
+      // 8.6: isPublic — ПРОИЗВОДНОЕ от visibility (@deprecated до 8.7);
+      // authorName — users.display_name при действенном show_author;
+      // scope — объём смотрящего (loadSynthesisForRead)
+      // sections — тела разделов гостю при scope='full' (документ одним ответом)
+      "isPublic", "authorName", "scope", "sections"] },
   { table: "sections", file: "section.ts", iface: "SectionFull",
     schemaOnly: ["id", "synthesisId", "createdAt", "updatedAt"],
     typeOnly: ["subsections"], renamed: { secContext: "secContext" } },

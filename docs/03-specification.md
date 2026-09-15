@@ -175,6 +175,14 @@
 Все ответы в формате JSON. Ошибки: `{ error: string, code: string, details?: any }`.
 Аутентификация: cookie-based сессия (Lucia Auth). Все эндпоинты кроме auth требуют авторизации.
 
+> **8.6 (2026-09-15) — гостевые пути.** Без сессии (`optionalAuth`: cookie
+> валидируется, если есть; мёртвая/просроченная сессия = гость, не 401)
+> доступны ровно ТРИ пути: `GET /syntheses/public`, `GET /syntheses/:id`,
+> `GET /billing/plans`. Гостю никогда не отдаются стоимость, токены, логи,
+> запросы и состояние паузы — это потолок, не настройка автора. Всё
+> остальное (разделы, элементы, режимы, преобразования, экспорт, генерация,
+> импорт, правка) — под `requireAuth`, как прежде.
+
 ### 2.1. Auth
 
 ```
@@ -285,6 +293,14 @@ GET    /syntheses              ?page=1&limit=20&sort=createdAt&order=desc
 
 GET    /syntheses/public       ?page=1&limit=20&search=...&philosopher=Кант
                                 → { items: SynthesisPreview[], total: number }
+                                // 8.6: ГОСТЕВОЙ путь (optionalAuth). Каталог =
+                                // все неприватные ступени (visibility <>
+                                // 'private'): витрина тоже в списке — капсула и
+                                // метаданные суть её смысл, содержание закрыто
+                                // GET /:id. Гостю items без totalCostUsd
+                                // (SynthesisPreviewGuest); зарегистрированному —
+                                // с ним, флагом не управляется. authorName —
+                                // при действенном show_author.
 // Семантика параметров (беседа 1.6): sort ∈ createdAt|updatedAt|title|
 // method|status (иное молча → createdAt), order ∈ asc|desc (default
 // desc), limit 1..100 (default 20), page ≥ 1; search — подстрока title
@@ -307,8 +323,10 @@ POST   /syntheses              { seed, philosophers?: string[], sections: string
                                 // оба пусты = свободный синтез (обязателен seed;
                                 //   иначе 400 NO_PARTICIPANTS_SEED_REQUIRED, §4.3)
                                 // 3.1: participants принимает {type:'synthesis',
-                                //   synthesisId} — доступ (владелец ИЛИ публичный,
-                                //   403) и пригодность (validateConceptForMeta-
+                                //   synthesisId} — доступ (владелец ИЛИ неприватная,
+                                //   403; 8.6: чужая — только при действенном
+                                //   allow_meta, иначе 403 META_NOT_ALLOWED с
+                                //   названием) и пригодность (validateConceptForMeta-
                                 //   Synthesis: sum/glossary/theses/critique,
                                 //   graph|dialogue, capsule → 400 c missing);
                                 //   дубликаты id → 400
@@ -356,11 +374,33 @@ POST   /syntheses/advice       { sections: string[], method, synthLevel,
                                 // сервер, CSS-классы чипов — клиент.
 
 GET    /syntheses/:id          → { synthesis: SynthesisFull }
-                                // Доступ: владелец ИЛИ is_public = true
-                                // (каталог «Публичные» ведёт на чужой
-                                // /synthesis/:id). Иначе 403 FORBIDDEN;
-                                // несуществующий id → 404 NOT_FOUND.
-                                // Реализация — беседа 1.6 (сервер).
+                                // 8.6: ГОСТЕВОЙ путь (optionalAuth). Правило
+                                // чтения одно на весь транспорт —
+                                // loadSynthesisForRead(id, userId | null) →
+                                // { access:'ok', row, viewer:'owner'|'user'|
+                                // 'guest', scope:'full'|'showcase' }:
+                                //   владелец → всегда ok/owner/full;
+                                //   visibility='private' и не владелец → 403;
+                                //   'showcase' → ok со scope 'showcase';
+                                //   'full' → ok со scope 'full';
+                                //   userId=null → viewer 'guest'.
+                                // Отсечение полей — ОДНОЙ функцией
+                                // projectSynthesis(full, viewer, flags):
+                                //   guest: без totalCostUsd/totalInputTokens/
+                                //   totalOutputTokens и без pausedState/
+                                //   pauseEstimates; при scope='full' документ
+                                //   ОДНИМ ответом — sections: SectionFull[]
+                                //   (гостю /sections недоступен);
+                                //   user: стоимость и токены видны всегда;
+                                //   scope='showcase' (любой невладелец):
+                                //   sections не отдаются, pausedState/
+                                //   pauseEstimates → null; capsuleHtml,
+                                //   метаданные, философы, даты — отдаются;
+                                //   authorName — только при действенном
+                                //   show_author и непустом display_name.
+                                // Несуществующий id → 404 NOT_FOUND.
+                                // Реализация — беседа 1.6 (сервер), модель
+                                // смотрящего — 8.6.
 
 DELETE /syntheses/:id          → { ok: true }
                                 // Только владелец (иначе 403).
@@ -378,8 +418,22 @@ DELETE /syntheses/:id          → { ok: true }
                                 // процесса, не status='generating'
                                 // сам по себе.
 
-PATCH  /syntheses/:id          { title?, isPublic?, extGraphMetrics? }
+PATCH  /syntheses/:id          { title?, extGraphMetrics?,
+                                 visibility?: 'private'|'showcase'|'full',
+                                 showAuthor?, showLogs?, showPrompts?,
+                                 allowMeta? }
                                 → { synthesis: SynthesisFull }
+                                // 8.6: visibility и четыре флага ВМЕСТО
+                                // isPublic; значение вне перечисления → 400
+                                // VALIDATION_ERROR с details.visibility. Флаг,
+                                // присланный вместе с витриной, ПРИНИМАЕТСЯ и
+                                // хранится (порядок правки не важен;
+                                // действенность решает effectiveFlags при
+                                // чтении). isPublic принимается устаревшим
+                                // СИНОНИМОМ (true → 'full', false → 'private';
+                                // вместе с visibility → 400) — клиент до 8.7
+                                // шлёт именно его; в ответах isPublic —
+                                // производное visibility !== 'private'.
                                 // title: trim, непустой, ≤ 300 знаков
                                 // (VALIDATION_ERROR с details.title;
                                 // текст беседы 8.4 говорил «200» —
@@ -390,7 +444,9 @@ PATCH  /syntheses/:id          { title?, isPublic?, extGraphMetrics? }
                                 // только у владельца (isOwner).
                                 // Только владелец. Единственный способ
                                 // опубликовать синтез — без него вкладка
-                                // «Публичные» недостижима из UI.
+                                // «Публичные» недостижима из UI (8.7 ставит
+                                // переключатель ступени на место
+                                // «Опубликовать»).
                                 // extGraphMetrics добавлен беседой 2.3 —
                                 // транспорт чекбокса «Расширенные
                                 // характеристики» на карточке graph в
@@ -407,7 +463,8 @@ POST   /syntheses/:id/duplicate → { id: string }
                                 // упомянут в протоколе 07 ни разу.
                                 // Решения 1.6: доступ — только владелец;
                                 // новый doc_num, title += « (копия)»,
-                                // is_public=false; копируются разделы,
+                                // visibility='private' (8.6; флаги —
+                                // дефолты схемы); копируются разделы,
                                 // элементы (ремап id рёбер) и генеалогия
                                 // РОДИТЕЛЕЙ; lineage-связи «копия →
                                 // оригинал» нет (копия, не потомок);
@@ -454,6 +511,13 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
   keepFullBudget: boolean;              // v11
   parentContextSchema: string;          // v11: 'selective-v1' | 'monolithic'
   pausedState: PausedState | null;      // v11: см. 02-data-model (syntheses.paused_state)
+  // 8.6 — публичность (миграция 0005):
+  visibility: 'private' | 'showcase' | 'full';
+  showAuthor: boolean;  showLogs: boolean;   // сырые флаги, как в БД
+  showPrompts: boolean; allowMeta: boolean;  // (действенность — effectiveFlags)
+  authorName?: string;  // ТОЛЬКО при действенном show_author и непустом
+                        // display_name; иначе поля нет
+  scope: 'full' | 'showcase';  // чем смотрящему отдан документ
   pauseEstimates: PauseEstimates | null; // v11: оценки действий паузы —
                                         // computePauseEstimates(id, ps)
                                         // из pause-resume-service (1.4b),
@@ -462,7 +526,9 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
                                         // поле названо просто estimates —
                                         // здесь развёрнуто, чтобы не путать
                                         // с оценкой стоимости /estimate
-  isPublic: boolean;
+  isPublic: boolean;                    // @deprecated 8.6: производное
+                                        // visibility !== 'private' — до
+                                        // перевода клиента в 8.7
   isOwner: boolean;                     // 5.2 («По факту 5.2»): текущий
                                         // пользователь — владелец; клиентские
                                         // гейты правок (✎, «Изменить», режимы)
@@ -488,11 +554,28 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
 }
 ```
 
+**Гость в SynthesisFull** (8.6): `totalCostUsd`, `totalInputTokens`,
+`totalOutputTokens` — необязательные поля (гостю сервер их не отдаёт
+никогда; зарегистрированному — всегда у неприватной); `sections?:
+SectionFull[]` — тела разделов ТОЛЬКО гостю при scope='full' (документ одним
+ответом). Отдельного гостевого типа нет: клиентский `DocumentFooter`
+рисует строку стоимости только при определённых значениях (единственная
+правка client/ в 8.6 — устранение рассогласования типов, не витрина).
+SynthesisPreview += `visibility`, `authorName?`, `totalCostUsd?` (гостю в
+`/public` поля нет); `isPublic` в нём — тоже производное (@deprecated).
+
 ### 2.3. Sections
 
 ```
 GET    /syntheses/:id/sections
                                 → { sections: SectionSummary[] }
+                                // 8.6: контент-роуты (разделы, элементы, граф,
+                                // тезисы, глоссарий, режимы, преобразования,
+                                // обогащения, экспорт) невладельцу при
+                                // scope='showcase' → 403 FORBIDDEN («концепция
+                                // открыта витриной») — иначе витрина течёт
+                                // боковым ходом. Гейт после стандартных
+                                // 404/403 loadSynthesisForRead.
 
 GET    /syntheses/:id/sections/:key
                                 → { section: SectionFull }
@@ -887,6 +970,10 @@ DELETE /syntheses/:id/modes/:modeKey/:index
 ```
 GET    /syntheses/:id/lineage/ancestors?depth=10
                                 → { tree: LineageNode }
+                                // 8.6: генеалогия — метаданные: витрина
+                                // ПРОХОДИТ (как parentSyntheses в
+                                // SynthesisFull); pruneInvisible потомков —
+                                // владелец ИЛИ visibility <> 'private'.
 
 GET    /syntheses/:id/lineage/descendants?depth=5
                                 → { children: LineageNode[] }
@@ -1027,6 +1114,9 @@ GET    /billing/subscription    → { subscription: UserSubscription | null,
                                    quotas: { syntheses, regenerations, modes, enrichments } }
 
 GET    /billing/plans            → { plans: SubscriptionPlan[] }
+                                // 8.6: БЕЗ ВХОДА (optionalAuth) — цена службы
+                                // видна до регистрации; единственный
+                                // billing-путь вне requireAuth сверх webhook.
                                 // Только is_active = true, по возрастанию
                                 // цены. Пустая таблица или все планы
                                 // неактивны (посев без STRIPE_PRICE_*, 8.3)
@@ -1071,6 +1161,21 @@ GET    /syntheses/:id/export/json   → application/json (граф)
 GET    /syntheses/:id/export/md     → text/markdown
 ```
 
+> **8.6:** экспорт под `requireAuth`, как прежде. Невладельцу: при
+> `scope='showcase'` → 403; при недейственном `show_logs` выгрузка HTML идёт
+> БЕЗ лога (embedded `genLog`/`ctxLog` пусты, блока «◈ Лог контекста и
+> генерации» нет), итоговая стоимость остаётся в ФУТЕРЕ документа — она не
+> под флагом (`exportHTML(id, { includeLogs })`).
+>
+> **Футер в экспорте (найдено 8.6, утрачено 4.2).** В исходнике `#docFooter`
+> лежал внутри `#docOutput` и уезжал в файл вместе с `footerCost`; 4.2
+> собрала документ как шапку-зеркало DocumentHeader плюс разделы — без
+> футера, и стоимость в файле сервиса жила только в записях `genLog`
+> embedded state. 8.6 восстановила зеркало DocumentFooter
+> (`renderDocFooter`: «Токены: N вх. + M вых. · Стоимость: $X.XXXX (Y¢)» из
+> строки syntheses, сессия = docNum, `#footerPhil` — философы или «—»);
+> импорт 4.3 читает философов из `#footerPhil` первым источником.
+
 ### 2.12. Context Log
 
 ```
@@ -1082,6 +1187,14 @@ GET    /syntheses/:id/logs/prompts     → { text: string | null } — дамп
                                          downloadPrompts исходника)
                                        // Аналог formatCtxLog() и colorizeLog()
 ```
+
+> **8.6 — гейт логов (`logsAllowed`, routes/logs.ts, все четыре пути):**
+> viewer `owner` → всегда, при любых флагах и ступени; `user` →
+> generation/context/formatted при действенном `show_logs`, prompts при
+> действенном `show_prompts`, иначе 403 (на витрине оба погашены → 403);
+> `guest` → 403 всегда (роуты под `requireAuth`, но гейт стоит — маршрут
+> может открыться позже). Стоимость и токены (SynthesisFull) сюда не
+> относятся — они флагом не управляются.
 
 ### 2.13. Taxonomy (каталоги типов)
 
@@ -1534,6 +1647,10 @@ LINEAGE_CYCLE       — POST /lineage/link: родитель среди пото
 LINEAGE_EXISTS      — POST /lineage/link: такая пара уже есть — 409, идемпотентный
                       отказ без дубликата строки (8.5; код не назван текстом
                       беседы — заведён по образцу пары выше)
+META_NOT_ALLOWED    — POST /syntheses: чужая концепция в участниках без
+                      ДЕЙСТВЕННОГО allow_meta (visibility='full' && allow_meta;
+                      витрина — никогда) — 403; details: { participants: id,
+                      title } (8.6). Своя концепция годится всегда.
 ```
 
 > Примечание (беседа 1.4b): отдельного кода «операция ещё не

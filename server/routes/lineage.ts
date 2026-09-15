@@ -19,7 +19,9 @@
  * (lineageRoutes / lineageSearchRoutes) — index.ts монтирует оба.
  *
  * Доступ:
- *  - ancestors/descendants — владелец ИЛИ is_public (loadSynthesisForRead,
+ *  - ancestors/descendants — владелец ИЛИ неприватная ступень (8.6:
+ *    visibility ≠ 'private'; витрина ПРОХОДИТ — генеалогия есть метаданные,
+ *    как parentSyntheses/childSyntheses в SynthesisFull) (loadSynthesisForRead,
  *    решение аудита 2026-07-30 для транспорта чтения); невалидный UUID →
  *    404 (guard 1.6 до запроса к PG);
  *  - в дереве потомков чужие ПРИВАТНЫЕ синтезы отсекаются вместе с их
@@ -31,7 +33,7 @@
  */
 
 import { Hono } from "hono";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, ne, or } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { syntheses } from "../db/schema.js";
@@ -47,6 +49,7 @@ import type { LineageNode } from "@philosynth/shared/types/lineage";
 import {
   forbiddenJson,
   isUuid,
+  loadAuthorNamesFor,
   loadConceptParentFlags,
   loadPhilosophersFor,
   loadSynthesisForRead,
@@ -62,7 +65,9 @@ function depthParam(raw: string | undefined, fallback: number): number {
 
 /**
  * Отсечение невидимых узлов-концепций из дерева потомков: узел виден,
- * если синтез принадлежит пользователю или публичен; невидимый узел
+ * если синтез принадлежит пользователю или неприватен (8.6: visibility ≠
+ * 'private' — витрина видна как узел, её содержание закрыто своими
+ * роутами); невидимый узел
  * удаляется ВМЕСТЕ с поддеревом (транзитивная видимость через приватного
  * посредника не раскрывается).
  */
@@ -86,7 +91,7 @@ async function pruneInvisible(
     .where(
       and(
         inArray(syntheses.id, [...new Set(ids)]),
-        or(eq(syntheses.userId, userId), eq(syntheses.isPublic, true)),
+        or(eq(syntheses.userId, userId), ne(syntheses.visibility, "private")),
       ),
     );
   const visible = new Set(rows.map((r) => r.id));
@@ -236,14 +241,16 @@ lineageSearchRoutes.get("/search", requireAuth, async (c) => {
   const ids = await searchByPhilosophers(names);
   if (ids.length === 0) return c.json({ syntheses: [] });
 
-  // Только видимые: свои ИЛИ публичные (паритет каталога 1.6)
+  // Только видимые: свои ИЛИ неприватные (паритет каталога 1.6; 8.6 —
+  // visibility ≠ 'private'). Роут под requireAuth — смотрящий 'user',
+  // стоимость в превью остаётся; authorName по действенному show_author.
   const rows = await db
     .select()
     .from(syntheses)
     .where(
       and(
         inArray(syntheses.id, ids),
-        or(eq(syntheses.userId, user.id), eq(syntheses.isPublic, true)),
+        or(eq(syntheses.userId, user.id), ne(syntheses.visibility, "private")),
       ),
     )
     .orderBy(syntheses.createdAt);
@@ -251,9 +258,10 @@ lineageSearchRoutes.get("/search", requireAuth, async (c) => {
   const rowIds = rows.map((r) => r.id);
   const philMap = await loadPhilosophersFor(rowIds);
   const metaFlags = await loadConceptParentFlags(rowIds); // беседа 3.2
+  const authors = await loadAuthorNamesFor(rows); // 8.6
   return c.json({
     syntheses: rows.map((r) =>
-      toPreview(r, philMap.get(r.id) ?? [], metaFlags.has(r.id)),
+      toPreview(r, philMap.get(r.id) ?? [], metaFlags.has(r.id), authors.get(r.id)),
     ),
   });
 });

@@ -8,8 +8,12 @@
  *   GET /syntheses/:id/export/json → application/json (граф-структура)
  *
  * Решения:
- *  - Доступ на чтение — владелец ИЛИ is_public (loadSynthesisForRead,
- *    паттерн транспорта чтения 1.6); 403/404 по §4.3.
+ *  - Доступ на чтение — loadSynthesisForRead (1.6; 8.6: ступени); под
+ *    requireAuth, как прежде. 8.6 п.10 для невладельца: scope='showcase'
+ *    → 403 (витрина содержания не отдаёт); при недейственном show_logs
+ *    выгрузка HTML идёт БЕЗ лога (embedded genLog/ctxLog пусты, блока
+ *    «◈ Лог» нет; формат файла тот же), стоимость в шапке/футере остаётся —
+ *    она не под флагом. Остальные форматы (md/mmd/png/json) лога не несут.
  *  - Content-Disposition: attachment с именем getDocFilename (кириллица
  *    в названиях мета-синтезов → RFC 5987 filename*=UTF-8''…; в filename=
  *    без звёздочки — транслит-безопасная часть уже латиницей).
@@ -31,7 +35,13 @@ import { exportJSON } from "../services/export/json-exporter.js";
 import { exportMD } from "../services/export/md-exporter.js";
 import { exportMMD } from "../services/export/mmd-exporter.js";
 import { exportPNG } from "../services/export/png-exporter.js";
-import { forbiddenJson, loadSynthesisForRead, notFoundJson } from "./syntheses.js";
+import {
+  forbiddenJson,
+  loadSynthesisForRead,
+  notFoundJson,
+  showcaseForbiddenJson,
+} from "./syntheses.js";
+import { effectiveFlags } from "@philosynth/shared/utils/visibility";
 
 import type { Context } from "hono";
 
@@ -64,13 +74,17 @@ async function handleExport(
   const access = await loadSynthesisForRead(id, user.id);
   if (access.access === "notfound") return c.json(notFoundJson, 404);
   if (access.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6 п.10: витрина невладельцу → 403; лог — по действенному show_logs
+  if (access.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
+  const includeLogs =
+    access.viewer === "owner" || effectiveFlags(access.row).showLogs;
 
   try {
     const s = await loadExportSynthesis(id);
     let body: string | Buffer;
     switch (fmt) {
       case "html":
-        body = await exportHTML(id);
+        body = await exportHTML(id, { includeLogs });
         break;
       case "md":
         body = await exportMD(id);

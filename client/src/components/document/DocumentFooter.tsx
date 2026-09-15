@@ -11,6 +11,11 @@
  *
  * Сессия исходника = docNum (sessionId в [12140] заполняется docNum).
  *
+ * Беседа 8.6: токены и стоимость — необязательные поля SynthesisFull
+ * (гостю сервер их не отдаёт никогда): строка стоимости рендерится
+ * только при определённых значениях. Единственная правка клиента в 8.6 —
+ * устранение рассогласования типов, не витрина (та — 8.7).
+ *
  * Беседа 2.4: кнопка «◈ Лог» (открывает ContextLogViewer). Модалка
  * живёт у родителя (SynthesisPage — там события live-обновления),
  * футер получает только onOpenLog; без пропа кнопка не рендерится.
@@ -25,6 +30,10 @@ export interface DocumentFooterProps {
 
 export function DocumentFooter({ synthesis, onOpenLog }: DocumentFooterProps) {
   const cost = synthesis.totalCostUsd;
+  const hasCost =
+    typeof cost === "number" &&
+    typeof synthesis.totalInputTokens === "number" &&
+    typeof synthesis.totalOutputTokens === "number";
   const footerPhil =
     synthesis.philosophers.length === 0 &&
     synthesis.parentSyntheses.length === 0
@@ -40,11 +49,13 @@ export function DocumentFooter({ synthesis, onOpenLog }: DocumentFooterProps) {
         <br />
         Сессия: <span>{synthesis.docNum || "—"}</span>
         <br />
-        <span style={{ color: "var(--gold)" }}>
-          Токены: {synthesis.totalInputTokens.toLocaleString("ru")} вх. +{" "}
-          {synthesis.totalOutputTokens.toLocaleString("ru")} вых. · Стоимость: $
-          {cost.toFixed(4)} ({(cost * 100).toFixed(2)}¢)
-        </span>
+        {hasCost && (
+          <span style={{ color: "var(--gold)" }}>
+            Токены: {(synthesis.totalInputTokens as number).toLocaleString("ru")} вх. +{" "}
+            {(synthesis.totalOutputTokens as number).toLocaleString("ru")} вых. · Стоимость: $
+            {(cost as number).toFixed(4)} ({((cost as number) * 100).toFixed(2)}¢)
+          </span>
+        )}
       </div>
       <div className="doc-footer-right">
         {onOpenLog && (

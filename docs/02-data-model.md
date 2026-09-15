@@ -115,7 +115,24 @@ CREATE TABLE syntheses (
   doc_num          TEXT NOT NULL DEFAULT '',
   status           TEXT NOT NULL DEFAULT 'draft',
     -- 'draft'|'generating'|'paused'|'ready'|'error'  -- 'paused' добавлен в v11
-  is_public        BOOLEAN NOT NULL DEFAULT false,
+  -- Публичность (8.6, миграция 0005 — вместо булева is_public; перенос
+  -- данных в той же миграции: is_public=true → 'full', иначе 'private'):
+  visibility       TEXT NOT NULL DEFAULT 'private'
+    CHECK (visibility IN ('private','showcase','full')),
+    -- 'private'  — только владелец;
+    -- 'showcase' — витрина: капсула, метаданные, философы, даты; тела
+    --              разделов и элементы НЕ отдаются (контент-роуты → 403);
+    -- 'full'     — произведение целиком.
+  show_author      BOOLEAN NOT NULL DEFAULT false, -- имя автора (display_name);
+                                                  -- действует на ОБЕИХ неприватных ступенях
+  show_logs        BOOLEAN NOT NULL DEFAULT true,  -- логи generation/context/formatted
+                                                  -- чужому зарегистрированному; ТОЛЬКО при 'full'
+  show_prompts     BOOLEAN NOT NULL DEFAULT false, -- дамп запросов /logs/prompts; ТОЛЬКО при 'full'
+  allow_meta       BOOLEAN NOT NULL DEFAULT true,  -- участие в чужом мета-синтезе; ТОЛЬКО при 'full'
+    -- Действенность трёх флагов решает effectiveFlags при чтении
+    -- (shared/utils/visibility.ts): сырые значения при понижении ступени
+    -- НЕ сбрасываются. Стоимость и токены флагом не управляются: гостю не
+    -- отдаются никогда, зарегистрированному — у любой неприватной.
   
   -- Порядок разделов (массив ключей: ["sum","graph","glossary",...])
   section_order    JSONB NOT NULL DEFAULT '["sum"]',
@@ -153,7 +170,9 @@ CREATE TABLE syntheses (
 
 CREATE INDEX idx_syntheses_user ON syntheses(user_id);
 CREATE INDEX idx_syntheses_status ON syntheses(status);
-CREATE INDEX idx_syntheses_public ON syntheses(is_public) WHERE is_public = true;
+CREATE INDEX idx_syntheses_visibility ON syntheses(visibility) WHERE visibility <> 'private';
+  -- 8.6: публичный каталог и pruneInvisible фильтруют по ступени (прежний
+  -- idx_syntheses_public по is_public снят миграцией 0005)
 CREATE INDEX idx_syntheses_paused ON syntheses(status) WHERE status = 'paused';
 CREATE INDEX idx_syntheses_title_trgm ON syntheses USING gin(title gin_trgm_ops);
 ```
@@ -179,6 +198,13 @@ CREATE INDEX idx_lineage_parent_name ON synthesis_lineage(parent_name)
   WHERE parent_type = 'philosopher';
 ```
 
+> **8.6 (2026-09-15):** «виден» для узла-концепции в дереве потомков
+> (`pruneInvisible`, `/lineage/search`) = владелец ИЛИ `visibility <>
+> 'private'` — витрина видна как узел (генеалогия есть метаданные), её
+> содержание закрыто своими роутами. Владение обоих синтезов у `POST
+> /lineage/link` осталось владельческим: публичность любой ступени правом
+> не является.
+>
 > **8.5 (2026-09-14):** у строк `parent_type='synthesis'` колонка
 > `parent_name` остаётся NULL и при привязке через `POST
 > /syntheses/:id/lineage/link` — имя родителя из файла в БД не пишется,

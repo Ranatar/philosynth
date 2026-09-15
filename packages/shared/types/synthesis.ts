@@ -5,6 +5,7 @@
  */
 
 import type { ParticipantInput } from "./lineage.js";
+import type { SectionFull } from "./section.js";
 import type { PauseEstimates } from "./ws-messages.js";
 
 /* ── Перечисления параметров (enum-колонки syntheses) ─────────────────── */
@@ -36,6 +37,46 @@ export type ParticipantCardinality = "none" | "single" | "multi";
 
 /** Схема родительского контекста (v11, 01-arch §4.13) */
 export type ParentContextSchema = "selective-v1" | "monolithic";
+
+/* ── Публичность (беседа 8.6, миграция 0005) ──────────────────────────── */
+
+/** Ступень видимости синтеза (колонка syntheses.visibility):
+ *  'private' — только владелец; 'showcase' — витрина (капсула, метаданные,
+ *  философы, даты; тела разделов и элементы не отдаются); 'full' —
+ *  произведение целиком. */
+export type SynthesisVisibility = "private" | "showcase" | "full";
+
+export const SYNTHESIS_VISIBILITIES: readonly SynthesisVisibility[] = [
+  "private",
+  "showcase",
+  "full",
+];
+
+/** Сырые флаги публичности, как в БД (сохраняются при понижении ступени). */
+export interface VisibilityFlags {
+  visibility: SynthesisVisibility;
+  showAuthor: boolean;
+  showLogs: boolean;
+  showPrompts: boolean;
+  allowMeta: boolean;
+}
+
+/** Действенность флагов — effectiveFlags(row) (shared/utils/visibility):
+ *  showLogs/showPrompts/allowMeta действуют ТОЛЬКО при 'full', на витрине
+ *  гасятся; showAuthor — на обеих неприватных ступенях. */
+export interface EffectiveFlags {
+  showAuthor: boolean;
+  showLogs: boolean;
+  showPrompts: boolean;
+  allowMeta: boolean;
+}
+
+/** Кто смотрит (loadSynthesisForRead 8.6): владелец / зарегистрированный /
+ *  гость без сессии. */
+export type SynthesisViewer = "owner" | "user" | "guest";
+
+/** Что отдаётся смотрящему: 'full' — всё, 'showcase' — без содержания. */
+export type SynthesisScope = "full" | "showcase";
 
 /* ── Пауза (v11, 01-arch §4.12) ──────────────────────────────────────── */
 
@@ -157,7 +198,23 @@ export interface SynthesisFull {
    *  pause-resume-service (1.4b), fail-open {}; null при pausedState=null.
    *  Не путать с оценкой стоимости /estimate (03 §2.2, беседа 1.6). */
   pauseEstimates: PauseEstimates | null;
+  /** @deprecated 8.6: ПРОИЗВОДНОЕ от visibility (!== 'private'); колонки
+   *  is_public в БД больше нет. Оставлено, пока клиент (8.7) не переведён на
+   *  visibility; на входе PATCH принимается как устаревший синоним. */
   isPublic: boolean;
+  /** 8.6: ступень и сырые флаги публичности (как в БД). У невладельца
+   *  видны — чтобы клиент 8.7 мог объяснить, почему логи/мета закрыты. */
+  visibility: SynthesisVisibility;
+  showAuthor: boolean;
+  showLogs: boolean;
+  showPrompts: boolean;
+  allowMeta: boolean;
+  /** 8.6: имя автора (users.display_name) — ТОЛЬКО при действенном
+   *  show_author и непустом display_name; иначе поля нет. */
+  authorName?: string;
+  /** 8.6: чем смотрящему отдан документ — 'showcase' значит, что тел
+   *  разделов и элементов у него нет по праву, а не по сбою. */
+  scope: SynthesisScope;
   /** Текущий пользователь — владелец синтеза (беседа 5.2, «По факту 5.2»):
    *  клиентские гейты правок вместо оптимизма «покажем всем, 403 решит».
    *  Флаг, а не userId — публичный синтез не раскрывает владельца. */
@@ -168,9 +225,14 @@ export interface SynthesisFull {
   /** v10: снимок sectionOrder для «Структура документа» */
   structureSections: string[] | null;
   capsuleHtml: string;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  totalCostUsd: number;
+  /** 8.6: стоимость и токены ГОСТЮ не отдаются никогда (поля отсутствуют);
+   *  зарегистрированному — у любой неприватной, флагом не управляются. */
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
+  totalCostUsd?: number;
+  /** 8.6: тела разделов — ТОЛЬКО гостю при scope='full' («документ одним
+   *  ответом»: /sections гостю недоступен); прочим — свой роут. */
+  sections?: SectionFull[];
   createdAt: string;
   updatedAt: string;
   // Связи
@@ -188,7 +250,12 @@ export interface SynthesisPreview {
   synthLevel: SynthLevel;
   depth: Depth;
   status: SynthesisStatus;
+  /** @deprecated 8.6: производное от visibility (!== 'private'), см. SynthesisFull */
   isPublic: boolean;
+  /** 8.6 */
+  visibility: SynthesisVisibility;
+  /** 8.6: только при действенном show_author и непустом display_name */
+  authorName?: string;
   philosophers: string[];
   /** Есть родители-концепции (parent_type='synthesis') — бейдж
    *  «мета-синтез» в карточке каталога (беседа 3.2, п. 5; аддитивная
@@ -197,9 +264,25 @@ export interface SynthesisPreview {
   hasConceptParents: boolean;
   /** Первые символы капсулы (превью карточки каталога) */
   capsulePreview: string;
-  totalCostUsd: number;
+  /** 8.6: гостю в GET /syntheses/public поля нет */
+  totalCostUsd?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Тело PATCH /syntheses/:id (8.6): visibility и четыре флага вместо
+ *  isPublic; isPublic принимается синонимом (true → 'full', false →
+ *  'private') до перевода клиента в 8.7. */
+export interface SynthesisPatchInput {
+  title?: string;
+  extGraphMetrics?: boolean;
+  visibility?: SynthesisVisibility;
+  showAuthor?: boolean;
+  showLogs?: boolean;
+  showPrompts?: boolean;
+  allowMeta?: boolean;
+  /** @deprecated 8.6 — синоним visibility */
+  isPublic?: boolean;
 }
 
 /* ── Импорт HTML-файла (беседа 4.3; 03-spec §2.2 POST /syntheses/import) ── */

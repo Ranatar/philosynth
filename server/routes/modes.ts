@@ -9,7 +9,7 @@
  *   DELETE /syntheses/:id/modes/:modeKey/:index → { ok: true }
  *
  * Решения:
- *  - чтение (оба GET) — владелец ИЛИ is_public (loadSynthesisForRead:
+ *  - чтение (оба GET) — владелец ИЛИ неприватная ступень (8.6: visibility; витрина → 403 на содержание) (loadSynthesisForRead:
  *    результаты режимов — часть контента документа, правило транспорта
  *    чтения 1.6); run/DELETE — только владелец (edit-операции);
  *  - не-UUID id → 404 (guard до PG, правило 1.6); неизвестный modeKey →
@@ -50,6 +50,7 @@ import {
   isUuid,
   loadSynthesisForRead,
   notFoundJson,
+  showcaseForbiddenJson,
 } from "./syntheses.js";
 
 import type { GenerationOrder } from "@philosynth/shared/types/synthesis";
@@ -124,6 +125,8 @@ modesRoutes.get("/:id/modes", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
 
   const rows = await db
     .select()
@@ -145,6 +148,8 @@ modesRoutes.get("/:id/modes/:modeKey", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   if (!getModeConfig(modeKey)) return c.json(modeNotFoundJson, 404);
 
   const rows = await loadModeRowsAsc(res.row.id, modeKey);

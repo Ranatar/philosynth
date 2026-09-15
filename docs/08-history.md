@@ -490,6 +490,21 @@ LINEAGE_EXISTS / LINEAGE_CYCLE по потомкам); ImportPage — блок �
 53 ✓ ×2 в браузере; check:integration += 2ac/4an/5ab; долг оснастки test-54
 закрыт — 80 ✓); доки пропатчены scripts/patch-docs-conv85.py. Реестр §12
 пуст. Первоначальный состав Фазы 8 (8.1–8.5) закрыт; остались 8.6/8.7.
+Беседа 8.6 (модель публичности и гостевой доступ; бэкенд) ЗАКРЫТА
+2026-09-15: миграция 0005 — visibility ('private'|'showcase'|'full') + четыре
+флага вместо is_public с переносом данных; effectiveFlags (shared) — одна
+точка действенности (logs/prompts/meta только при 'full', автор — на обеих
+неприватных); optionalAuth + гостевые пути ровно три (GET /syntheses/public,
+GET /syntheses/:id с sections одним ответом, GET /billing/plans); гостю
+никогда — стоимость, токены, логи, запросы, пауза; loadSynthesisForRead →
+viewer/scope, projectSynthesis — одна точка отсечения; витрина на
+контент-роутах → 403, лог по logsAllowed, META_NOT_ALLOWED в участниках,
+PATCH visibility + флаги (isPublic — синоним до 8.7); экспорт: витрина 403,
+безлоговая выгрузка при недейственном show_logs + восстановлен футер-зеркало
+(утрата 4.2); dotfile-грабля ×4 закрыта переименованием (env.local.example,
+dev-billing-state/). Смоук 87 ✓, tests/test-86-requests2-14.mjs 102 ✓ ×2 на
+отдельной пустой БД, check:integration += 2ad/4ao/5ac; доки —
+scripts/patch-docs-conv86.py. Реестр §12 пуст; следующая — 8.7.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
@@ -4884,6 +4899,85 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
 
 ---
 
+### Беседа 8.6 — Модель публичности и гостевой доступ (бэкенд) [ЗАКРЫТА 2026-09-15]
+
+> Запрос 1 целиком (миграция 0005 + schema, shared/types/synthesis + shared/
+> utils/visibility, middleware/auth optionalAuth, routes/syntheses/logs/export/
+> lineage/billing + гейт витрины на 5 контент-роутах, html-exporter
+> includeLogs, audit.mts, integration-check 4o/4ak/4al, dotfile → env.local.
+> example/dev-billing-state, scripts/patch-docs-conv86.py) → патч
+> philosynth-conv86-request1.patch; смоук tests/smoke-86-request1.mjs 87 ✓;
+> тестовые запросы R2–R14 одним заходом tests/test-86-requests2-14.mjs 102 ✓ ×2
+> (~40 с; сервер :3186 на пустой philosynth_t86 + philosynth_t86mig для
+> миграции; моков нет); пересмотр после обсуждения — гостевые Omit-типы сняты,
+> DocumentFooter терпит отсутствие cost-полей, футер экспорта восстановлен;
+> завершение: typecheck (все конфиги) 0, audit ✓, check-map 0, css-parity
+> 0/586, check:integration += 2ad/4ao/5ac → INTEGRATION OK (4ac под сигнатуру
+> с гостем). Полный текст решений — «По факту 8.6» в 07.
+
+#### Что создано / изменено
+
+- `server/db/migrations/0005_visibility.sql` + `meta/0005_snapshot.json`
+  (рукой; generate → «No schema changes»); `schema.syntheses`: visibility enum
+  + showAuthor/showLogs/showPrompts/allowMeta, `idx_syntheses_visibility`
+  (partial `<> 'private'`), CHECK.
+- `packages/shared/types/synthesis.ts`: SynthesisVisibility, VisibilityFlags,
+  EffectiveFlags, SynthesisViewer, SynthesisScope, SynthesisPatchInput;
+  SynthesisFull += visibility/флаги/authorName?/scope/sections?, cost-поля
+  необязательны; SynthesisPreview += visibility/authorName?, totalCostUsd?;
+  isPublic — @deprecated производное. `packages/shared/utils/visibility.ts` —
+  effectiveFlags, isPublicOf.
+- `server/middleware/auth.ts` += optionalAuth (MiddlewareHandler без Env —
+  монтируется на Hono<AuthEnv>), viewerOf(c), OptionalAuthEnv.
+- `server/routes/syntheses.ts`: loadSynthesisForRead(id, userId | null) →
+  ReadAccess {viewer, scope}; metaAllowedFor; projectSynthesis/projectPreview;
+  loadAuthorNamesFor; loadSectionsFull (гостю на 'full'); showcaseForbiddenJson,
+  metaNotAllowedJson; GET /public и GET /:id под optionalAuth; PATCH
+  visibility + четыре флага + синоним isPublic; META_NOT_ALLOWED в участниках;
+  /estimate молча пропускает; duplicate → 'private'.
+- `routes/logs.ts` logsAllowed на четырёх путях; `routes/export.ts` витрина
+  403 + includeLogs; `services/export/html-exporter.ts` exportHTML(id,
+  {includeLogs}) + renderDocFooter; `routes/lineage.ts` pruneInvisible и
+  /search на visibility, authorName в превью; `routes/billing.ts` GET /plans
+  под optionalAuth до requireAuth; sections/elements/modes/transforms/
+  enrichment — гейт витрины после стандартных 404/403.
+- Клиент (устранение рассогласований, не витрина): `api/client.ts` +=
+  META_NOT_ALLOWED; `DocumentFooter.tsx` — строка стоимости при определённых
+  значениях.
+- `server/audit.mts` typeOnly += isPublic/authorName/scope/sections;
+  `integration-check.mts` 4o → optionalAuth, 4ac под гостя, 4ak/4al → новые
+  имена dotfile, += 2ad/4ao/5ac (async-функциями).
+- `env.local.example` (без точки), `dev-billing-state/` в .gitignore,
+  `tools/dev-billing.sh` на новых именах, `.env.example` += STRIPE_PRICE_*.
+- Тесты: tests/smoke-86-request1.mjs, tests/test-86-requests2-14.mjs.
+
+#### Решения/адаптации — «По факту 8.6» п.1–10
+
+#### Открытые TODO после 8.6
+
+- Реестр §12 пуст. Ограничения без адресата — в §12 (запись 8.6).
+
+#### Помодульно: что прикладывать в 8.7
+
+- `packages/shared/types/synthesis.ts` (visibility/флаги/authorName/scope/
+  sections?, cost-поля необязательны — гостевой режим клиента),
+  `packages/shared/utils/visibility.ts` (effectiveFlags — объяснить в UI, почему
+  логи/мета закрыты), `server/routes/syntheses.ts` (контракты GET /public и
+  GET /:id по смотрящему, PATCH), `server/routes/billing.ts` (GET /plans гостю),
+  `server/middleware/auth.ts` (optionalAuth — что гость получает), `client/src/
+  api/client.ts` (401-обработчик: гостю на /catalog и /synthesis/:id 401 не
+  штатен), `client/src/pages/CatalogPage.tsx` + `components/catalog/
+  SynthesisCard.tsx` (кнопка «Опубликовать» → переключатель ступени +
+  четыре флага; синоним isPublic снять), `client/src/components/document/
+  DocumentFooter.tsx` + `SynthesisPage.tsx` (режим просмотра гостя:
+  документ из sections одного ответа, без /sections и WS), `client/src/App.tsx`,
+  `components/layout/Header.tsx` (гостевая шапка и маршруты, LandingPage),
+  `client/src/pages/BillingPage.tsx` (разметка тарифов для страницы цен);
+  тесты-образцы: tests/test-86-requests2-14.mjs (что гость получает по API),
+  tests/test-84-requests2-10.mjs (браузерный стенд каталога).
+
+---
+
 ### Беседа 8.5 — Родословная при импорте: сопоставление родителя (бэкенд + клиент) [ЗАКРЫТА 2026-09-14]
 
 > Запрос 1 целиком (shared/types/lineage + lineage-service + import-service
@@ -5118,6 +5212,20 @@ dotfile и `.gitignore`, потерянные загрузкой; float-срав
 Шапка `docs/07-conversation-protocol.md` дословно: датированные врезки
 по итогам бесед, от свежих к старым.
 
+> **Правки 2026-09-15 (итоги беседы 8.6)**: модель публичности и гостевой
+> доступ закрыты (запрос 1 + смоук tests/smoke-86-request1.mjs 87 ✓ + все
+> тестовые запросы tests/test-86-requests2-14.mjs 102 ✓ ×2 на отдельной пустой
+> БД; check:integration += 2ad/4ao/5ac). 02 §2.3 — visibility + четыре флага,
+> индекс, CHECK; §2.4 — видимость узлов; 03 — преамбула §2 (гостевые пути),
+> §2.2 (GET /public, GET /:id по смотрящему, PATCH, SynthesisFull, гость),
+> §2.3 (витрина на контент-роутах), §2.8, §2.10 (GET /plans), §2.11 (экспорт,
+> футер), §2.12 (гейт логов), §4.3 (META_NOT_ALLOWED); 01 §6; 04 §4 строка
+> 8.6; 05 — миграция 0005, optionalAuth, visibility.ts, env.local.example,
+> dev-billing-state/, html-exporter, DocumentFooter; 07 — текст 8.6 (адрес
+> 02 §2.3, сноски п.5/п.10), «По факту 8.6», врезка Фазы 8, §12; 09 §2
+> (superseded_by патч-скриптов, dotfile ×4 → переименование), §3 (миграция
+> рукой при переименовании колонки), §5 (optionalAuth без Env).
+>
 > **Правки 2026-09-14 (итоги беседы 8.5)**: родословная при импорте закрыта
 > (запрос 1 + смоук tests/smoke-85-request1.mjs 45 ✓ + все тестовые запросы
 > tests/test-85-requests2-8.mjs 53 ✓ ×2 в браузере; check:integration +=

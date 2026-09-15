@@ -115,6 +115,29 @@ function renderDocHeader(s: ExportSynthesis): string {
   );
 }
 
+/** Футер документа [4202–4220] + формат updateFooterCost [5672]: «Токены: N
+ *  вх. + M вых. · Стоимость: $X.XXXX (Y.YY¢)»; сессия = docNum; философы в
+ *  #footerPhil (импорт 4.3 читает их оттуда первым источником — поэтому
+ *  здесь только философы или «—», без подписи «свободный синтез»). */
+function renderDocFooter(s: ExportSynthesis): string {
+  const row = s.row;
+  const cost = Number.parseFloat(row.totalCostUsd ?? "0") || 0;
+  const fmt = (n: number): string => n.toLocaleString("ru-RU");
+  const footerPhil = s.philosophers.length ? s.philosophers.join(", ") : "—";
+  return (
+    `<div class="doc-footer" id="docFooter">` +
+    `<div class="doc-footer-left">PhiloSynth Pro™ · v1.0<br />` +
+    `Документ сгенерирован на основе анализа ИИ (Claude)<br />` +
+    `Сессия: <span id="sessionId">${esc(row.docNum || "—")}</span><br />` +
+    `<span id="footerCost" style="color: var(--gold)">Токены: ${fmt(row.totalInputTokens)} вх. + ${fmt(row.totalOutputTokens)} вых. · Стоимость: $${cost.toFixed(4)} (${(cost * 100).toFixed(2)}¢)</span>` +
+    `</div>` +
+    `<div class="doc-footer-right">` +
+    (row.status === "ready" ? `<div class="validity-stamp">СИНТЕЗ ЗАВЕРШЁН</div><br />` : "") +
+    `Философы: <span id="footerPhil">${esc(footerPhil)}</span>` +
+    `</div></div>`
+  );
+}
+
 /* ══ buildModesExportSection [17535–17672] ════════════════════════════ */
 
 interface ModeRow {
@@ -339,7 +362,19 @@ export function buildGraphExportSection(
 
 /* ══ saveHTML [18003] ═════════════════════════════════════════════════ */
 
-export async function exportHTML(synthesisId: string): Promise<string> {
+/** Опции экспорта (8.6): includeLogs=false — выгрузка невладельцу при
+ *  недейственном show_logs: embedded genLog/ctxLog пусты, genCommon null,
+ *  видимый блок «◈ Лог контекста и генерации» не печатается. Формат файла
+ *  тот же (пустые логи — законное состояние импорта 4.3). */
+export interface ExportHTMLOptions {
+  includeLogs?: boolean;
+}
+
+export async function exportHTML(
+  synthesisId: string,
+  options: ExportHTMLOptions = {},
+): Promise<string> {
+  const includeLogs = options.includeLogs !== false;
   const s = await loadExportSynthesis(synthesisId);
   const row = s.row;
 
@@ -379,6 +414,12 @@ export async function exportHTML(synthesisId: string): Promise<string> {
       sec.htmlContent +
       `</div>`;
   }
+  // Футер — зеркало DocumentFooter (1.6b), утраченное 4.2 и восстановленное
+  // 8.6: в исходнике #docFooter лежал внутри #docOutput и уезжал в файл
+  // вместе с footerCost; стоимость в файле — итог из строки syntheses, как в
+  // футере клиента (не пересчёт по ставкам), а не только записи genLog —
+  // безлоговая выгрузка (show_logs недейственен) стоимость сохраняет.
+  docHTML += renderDocFooter(s);
 
   // ── Имя файла фиксируется на момент сохранения (без расширения) ──
   const filenameBase = exportFilename(s, "html").replace(/\.html$/, "");
@@ -404,7 +445,9 @@ export async function exportHTML(synthesisId: string): Promise<string> {
   const conceptParticipants = await loadConceptParticipants(synthesisId);
   const params = buildParams(row, philosophers, secCtx, conceptParticipants);
 
-  const { genRows, ctxRows, genCommon } = await loadExportLogs(synthesisId);
+  const { genRows, ctxRows, genCommon } = includeLogs
+    ? await loadExportLogs(synthesisId)
+    : { genRows: [], ctxRows: [], genCommon: null }; // 8.6: лог закрыт автором
 
   // Паритет среза _sys/_promptSkeleton: metadata без sys/promptSkeleton
   // (реконструкция вернёт скелеты при импорте — prompt-reconstruction)
@@ -506,7 +549,7 @@ export async function exportHTML(synthesisId: string): Promise<string> {
   let stateJSON = `\n<script type="application/json" id="philosynth-state">\n${JSON.stringify(stateData, null, 2)}\n</script>`;
 
   // ── Видимый лог контекста (адаптация: предвычисленный html 2.4) ──
-  if (genRows.length > 0 || ctxRows.length > 0) {
+  if (includeLogs && (genRows.length > 0 || ctxRows.length > 0)) {
     const log = await formatCtxLogHTML(synthesisId);
     const isEmpty = log.text === "Лог пуст. Сгенерируйте документ.";
     stateJSON += `\n<details style="

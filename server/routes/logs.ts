@@ -8,8 +8,13 @@
  *   GET /syntheses/:id/logs/prompts    → { text: string | null }
  *
  * Решения:
- *  - Доступ на чтение — владелец ИЛИ is_public (как весь транспорт
- *    чтения 1.6: loadSynthesisForRead); 403/404 по §4.3.
+ *  - Доступ (8.6 п.7): loadSynthesisForRead + гейт по effectiveFlags —
+ *    viewer 'owner' → всегда, при любых флагах и ступени; 'user' →
+ *    generation/context/formatted при действенном show_logs, prompts при
+ *    действенном show_prompts, иначе 403 (на витрине оба погашены → 403);
+ *    'guest' → 403 всегда (роуты и так под requireAuth, но гейт стоит —
+ *    маршрут может открыться позже). Стоимость и токены (SynthesisFull)
+ *    флагом не управляются — это про ЛОГИ.
  *  - /generation отдаёт ВСЕ строки, включая маркеры и служебную
  *    '_genCommon' — фильтрация за потребителем (лог-вьюер использует
  *    /formatted; сырой эндпоинт — отладочный, 03 §2.12).
@@ -34,7 +39,9 @@ import {
   forbiddenJson,
   loadSynthesisForRead,
   notFoundJson,
+  type ReadAccess,
 } from "./syntheses.js";
+import { effectiveFlags } from "@philosynth/shared/utils/visibility";
 
 import type {
   CtxLogEntry,
@@ -43,6 +50,28 @@ import type {
 
 export const logsRoutes = new Hono<AuthEnv>();
 
+/** 8.6 п.7: гейт логов по действенности флагов (ЕДИНАЯ функция для
+ *  четырёх путей). kind 'logs' — generation/context/formatted (show_logs),
+ *  'prompts' — дамп запросов (show_prompts). */
+export function logsAllowed(
+  res: Extract<ReadAccess, { access: "ok" }>,
+  kind: "logs" | "prompts",
+): boolean {
+  if (res.viewer === "owner") return true;
+  if (res.viewer === "guest") return false;
+  const flags = effectiveFlags(res.row);
+  return kind === "logs" ? flags.showLogs : flags.showPrompts;
+}
+
+const logsForbiddenJson = {
+  error: "Автор не открыл лог генерации этой концепции",
+  code: "FORBIDDEN",
+} as const;
+const promptsForbiddenJson = {
+  error: "Автор не открыл тексты запросов этой концепции",
+  code: "FORBIDDEN",
+} as const;
+
 /* ── GET /:id/logs/generation ────────────────────────────────────────── */
 
 logsRoutes.get("/:id/logs/generation", requireAuth, async (c) => {
@@ -50,6 +79,7 @@ logsRoutes.get("/:id/logs/generation", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  if (!logsAllowed(res, "logs")) return c.json(logsForbiddenJson, 403);
 
   const rows = await db
     .select()
@@ -85,6 +115,7 @@ logsRoutes.get("/:id/logs/context", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  if (!logsAllowed(res, "logs")) return c.json(logsForbiddenJson, 403);
 
   const rows = await db
     .select()
@@ -117,6 +148,7 @@ logsRoutes.get("/:id/logs/formatted", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  if (!logsAllowed(res, "logs")) return c.json(logsForbiddenJson, 403);
 
   const { text, html } = await formatCtxLogHTML(res.row.id);
   return c.json({ text, html });
@@ -129,6 +161,7 @@ logsRoutes.get("/:id/logs/prompts", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  if (!logsAllowed(res, "prompts")) return c.json(promptsForbiddenJson, 403);
 
   const text = await formatPromptsForExport(res.row.id);
   return c.json({ text });

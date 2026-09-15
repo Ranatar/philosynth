@@ -11,7 +11,8 @@
 # fail. Повторный запуск на поднятом стенде обязан дать одни skip (ничего не
 # перезапускает, чужие процессы на портах не трогает).
 #
-# Что делает: читает .env.local (создаёт из .env.local.example, если нет),
+# Что делает: читает .env.local (создаёт из env.local.example, если нет;
+# образец без ведущей точки с 8.6 — dotfile терялся при выкладке, 09 §2),
 # отказывается при STRIPE_SECRET_KEY=sk_live_… (заслон), проверяет PG/Redis,
 # поднимает tools/stripe-mock.mjs на STRIPE_MOCK_PORT, сервер строго на :3000
 # (прокси vite зашит — 09 §4), vite на VITE_PORT (5199), напоминает про
@@ -23,15 +24,15 @@
 #
 # Процессы спавнятся собственными группами (setsid) и гасятся группой —
 # иначе tsx/vite оставляют сирот на портах (09 §4, беседы 1.6/5.1/5.2).
-# pid-файлы и логи — в .dev-billing/ (в .gitignore).
+# pid-файлы и логи — в dev-billing-state/ (в .gitignore; до 8.6 — .dev-billing/).
 
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-STATE_DIR="$ROOT/.dev-billing"
+STATE_DIR="$ROOT/dev-billing-state"
 ENV_FILE="$ROOT/.env.local"
-ENV_EXAMPLE="$ROOT/.env.local.example"
+ENV_EXAMPLE="$ROOT/env.local.example"
 HEALTH_WAIT_SEC="${HEALTH_WAIT_SEC:-60}"
 
 C_OK=$'\033[32m'; C_SKIP=$'\033[90m'; C_WARN=$'\033[33m'; C_ERR=$'\033[31m'; C_0=$'\033[0m'
@@ -113,9 +114,9 @@ load_env() {
   if [ -f "$ENV_FILE" ]; then
     skip ".env.local на месте"
   else
-    [ -f "$ENV_EXAMPLE" ] || die "нет ни .env.local, ни .env.local.example"
+    [ -f "$ENV_EXAMPLE" ] || die "нет ни .env.local, ни env.local.example"
     cp "$ENV_EXAMPLE" "$ENV_FILE"
-    ok ".env.local создан из .env.local.example"
+    ok ".env.local создан из env.local.example"
   fi
   # shellcheck disable=SC1090
   set -a; . "$ENV_FILE"; set +a

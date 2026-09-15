@@ -13,7 +13,12 @@ philosynth-service/
 ├── docker-compose.yml              # PostgreSQL + Redis для dev
 ├── .gitignore                      # node_modules, dist, .env (пароль БД
 │                                   # и ключи API), dump.rdb, архивы
-├── .env.local.example              # 8.2: окружение ЛОКАЛЬНОГО СТЕНДА биллинга
+├── env.local.example               # 8.2: окружение ЛОКАЛЬНОГО СТЕНДА биллинга.
+│                                   # 8.6: ИМЯ БЕЗ ВЕДУЩЕЙ ТОЧКИ (было .env.local.example):
+│                                   # загрузка «Add files via upload» четыре раза подряд
+│                                   # (83aaf2b, 8f9bae0, cd46374, 32171a9) теряла dotfile;
+│                                   # dev-billing.sh и 4ak переведены на новое имя, старое
+│                                   # в дереве — ошибка 4ak. Прежнее описание:
 │                                   # (мок Stripe, фиктивные ключи, BILLING_ENFORCE=true,
 │                                   # пустой VITE_STRIPE_PUBLISHABLE_KEY); копируется в
 │                                   # .env.local скриптом tools/dev-billing.sh.
@@ -22,7 +27,11 @@ philosynth-service/
 │                                   # в HEAD 83aaf2b его не было — upload не перенёс dotfile;
 │                                   # и СНОВА воссоздан 8.4 — в HEAD 8f9bae0 его опять нет;
 │                                   # и В ТРЕТИЙ РАЗ воссоздан 8.5 — HEAD cd46374, вместе с
-│                                   # .dev-billing/ в .gitignore и STRIPE_PRICE_* в .env.example)
+│                                   # .dev-billing/ в .gitignore и STRIPE_PRICE_* в .env.example;
+│                                   # в ЧЕТВЁРТЫЙ — 8.6, HEAD 32171a9, после чего переименован)
+├── dev-billing-state/              # 8.6: pid-файлы и логи стенда (в .gitignore; было
+│                                   # .dev-billing/ — строка .gitignore терялась при выкладке,
+│                                   # папка без точки переживает её)
 ├── .env.example                    # ВСЕ переменные server/env.ts;
 │                                   # пароль БД обязан совпадать с дефолтом
 │                                   # env.ts — .env читает только drizzle-kit,
@@ -74,8 +83,10 @@ philosynth-service/
 │           ├── escape.ts               # esc() — HTML-экранирование
 │           ├── cardinality.ts          # participantCardinality, participantWord/Sg,
 │           │                           # hasConceptParticipants (v11, 01 §4.14)
-│           └── colorize-log.ts         # colorizeLog() — единая реализация (2.4;
-│                                       # клиент реэкспортирует)
+│           ├── colorize-log.ts         # colorizeLog() — единая реализация (2.4;
+│           │                           # клиент реэкспортирует)
+│           └── visibility.ts           # 8.6: effectiveFlags(row) — ОДНА функция действенности
+│                                       # флагов публичности (сервер и клиент 8.7); isPublicOf
 │
 ├── server/
 │   ├── package.json
@@ -91,10 +102,17 @@ philosynth-service/
 │   │       ├── 0000_initial.sql
 │   │       ├── …                       # 0001 (5.x), 0002 (6.1), 0003 (7.1)
 │   │       ├── 0004_admin_audit.sql    # 8.1: таблица admin_audit (тег переименован из генерата)
+│   │       ├── 0005_visibility.sql     # 8.6: syntheses.visibility + show_author/show_logs/
+│   │       │                           #  show_prompts/allow_meta, ПЕРЕНОС is_public → visibility,
+│   │       │                           #  DROP is_public, idx_syntheses_visibility, CHECK; SQL и
+│   │       │                           #  снапшот написаны рукой (generate спрашивал о переименовании
+│   │       │                           #  интерактивно), `drizzle-kit generate` после — «No schema changes»
 │   │       └── meta/
 │   │
 │   ├── middleware/
 │   │   ├── auth.ts                     # Lucia Auth: проверка сессии
+│   │   │                               # 8.6: + optionalAuth (сессия, если есть; иначе гость,
+│   │   │                               #  не 401) и viewerOf(c) для гостевых роутов
 │   │   ├── rate-limiter.ts             # Redis-based rate limiting
 │   │   ├── billing-check.ts            # Проверка баланса / API-ключа перед генерацией
 │   │   │                               # (СДЕЛАНО 6.1: предпроверка consume:false на 11 роутах-
@@ -106,6 +124,9 @@ philosynth-service/
 │   │   │                               # 8.1: + GET /auth/users, POST /auth/users/:id/role,
 │   │   │                               #  GET /auth/audit (requireAdmin)
 │   │   ├── syntheses.ts                # CRUD /syntheses, /syntheses/:id
+│   │                               # 8.6: loadSynthesisForRead → viewer/scope, projectSynthesis/
+│   │                               #  projectPreview, гостевые GET /public и GET /:id (optionalAuth),
+│   │                               #  PATCH visibility + флаги, META_NOT_ALLOWED в участниках
 │   │   ├── sections.ts                 # GET /syntheses/:id/sections, /:key, /:key/context
 │   │   │                               # (создаёт беседа 1.6 — до 2026-07-30
 │   │   │                               #  модуль не был назначен ни одной беседе)
@@ -132,12 +153,14 @@ philosynth-service/
 │   │   │                               #  модуль не был назначен ни одной беседе;
 │   │   │                               #  клиентский api/prompts.ts — 6.2)
 │   │   ├── billing.ts                  # API keys, topup, transactions, usage (СДЕЛАНО 6.1:
-│   │   │                               #  13 эндпоинтов §2.10; /webhook вне requireAuth)
+│   │   │                               #  13 эндпоинтов §2.10; /webhook вне requireAuth;
+│   │                               #  8.6: GET /plans под optionalAuth — тарифы гостю)
 │   │   ├── export.ts                   # GET /export/html, /mmd, /png, /json, /md
 │   │   ├── import.ts                   # POST /syntheses/import
 │   │   └── logs.ts                     # GET /logs/generation, /context, /formatted
 │   │                                   # (создаёт беседа 2.4; /logs/prompts —
 │   │                                   #  без skeleton-fallback до 4.2)
+│   │                                   # 8.6: logsAllowed — гейт по effectiveFlags на четырёх путях
 │   │
 │   ├── services/
 │   │   ├── synthesis-engine.ts         # resolveContextDeps, buildEffectiveDeps,
@@ -291,6 +314,8 @@ philosynth-service/
 │   │   └── export/
 │   │       ├── html-exporter.ts        # saveHTML + buildGraphExportSection + buildModesExportSection
 │   │       │                           # (saveHTML + buildGraphExportSection)
+│   │       │                           # 8.6: + renderDocFooter (зеркало DocumentFooter — утрачено
+│   │       │                           #  4.2) и exportHTML(id, { includeLogs }) — выгрузка без лога
 │   │       ├── mmd-exporter.ts         # exportMMD (exportMMD())
 │   │       ├── png-exporter.ts         # exportPNG — node-canvas (exportPNG())
 │   │       ├── json-exporter.ts        # exportJSON (exportJSON())
@@ -432,7 +457,8 @@ philosynth-service/
 │   │   │   │   ├── DocumentHeader.tsx      # Шапка (номер, участники, метод, капсула)
 │   │   │   │   ├── SectionView.tsx         # Один раздел
 │   │   │   │   ├── TableOfContents.tsx     # Оглавление с якорями
-│   │   │   │   └── DocumentFooter.tsx      # Футер (стоимость, участники)
+│   │   │   │   └── DocumentFooter.tsx      # Футер (стоимость, участники); 8.6: строка стоимости
+│   │   │   │                               #  только при определённых totalCostUsd/токенах (гостю их нет)
 │   │   │   │
 │   │   │   ├── graph/
 │   │   │   │   ├── GraphModal.tsx          # Модальное окно графа (2D/3D табы)

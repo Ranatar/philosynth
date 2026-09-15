@@ -31,7 +31,7 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 
-import { requireAuth, type AuthEnv } from "../middleware/auth.js";
+import { optionalAuth, requireAuth, type AuthEnv } from "../middleware/auth.js";
 import {
   ApiKeyError,
   deleteApiKey,
@@ -123,6 +123,14 @@ billingRoutes.post("/webhook", async (c) => {
 });
 
 /* ── Всё остальное — под сессией ─────────────────────────────────────── */
+
+/* ── GET /plans — тарифы БЕЗ входа (8.6 п.6c: цена службы видна до
+ *    регистрации); optionalAuth ради единообразия с гостевыми путями
+ *    (сессия, если есть, валидируется и подчищается). Регистрируется ДО
+ *    requireAuth; остальные billing-пути не тронуты. ── */
+billingRoutes.get("/plans", optionalAuth, async (c) => {
+  return c.json({ plans: await getPlans() });
+});
 
 billingRoutes.use("*", requireAuth);
 
@@ -233,10 +241,6 @@ billingRoutes.get("/transactions", async (c) => {
 });
 
 /* ── Подписки ────────────────────────────────────────────────────────── */
-
-billingRoutes.get("/plans", async (c) => {
-  return c.json({ plans: await getPlans() });
-});
 
 billingRoutes.get("/subscription", async (c) => {
   const user = c.get("user");

@@ -24,6 +24,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   customType,
   index,
   integer,
@@ -154,7 +155,28 @@ export const syntheses = pgTable(
     })
       .notNull()
       .default("draft"),
-    isPublic: boolean("is_public").notNull().default(false),
+    /** Ступень видимости (беседа 8.6, миграция 0005 — вместо булева
+     *  is_public): 'private' — только владелец; 'showcase' — витрина:
+     *  капсула, метаданные, философы, даты, тела разделов и элементы НЕ
+     *  отдаются; 'full' — произведение целиком. Публичный каталог фильтрует
+     *  по этой колонке (индекс idx_syntheses_visibility). */
+    visibility: text("visibility", {
+      enum: ["private", "showcase", "full"],
+    })
+      .notNull()
+      .default("private"),
+    /** Показывать имя автора (users.display_name) — действует на ОБЕИХ
+     *  неприватных ступенях (8.6) */
+    showAuthor: boolean("show_author").notNull().default(false),
+    /** Логи generation/context/formatted чужому зарегистрированному —
+     *  ТОЛЬКО при visibility='full' (effectiveFlags); стоимость и токены
+     *  флагом НЕ управляются (решение 8.6) */
+    showLogs: boolean("show_logs").notNull().default(true),
+    /** Дамп запросов (/logs/prompts) чужому — только при 'full' */
+    showPrompts: boolean("show_prompts").notNull().default(false),
+    /** Пригодность в участники чужого мета-синтеза — только при 'full';
+     *  по умолчанию разрешена (миграция не отнимает возможность) */
+    allowMeta: boolean("allow_meta").notNull().default(true),
 
     /** Порядок разделов: ["sum","graph","glossary",...] */
     sectionOrder: jsonb("section_order")
@@ -198,9 +220,14 @@ export const syntheses = pgTable(
   (t) => [
     index("idx_syntheses_user").on(t.userId),
     index("idx_syntheses_status").on(t.status),
-    index("idx_syntheses_public")
-      .on(t.isPublic)
-      .where(sql`${t.isPublic} = true`),
+    // 8.6: публичный каталог и pruneInvisible фильтруют по ступени
+    index("idx_syntheses_visibility")
+      .on(t.visibility)
+      .where(sql`${t.visibility} <> 'private'`),
+    check(
+      "syntheses_visibility_check",
+      sql`${t.visibility} IN ('private', 'showcase', 'full')`,
+    ),
     index("idx_syntheses_paused")
       .on(t.status)
       .where(sql`${t.status} = 'paused'`),

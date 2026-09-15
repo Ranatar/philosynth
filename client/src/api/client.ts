@@ -39,6 +39,7 @@ export type ApiErrorCode =
   | "LINEAGE_SELF" // 8.5: концепция — собственный родитель (400)
   | "LINEAGE_CYCLE" // 8.5: родитель среди потомков — цикл родословной (409)
   | "LINEAGE_EXISTS" // 8.5: пара уже есть — идемпотентный отказ (409)
+  | "META_NOT_ALLOWED" // 8.6: автор не разрешил чужой мета-синтез (403; details.title)
   | "GENERATION_PAUSED"
   | "RESUME_INVALID"
   | "NO_PARTICIPANTS_SEED_REQUIRED"

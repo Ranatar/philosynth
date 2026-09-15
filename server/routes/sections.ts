@@ -7,7 +7,7 @@
  *   GET /syntheses/:id/sections/:key/context → SectionContextPreview
  *
  * Решения (аудит 2026-07-30 + беседа 1.6):
- *  - Доступ на чтение — владелец ИЛИ is_public (loadSynthesisForRead из
+ *  - Доступ на чтение — владелец ИЛИ неприватная ступень (8.6: visibility; витрина → 403 на содержание) (loadSynthesisForRead из
  *    routes/syntheses.ts); 403 FORBIDDEN / 404 NOT_FOUND по §4.3.
  *  - Список — в порядке sectionOrder; ключи вне sectionOrder (не должно
  *    случаться, страховка) — в хвосте по sectionNum.
@@ -49,6 +49,7 @@ import {
   forbiddenJson,
   loadSynthesisForRead,
   notFoundJson,
+  showcaseForbiddenJson,
 } from "./syntheses.js";
 
 import type {
@@ -102,6 +103,8 @@ sectionsRoutes.get("/:id/sections", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
 
   const rows = await db
     .select()
@@ -131,6 +134,8 @@ sectionsRoutes.get("/:id/sections/:key", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
 
   const key = c.req.param("key");
   const [row] = await db
@@ -161,6 +166,8 @@ sectionsRoutes.get("/:id/sections/:key/context", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const row = res.row;
 
   const key = c.req.param("key");

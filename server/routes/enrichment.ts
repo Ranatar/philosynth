@@ -51,6 +51,7 @@ import {
   isUuid,
   loadSynthesisForRead,
   notFoundJson,
+  showcaseForbiddenJson,
 } from "./syntheses.js";
 
 export const enrichmentRoutes = new Hono<AuthEnv>();
@@ -205,6 +206,8 @@ enrichmentRoutes.get("/:id/enrichments/:elementId", requireAuth, async (c) => {
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const elementId = c.req.param("elementId");
   if (!isUuid(elementId)) return c.json(elementNotFoundJson, 404);
   const enrichments = await getEnrichments(res.row.id, elementId, elementTypeFilter(c));
@@ -218,6 +221,8 @@ enrichmentRoutes.get("/:id/justifications/:elementId", requireAuth, async (c) =>
   const res = await loadSynthesisForRead(c.req.param("id"), user.id);
   if (res.access === "notfound") return c.json(notFoundJson, 404);
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const elementId = c.req.param("elementId");
   if (!isUuid(elementId)) return c.json(elementNotFoundJson, 404);
   const justifications = await getJustifications(res.row.id, elementId, elementTypeFilter(c));

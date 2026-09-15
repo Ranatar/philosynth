@@ -59,6 +59,18 @@ export type AuthEnv = {
   };
 };
 
+/** Hono-Env роутов под optionalAuth (беседа 8.6): пользователь может
+ *  отсутствовать — гость. Совместим с AuthEnv по форме переменных, чтобы
+ *  роутеры могли монтировать оба middleware; читать через `c.get("user")`
+ *  и проверять на null. */
+export type OptionalAuthEnv = {
+  Variables: {
+    user: AuthUser | null;
+    session: SessionInfo | null;
+    billing?: BillingContextVar;
+  };
+};
+
 /* ── Пароли ──────────────────────────────────────────────────────────── */
 
 export async function hashPassword(password: string): Promise<string> {
@@ -196,3 +208,34 @@ export const requireAuth: MiddlewareHandler<AuthEnv> = async (c, next) => {
   c.set("session", result.session);
   await next();
 };
+
+/**
+ * Необязательная сессия (беседа 8.6, гостевые пути): валидный cookie →
+ * c.get("user")/c.get("session") как у requireAuth; отсутствие cookie ИЛИ
+ * мёртвая/просроченная сессия → user = null, session = null, БЕЗ 401 —
+ * запрос идёт дальше гостем (мёртвый cookie при этом подчищается, как в
+ * requireAuth). requireAuth не тронут: гейты прочих роутов не ослабляются.
+ * Гостю открыты ровно три пути: GET /syntheses/public, GET /syntheses/:id,
+ * GET /billing/plans.
+ */
+// Типизирован по умолчанию (любой Env): монтируется на роутеры Hono<AuthEnv>
+// рядом с requireAuth — там `c.get("user")` объявлен ненулевым, поэтому
+// гостевые обработчики читают смотрящего через viewerOf(c).
+export const optionalAuth: MiddlewareHandler = async (c, next) => {
+  const token = getSessionToken(c);
+  const result = token ? await validateSessionToken(token) : null;
+  if (!result) {
+    if (token) clearSessionCookie(c); // просроченная сессия = гость, не 401
+    c.set("user", null);
+    c.set("session", null);
+  } else {
+    c.set("user", result.user);
+    c.set("session", result.session);
+  }
+  await next();
+};
+
+/** Смотрящий гостевого роута: AuthUser либо null (после optionalAuth). */
+export function viewerOf(c: Context): AuthUser | null {
+  return (c.get("user") as AuthUser | null | undefined) ?? null;
+}
