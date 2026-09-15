@@ -365,12 +365,22 @@ step_admin() {
 
   # Пароль уходит ПЕРЕМЕННОЙ, а не доводом: довод виден в списке процессов
   # и оседает в истории оболочки (bootstrap-admin.ts требует именно так).
-  if BOOTSTRAP_ADMIN_EMAIL="$email" BOOTSTRAP_ADMIN_PASSWORD="$pass" npm run seed:admin; then
-    ok "администратор заведён или уже был (подробности выше)"
+  BOOTSTRAP_ADMIN_EMAIL="$email" BOOTSTRAP_ADMIN_PASSWORD="$pass" npm run seed:admin || \
+    die "seed:admin отказал — читайте его сообщение выше"
+
+  # Код возврата 0 доказательством НЕ считается: при переезде скрипта в
+  # подпапку его сторож isDirectRun перестал узнавать собственный путь,
+  # main() не запускался, а выход был нулевым — и обёртка бодро врала
+  # «администратор заведён». Спрашиваем базу.
+  local n
+  n="$(psql_db -tAc "select count(*) from users where role='admin' and email='$email'" 2>/dev/null || echo 0)"
+  if [ "$n" = "1" ]; then
+    ok "администратор $email есть в базе, роль admin"
     printf '    Следующих назначайте вкладкой «Доступ» в /admin/prompts:\n'
     printf '    вторым прогоном скрипта второго администратора НЕ завести.\n'
   else
-    die "seed:admin отказал — читайте его сообщение выше"
+    die "seed:admin отработал без ошибки, но администратора $email в базе НЕТ.
+      Это не ваша опечатка — это поломка скрипта; смотрите его вывод выше"
   fi
   unset pass pass2
 }

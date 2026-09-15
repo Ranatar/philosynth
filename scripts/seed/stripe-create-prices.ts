@@ -274,7 +274,7 @@ async function main(): Promise<void> {
 }
 
 // Импорт из тестов не должен запускать main (образец bootstrap-admin)
-const isDirectRun = process.argv[1]?.replace(/\\/g, "/").endsWith("scripts/stripe-create-prices.ts");
+const isDirectRun = process.argv[1]?.replace(/\\/g, "/").endsWith("/stripe-create-prices.ts");
 if (isDirectRun) {
   main().catch((err) => {
     console.error("stripe-create-prices: фатальная ошибка:", err);

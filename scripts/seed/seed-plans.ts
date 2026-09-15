@@ -307,7 +307,7 @@ async function main(): Promise<void> {
 }
 
 // Импорт из тестов не должен запускать main (образец bootstrap-admin)
-const isDirectRun = process.argv[1]?.replace(/\\/g, "/").endsWith("scripts/seed-plans.ts");
+const isDirectRun = process.argv[1]?.replace(/\\/g, "/").endsWith("/seed-plans.ts");
 if (isDirectRun) {
   main()
     .catch((err) => {

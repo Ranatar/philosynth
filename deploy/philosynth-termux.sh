@@ -426,13 +426,22 @@ step_admin() {
 
   # Скрипт сам печатает created / updated / skip / fail и ставит код
   # возврата; заслон «в базе уже есть админ с другим email» — его.
-  if BOOTSTRAP_ADMIN_EMAIL="$email" BOOTSTRAP_ADMIN_PASSWORD="$pass" \
-     npm run seed:admin; then
-    ok "администратор заведён или уже был (подробности выше)"
+  BOOTSTRAP_ADMIN_EMAIL="$email" BOOTSTRAP_ADMIN_PASSWORD="$pass" npm run seed:admin || \
+    die "seed:admin отказал — читайте его сообщение выше"
+
+  # Код возврата 0 доказательством НЕ считается: при переезде скрипта в
+  # подпапку его сторож isDirectRun перестал узнавать собственный путь,
+  # main() не запускался, а выход был нулевым — и обёртка бодро врала
+  # «администратор заведён». Спрашиваем базу.
+  local n
+  n="$(psql -d "$DB_NAME" -tAc "select count(*) from users where role='admin' and email='$email'" 2>/dev/null || echo 0)"
+  if [ "$n" = "1" ]; then
+    ok "администратор $email есть в базе, роль admin"
     printf '    Вкладка «Доступ» в /admin/prompts — назначение следующих\n'
     printf '    администраторов; вторым скриптом второго НЕ завести.\n'
   else
-    die "seed:admin отказал — читайте его сообщение выше"
+    die "seed:admin отработал без ошибки, но администратора $email в базе НЕТ.
+      Это не ваша опечатка — это поломка скрипта; смотрите его вывод выше"
   fi
   unset pass pass2
 }
