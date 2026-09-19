@@ -24,6 +24,11 @@
  * другом маршруте — редирект на «/» (исходный путь уходит в state.from —
  * LoginPage вернёт туда после входа, как прежде). Боковое меню гостю не
  * рисуется (Layout).
+ *
+ * Беседа 9.1 (п. 6): три гостевых маршрута почты ВНЕ Layout, рядом с
+ * /login и /register (те же экраны .auth-screen): «/reset-password» (форма
+ * с адресом), «/reset-password/:token» (новый пароль), «/verify-email/:token»
+ * (подтверждение адреса). «Отправить ещё раз» — под входом: полоса в Header.
  */
 import { useEffect } from "react";
 import {
@@ -45,7 +50,12 @@ import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RegisterPage } from "./pages/RegisterPage";
+import {
+  ResetPasswordConfirmPage,
+  ResetPasswordRequestPage,
+} from "./pages/ResetPasswordPage";
 import { SynthesisPage } from "./pages/SynthesisPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { useAuthStore } from "./stores/auth-store";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -93,6 +103,10 @@ export function App() {
         {/* Публичные */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        {/* Почта (9.1): гостевые — ссылку из письма открывают и без входа */}
+        <Route path="/reset-password" element={<ResetPasswordRequestPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordConfirmPage />} />
+        <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
         {/* Общий каркас: шапка (гостевая или своя), меню — только вошедшему */}
         <Route element={<Layout />}>

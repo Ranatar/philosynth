@@ -49,7 +49,7 @@ import { ADMIN_ACTIONS, ADMIN_SET_LOCK_KEY, writeAudit, type DbExecutor } from "
 import { hasActiveGenerationForUser } from "./generation-service.js";
 import { cancelSubscription, SubscriptionError } from "./subscription-service.js";
 
-const { users, sessions, apiKeys, syntheses, userSubscriptions, adminAudit } = schema;
+const { users, sessions, apiKeys, syntheses, userSubscriptions, adminAudit, authTokens } = schema;
 
 export class AccountDeletionError extends Error {
   constructor(
@@ -147,6 +147,10 @@ export async function deleteAccount(
     }
     await tx.delete(apiKeys).where(eq(apiKeys.userId, userId));
     await tx.delete(sessions).where(eq(sessions.userId, userId));
+    // 9.1: FK auth_tokens.user_id CASCADE при АНОНИМИЗАЦИИ не срабатывает
+    // (урок 8.1) — а живой довод сброса пароля вернул бы доступ к удалённой
+    // учётной записи. Снимаем явно, той же транзакцией.
+    await tx.delete(authTokens).where(eq(authTokens.userId, userId));
     await tx
       .update(userSubscriptions)
       .set({ status: "canceled", cancelAtPeriodEnd: true, updatedAt: new Date() })

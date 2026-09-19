@@ -8,6 +8,11 @@
  *   GET  /auth/me → { user: {id,email,displayName,role,balanceUsd} }
  *   PATCH /auth/me { displayName } → { user: полный }        (беседа 0.6)
  *   POST /auth/password-change { currentPassword, newPassword } → { ok } (0.5/0.6)
+ *   Почта (беседа 9.1):
+ *   POST /auth/email/verify/request → { ok, alreadyVerified, sent }
+ *   POST /auth/email/verify/confirm { token } → { ok } | 400 TOKEN_INVALID
+ *   POST /auth/password-reset/request { email } → { ok, message } (всегда один)
+ *   POST /auth/password-reset/confirm { token, newPassword } → { ok }
  *
  * login/register возвращают усечённого пользователя — после успеха store
  * дотягивает полный профиль через GET /auth/me (role нужна Sidebar'у для
@@ -18,6 +23,7 @@
  *   "restoring" → сессия проверяется (RequireAuth ждёт);
  *   "authenticated" / "anonymous" → результат известен.
  */
+import { PASSWORD_RESET_REQUESTED_MESSAGE } from "@philosynth/shared/constants/auth";
 import { create } from "zustand";
 
 import {
@@ -36,7 +42,20 @@ export interface AuthUser {
   displayName: string | null;
   role?: "user" | "admin";
   balanceUsd?: number;
+  /** 9.1: адрес подтверждён; до дотяжки GET /auth/me — undefined (полоса
+   *  в шапке рисуется только при строгом false) */
+  emailVerified?: boolean;
 }
+
+/** Итог повторной отправки письма с подтверждением (9.1) */
+export type ResendVerificationResult =
+  | { ok: true; alreadyVerified: boolean }
+  | { ok: false; error: string };
+
+/** Итог запроса сброса пароля (9.1): message — один и тот же всегда */
+export type PasswordResetRequestResult =
+  | { ok: true; message: string }
+  | { ok: false; error: string; details?: Record<string, string> };
 
 export type AuthStatus = "restoring" | "authenticated" | "anonymous";
 
@@ -70,6 +89,16 @@ interface AuthState {
     currentPassword: string,
     newPassword: string,
   ): Promise<ProfileActionResult>;
+  /** POST /auth/email/verify/request (9.1): письмо себе ещё раз; если адрес
+   *  уже подтверждён (в другой вкладке) — user в store обновляется */
+  resendVerification(): Promise<ResendVerificationResult>;
+  /** POST /auth/email/verify/confirm (9.1); при живой сессии user обновляется */
+  confirmEmail(token: string): Promise<ProfileActionResult>;
+  /** POST /auth/password-reset/request (9.1) — гостевой */
+  requestPasswordReset(email: string): Promise<PasswordResetRequestResult>;
+  /** POST /auth/password-reset/confirm (9.1) — гостевой; ВСЕ сессии
+   *  пользователя завершены, store перечитывает себя */
+  confirmPasswordReset(token: string, newPassword: string): Promise<ProfileActionResult>;
   /** DELETE /auth/me { password } (7.1): аккаунт анонимизирован, сессии
    *  сброшены — при ok store переходит в anonymous */
   deleteAccount(password: string): Promise<ProfileActionResult>;
@@ -181,6 +210,65 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { ok: true };
     } catch (err) {
       return toActionFailure(err, "Не удалось сохранить профиль");
+    }
+  },
+
+  async resendVerification() {
+    try {
+      const res = await apiPost<{ ok: true; alreadyVerified: boolean; sent: boolean }>(
+        "/auth/email/verify/request",
+      );
+      if (res.alreadyVerified) {
+        const user = get().user;
+        if (user) set({ user: { ...user, emailVerified: true } });
+      }
+      return { ok: true, alreadyVerified: res.alreadyVerified };
+    } catch (err) {
+      return {
+        ok: false,
+        error:
+          err instanceof ApiError && err.code === "RATE_LIMIT"
+            ? "Слишком много писем за час — попробуйте позже"
+            : err instanceof ApiError
+              ? err.message
+              : "Не удалось отправить письмо",
+      };
+    }
+  },
+
+  async confirmEmail(token) {
+    try {
+      await apiPost<{ ok: true }>("/auth/email/verify/confirm", { token });
+      const user = get().user;
+      if (user) set({ user: { ...user, emailVerified: true } });
+      return { ok: true };
+    } catch (err) {
+      return toActionFailure(err, "Не удалось подтвердить адрес");
+    }
+  },
+
+  async requestPasswordReset(email) {
+    try {
+      const res = await apiPost<{ ok: true; message?: string }>(
+        "/auth/password-reset/request",
+        { email },
+      );
+      return { ok: true, message: res.message ?? PASSWORD_RESET_REQUESTED_MESSAGE };
+    } catch (err) {
+      const f = toActionFailure(err, "Не удалось отправить запрос");
+      return f.ok ? { ok: true, message: PASSWORD_RESET_REQUESTED_MESSAGE } : f;
+    }
+  },
+
+  async confirmPasswordReset(token, newPassword) {
+    try {
+      await apiPost<{ ok: true }>("/auth/password-reset/confirm", { token, newPassword });
+      // Все сессии пользователя завершены сервером. Если в этом браузере был
+      // вход — узнаём, кем мы стали (обычно гостем), а не гадаем
+      if (get().status === "authenticated") await get().restore();
+      return { ok: true };
+    } catch (err) {
+      return toActionFailure(err, "Не удалось сменить пароль");
     }
   },
 

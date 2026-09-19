@@ -11,6 +11,9 @@ dist/
 .env.local
 .env.*.local
 
+# Состояние локального стенда биллинга (беседа 8.6)
+dev-billing-state/
+
 # Локальные артефакты песочницы
 dump.rdb
 .cache/

@@ -6,7 +6,8 @@
  * стенда. Обнаруживалось это следующей беседой, на чистом клоне, падением
  * check:integration (4ak/4al/4ao). Этот скрипт делает то же за секунду и без
  * БД — годен как первый шаг после `git clone` и в любой CI.
- * Запуск из корня: node scripts/check-dotfiles.mjs
+ * 9.1: + восемь переменных почты в .env.example и MAIL_TRANSPORT стенда.
+ * Запуск из корня: node scripts/checks/check-dotfiles.mjs
  */
 import { existsSync, readFileSync } from "node:fs";
 
@@ -17,6 +18,10 @@ const envEx = rd(".env.example");
 for (const v of ["STRIPE_PRICE_STARTER", "STRIPE_PRICE_PRO", "STRIPE_PRICE_ACADEMIC"]) {
   if (!new RegExp(`^${v}=`, "m").test(envEx)) errs.push(`.env.example без ${v}= (8.3)`);
 }
+// 9.1: переменные почты — правка .env.example той же породы, что STRIPE_PRICE_*
+for (const v of ["MAIL_TRANSPORT", "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_SECURE", "MAIL_FROM", "PUBLIC_BASE_URL"]) {
+  if (!new RegExp(`^${v}=`, "m").test(envEx)) errs.push(`.env.example без ${v}= (9.1)`);
+}
 if (!/^dev-billing-state\/$/m.test(rd(".gitignore"))) errs.push(".gitignore без dev-billing-state/ (8.6)");
 if (!existsSync(new URL("env.local.example", ROOT))) errs.push("нет env.local.example (8.6, без точки)");
 if (existsSync(new URL(".env.local.example", ROOT))) errs.push("в дереве старый .env.local.example (8.6)");
@@ -24,6 +29,7 @@ const envLoc = existsSync(new URL("env.local.example", ROOT)) ? rd("env.local.ex
 for (const n of ["starter", "pro", "academic"]) {
   if (!new RegExp(`^STRIPE_PRICE_${n.toUpperCase()}=price_mock_${n}$`, "m").test(envLoc)) errs.push(`env.local.example без STRIPE_PRICE_${n.toUpperCase()}=price_mock_${n} (8.3)`);
 }
+if (!/^MAIL_TRANSPORT=console$/m.test(envLoc)) errs.push("env.local.example без MAIL_TRANSPORT=console (9.1)");
 if (errs.length) {
   console.error("DOTFILES: правки потеряны выкладкой —\n - " + errs.join("\n - "));
   process.exit(1);

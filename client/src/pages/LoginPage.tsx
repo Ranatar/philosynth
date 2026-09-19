@@ -1,6 +1,9 @@
 /**
  * Страница входа. Беседа 0.4: минимальная рабочая форма поверх
  * auth-store (login протестируется отдельным запросом беседы).
+ * Беседа 9.1: ссылка «Забыли пароль?» рядом с регистрацией; пояснение из
+ * location.state.notice (после сброса пароля — «прочие сессии завершены»,
+ * после подтверждения адреса гостем — «войдите, чтобы продолжить»).
  */
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -15,8 +18,9 @@ export function LoginPage() {
   const location = useLocation();
 
   // Куда вернуться после входа (RequireAuth кладёт исходный путь в state)
-  const from =
-    (location.state as { from?: string } | null)?.from ?? "/catalog";
+  const navState = location.state as { from?: string; notice?: string } | null;
+  const from = navState?.from ?? "/catalog";
+  const notice = navState?.notice ?? null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,6 +44,11 @@ export function LoginPage() {
           onSubmit={handleSubmit}
           className="input-form"
         >
+          {notice && (
+            <p role="status" className="callout note" data-testid="login-notice">
+              {notice}
+            </p>
+          )}
           <label className="form-group">
             <span className="form-label">Email</span>
             <input
@@ -87,6 +96,10 @@ export function LoginPage() {
 
           <p className="submit-note" style={{ textAlign: "center", maxWidth: "100%" }}>
             Нет аккаунта? <Link to="/register">Регистрация</Link>
+            {" · "}
+            <Link to="/reset-password" data-testid="forgot-password-link">
+              Забыли пароль?
+            </Link>
             {" · "}
             <Link to="/">На главную</Link>
           </p>

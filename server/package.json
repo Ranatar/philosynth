@@ -22,6 +22,7 @@
     "hono": "^4.6.0",
     "ioredis": "^5.4.0",
     "linkedom": "^0.18.13",
+    "nodemailer": "^10.0.10",
     "postgres": "^3.4.5"
   },
   "devDependencies": {

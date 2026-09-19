@@ -39,6 +39,8 @@ philosynth-service/
 │                                   # tsx-скрипты берут process.env.
 │                                   # 8.3: + STRIPE_PRICE_STARTER/PRO/ACADEMIC (читает
 │                                   # seed-plans напрямую из process.env, не env.ts)
+│                                   # 9.1: + MAIL_TRANSPORT, SMTP_*, MAIL_FROM, PUBLIC_BASE_URL,
+│                                   # MAIL_WORKER_INTERVAL_MS, MAIL_RETRY_DELAYS, RATE_LIMIT_MAIL_PER_HOUR
 ├── drizzle.config.ts               # Конфигурация Drizzle ORM
 │
 ├── packages/
@@ -108,6 +110,9 @@ philosynth-service/
 │   │       │                           #  DROP is_public, idx_syntheses_visibility, CHECK; SQL и
 │   │       │                           #  снапшот написаны рукой (generate спрашивал о переименовании
 │   │       │                           #  интерактивно), `drizzle-kit generate` после — «No schema changes»
+│   │       ├── 0006_mail.sql           # 9.1: users.email_verified_at, auth_tokens (CHECK purpose,
+│   │       │                           #  два индекса), mail_outbox (индекс status+next_attempt_at);
+│   │       │                           #  генерат, тег переименован
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -124,6 +129,9 @@ philosynth-service/
 │   │   ├── auth.ts                     # POST /auth/register, /login, /logout, GET /me
 │   │   │                               # 8.1: + GET /auth/users, POST /auth/users/:id/role,
 │   │   │                               #  GET /auth/audit (requireAdmin)
+│   │   │                               # 9.1: + POST /auth/email/verify/request|confirm,
+│   │   │                               #  POST /auth/password-reset/request|confirm; register
+│   │   │                               #  ставит письмо в той же транзакции
 │   │   ├── syntheses.ts                # CRUD /syntheses, /syntheses/:id
 │   │                               # 8.6: loadSynthesisForRead → viewer/scope, projectSynthesis/
 │   │                               #  projectPreview, гостевые GET /public и GET /:id (optionalAuth),
@@ -279,6 +287,18 @@ philosynth-service/
 │   │   │                               # 8.1: заслон LAST_ADMIN, строка account.deleted, actor_id → NULL
 │   │   ├── admin-audit.ts             # 8.1: writeAudit(exec, …) — db или tx вызывающего, ADMIN_ACTIONS
 │   │   │                               # (замороженный список), listAudit, ADMIN_SET_LOCK_KEY
+│   │   ├── auth-tokens.ts             # 9.1: одноразовые доводы из писем (sha256 в БД): issueToken
+│   │   │                               # гасит прежние, consumeToken — один условный UPDATE,
+│   │   │                               # isTokenUsable, revokeTokens; queueVerificationMail /
+│   │   │                               # queuePasswordResetMail — довод + письмо под точкой сохранения
+│   │   ├── mail/                       # 9.1: почта — четыре модуля с разделением обязанностей
+│   │   │   ├── transport.ts            # ТОЛЬКО отправка: nodemailer либо вывод в консоль
+│   │   │   │                           # (MAIL_TRANSPORT); classifySendError — род отказа
+│   │   │   ├── templates.ts            # два письма, текст и HTML: подтверждение адреса, сброс пароля
+│   │   │   ├── outbox.ts               # enqueue(exec, letter) — запись в ПЕРЕДАННОЙ транзакции;
+│   │   │   │                           # underSavepoint / tryEnqueue; getOutboxCounts
+│   │   │   └── worker.ts               # processOutbox: захват арендой, постоянный/временный отказ,
+│   │   │                               # decideRetry; startMailWorker / stopMailWorker (index.ts)
 │   │   ├── stripe-client.ts            # Тонкий fetch-клиент Stripe REST + проверка подписи
 │   │   │                               # webhook; STRIPE_API_BASE для мока (НОВОЕ 6.1, без SDK)
 │   │   │                               # 8.3: + Products/Prices (createProduct, listProducts,
@@ -425,6 +445,10 @@ philosynth-service/
 │   │   ├── pages/
 │   │   │   ├── LoginPage.tsx
 │   │   │   ├── RegisterPage.tsx
+│   │   │   ├── ResetPasswordPage.tsx   # 9.1: «/reset-password» (форма с адресом, ответ всегда один) и
+│   │   │   │                           #  «/reset-password/:token» (новый пароль → /login с пояснением)
+│   │   │   ├── VerifyEmailPage.tsx     # 9.1: «/verify-email/:token» — подтверждение, затем каталог
+│   │   │   │                           #  (гостю — вход с пояснением); довод гасится один раз
 │   │   │   ├── LandingPage.tsx         # 8.7: стартовая «/» для гостя — что это, живая
 │   │   │   │                           #  витрина (GET /syntheses/public, 4 карточки), цены
 │   │   │   │                           #  (PlansTable), крупная «Создать аккаунт»; вошедшего → /catalog
@@ -444,6 +468,8 @@ philosynth-service/
 │   │   ├── components/
 │   │   │   ├── layout/
 │   │   │   │   ├── Header.tsx              # 8.7: гостю «Войти · Регистрация», бренд → «/», выход → «/»
+│   │   │   │   │                           # 9.1: полоса «Адрес не подтверждён» + «Отправить письмо ещё раз»
+│   │   │   │   │                           #  (классы полосы 8.7; только при emailVerified === false)
 │   │   │   │   ├── Sidebar.tsx
 │   │   │   │   └── Layout.tsx              # 8.7: общий каркас гостя и вошедшего; меню/бургер — только вошедшему;
 │   │   │   │                               #  RequireAuth стоит на страницах, не на каркасе (гость → «/» со state.from)
@@ -592,6 +618,7 @@ philosynth-service/
 │   │                                   # идемпотентно по lookup_key philosynth_<name>
 │   ├── checks/                         # проверки, идущие без браузера
 │   │   ├── check-dotfiles.mjs          # 8.7: сторож правок .env.example/.gitignore
+│   │   │                               # 9.1: + восемь переменных почты и MAIL_TRANSPORT стенда
 │   │   ├── check-map-04.py             # сходимость карты 04 с фактом
 │   │   └── css-parity-audit.py         # единство globals.css с блоком <style> исходника
 │   ├── extract/                        # извлечение из одностраничника
@@ -631,6 +658,11 @@ philosynth-service/
     │                                   # Claude :3884 держит стрим по маркеру SLOW84 (слот занят → 409);
     │                                   # test-85 — фикстуры из живого файла одностраничника (T85_FILE),
     │                                   # без мока Claude; smoke-85 — чистые ядра + живая БД
+    │                                   # test-91 — почта БЕЗ почтового узла: фаза console (письма
+    │                                   # читаются из вывода сервера) и фаза smtp против мока SMTP
+    │                                   # внутри харнесса (net: 550/451/250 по адресату), отдельная
+    │                                   # пустая БД philosynth_t91, Chrome 131 из ~/.cache/puppeteer,
+    │                                   # puppeteer-core — из node_modules либо PUPPETEER_CORE
     ├── test-*-0.3b.ts                  # Регрессионные смоуки таксономии
     └── package.json                    # Маркер type=module
 ```

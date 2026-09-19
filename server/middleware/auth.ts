@@ -39,6 +39,9 @@ export interface AuthUser {
   displayName: string | null;
   role: "user" | "admin";
   balanceUsd: number;
+  /** Адрес подтверждён переходом по ссылке из письма (9.1). Пока ничего не
+   *  ограничивает — нужен полосе-напоминанию в шапке клиента. */
+  emailVerified: boolean;
 }
 
 export interface SessionInfo {
@@ -161,6 +164,7 @@ function toAuthUser(u: typeof schema.users.$inferSelect): AuthUser {
     role: u.role,
     // numeric(10,4) приходит строкой из postgres.js
     balanceUsd: Number(u.balanceUsd),
+    emailVerified: u.emailVerifiedAt !== null,
   };
 }
 

@@ -2,7 +2,8 @@
  * PhiloSynth Service — Drizzle-схема БД.
  * Источник истины: docs/02-data-model.md (ревизия 2026-07-22, v11).
  *
- * 29 таблиц (§2.1–2.29; admin_audit — беседа 8.1):
+ * 31 таблица (§2.1–2.31; admin_audit — беседа 8.1; auth_tokens и
+ * mail_outbox — беседа 9.1):
  *   users, sessions, syntheses, synthesis_lineage, sections,
  *   categories, category_edges, cluster_labels, theses, glossary_terms,
  *   dialogue_turns, element_versions, edit_plans, mode_results,
@@ -10,7 +11,7 @@
  *   api_keys, transactions, api_usage, subscription_plans,
  *   user_subscriptions, category_type_catalog, relationship_type_catalog,
  *   element_enrichments, characteristic_justifications,
- *   representation_transforms, admin_audit.
+ *   representation_transforms, admin_audit, auth_tokens, mail_outbox.
  *
  * v10: ext_graph_metrics, structure_sections (syntheses);
  *      clarity, breadth, depth_score, applicability (categories);
@@ -75,6 +76,10 @@ export const users = pgTable("users", {
    *  один раз при первом пополнении или подписке и переиспользуется
    *  (до 7.1 Customer создавался на каждую подписку — 02 §2.1). */
   stripeCustomerId: text("stripe_customer_id").unique(),
+  /** Момент подтверждения адреса (миграция 0006, беседа 9.1). NULL — не
+   *  подтверждён. Пока НЕ ограничивает ничего: вход разрешён, у всех
+   *  пользователей до 9.1 колонка пуста — запрет вышвырнул бы их разом. */
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -1191,4 +1196,82 @@ export const adminAudit = pgTable(
     index("idx_admin_audit_actor").on(t.actorId),
     index("idx_admin_audit_created").on(t.createdAt),
   ],
+);
+
+/* ──────────────────────── 2.30. auth_tokens ─────────────────────────── */
+
+/**
+ * Одноразовые доводы из писем (беседа 9.1; 02 §2.30, миграция 0006):
+ * подтверждение адреса и сброс пароля. В базе лежит ХЭШ довода (sha256,
+ * hex), а не он сам: утечка таблицы не должна давать ни входа, ни
+ * подтверждения — тот же принцип, что у sessions.id (0.2). Выдача нового
+ * довода того же назначения помечает прежние использованными
+ * (services/auth-tokens.ts), иначе старая ссылка из почты осталась бы
+ * рабочей. user_id — ON DELETE CASCADE; но 7.1 строку users анонимизирует,
+ * а не удаляет, поэтому account-deletion снимает доводы явно (урок 8.1).
+ */
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    purpose: text("purpose", { enum: ["email_verify", "password_reset"] }).notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_auth_tokens_user_purpose").on(t.userId, t.purpose),
+    index("idx_auth_tokens_hash").on(t.tokenHash),
+    check(
+      "auth_tokens_purpose_check",
+      sql`${t.purpose} IN ('email_verify','password_reset')`,
+    ),
+  ],
+);
+
+/* ──────────────────────── 2.31. mail_outbox ─────────────────────────── */
+
+/**
+ * Очередь исходящих писем (беседа 9.1; 02 §2.31, миграция 0006). Строка
+ * пишется services/mail/outbox.ts В ТРАНЗАКЦИИ действия, разбирает её
+ * services/mail/worker.ts. status: 'pending' → 'sent' | 'failed'.
+ * Постоянный отказ (5xx SMTP, негодный адрес) — сразу 'failed'; временный
+ * (4xx, сеть, таймаут) — attempts+1 и next_attempt_at с растущей задержкой,
+ * после последней попытки — 'failed'. Число 'pending' с прошедшим
+ * next_attempt_at — единственный признак того, что работник отстал,
+ * поэтому мёртвые письма в нём лежать не должны.
+ * Тела письма (в них живая ссылка-довод) работник затирает при переходе в
+ * 'sent' и 'failed' — иначе очередь выдавала бы то, что auth_tokens прячет
+ * хэшем.
+ * С пользователем строка НЕ связана намеренно: письмо — о совершённом
+ * действии и переживает любую судьбу учётной записи.
+ */
+export const mailOutbox = pgTable(
+  "mail_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    toEmail: text("to_email").notNull(),
+    subject: text("subject").notNull(),
+    bodyText: text("body_text").notNull(),
+    bodyHtml: text("body_html").notNull(),
+    status: text("status", { enum: ["pending", "sent", "failed"] })
+      .notNull()
+      .default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [index("idx_mail_outbox_status_next").on(t.status, t.nextAttemptAt)],
 );

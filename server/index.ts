@@ -3,6 +3,7 @@
  * Беседа 0.1: health-check + graceful shutdown.
  * Беседа 0.2: CORS, формат ошибок, auth-роуты, rate-limiter, WebSocket.
  * Беседа 6.1: billing/prompts-роуты, прогрев кэша реестра.
+ * Беседа 9.1: работник очереди писем (интервал; остановка в shutdown).
  * Дальше: syntheses/sections/… — беседы 1.x+.
  */
 import { serve } from "@hono/node-server";
@@ -30,6 +31,8 @@ import { importRoutes } from "./routes/import.js";
 import { billingRoutes } from "./routes/billing.js"; // беседа 6.1
 import { promptsRoutes } from "./routes/prompts.js"; // беседа 6.1
 import { warmCache } from "./services/prompt-registry.js";
+import { closeTransport } from "./services/mail/transport.js"; // беседа 9.1
+import { startMailWorker, stopMailWorker } from "./services/mail/worker.js"; // беседа 9.1
 import {
   lineageRoutes,
   lineageSearchRoutes,
@@ -105,6 +108,11 @@ void warmCache()
   .then((r) => console.log(`[prompt-registry] кэш прогрет: ${r.templates} шаблонов, ${r.configs} конфигов`))
   .catch((err) => console.warn("[prompt-registry] прогрев кэша:", (err as Error).message));
 
+// Работник очереди писем (беседа 9.1): разбирает mail_outbox интервалом
+// env.mail.workerIntervalMs; сбой прохода сервер не роняет (fail-open, как
+// прогрев выше); останавливается в shutdown() ДО закрытия пула БД.
+startMailWorker();
+
 const server = serve({ fetch: app.fetch, port: env.port }, (info) => {
   console.log(`PhiloSynth server: http://localhost:${info.port}/api/v1/health`);
 });
@@ -128,6 +136,8 @@ async function shutdown(): Promise<never> {
         (server as { closeIdleConnections(): void }).closeIdleConnections();
       }
     });
+    await stopMailWorker(); // 9.1: дождаться идущего прохода — ДО closeDb
+    closeTransport();
     await closeDb();
     await closeRedis();
     process.exit(0);

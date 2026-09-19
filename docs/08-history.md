@@ -524,6 +524,23 @@ META_NOT_ALLOWED — названием и причиной в форме; CSS-�
 dotfiles.mjs. Смоук 120 ✓, tests/test-87-requests2-12.mjs 101 ✓ ×2 в браузере,
 test-86 101 ✓, check:integration += 2ae/4ap; доки — scripts/patch-docs-conv87.py.
 Реестр §12 пуст; Фаза 8 закрыта целиком; следующая беседа не назначена.
+Фаза 9 «Самостоятельность пользователя» открыта 2026-09-19 (9.1, 9.2).
+Беседа 9.1 (почта: подтверждение адреса и сброс пароля; бэкенд + клиент)
+ЗАКРЫТА 2026-09-19: миграция 0006_mail (users.email_verified_at, auth_tokens —
+довод хэшем, mail_outbox); services/mail — transport (nodemailer 10 | console),
+templates, outbox (запись исполнителем вызывающего + точка сохранения), worker
+(аренда SKIP LOCKED, постоянный/временный отказ, шесть попыток, тела затираются
+после исхода); services/auth-tokens (72 ч / 1 ч, прежний довод гасится новым);
+четыре маршрута + регистрация с письмом одной транзакцией; сброс завершает ВСЕ
+сессии и подтверждает адрес (вариант «а» — решение пользователя); вход
+неподтверждённому не запрещён; production без SMTP_HOST не стартует; клиент —
+три гостевых маршрута, «Забыли пароль?», полоса в шапке без новых правил CSS.
+Тесты нашли три дефекта первого запроса (451 на RCPT TO как постоянный, пустой
+PUBLIC_BASE_URL, заслон от повтора на состоянии). Попутно починен
+check:integration, падавший на чистом HEAD после перекладки scripts/ 15.09.
+Смоук 117 ✓, tests/test-91-requests2-11.mjs 116 ✓ ×2 (console + мок SMTP +
+Chrome 131), check:integration += 2af/4aq/5ad; доки —
+scripts/patches/patch-docs-conv91.py. Реестр §12 пуст; ближайшая беседа — 9.2.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
@@ -4918,6 +4935,89 @@ select TaxonomySelector'ом по каталогу (долг §12 → 5.4).
 
 ---
 
+### Беседа 9.1 — Почта: подтверждение адреса и сброс пароля (бэкенд + клиент) [ЗАКРЫТА 2026-09-19]
+
+> Первая беседа Фазы 9. Исходное состояние: почты нет ни в каком виде,
+> забывший пароль возвращается только через владельца с доступом к машине
+> (`scripts/seed/reset-password.ts` — он ОСТАЁТСЯ запасным ходом). Почтового
+> узла для разработки у пользователя нет: всё проверено в режиме `console` и
+> на моке SMTP внутри харнесса. HEAD на входе — 3e73e0a.
+
+#### Помодульно
+
+- `server/env.ts` — `env.mail` (transport, smtp, from, publicBaseUrl,
+  workerIntervalMs, retryDelaysMs) и `env.rateLimit.mailRequestsPerHour`;
+  отказы при импорте: production без `SMTP_HOST`/`MAIL_FROM` (и при
+  `MAIL_TRANSPORT=console`), `smtp` без узла, неизвестный транспорт. Пустая
+  переменная = «не задано».
+- `server/db/schema.ts` + миграция `0006_mail` (генерат, тег переименован,
+  `generate` после — «No schema changes»): `users.email_verified_at`,
+  `auth_tokens` (CHECK purpose, индексы (user_id, purpose) и token_hash),
+  `mail_outbox` (индекс (status, next_attempt_at)). Таблиц — 31.
+- `server/services/mail/transport.ts` — только отправка: `sendMail` (исход —
+  значение с родом отказа, не исключение), `classifySendError`,
+  `formatConsoleMail` + границы блока, `closeTransport`.
+- `mail/templates.ts` — `verifyEmailLetter`, `passwordResetLetter`: текст +
+  HTML без внешних ресурсов, имя экранируется, без отписки.
+- `mail/outbox.ts` — `enqueue(exec, letter)`, `underSavepoint`, `tryEnqueue`,
+  `getOutboxCounts`.
+- `mail/worker.ts` — `processOutbox({ send, now, batchSize, onlyIds })`,
+  `decideRetry` (чистая), `startMailWorker`/`stopMailWorker`, затирание тел.
+- `services/auth-tokens.ts` — `issueToken`, `consumeToken`, `isTokenUsable`,
+  `revokeTokens`, `tokenLink`, `queueVerificationMail`,
+  `queuePasswordResetMail`, `TOKEN_TTL_HOURS`.
+- `routes/auth.ts` — четыре маршрута 03 §2.1, регистрация транзакцией,
+  `emailVerified` в `/me`; `middleware/auth.ts` — `AuthUser.emailVerified`;
+  `account-deletion.ts` — удаление доводов; `index.ts` — запуск работника и
+  остановка до `closeDb`.
+- `packages/shared/constants/auth.ts` += `PASSWORD_RESET_REQUESTED_MESSAGE`,
+  `TOKEN_INVALID_MESSAGE`.
+- Клиент: `pages/ResetPasswordPage.tsx` (два экрана), `VerifyEmailPage.tsx`,
+  `App.tsx` (три гостевых маршрута вне Layout), `LoginPage` («Забыли
+  пароль?», notice), `Header` (`UnverifiedEmailBanner`), `auth-store` (четыре
+  действия), `api/client.ts` (`TOKEN_INVALID`).
+- Оснастка: `.env.example` и `env.local.example` (почта), сторож dotfiles,
+  README «Почта», `integration-check.mts` (починка путей после перекладки
+  scripts/ + 2af/4aq/5ad).
+
+#### Решения и отступления
+
+См. «По факту 9.1» в 07 (18 пунктов). Главные: точка сохранения вокруг
+довода и письма; код ответа узла раньше `EENVELOPE`; EAUTH/CONN — временные;
+аренда вместо транзакции на время SMTP; часы базы; тела писем затираются;
+пароль до довода; сброс подтверждает адрес (решение пользователя);
+доводы удаляются при анонимизации аккаунта.
+
+#### Что нашли тесты
+
+Три дефекта первого запроса, все — не видимые смоуком: (1) 451 на `RCPT TO`
+классифицировался постоянным (nodemailer ставит `EENVELOPE` при любом коде) —
+поймал мок SMTP; (2) `PUBLIC_BASE_URL=` пустой строкой давал ссылки без узла
+(`??`) — поймал первый же прогон console; (3) три клика одного тика уходили
+тремя запросами — заслон стоял на состоянии; тест считает запросы. Сверх
+того: флак смоука 1 из 3 (микросекунды `now()` против миллисекунд `Date`);
+патч доков задвоил блок на втором прогоне (дописывание в текст прежней
+правки без `superseded_by` — урок 8.6 повторён и пойман проверкой на чистой
+копии); ревью завершения нашло живые ссылки-доводы в телах `mail_outbox`.
+
+#### Проверки
+
+Смоук `tests/smoke-91-request1.mjs` 117 ✓; `tests/test-91-requests2-11.mjs`
+116 ✓ ×2 (≈ 95 с; Chrome 131.0.6778.204, puppeteer-core 23.11.1);
+typecheck 0; vite build чисто; audit ✓; css-parity 0 из 586; check-map-04 без
+расхождений; `check:integration` OK c 2af/4aq/5ad; dotfiles OK;
+`patch-docs-conv91.py` на чистой копии ×3 — идемпотентен, `diff -rq` сошёлся.
+
+#### Файлы в контекст следующих бесед
+
+Беседе 9.2 из 9.1 не нужно ничего (пересечений по файлам нет). Любой
+беседе, которая шлёт письмо: `services/mail/outbox.ts` (`enqueue` в своей
+транзакции; `tryEnqueue`, если письмо не должно отменять действие),
+`mail/templates.ts` (новый шаблон — сюда), `services/auth-tokens.ts` (если
+письму нужна одноразовая ссылка). Любой беседе с новой таблицей, имеющей FK
+на users, — `services/account-deletion.ts`. Харнесс-образец почты без
+почтового узла — `tests/test-91-requests2-11.mjs`.
+
 ### Беседа 8.7 — Витрина: стартовая страница и управление публичностью (клиент) [ЗАКРЫТА 2026-09-15]
 
 > Запрос 1 целиком (App/Layout/Header, LandingPage, PlansTable,
@@ -5272,6 +5372,20 @@ dotfile и `.gitignore`, потерянные загрузкой; float-срав
 Шапка `docs/07-conversation-protocol.md` дословно: датированные врезки
 по итогам бесед, от свежих к старым.
 
+> **Правки 2026-09-19 (итоги беседы 9.1)**: почта закрыта (запрос 1 + смоук
+> tests/smoke-91-request1.mjs 117 ✓ + все тестовые запросы
+> tests/test-91-requests2-11.mjs 116 ✓ ×2; check:integration += 2af/4aq/5ad).
+> 03 — §1.1 (A2a сделано, + A2b), преамбула §2 (гостевые маршруты auth), §2.1
+> (register ставит письмо, emailVerified в /auth/me, четыре маршрута почты
+> вместо заглушки «A2a, Фаза 3»), §4.3 (TOKEN_INVALID); 02 — ER, §2.1
+> (email_verified_at + примечание), §2.30 auth_tokens, §2.31 mail_outbox; 01 —
+> стек, §6; 04 §4 — строки 9.1; 05 — mail/, auth-tokens, 0006, страницы,
+> Header, сторож, .env.example, tests; 07 — «По факту 9.1», врезка Фазы 9,
+> §11 (узлы 0.5 и 9.1), §12; 09 — §2 (перекладка scripts/, инвариант
+> «последняя миграция»), §3 (savepoint, каскад при анонимизации, часы базы),
+> §5 (nodemailer 10, EAUTH, EENVELOPE, пустая переменная), §6 (StrictMode и
+> одноразовый довод, ref-заслон от повторного клика).
+>
 > **Правки 2026-09-15 (итоги беседы 8.6)**: модель публичности и гостевой
 > доступ закрыты (запрос 1 + смоук tests/smoke-86-request1.mjs 87 ✓ + все
 > тестовые запросы tests/test-86-requests2-14.mjs 102 ✓ ×2 на отдельной пустой

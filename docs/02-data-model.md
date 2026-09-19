@@ -29,7 +29,10 @@ users ─────────────┐
   ├── api_keys (encrypted)
   ├── transactions
   ├── api_usage
+  ├── auth_tokens (одноразовые доводы из писем; CASCADE; 9.1)
   └── admin_audit (actor_id → users, SET NULL; 8.1)
+
+mail_outbox ───────── (очередь писем; с пользователем НЕ связана; 9.1)
   
 prompt_templates ──── (глобальные, не привязаны к пользователю)
 synthesis_configs ─── (глобальные)
@@ -49,6 +52,7 @@ CREATE TABLE users (
   balance_usd   NUMERIC(10, 4) NOT NULL DEFAULT 0,
   stripe_customer_id TEXT UNIQUE,  -- 7.1 (миграция 0003): один Stripe Customer на пользователя,
                                    -- создаётся при первом topup/подписке (ensureStripeCustomer)
+  email_verified_at TIMESTAMPTZ,   -- 9.1 (миграция 0006): NULL — адрес не подтверждён
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -71,6 +75,15 @@ CREATE TABLE users (
 > срабатывает — `account-deletion` обнуляет `actor_id` строк этого
 > пользователя явно, той же транзакцией: след действий остаётся,
 > привязка к личности снимается.
+
+> **9.1:** `email_verified_at` ставит переход по ссылке из письма — `POST
+> /auth/email/verify/confirm` либо успешный `POST /auth/password-reset/confirm`
+> (ссылка сброса пришла на тот же ящик). Колонка пока НЕ ограничивает ничего:
+> у всех пользователей до 9.1 она пуста, и запрет входа вышвырнул бы их
+> разом; решение о том, что закрывать неподтверждённым, — отдельное. При
+> удалении аккаунта (7.1, анонимизация) доводы `auth_tokens` пользователя
+> удаляются явно, той же транзакцией: CASCADE на живой строке не срабатывает
+> (тот же урок, что `admin_audit.actor_id` 8.1).
 
 ### 2.2. sessions
 
@@ -899,6 +912,92 @@ activateVersion / createConfigVersion / activateConfigVersion — актор и�
 DTO `AdminAuditEntry` несёт дополнительно `actorEmail` (LEFT JOIN users по
 actor_id, не колонка; null у снятого актора) — вкладка «Доступ» показывает
 email вместо uuid.
+
+### 2.30. auth_tokens
+
+Одноразовые доводы из писем (беседа 9.1, миграция `0006_mail`): подтверждение
+адреса и сброс пароля. Пишется только через `server/services/auth-tokens.ts`.
+
+```sql
+CREATE TABLE auth_tokens (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  purpose     TEXT NOT NULL CHECK (purpose IN ('email_verify','password_reset')),
+  token_hash  TEXT NOT NULL,     -- sha256(довод), hex; сам довод — только в письме
+  expires_at  TIMESTAMPTZ NOT NULL,  -- email_verify: +72 ч; password_reset: +1 ч
+  used_at     TIMESTAMPTZ,       -- погашен переходом ЛИБО выдачей следующего
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_auth_tokens_user_purpose ON auth_tokens(user_id, purpose);
+CREATE INDEX idx_auth_tokens_hash ON auth_tokens(token_hash);
+```
+
+В базе лежит ХЭШ, а не довод: утечка таблицы не должна давать ни входа, ни
+подтверждения (тот же принцип, что `sessions.id`, 0.2). `issueToken` гасит
+прежние непогашенные доводы того же пользователя и назначения — иначе старая
+ссылка из почты осталась бы рабочей. `consumeToken` — один условный `UPDATE …
+WHERE used_at IS NULL AND expires_at > now() RETURNING user_id`: два
+одновременных перехода оба не пройдут; просроченный, использованный и
+несуществующий довод неразличимы (03 §4.3 TOKEN_INVALID). Строки не
+удаляются (кроме удаления аккаунта, §2.1): погашенные — след выдачи.
+
+### 2.31. mail_outbox
+
+Очередь исходящих писем (беседа 9.1, миграция `0006_mail`). Ставит
+`server/services/mail/outbox.ts`, разбирает `mail/worker.ts`.
+
+```sql
+CREATE TABLE mail_outbox (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  to_email        TEXT NOT NULL,
+  subject         TEXT NOT NULL,
+  body_text       TEXT NOT NULL,
+  body_html       TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'pending',  -- 'pending'|'sent'|'failed'
+  attempts        INT NOT NULL DEFAULT 0,           -- состоявшиеся ИСХОДЫ отправки
+  last_error      TEXT,
+  next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_at         TIMESTAMPTZ
+);
+
+CREATE INDEX idx_mail_outbox_status_next ON mail_outbox(status, next_attempt_at);
+```
+
+**Постановка — в транзакции действия** (`enqueue(exec, letter)`, образец —
+`writeAudit` 8.1): падение почты не отменяет совершённого действия (отправка
+отделена очередью), откат действия не оставляет письма. Сверх этого довод и
+письмо пишутся под ТОЧКОЙ СОХРАНЕНИЯ (`underSavepoint`): сбой самой
+постановки откатывает только её — без savepoint любая ошибка INSERT переводит
+транзакцию PostgreSQL в aborted, и несостоявшееся письмо стоило бы человеку
+регистрации.
+
+**Два рода отказа** (`worker.ts`, род определяет `transport.classifySendError`):
+постоянный (5xx SMTP; негодный адрес — `EENVELOPE` БЕЗ ответа узла) → сразу
+`failed` с `last_error`, повторов нет (код ответа узла решает ПЕРВЫМ: отказ
+`RCPT TO` nodemailer помечает `EENVELOPE` при любом коде, и 451 на адресате —
+временный; найдено тестом R7 на моке SMTP); временный (4xx, сеть, таймаут) → `attempts+1` и
+`next_attempt_at` с растущей задержкой (1 мин, 5, 15, 60 мин, 6 ч —
+`MAIL_RETRY_DELAYS`), после шестой попытки → `failed`. Регистрация открытая:
+опечатка в адресе или бот дают постоянный отказ, и если повторять такие
+письма, число `pending` с прошедшим `next_attempt_at` — единственный признак
+отставшего работника — забьётся мёртвыми. Отказ авторизации у узла (`EAUTH`,
+535) и отказ на стадии соединения считаются ВРЕМЕННЫМИ вопреки коду 5xx: это
+беда настройки службы, а не адресата.
+
+**Захват — арендой**, без долгой транзакции: `UPDATE … SET next_attempt_at =
+now() + 2 мин WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED LIMIT 20)
+RETURNING *`; разговор с узлом идёт вне транзакции. Два процесса одно письмо
+не возьмут; процесс, умерший посреди отправки, вернёт письмо в очередь по
+истечении аренды (доставка «не менее раза»). С пользователем строка не
+связана намеренно: письмо — о совершённом действии.
+
+**Тела затираются.** В `body_text`/`body_html` лежит живая ссылка-довод, а
+`auth_tokens` хранит довод хэшем как раз затем, чтобы утечка таблицы ничего не
+давала. Поэтому при переходе в `sent` и в `failed` работник записывает в оба
+поля пустую строку; остаются адресат, тема, исход и `last_error`. В `pending`
+ссылка лежит неизбежно — секунды до прохода работника.
 
 ## 3. Извлечение гранулярных элементов из HTML
 

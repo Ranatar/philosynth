@@ -9,7 +9,7 @@
 `docs/09-lessons.md`. Здесь остались два правила, которые не стареют,
 и комплект следующей беседы.
 
-## Состояние на 2026-09-15
+## Состояние на 2026-09-19
 
 Фазы 0–8 закрыты. Фаза 8 «Пусковая пригодность» закрыта целиком 2026-09-15
 беседой 8.7 (витрина — стартовая страница «/», гостевая шапка и маршруты,
@@ -19,7 +19,12 @@
 pausedState чужому зарегистрированному на 'full' отдаётся как до 8.6; отвязки
 родителя нет; админского UI тарифов нет; `gm-hint` без CSS-правила
 предсуществует; test-16b/17/52 мертвы с 8.6 (is_public) и не переписаны.
-Кандидаты для новой фазы — по итогам прогона на чистой машине владельцем.
+ФАЗА 9 «Самостоятельность пользователя» ОТКРЫТА 2026-09-19: 9.1 (почта:
+подтверждение адреса и сброс пароля; бэкенд + клиент) и 9.2 (ручная правка
+текста подраздела; бэкенд + клиент). Беседы независимы друг от друга и от
+всего проведённого — порядок любой. Беседа 9.1 ЗАКРЫТА 2026-09-19 (почта —
+«По факту 9.1» в 07, глава 9.1 в 08; реестр §12 пуст). Ближайшая и последняя
+назначенная — 9.2. Тексты — `07` §8, узлы графа — `07` §11, задачи — `06` §2.
 
 Владельцу службы для запуска биллинга: README «Как поднять биллинг»
 (ключи Stripe → `npm run stripe:create-prices` → `STRIPE_PRICE_*` в `.env`
@@ -28,14 +33,15 @@ pausedState чужому зарегистрированному на 'full' от
 **Dotfile после выкладки — теперь короче.** Образец стенда называется
 `env.local.example` (без точки), состояние стенда — `dev-billing-state/`; 4ak
 падает, если в дереве снова есть `.env.local.example`. Dotfile остались два:
-`.env.example` (`grep STRIPE_PRICE_ .env.example` — три переменные) и
+`.env.example` (`grep STRIPE_PRICE_ .env.example` — три переменные; с 9.1 —
+ещё восемь переменных почты, сторож их знает) и
 `.gitignore` (`grep dev-billing-state/`) — их ПРАВКИ выкладка всё ещё может
 потерять (8.7 нашла пятую потерю); после каждой выкладки на свежем клоне —
 `npm run check:dotfiles` (секунда, без БД; 8.7), затем `check:integration`.
 
 ## Универсальный минимум любой серверной беседы
 
-- `server/db/schema.ts` — 29 таблиц (с 8.1: + admin_audit), единственный
+- `server/db/schema.ts` — 31 таблица (с 9.1: + auth_tokens, mail_outbox), единственный
   источник структуры БД
 - `server/db/index.ts` — db/sql/closeDb (нужен всем сервисам)
 - `server/env.ts` — типизированные env (нужен при касании конфигурации)
@@ -50,7 +56,8 @@ pausedState чужому зарегистрированному на 'full' от
 - `server/integration-check.mts` (`npm run check:integration -w server`) —
   импорты/экспорты/async; расширять списком новых модулей беседы
   (8.4 — 2ab/4am; 8.5 — 2ac/4an/5ab; 8.6 — 2ad/4ao/5ac; 8.7 — 2ae/4ap;
-  следующая серия — 2af/4aq/5ad). НОВЫЕ СЕКЦИИ — `async function sectionNN()` + `await`, не
+  9.1 — 2af/4aq/5ad; следующая серия — 2ag/4ar/5ae). Секции 5xx с живой БД —
+  ДО closeDb: рядом с `await section5ad()`, а не в хвост файла (9.1). НОВЫЕ СЕКЦИИ — `async function sectionNN()` + `await`, не
   блоками на верхнем уровне: тело модуля упёрлось в TS2563 (09 §1, 8.5).
   Проверять на СВЕЖЕМ клоне. Требует посевов prompts/configs/taxonomy в
   рабочей БД и живого Redis; ≈ 100 с — в фоне (`setsid nohup … &` + `sleep`).
@@ -59,9 +66,22 @@ pausedState чужому зарегистрированному на 'full' от
   снимать через `ps aux | grep -E … | awk | xargs kill -9`, не pkill по маске
   (09 §1, §4, §9 п.9).
 
-## Комплект ближайшей беседы
+## Комплект ближайшей беседы — 9.2 (правка подраздела)
 
-Беседа не назначена. Для любой следующей клиентской беседы сверх
+Сверх универсального минимума: `server/routes/sections.ts`,
+`server/routes/elements.ts` (образец `PATCH /:id/capsule`),
+`server/services/element-editor.ts` (**`updateCapsule`, строки 1245–1281 —
+прямой образец**), `element-versioning.ts`, `element-renderer.ts`
+(`locatorsFor`, `RenderableTable`, `TABLE_SUBSECTIONS`),
+`server/services/generation-service.ts` (`findSubsection`,
+`extractSubsectionContent`, `spliceSubsectionHtml` — строка 2128 и далее),
+`client/src/utils/capsule-html.ts` (8.4), `components/document/*`,
+`components/edit/EditSectionCard.tsx`, `api/elements.ts`,
+`stores/synthesis-store.ts`; `docs/fragments-for-conversations/5-6-ui-kit.md`.
+Исходник не нужен. Из 9.1 беседе 9.2 не нужно НИЧЕГО: пересечений по файлам
+нет (9.1 — `routes/auth.ts` и `services/mail/`).
+
+Для любой следующей клиентской беседы сверх
 универсального минимума: `client/src/App.tsx` (маршруты: Layout общий, защита
 на страницах, гостевые «/», «/explore», «/synthesis/:id»),
 `components/layout/*`, `stores/auth-store.ts`, `stores/synthesis-store.ts`
@@ -71,6 +91,31 @@ pausedState чужому зарегистрированному на 'full' от
 образцы — `tests/test-87-requests2-12.mjs` (браузер, два пользователя в
 раздельных контекстах) и `tests/test-86-requests2-14.mjs` (что гость получает
 по API).
+
+## Что 9.1 оставила знать всем беседам
+
+- Письмо шлётся НЕ из запроса: `enqueue(exec, letter)` из
+  `services/mail/outbox.ts` исполнителем своей транзакции; если письмо не
+  должно отменять действие — `tryEnqueue`/`underSavepoint` (любая ошибка
+  INSERT иначе уводит транзакцию PG в aborted). Новый шаблон — в
+  `mail/templates.ts`, одноразовая ссылка — `services/auth-tokens.ts`.
+- Почтового узла для разработки НЕТ: `MAIL_TRANSPORT=console` печатает письмо
+  в вывод сервера между `[mail:console] письмо` и `[mail:console] конец`;
+  харнесс-образец — `tests/test-91-requests2-11.mjs` (фаза console + мок SMTP
+  на `net`, фазы последовательно — два работника разберут очередь друг друга).
+- Проверки на ОБЩЕЙ базе работника трогают только свои строки:
+  `processOutbox({ send, onlyIds })`.
+- Новая таблица с FK на users — вопрос к `account-deletion.ts`: строка users
+  анонимизируется, CASCADE/SET NULL молчат (8.1, 9.1).
+- `AuthUser` (сервер и клиент — 4e сверяет наборы) несёт `emailVerified`;
+  подтверждение адреса НИЧЕГО не ограничивает.
+- Заслон от повторного действия в React — `useRef`, не состояние; одноразовый
+  запрос в эффекте — тоже под ref (StrictMode). Тест считает запросы.
+- Браузер для тестов — Chrome 131 из `~/.cache/puppeteer/chrome/linux-131…`
+  и `puppeteer-core` 23 (в песочнице — в `node_modules` mermaid-cli под
+  `~/.npm-global`; переменная `PUPPETEER_CORE`), не системный Chromium.
+- Перемещение файлов — `grep` путей в `integration-check.mts` и прогон на
+  свежем клоне: перекладка `scripts/` 15.09 оставила интеграцию падающей.
 
 ## Что 8.7 оставила знать всем беседам
 

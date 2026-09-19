@@ -36,6 +36,31 @@
  *   GET  /auth/audit ?limit=50 → { entries: AdminAuditEntry[] } — последние
  *     строки журнала, новые первыми (limit 1..500).
  *
+ *   Почта (беседа 9.1; services/auth-tokens.ts + services/mail/*):
+ *   POST /auth/register — письмо с подтверждением адреса ставится в очередь
+ *     В ТОЙ ЖЕ транзакции, что и создание пользователя (под точкой
+ *     сохранения: сбой постановки регистрацию не отменяет, откат регистрации
+ *     письма не оставляет).
+ *   POST /auth/email/verify/request (requireAuth) → { ok, alreadyVerified,
+ *     sent } — повторная отправка себе; адрес уже подтверждён → 200 без письма.
+ *   POST /auth/email/verify/confirm { token } → { ok: true } — БЕЗ сессии
+ *     (ссылку открывают и в другом браузере); негодный довод → 400
+ *     TOKEN_INVALID одним кодом на просроченный/использованный/чужой.
+ *   POST /auth/password-reset/request { email } → { ok: true, message } —
+ *     БЕЗ сессии; ОДИНАКОВЫЙ ответ, есть такой адрес или нет.
+ *   POST /auth/password-reset/confirm { token, newPassword } → { ok: true } —
+ *     правила пароля те же, что при регистрации (details.newPassword);
+ *     негодный довод → 400 TOKEN_INVALID; успех — смена пароля, ЗАВЕРШЕНИЕ
+ *     ВСЕХ сессий пользователя и подтверждение адреса, если он ещё не
+ *     подтверждён (переход по ссылке из письма доказывает владение ящиком
+ *     ровно так же, как ссылка подтверждения — «По факту 9.1»).
+ *   Вход при неподтверждённом адресе НЕ запрещён; подтверждение пока не
+ *     ограничивает ничего — только отмечается (users.email_verified_at,
+ *     AuthUser.emailVerified).
+ *   Запросы, порождающие письмо по чужой воле (verify/request,
+ *     password-reset/request), — под отдельным лимитом scope 'mail'
+ *     (RATE_LIMIT_MAIL_PER_HOUR) сверх общего rateLimiter index.ts.
+ *
  * Правила пароля/email/имени — @philosynth/shared/constants/auth (8.1 п.1:
  * второго свода правил быть не должно — bootstrap-admin проверяет то же).
  *
@@ -49,13 +74,16 @@ import {
   DISPLAY_NAME_MAX_LENGTH,
   EMAIL_RE,
   PASSWORD_MIN_LENGTH,
+  PASSWORD_RESET_REQUESTED_MESSAGE,
   PASSWORD_TOO_SHORT_MESSAGE,
+  TOKEN_INVALID_MESSAGE,
 } from "@philosynth/shared/constants/auth";
 import type { AdminUserRow, UserRole } from "@philosynth/shared/types/admin";
-import { and, count, desc, eq, ilike, ne, notLike, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, isNull, ne, notLike, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { db, schema } from "../db/index.js";
+import { env } from "../env.js";
 import { requireAdmin } from "../middleware/admin-only.js";
 import {
   clearSessionCookie,
@@ -78,6 +106,14 @@ import {
   listAudit,
   writeAudit,
 } from "../services/admin-audit.js"; // 8.1
+import {
+  consumeToken,
+  isTokenUsable,
+  queuePasswordResetMail,
+  queueVerificationMail,
+  revokeTokens,
+} from "../services/auth-tokens.js"; // 9.1
+import { rateLimiter } from "../middleware/rate-limiter.js";
 
 /* ── Валидация тела запроса ──────────────────────────────────────────── */
 
@@ -155,14 +191,22 @@ authRoutes.post("/register", async (c) => {
 
   const passwordHash = await hashPassword(password);
   try {
-    const [user] = await db
-      .insert(schema.users)
-      .values({ email, passwordHash, displayName: displayName ?? null })
-      .returning({
-        id: schema.users.id,
-        email: schema.users.email,
-        displayName: schema.users.displayName,
-      });
+    // 9.1: пользователь и письмо с подтверждением — ОДНОЙ транзакцией.
+    // queueVerificationMail работает под точкой сохранения: сбой постановки
+    // письма регистрацию не отменяет (человек нажмёт «Отправить ещё раз»),
+    // а откат регистрации (23505) уносит и довод, и письмо.
+    const user = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(schema.users)
+        .values({ email, passwordHash, displayName: displayName ?? null })
+        .returning({
+          id: schema.users.id,
+          email: schema.users.email,
+          displayName: schema.users.displayName,
+        });
+      await queueVerificationMail(tx, created!);
+      return created!;
+    });
     return c.json({ user }, 201);
   } catch (err) {
     // Гонка/дубль по UNIQUE(email) — postgres код 23505.
@@ -344,6 +388,7 @@ authRoutes.get("/me", requireAuth, (c) => {
       displayName: user.displayName,
       role: user.role,
       balanceUsd: user.balanceUsd,
+      emailVerified: user.emailVerified,
     },
   });
 });
@@ -401,8 +446,139 @@ authRoutes.patch("/me", requireAuth, async (c) => {
       displayName: updated.displayName,
       role: updated.role,
       balanceUsd: Number(updated.balanceUsd),
+      emailVerified: updated.emailVerifiedAt !== null,
     },
   });
+});
+
+/* ── Почта: подтверждение адреса и сброс пароля (беседа 9.1) ─────────── */
+
+/** Лимит на запросы, порождающие письмо (сверх общего лимитера index.ts):
+ *  форма сброса открыта без авторизации — ею нельзя давать засыпать ящик */
+const mailLimiter = rateLimiter({
+  scope: "mail",
+  limit: env.rateLimit.mailRequestsPerHour,
+  windowSec: 3600,
+});
+
+/** Адреса анонимизированных 7.1 строк — писать туда некому */
+const DELETED_EMAIL_SUFFIX = "@deleted.invalid";
+
+function tokenInvalid(c: { json: (body: unknown, status: 400) => Response }): Response {
+  return c.json({ error: TOKEN_INVALID_MESSAGE, code: "TOKEN_INVALID" }, 400);
+}
+
+authRoutes.post("/email/verify/request", mailLimiter, requireAuth, async (c) => {
+  const user = c.get("user");
+  if (user.emailVerified) {
+    return c.json({ ok: true, alreadyVerified: true, sent: false });
+  }
+  const sent = await queueVerificationMail(db, {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+  });
+  if (!sent) {
+    return c.json(
+      { error: "Не удалось поставить письмо в очередь — попробуйте позже", code: "INTERNAL_ERROR" },
+      500,
+    );
+  }
+  return c.json({ ok: true, alreadyVerified: false, sent: true });
+});
+
+authRoutes.post("/email/verify/confirm", async (c) => {
+  const body = await readJson(c);
+  const token = typeof body?.token === "string" ? body.token.trim() : "";
+  if (!token) return tokenInvalid(c);
+
+  const ok = await db.transaction(async (tx) => {
+    const userId = await consumeToken(tx, token, "email_verify");
+    if (!userId) return false;
+    // Повторное подтверждение уже подтверждённого адреса дату не двигает
+    await tx
+      .update(schema.users)
+      .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(schema.users.id, userId), isNull(schema.users.emailVerifiedAt)));
+    return true;
+  });
+  return ok ? c.json({ ok: true }) : tokenInvalid(c);
+});
+
+authRoutes.post("/password-reset/request", mailLimiter, async (c) => {
+  const body = await readJson(c);
+  const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (!email || !EMAIL_RE.test(email)) {
+    // Формат адреса существования не выдаёт — отказ по форме допустим
+    return c.json(
+      {
+        error: "Невалидные данные",
+        code: "VALIDATION_ERROR",
+        details: { email: email ? "Невалидный email" : "Обязательное поле" },
+      },
+      400,
+    );
+  }
+  if (!email.endsWith(DELETED_EMAIL_SUFFIX)) {
+    const rows = await db
+      .select({
+        id: schema.users.id,
+        email: schema.users.email,
+        displayName: schema.users.displayName,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.email, email))
+      .limit(1);
+    // Сбой постановки пишется в лог; ответ от него НЕ зависит (иначе он
+    // различал бы существующий адрес и несуществующий)
+    if (rows[0]) await queuePasswordResetMail(db, rows[0]);
+  }
+  // ОДИН ответ на оба случая (анти-enumeration, как login 0.2)
+  return c.json({ ok: true, message: PASSWORD_RESET_REQUESTED_MESSAGE });
+});
+
+authRoutes.post("/password-reset/confirm", async (c) => {
+  const body = await readJson(c);
+  const token = typeof body?.token === "string" ? body.token.trim() : "";
+  const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
+
+  // Пароль проверяется ДО довода: короткий пароль не должен сжигать ссылку
+  const details: Record<string, string> = {};
+  if (!newPassword) details.newPassword = "Обязательное поле";
+  else if (newPassword.length < PASSWORD_MIN_LENGTH) {
+    details.newPassword = PASSWORD_TOO_SHORT_MESSAGE;
+  }
+  if (Object.keys(details).length > 0) {
+    return c.json({ error: "Невалидные данные", code: "VALIDATION_ERROR", details }, 400);
+  }
+  // Дешёвая предпроверка — bcrypt не гоняется на заведомо негодном доводе;
+  // решает погашение в транзакции ниже
+  if (!token || !(await isTokenUsable(db, token, "password_reset"))) return tokenInvalid(c);
+
+  const passwordHash = await hashPassword(newPassword);
+  const ok = await db.transaction(async (tx) => {
+    const userId = await consumeToken(tx, token, "password_reset");
+    if (!userId) return false;
+    const now = new Date();
+    await tx
+      .update(schema.users)
+      .set({
+        passwordHash,
+        updatedAt: now,
+        // Вариант (а): ссылка пришла на этот ящик — владение доказано
+        emailVerifiedAt: sql`coalesce(${schema.users.emailVerifiedAt}, ${now.toISOString()}::timestamptz)`,
+      })
+      .where(eq(schema.users.id, userId));
+    // В отличие от password-change (0.5) «текущей» сессии нет: гибнут ВСЕ
+    await tx.delete(schema.sessions).where(eq(schema.sessions.userId, userId));
+    // Адрес подтверждён этим же переходом — ждущие ссылки подтверждения не нужны
+    await revokeTokens(tx, userId, "email_verify", now);
+    return true;
+  });
+  if (!ok) return tokenInvalid(c);
+  // Если запрос пришёл с cookie этого пользователя — она уже мертва
+  clearSessionCookie(c);
+  return c.json({ ok: true });
 });
 
 /* ── Управление доступом (беседа 8.1) ────────────────────────────────── */
