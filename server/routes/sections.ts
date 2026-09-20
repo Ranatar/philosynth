@@ -5,6 +5,15 @@
  *   GET /syntheses/:id/sections            → { sections: SectionSummary[] }
  *   GET /syntheses/:id/sections/:key       → { section: SectionFull }
  *   GET /syntheses/:id/sections/:key/context → SectionContextPreview
+ *   GET   /syntheses/:id/sections/:key/subsections/:name → SubsectionSource (9.2)
+ *   PATCH /syntheses/:id/sections/:key/subsections/:name { html }        (9.2)
+ *
+ * Беседа 9.2 — ручная правка. ЕДИНИЦА ПРАВКИ — ПОДРАЗДЕЛ: маршрута на тело
+ * раздела целиком здесь НЕТ и заводить его нельзя. Разметка раздела несущая:
+ * по data-section подраздел находят перегенерация (2.2), планы с адресом
+ * «sectionKey:subsectionName» (2.1), сборка контекста, врезка таблиц (5.1),
+ * импорт и экспорт (4.2/4.3); правка тела позволила бы переименовать или
+ * удалить подраздел — и всё это перестало бы его находить молча и не сразу.
  *
  * Решения (аудит 2026-07-30 + беседа 1.6):
  *  - Доступ на чтение — владелец ИЛИ неприватная ступень (8.6: visibility; витрина → 403 на содержание) (loadSynthesisForRead из
@@ -45,6 +54,14 @@ import {
   resolveContextDeps,
 } from "../services/synthesis-engine.js";
 import { SEC_NAMES } from "../services/section-defs-builder.js";
+import { isSectionKey } from "@philosynth/shared/constants/section-labels";
+import {
+  SubsectionEditError,
+  getSubsectionSource,
+  lockedSubsectionNames,
+  updateSubsection,
+} from "../services/element-editor.js";
+import { ownerEditGate } from "./elements.js";
 import {
   forbiddenJson,
   loadSynthesisForRead,
@@ -52,10 +69,13 @@ import {
   showcaseForbiddenJson,
 } from "./syntheses.js";
 
+import type { Context } from "hono";
 import type {
   SectionContextPreview,
   SectionFull,
   SectionSummary,
+  SubsectionSource,
+  SubsectionUpdateResult,
 } from "@philosynth/shared/types/section";
 
 export const sectionsRoutes = new Hono<AuthEnv>();
@@ -155,8 +175,87 @@ sectionsRoutes.get("/:id/sections/:key", requireAuth, async (c) => {
     secContext: row.secContext,
     isEdited: row.isEdited,
     subsections: listSubsections(row.htmlContent),
+    // 9.2: вычисляемый заслон — клиент не рисует карандаш у запертых
+    lockedSubsections: lockedSubsectionNames(row.key, row.htmlContent),
   };
   return c.json({ section });
+});
+
+/* ── Ручная правка подраздела (беседа 9.2) ───────────────────────────── */
+
+/** Ошибки правки подраздела → JSON 03 §4.3; прочее — наверх (500). */
+function subsectionError(c: Context, err: unknown): Response {
+  if (err instanceof SubsectionEditError) {
+    const status =
+      err.code === "NOT_FOUND" ? 404 : err.code === "SECTION_TABLE_LOCKED" ? 409 : 400;
+    return c.json(
+      { error: err.message, code: err.code, ...(err.details ? { details: err.details } : {}) },
+      status,
+    );
+  }
+  throw err;
+}
+
+// Ключ — по isSectionKey (shared), НЕ по SEC_NAMES: в SEC_NAMES нет «sum»
+// (это перечень ВЫБИРАЕМЫХ разделов), а резюме правится наравне с прочими —
+// найдено тестом R2 беседы 9.2 на первом же подразделе
+const unknownSectionJson = { error: "Неизвестный раздел", code: "NOT_FOUND" } as const;
+
+/** Исходник правки: разметка содержимого подраздела без обёртки и <h4>. */
+sectionsRoutes.get("/:id/sections/:key/subsections/:name", requireAuth, async (c) => {
+  const user = c.get("user");
+  const res = await loadSynthesisForRead(c.req.param("id"), user.id);
+  if (res.access === "notfound") return c.json(notFoundJson, 404);
+  if (res.access === "forbidden") return c.json(forbiddenJson, 403);
+  if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
+  const key = c.req.param("key");
+  if (!isSectionKey(key)) return c.json(unknownSectionJson, 404);
+  try {
+    const source: SubsectionSource = await getSubsectionSource(
+      res.row.id,
+      key,
+      c.req.param("name"),
+    );
+    return c.json(source);
+  } catch (err) {
+    return subsectionError(c, err);
+  }
+});
+
+/** Правка СОДЕРЖИМОГО подраздела. Только владелец, не под активной операцией. */
+sectionsRoutes.patch("/:id/sections/:key/subsections/:name", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const gate = await ownerEditGate(c, id, user.id);
+  if (gate) return gate;
+  const key = c.req.param("key");
+  if (!isSectionKey(key)) return c.json(unknownSectionJson, 404);
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    body = undefined;
+  }
+  const html =
+    body && typeof body === "object" ? (body as { html?: unknown }).html : undefined;
+  try {
+    const r = await updateSubsection(id, key, c.req.param("name"), html);
+    const result: SubsectionUpdateResult = {
+      changed: r.changed,
+      version: r.version,
+      warnings: r.warnings,
+      section: {
+        key: r.sectionKey,
+        htmlContent: r.htmlContent,
+        isEdited: r.changed ? true : undefined,
+        subsections: listSubsections(r.htmlContent),
+        lockedSubsections: lockedSubsectionNames(r.sectionKey, r.htmlContent),
+      },
+    };
+    return c.json(result);
+  } catch (err) {
+    return subsectionError(c, err);
+  }
 });
 
 /* ── GET /:id/sections/:key/context — отладочный превью контекста ────── */

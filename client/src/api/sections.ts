@@ -12,14 +12,43 @@
  * getSectionContext → GET /syntheses/:id/sections/:key/context →
  * SectionContextPreview (беседа 2.3: превью «какой контекст будет
  * использован» в EditSectionCard; сервер — живой buildContextForSection).
+ *
+ * Беседа 9.2 — ручная правка подраздела (единица правки — ПОДРАЗДЕЛ;
+ * функции на тело раздела целиком нет, как нет и маршрута):
+ *  - getSubsectionSource → GET …/sections/:key/subsections/:name →
+ *      SubsectionSource (разметка содержимого без обёртки и <h4>, замок);
+ *  - updateSubsection → PATCH тот же путь { html } → SubsectionUpdateResult.
  */
 import type {
   SectionContextPreview,
   SectionFull,
   SectionSummary,
+  SubsectionSource,
+  SubsectionUpdateResult,
 } from "@philosynth/shared/types/section";
 
-import { apiGet } from "./client";
+import { apiGet, apiPatch } from "./client";
+
+function subsectionPath(synthesisId: string, key: string, name: string): string {
+  return `/syntheses/${encodeURIComponent(synthesisId)}/sections/${encodeURIComponent(key)}/subsections/${encodeURIComponent(name)}`;
+}
+
+export function getSubsectionSource(
+  synthesisId: string,
+  key: string,
+  name: string,
+): Promise<SubsectionSource> {
+  return apiGet<SubsectionSource>(subsectionPath(synthesisId, key, name));
+}
+
+export function updateSubsection(
+  synthesisId: string,
+  key: string,
+  name: string,
+  html: string,
+): Promise<SubsectionUpdateResult> {
+  return apiPatch<SubsectionUpdateResult>(subsectionPath(synthesisId, key, name), { html });
+}
 
 export function getSections(synthesisId: string): Promise<SectionSummary[]> {
   return apiGet<{ sections: SectionSummary[] }>(

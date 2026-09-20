@@ -40,6 +40,44 @@ export interface SectionFull {
   isEdited: boolean;
   /** Имена data-section внутри HTML */
   subsections: string[];
+  /** 9.2: подразделы, запертые для ручной правки (таблицы, которые служба
+   *  рисует из БД, и капсула) — вычисляются против текущего HTML. Поле
+   *  несёт GET /sections/:key; во вложенных sections гостя его нет */
+  lockedSubsections?: string[] | undefined;
+}
+
+/** 9.2: почему подраздел заперт и чем его править вместо ручной правки */
+export interface SubsectionLock {
+  reason: "table" | "capsule";
+  table?: "categories" | "edges" | "topology" | "theses" | "glossary" | undefined;
+  hint: string;
+}
+
+/** 9.2: GET /syntheses/:id/sections/:key/subsections/:name */
+export interface SubsectionSource {
+  sectionKey: string;
+  name: string;
+  /** Разметка содержимого без обёртки data-section и без <h4> */
+  html: string;
+  /** Вложенные подразделы, стоящие в html комментариями-ссылками */
+  nested: string[];
+  lock: SubsectionLock | null;
+}
+
+/** 9.2: ответ PATCH /syntheses/:id/sections/:key/subsections/:name */
+export interface SubsectionUpdateResult {
+  /** false — присланное совпало с текущим: версии нет, раздел не тронут */
+  changed: boolean;
+  version: import("./elements.js").ElementVersion | null;
+  /** Что сервер убрал из присланной разметки (теги вне набора документа) */
+  warnings: string[];
+  section: {
+    key: string;
+    htmlContent: string;
+    isEdited?: boolean | undefined;
+    subsections: string[];
+    lockedSubsections: string[];
+  };
 }
 
 /**

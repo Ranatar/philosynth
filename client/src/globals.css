@@ -5147,6 +5147,67 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 9.2 — ручная правка подраздела ════════════════════════════
+ * В исходнике правки по месту нет: одностраничник чинил опечатку только
+ * перегенерацией. Всё собрано из готового: карандаш — .inline-edit-btn кита
+ * (блок 7, с 5.2) на .inline-edit-host у <h4> подраздела, форма —
+ * .inline-edit-form + .form-label + .form-textarea + .inline-edit-actions +
+ * .action-btn, отказ — .pool-status.err. Своё — только то, чего нет ни в
+ * исходнике, ни в ките: (1) место карандаша в строке заголовка; (2) поле
+ * РАЗМЕТКИ — моноширинное, без переноса строк таблицы, с вертикальной
+ * растяжкой (в исходнике все textarea — проза зерна и контекста);
+ * (3) микро-подписи под полем. Новых hex нет; углы прямые, теней нет.
+ * ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* (1) карандаш в строке <h4>: после ⏫, не капителью заголовка */
+  .doc-content h4 > .subsection-edit-btn {
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 0;
+    line-height: 1.2;
+  }
+
+  /* форма стоит на месте содержимого подраздела, под его заголовком */
+  .subsection-edit-form {
+    margin: 8px 0 14px;
+  }
+
+  /* (2) поле разметки */
+  .form-textarea.subsection-edit-source {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.55;
+    min-height: 180px;
+    resize: vertical;
+    white-space: pre;
+    overflow-x: auto;
+    tab-size: 2;
+  }
+
+  /* (3) подсказка о наборе тегов и итог чистки сервером */
+  .subsection-edit-note {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+    margin-top: 6px;
+  }
+
+  .subsection-edit-warnings {
+    margin: 6px 0 0 18px;
+    font-size: 12px;
+    color: var(--ink-mid);
+  }
+
+  .subsection-edit-keys {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-left: auto;
+  }
+}
+
 /* ═══ Беседа 6.2 — биллинг и админка Prompt Registry ═════════════════
  * В исходнике ни биллинга, ни реестра промптов нет (свой ключ в поле
  * формы, стоимость в футере, промпты захардкожены). Блоки 3 (таблица

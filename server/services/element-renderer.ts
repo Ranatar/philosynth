@@ -48,6 +48,7 @@ import {
 } from "../db/schema.js";
 import {
   locateDocTable,
+  locateDocTableHost,
   replaceDocTable,
   type DocTableLocator,
 } from "../utils/html-parser.js";
@@ -400,6 +401,47 @@ export function locatorsFor(which: RenderableTable): DocTableLocator[] {
         { subsection: TABLE_SUBSECTIONS.glossary },
       ];
   }
+}
+
+/* ── Вычисляемый заслон табличных подразделов (беседа 9.2) ───────────── */
+
+export interface LockedSubsection {
+  /** Имя подраздела (data-section), в который попал локатор */
+  subsection: string;
+  /** Чья таблица его заперла */
+  table: RenderableTable;
+}
+
+const ALL_RENDERABLE: readonly RenderableTable[] = [
+  "categories",
+  "edges",
+  "topology",
+  "theses",
+  "glossary",
+];
+
+/**
+ * Подразделы раздела, запертые для ручной правки: ровно те, в которые
+ * locatorsFor попадает ПРОТИВ ТЕКУЩЕГО HTML. Список не перечисляется
+ * именами TABLE_SUBSECTIONS намеренно: «Топология графа» в нём — ЗАПАСНОЙ
+ * локатор (таблица лежит в «Топологической таблице», сама она — проза и
+ * правится), а прозаические таблицы critique не заперты вовсе. С рендером
+ * список не расходится по построению — локаторы те же, что у
+ * applyElementUpdateToHtml. Чистая функция: БД не трогает.
+ */
+export function lockedSubsectionsOf(
+  sectionKey: string,
+  sectionHtml: string,
+): LockedSubsection[] {
+  const out: LockedSubsection[] = [];
+  if (!sectionHtml) return out;
+  for (const which of ALL_RENDERABLE) {
+    if (TABLE_SECTION[which] !== sectionKey) continue;
+    const host = locateDocTableHost(sectionHtml, locatorsFor(which));
+    if (host && !out.some((l) => l.subsection === host))
+      out.push({ subsection: host, table: which });
+  }
+  return out;
 }
 
 export interface ApplyResult {

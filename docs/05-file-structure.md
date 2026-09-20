@@ -137,6 +137,8 @@ philosynth-service/
 │   │                               #  projectPreview, гостевые GET /public и GET /:id (optionalAuth),
 │   │                               #  PATCH visibility + флаги, META_NOT_ALLOWED в участниках
 │   │   ├── sections.ts                 # GET /syntheses/:id/sections, /:key, /:key/context
+│   │   │                               # 9.2: + GET/PATCH /:key/subsections/:name — ручная правка
+│   │   │                               # ПОДРАЗДЕЛА; маршрута на тело раздела НЕТ (сторож 4ar)
 │   │   │                               # (создаёт беседа 1.6 — до 2026-07-30
 │   │   │                               #  модуль не был назначен ни одной беседе)
 │   │   ├── elements.ts                 # GET/PATCH categories, theses, glossary
@@ -491,6 +493,8 @@ philosynth-service/
 │   │   │   │   ├── DocumentView.tsx        # Полный документ (рендер HTML)
 │   │   │   │   ├── DocumentHeader.tsx      # Шапка (номер, участники, метод, капсула)
 │   │   │   │   ├── SectionView.tsx         # Один раздел
+│   │   │   │   │                           # 9.2: карандаш у <h4> незапертых подразделов и форма
+│   │   │   │   │                           # правки разметки — в строке HTML, на месте подраздела
 │   │   │   │   ├── TableOfContents.tsx     # Оглавление с якорями
 │   │   │   │   └── DocumentFooter.tsx      # Футер (стоимость, участники); 8.6: строка стоимости
 │   │   │   │                               #  только при определённых totalCostUsd/токенах (гостю их нет)
@@ -589,6 +593,8 @@ philosynth-service/
 │   │       │                               #  audienceText (через effectiveFlags shared), visibilityBadge
 │   │       ├── capsule-html.ts             # 8.4: пересборка HTML капсулы из текста
 │   │       │                               # (обёртка секции и <h4> сохраняются, содержимое → <p>)
+│   │       ├── subsection-edit.ts          # 9.2: состояние правки подраздела и тексты отказов
+│   │       │                               # (клиент разметку НЕ собирает и НЕ чистит — сервер)
 │   │       ├── genealogy.ts                # Порты генеалогии (3.2): reconstructGenealogy,
 │   │       │                               # restoreCapsulesFromHTML, checkGenealogyOverlaps,
 │   │       │                               # resolveConceptName (FIX [а-яё]), lineageNodeToGenealogy
@@ -663,6 +669,13 @@ philosynth-service/
     │                                   # внутри харнесса (net: 550/451/250 по адресату), отдельная
     │                                   # пустая БД philosynth_t91, Chrome 131 из ~/.cache/puppeteer,
     │                                   # puppeteer-core — из node_modules либо PUPPETEER_CORE
+    │                                   # test-92 — «живая концепция» из test-92-fixture.mjs через
+    │                                   # экспорт 4.2 → импорт 4.3 (таблицы наполняют парсеры), мок
+    │                                   # Claude :3892 (SLOW92 держит слот), Chrome 131; рабочая БД
+    │                                   # test-92-live-file — та же правка на ЖИВОМ файле одностраничника
+    │                                   # (T92_FILE; без файла — пропуск): все незапертые подразделы
+    │                                   # в ДВУХ происхождениях — импорт файла и генерация службой
+    │                                   # (мок Claude :3893 отдаёт разделы файла как ответ модели)
     ├── test-*-0.3b.ts                  # Регрессионные смоуки таксономии
     └── package.json                    # Маркер type=module
 ```

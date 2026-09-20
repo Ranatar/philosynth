@@ -40,6 +40,7 @@ export type ApiErrorCode =
   | "LINEAGE_CYCLE" // 8.5: родитель среди потомков — цикл родословной (409)
   | "LINEAGE_EXISTS" // 8.5: пара уже есть — идемпотентный отказ (409)
   | "META_NOT_ALLOWED" // 8.6: автор не разрешил чужой мета-синтез (403; details.title)
+  | "SECTION_TABLE_LOCKED" // 9.2: подраздел рисуется из БД либо это капсула (409; details.reason)
   | "TOKEN_INVALID" // 9.1: довод из письма просрочен, использован или не существует (400)
   | "GENERATION_PAUSED"
   | "RESUME_INVALID"

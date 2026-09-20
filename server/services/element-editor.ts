@@ -50,6 +50,10 @@ import {
 } from "../db/schema.js";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import {
+  SubsectionHtmlError,
+  listSubsectionNames,
+  readSubsectionSource,
+  replaceSubsectionContent,
   replaceThesisParagraph,
 } from "../utils/html-parser.js";
 import {
@@ -61,6 +65,7 @@ import {
 } from "./cascade-analyzer.js";
 import {
   applyElementUpdateToHtml,
+  lockedSubsectionsOf,
   writeSectionHtml,
   TABLE_SECTION,
   TABLE_SUBSECTIONS,
@@ -1278,5 +1283,239 @@ export async function updateCapsule(
         .set({ htmlContent: value, isEdited: true, updatedAt: new Date() })
         .where(eq(sections.id, capRow.id));
     return { capsuleHtml: value, version };
+  });
+}
+
+/* ── Ручная правка подраздела (беседа 9.2) ───────────────────────────── */
+
+/** Имя подраздела-капсулы: у неё свой путь правки с 5.1 (PATCH /capsule). */
+export const CAPSULE_SUBSECTION = "Капсула";
+
+export type SubsectionLockReason = "table" | "capsule";
+
+export interface SubsectionLock {
+  reason: SubsectionLockReason;
+  /** Чья таблица заперла подраздел (reason 'table') */
+  table?: RenderableTable | undefined;
+  /** Чем править вместо ручной правки — текст для человека */
+  hint: string;
+}
+
+const TABLE_LOCK_HINT: Readonly<Record<RenderableTable, string>> = {
+  categories:
+    "Таблицу категорий служба рисует из графа: правьте категорию в панели узла графа («◈ Граф» → узел → «✎ Редактировать»)",
+  edges:
+    "Таблицу связей служба рисует из графа: правьте связь в панели связи графа («◈ Граф» → связь → «✎ Редактировать»)",
+  topology:
+    "Топологическую таблицу служба рисует из графа: роли и кластеры правятся в панели узла графа («◈ Граф» → узел → «✎ Редактировать»)",
+  theses:
+    "Сводную таблицу тезисов служба рисует из списка тезисов: правьте тезис карандашом ✎ в его строке таблицы",
+  glossary:
+    "Таблицу определений служба рисует из списка терминов: правьте термин карандашом ✎ в его строке таблицы",
+};
+
+const CAPSULE_LOCK_HINT =
+  "У капсулы свой путь правки: карандаш ✎ у капсулы в шапке документа (PATCH /syntheses/:id/capsule)";
+
+/**
+ * Заперт ли подраздел и чем его править. Таблицы — вычисляемым заслоном
+ * (lockedSubsectionsOf: куда попал локатор рендерера в ТЕКУЩЕМ HTML);
+ * капсула — по ключу раздела либо имени подраздела.
+ */
+export function subsectionLockOf(
+  sectionKey: string,
+  sectionHtml: string,
+  subsectionName: string,
+): SubsectionLock | null {
+  if (sectionKey === "capsule" || subsectionName === CAPSULE_SUBSECTION)
+    return { reason: "capsule", hint: CAPSULE_LOCK_HINT };
+  const hit = lockedSubsectionsOf(sectionKey, sectionHtml).find(
+    (l) => l.subsection === subsectionName,
+  );
+  return hit ? { reason: "table", table: hit.table, hint: TABLE_LOCK_HINT[hit.table] } : null;
+}
+
+/** Имена запертых подразделов раздела — клиенту, чтобы не рисовать карандаш. */
+export function lockedSubsectionNames(sectionKey: string, sectionHtml: string): string[] {
+  const names = lockedSubsectionsOf(sectionKey, sectionHtml).map((l) => l.subsection);
+  if (sectionKey === "capsule") return listSubsectionNames(sectionHtml);
+  if (sectionHtml.includes(`data-section="${CAPSULE_SUBSECTION}"`) && !names.includes(CAPSULE_SUBSECTION))
+    names.push(CAPSULE_SUBSECTION);
+  return names;
+}
+
+export type SubsectionEditErrorCode =
+  | "NOT_FOUND"
+  | "VALIDATION_ERROR"
+  | "SECTION_TABLE_LOCKED";
+
+export class SubsectionEditError extends Error {
+  constructor(
+    public readonly code: SubsectionEditErrorCode,
+    message: string,
+    public readonly details?: Record<string, unknown> | undefined,
+  ) {
+    super(message);
+    this.name = "SubsectionEditError";
+  }
+}
+
+export interface SubsectionSourceResult {
+  sectionKey: string;
+  name: string;
+  /** Разметка содержимого без обёртки и <h4> — то, что уходит в поле правки */
+  html: string;
+  nested: string[];
+  lock: SubsectionLock | null;
+}
+
+export interface UpdateSubsectionResult {
+  sectionKey: string;
+  name: string;
+  /** false — присланное совпало с текущим, версия не создана */
+  changed: boolean;
+  /** HTML раздела ПОСЛЕ правки */
+  htmlContent: string;
+  version: ElementVersion | null;
+  warnings: string[];
+}
+
+function subsectionNotFound(sectionHtml: string, name: string): SubsectionEditError {
+  return new SubsectionEditError(
+    "NOT_FOUND",
+    `Подраздел «${name}» не найден`,
+    { available: listSubsectionNames(sectionHtml) },
+  );
+}
+
+/** Исходник правки: то, что клиент кладёт в поле, и замок, если он есть. */
+export async function getSubsectionSource(
+  synthesisId: string,
+  sectionKey: string,
+  subsectionName: string,
+): Promise<SubsectionSourceResult> {
+  if (sectionKey === "capsule" || subsectionName === CAPSULE_SUBSECTION)
+    return {
+      sectionKey,
+      name: subsectionName,
+      html: "",
+      nested: [],
+      lock: { reason: "capsule", hint: CAPSULE_LOCK_HINT },
+    };
+  const [row] = await db
+    .select({ html: sections.htmlContent })
+    .from(sections)
+    .where(and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)))
+    .limit(1);
+  if (!row) throw new SubsectionEditError("NOT_FOUND", "Раздел не найден");
+  const source = readSubsectionSource(row.html, subsectionName);
+  if (!source) throw subsectionNotFound(row.html, subsectionName);
+  return {
+    sectionKey,
+    name: source.name,
+    html: source.html,
+    nested: source.nested,
+    lock: subsectionLockOf(sectionKey, row.html, subsectionName),
+  };
+}
+
+/**
+ * Ручная правка содержимого ОДНОГО подраздела — обобщение updateCapsule:
+ * версия "section" со снимком строки ДО правки и источником "manual",
+ * запись html_content и is_edited=true — одной транзакцией. Обёртка,
+ * data-section и <h4> не трогаются (replaceSubsectionContent). Тело раздела
+ * целиком не правится ни одной функцией — намеренно (07, беседа 9.2).
+ *
+ * Побочные эффекты раздела (applySectionSideEffects 2.2) НЕ вызываются:
+ * для graph/theses/glossary они ЗАМЕНЯЮТ гранулярные строки (новые id —
+ * версии и обогащения элементов осиротели бы), а их таблицы и так заперты.
+ */
+export async function updateSubsection(
+  synthesisId: string,
+  sectionKey: string,
+  subsectionName: string,
+  html: unknown,
+): Promise<UpdateSubsectionResult> {
+  if (typeof html !== "string")
+    throw new SubsectionEditError("VALIDATION_ERROR", "Невалидные данные", {
+      html: "ожидается строка с разметкой подраздела",
+    });
+  // Капсула — ДО поиска: после импорта (4.3) строки sections 'capsule' нет
+  // вовсе, и 404 вместо «у капсулы свой путь» увёл бы человека искать не там
+  if (sectionKey === "capsule" || subsectionName === CAPSULE_SUBSECTION)
+    throw new SubsectionEditError("SECTION_TABLE_LOCKED", CAPSULE_LOCK_HINT, {
+      reason: "capsule",
+      subsection: subsectionName,
+    });
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(sections)
+      .where(and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)))
+      .limit(1)
+      .for("update");
+    if (!row) throw new SubsectionEditError("NOT_FOUND", "Раздел не найден");
+    if (!readSubsectionSource(row.htmlContent, subsectionName))
+      throw subsectionNotFound(row.htmlContent, subsectionName);
+    const lock = subsectionLockOf(sectionKey, row.htmlContent, subsectionName);
+    if (lock)
+      throw new SubsectionEditError("SECTION_TABLE_LOCKED", lock.hint, {
+        reason: lock.reason,
+        ...(lock.table ? { table: lock.table } : {}),
+        subsection: subsectionName,
+      });
+    let result;
+    try {
+      result = replaceSubsectionContent(row.htmlContent, subsectionName, html);
+    } catch (err) {
+      if (err instanceof SubsectionHtmlError)
+        throw new SubsectionEditError("VALIDATION_ERROR", "Невалидные данные", {
+          html: err.message,
+          problem: err.problem,
+        });
+      throw err;
+    }
+    if (!result) throw subsectionNotFound(row.htmlContent, subsectionName);
+    if (!result.changed)
+      return {
+        sectionKey,
+        name: subsectionName,
+        changed: false,
+        htmlContent: row.htmlContent,
+        version: null,
+        warnings: [],
+      };
+    // Заслон после врезки: правка не должна ни сдвинуть замки, ни потерять
+    // подраздел (страховка от собственной ошибки врезки, не от человека)
+    const before = listSubsectionNames(row.htmlContent);
+    const after = listSubsectionNames(result.html);
+    if (before.length !== after.length || before.some((n, i) => n !== after[i]))
+      throw new SubsectionEditError("VALIDATION_ERROR", "Невалидные данные", {
+        html: "правка изменила состав подразделов раздела — не сохранено",
+      });
+    const version = await createVersion(
+      synthesisId,
+      row.id,
+      "section",
+      snapshotOf(row),
+      "manual",
+      tx,
+    );
+    await tx
+      .update(sections)
+      .set({ htmlContent: result.html, isEdited: true, updatedAt: new Date() })
+      .where(eq(sections.id, row.id));
+    await tx
+      .update(syntheses)
+      .set({ updatedAt: new Date() })
+      .where(eq(syntheses.id, synthesisId));
+    return {
+      sectionKey,
+      name: subsectionName,
+      changed: true,
+      htmlContent: result.html,
+      version,
+      warnings: result.warnings,
+    };
   });
 }

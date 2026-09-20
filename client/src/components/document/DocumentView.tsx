@@ -19,6 +19,8 @@
 import type { SectionFull, SectionSummary } from "@philosynth/shared/types/section";
 import type { SynthesisFull } from "@philosynth/shared/types/synthesis";
 
+import type { SubsectionEditState, SubsectionRef } from "../../utils/subsection-edit";
+
 import { DocumentFooter } from "./DocumentFooter";
 import { DocumentHeader } from "./DocumentHeader";
 import { SectionView, type EditableRowRef } from "./SectionView";
@@ -42,6 +44,13 @@ export interface DocumentViewProps {
   inlineEditorFor?: ((sectionKey: string) => React.ReactNode) | undefined;
   /** Беседа 5.5 (п. 7): строка действий над разделом («→ Граф» у theses) */
   sectionActionsFor?: ((sectionKey: string) => React.ReactNode) | undefined;
+  /** Беседа 9.2: ручная правка подраздела — карандаши у заголовков <h4>
+   *  незапертых подразделов и форма правки на месте подраздела */
+  subsectionEditable?: boolean | undefined;
+  subsectionEdit?: SubsectionEditState | null | undefined;
+  onSubsectionEdit?: ((ref: SubsectionRef) => void) | undefined;
+  onSubsectionSave?: ((html: string) => void) | undefined;
+  onSubsectionCancel?: (() => void) | undefined;
 }
 
 export function DocumentView({
@@ -54,6 +63,11 @@ export function DocumentView({
   onRowEdit,
   inlineEditorFor,
   sectionActionsFor,
+  subsectionEditable = false,
+  subsectionEdit,
+  onSubsectionEdit,
+  onSubsectionSave,
+  onSubsectionCancel,
 }: DocumentViewProps) {
   const showcase = synthesis.scope === "showcase" && !synthesis.isOwner;
   const byKey = new Map(
@@ -94,6 +108,16 @@ export function DocumentView({
               onRowEdit={onRowEdit}
               inlineEditor={inlineEditorFor?.(section.key)}
               actions={sectionActionsFor?.(section.key)}
+              subsectionEditable={subsectionEditable}
+              subsectionEdit={
+                subsectionEdit && subsectionEdit.sectionKey === section.key
+                  ? subsectionEdit
+                  : undefined
+              }
+              subsectionEditBusy={!!subsectionEdit}
+              onSubsectionEdit={onSubsectionEdit}
+              onSubsectionSave={onSubsectionSave}
+              onSubsectionCancel={onSubsectionCancel}
             />
           ))}
         </div>

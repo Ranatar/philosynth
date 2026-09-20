@@ -202,7 +202,8 @@ elementsRoutes.get("/:id/categories", requireAuth, async (c) => {
 /* ══ Беседа 5.1 ═══════════════════════════════════════════════════════ */
 
 /** Гейт правки: не-UUID/нет → 404, чужой → 403, генерация → 409. */
-async function ownerEditGate(
+/** Экспорт — беседа 9.2: тем же гейтом закрыт PATCH подраздела (routes/sections). */
+export async function ownerEditGate(
   c: Context,
   id: string,
   userId: string,

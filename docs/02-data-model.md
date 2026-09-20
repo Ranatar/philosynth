@@ -255,7 +255,8 @@ CREATE TABLE sections (
   title         TEXT NOT NULL,
   html_content  TEXT NOT NULL DEFAULT '',
   sec_context   TEXT NOT NULL DEFAULT '',  -- доп. контекст раздела (secCtx)
-  is_edited     BOOLEAN NOT NULL DEFAULT false,
+  is_edited     BOOLEAN NOT NULL DEFAULT false,  -- true после перегенерации (2.2), врезки таблицы
+                                                 -- рендерером (5.1) и ручной правки подраздела (9.2)
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   
@@ -418,6 +419,11 @@ CREATE TABLE element_versions (
   synthesis_id UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
   element_id   UUID NOT NULL,
   element_type TEXT NOT NULL,  -- 'category'|'edge'|'thesis'|'glossary_term'|'dialogue_turn'|'section'
+                               -- 'section': element_id = sections.id, data — снимок строки раздела ДО
+                               -- правки; пишут updateCapsule (5.1) и updateSubsection (9.2, ручная
+                               -- правка подраздела, change_source 'manual'). Откат возвращает
+                               -- html_content и is_edited из снимка. Панель VersionHistory (5.2)
+                               -- версии разделов НЕ показывает — только API (находка 9.2)
   version      INT NOT NULL,
   data         JSONB NOT NULL,  -- полный снимок элемента до изменения
   change_source TEXT NOT NULL DEFAULT 'manual',

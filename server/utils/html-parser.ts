@@ -495,3 +495,400 @@ export function replaceThesisParagraph(
   }
   return null;
 }
+
+/* ── Ручная правка подраздела (беседа 9.2) ───────────────────────────── */
+
+/**
+ * ЕДИНИЦА ПРАВКИ — ПОДРАЗДЕЛ: правится СОДЕРЖИМОЕ <div data-section>,
+ * а обёртка, атрибут data-section и заголовок <h4> не трогаются — по
+ * data-section подраздел находят перегенерация (2.2), планы (2.1), сборка
+ * контекста, врезка таблиц (5.1), импорт и экспорт (4.2/4.3).
+ *
+ * Правится РАЗМЕТКА, не голый текст (решение пользователя, 9.2): в
+ * подразделе кроме <p> живут списки, <h5>, врезки callout, таблицы и
+ * <strong>формулировка</strong> тезисов (якорь replaceThesisParagraph) —
+ * пересборка «абзацы по пустой строке» их стёрла бы. Поэтому сервер не
+ * верит присланному: разметка разбирается linkedom'ом и проходит через
+ * белый список тегов системного промпта (prompt-templates «system»).
+ *
+ * Вложенный подраздел (например, «Топологическая таблица» внутри
+ * «Топологии графа») в исходник правки НЕ попадает: на его месте стоит
+ * комментарий-ссылка SUBSECTION_PLACEHOLDER, при сохранении он меняется
+ * обратно на нетронутый оригинал. Иначе заслон табличных подразделов
+ * обходился бы правкой внешнего.
+ *
+ * spliceSubsectionHtml (1.4b) для врезки НЕ годится — заменяет весь
+ * <div data-section> вместе с <h4> («По факту 5.1» п.1).
+ */
+
+/** Узел linkedom в объёме, нужном правке подраздела. */
+interface EditNode {
+  readonly nodeType: number;
+  textContent: string | null;
+  remove(): void;
+}
+
+interface EditElement extends EditNode {
+  readonly tagName: string;
+  readonly childNodes: Iterable<EditNode>;
+  readonly children: Iterable<EditElement>;
+  readonly parentElement: EditElement | null;
+  readonly outerHTML: string;
+  innerHTML: string;
+  readonly attributes: Iterable<{ name: string; value: string }>;
+  getAttribute(name: string): string | null;
+  setAttribute(name: string, value: string): void;
+  removeAttribute(name: string): void;
+  querySelectorAll(selector: string): Iterable<EditElement>;
+  closest(selector: string): EditElement | null;
+  replaceWith(...nodes: EditNode[]): void;
+  insertAdjacentHTML(
+    position: "beforebegin" | "afterbegin" | "beforeend" | "afterend",
+    html: string,
+  ): void;
+}
+
+const COMMENT_NODE = 8;
+
+function parseEditable(html: string): EditElement {
+  return parseMutable(html) as unknown as EditElement;
+}
+
+/** Точный поиск: правка не должна попасть в «похожий» подраздел. Перебором —
+ *  имена содержат кавычки и скобки, селектор с ними хрупок. */
+function findExactSubsection(root: EditElement, name: string): EditElement | null {
+  for (const el of root.querySelectorAll("[data-section]")) {
+    if (el.getAttribute("data-section") === name) return el;
+  }
+  return null;
+}
+
+/** Имена всех data-section раздела в порядке появления (для 404 со списком). */
+export function listSubsectionNames(sectionHtml: string): string[] {
+  const root = parseEditable(sectionHtml);
+  const out: string[] = [];
+  for (const el of root.querySelectorAll("[data-section]")) {
+    const n = el.getAttribute("data-section");
+    if (n && !out.includes(n)) out.push(n);
+  }
+  return out;
+}
+
+/** Вложенные подразделы первого уровня (ближайший предок-подраздел — host). */
+function nestedSubsections(host: EditElement): EditElement[] {
+  const out: EditElement[] = [];
+  for (const el of host.querySelectorAll("[data-section]")) {
+    if (el.parentElement?.closest("[data-section]") === host) out.push(el);
+  }
+  return out;
+}
+
+const PLACEHOLDER_RE = /^\s*подраздел\s+(\d+)\b/;
+
+/** Комментарий-ссылка на вложенный подраздел: номер решает, имя — для глаз. */
+export function subsectionPlaceholder(index: number, name: string): string {
+  return `<!-- подраздел ${index}: ${name.replace(/--+/g, "—")} — правится отдельно, строку не удалять -->`;
+}
+
+/** Таблицы и списки — построчно: одна строка на ряд, иначе в поле правки
+ *  таблица выглядит одной лентой. Пробелы между этими тегами незначимы. */
+function prettyBlock(html: string): string {
+  return html
+    .replace(/<(thead|tbody|tfoot)\b/g, "\n<$1")
+    .replace(/<\/(thead|tbody|tfoot|table|ul|ol)>/g, "\n</$1>")
+    .replace(/<(tr|li)\b/g, "\n  <$1")
+    .replace(/\n\s*\n/g, "\n");
+}
+
+export interface SubsectionSource {
+  /** Имя подраздела (data-section) — как в документе */
+  name: string;
+  /** Разметка содержимого без обёртки и <h4>, блок на строку */
+  html: string;
+  /** Имена вложенных подразделов, заменённых комментариями-ссылками */
+  nested: string[];
+}
+
+/**
+ * Исходник правки подраздела. null — подраздела с ТОЧНО таким именем нет.
+ */
+export function readSubsectionSource(
+  sectionHtml: string,
+  subsectionName: string,
+): SubsectionSource | null {
+  const root = parseEditable(sectionHtml);
+  const sub = findExactSubsection(root, subsectionName);
+  if (!sub) return null;
+  const nested = nestedSubsections(sub);
+  const names = nested.map((el) => el.getAttribute("data-section") ?? "");
+  nested.forEach((el, i) => {
+    el.insertAdjacentHTML("beforebegin", subsectionPlaceholder(i + 1, names[i] ?? ""));
+    el.remove();
+  });
+  const lines: string[] = [];
+  // Всё ДО заголовка включительно в исходник не идёт — ровно то, что врезка
+  // (replaceSubsectionContent) оставляет нетронутым. В документах, заведённых
+  // импортом одностраничника, перед <h4> стоит якорь оглавления
+  // <a id="subsec-…"> (найдено на живом файле, 9.2): в поле ему делать нечего.
+  let hasHeading = false;
+  for (const el of sub.children) {
+    if (el.tagName.toUpperCase() === "H4") { hasHeading = true; break; }
+  }
+  let headingSeen = !hasHeading;
+  for (const node of sub.childNodes) {
+    if (!headingSeen) {
+      if (node.nodeType === ELEMENT_NODE && (node as EditElement).tagName.toUpperCase() === "H4")
+        headingSeen = true;
+      continue;
+    }
+    if (node.nodeType === ELEMENT_NODE) {
+      const el = node as EditElement;
+      lines.push(prettyBlock(el.outerHTML.trim()));
+    } else if (node.nodeType === COMMENT_NODE) {
+      const data = node.textContent ?? "";
+      if (PLACEHOLDER_RE.test(data)) lines.push(`<!--${data}-->`);
+    } else {
+      const t = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+      if (t) lines.push(t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+    }
+  }
+  return { name: subsectionName, html: lines.join("\n"), nested: names };
+}
+
+/* Белый список — теги раздела «ФОРМАТИРОВАНИЕ» системного промпта плюс их
+   безвредная родня (b/i/sup/sub/blockquote/tfoot/caption). */
+const ALLOWED_TAGS = new Set([
+  "P", "UL", "OL", "LI", "STRONG", "EM", "B", "I", "SUP", "SUB", "BR", "H5",
+  "BLOCKQUOTE", "TABLE", "CAPTION", "THEAD", "TBODY", "TFOOT", "TR", "TH",
+  "TD", "DIV", "SPAN",
+]);
+/** Удаляются ВМЕСТЕ с содержимым: текст внутри них — не текст документа. */
+const DROPPED_TAGS = new Set([
+  "SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "LINK", "META", "TEMPLATE",
+  "NOSCRIPT", "SVG", "MATH", "FORM", "INPUT", "BUTTON", "TEXTAREA", "SELECT",
+  "IMG", "VIDEO", "AUDIO", "CANVAS", "BASE", "HEAD", "TITLE",
+]);
+const DIV_CLASS_RE = /^callout(?: (?:warning|note|gold))?$/;
+const SPAN_CLASS_RE = /^(?:callout-label|risk(?: (?:high|medium|low))?)$/;
+
+export const SUBSECTION_HTML_MAX = 200_000;
+
+export type SubsectionEditProblem =
+  | "too_long"
+  | "empty"
+  | "heading"
+  | "anchor"
+  | "placeholder";
+
+export class SubsectionHtmlError extends Error {
+  constructor(
+    public readonly problem: SubsectionEditProblem,
+    message: string,
+  ) {
+    super(message);
+    this.name = "SubsectionHtmlError";
+  }
+}
+
+export interface ReplaceSubsectionResult {
+  /** HTML раздела после врезки */
+  html: string;
+  /** false — присланное совпало с текущим исходником, раздел не тронут */
+  changed: boolean;
+  /** Что сервер убрал из присланного (теги вне белого списка и т.п.) */
+  warnings: string[];
+}
+
+/**
+ * Лишние закрывающие </div> (и </body>, </html>) — долой ДО разбора: разбор
+ * идёт внутри служебной обёртки-div, и непарный </div> закрыл бы ЕЁ — всё,
+ * что набрано после него, молча пропало бы (найдено тестом R8 беседы 9.2).
+ */
+function dropStrayClosers(html: string): string {
+  let depth = 0;
+  return html
+    .replace(/<\/(?:body|html)\s*>/gi, "")
+    .replace(/<div\b[^>]*>|<\/div\s*>/gi, (tag) => {
+      if (tag[1] !== "/") {
+        depth++;
+        return tag;
+      }
+      if (depth === 0) return "";
+      depth--;
+      return tag;
+    });
+}
+
+function sanitizeTree(root: EditElement, warnings: string[]): void {
+  const unwrapped = new Set<string>();
+  const dropped = new Set<string>();
+  // Снимок списка: дерево меняется по ходу обхода
+  for (const el of Array.from(root.querySelectorAll("*"))) {
+    const tag = el.tagName.toUpperCase();
+    if (DROPPED_TAGS.has(tag)) {
+      dropped.add(tag.toLowerCase());
+      el.remove();
+      continue;
+    }
+    if (!ALLOWED_TAGS.has(tag)) {
+      unwrapped.add(tag.toLowerCase());
+      el.replaceWith(...Array.from(el.childNodes));
+      continue;
+    }
+    for (const attr of Array.from(el.attributes)) {
+      const n = attr.name.toLowerCase();
+      const spanOk = (n === "colspan" || n === "rowspan") &&
+        (tag === "TD" || tag === "TH") && /^\d{1,2}$/.test(attr.value.trim());
+      if (n === "class" || spanOk) continue;
+      el.removeAttribute(attr.name);
+    }
+    const cls = (el.getAttribute("class") ?? "").trim().replace(/\s+/g, " ");
+    if (tag === "TABLE") {
+      // Парсеры и экстракторы контекста ищут table.doc-table
+      el.setAttribute("class", "doc-table");
+    } else if ((tag === "DIV" && DIV_CLASS_RE.test(cls)) || (tag === "SPAN" && SPAN_CLASS_RE.test(cls))) {
+      el.setAttribute("class", cls);
+    } else if (el.getAttribute("class") !== null) {
+      el.removeAttribute("class");
+    }
+  }
+  if (dropped.size)
+    warnings.push(`Удалены вместе с содержимым: ${[...dropped].map((t) => `<${t}>`).join(", ")}`);
+  if (unwrapped.size)
+    warnings.push(`Теги вне набора документа сняты, текст оставлен: ${[...unwrapped].map((t) => `<${t}>`).join(", ")}`);
+}
+
+function stripForeignComments(node: EditElement): void {
+  for (const child of Array.from(node.childNodes)) {
+    if (child.nodeType === COMMENT_NODE) {
+      if (!PLACEHOLDER_RE.test(child.textContent ?? "")) child.remove();
+    } else if (child.nodeType === ELEMENT_NODE) {
+      stripForeignComments(child as EditElement);
+    }
+  }
+}
+
+/**
+ * Врезка правленого содержимого подраздела с сохранением обёртки и <h4>.
+ * null — подраздела с точно таким именем нет. Отказы по содержимому —
+ * SubsectionHtmlError (роут → 400 VALIDATION_ERROR, details.html).
+ */
+export function replaceSubsectionContent(
+  sectionHtml: string,
+  subsectionName: string,
+  userHtml: string,
+): ReplaceSubsectionResult | null {
+  const current = readSubsectionSource(sectionHtml, subsectionName);
+  if (!current) return null;
+  if (userHtml.length > SUBSECTION_HTML_MAX)
+    throw new SubsectionHtmlError("too_long", `Не длиннее ${SUBSECTION_HTML_MAX} знаков`);
+  const norm = (s: string): string => s.replace(/\r\n?/g, "\n").trim();
+  if (norm(userHtml) === norm(current.html))
+    return { html: sectionHtml, changed: false, warnings: [] };
+
+  const draft = parseEditable(dropStrayClosers(userHtml));
+  // Заголовок и якорь подраздела правке не подлежат — отказ, а не тихая чистка:
+  // человек должен узнать, что его <h4> в документ не попал
+  for (const el of draft.querySelectorAll("h1, h2, h3, h4")) {
+    throw new SubsectionHtmlError(
+      "heading",
+      `<${el.tagName.toLowerCase()}> здесь нельзя: <h4> — заголовок подраздела, он не правится; внутренние подзаголовки — <h5>`,
+    );
+  }
+  for (const _ of draft.querySelectorAll("[data-section]")) {
+    throw new SubsectionHtmlError(
+      "anchor",
+      "Атрибут data-section здесь нельзя: по нему служба находит подразделы, заводить и переименовывать их правкой нельзя",
+    );
+  }
+  const warnings: string[] = [];
+  sanitizeTree(draft, warnings);
+  stripForeignComments(draft);
+
+  const hasText = (draft.textContent ?? "").replace(/\s+/g, "").length > 0;
+  // Текст ВНЕ тегов верхнего уровня — в абзацы по пустой строке: человек,
+  // не знающий HTML, просто набирает текст, и голый текстовый узел остался
+  // бы без оформления абзаца. Внутри блоков текст не трогается.
+  const esc = (t: string): string =>
+    t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const blocks: string[] = [];
+  // Соседние текстовые узлы склеиваются ДО деления на абзацы: разбор режет
+  // текст на узлы по одиночному «<» («a < b» — два узла, а абзац один)
+  let loose = "";
+  const flushLoose = (): void => {
+    for (const para of loose.split(/\n\s*\n/)) {
+      const t = para.replace(/\s+/g, " ").trim();
+      if (t) blocks.push(`<p>${esc(t)}</p>`);
+    }
+    loose = "";
+  };
+  for (const node of draft.childNodes) {
+    if (node.nodeType === ELEMENT_NODE) {
+      flushLoose();
+      blocks.push((node as EditElement).outerHTML);
+    } else if (node.nodeType === COMMENT_NODE) {
+      flushLoose();
+      blocks.push(`<!--${node.textContent ?? ""}-->`);
+    } else loose += node.textContent ?? "";
+  }
+  flushLoose();
+  let body = blocks.join("\n");
+  if (!hasText && !/<table\b/i.test(body) && current.nested.length === 0)
+    throw new SubsectionHtmlError("empty", "Подраздел не может быть пустым");
+
+  // Вложенные подразделы — обратно на места своих комментариев-ссылок
+  const root = parseEditable(sectionHtml);
+  const sub = findExactSubsection(root, subsectionName);
+  if (!sub) return null;
+  const originals = nestedSubsections(sub).map((el) => el.outerHTML);
+  const seen = new Set<number>();
+  let bad: string | null = null;
+  body = body.replace(/<!--([\s\S]*?)-->/g, (whole, data: string) => {
+    const m = PLACEHOLDER_RE.exec(data);
+    if (!m) return "";
+    const idx = Number(m[1]);
+    const original = originals[idx - 1];
+    if (original === undefined) bad = `строка-ссылка «подраздел ${idx}» не из этого подраздела`;
+    else if (seen.has(idx)) bad = `строка-ссылка «подраздел ${idx}» повторена`;
+    seen.add(idx);
+    return original ?? whole;
+  });
+  if (!bad && seen.size !== originals.length) {
+    const lost = current.nested.filter((_, i) => !seen.has(i + 1));
+    bad = `пропала строка-ссылка на вложенный подраздел: ${lost.map((n) => `«${n}»`).join(", ")} — верните её на место`;
+  }
+  if (bad) throw new SubsectionHtmlError("placeholder", bad);
+
+  // Всё после заголовка — долой; нет <h4> — содержимое заменяется целиком
+  let headingSeen = false;
+  let hasHeading = false;
+  for (const el of sub.children) {
+    if (el.tagName.toUpperCase() === "H4") { hasHeading = true; break; }
+  }
+  for (const node of Array.from(sub.childNodes)) {
+    if (hasHeading && !headingSeen) {
+      if (node.nodeType === ELEMENT_NODE && (node as EditElement).tagName.toUpperCase() === "H4")
+        headingSeen = true;
+      continue; // всё до заголовка включительно остаётся как было
+    }
+    node.remove();
+  }
+  sub.insertAdjacentHTML("beforeend", body);
+  return { html: root.innerHTML, changed: true, warnings };
+}
+
+/**
+ * Куда ПОПАЛ локатор таблицы (беседа 9.2, вычисляемый заслон): имя
+ * подраздела, в который рендерер 5.1 врежет таблицу — заменой
+ * ('replaced') ИЛИ дописыванием в найденный подраздел без таблицы
+ * ('appended'). locateDocTable для этого не годится: без таблицы она
+ * отвечает null, а рендерер в этот подраздел всё равно пишет. null —
+ * таблица вне data-section либо локатор никуда не попал (ветка 'created').
+ */
+export function locateDocTableHost(
+  sectionHtml: string,
+  locators: readonly DocTableLocator[],
+): string | null {
+  const root = parseMutable(sectionHtml);
+  return locateMutableTable(root, locators).hostName;
+}

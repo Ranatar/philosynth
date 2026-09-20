@@ -82,6 +82,12 @@ import { getModes } from "../api/modes";
 import { useAuthStore } from "../stores/auth-store";
 import { useSynthesisStore } from "../stores/synthesis-store";
 import { visibilityBadge } from "../utils/visibility-text";
+import { getSubsectionSource, updateSubsection } from "../api/sections";
+import {
+  subsectionErrorText,
+  type SubsectionEditState,
+  type SubsectionRef,
+} from "../utils/subsection-edit";
 
 import type { GraphData } from "@philosynth/shared/types/graph";
 import type { TransformDirection } from "@philosynth/shared/types/elements";
@@ -263,6 +269,86 @@ export function SynthesisPage() {
     void reloadSections();
     void refreshGraphData();
   }, [reloadSections, refreshGraphData]);
+
+  /* ── Беседа 9.2: ручная правка подраздела. Карандаш у заголовка →
+     исходник с сервера (GET …/subsections/:name: разметка содержимого без
+     обёртки и <h4>) → поле на месте подраздела → PATCH { html } →
+     перечитка разделов (пометка «⟳» у раздела — is_edited из summaries).
+     Правка одна на документ; заслоны от повторного нажатия — ref'ы, не
+     состояние (09 §6, 9.1). Клиент разметку не собирает и не чистит —
+     это делает сервер по белому списку. ── */
+  const [subEdit, setSubEdit] = useState<SubsectionEditState | null>(null);
+  const subEditBusyRef = useRef(false);
+  const openSubsectionEdit = useCallback(
+    async (ref: SubsectionRef) => {
+      if (!id || subEditBusyRef.current) return;
+      subEditBusyRef.current = true;
+      setInlineEdit(null);
+      const base: SubsectionEditState = {
+        ...ref,
+        phase: "loading",
+        draft: "",
+        nested: [],
+        error: null,
+        warnings: [],
+      };
+      setSubEdit(base);
+      try {
+        const src = await getSubsectionSource(id, ref.sectionKey, ref.name);
+        // Замок мог появиться после загрузки страницы (правка графа перенесла
+        // таблицу): поле не открываем, говорим, чем править
+        setSubEdit(
+          src.lock
+            ? { ...base, error: src.lock.hint }
+            : { ...base, phase: "ready", draft: src.html, nested: src.nested },
+        );
+      } catch (err) {
+        setSubEdit({ ...base, error: subsectionErrorText(err) });
+      } finally {
+        subEditBusyRef.current = false;
+      }
+    },
+    [id],
+  );
+  const cancelSubsectionEdit = useCallback(() => {
+    if (subEditBusyRef.current) return;
+    setSubEdit(null);
+  }, []);
+  const saveSubsectionEdit = useCallback(
+    async (html: string) => {
+      const cur = subEdit;
+      if (!id || !cur || cur.phase !== "ready" || subEditBusyRef.current) return;
+      subEditBusyRef.current = true;
+      // draft = набранное: строка формы пересобирается, поле неуправляемое
+      setSubEdit({ ...cur, phase: "saving", draft: html, error: null });
+      try {
+        const res = await updateSubsection(id, cur.sectionKey, cur.name, html);
+        await reloadSections(); // статус — после перечитки (09 §2, 6.2 п.4)
+        setSubEdit(
+          res.warnings.length
+            ? { ...cur, phase: "saved", draft: html, warnings: res.warnings }
+            : null,
+        );
+      } catch (err) {
+        setSubEdit({ ...cur, phase: "ready", draft: html, error: subsectionErrorText(err) });
+      } finally {
+        subEditBusyRef.current = false;
+      }
+    },
+    [id, subEdit, reloadSections],
+  );
+  // Фокус в поле, когда исходник приехал (поле — часть строки HTML раздела)
+  const subEditReadyKey =
+    subEdit && subEdit.phase === "ready" && !subEdit.error
+      ? `${subEdit.sectionKey}:${subEdit.name}`
+      : null;
+  useEffect(() => {
+    if (!subEditReadyKey || typeof document === "undefined") return;
+    const area = document.querySelector<HTMLTextAreaElement>(
+      "textarea[data-subsection-source]",
+    );
+    area?.focus();
+  }, [subEditReadyKey]);
 
   /* ── Беседа 5.5 (п. 7): трансформация представлений graph↔theses.
      Вход — «→ Тезисы» в тулбаре GraphModal (модалка графа закрывается,
@@ -675,6 +761,11 @@ export function SynthesisPage() {
         onOpenLog={logsAvailable ? () => setLogOpen(true) : undefined}
         editable={isOwner && !live}
         onRowEdit={(row) => void openInlineEditor(row)}
+        subsectionEditable={isOwner && !live}
+        subsectionEdit={isOwner && !live ? subEdit : null}
+        onSubsectionEdit={(ref) => void openSubsectionEdit(ref)}
+        onSubsectionSave={(html) => void saveSubsectionEdit(html)}
+        onSubsectionCancel={cancelSubsectionEdit}
         sectionActionsFor={(key) =>
           key === "theses" && isOwner && !live ? (
             <button
