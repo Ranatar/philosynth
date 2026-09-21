@@ -49,7 +49,7 @@ const PAIRS: Pair[] = [
       "authorName", "scope", "sections"] },
   { table: "sections", file: "section.ts", iface: "SectionFull",
     schemaOnly: ["id", "synthesisId", "createdAt", "updatedAt"],
-    typeOnly: ["subsections"], renamed: { secContext: "secContext" } },
+    typeOnly: ["subsections", "lockedSubsections"], renamed: { secContext: "secContext" } },
   { table: "categories", file: "graph.ts", iface: "Category" },
   { table: "categoryEdges", file: "graph.ts", iface: "CategoryEdge" },
   { table: "clusterLabels", file: "graph.ts", iface: "ClusterLabel" },

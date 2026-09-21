@@ -892,3 +892,89 @@ export function locateDocTableHost(
   const root = parseMutable(sectionHtml);
   return locateMutableTable(root, locators).hostName;
 }
+
+/* ── Добавление подраздела (беседа 10.1) ─────────────────────────────── */
+
+export interface InsertSubsectionResult {
+  /** HTML раздела после врезки */
+  html: string;
+  /** 'inserted' — подраздела не было, добавлен ПОСЛЕ названного;
+   *  'replaced' — уже был: второй не заводится, заменено содержимое */
+  outcome: "inserted" | "replaced";
+  /** Что снято из присланной разметки (санитайзер 9.2) */
+  warnings: string[];
+}
+
+/** slug якоря оглавления — правило buildTableOfContents исходника [11661]
+ *  (его же держит client TableOfContents.tsx). */
+function subsectionAnchorSlug(name: string): string {
+  return name.replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, "_");
+}
+
+const escAttr = (s: string): string =>
+  s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+const escText = (s: string): string =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/**
+ * ДОБАВИТЬ подраздел в HTML раздела сразу ПОСЛЕ названного (беседа 10.1,
+ * ретрофит «Таблицы рекомендаций»). До 10.1 такой функции в проекте не было,
+ * и обе очевидные не годятся: spliceSubsectionHtml (1.4b) заменяет весь
+ * <div data-section> вместе с <h4> («По факту 5.1» п.1), а
+ * replaceSubsectionContent (9.2) отвечает null, когда подраздела нет.
+ *
+ * Обёртка собирается ПО ОБРАЗЦУ СОСЕДА: если у подраздела `afterName` в
+ * разметке лежит якорь оглавления <a id="subsec-{key}-{slug}"> и ⏫ в <h4>
+ * (документ заведён импортом одностраничника — «По факту 9.2» п.18), новый
+ * получает такие же; в документе, сгенерированном службой, их нет, и клиент
+ * дорисовывает их сам (SectionView). Содержимое идёт через тот же
+ * санитайзер и те же отказы, что ручная правка 9.2: вставка = пустая
+ * обёртка + replaceSubsectionContent, второго пути записи разметки нет.
+ *
+ * null — подраздела `afterName` с ТОЧНО таким именем нет. Отказы по
+ * содержимому — SubsectionHtmlError.
+ */
+export function insertSubsectionAfter(
+  sectionHtml: string,
+  afterName: string,
+  newName: string,
+  innerHtml: string,
+): InsertSubsectionResult | null {
+  const root = parseEditable(sectionHtml);
+  if (findExactSubsection(root, newName)) {
+    const r = replaceSubsectionContent(sectionHtml, newName, innerHtml);
+    if (!r) return null;
+    return { html: r.html, outcome: "replaced", warnings: r.warnings };
+  }
+  const after = findExactSubsection(root, afterName);
+  if (!after) return null;
+
+  let anchorHtml = "";
+  let backBtnHtml = "";
+  const slugAfter = subsectionAnchorSlug(afterName);
+  for (const el of after.children) {
+    const tag = el.tagName.toUpperCase();
+    const id = el.getAttribute("id") ?? "";
+    if (tag === "A" && id.startsWith("subsec-") && id.endsWith(slugAfter)) {
+      const prefix = id.slice(0, id.length - slugAfter.length);
+      anchorHtml = `<a id="${escAttr(prefix + subsectionAnchorSlug(newName))}"></a>`;
+    }
+    if (tag === "H4") {
+      for (const btn of el.querySelectorAll("a.toc-back-btn")) {
+        backBtnHtml = btn.outerHTML;
+        break;
+      }
+      break;
+    }
+  }
+  // Обёртка с заведомо чужим содержимым-заглушкой: replaceSubsectionContent
+  // заменит его присланным (и откажет, если присланное негодно — тогда
+  // исключение уйдёт наверх, а sectionHtml вызывающего останется как был)
+  after.insertAdjacentHTML(
+    "afterend",
+    `\n\n<div data-section="${escAttr(newName)}">${anchorHtml}\n<h4>${escText(newName)}${backBtnHtml}</h4>\n<p>\u2014</p>\n</div>`,
+  );
+  const r = replaceSubsectionContent(root.innerHTML, newName, innerHtml);
+  if (!r) return null;
+  return { html: r.html, outcome: "inserted", warnings: r.warnings };
+}

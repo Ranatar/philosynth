@@ -44,6 +44,13 @@ import {
   participantCardinality,
 } from "@philosynth/shared/utils/cardinality";
 
+import { KEY_LABELS, isSectionKey } from "@philosynth/shared/constants/section-labels";
+import {
+  RECOMMENDATIONS_PROSE_SUBSECTION,
+  RECOMMENDATIONS_TABLE_SUBSECTION,
+} from "@philosynth/shared/constants/recommendations";
+
+import { RECOMMENDATIONS_TABLE_TEMPLATE_KEY } from "../config/recommendation-templates.js";
 import { getConfig, renderTemplate } from "./prompt-registry.js";
 import {
   buildExtraTypesBlock,
@@ -168,6 +175,42 @@ export async function buildSubsectionMap(
     glossary: cfg.glossary[level] || cfg.glossary.comparative || [],
     critique,
   };
+}
+
+/* ── Адреса рекомендаций (беседа 10.1; в исходнике прародителя нет) ──── */
+
+/**
+ * Разделы, подразделы которых годятся в адрес рекомендации: всё, кроме
+ * самой критики (рекомендация о критике бессмысленна) и капсулы (у неё свой
+ * путь правки — PATCH /:id/capsule). Порядок входа сохраняется, дубли снимаются.
+ */
+export function addressableSectionKeys(keys: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const k of keys) {
+    if (k === "critique" || k === "capsule") continue;
+    if (!out.includes(k)) out.push(k);
+  }
+  return out;
+}
+
+/**
+ * Закрытый список адресов для {{document_subsections}}: строка на раздел,
+ * «  Метка раздела: подраздел | подраздел | …». Принимает и карту
+ * buildSubsectionMap (генерация: ожидаемые подразделы), и карту фактических
+ * data-section документа (ретрофит).
+ */
+export function formatDocumentSubsections(
+  map: Readonly<Record<string, readonly string[]>>,
+  keys: readonly string[],
+): string {
+  const lines: string[] = [];
+  for (const k of keys) {
+    const subs = map[k];
+    if (!subs || subs.length === 0) continue;
+    const label = isSectionKey(k) ? KEY_LABELS[k] : k;
+    lines.push(`  ${label}: ${subs.join(" | ")}`);
+  }
+  return lines.join("\n");
 }
 
 /* ── serializeParts [10623] ──────────────────────────────────────────── */
@@ -960,8 +1003,24 @@ export async function buildSectionDefs(
         note_after: null,
       },
       {
-        name: "Рекомендации по улучшению",
+        name: RECOMMENDATIONS_PROSE_SUBSECTION,
         body: await r("section.critique.sub.recommendations"),
+        note_after: null,
+      },
+      // ── Беседа 10.1 — ОТСТУПЛЕНИЕ ОТ ИСХОДНИКА (там подраздела нет):
+      // машиночитаемая пара к прозе, по образцу «Топология графа» /
+      // «Топологическая таблица». Список адресов — закрытый, из карты
+      // подразделов ЭТОГО документа (иначе запрет «названий, которых в
+      // документе нет» модель выполнить не может — она видит документ
+      // через метки контекста, а не через имена data-section).
+      {
+        name: RECOMMENDATIONS_TABLE_SUBSECTION,
+        body: await r(RECOMMENDATIONS_TABLE_TEMPLATE_KEY, {
+          document_subsections: formatDocumentSubsections(
+            await buildSubsectionMap(p),
+            addressableSectionKeys(["sum", ...p.sec]),
+          ),
+        }),
         note_after: null,
       },
     ];

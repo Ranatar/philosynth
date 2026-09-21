@@ -47,6 +47,10 @@ const mock = { calls: 0, picked: [] };
 function pickSection(prompt) {
   const task = prompt.slice(Math.max(0, prompt.lastIndexOf("ЗАДАНИЕ")));
   let best = null, bestHits = 0;
+  // 10.1: задание критики несёт закрытый список адресов — имена подразделов ВСЕХ разделов
+  // документа («Таблица категорий», «Таблица определений»…), поэтому критика узнаётся ПЕРВОЙ,
+  // по собственному подразделу, которого нет ни в одном другом задании.
+  if (task.includes("Таблица рекомендаций")) return modelSections.find((x) => x.names.includes("Рекомендации по улучшению")) ?? null;
   for (const sct of modelSections) {
     const hits = sct.names.filter((n) => task.includes(n)).length / sct.names.length;
     if (hits > bestHits) { best = sct; bestHits = hits; }

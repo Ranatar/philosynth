@@ -1526,6 +1526,84 @@ POST   /syntheses/:id/transforms/:transformId/rollback
 }
 ```
 
+### 2.16. Рекомендации критики (беседа 10.1)
+
+Раздел `critique` несёт пару подразделов: прозаический «Рекомендации по
+улучшению» (для человека) и машиночитаемый «Таблица рекомендаций» — сразу
+после него (образец пары — «Топология графа» / «Топологическая таблица»).
+Контракт таблицы — шаблон Registry
+`section.critique.sub.recommendations_table`; столбцы и закрытые списки живут
+в `packages/shared/constants/recommendations.ts` — из них собран шаблон, по ним
+же работает разбор.
+
+Столбцы: `№ | Адрес | Элемент | Операция | Готовая замена | Основание |
+Важность`. Операция — одно из `переопределить | уточнить формулировку |
+удалить | добавить | развить | перегенерировать`; важность — `блокирующая |
+существенная | косметическая`. Адрес — имя подраздела ЭТОГО документа из
+закрытого списка `{{document_subsections}}` (метки контекста вида
+«Глоссарий → Определения» именами подразделов не являются).
+
+Все три маршрута — ТОЛЬКО ВЛАДЕЛЬЦУ, включая чтение: рекомендации касаются
+правки. Чужому — 403 и на публичной концепции; гостю — 401.
+
+```
+GET  /syntheses/:id/recommendations            ?round=N
+     → RecommendationsResponse { round, latestRound, rows: Recommendation[] }
+     Без параметра — последний раунд; разборов не было → round 0, rows [].
+     404 NOT_FOUND: нет синтеза; нет критики (details.reason 'no_critique');
+     нет раунда N ('no_round', details.latestRound). 400 — round не целое ≥ 1.
+
+POST /syntheses/:id/recommendations/parse
+     → RecommendationsParseResponse (… + newRound, invalidCount)
+     Разбирает подраздел и обновляет строки; идемпотентно в пределах раунда
+     (ключ раунда — проза, 02 §2.32). Столбцы ищутся ПО ЗАГОЛОВКАМ, не по
+     позиции. Негодная строка разбор не роняет: status 'invalid' +
+     invalidReason (все причины разом).
+     404: 'no_critique' | 'no_table' (текст подсказывает …/extract).
+     422 RECOMMENDATIONS_TABLE_INVALID: details.problem
+       'no_table_element' | 'missing_columns' (details.missing, .found) | 'no_rows'.
+     409 GENERATION_IN_PROGRESS — активная операция (ownerEditGate, как правка 9.2).
+
+POST /syntheses/:id/recommendations/extract     (ретрофит)
+     → RecommendationsExtractResponse (… + outcome 'inserted'|'replaced',
+       warnings, usage)
+     Для концепций, созданных до контракта: ОДНО обращение к модели (шаблон
+     `recommendations.extract`, SYS в режиме одного подраздела) — таблица
+     составляется по готовой прозе и вписывается в документ подразделом ПОСЛЕ
+     неё (`insertSubsectionAfter`; уже есть — заменяется содержимое), затем
+     разбор. Квота — regenerations. Запрос СИНХРОНЕН: ждёт ответа модели, WS не
+     участвует. Версия раздела 'section'/'regenerated' со снимком ДО,
+     is_edited = true, строка generation_log, стоимость входит в итог документа.
+     Негодный ответ модели в документ НЕ пишется:
+     422 RECOMMENDATIONS_TABLE_INVALID ('model_no_table' | 'model_html' |
+     'missing_columns'); обрыв обращения — 502 GENERATION_FAILED.
+     404: 'no_critique' | 'no_prose'. 403/409/429 — как у прочей генерации.
+```
+
+```typescript
+interface Recommendation {        // packages/shared/types/recommendations.ts
+  id: string; synthesisId: string; round: number;
+  num: string;                    // «5», «5а», «5б»
+  addressSubsection: string; addressSection: string | null;
+  element: string | null;
+  elementKind: 'category' | 'thesis' | 'glossary_term' | null;
+  elementId: string | null;
+  op: string; replacement: string | null; rationale: string; severity: string;
+  status: 'new' | 'planned' | 'done' | 'rejected' | 'invalid' | 'stale';
+  invalidReason: string | null;
+  planId: string | null; stepIndex: number | null;   // заполняет 10.2
+  createdAt: string;
+}
+```
+
+Сторож сверяет: адрес — среди подразделов документа (кроме самой критики и
+капсулы; одноимённый в двух разделах — «неоднозначен»); элемент — среди
+категорий, тезисов (по метке сводной таблицы — «Э-2», по номеру, по
+формулировке) и терминов, в три СКЛАДЫВАЮЩИЕСЯ ступени: точно → нормализованно
+(пробелы, ёлочки, регистр) → без хвостовой скобки-пояснения; между одноимёнными
+категорией и термином выбирает раздел адреса; операция и важность — по
+закрытым спискам. Столбец «Основание» сторож не проверяет.
+
 ---
 
 ## 3. WebSocket-протокол
@@ -1821,6 +1899,15 @@ WEBHOOK_SIGNATURE_INVALID — подпись Stripe webhook не сходитс�
 GENERATION_PAUSED   — генерация в pausedState; действия — через resume_generation (v11)
 RESUME_INVALID      — resume_generation/resume_plan без pausedState или с чужим mode (v11)
 NO_PARTICIPANTS_SEED_REQUIRED — свободный синтез без seed (v11)
+RECOMMENDATIONS_TABLE_INVALID — подраздел «Таблица рекомендаций» есть, но как
+                      таблица контракта не разбирается, либо ответ модели при
+                      ретрофите негоден (документ при этом не меняется) — 422;
+                      details.problem: 'no_table_element' | 'missing_columns'
+                      (+ missing, found) | 'no_rows' | 'model_no_table' |
+                      'model_html' (10.1)
+GENERATION_FAILED   — синхронное обращение к модели оборвалось (ретрофит
+                      рекомендаций) — 502; документ не тронут, запрос можно
+                      повторить; details.kind — вид обрыва стрима (10.1)
 SECTION_TABLE_LOCKED — ручная правка подраздела, который служба рисует из БД
                       (куда попал локатор таблицы рендерера 5.1 в текущем
                       HTML), либо капсулы — 409; error говорит, чем править;

@@ -2,8 +2,8 @@
  * PhiloSynth Service — Drizzle-схема БД.
  * Источник истины: docs/02-data-model.md (ревизия 2026-07-22, v11).
  *
- * 31 таблица (§2.1–2.31; admin_audit — беседа 8.1; auth_tokens и
- * mail_outbox — беседа 9.1):
+ * 32 таблицы (§2.1–2.32; admin_audit — беседа 8.1; auth_tokens и
+ * mail_outbox — беседа 9.1; recommendations — беседа 10.1):
  *   users, sessions, syntheses, synthesis_lineage, sections,
  *   categories, category_edges, cluster_labels, theses, glossary_terms,
  *   dialogue_turns, element_versions, edit_plans, mode_results,
@@ -11,7 +11,8 @@
  *   api_keys, transactions, api_usage, subscription_plans,
  *   user_subscriptions, category_type_catalog, relationship_type_catalog,
  *   element_enrichments, characteristic_justifications,
- *   representation_transforms, admin_audit, auth_tokens, mail_outbox.
+ *   representation_transforms, admin_audit, auth_tokens, mail_outbox,
+ *   recommendations.
  *
  * v10: ext_graph_metrics, structure_sections (syntheses);
  *      clarity, breadth, depth_score, applicability (categories);
@@ -1274,4 +1275,76 @@ export const mailOutbox = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true }),
   },
   (t) => [index("idx_mail_outbox_status_next").on(t.status, t.nextAttemptAt)],
+);
+
+/* ──────────────────────── 2.32. recommendations ─────────────────────── */
+
+/**
+ * Разобранные строки подраздела «Таблица рекомендаций» критики (беседа 10.1,
+ * миграция 0007_recommendations). Пишет только
+ * server/services/recommendations.ts.
+ *
+ * `num` — строкой: развилка даёт «5а» / «5б». Номер НЕ уникален в раунде:
+ * контракт таблицы велит рекомендацию о двух подразделах писать ДВУМЯ
+ * строками с одним номером, поэтому ключ строки — её место в таблице
+ * (`position`), а не номер (текст беседы требовал UNIQUE по num и тем самым
+ * противоречил собственному шаблону).
+ * `round_hash` — sha256 содержимого подраздела-таблицы на момент разбора:
+ * повторный разбор того же текста раунд не открывает.
+ * `source_hash` — sha256 адресата (содержимое подраздела + значение
+ * элемента): беседа 10.2 отличает по нему устаревшую рекомендацию ('stale' —
+ * текст изменился) от негодной ('invalid' — адрес не найден).
+ * Синтез удаляется каскадом; строка users здесь не участвует —
+ * account-deletion (7.1) удаляет синтезы, вопрос 9.1 о FK на users снят.
+ */
+export const recommendations = pgTable(
+  "recommendations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
+    round: integer("round").notNull(),
+    position: integer("position").notNull(),
+    num: text("num").notNull(),
+    addressSubsection: text("address_subsection").notNull().default(""),
+    addressSection: text("address_section"),
+    element: text("element"),
+    elementKind: text("element_kind", {
+      enum: ["category", "thesis", "glossary_term"],
+    }),
+    elementId: uuid("element_id"),
+    op: text("op").notNull().default(""),
+    replacement: text("replacement"),
+    rationale: text("rationale").notNull().default(""),
+    severity: text("severity").notNull().default(""),
+    status: text("status", {
+      enum: ["new", "planned", "done", "rejected", "invalid", "stale"],
+    })
+      .notNull()
+      .default("new"),
+    invalidReason: text("invalid_reason"),
+    sourceHash: text("source_hash"),
+    roundHash: text("round_hash").notNull(),
+    planId: uuid("plan_id").references(() => editPlans.id, {
+      onDelete: "set null",
+    }),
+    stepIndex: integer("step_index"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_recommendations_round_position").on(
+      t.synthesisId,
+      t.round,
+      t.position,
+    ),
+    index("idx_recommendations_round_num").on(t.synthesisId, t.round, t.num),
+    index("idx_recommendations_status").on(t.synthesisId, t.status),
+    check(
+      "recommendations_status_check",
+      sql`${t.status} IN ('new','planned','done','rejected','invalid','stale')`,
+    ),
+  ],
 );

@@ -41,6 +41,7 @@
  * не в разделах).
  */
 
+import { RECOMMENDATIONS_TABLE_SUBSECTION } from "@philosynth/shared/constants/recommendations";
 import { and, asc, eq } from "drizzle-orm";
 
 import { truncateText } from "../utils/text.js";
@@ -795,7 +796,15 @@ export async function extractContextFragment(
         if (table) return "ИТОГОВАЯ ОЦЕНКА:\n" + tableToText(table);
         return truncateText(innerTextTrimmed(sec), 2000);
       }
-      const tables = Array.from(el.querySelectorAll("table.doc-table"));
+      // 10.1: с подразделом «Таблица рекомендаций» последняя таблица
+      // критики — уже НЕ итоговая оценка; запасной ход исходника [8229]
+      // («последняя doc-table») её пропускает, иначе рекомендации ушли бы
+      // в контекст под шапкой «ИТОГОВАЯ ОЦЕНКА»
+      const tables = Array.from(el.querySelectorAll("table.doc-table")).filter(
+        (t) =>
+          t.closest("[data-section]")?.getAttribute("data-section") !==
+          RECOMMENDATIONS_TABLE_SUBSECTION,
+      );
       const last = tables[tables.length - 1];
       return last ? "ИТОГОВАЯ ОЦЕНКА:\n" + tableToText(last) : null;
     }

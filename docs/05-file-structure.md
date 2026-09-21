@@ -113,6 +113,9 @@ philosynth-service/
 │   │       ├── 0006_mail.sql           # 9.1: users.email_verified_at, auth_tokens (CHECK purpose,
 │   │       │                           #  два индекса), mail_outbox (индекс status+next_attempt_at);
 │   │       │                           #  генерат, тег переименован
+│   │       ├── 0007_recommendations.sql # 10.1: recommendations (CHECK статусов, уникальность
+│   │       │                           #  по (synthesis_id, round, position), FK plan_id SET NULL);
+│   │       │                           #  генерат, тег переименован
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -367,9 +370,13 @@ philosynth-service/
 │   │   │                              # assertPlanEconomics (цена ≥ Σ квот × cost × наценка)
 │   │   ├── enrichment-templates.ts    # 6 шаблонов enrichment.* (5.3; новые тексты,
 │   │   │                              # не из исходника; JUSTIFICATION_SECTIONS)
-│   │   └── transform-templates.ts     # 2 шаблона transform.* (5.5; новые тексты —
-│   │                                  # режим трансформации; форма результата —
-│   │                                  # {{section_task}} из buildSectionDefs)
+│   │   ├── transform-templates.ts     # 2 шаблона transform.* (5.5; новые тексты —
+│   │   │                              # режим трансформации; форма результата —
+│   │   │                              # {{section_task}} из buildSectionDefs)
+│   │   └── recommendation-templates.ts # 10.1: шаблон «Таблицы рекомендаций» и шаблон
+│   │                                  # ретрофита (новые тексты из shared-констант) +
+│   │                                  # НАДСТРОЙКИ над генератами: проза рекомендаций и
+│   │                                  # три конфига critique; генераты рукой не правятся
 │   │
 │   ├── utils/
 │   │   ├── deep-merge.ts               # deepMergeUniq (deepMergeUniq())
@@ -676,6 +683,11 @@ philosynth-service/
     │                                   # (T92_FILE; без файла — пропуск): все незапертые подразделы
     │                                   # в ДВУХ происхождениях — импорт файла и генерация службой
     │                                   # (мок Claude :3893 отдаёт разделы файла как ответ модели)
+    │                                   # test-101 (10.1) — контракт рекомендаций: сиды на базе с
+    │                                   # прежними версиями, генерация критики, разбор, сторож,
+    │                                   # раунд, ретрофит на ЖИВОМ файле (T101_FILE; без файла —
+    │                                   # пропуск), края; мок Claude :3911; запуск через tsx;
+    │                                   # smoke-101-request1 — чистые функции + Registry
     ├── test-*-0.3b.ts                  # Регрессионные смоуки таксономии
     └── package.json                    # Маркер type=module
 ```

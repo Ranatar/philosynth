@@ -1005,6 +1005,79 @@ RETURNING *`; разговор с узлом идёт вне транзакци�
 поля пустую строку; остаются адресат, тема, исход и `last_error`. В `pending`
 ссылка лежит неизбежно — секунды до прохода работника.
 
+### 2.32. recommendations
+
+Разобранные строки подраздела «Таблица рекомендаций» раздела `critique`
+(беседа 10.1, миграция `0007_recommendations`). Пишет только
+`server/services/recommendations.ts`. Источник истины — HTML подраздела;
+таблица — его разбор плюс состояние исполнения (статус, план).
+
+```sql
+CREATE TABLE recommendations (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  synthesis_id       UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
+  round              INTEGER NOT NULL,        -- какая по счёту критика породила строку
+  position           INTEGER NOT NULL,        -- место строки в таблице, с 1
+  num                TEXT NOT NULL,           -- строкой: бывает «5а» / «5б» (развилка)
+  address_subsection TEXT NOT NULL DEFAULT '',-- подраздел-адресат, имя как в документе
+  address_section    TEXT,                    -- раздел, где сторож нашёл подраздел
+  element            TEXT,                    -- NULL — рекомендация о подразделе целиком
+  element_kind       TEXT,                    -- category | thesis | glossary_term
+  element_id         UUID,                    -- строка categories / theses / glossary_terms
+  op                 TEXT NOT NULL DEFAULT '',
+  replacement        TEXT,                    -- готовая замена дословно; NULL — её нет
+  rationale          TEXT NOT NULL DEFAULT '',-- подраздел критики, где проблема установлена
+  severity           TEXT NOT NULL DEFAULT '',
+  status             TEXT NOT NULL DEFAULT 'new',
+      -- new | planned | done | rejected | invalid | stale   (CHECK)
+  invalid_reason     TEXT,                    -- что именно не сошлось у 'invalid'
+  source_hash        TEXT,                    -- sha256 адресата на момент разбора
+  round_hash         TEXT NOT NULL,           -- ключ раунда
+  plan_id            UUID REFERENCES edit_plans(id) ON DELETE SET NULL,  -- заполняет 10.2
+  step_index         INTEGER,                                            -- заполняет 10.2
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX uq_recommendations_round_position
+  ON recommendations (synthesis_id, round, position);
+CREATE INDEX idx_recommendations_round_num ON recommendations (synthesis_id, round, num);
+CREATE INDEX idx_recommendations_status    ON recommendations (synthesis_id, status);
+```
+
+**Ключ строки — `position`, не `num`.** Контракт таблицы велит рекомендацию,
+затрагивающую два подраздела, писать ДВУМЯ строками с одним номером; развилка
+даёт «5а»/«5б». Номер в раунде поэтому не уникален: `num` называет
+рекомендацию (или вариант развилки), а строк у неё может быть несколько.
+Полный повтор (№ + адрес + элемент) сторож помечает 'invalid'.
+
+**Ключ раунда (`round_hash`) — sha256 исходника ПРОЗЫ** «Рекомендации по
+улучшению» (`readSubsectionSource`), а не таблицы. Таблицу правят руками
+(9.2 это разрешает), и починка негодной строки не должна открывать новый
+раунд и терять статусы; проза же меняется при перегенерации критики — это и
+есть смена раунда. Прозы нет (вырожденный документ) — ключом служит сама
+таблица. Повторный разбор в пределах раунда пересобирает строки по текущей
+таблице: `id` узнанных строк (тройка «№ + адрес + элемент») сохраняются, а
+строки в работе (`planned`/`done`/`rejected`) сохраняют ещё статус и привязку
+к плану; исчезнувшая из таблицы строка в работе дописывается в хвост.
+
+**Хэш источника (`source_hash`)**: у строки С ЭЛЕМЕНТОМ — sha256 значения
+элемента (категория: name/type/definition/origin; тезис:
+formulation/justification; термин: term/definition/extra_columns), БЕЗ
+содержимого подраздела: «Таблицу категорий» служба перерисовывает целиком при
+правке любой категории (5.1), и исполнение одной рекомендации делало бы
+устаревшими все соседние. У строки без элемента — sha256 исходника
+подраздела-адресата. Пересчёт против живого документа — `sourceHashFor`
+(10.2: разошёлся → 'stale', адресата нет → 'invalid').
+
+**`'stale'` заведён сразу**, хотя ставит его беседа 10.2: «текст изменился»
+отдельно от 'invalid' «адрес не найден».
+
+**Статусы прошлого раунда не наследуются**: новый раунд — новые строки 'new';
+строки прежних раундов остаются как были (`GET …/recommendations?round=N`).
+
+**Удаление.** Синтез удаляется — строки уходят каскадом. Строка `users` в
+таблице не участвует: `account-deletion` (7.1) удаляет синтезы владельца,
+вопрос 9.1 о FK на users снят. План удалён — `plan_id` обнуляется.
+
 ## 3. Извлечение гранулярных элементов из HTML
 
 При генерации Claude возвращает HTML. Бэкенд:

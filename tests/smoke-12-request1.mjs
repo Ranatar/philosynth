@@ -11,7 +11,22 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 import { buildSYS, buildQualityReinforcement, getStopSignal } from "../server/services/prompt-builder.ts";
-import { buildSectionDefs, buildSubsectionMap } from "../server/services/section-defs-builder.ts";
+import { buildSectionDefs, buildSubsectionMap, serializeParts } from "../server/services/section-defs-builder.ts";
+// Беседа 10.1: служба НАМЕРЕННО отступила от исходника в одном месте — у критики
+// появился подраздел «Таблица рекомендаций» (после «Рекомендации по улучшению»),
+// а прозаическому шаблону рекомендаций дописано одно требование. Байтовая сверка
+// с исходником сохраняется в полную силу: отступление СНИМАЕТСЯ перед сравнением
+// (и отдельно проверяется, что оно ровно такое), всё остальное обязано совпасть.
+import { RECOMMENDATIONS_PROSE_SUBSECTION as REC_PROSE, RECOMMENDATIONS_TABLE_SUBSECTION as REC_TABLE } from "../packages/shared/constants/recommendations.ts";
+import { RECOMMENDATIONS_PROSE_ADDENDUM } from "../server/config/recommendation-templates.ts";
+function withoutDeparture101(def) {
+  if (def.key !== "critique") return { def, departed: null };
+  const subs = def.parts.subsections;
+  const i = subs.findIndex((x) => x.name === REC_TABLE);
+  const departed = i === subs.length - 1 && subs[i - 1]?.name === REC_PROSE && subs[i - 1].body.endsWith(RECOMMENDATIONS_PROSE_ADDENDUM);
+  const parts = { ...def.parts, subsections: subs.filter((x) => x.name !== REC_TABLE).map((x) => x.name === REC_PROSE ? { ...x, body: x.body.slice(0, x.body.length - RECOMMENDATIONS_PROSE_ADDENDUM.length) } : x) };
+  return { def: { ...def, parts, prompt: serializeParts(parts) }, departed };
+}
 import { closeDb } from "../server/db/index.js";
 import { closeRedis } from "../server/redis.js";
 
@@ -81,7 +96,11 @@ for (const { name, p } of CASES) {
   ok(`число разделов ${expDefs.length}`, gotDefs.length === expDefs.length,
     `got ${gotDefs.length}`);
   for (let i = 0; i < Math.min(gotDefs.length, expDefs.length); i++) {
-    const g = gotDefs[i], e = expDefs[i];
+    const { def: g, departed } = withoutDeparture101(gotDefs[i]);
+    const e = expDefs[i];
+    if (departed !== null)
+      ok("critique: отступление 10.1 ровно одно — таблица последним подразделом после прозы + требование в прозе", departed,
+        gotDefs[i].parts.subsections.map((x) => x.name).join("|"));
     const meta = g.key === e.key && g.num === e.num && g.title === e.title;
     const d = firstDiff(g.prompt, e.prompt);
     ok(`${e.key}: key/num/title + prompt байт-в-байт`, meta && g.prompt === e.prompt,
@@ -95,7 +114,9 @@ for (const { name, p } of CASES) {
 
   // buildSubsectionMap — сверка по ключам (jsonb не сохраняет порядок
   // ключей объекта — грабли 0.3; семантика от порядка не зависит)
-  const gotMap = await buildSubsectionMap(p);
+  const gotMapRaw = await buildSubsectionMap(p);
+  ok("buildSubsectionMap: отступление 10.1 — таблица сразу после прозы", gotMapRaw.critique[gotMapRaw.critique.indexOf(REC_PROSE) + 1] === REC_TABLE);
+  const gotMap = { ...gotMapRaw, critique: gotMapRaw.critique.filter((x) => x !== REC_TABLE) };
   const expMap = orig.buildSubsectionMap(p);
   const mapKeysEq =
     JSON.stringify(Object.keys(gotMap).sort()) ===

@@ -252,12 +252,21 @@ Stripe. Расходятся — значит какое-то событие web
 sudo -u philos git -C /home/philos/philosynth pull
 sudo -u philos npm ci --prefix /home/philos/philosynth
 sudo -u philos npm run --prefix /home/philos/philosynth db:migrate
+sudo -u philos npm run --prefix /home/philos/philosynth seed:prompts
+sudo -u philos npm run --prefix /home/philos/philosynth seed:configs
 sudo -u philos npm run --prefix /home/philos/philosynth build
 sudo systemctl restart philosynth
 ```
 
 Миграции — до перезапуска, не после: новый код рассчитывает на новую
-схему. Откат назад миграциями не предусмотрен, поэтому дамп снимайте
+схему. Сиды шаблонов и конфигов — тоже до перезапуска и ВСЕГДА вместе с ним
+(беседа 10.1): они идемпотентны (без изменений — одни skip), но кэш реестра в
+Redis бессрочный и посевом не сбрасывается — новые версии служба увидит только
+после перезапуска (`warmCache`). Посев без перезапуска оставит новый код на
+старых конфигах. Версии, которые вы правили в админке руками, посев
+перезапишет новой версией поверх — прежняя останется в истории версий.
+
+Откат назад миграциями не предусмотрен, поэтому дамп снимайте
 перед выкаткой, а не после.
 
 ## 9. Грабли публичного случая

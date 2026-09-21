@@ -64,6 +64,11 @@ import {
   SUBSECTION_MAP_GLOSSARY,
   SUM_PORTRAIT_VARIANTS,
 } from "../../server/config/subsection-map.js";
+import {
+  withRecommendationsCtxKeys,
+  withRecommendationsIntraDeps,
+  withRecommendationsSubsectionMap,
+} from "../../server/config/recommendation-templates.js";
 
 const { synthesisConfigs } = schema;
 
@@ -89,8 +94,8 @@ const SEED_CONFIGS: SeedConfig[] = [
   { key: "compat_matrix", value: COMPAT_MATRIX_COMPACT, description: `COMPAT_MATRIX_COMPACT [${A} ~7012]: Advisor v2 — entry-модель level:method (rating/severity/desc/advice/replacements/sections_override)` },
   { key: "compat_sec_labels", value: COMPAT_SEC_LABELS, description: `COMPAT_SEC_LABELS [${A} ~7318]: короткие метки разделов для чипов Advisor v2 (COMPAT_KEYS удалён в v11)` },
   // ── Внутрисекционные зависимости и потребители контекста ──
-  { key: "intra_deps", value: INTRA_DEPS, description: `INTRA_DEPS [${A} ~9493]: зависимости подразделов внутри раздела (канонические ключи заголовков)` },
-  { key: "subsection_ctx_keys", value: SUBSECTION_TO_CTX_KEYS, description: `SUBSECTION_TO_CTX_KEYS [${A} ~9606]: подраздел → потребляемые ctx-ключи (гранулярный каскад)` },
+  { key: "intra_deps", value: withRecommendationsIntraDeps(INTRA_DEPS), description: `INTRA_DEPS [${A} ~9493]: зависимости подразделов внутри раздела (канонические ключи заголовков); 10.1: critique += «Таблица рекомендаций» ← «Рекомендации по улучшению» (надстройка службы, не исходник)` },
+  { key: "subsection_ctx_keys", value: withRecommendationsCtxKeys(SUBSECTION_TO_CTX_KEYS), description: `SUBSECTION_TO_CTX_KEYS [${A} ~9606]: подраздел → потребляемые ctx-ключи (гранулярный каскад); 10.1: critique += «Таблица рекомендаций»: [] (надстройка службы)` },
   { key: "topology_roles", value: TOPOLOGY_ROLES_PROCEDURAL, description: `TOPOLOGY_ROLES_PROCEDURAL [${A} ~8778]: допустимые процессуальные роли топологии по методам` },
   // ── Бюджетирование контекста ──
   { key: "fragment_share", value: FRAGMENT_SHARE, description: `FRAGMENT_SHARE [${A} ~7566]: доля бюджета на фрагмент (в исходнике дубликат ключа dialogue:synthesis — действует last-win 0.3)` },
@@ -112,7 +117,7 @@ const SEED_CONFIGS: SeedConfig[] = [
   // ── Режимы (v11) ──
   { key: "mode_deps", value: MODE_DEPS, description: `MODE_DEPS [${A} ~22543]: декларативные ctx-зависимости режимов (adversarial/translator/timeslice)` },
   // ── Карта подразделов (беседа 1.2; отложено из 0.3 намеренно) ──
-  { key: "subsection_map", value: { base: SUBSECTION_MAP_BASE, glossary: SUBSECTION_MAP_GLOSSARY, critiqueNovelty: SUBSECTION_CRITIQUE_NOVELTY, critiqueCheck: SUBSECTION_CRITIQUE_CHECK, sumPortraitVariants: SUM_PORTRAIT_VARIANTS }, description: `SUBSECTION_MAP_BASE/GLOSSARY + SUBSECTION_CRITIQUE_NOVELTY/CHECK + _SUM_PORTRAIT_VARIANTS [${A} ~9314–9434, ~9746]: канонические ключи («Портрет каждого философа»); заголовок портрета по кардинальности резолвит SUBSECTION_SUM_PORTRAIT (section-defs-builder, 01-arch §4.14)` },
+  { key: "subsection_map", value: { base: withRecommendationsSubsectionMap(SUBSECTION_MAP_BASE), glossary: SUBSECTION_MAP_GLOSSARY, critiqueNovelty: SUBSECTION_CRITIQUE_NOVELTY, critiqueCheck: SUBSECTION_CRITIQUE_CHECK, sumPortraitVariants: SUM_PORTRAIT_VARIANTS }, description: `SUBSECTION_MAP_BASE/GLOSSARY + SUBSECTION_CRITIQUE_NOVELTY/CHECK + _SUM_PORTRAIT_VARIANTS [${A} ~9314–9434, ~9746]: канонические ключи («Портрет каждого философа»); заголовок портрета по кардинальности резолвит SUBSECTION_SUM_PORTRAIT (section-defs-builder, 01-arch §4.14); 10.1: base.critique += «Таблица рекомендаций» после «Рекомендации по улучшению» (надстройка службы)` },
 ];
 
 interface Report {
