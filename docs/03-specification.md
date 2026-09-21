@@ -560,7 +560,11 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
                                 // Связь при импорте НЕ создаётся даже при
                                 // единственном совпадении (имя — не идентификатор);
                                 // matches пуст — совпадений нет, предупреждение
-                                // говорит о возможности привязать позже. Файлы
+                                // говорит, что ветка родителя сохранена из файла
+                                // и показана в древе снимком (file_genealogy,
+                                // §2.8), а настоящую связь даёт импорт родителя
+                                // ДО ребёнка (прежнее «привязать позже» снято:
+                                // интерфейса привязки после импорта нет). Файлы
                                 // экспорта 4.2 (с UUID) связываются прежней
                                 // веткой, lineageCandidates для них пуст.
                                 // Клиент (ImportPage): блок на каждого родителя,
@@ -623,6 +627,10 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
   // Связи
   philosophers: string[];
   parentSyntheses: { id: string, title: string }[];
+  fileConceptParents: string[];  // родители-концепции дерева импортированного
+                                 // файла БЕЗ связи в БД (правило приоритета
+                                 // §2.8); isMetaSynthesis = parentSyntheses
+                                 // или fileConceptParents непусты
   childSyntheses: { id: string, title: string }[];
 }
 ```
@@ -1145,6 +1153,16 @@ DELETE /syntheses/:id/modes/:modeKey/:index
                                 // всегда)
 ```
 
+Клиентские потребители (2026-09-21, вне бесед): SynthesisPage показывает
+режимы и НЕвладельцу — вошедшему при объёме `scope='full'` (тот же круг,
+кому доступны разделы и экспорт; экспорт результаты режимов несёт). Кнопки —
+только режимов с результатами, со счётчиком, без гейта капсулы; ModeModal
+`readOnly` — без блока параметров и генерации, без × у вкладок, без
+WS-соединения (паритет модалки экспортированного файла, где
+buildModesExportSection снимает `.mode-modal-params`). Гостю и на витрине
+кнопок нет. Сервер не менялся: чтение обоих GET и прежде было открыто этому
+кругу, run/regenerate/DELETE — только владельцу.
+
 ### 2.8. Lineage
 
 ```
@@ -1154,6 +1172,13 @@ GET    /syntheses/:id/lineage/ancestors?depth=10
                                 // ПРОХОДИТ (как parentSyntheses в
                                 // SynthesisFull); pruneInvisible потомков —
                                 // владелец ИЛИ visibility <> 'private'.
+                                // 2026-09-21: для корня и каждого предка из БД
+                                // подшивается его syntheses.file_genealogy —
+                                // узлы файла помечены fromFile: true, без
+                                // synthesisId, с method/synthLevel/
+                                // generationOrder/seed/capsule файла; связь БД
+                                // на той же позиции перекрывает узел файла
+                                // (02 §2.4). maxDepth действует и на них.
 
 GET    /syntheses/:id/lineage/descendants?depth=5
                                 → { children: LineageNode[] }
@@ -1165,8 +1190,12 @@ GET    /lineage/search          ?philosopher=Кант&philosopher=Хайдегг
 POST   /syntheses/:id/lineage/link { parentName, parentSynthesisId }
                                 → { ok: true, record: LineageRecord }
                                 // Беседа 8.5. Строка synthesis_lineage
-                                // parent_type='synthesis', position — в конец
-                                // существующих родителей. parentName — имя из
+                                // parent_type='synthesis'. position (2026-09-21):
+                                // на позицию неперекрытого узла file_genealogy
+                                // с тем же нормализованным parentName, иначе —
+                                // за пределы и связей БД, и participants файла
+                                // (прежнее «в конец существующих» 8.5 заменено).
+                                // parentName — имя из
                                 // файла (обязателен, в БД НЕ пишется: parent_name
                                 // модели — имя философа). Заслоны по порядку:
                                 // тело без полей → 400 VALIDATION_ERROR (details);

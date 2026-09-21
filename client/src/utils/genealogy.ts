@@ -42,6 +42,9 @@ export interface GenealogyNode {
   /** Только у узлов, пришедших из API (lineageNodeToGenealogy) —
    *  кликабельная ссылка /synthesis/:id в GenealogyTree */
   synthesisId?: string;
+  /** Узел из дерева импортированного файла (LineageNode.fromFile):
+   *  снимок без связи в базе */
+  fromFile?: boolean;
 }
 
 /** Участник для проверки пересечений (форма checkGenealogyOverlaps). */
@@ -347,7 +350,9 @@ export function checkGenealogyOverlaps(
 
 export function lineageNodeToGenealogy(node: LineageNode): GenealogyNode {
   if (node.type === "philosopher") {
-    return { type: "philosopher", name: node.name };
+    const p: GenealogyNode = { type: "philosopher", name: node.name };
+    if (node.fromFile) p.fromFile = true;
+    return p;
   }
   const g: GenealogyNode = {
     type: "concept",
@@ -355,5 +360,13 @@ export function lineageNodeToGenealogy(node: LineageNode): GenealogyNode {
     participants: node.children.map(lineageNodeToGenealogy),
   };
   if (node.synthesisId) g.synthesisId = node.synthesisId;
+  // Узлы дерева файла несут метаданные файла — карточка рисует мета-строку,
+  // зерно и капсулу, как одностраничник
+  if (node.fromFile) g.fromFile = true;
+  if (node.method) g.method = node.method;
+  if (node.synthLevel) g.synthLevel = node.synthLevel;
+  if (node.generationOrder) g.generationOrder = node.generationOrder;
+  if (node.seed) g.seed = node.seed;
+  if (node.capsule) g.capsule = node.capsule;
   return g;
 }

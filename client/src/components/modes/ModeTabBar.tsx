@@ -21,7 +21,8 @@ export interface ModeTabBarProps {
   /** Параметр генерирующейся вкладки (⟳, .adding) либо null */
   addingParam: string | null;
   onSwitch: (index: number) => void;
-  onRemove: (index: number) => void;
+  /** null — вкладки без × (просмотр невладельцем) */
+  onRemove: ((index: number) => void) | null;
 }
 
 /** Порт truncLabel(s, max) [22868] */
@@ -55,15 +56,17 @@ export function ModeTabBar({
           <span className="mode-tab-date">
             {new Date(t.timestamp).toLocaleDateString("ru-RU")}
           </span>
-          <span
-            className="mode-tab-close"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove(i);
-            }}
-          >
-            ×
-          </span>
+          {onRemove && (
+            <span
+              className="mode-tab-close"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(i);
+              }}
+            >
+              ×
+            </span>
+          )}
         </button>
       ))}
       {addingParam !== null && (

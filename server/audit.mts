@@ -36,8 +36,13 @@ interface Pair {
 
 const PAIRS: Pair[] = [
   { table: "syntheses", file: "synthesis.ts", iface: "SynthesisFull",
-    schemaOnly: ["userId", "versionBase", "versionSub", "versionModes", "versionModeRegen"],
+    schemaOnly: ["userId", "versionBase", "versionSub", "versionModes", "versionModeRegen",
+      // дерево импортированного файла: наружу — через /lineage/ancestors
+      // (подшивка) и fileConceptParents, колонка в SynthesisFull не отдаётся
+      "fileGenealogy"],
     typeOnly: ["version", "philosophers", "parentSyntheses", "childSyntheses",
+      // вычисляется из file_genealogy и synthesis_lineage (unlinkedFileParents)
+      "fileConceptParents",
       // 1.6: оценки паузы вычисляются computePauseEstimates (1.4b), не колонка
       "pauseEstimates",
       // 5.2: признак владения — userId === viewer, колонки нет (userId — schemaOnly)

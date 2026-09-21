@@ -102,7 +102,10 @@ import {
   parseGraphFromHTML,
   saveGraphToDb,
 } from "./graph-parser.js";
-import { findSameOwnerSynthesesByTitle } from "./lineage-service.js";
+import {
+  findSameOwnerSynthesesByTitle,
+  sanitizeFileGenealogy,
+} from "./lineage-service.js";
 import {
   parseGlossaryFromHTML,
   parseThesesFromHTML,
@@ -705,7 +708,10 @@ export function extractModesFromHTML(
     const arr = modes[key] ?? [];
     const body = det.querySelector(".philosynth-mode-body");
     arr.push({
-      html: body ? body.innerHTML : det.innerHTML,
+      // trim: обёртка экспорта (одностраничник и 4.2) кладёт результат с
+      // отступами строк; без обрезки каждый круг экспорт → импорт
+      // прирастал пробельным хвостом (+16 симв. за круг)
+      html: (body ? body.innerHTML : det.innerHTML).trim(),
       param: det.getAttribute("data-mode-param") || "",
       timestamp: det.getAttribute("data-mode-timestamp") || "",
     });
@@ -1248,12 +1254,23 @@ export async function importHTML(
         message:
           matches.length > 0
             ? `Концепция-родитель «${p.name}» не связана автоматически: в базе найдено ${matches.length} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).`
-            : `Концепция-родитель «${p.name}» в базе не найдена — связь генеалогии не создана. Родителя можно импортировать отдельно и привязать позже (дерево файла сохранено во встроенном состоянии).`,
+            : `Концепция-родитель «${p.name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.`,
         critical: false,
       });
     }
     if (lineageRows.length > 0) {
       await db.insert(synthesisLineage).values(lineageRows);
+    }
+    // Дерево файла целиком — в syntheses.file_genealogy: индекс participants
+    // корня = position выше (position++ на КАЖДОГО участника). Узлы, у которых
+    // есть связь в БД, ею перекрываются (правило приоритета lineage-service);
+    // остальные показываются снимком в /lineage/ancestors и уходят в экспорт.
+    const fileTree = sanitizeFileGenealogy(genealogy);
+    if (fileTree && (fileTree.participants?.length ?? 0) > 0) {
+      await db
+        .update(syntheses)
+        .set({ fileGenealogy: fileTree })
+        .where(eq(syntheses.id, synthesisId));
     }
 
     // ── m. Режимы → mode_results [21816–21826] ──

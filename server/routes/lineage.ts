@@ -207,7 +207,7 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
   }
 
   try {
-    const record = await linkParent(id, parentSynthesisId);
+    const record = await linkParent(id, parentSynthesisId, parentName);
     return c.json({ ok: true, record });
   } catch (err) {
     if (err instanceof LineageLinkError) {

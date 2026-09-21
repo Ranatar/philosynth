@@ -171,6 +171,10 @@ CREATE TABLE syntheses (
   
   -- Капсула (HTML, хранится отдельно от секций)
   capsule_html     TEXT NOT NULL DEFAULT '',
+
+  -- Дерево генеалогии импортированного файла (FileGenealogyNode, миграция
+  -- 0008): снимок предков, которых нет в synthesis_lineage; NULL — не из файла
+  file_genealogy   JSONB,
   
   -- Статистика
   total_input_tokens  INT NOT NULL DEFAULT 0,
@@ -225,6 +229,19 @@ CREATE INDEX idx_lineage_parent_name ON synthesis_lineage(parent_name)
 > (без UUID) строк `synthesis` не создаёт вовсе: родителя выбирает человек по
 > предложению `lineageCandidates` (03 §2.2/§2.8), `position` у такой строки —
 > `max(position)+1` среди родителей синтеза.
+
+> **Дерево файла (2026-09-21, вне бесед):** импорт файла пишет дерево
+> `genealogy` файла целиком в `syntheses.file_genealogy` (миграция
+> `0008_file_genealogy`); индекс в `participants` корня = `position` строки
+> synthesis_lineage, которую импорт создал бы для этого родителя. ПРАВИЛО
+> ПРИОРИТЕТА: действующая строка (философ с именем или концепция с живым
+> `parent_synthesis_id`) на позиции i перекрывает узел файла с индексом i;
+> узел файла виден только там, где связи нет или её родитель удалён (SET
+> NULL). Подшивка — одна, в `getAncestors` (lineage-service); оттуда берут
+> дерево страница синтеза и экспорт. Правило 8.5 «`position` —
+> `max(position)+1`» ЗАМЕНЕНО: `linkParent` ставит связь на позицию
+> неперекрытого узла файла с тем же (нормализованным) именем, иначе — за
+> пределы и связей, и `participants` файла.
 
 **Рекурсивный запрос — все предки концепции:**
 ```sql

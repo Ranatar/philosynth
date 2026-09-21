@@ -1,0 +1,1 @@
+ALTER TABLE "syntheses" ADD COLUMN "file_genealogy" jsonb;

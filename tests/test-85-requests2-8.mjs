@@ -13,7 +13,7 @@
  *   two     — child с ВТОРОЙ концепцией-родителем в genealogy (R5).
  *
  *  R2  Импорт child без совпадений: lineageCandidates = [{ parentName,
- *      matches: [] }], предупреждение «привязать позже», synthesis_lineage —
+ *      matches: [] }], предупреждение «импортировать родителя ДО», synthesis_lineage —
  *      только philosopher.
  *  R3  Полный путь в браузере: импорт parent → импорт child → блок с одним
  *      совпадением → «Связать» → «Точно связать?» → строка
@@ -224,7 +224,7 @@ try {
   ok(cands2.length === 1 && cands2[0].parentName === PARENT_NAME, "lineageCandidates: один родитель с parentName из файла", J(cands2));
   ok(cands2[0]?.matches?.length === 0, "matches пуст");
   const w2 = (r2.json.warnings ?? []).filter((w) => w.field === "lineage");
-  ok(w2.length === 1 && has(w2[0].message, "привязать позже"), "предупреждение говорит о возможности привязать позже", J(w2));
+  ok(w2.length === 1 && has(w2[0].message, "импортировать родителя ДО"), "предупреждение говорит, как получить настоящую связь", J(w2));
   const l2 = await lineageOf(r2.json.id);
   ok(l2.length === 1 && l2.every((r) => r.parentType === "philosopher"), "synthesis_lineage — только строки philosopher", J(l2.map((r) => r.parentType)));
   const g2 = await api(D, "GET", `/syntheses/${r2.json.id}`);

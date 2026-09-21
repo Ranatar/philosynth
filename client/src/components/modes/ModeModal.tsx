@@ -96,6 +96,12 @@ export interface ModeModalProps {
   onClose: () => void;
   /** Счётчик результатов изменился (кнопки SynthesisPage) */
   onResultsChanged?: ((modeKey: ModeKey, count: number) => void) | undefined;
+  /**
+   * Только просмотр (невладелец, объём 'full'): без блока параметров и
+   * генерации, без × удаления, без WS — паритет модалки экспортированного
+   * файла (buildModesExportSection [17565] снимает .mode-modal-params).
+   */
+  readOnly?: boolean | undefined;
 }
 
 export function ModeModal({
@@ -104,6 +110,7 @@ export function ModeModal({
   modeKey,
   onClose,
   onResultsChanged,
+  readOnly = false,
 }: ModeModalProps) {
   const [results, setResults] = useState<ModeResult[]>([]);
   const [warnings, setWarnings] = useState<ModeDepsWarning[]>([]);
@@ -216,7 +223,8 @@ export function ModeModal({
     [synthesisId, refetch],
   );
 
-  const ws = useWebSocket({ autoConnect: open, onMessage: handleMessage });
+  // Только просмотр — генерации нет, сокет не нужен
+  const ws = useWebSocket({ autoConnect: open && !readOnly, onMessage: handleMessage });
 
   /* ── Запуск (порт runMode, UI-часть [23020]) ── */
   const handleRun = useCallback(() => {
@@ -317,6 +325,7 @@ export function ModeModal({
           </button>
         </div>
 
+        {!readOnly && (
         <div className="mode-modal-params">
           <div className="form-group" id="modeParamsGroup">
             <div className="form-label">
@@ -409,6 +418,7 @@ export function ModeModal({
             </div>
           </div>
         </div>
+        )}
 
         <ModeTabBar
           tabs={results.map((r) => ({ param: r.paramValue, timestamp: r.createdAt }))}
@@ -419,7 +429,7 @@ export function ModeModal({
             setDoneInfo(null);
             setActiveIndex(i);
           }}
-          onRemove={handleRemove}
+          onRemove={readOnly ? null : handleRemove}
         />
 
         <div className="mode-modal-body" id="modeBody">

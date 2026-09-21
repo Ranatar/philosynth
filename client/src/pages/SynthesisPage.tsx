@@ -383,6 +383,11 @@ export function SynthesisPage() {
     !!synthesis.capsuleHtml;
   const synthesisIdForModes = synthesis?.id ?? null;
   const isOwnerForModes = synthesis?.isOwner ?? false;
+  // Просмотр режимов невладельцем: вошедший при объёме 'full' — тот же круг,
+  // кому доступны разделы и экспорт (а экспорт результаты режимов несёт).
+  // Гостю нет: GET /modes под requireAuth, как и экспорт. Витрина — нет.
+  const modesReadOnly =
+    !isOwnerForModes && !isGuest && synthesis?.scope === "full";
   // Стабильная ссылка (грабля R3: инлайн-колбэк в props модалки менял
   // идентичность её refetch каждый рендер); prev при том же счётчике —
   // без нового объекта, чтобы не гонять рендеры по кругу
@@ -395,9 +400,11 @@ export function SynthesisPage() {
   );
   useEffect(() => {
     setModeCounts({});
-    // 8.7: GET /modes — под requireAuth; кнопки режимов и так только
-    // владельцу — счётчики гоняем только ему
-    if (!synthesisIdForModes || !hasCapsule || !isOwnerForModes) return;
+    // 8.7: GET /modes — под requireAuth. Владельцу — при капсуле (гейт
+    // генерации updateModeButtons); невладельцу на 'full' — всегда: кнопки
+    // только просмотра рисуются по счётчикам, капсула им не нужна
+    if (!synthesisIdForModes) return;
+    if (!(isOwnerForModes ? hasCapsule : modesReadOnly)) return;
     if (editOpen) return; // пока модалка открыта, счётчики не гоняем
     let cancelled = false;
     getModes(synthesisIdForModes)
@@ -416,7 +423,7 @@ export function SynthesisPage() {
     // editOpen в deps: план с режимными шагами / подраздельный каскад
     // меняют результаты — закрытие EditModal перечитывает счётчики
     // (паритет updateModeButtons после applyEditPlan исходника)
-  }, [synthesisIdForModes, hasCapsule, editOpen, isOwnerForModes]);
+  }, [synthesisIdForModes, hasCapsule, editOpen, isOwnerForModes, modesReadOnly]);
 
   /* ── Беседа 3.2 (п. 4): секция «Генеалогия» под шапкой документа ──
      Только для мета-синтезов (есть родители-концепции) — паритет
@@ -426,7 +433,12 @@ export function SynthesisPage() {
      Сбой запроса секцию молча скрывает (генеалогия — дополнение, не
      содержимое документа). Перезагрузка по synthesis.id, а не по
      parentSyntheses (ссылка меняется при каждом load). */
-  const isMetaSynthesis = (synthesis?.parentSyntheses.length ?? 0) > 0;
+  // Мета-синтез — есть родители-концепции в БД ИЛИ в дереве импортированного
+  // файла (fileConceptParents: не перекрытые связью БД узлы файла; дерево
+  // /lineage/ancestors подшивает их ветки снимком)
+  const isMetaSynthesis =
+    (synthesis?.parentSyntheses.length ?? 0) > 0 ||
+    (synthesis?.fileConceptParents?.length ?? 0) > 0;
   const [genealogyTree, setGenealogyTree] = useState<GenealogyNode | null>(
     null,
   );
@@ -670,8 +682,25 @@ export function SynthesisPage() {
                 onClick={() => setModeOpen(mk)}
                 disabled={live}
               >
-                ◈ {MODE_UI[mk].title.slice(2)}
+                {/* Эмодзи заголовка снимается по первому пробелу, не по длине:
+                    «🔄» — суррогатная пара (2 единицы UTF-16), slice(2)
+                    оставлял у «Переводчика» лишний пробел */}
+                ◈ {MODE_UI[mk].title.replace(/^\S+\s+/u, "")}
                 {(modeCounts[mk] ?? 0) > 0 ? ` (${modeCounts[mk]})` : ""}
+              </button>
+            ))}
+          {/* Невладелец на 'full': только режимы с результатами, модалка —
+              только просмотр (без параметров, генерации и ×) */}
+          {modesReadOnly &&
+            MODE_ORDER.filter((mk) => (modeCounts[mk] ?? 0) > 0).map((mk) => (
+              <button
+                key={mk}
+                type="button"
+                className="action-btn"
+                data-mode-readonly=""
+                onClick={() => setModeOpen(mk)}
+              >
+                ◈ {MODE_UI[mk].title.replace(/^\S+\s+/u, "")} ({modeCounts[mk]})
               </button>
             ))}
           {/* Беседа 4.2: экспорт (скачивание с сервера, 03 §2.11);
@@ -818,6 +847,12 @@ export function SynthesisPage() {
                         <Link to={`/synthesis/${p.id}`}>«{p.title}»</Link>
                       </span>
                     ))}
+                    {(synthesis.fileConceptParents ?? []).map((name, i) => (
+                      <span key={"file_" + i}>
+                        {(i > 0 || synthesis.parentSyntheses.length > 0) && ", "}
+                        «{name}»
+                      </span>
+                    ))}
                   </div>
                 )}
                 {/* 8.7: фильтр потомков зовёт /lineage/descendants (requireAuth) */}
@@ -880,6 +915,7 @@ export function SynthesisPage() {
         modeKey={modeOpen}
         onClose={() => setModeOpen(null)}
         onResultsChanged={onModeResultsChanged}
+        readOnly={!isOwnerForModes}
       />
 
       {/* Беседа 1.7: модалка графа категорий */}

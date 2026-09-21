@@ -236,6 +236,12 @@ export interface SynthesisFull {
   // Связи
   philosophers: string[];
   parentSyntheses: { id: string; title: string }[];
+  /**
+   * Концепции-родители из дерева импортированного файла, НЕ связанные в БД
+   * (file_genealogy, позиции без строки synthesis_lineage). Для решения
+   * «мета-синтез ли это» и списка родителей там, где дерево не грузится.
+   */
+  fileConceptParents: string[];
   childSyntheses: { id: string; title: string }[];
 }
 

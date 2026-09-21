@@ -9,7 +9,7 @@
  *    родители → LINEAGE_CYCLE, дерево getAncestors видит связь;
  *  - importHTML живого файла одностраничника (tests/fixtures или путь из
  *    SMOKE85_FILE): 0 UUID → lineageCandidates с parentName и пустыми
- *    matches, предупреждение «привязать позже», lineage — только philosopher;
+ *    matches, предупреждение «импортировать родителя ДО», lineage — только philosopher;
  *    после появления у владельца синтеза «Грамматика  самоотрицания» (двойной
  *    пробел + ёлочки в файле) повторный импорт → 1 совпадение, связь при
  *    импорте НЕ создана; linkParent → parentSyntheses ребёнка = 1;
@@ -109,7 +109,7 @@ try {
     check("кандидат: matches пуст", c1?.matches.length === 0);
     check("кандидат: position = 1 (после Юнга)", c1?.position === 1, c1);
     const w1 = r1.warnings.filter((w) => w.field === "lineage");
-    check("предупреждение: «привязать позже»", w1.length === 1 && /привязать позже/.test(w1[0].message), w1);
+    check("предупреждение: «импортировать родителя ДО»", w1.length === 1 && /импортировать родителя ДО/.test(w1[0].message), w1);
     const l1 = await db.select().from(schema.synthesisLineage).where(eq(schema.synthesisLineage.synthesisId, r1.synthesisId));
     check("lineage: только philosopher (Юнг)", l1.length === 1 && l1[0].parentType === "philosopher" && l1[0].parentName === "Юнг", l1);
 
@@ -121,8 +121,10 @@ try {
     check("предупреждение: «выберите родителя»", r2.warnings.some((w) => w.field === "lineage" && /совпадени/.test(w.message)));
     const l2 = await db.select().from(schema.synthesisLineage).where(eq(schema.synthesisLineage.synthesisId, r2.synthesisId));
     check("связь при импорте НЕ создана даже при единственном совпадении", l2.every((r) => r.parentType === "philosopher"));
-    const rec2 = await ls.linkParent(r2.synthesisId, parent);
-    check("linkParent после импорта: position 1", rec2.position === 1, rec2);
+    // Роут всегда передаёт parentName; связь встаёт на позицию узла файла
+    // (правило приоритета file_genealogy) = позиции кандидата
+    const rec2 = await ls.linkParent(r2.synthesisId, parent, c2.parentName);
+    check("linkParent после импорта: position = позиции кандидата (1)", rec2.position === 1 && c2.position === 1, rec2);
     const l3 = await db.select().from(schema.synthesisLineage).where(eq(schema.synthesisLineage.synthesisId, r2.synthesisId));
     check("после связывания: parent_type='synthesis' есть → isMetaSynthesis станет true", l3.some((r) => r.parentType === "synthesis" && r.parentSynthesisId === parent));
     // уборка импортов (тяжёлые)

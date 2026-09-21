@@ -54,6 +54,7 @@ import type {
   PauseReasonKind,
 } from "@philosynth/shared/types/synthesis";
 import type { EditStep } from "@philosynth/shared/types/edit-plan";
+import type { FileGenealogyNode } from "@philosynth/shared/types/lineage";
 import type {
   ContextEntry as ContextLogEntry,
   ParentSpecLog,
@@ -208,6 +209,10 @@ export const syntheses = pgTable(
 
     /** Капсула (HTML, хранится отдельно от секций) */
     capsuleHtml: text("capsule_html").notNull().default(""),
+    /** Дерево генеалогии импортированного файла (FileGenealogyNode): снимок
+     *  предков, которых нет в synthesis_lineage. null — синтез не из файла.
+     *  Связь в БД на той же позиции перекрывает узел файла (lineage-service). */
+    fileGenealogy: jsonb("file_genealogy").$type<FileGenealogyNode | null>(),
 
     // Статистика
     totalInputTokens: integer("total_input_tokens").notNull().default(0),

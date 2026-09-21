@@ -51,7 +51,10 @@ import {
   validateConceptForMetaSynthesis,
   type OverlapParticipant,
 } from "../services/meta-synthesis-service.js";
-import { createLineageRecords } from "../services/lineage-service.js";
+import {
+  createLineageRecords,
+  unlinkedFileParents,
+} from "../services/lineage-service.js";
 import { parentOverheadForSection } from "../services/context-builder.js";
 import { normalizeSectionKey } from "../services/parent-context.js";
 import {
@@ -108,6 +111,7 @@ import {
   exists,
   ilike,
   inArray,
+  isNotNull,
   ne,
 } from "drizzle-orm";
 
@@ -333,6 +337,22 @@ export async function loadConceptParentFlags(
       ),
     );
   for (const r of rows) flags.add(r.synthesisId);
+  // Родители-концепции из дерева импортированного файла тоже делают синтез
+  // мета-синтезом (бейдж каталога); перекрытие связью БД здесь неважно —
+  // перекрытая связь сама даёт флаг выше
+  const rest = ids.filter((id) => !flags.has(id));
+  if (rest.length > 0) {
+    const fileRows = await db
+      .select({ id: syntheses.id, fileGenealogy: syntheses.fileGenealogy })
+      .from(syntheses)
+      .where(
+        and(inArray(syntheses.id, rest), isNotNull(syntheses.fileGenealogy)),
+      );
+    for (const r of fileRows) {
+      if (r.fileGenealogy?.participants?.some((p) => p.type === "concept"))
+        flags.add(r.id);
+    }
+  }
   return flags;
 }
 
@@ -530,6 +550,12 @@ async function buildSynthesisFull(
         ).sort((a, b) => parentIds.indexOf(a.id) - parentIds.indexOf(b.id))
       : [];
 
+  // Дерево импортированного файла: родители-концепции без связи в БД
+  // (правило приоритета — unlinkedFileParents, lineage-service)
+  const fileConceptParents = unlinkedFileParents(row.fileGenealogy, lineageRows)
+    .filter((f) => f.node.type === "concept")
+    .map((f) => f.node.name);
+
   const childSyntheses = await db
     .select({ id: syntheses.id, title: syntheses.title })
     .from(syntheses)
@@ -598,6 +624,7 @@ async function buildSynthesisFull(
     updatedAt: row.updatedAt.toISOString(),
     philosophers,
     parentSyntheses,
+    fileConceptParents,
     childSyntheses,
   };
 }

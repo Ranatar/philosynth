@@ -116,6 +116,8 @@ philosynth-service/
 │   │       ├── 0007_recommendations.sql # 10.1: recommendations (CHECK статусов, уникальность
 │   │       │                           #  по (synthesis_id, round, position), FK plan_id SET NULL);
 │   │       │                           #  генерат, тег переименован
+│   │       ├── 0008_file_genealogy.sql # 2026-09-21: syntheses.file_genealogy jsonb — дерево
+│   │       │                           #  импортированного файла (02 §2.4); генерат
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -688,6 +690,19 @@ philosynth-service/
     │                                   # раунд, ретрофит на ЖИВОМ файле (T101_FILE; без файла —
     │                                   # пропуск), края; мок Claude :3911; запуск через tsx;
     │                                   # smoke-101-request1 — чистые функции + Registry
+    │                                   # test-file-genealogy — дерево импортированного файла: запись,
+    │                                   # подшивка в getAncestors, правило приоритета, SET NULL,
+    │                                   # экспорт и roundtrip; живая БД, живой файл (TFG_FILE;
+    │                                   # без файла — пропуск), запуск через tsx
+    │                                   # test-import-modes — режимы в файле одностраничника: разметка
+    │                                   # buildModesExportSection дословно, импорт и два круга экспорт →
+    │                                   # импорт побайтно; живой файл (TIM_FILE), запуск через tsx
+    │                                   # modes-fixture — общая фикстура блока режимов (разметка
+    │                                   # buildModesExportSection дословно) для двух тестов выше/ниже
+    │                                   # test-modes-readonly — режимы невладельцу только для просмотра:
+    │                                   # владелец / чужой на 'full' / витрина / гость, run и DELETE
+    │                                   # чужим → 403; против ПОДНЯТОГО стенда (dev-billing.sh), без
+    │                                   # стенда — пропуск; CHROME_PATH, живой файл (TMR_FILE)
     ├── test-*-0.3b.ts                  # Регрессионные смоуки таксономии
     └── package.json                    # Маркер type=module
 ```

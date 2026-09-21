@@ -5781,14 +5781,16 @@ async function section4an(): Promise<void> {
   if (!/lineageCandidates\.push\(\{ parentName: p\.name, position: position\+\+, matches \}\)/.test(isC)) errs.push("4an: import-service — форма LineageCandidate");
   if (/lineageRows\.push\(\{[^}]*parentSynthesisId: matches/.test(isC)) errs.push("4an: import-service — связь по имени создаётся при импорте (запрещено)");
   if (!/return \{ synthesisId, warnings, lineageCandidates \}/.test(isC) || !/lineageCandidates \}\);/.test(riC)) errs.push("4an: lineageCandidates не в ImportResult/ответе роута");
-  if (!/привязать позже/.test(isS) || !/совпадений по имени/.test(isS)) errs.push("4an: import-service — предупреждение lineage не переформулировано на две ветки");
+  if (!/импортировать родителя ДО/.test(isS) || !/совпадений по имени/.test(isS)) errs.push("4an: import-service — предупреждение lineage не переформулировано на две ветки");
   // (б) нормализация — одна функция, применяется к обеим сторонам сравнения
   if (!/\.replace\(\/\[«»"„“”‟'\]\/g, ""\)/.test(lsC) || !/\.replace\(\/\\s\+\/g, " "\)/.test(lsC) || !/\.toLowerCase\(\)/.test(lsC)) errs.push("4an: normalizeConceptTitle — кавычки/пробелы/регистр");
   if (!/normalizeConceptTitle\(r\.title\) === wanted/.test(lsC)) errs.push("4an: findSameOwnerSynthesesByTitle сравнивает не нормализованные заголовки");
   if (!/eq\(syntheses\.userId, userId\)/.test(lsC)) errs.push("4an: findSameOwnerSynthesesByTitle не ограничен владельцем");
   // (в) linkParent — заслоны и порядок; цикл — по ПОТОМКАМ
   if (!/WHERE sl\.parent_synthesis_id = \$\{rootId\}/.test(lsC) || !/WHERE child_id = \$\{candidateId\}/.test(lsC)) errs.push("4an: isDescendantOf ходит не по потомкам");
-  if (!/coalesce\(max\(\$\{synthesisLineage\.position\}\), -1\) \+ 1/.test(lsC)) errs.push("4an: linkParent — position не в конец существующих");
+  // Правило приоритета file_genealogy: без совпадения с узлом файла — в конец
+  // (за пределы и связей БД, и participants файла); с совпадением — на позицию узла
+  if (!/position = Math\.max\(maxRow, fileLen - 1\) \+ 1/.test(lsC) || !/unlinkedFileParents\(fileGenealogy, existing\)/.test(lsC)) errs.push("4an: linkParent — position не по правилу приоритета file_genealogy (в конец / на позицию узла файла)");
   if (!/"LINEAGE_SELF"[\s\S]*"LINEAGE_EXISTS"[\s\S]*"LINEAGE_CYCLE"/.test(lsC.split("export async function linkParent")[1] ?? "")) errs.push("4an: linkParent — порядок заслонов self → exists → cycle");
   // (г) роут: владелец ОБОИХ, чужая публичная не проходит, коды/статусы
   if (!/lineageRoutes\.post\("\/:id\/lineage\/link", requireAuth/.test(rlC)) errs.push("4an: POST /:id/lineage/link не на lineageRoutes/без requireAuth");
@@ -5813,8 +5815,10 @@ async function section4an(): Promise<void> {
   if (!/err\.code === "LINEAGE_EXISTS"/.test(ipC)) errs.push("4an: ImportPage — LINEAGE_EXISTS не трактуется как достигнутая цель");
   if (!/className="callout note"/.test(ipS) || !/className="action-btn primary"/.test(ipS)) errs.push("4an: ImportPage — блок не на классах кита .callout/.action-btn");
   if (/localStorage|sessionStorage/.test(ipC)) errs.push("4an: ImportPage — browser storage");
-  // (ж) 3.2 не правилась: isMetaSynthesis по parentSyntheses; тесты на месте
-  if (!/const isMetaSynthesis = \(synthesis\?\.parentSyntheses\.length \?\? 0\) > 0;/.test(await rd("../client/src/pages/SynthesisPage.tsx"))) errs.push("4an: SynthesisPage.isMetaSynthesis изменён (8.5 обещала без правок 3.2)");
+  // (ж) isMetaSynthesis — родители-концепции в БД ИЛИ в дереве импортированного
+  // файла (fileConceptParents; 8.5 держала только parentSyntheses — дерево
+  // файла без связи терялось, правка «file_genealogy»)
+  if (!/\(synthesis\?\.parentSyntheses\.length \?\? 0\) > 0 \|\|\s*\(synthesis\?\.fileConceptParents\?\.length \?\? 0\) > 0;/.test(await rd("../client/src/pages/SynthesisPage.tsx"))) errs.push("4an: SynthesisPage.isMetaSynthesis не учитывает fileConceptParents");
   for (const t of ["../tests/smoke-85-request1.mjs", "../tests/test-85-requests2-8.mjs"]) { try { await fsm.access(new URL(t, import.meta.url)); } catch { errs.push(`4an: нет ${t}`); } }
   if (/TODO\(8\.5\)/.test(isS + rlS + ipS)) errs.push("4an: устаревшие метки TODO(8.5)");
 }
@@ -5958,7 +5962,9 @@ async function section4ap(): Promise<void> {
   if (!/effectiveFlags\(synthesis\)/.test(spC) || !/const contentAvailable = isOwner \|\| \(!isGuest && scopeFull\)/.test(spC) || !/logsAvailable = isOwner \|\| \(!isGuest && !!eff\?\.showLogs\)/.test(spC) || !/promptsAvailable = isOwner \|\| \(!isGuest && !!eff\?\.showPrompts\)/.test(spC)) errs.push("4ap: гейты кнопок не по effectiveFlags/смотрящему");
   if (!/\{!isOwner && \(\s*<div className="app-view-banner"/.test(spC) || !/Вы смотрите публичную концепцию/.test(spC)) errs.push("4ap: полосы режима просмотра нет");
   if (!/synthesisId: !isGuest \? \(id \?\? null\) : null/.test(spC)) errs.push("4ap: WS открывается гостю");
-  if (!/!isOwnerForModes\) return/.test(spC) || !/!isMetaSynthesis \|\| isGuest\) return/.test(spC)) errs.push("4ap: /modes или /lineage/ancestors зовутся гостю");
+  // /modes: владельцу (при капсуле) или невладельцу-вошедшему на 'full' —
+  // режимы только для просмотра (2026-09-21, вне бесед); гостю — никогда
+  if (!/modesReadOnly =\s*!isOwnerForModes && !isGuest && synthesis\?\.scope === "full"/.test(spC) || !/if \(!\(isOwnerForModes \? hasCapsule : modesReadOnly\)\) return/.test(spC) || !/!isMetaSynthesis \|\| isGuest\) return/.test(spC)) errs.push("4ap: /modes или /lineage/ancestors зовутся гостю");
   if (!/Эта концепция приватна/.test(spC) || !/to="\/login"\s*state=\{\{ from: location\.pathname \+ location\.search \}\}/.test(spC)) errs.push("4ap: 403 гостю без страницы «приватна» со ссылкой на вход");
   if (!/prevAuthRef/.test(spC) || !/if \(prev !== authStatus && id\) void load\(id\)/.test(spC)) errs.push("4ap: смена сессии на открытом документе не перечитывает его");
   if (!/onOpenLog=\{logsAvailable \? \(\) => setLogOpen\(true\) : undefined\}/.test(spC) || !/promptsAvailable=\{promptsAvailable\}/.test(spC)) errs.push("4ap: «◈ Лог»/«Скачать промпты» не под флагами");

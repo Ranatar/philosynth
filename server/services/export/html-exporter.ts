@@ -59,6 +59,7 @@ import { innerTextTrimmed, parseFragment } from "../../utils/html-parser.js";
 import { buildParams, loadSynthesis } from "../generation-service.js";
 import { formatCtxLogHTML } from "../log-formatter.js";
 import { getModeConfig } from "../mode-service.js";
+import { getAncestors, lineageTreeToFileGenealogy } from "../lineage-service.js";
 import { loadConceptParticipants } from "../meta-synthesis-service.js";
 import { exportFilename, loadExportSynthesis } from "./common.js";
 import { loadGModel } from "./graph-model.js";
@@ -505,23 +506,17 @@ export async function exportHTML(
     })),
   ];
 
-  // Генеалогия корня — из synthesis_lineage напрямую (без капсул по
-  // построению; strip/normalize клиентских utils/genealogy вырождены)
-  const genealogy = {
-    type: "concept",
-    name: row.title,
-    method: row.method,
-    synthLevel: row.synthLevel,
-    seed: row.seed || "",
-    participants: [
-      ...philosophers.map((name) => ({ type: "philosopher", name })),
-      ...s.conceptParents.map((p) => ({
-        type: "concept",
-        name: p.name,
-        synthesisId: p.id,
-      })),
-    ],
-  };
+  // Генеалогия корня — полное дерево предков getAncestors: связи БД (с
+  // synthesisId, транзитивно) + подшитые ветки деревьев импортированных
+  // файлов (правило приоритета lineage-service). Капсулы не пишутся
+  // (паритет stripCapsulesFromGenealogy). Прежде тут был один уровень
+  // родителей с именами «[безымянная концепция]» — глубина терялась при
+  // каждом roundtrip экспорт → импорт.
+  const genealogy = lineageTreeToFileGenealogy(
+    await getAncestors(synthesisId),
+    { method: row.method, synthLevel: row.synthLevel, seed: row.seed || "" },
+  );
+  genealogy.name = row.title;
 
   const editedSections = secRows.filter((r) => r.isEdited).map((r) => r.key);
 

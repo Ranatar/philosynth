@@ -36,6 +36,40 @@ export interface LineageNode {
   depth: number;
   /** Родители узла (для ancestors) либо потомки (для descendants) */
   children: LineageNode[];
+  /**
+   * Узел пришёл из дерева импортированного файла (syntheses.file_genealogy),
+   * а не из synthesis_lineage: снимок, без synthesisId и без ссылки.
+   * Только у ancestors; у file-узлов концепций могут быть метаданные файла.
+   */
+  fromFile?: true;
+  method?: string;
+  synthLevel?: string;
+  generationOrder?: string;
+  seed?: string;
+  capsule?: string;
+}
+
+/**
+ * Дерево генеалогии, сохранённое при импорте файла (syntheses.file_genealogy):
+ * корень — сам синтез, participants — родители в порядке файла. Индекс в
+ * participants корня = position строки synthesis_lineage, которую импорт
+ * создал (или создал бы) для этого родителя.
+ *
+ * ПРАВИЛО ПРИОРИТЕТА: строка synthesis_lineage с тем же position (философ с
+ * именем или концепция с живым parent_synthesis_id) ПЕРЕКРЫВАЕТ узел файла;
+ * узел файла показывается только там, где связи в БД нет.
+ */
+export interface FileGenealogyNode {
+  type: "concept" | "philosopher";
+  name: string;
+  method?: string;
+  synthLevel?: string;
+  generationOrder?: string;
+  seed?: string;
+  capsule?: string;
+  /** id концепции в БД сервиса, если файл его нёс (экспорт 4.2) */
+  synthesisId?: string;
+  participants?: FileGenealogyNode[];
 }
 
 /* ══ Беседа 8.5: сопоставление родителя при импорте ══════════════════ */

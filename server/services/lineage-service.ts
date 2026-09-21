@@ -8,6 +8,12 @@
  *  - searchByPhilosophers(names)  — синтезы, в генеалогии которых есть ВСЕ
  *    указанные философы (транзитивно; HAVING count = names.length);
  *  - createLineageRecords         — запись генеалогии при создании синтеза;
+ *  - дерево импортированного файла (syntheses.file_genealogy):
+ *    sanitizeFileGenealogy (запись при импорте), unlinkedFileParents,
+ *    подшивка в getAncestors и позиция связи в linkParent. ПРАВИЛО
+ *    ПРИОРИТЕТА: действующая строка synthesis_lineage на позиции i
+ *    перекрывает узел файла с индексом i; узел файла — только где связи
+ *    нет (или её родитель удалён — SET NULL);
  *  - 8.5: normalizeConceptTitle / findSameOwnerSynthesesByTitle — сопоставление
  *    концепции-родителя ПО ИМЕНИ среди синтезов того же владельца
  *    (предложением, без записи); isDescendantOf + linkParent —
@@ -24,11 +30,12 @@
  * синтезы, роут отсекает невидимые поддеревья.
  */
 
-import { and, eq, inArray, ne, sql as dsql } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 
 import { db, sql } from "../db/index.js";
 import { syntheses, synthesisLineage } from "../db/schema.js";
 import type {
+  FileGenealogyNode,
   LineageCandidateMatch,
   LineageNode,
   LineageRecord,
@@ -52,6 +59,169 @@ async function titlesFor(ids: string[]): Promise<Map<string, string>> {
     .where(inArray(syntheses.id, [...new Set(ids)]));
   for (const r of rows) map.set(r.id, r.title);
   return map;
+}
+
+/* ══ Дерево импортированного файла (syntheses.file_genealogy) ═════════ */
+
+/** Предел вложенности дерева файла при записи (страховка от мусора). */
+const MAX_FILE_GENEALOGY_DEPTH = 32;
+
+function strField(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() !== "" ? v : undefined;
+}
+
+/**
+ * Очистка дерева файла перед записью в syntheses.file_genealogy: только
+ * известные поля, имя обязательно, всё, что не 'philosopher', — концепция
+ * (сервис 4.3 пишет у участников type='synthesis'). Узел без имени
+ * становится «[безымянная концепция]», а НЕ выбрасывается — иначе съедут
+ * индексы participants корня, а индекс = position связи в БД.
+ */
+export function sanitizeFileGenealogy(
+  node: unknown,
+  level = 0,
+): FileGenealogyNode | null {
+  if (!node || typeof node !== "object") return null;
+  const n = node as Record<string, unknown>;
+  const isPhil = n.type === "philosopher";
+  const name =
+    strField(n.name)?.trim() ?? (isPhil ? "[безымянный философ]" : "[безымянная концепция]");
+  if (isPhil) return { type: "philosopher", name };
+  const out: FileGenealogyNode = { type: "concept", name };
+  for (const k of [
+    "method",
+    "synthLevel",
+    "generationOrder",
+    "seed",
+    "capsule",
+    "synthesisId",
+  ] as const) {
+    const v = strField(n[k]);
+    if (v !== undefined) out[k] = v;
+  }
+  if (Array.isArray(n.participants) && level < MAX_FILE_GENEALOGY_DEPTH) {
+    const kids = n.participants
+      .map((p) => sanitizeFileGenealogy(p, level + 1))
+      .filter((p): p is FileGenealogyNode => p !== null);
+    if (kids.length > 0) out.participants = kids;
+  }
+  return out;
+}
+
+/** Минимум строки synthesis_lineage для правила приоритета. */
+interface LineagePosRow {
+  position: number;
+  parentType: "philosopher" | "synthesis";
+  parentName: string | null;
+  parentSynthesisId: string | null;
+}
+
+/** Действует ли строка: философ с именем или концепция с живым родителем. */
+function rowIsLive(r: LineagePosRow): boolean {
+  return r.parentType === "philosopher"
+    ? !!r.parentName
+    : !!r.parentSynthesisId;
+}
+
+/**
+ * Родители из дерева файла, НЕ перекрытые действующей связью в БД на той
+ * же позиции (правило приоритета). Порядок — порядок файла.
+ */
+export function unlinkedFileParents(
+  fileGenealogy: FileGenealogyNode | null | undefined,
+  rows: readonly LineagePosRow[],
+): { position: number; node: FileGenealogyNode }[] {
+  const parts = fileGenealogy?.participants ?? [];
+  if (parts.length === 0) return [];
+  const taken = new Set(rows.filter(rowIsLive).map((r) => r.position));
+  return parts
+    .map((node, position) => ({ position, node }))
+    .filter((x) => !taken.has(x.position));
+}
+
+/** Узел файла → LineageNode (снимок: fromFile, без synthesisId). */
+function fileNodeToLineage(
+  node: FileGenealogyNode,
+  nodeDepth: number,
+  maxDepth: number,
+): LineageNode {
+  if (node.type === "philosopher") {
+    return {
+      type: "philosopher",
+      name: node.name,
+      depth: nodeDepth,
+      children: [],
+      fromFile: true,
+    };
+  }
+  const out: LineageNode = {
+    type: "synthesis",
+    name: node.name,
+    depth: nodeDepth,
+    children:
+      nodeDepth < maxDepth
+        ? (node.participants ?? []).map((p) =>
+            fileNodeToLineage(p, nodeDepth + 1, maxDepth),
+          )
+        : [],
+    fromFile: true,
+  };
+  if (node.method) out.method = node.method;
+  if (node.synthLevel) out.synthLevel = node.synthLevel;
+  if (node.generationOrder) out.generationOrder = node.generationOrder;
+  if (node.seed) out.seed = node.seed;
+  if (node.capsule) out.capsule = node.capsule;
+  return out;
+}
+
+/** Заголовки и деревья файла синтезов по списку id. */
+async function titlesAndFileTrees(ids: string[]): Promise<{
+  titles: Map<string, string>;
+  files: Map<string, FileGenealogyNode>;
+}> {
+  const titles = new Map<string, string>();
+  const files = new Map<string, FileGenealogyNode>();
+  if (ids.length === 0) return { titles, files };
+  const rows = await db
+    .select({
+      id: syntheses.id,
+      title: syntheses.title,
+      fileGenealogy: syntheses.fileGenealogy,
+    })
+    .from(syntheses)
+    .where(inArray(syntheses.id, [...new Set(ids)]));
+  for (const r of rows) {
+    titles.set(r.id, r.title);
+    if (r.fileGenealogy) files.set(r.id, r.fileGenealogy);
+  }
+  return { titles, files };
+}
+
+/**
+ * Дерево предков в форме embeddedState.genealogy (FileGenealogyNode) — для
+ * экспорта: корень с метаданными строки, узлы БД с synthesisId, узлы файла
+ * как есть. Капсулы не пишутся (паритет stripCapsulesFromGenealogy).
+ */
+export function lineageTreeToFileGenealogy(
+  node: LineageNode,
+  rootMeta: { method?: string; synthLevel?: string; seed?: string } = {},
+): FileGenealogyNode {
+  const conv = (n: LineageNode): FileGenealogyNode => {
+    if (n.type === "philosopher") return { type: "philosopher", name: n.name };
+    const out: FileGenealogyNode = { type: "concept", name: n.name };
+    if (n.synthesisId) out.synthesisId = n.synthesisId;
+    if (n.method) out.method = n.method;
+    if (n.synthLevel) out.synthLevel = n.synthLevel;
+    if (n.generationOrder) out.generationOrder = n.generationOrder;
+    if (n.seed) out.seed = n.seed;
+    out.participants = n.children.map(conv);
+    return out;
+  };
+  const root = conv(node);
+  if (rootMeta.method) root.method = rootMeta.method;
+  if (rootMeta.synthLevel) root.synthLevel = rootMeta.synthLevel;
+  if (rootMeta.seed) root.seed = rootMeta.seed;
+  return root;
 }
 
 /* ══ getAncestors ═════════════════════════════════════════════════════ */
@@ -106,7 +276,7 @@ export async function getAncestors(
       .filter((r) => r.parent_type === "synthesis" && r.parent_synthesis_id)
       .map((r) => r.parent_synthesis_id as string),
   ];
-  const titles = await titlesFor(idsForTitles);
+  const { titles, files } = await titlesAndFileTrees(idsForTitles);
 
   const build = (
     id: string,
@@ -114,29 +284,56 @@ export async function getAncestors(
     path: Set<string>,
   ): LineageNode[] => {
     if (nodeDepth > depth) return [];
-    const children: LineageNode[] = [];
-    for (const r of byChild.get(id) ?? []) {
+    // Слоты по позиции: связь БД либо (правило приоритета) узел файла
+    const slots: { position: number; node: LineageNode }[] = [];
+    const dbRows = byChild.get(id) ?? [];
+    for (const r of dbRows) {
       if (r.parent_type === "philosopher") {
         if (!r.parent_name) continue;
-        children.push({
-          type: "philosopher",
-          name: r.parent_name,
-          depth: nodeDepth,
-          children: [],
+        slots.push({
+          position: r.position,
+          node: {
+            type: "philosopher",
+            name: r.parent_name,
+            depth: nodeDepth,
+            children: [],
+          },
         });
       } else {
         const pid = r.parent_synthesis_id;
         if (!pid || path.has(pid)) continue; // страховка от цикла в данных
-        children.push({
-          type: "synthesis",
-          name: titles.get(pid) ?? "[безымянная концепция]",
-          synthesisId: pid,
-          depth: nodeDepth,
-          children: build(pid, nodeDepth + 1, new Set([...path, pid])),
+        slots.push({
+          position: r.position,
+          node: {
+            type: "synthesis",
+            name: titles.get(pid) ?? "[безымянная концепция]",
+            synthesisId: pid,
+            depth: nodeDepth,
+            children: build(pid, nodeDepth + 1, new Set([...path, pid])),
+          },
         });
       }
     }
-    return children;
+    const fileParents = unlinkedFileParents(
+      files.get(id),
+      dbRows.map((r) => ({
+        position: r.position,
+        parentType: r.parent_type,
+        parentName: r.parent_name,
+        parentSynthesisId: r.parent_synthesis_id,
+      })),
+    );
+    for (const f of fileParents) {
+      slots.push({
+        position: f.position,
+        node: fileNodeToLineage(f.node, nodeDepth, depth),
+      });
+    }
+    // Устойчивая сортировка: при равных позициях — порядок БД, затем файла
+    return slots
+      .map((x, i) => ({ ...x, i }))
+      .sort((a, b) => a.position - b.position || a.i - b.i)
+      .map((x) => x.node);
   };
 
   return {
@@ -398,6 +595,7 @@ export class LineageLinkError extends Error {
 export async function linkParent(
   synthesisId: string,
   parentSynthesisId: string,
+  parentName?: string,
 ): Promise<LineageRecord> {
   if (synthesisId === parentSynthesisId) {
     throw new LineageLinkError(
@@ -428,13 +626,40 @@ export async function linkParent(
       "Нельзя назначить родителем собственного потомка — родословная замкнётся в цикл",
     );
   }
-  const [pos] = await db
+  // Позиция связи. Правило приоритета дерева файла: если в file_genealogy
+  // ребёнка есть не перекрытая концепция с тем же (нормализованным) именем,
+  // связь встаёт на ЕЁ позицию и перекрывает узел файла; иначе — в конец,
+  // за пределы и связей БД, и participants файла (чтобы не заслонить
+  // чужой узел файла).
+  const existing = await db
     .select({
-      next: dsql<number>`coalesce(max(${synthesisLineage.position}), -1) + 1`,
+      position: synthesisLineage.position,
+      parentType: synthesisLineage.parentType,
+      parentName: synthesisLineage.parentName,
+      parentSynthesisId: synthesisLineage.parentSynthesisId,
     })
     .from(synthesisLineage)
     .where(eq(synthesisLineage.synthesisId, synthesisId));
-  const position = Number(pos?.next ?? 0);
+  const [own] = await db
+    .select({ fileGenealogy: syntheses.fileGenealogy })
+    .from(syntheses)
+    .where(eq(syntheses.id, synthesisId))
+    .limit(1);
+  const fileGenealogy = own?.fileGenealogy ?? null;
+  let position: number | null = null;
+  if (parentName && fileGenealogy) {
+    const want = normalizeConceptTitle(parentName);
+    const hit = unlinkedFileParents(fileGenealogy, existing).find(
+      (f) =>
+        f.node.type === "concept" && normalizeConceptTitle(f.node.name) === want,
+    );
+    if (hit) position = hit.position;
+  }
+  if (position === null) {
+    const maxRow = existing.reduce((m, r) => Math.max(m, r.position), -1);
+    const fileLen = fileGenealogy?.participants?.length ?? 0;
+    position = Math.max(maxRow, fileLen - 1) + 1;
+  }
   const [row] = await db
     .insert(synthesisLineage)
     .values({
