@@ -64,8 +64,9 @@ DB_ROLE="philosynth"
 DB_PASS="philosynth_dev"          # обязан совпадать с дефолтом server/env.ts
 NODE_MIN_MAJOR=22
 NODE_MIN_MINOR=18
-# python и build-essential нужны node-gyp; cairo/pango/libpng — самому canvas.
-PKGS="postgresql redis git python curl build-essential pkg-config cairo pango libpng"
+# python и build-essential нужны node-gyp; libcairo/pango/libpng — самому canvas
+# (в Termux пакет cairo называется libcairo; модуль pkg-config при этом — «cairo»).
+PKGS="postgresql redis git python curl build-essential pkg-config libcairo pango libpng"
 
 export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2048}"
 # Параллелизм сборки нативного аддона: телефону хватает двух заданий,
@@ -352,7 +353,7 @@ step_canvas() {
   for lib in cairo pango pangocairo; do
     pkg-config --exists "$lib" 2>/dev/null \
       || die "нет $lib (pkg-config его не видит).
-      Поставьте: pkg install build-essential pkg-config cairo pango libpng"
+      Поставьте: pkg install build-essential pkg-config libcairo pango libpng"
   done
 
   printf '    Пребилдов node-canvas под android нет (публикуются только macOS\n'
