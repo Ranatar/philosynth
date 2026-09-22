@@ -28,7 +28,14 @@
     "seed:plans": "tsx scripts/seed/seed-plans.ts",
     "stripe:create-prices": "tsx scripts/seed/stripe-create-prices.ts",
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
-    "check:dotfiles": "node scripts/checks/check-dotfiles.mjs"
+    "check:dotfiles": "node scripts/checks/check-dotfiles.mjs",
+    "i18n:extract": "node scripts/i18n/extract-ui-strings.mjs",
+    "i18n:build": "node scripts/i18n/build-localized.mjs",
+    "i18n:init": "node scripts/i18n/i18n-init.mjs",
+    "i18n:codemod": "node scripts/i18n/i18n-codemod.mjs",
+    "i18n:export": "node scripts/i18n/i18n-export.mjs",
+    "i18n:import": "node scripts/i18n/i18n-import.mjs",
+    "i18n:check": "node scripts/i18n/i18n-check.mjs"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.0",

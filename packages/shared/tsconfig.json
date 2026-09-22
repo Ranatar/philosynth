@@ -5,5 +5,5 @@
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["constants", "types", "utils"]
+  "include": ["constants", "types", "utils", "i18n"]
 }

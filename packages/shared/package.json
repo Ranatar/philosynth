@@ -6,7 +6,8 @@
   "exports": {
     "./constants/*": "./constants/*.ts",
     "./types/*": "./types/*.ts",
-    "./utils/*": "./utils/*.ts"
+    "./utils/*": "./utils/*.ts",
+    "./i18n/*": "./i18n/*.ts"
   },
   "scripts": {
     "build": "tsc -b",
