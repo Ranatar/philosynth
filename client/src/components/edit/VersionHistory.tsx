@@ -19,7 +19,7 @@
  * htmlSync приходят как у PATCH — ElementEditor показывает их тем же
  * блоком).
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   ChangeSource,
@@ -40,6 +40,7 @@ const SOURCE_LABELS: Record<ChangeSource, string> = {
   cascade: "каскад",
   auto_rename: "автозамена имени",
   rollback: "откат",
+  recommendation: "по рекомендации критики", // 10.2; «почему» (origin) — ниже, 10.3
 };
 
 const HIDDEN_FIELDS = new Set([
@@ -236,8 +237,8 @@ export function VersionHistory({
             <span className="version-meta">текущее состояние</span>
           </div>
           {versions.map((v) => (
+            <Fragment key={v.id}>
             <div
-              key={v.id}
               className={"version-item" + (selected === v.version ? " selected" : "")}
               role="button"
               tabIndex={0}
@@ -255,6 +256,21 @@ export function VersionHistory({
                 {fmtDate(v.createdAt)} · {SOURCE_LABELS[v.changeSource] ?? v.changeSource}
               </span>
             </div>
+            {/* 10.3: «почему изменилось» — снимок рекомендации, породившей правку
+                (origin 10.2). Снимок, а не ссылка: переживает перечитку таблицы
+                и удаление плана */}
+            {v.origin?.kind === "recommendation" && (
+              <div className="version-origin" data-testid="version-origin">
+                Почему: рекомендация № {v.origin.num} критики (раунд {v.origin.round}) —{" "}
+                {v.origin.op}
+                {v.origin.rationale ? `; проблема установлена в «${v.origin.rationale}»` : ""}
+                {" · "}
+                {v.origin.stepType === "edit_element"
+                  ? "вписана готовая замена"
+                  : "значение написано моделью"}
+              </div>
+            )}
+            </Fragment>
           ))}
           {versions.length === 0 && (
             <div className="version-meta" style={{ padding: "8px 12px" }}>

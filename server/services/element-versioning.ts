@@ -35,6 +35,7 @@ import {
 import type {
   ChangeSource,
   ElementVersion,
+  VersionOrigin,
   VersionedElementType,
 } from "@philosynth/shared/types/elements";
 
@@ -82,6 +83,7 @@ function toDto(r: typeof elementVersions.$inferSelect): ElementVersion {
     version: r.version,
     data: r.data,
     changeSource: r.changeSource,
+    origin: r.origin ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -99,6 +101,8 @@ export async function createVersion(
   data: Record<string, unknown>,
   changeSource: ChangeSource,
   tx: DbLike = db,
+  /** 10.2: рекомендация, породившая правку («почему изменилось») */
+  origin: VersionOrigin | null = null,
 ): Promise<ElementVersion> {
   const [mx] = await tx
     .select({ max: sql<number>`coalesce(max(${elementVersions.version}), 0)` })
@@ -119,6 +123,7 @@ export async function createVersion(
       version,
       data: snapshotOf(data),
       changeSource,
+      ...(origin ? { origin } : {}),
     })
     .returning();
   if (!row) throw new Error("element-versioning: insert без returning");

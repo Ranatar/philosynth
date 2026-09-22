@@ -39,11 +39,21 @@
  *    reloadSections + applySynthesis (НЕ store.load: тот переключает
  *    loading, страница рендерит спиннер и размонтирует модалку —
  *    цикл ремаунтов, пойман браузерным тестом R3).
+ *
+ * Беседа 10.3: проп initialPlan — ГОТОВЫЙ план (черновик, собранный службой из
+ * рекомендаций критики, либо план, к которому человек вернулся из панели
+ * рекомендаций). Модалка принимает его (useEditPlan.adopt) и ведёт как свой:
+ * каскадные шаги — в EditPlanPanel, подтвердить / пропустить / исполнить.
+ * Второй панели плана у рекомендаций НЕТ — управление передаётся сюда.
+ * «Отменить план» удаляет черновик (сервер возвращает рекомендации в 'new').
+ * elementNames — имена элементов для шагов edit_element / refine_element
+ * (шаг несёт только «kind:id»).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
-import type { CascadeImpactDto } from "@philosynth/shared/types/edit-plan";
+import { isFreeStepType } from "@philosynth/shared/constants/edit-steps";
+import type { CascadeImpactDto, EditPlan } from "@philosynth/shared/types/edit-plan";
 import type { ModeResult } from "@philosynth/shared/types/modes";
 
 import { getPlanImpact, regenerateSubsection } from "../../api/plans";
@@ -78,9 +88,19 @@ export interface EditModalProps {
    *  путь запуска перегенерации — планы §2.6). Ключи вне документа
    *  игнорируются. */
   initialRegen?: readonly string[] | undefined;
+  /** Беседа 10.3: готовый план — принять при открытии (см. шапку) */
+  initialPlan?: EditPlan | null | undefined;
+  /** Беседа 10.3: id элемента → имя, для шагов элементов */
+  elementNames?: Readonly<Record<string, string>> | undefined;
 }
 
-export function EditModal({ open, onClose, initialRegen }: EditModalProps) {
+export function EditModal({
+  open,
+  onClose,
+  initialRegen,
+  initialPlan,
+  elementNames,
+}: EditModalProps) {
   const synthesis = useSynthesisStore((s) => s.synthesis);
   const summaries = useSynthesisStore((s) => s.summaries);
   const sections = useSynthesisStore((s) => s.sections);
@@ -161,6 +181,8 @@ export function EditModal({ open, onClose, initialRegen }: EditModalProps) {
     setModes({});
     if (synthesisId)
       void getModes(synthesisId).then(setModes).catch(() => {});
+    // 10.3: готовый план (из панели рекомендаций) — принять как свой
+    if (initialPlan) editPlan.adopt(initialPlan);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -372,9 +394,32 @@ export function EditModal({ open, onClose, initialRegen }: EditModalProps) {
   const costText =
     footerCost !== null
       ? `≈ $${footerCost.toFixed(4)} (${(footerCost * 100).toFixed(2)}¢)`
-      : removeArr.length > 0 && regenArr.length + addArr.length === 0
-        ? "Удаление бесплатно"
-        : "";
+      : plan && plan.costBreakdown.paid.steps === 0 && plan.costBreakdown.free.steps > 0
+        ? "План бесплатен: модель не зовётся"
+        : removeArr.length > 0 && regenArr.length + addArr.length === 0
+          ? "Удаление бесплатно"
+          : "";
+
+  // 10.3: у плана бесплатное показано ОТДЕЛЬНО от платного, а каскадные шаги,
+  // ждущие решения, — отдельно от взятых: pending-шаг без подтверждения не
+  // исполняется, и считать его «платным» наравне с выбранным значило бы пугать
+  // человека чужой суммой (costBreakdown сервера считает все неснятые шаги)
+  const planInfo = (() => {
+    if (!plan) return "";
+    let free = 0;
+    let paid = 0;
+    let pending = 0;
+    for (const st of plan.steps) {
+      if (st.status === "skipped") continue;
+      if (st.status === "pending") pending += 1;
+      else if (isFreeStepType(st.type)) free += 1;
+      else paid += 1;
+    }
+    return (
+      `План: ${free} бесплатно · ${paid} платно` +
+      (pending ? ` · ${pending} каскадных ждут решения (оценка — с ними)` : "")
+    );
+  })();
 
   const runLabel = !plan
     ? "▶ Составить план"
@@ -485,6 +530,7 @@ export function EditModal({ open, onClose, initialRegen }: EditModalProps) {
               runningStep={editPlan.runningStep}
               isExecuting={isExecuting}
               labels={labelOf}
+              elementNames={elementNames}
               onConfirmStep={(i) => void editPlan.confirmStep(i)}
               onSkipStep={(i) => void editPlan.skipStep(i)}
             />
@@ -606,9 +652,11 @@ export function EditModal({ open, onClose, initialRegen }: EditModalProps) {
                 letterSpacing: 1,
               }}
             >
-              {footerInfoParts.length
-                ? footerInfoParts.join(" · ")
-                : "Выберите действия"}
+              {plan
+                ? planInfo
+                : footerInfoParts.length
+                  ? footerInfoParts.join(" · ")
+                  : "Выберите действия"}
             </div>
             <div
               style={{

@@ -54,6 +54,7 @@ import type {
   PauseReasonKind,
 } from "@philosynth/shared/types/synthesis";
 import type { EditStep } from "@philosynth/shared/types/edit-plan";
+import type { VersionOrigin } from "@philosynth/shared/types/elements";
 import type { FileGenealogyNode } from "@philosynth/shared/types/lineage";
 import type {
   ContextEntry as ContextLogEntry,
@@ -585,10 +586,15 @@ export const elementVersions = pgTable(
     data: jsonb("data").$type<Record<string, unknown>>().notNull(),
     changeSource: text("change_source", {
       // +rollback (правка 2026-09-02): откат к версии сам создаёт версию
-      enum: ["manual", "regenerated", "cascade", "auto_rename", "rollback"],
+      // +recommendation (10.2): правка исполнила рекомендацию критики
+      enum: ["manual", "regenerated", "cascade", "auto_rename", "rollback", "recommendation"],
     })
       .notNull()
       .default("manual"),
+    /** 10.2 (миграция 0009): «почему изменилось» — снимок рекомендации,
+     *  породившей версию (номер, раунд, операция, основание, план, шаг).
+     *  NULL — правка не по рекомендации */
+    origin: jsonb("origin").$type<VersionOrigin>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

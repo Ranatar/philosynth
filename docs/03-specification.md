@@ -1018,7 +1018,11 @@ DELETE /syntheses/:id/edges/:edgeId
   elementId: string;
   version: number;
   data: Record<string, unknown>;   // снимок ДО изменения
-  changeSource: "manual" | "regenerated" | "cascade" | "auto_rename" | "rollback";
+  changeSource: "manual" | "regenerated" | "cascade" | "auto_rename" | "rollback"
+              | "recommendation";  // 10.2: правка исполнила рекомендацию критики
+  origin?: VersionOrigin | null;   // 10.2: «почему» — { kind: 'recommendation',
+                                   // recommendationId, round, num, op, rationale,
+                                   // planId, stepIndex, stepType }
   createdAt: string;
 }
 ```
@@ -1088,9 +1092,25 @@ POST   /syntheses/:id/plans    { regen: string[], remove: string[], add: string[
                                  regenContexts?: Record<string, string>,
                                  addContexts?: Record<string, string>,
                                  modeRegen?: [string, number][],
-                                 modeRemove?: [string, number][] }
+                                 modeRemove?: [string, number][],
+                                 // 10.2 — действия мельче раздела:
+                                 regenSubsections?: { target: "sectionKey:имя", note? }[],
+                                 elementEdits?:   { kind, elementId, field?, value }[],
+                                 elementRefines?: { kind, elementId, field?, note,
+                                                    subsection? }[] }
                                 → { plan: EditPlan }
-                                // Сервер вычисляет каскад и возвращает полный план
+                                // Сервер вычисляет каскад и возвращает полный план.
+                                // 10.2: kind — category | thesis | glossary_term | edge;
+                                // field по умолчанию — definition / formulation /
+                                // definition / description (белый список —
+                                // shared/constants/edit-steps). Пустое value → 400
+                                // (удаление — не пустая правка). Каскад — от
+                                // раздела-хозяина (graph / theses / glossary), сам
+                                // хозяин не перегенерируется. Раздел, который тем же
+                                // планом перегенерируется или удаляется целиком,
+                                // шагов мельче себя не принимает → 400. Снимки
+                                // рекомендаций (recommendations[]) из тела клиента
+                                // ОТБРАСЫВАЮТСЯ — их ставит только служба 10.2.
 
 GET    /syntheses/:id/plans/:planId
                                 → { plan: EditPlan }
@@ -1572,8 +1592,8 @@ POST   /syntheses/:id/transforms/:transformId/rollback
 закрытого списка `{{document_subsections}}` (метки контекста вида
 «Глоссарий → Определения» именами подразделов не являются).
 
-Все три маршрута — ТОЛЬКО ВЛАДЕЛЬЦУ, включая чтение: рекомендации касаются
-правки. Чужому — 403 и на публичной концепции; гостю — 401.
+Все четыре маршрута (с 10.2 — и постановка плана) — ТОЛЬКО ВЛАДЕЛЬЦУ,
+включая чтение: рекомендации касаются правки. Чужому — 403 и на публичной концепции; гостю — 401.
 
 ```
 GET  /syntheses/:id/recommendations            ?round=N
@@ -1607,6 +1627,49 @@ POST /syntheses/:id/recommendations/extract     (ретрофит)
      422 RECOMMENDATIONS_TABLE_INVALID ('model_no_table' | 'model_html' |
      'missing_columns'); обрыв обращения — 502 GENERATION_FAILED.
      404: 'no_critique' | 'no_prose'. 403/409/429 — как у прочей генерации.
+
+POST /syntheses/:id/recommendations/plan        (беседа 10.2; fields — 10.3)
+     { nums: string[], fields?: Record<recommendationId, field> }
+       → RecommendationsPlanResponse
+     fields (10.3, единственная правка сервера беседы — решение пользователя):
+     поле элемента выбирает ЧЕЛОВЕК в панели — карта «id строки → поле» из
+     ELEMENT_STEP_FIELDS вида элемента (тезис: formulation | justification;
+     категория: definition | name | origin; термин: definition | term). Нет
+     записи — поле по умолчанию (10.2). Чужой id, строка без найденного
+     элемента или поле вне белого списка → 400 VALIDATION_ERROR
+     (details.fields, details.allowed): молча взять умолчание значило бы
+     исполнить не то, что человек решил. Поле переживает пересборку плана
+     (PATCH панели каскада).
+       { plan: EditPlan (status 'draft'), round, planned[], stale[], invalid[],
+         declined: { id, num, position, code, reason }[], hint }
+     Выбранные ПОШТУЧНО рекомендации последнего раунда → черновик плана;
+     строки → 'planned'. Исполнение — существующим POST /plans/:planId/execute.
+     Входа «исполнить все» НЕТ и быть не должно: пустой nums → 400. Номер
+     выбирает ВСЕ строки этого номера. Развилка: оба варианта («5а» и «5б»)
+     → 400; голый «5» у рекомендации-развилки → 400 «назовите вариант» —
+     служба не выбирает за человека. Перевод строки в действие:
+       «удалить»                       → declined (шага удаления элемента или
+                                         подраздела у планов нет);
+       готовая замена + элемент        → edit_element (бесплатно);
+       элемент без замены              → refine_element, довод — в context;
+       без элемента, «перегенерировать» → regen РАЗДЕЛА адреса (у sum —
+                                         regen_subsection);
+       без элемента, прочее            → regen_subsection «sectionKey:Адрес»,
+                                         довод — пожеланием (замена без
+                                         элемента дописывается в довод).
+     Свёртка: строки об одном подразделе — один шаг; подраздел раздела,
+     идущего на regen, вливается в его довод; элемент такого раздела и второй
+     шаг на тот же элемент → declined. Перед сборкой хэш источника сверяется
+     с живым документом: разошёлся → 'stale' (hint предлагает перечитать),
+     адресата нет → 'invalid' с причиной; в план идут только годные. Модель
+     не зовётся — billingCheck нет. Гейт — владелец, нет активной операции.
+     400 VALIDATION_ERROR (details.nums, details.fork | available);
+     404 'no_round' (разборов ещё не было); 409 GENERATION_IN_PROGRESS;
+     422 RECOMMENDATIONS_NOT_PLANNABLE — ни одна строка в план не вошла
+     (details: stale[], invalid[], declined[]).
+     POST …/parse и …/extract с 10.2 отвечают 409 ROUND_IN_PROGRESS, если
+     текст критики сменился, а в раунде есть 'planned' (details: round,
+     planIds, nums).
 ```
 
 ```typescript
@@ -1620,7 +1683,7 @@ interface Recommendation {        // packages/shared/types/recommendations.ts
   op: string; replacement: string | null; rationale: string; severity: string;
   status: 'new' | 'planned' | 'done' | 'rejected' | 'invalid' | 'stale';
   invalidReason: string | null;
-  planId: string | null; stepIndex: number | null;   // заполняет 10.2
+  planId: string | null; stepIndex: number | null;   // ставит постановка плана (10.2)
   createdAt: string;
 }
 ```
@@ -1883,10 +1946,15 @@ Endpoint: `wss://host/ws?token={sessionToken}`
   status: "draft" | "executing" | "paused" | "done" | "failed";
   currentStep: number;
   steps: Array<{
-    type: "delete" | "regen" | "add" | "regen_subsection" | "regen_mode";
-    target: string;
+    type: "delete" | "regen" | "add" | "regen_subsection" | "regen_mode"
+        | "edit_element" | "refine_element";            // 10.2
+    target: string;                // у шагов элемента — "kind:elementId"
     status: "pending" | "confirmed" | "running" | "done" | "skipped" | "failed";
     context?: string;
+    field?: string;                // 10.2: правимое поле элемента
+    value?: string;                // 10.2: edit_element — готовый текст
+    subsection?: string;           // 10.2: refine_element — "sectionKey:имя"
+    recommendations?: { id, round, num, op, rationale }[];   // 10.2
     cascadeGenerated: boolean;
     result?: {
       outputChars: number;
@@ -1896,6 +1964,10 @@ Endpoint: `wss://host/ws?token={sessionToken}`
     };
   }>;
   estimatedCost: number;
+  // 10.2: бесплатное ОТДЕЛЬНО от платного (снятые шаги не считаются);
+  // free — delete и edit_element; paid.costUsd ≡ estimatedCost
+  costBreakdown: { free: { steps: number; costUsd: 0 };
+                   paid: { steps: number; costUsd: number } };
   createdAt: string;
 }
 ```
@@ -1934,6 +2006,12 @@ RECOMMENDATIONS_TABLE_INVALID — подраздел «Таблица реком
                       details.problem: 'no_table_element' | 'missing_columns'
                       (+ missing, found) | 'no_rows' | 'model_no_table' |
                       'model_html' (10.1)
+ROUND_IN_PROGRESS   — разбор рекомендаций: текст критики сменился, а в текущем
+                      раунде есть рекомендации 'planned' — сначала исполнить
+                      либо удалить план — 409; details: round, planIds, nums (10.2)
+RECOMMENDATIONS_NOT_PLANNABLE — ни одна из названных рекомендаций в план не
+                      вошла — 422; details: stale[], invalid[], declined[] с
+                      причиной по каждой строке (10.2)
 GENERATION_FAILED   — синхронное обращение к модели оборвалось (ретрофит
                       рекомендаций) — 502; документ не тронут, запрос можно
                       повторить; details.kind — вид обрыва стрима (10.1)

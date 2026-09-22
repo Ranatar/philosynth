@@ -35,14 +35,51 @@
  *    executor'а 2.2) — estimateSubsectionCost; regen_mode —
  *    estimateModeCost; delete — 0.
  *
+ * Беседа 10.2 — действия МЕЛЬЧЕ РАЗДЕЛА. До неё тело плана знало только
+ * разделы и режимы: regen ⊆ sectionOrder, адрес «sectionKey:подраздел» в
+ * regen отвергался, шаги regen_subsection рождал лишь исполнитель
+ * (структурный пост-шаг). Добавлены три рода базовых действий:
+ *  - regenSubsections — перегенерация подраздела с пожеланием;
+ *  - elementEdits     — шаг edit_element (готовый текст в поле элемента);
+ *  - elementRefines   — шаг refine_element (точечная генерация в элемент).
+ *  Каскад для них считается от РАЗДЕЛА-ХОЗЯИНА как от изменённого
+ *  (PlanActions.touched): сам хозяин на перегенерацию не ставится, его
+ *  downstream — ставится pending-шагами, как всегда. Так же считал impact
+ *  ручной правки 5.1 (computeElementImpact). Руками каскад не дополняется.
+ *  Порядок: шаги элементов — ПЕРВЫМИ (перегенерации обязаны видеть новое
+ *  значение), regen_subsection — на месте раздела-хозяина в едином
+ *  топопорядке buildPlanOrder.
+ *  updatePlan пересобирал шаги ПО ТИПАМ и новые типы молча терял бы —
+ *  пересборка переносит их дословно (значение, поле, довод, рекомендации).
+ *  Рекомендации (recommendations.plan_id/step_index/status) планировщик
+ *  держит в согласии с шагами сам: syncRecommendationSteps при создании и
+ *  пересборке, releaseRecommendations при удалении плана.
+ *
  * НЕ здесь (беседа 2.2): исполнение плана (plan-executor, execute,
  * confirm_step, pausedState kind='plan').
  */
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+
+import {
+  ELEMENT_STEP_HOST,
+  ELEMENT_STEP_KINDS,
+  elementStepTarget,
+  isElementStepType,
+  parseElementStepTarget,
+  planCostBreakdown,
+} from "@philosynth/shared/constants/edit-steps";
 
 import { db } from "../db/index.js";
-import { editPlans, syntheses } from "../db/schema.js";
+import { editPlans, recommendations, sections, syntheses } from "../db/schema.js";
+import { listSubsectionNames } from "../utils/html-parser.js";
+import {
+  ELEMENT_FIELD_MAX_CHARS,
+  ElementStepError,
+  loadStepElement,
+  normalizeFieldValue,
+  resolveStepField,
+} from "./element-step.js";
 import {
   analyzeImpact,
   getEffectiveModeDepsFromConfig,
@@ -51,6 +88,9 @@ import {
 } from "./cascade-analyzer.js";
 import { buildPlanOrder } from "./plan-order-builder.js";
 import {
+  CHARS_PER_TOKEN,
+  PRICE_IN,
+  PRICE_OUT,
   estimateCascadeWaveCost,
   estimateCost,
   estimateModeCost,
@@ -79,6 +119,8 @@ import type {
   CreatePlanRequest,
   EditPlan,
   EditStep,
+  ElementStepKind,
+  StepRecommendationRef,
   UpdatePlanRequest,
 } from "@philosynth/shared/types/edit-plan";
 import type {
@@ -146,6 +188,8 @@ export function toApiPlan(row: PlanRow, estimatedCost: number): EditPlan {
     currentStep: row.currentStep,
     steps: row.steps,
     estimatedCost,
+    // 10.2: бесплатные шаги — отдельной строкой, не в общей сумме
+    costBreakdown: planCostBreakdown(row.steps, estimatedCost),
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -162,7 +206,52 @@ interface NormalizedActions {
   addContexts: Record<string, string>;
   modeRegen: [string, number][];
   modeRemove: [string, number][];
+  /** 10.2 — действия мельче раздела (уже проверенные) */
+  subRegens: SubRegenAction[];
+  elementSteps: ElementStepAction[];
+  /** 10.2 — рекомендации, породившие перегенерацию раздела */
+  regenRecommendations: Record<string, StepRecommendationRef[]>;
 }
+
+interface SubRegenAction {
+  target: string;
+  sectionKey: string;
+  note?: string;
+  recommendations?: StepRecommendationRef[];
+}
+
+interface ElementStepAction {
+  type: "edit_element" | "refine_element";
+  kind: ElementStepKind;
+  elementId: string;
+  field: string;
+  value?: string;
+  note?: string;
+  subsection?: string;
+  recommendations?: StepRecommendationRef[];
+}
+
+/** Что создатель плана вправе передать сверх тела запроса. */
+export interface CreatePlanOptions {
+  /**
+   * Снимки рекомендаций в теле плана принимаются ТОЛЬКО от службы
+   * (recommendation-planner). Из тела HTTP-запроса они отбрасываются: иначе
+   * клиент приписал бы правке чужое «почему».
+   */
+  trustRecommendationRefs?: boolean;
+}
+
+const asRefs = (v: unknown, trusted: boolean): StepRecommendationRef[] | undefined => {
+  if (!trusted || !Array.isArray(v)) return undefined;
+  const out = v.filter(
+    (r): r is StepRecommendationRef =>
+      !!r && typeof r === "object" &&
+      typeof (r as StepRecommendationRef).id === "string" &&
+      typeof (r as StepRecommendationRef).num === "string" &&
+      typeof (r as StepRecommendationRef).round === "number",
+  );
+  return out.length ? out : undefined;
+};
 
 /**
  * Нормализация + валидация CreatePlanRequest против состояния синтеза.
@@ -179,7 +268,9 @@ async function normalizeActions(
   synthesisId: string,
   sectionOrder: readonly string[],
   body: CreatePlanRequest,
+  opts: CreatePlanOptions = {},
 ): Promise<NormalizedActions> {
+  const trusted = opts.trustRecommendationRefs === true;
   const details: Record<string, string> = {};
   const inDoc = new Set(sectionOrder.filter((k) => k !== "sum"));
 
@@ -233,6 +324,125 @@ async function normalizeActions(
   if (modeRegen.some((t) => removeModeSet.has(modeKeyOf(t))))
     details.modeRegen = "modeRegen и modeRemove одновременно для результата";
 
+  /* ── 10.2: подразделы ── */
+  const subRegens: SubRegenAction[] = [];
+  const rawSubs = Array.isArray(body.regenSubsections) ? body.regenSubsections : [];
+  if (rawSubs.length > 0) {
+    const secRows = await db
+      .select({ key: sections.key, html: sections.htmlContent })
+      .from(sections)
+      .where(eq(sections.synthesisId, synthesisId));
+    const namesOf = new Map(secRows.map((r) => [r.key, listSubsectionNames(r.html)]));
+    const seen = new Set<string>();
+    for (const a of rawSubs) {
+      const target = typeof a?.target === "string" ? a.target : "";
+      const i = target.indexOf(":");
+      const sectionKey = i > 0 ? target.slice(0, i) : "";
+      const name = i > 0 ? target.slice(i + 1) : "";
+      if (!sectionKey || !name) {
+        details.regenSubsections = `адрес «${target}» — не «sectionKey:подраздел»`;
+        continue;
+      }
+      if (!sectionOrder.includes(sectionKey)) {
+        details.regenSubsections = `раздел «${sectionKey}» отсутствует в документе`;
+        continue;
+      }
+      if (!(namesOf.get(sectionKey) ?? []).includes(name)) {
+        details.regenSubsections = `в разделе «${sectionKey}» нет подраздела «${name}»`;
+        continue;
+      }
+      if (regen.includes(sectionKey) || remove.includes(sectionKey)) {
+        details.regenSubsections = `раздел «${sectionKey}» этим же планом перегенерируется или удаляется целиком`;
+        continue;
+      }
+      if (seen.has(target)) continue;
+      seen.add(target);
+      const refs = asRefs(a.recommendations, trusted);
+      subRegens.push({
+        target,
+        sectionKey,
+        ...(typeof a.note === "string" && a.note.trim() ? { note: a.note.trim() } : {}),
+        ...(refs ? { recommendations: refs } : {}),
+      });
+    }
+  }
+
+  /* ── 10.2: элементы ── */
+  const elementSteps: ElementStepAction[] = [];
+  const seenEl = new Set<string>();
+  const takeElement = async (
+    type: ElementStepAction["type"],
+    a: { kind?: unknown; elementId?: unknown; field?: unknown; value?: unknown; note?: unknown; subsection?: unknown; recommendations?: unknown },
+    fieldName: "elementEdits" | "elementRefines",
+  ): Promise<void> => {
+    const kind = a?.kind as ElementStepKind;
+    if (!(ELEMENT_STEP_KINDS as readonly string[]).includes(kind as string)) {
+      details[fieldName] = `неизвестный вид элемента «${String(a?.kind)}»`;
+      return;
+    }
+    const elementId = typeof a.elementId === "string" ? a.elementId : "";
+    let field: string;
+    try {
+      field = resolveStepField(kind, typeof a.field === "string" ? a.field : undefined);
+    } catch (e) {
+      details[fieldName] = e instanceof ElementStepError ? e.message : String(e);
+      return;
+    }
+    const host = ELEMENT_STEP_HOST[kind];
+    if (regen.includes(host) || remove.includes(host)) {
+      details[fieldName] = `раздел «${host}» этим же планом перегенерируется или удаляется целиком — правка элемента в нём бессмысленна`;
+      return;
+    }
+    if (!(await loadStepElement(synthesisId, kind, elementId))) {
+      details[fieldName] = `элемент «${kind}:${elementId}» не найден в этой концепции`;
+      return;
+    }
+    // Один адресат — один шаг: два шага на одно поле исполнялись бы вслепую
+    // друг за другом, второй — по устаревшему доводу
+    const k = `${kind}:${elementId}:${field}`;
+    if (seenEl.has(k)) {
+      details[fieldName] = `поле «${field}» элемента «${kind}:${elementId}» названо дважды`;
+      return;
+    }
+    seenEl.add(k);
+    const refs = asRefs(a.recommendations, trusted);
+    if (type === "edit_element") {
+      const value = typeof a.value === "string" ? normalizeFieldValue(a.value) : "";
+      if (!value) {
+        details[fieldName] = "пустое значение: удаление — отдельная операция, а не пустая правка";
+        return;
+      }
+      if (value.length > ELEMENT_FIELD_MAX_CHARS) {
+        details[fieldName] = `значение длиннее ${ELEMENT_FIELD_MAX_CHARS} знаков`;
+        return;
+      }
+      elementSteps.push({ type, kind, elementId, field, value, ...(refs ? { recommendations: refs } : {}) });
+    } else {
+      const note = typeof a.note === "string" ? a.note.trim() : "";
+      if (!note) {
+        details[fieldName] = "точечной генерации нужен довод (note): что не так и что требуется";
+        return;
+      }
+      elementSteps.push({
+        type, kind, elementId, field, note,
+        ...(typeof a.subsection === "string" && a.subsection.includes(":") ? { subsection: a.subsection } : {}),
+        ...(refs ? { recommendations: refs } : {}),
+      });
+    }
+  };
+  for (const a of Array.isArray(body.elementEdits) ? body.elementEdits : [])
+    await takeElement("edit_element", a ?? {}, "elementEdits");
+  for (const a of Array.isArray(body.elementRefines) ? body.elementRefines : [])
+    await takeElement("refine_element", a ?? {}, "elementRefines");
+
+  const regenRecommendations: Record<string, StepRecommendationRef[]> = {};
+  if (trusted && body.regenRecommendations && typeof body.regenRecommendations === "object") {
+    for (const [k, v] of Object.entries(body.regenRecommendations)) {
+      const refs = asRefs(v, true);
+      if (refs && regen.includes(k)) regenRecommendations[k] = refs;
+    }
+  }
+
   if (Object.keys(details).length > 0)
     throw new PlanError("VALIDATION_ERROR", "Невалидные действия плана", details);
 
@@ -253,7 +463,27 @@ async function normalizeActions(
     addContexts: ctxMap(body.addContexts),
     modeRegen,
     modeRemove,
+    subRegens,
+    elementSteps,
+    regenRecommendations,
   };
+}
+
+/** 10.2: разделы, изменённые действиями мельче раздела (для каскада). */
+function touchedSectionsOf(actions: NormalizedActions): string[] {
+  return [
+    ...new Set([
+      ...actions.subRegens.map((a) => a.sectionKey),
+      ...actions.elementSteps.map((a) => ELEMENT_STEP_HOST[a.kind]),
+    ]),
+  ];
+}
+
+function hasAnyAction(a: NormalizedActions): boolean {
+  return (
+    a.regen.length + a.remove.length + a.add.length + a.modeRegen.length +
+      a.modeRemove.length + a.subRegens.length + a.elementSteps.length > 0
+  );
 }
 
 /* ── Сборка шагов из действий + каскада ──────────────────────────────── */
@@ -295,6 +525,26 @@ async function assembleSteps(
     }
   };
 
+  // 0) 10.2: шаги элементов — ПЕРВЫМИ: перегенерации ниже обязаны видеть
+  //    уже новое значение. Бесплатные (edit_element) — раньше платных.
+  const elementOrdered = [
+    ...actions.elementSteps.filter((a) => a.type === "edit_element"),
+    ...actions.elementSteps.filter((a) => a.type === "refine_element"),
+  ];
+  for (const a of elementOrdered) {
+    push({
+      type: a.type,
+      target: elementStepTarget(a.kind, a.elementId),
+      status: "confirmed",
+      cascadeGenerated: false,
+      field: a.field,
+      ...(a.value !== undefined ? { value: a.value } : {}),
+      ...(a.note !== undefined ? { context: a.note } : {}),
+      ...(a.subsection !== undefined ? { subsection: a.subsection } : {}),
+      ...(a.recommendations ? { recommendations: a.recommendations } : {}),
+    });
+  }
+
   // 1) Удаления разделов
   for (const key of sortInTopoOrder(sectionOrder, actions.remove)) {
     push({ type: "delete", target: key, status: "confirmed", cascadeGenerated: false });
@@ -302,16 +552,41 @@ async function assembleSteps(
 
   // 2) add + regen единым топопорядком (каскадные regen — внутри)
   const userRegen = new Set(actions.regen);
+  const cascadeSet = new Set(cascadeRegen);
+  // 10.2: разделы-хозяева подраздельных перегенераций участвуют в едином
+  // топопорядке как псевдо-regen: их шаги встают НА МЕСТЕ раздела
+  const subHosts = [...new Set(actions.subRegens.map((a) => a.sectionKey))].filter(
+    (k) => k !== "sum",
+  );
   const order = await buildPlanOrder(
     {
-      regen: [...actions.regen, ...cascadeRegen],
+      regen: [...new Set([...actions.regen, ...cascadeRegen, ...subHosts])],
       remove: actions.remove,
       add: actions.add,
     },
     params,
     sectionOrder,
   );
+  const pushSubRegens = (sectionKey: string): void => {
+    for (const a of actions.subRegens.filter((x) => x.sectionKey === sectionKey)) {
+      push({
+        type: "regen_subsection",
+        target: a.target,
+        status: "confirmed",
+        cascadeGenerated: false,
+        ...(a.note !== undefined ? { context: a.note } : {}),
+        ...(a.recommendations ? { recommendations: a.recommendations } : {}),
+      });
+    }
+  };
+  // «sum» в buildPlanOrder не участвует (regen ⊆ order ∖ sum) — его подразделы первыми
+  pushSubRegens("sum");
   for (const item of order) {
+    if (item.action === "regen" && subHosts.includes(item.key)) {
+      pushSubRegens(item.key);
+      // хозяин сам на перегенерацию не ставится — разве что его задел каскад
+      if (!userRegen.has(item.key) && !cascadeSet.has(item.key)) continue;
+    }
     const isCascade = item.action === "regen" && !userRegen.has(item.key);
     const context =
       item.action === "add"
@@ -323,6 +598,9 @@ async function assembleSteps(
       status: isCascade ? "pending" : "confirmed",
       cascadeGenerated: isCascade,
       ...(context !== undefined ? { context } : {}),
+      ...(item.action === "regen" && actions.regenRecommendations[item.key]
+        ? { recommendations: actions.regenRecommendations[item.key] }
+        : {}),
     });
   }
 
@@ -361,6 +639,18 @@ async function assembleSteps(
   return steps;
 }
 
+/**
+ * 10.2: оценка одного refine_element. Вход — SYS + шаблон + подраздел
+ * (потолок контекста шага 9000 зн., берём типичные 5000) + карточка элемента;
+ * выход — одно поле (≈ 600 зн.). Знаки → токены тем же делителем, что у
+ * оценщика 1.1 (CHARS_PER_TOKEN).
+ */
+export function estimateRefineCost(sysChars: number): number {
+  const inTokens = (sysChars + 2200 + 5000 + 800) / CHARS_PER_TOKEN;
+  const outTokens = 600 / CHARS_PER_TOKEN;
+  return inTokens * PRICE_IN + outTokens * PRICE_OUT;
+}
+
 /* ── estimatePlanCost ────────────────────────────────────────────────── */
 
 /**
@@ -383,6 +673,9 @@ export async function estimatePlanCost(
     const sectionEntries: CascadeWaveEntry[] = [];
     const modeTargets: string[] = [];
     const removedSections = new Set<string>();
+    // 10.2: edit_element — 0 (модель не зовётся); refine_element — малое
+    // обращение: SYS + узкий контекст → один абзац
+    const refineCount = active.filter((s) => s.type === "refine_element").length;
     for (const s of active) {
       if (s.type === "delete") {
         if (s.target.includes(":")) continue; // удаление результата режима
@@ -400,7 +693,7 @@ export async function estimatePlanCost(
         modeTargets.push(s.target);
       }
     }
-    if (sectionEntries.length === 0 && modeTargets.length === 0) return 0;
+    if (sectionEntries.length === 0 && modeTargets.length === 0 && refineCount === 0) return 0;
 
     const p = paramsFromRow(row, philosophers);
     const sectionOrder: readonly string[] = row.sectionOrder ?? [];
@@ -506,11 +799,72 @@ export async function estimatePlanCost(
       }
     }
 
+    if (refineCount > 0) {
+      const refineSys = (await buildSYS(fp, { outputMode: "mode" })).length;
+      total += refineCount * estimateRefineCost(refineSys);
+    }
+
     return total;
   } catch (err) {
     console.warn("[edit-planner] estimatePlanCost failed:", err);
     return 0;
   }
+}
+
+/* ── 10.2: рекомендации ↔ шаги плана ─────────────────────────────────── */
+
+/**
+ * Привести строки recommendations в согласие с шагами плана-ЧЕРНОВИКА:
+ * plan_id, step_index и статус. Шаг в плане → 'planned'; шаг снят человеком
+ * в панели каскада (skipped) → 'rejected'; снова подтверждён → 'planned'.
+ * Индексы пишутся заново при каждой пересборке: updatePlan шаги переставляет.
+ * Строки 'done' не трогаются — исполненное не переигрывается.
+ */
+export async function syncRecommendationSteps(
+  synthesisId: string,
+  planId: string,
+  steps: readonly EditStep[],
+): Promise<void> {
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i] as EditStep;
+    const ids = (step.recommendations ?? []).map((r) => r.id);
+    if (ids.length === 0) continue;
+    const status = step.status === "skipped" ? ("rejected" as const) : ("planned" as const);
+    await db
+      .update(recommendations)
+      .set({ planId, stepIndex: i, status })
+      .where(
+        and(
+          eq(recommendations.synthesisId, synthesisId),
+          inArray(recommendations.id, ids),
+          inArray(recommendations.status, ["new", "planned", "rejected"]),
+        ),
+      );
+  }
+}
+
+/**
+ * Вернуть рекомендации плана в 'new' (план удалён, остановлен, шаг не
+ * состоялся не по воле человека). Без этого строка осталась бы 'planned'
+ * навсегда — FK plan_id обнуляется, а ROUND_IN_PROGRESS запер бы раунд.
+ */
+export async function releaseRecommendations(
+  synthesisId: string,
+  planId: string,
+  onlyIds?: readonly string[],
+): Promise<void> {
+  if (onlyIds && onlyIds.length === 0) return;
+  await db
+    .update(recommendations)
+    .set({ status: "new", planId: null, stepIndex: null })
+    .where(
+      and(
+        eq(recommendations.synthesisId, synthesisId),
+        eq(recommendations.planId, planId),
+        eq(recommendations.status, "planned"),
+        ...(onlyIds ? [inArray(recommendations.id, [...onlyIds])] : []),
+      ),
+    );
 }
 
 /* ── createPlan ──────────────────────────────────────────────────────── */
@@ -524,21 +878,15 @@ export async function createPlan(
   synthesisId: string,
   userId: string,
   body: CreatePlanRequest,
+  opts: CreatePlanOptions = {},
 ): Promise<EditPlan> {
   const { row, philosophers } = await loadSynthesis(synthesisId);
   if (row.userId !== userId)
     throw new PlanError("FORBIDDEN", "Нет доступа к синтезу");
 
   const sectionOrder: readonly string[] = row.sectionOrder ?? [];
-  const actions = await normalizeActions(synthesisId, sectionOrder, body);
-  const hasAny =
-    actions.regen.length +
-      actions.remove.length +
-      actions.add.length +
-      actions.modeRegen.length +
-      actions.modeRemove.length >
-    0;
-  if (!hasAny)
+  const actions = await normalizeActions(synthesisId, sectionOrder, body, opts);
+  if (!hasAnyAction(actions))
     throw new PlanError("VALIDATION_ERROR", "План пуст", {
       actions: "нужно хотя бы одно действие",
     });
@@ -547,6 +895,8 @@ export async function createPlan(
     regen: actions.regen,
     remove: actions.remove,
     add: actions.add,
+    // 10.2: хозяева правок мельче раздела — изменены, но не перегенерируются
+    touched: touchedSectionsOf(actions),
   });
   // Каскадные regen: затронутые downstream вне плана (analyzeImpact уже
   // исключил операции плана и удалённые разделы)
@@ -577,6 +927,7 @@ export async function createPlan(
     .values({ synthesisId, userId, status: "draft", steps })
     .returning();
   if (!inserted) throw new Error("edit_plans insert returned no row");
+  await syncRecommendationSteps(synthesisId, inserted.id, steps);
 
   return toApiPlan(inserted, estimatedCost);
 }
@@ -615,6 +966,46 @@ export async function getPlan(
     planRow.steps,
   );
   return toApiPlan(planRow, estimatedCost);
+}
+
+/* 10.2: обратное к сборке — базовые действия мельче раздела из шагов плана */
+
+function subRegensFromSteps(steps: readonly EditStep[]): SubRegenAction[] {
+  return steps
+    .filter((s) => s.type === "regen_subsection" && !s.cascadeGenerated)
+    .map((s) => ({
+      target: s.target,
+      sectionKey: s.target.slice(0, s.target.indexOf(":")),
+      ...(s.context !== undefined ? { note: s.context } : {}),
+      ...(s.recommendations ? { recommendations: s.recommendations } : {}),
+    }));
+}
+
+function elementActionsFromSteps(steps: readonly EditStep[]): ElementStepAction[] {
+  const out: ElementStepAction[] = [];
+  for (const s of steps) {
+    if (!isElementStepType(s.type)) continue;
+    const ref = parseElementStepTarget(s.target);
+    if (!ref || !s.field) continue;
+    out.push({
+      type: s.type as ElementStepAction["type"],
+      kind: ref.kind,
+      elementId: ref.elementId,
+      field: s.field,
+      ...(s.value !== undefined ? { value: s.value } : {}),
+      ...(s.context !== undefined ? { note: s.context } : {}),
+      ...(s.subsection !== undefined ? { subsection: s.subsection } : {}),
+      ...(s.recommendations ? { recommendations: s.recommendations } : {}),
+    });
+  }
+  return out;
+}
+
+function regenRefsFromSteps(steps: readonly EditStep[]): Record<string, StepRecommendationRef[]> {
+  const out: Record<string, StepRecommendationRef[]> = {};
+  for (const s of steps)
+    if (s.type === "regen" && s.recommendations?.length) out[s.target] = s.recommendations;
+  return out;
 }
 
 /**
@@ -694,12 +1085,17 @@ export async function updatePlan(
     modeRemove: activeBase
       .filter((s) => s.type === "delete" && isModeTarget(s.target))
       .map((s) => pair(s.target)),
+    // 10.2: действия мельче раздела переносятся из шагов дословно
+    subRegens: subRegensFromSteps(activeBase),
+    elementSteps: elementActionsFromSteps(activeBase),
+    regenRecommendations: regenRefsFromSteps(base),
   };
 
   const impact = await analyzeImpact(synthesisId, {
     regen: actions.regen,
     remove: actions.remove,
     add: actions.add,
+    touched: touchedSectionsOf(actions),
   });
 
   // Пересборка: пользовательские шаги (включая снятые) + свежий каскад;
@@ -722,6 +1118,8 @@ export async function updatePlan(
     modeRemove: base
       .filter((s) => s.type === "delete" && isModeTarget(s.target))
       .map((s) => pair(s.target)),
+    subRegens: subRegensFromSteps(base),
+    elementSteps: elementActionsFromSteps(base),
   };
 
   const p = paramsFromRow(row, philosophers);
@@ -740,6 +1138,8 @@ export async function updatePlan(
     .where(eq(editPlans.id, planId))
     .returning();
   if (!updated) throw new PlanError("NOT_FOUND", "План не найден");
+  // 10.2: снятый в панели шаг → рекомендация 'rejected'; индексы — заново
+  await syncRecommendationSteps(synthesisId, planId, rebuilt);
 
   const estimatedCost = await estimatePlanCost(
     synthesisId,
@@ -759,5 +1159,7 @@ export async function deletePlan(
   const planRow = await loadPlanRow(synthesisId, planId, userId);
   if (planRow.status === "executing")
     throw new PlanError("PLAN_CONFLICT", "План исполняется — сначала остановите");
+  // 10.2: рекомендации плана — обратно в 'new' ДО удаления (FK обнулит plan_id)
+  await releaseRecommendations(synthesisId, planId);
   await db.delete(editPlans).where(eq(editPlans.id, planId));
 }

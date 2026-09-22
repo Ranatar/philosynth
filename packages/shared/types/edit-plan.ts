@@ -17,7 +17,31 @@ export type EditStepType =
   | "regen"
   | "add"
   | "regen_subsection"
-  | "regen_mode";
+  | "regen_mode"
+  /** 10.2: применить ГОТОВЫЙ текст к полю элемента — модель не зовётся,
+   *  квота не расходуется, стоимость 0 */
+  | "edit_element"
+  /** 10.2: точечная генерация В ЭЛЕМЕНТ — модель получает узкий контекст
+   *  (элемент, его подраздел, довод) и возвращает новое значение поля */
+  | "refine_element";
+
+/** Виды элементов, адресуемых шагами edit_element / refine_element.
+ *  Значения и хелперы — packages/shared/constants/edit-steps.ts */
+export type ElementStepKind = "category" | "thesis" | "glossary_term" | "edge";
+
+/**
+ * Рекомендация критики, породившая шаг (10.2). Снимок, а не ссылка: строки
+ * 'new' при перечитке таблицы пересобираются, а ответ на «почему изменилось»
+ * обязан пережить и это, и удаление плана.
+ */
+export interface StepRecommendationRef {
+  id: string;
+  round: number;
+  num: string;
+  op: string;
+  /** Подраздел критики, где проблема установлена (столбец «Основание») */
+  rationale: string;
+}
 
 export type EditStepStatus =
   | "pending"
@@ -41,11 +65,22 @@ export interface StepResult {
 export interface EditStep {
   type: EditStepType;
   /** sectionKey или "sectionKey:subsectionName";
-   *  для regen_mode — "modeKey:index" */
+   *  для regen_mode — "modeKey:index";
+   *  для edit_element / refine_element — "kind:elementId" (10.2) */
   target: string;
   status: EditStepStatus;
-  /** secCtx для этого шага */
+  /** secCtx для этого шага; у regen_subsection — пожелание (userNote);
+   *  у refine_element — довод рекомендации, уходит в контекст модели */
   context?: string;
+  /** edit_element / refine_element: какое поле элемента правится */
+  field?: string;
+  /** edit_element: новое значение поля (готовый текст) */
+  value?: string;
+  /** refine_element: подраздел, где элемент живёт, — «sectionKey:имя»
+   *  (уходит в узкий контекст модели; нет — таблица вида элемента) */
+  subsection?: string;
+  /** 10.2: рекомендации, породившие шаг (у шага элемента — ровно одна) */
+  recommendations?: StepRecommendationRef[];
   result?: StepResult;
   /** true = шаг добавлен автоматически каскадом */
   cascadeGenerated: boolean;
@@ -60,7 +95,48 @@ export interface EditPlan {
   steps: EditStep[];
   /** Суммарная оценка стоимости плана, USD */
   estimatedCost: number;
+  /** 10.2: бесплатное ОТДЕЛЬНО от платного — шаги, которым модель не нужна
+   *  (edit_element, delete), в общей сумме не прячутся */
+  costBreakdown: PlanCostBreakdown;
   createdAt: string;
+}
+
+export interface PlanCostBreakdown {
+  /** Шаги без модели (не снятые): квота не расходуется, стоимость 0 */
+  free: { steps: number; costUsd: 0 };
+  /** Шаги с обращением к модели (не снятые); costUsd ≡ estimatedCost */
+  paid: { steps: number; costUsd: number };
+}
+
+/** Перегенерация подраздела по выбору человека (10.2). */
+export interface SubsectionRegenAction {
+  /** "sectionKey:subsectionName" */
+  target: string;
+  /** Пожелание к перегенерации (довод рекомендации) */
+  note?: string;
+  recommendations?: StepRecommendationRef[];
+}
+
+/** Правка поля элемента готовым текстом (10.2). */
+export interface ElementEditAction {
+  kind: ElementStepKind;
+  elementId: string;
+  /** По умолчанию — defaultElementStepField(kind) */
+  field?: string;
+  value: string;
+  recommendations?: StepRecommendationRef[];
+}
+
+/** Точечная генерация в поле элемента (10.2). */
+export interface ElementRefineAction {
+  kind: ElementStepKind;
+  elementId: string;
+  field?: string;
+  /** Довод: что не так и что требуется */
+  note: string;
+  /** «sectionKey:имя» подраздела для контекста модели */
+  subsection?: string;
+  recommendations?: StepRecommendationRef[];
 }
 
 /** Тело POST /syntheses/:id/plans (03-spec §2.6) */
@@ -72,6 +148,12 @@ export interface CreatePlanRequest {
   addContexts?: Record<string, string>;
   modeRegen?: [string, number][];
   modeRemove?: [string, number][];
+  /** 10.2: действия мельче раздела. Каскад считается от раздела-хозяина */
+  regenSubsections?: SubsectionRegenAction[];
+  elementEdits?: ElementEditAction[];
+  elementRefines?: ElementRefineAction[];
+  /** 10.2: рекомендации, породившие перегенерацию РАЗДЕЛА (ключ — sectionKey) */
+  regenRecommendations?: Record<string, StepRecommendationRef[]>;
 }
 
 /** Тело PATCH /syntheses/:id/plans/:planId */

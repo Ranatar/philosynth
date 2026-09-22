@@ -620,7 +620,22 @@ export interface SlotBillingOptions {
   units?: number | undefined;
   /** Порог баланса для режима 'balance' (дефолт env.billing.minReserveUsd) */
   estimatedCostUsd?: number | undefined;
+  /**
+   * 10.2: операция БЕЗ модели (план из одних edit_element / delete). Слот
+   * берётся ради предохранителя и cancel, но биллинг не решается вовсе: ни
+   * квоты, ни резерва, ни требования источника оплаты — человек без ключа,
+   * подписки и баланса вправе применить готовую замену. Ключа у ручки нет:
+   * стрим под таким слотом упадёт на первом же обращении — так и задумано.
+   */
+  free?: boolean | undefined;
 }
+
+/** Решение-заглушка бесплатного слота: ключа нет, учитывать нечего. */
+export const FREE_SLOT_BILLING: BillingDecision = {
+  billingMode: "balance",
+  apiKey: "",
+  enforced: false,
+};
 
 /** Контекст учёта для streamSection (6.1) — из ручки слота. */
 export function billingContextOf(
@@ -676,6 +691,10 @@ export async function withGenerationSlot(
     // 6.1: режим биллинга и ключ — ПОД слотом (гонка двух стартов решена
     // has()-проверкой выше), квота подписки потребляется атомарно здесь.
     let billing: BillingDecision;
+    if (billingOpts.free === true) {
+      await fn({ synthesisId, userId, signal: run.abort.signal, billing: FREE_SLOT_BILLING });
+      return;
+    }
     try {
       billing = await resolveBilling(userId, {
         quota: billingOpts.quota ?? null,

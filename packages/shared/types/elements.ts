@@ -74,7 +74,28 @@ export type ChangeSource =
   | "cascade"
   | "auto_rename"
   /** Откат к прежней версии (03 §2.4, правка 2026-09-02) */
-  | "rollback";
+  | "rollback"
+  /** 10.2: правка исполнила рекомендацию критики; какую — ElementVersion.origin */
+  | "recommendation";
+
+/**
+ * 10.2: «почему изменилось». Снимок рекомендации, породившей версию: номер и
+ * раунд, операция, основание, план и шаг. Хранится в самой версии
+ * (element_versions.origin) — переживает перечитку таблицы рекомендаций и
+ * удаление плана.
+ */
+export interface VersionOrigin {
+  kind: "recommendation";
+  recommendationId: string;
+  round: number;
+  num: string;
+  op: string;
+  rationale: string;
+  planId: string | null;
+  stepIndex: number | null;
+  /** 'edit_element' — готовая замена; 'refine_element' — точечная генерация */
+  stepType: "edit_element" | "refine_element";
+}
 
 /** Строка таблицы element_versions */
 export interface ElementVersion {
@@ -87,6 +108,8 @@ export interface ElementVersion {
   /** Полный снимок элемента до изменения */
   data: Record<string, unknown>;
   changeSource: ChangeSource;
+  /** 10.2: рекомендация, породившая правку; null — правка не по рекомендации */
+  origin?: VersionOrigin | null;
   createdAt: string;
 }
 

@@ -71,6 +71,7 @@ import { db } from "../db/index.js";
 import {
   editPlans,
   generationLog,
+  recommendations,
   sections,
   syntheses,
 } from "../db/schema.js";
@@ -959,6 +960,19 @@ export async function resumePlan(
       .update(editPlans)
       .set({ status: "failed", updatedAt: new Date() })
       .where(eq(editPlans.id, planId));
+    // 10.2: план остановлен — его неисполненные рекомендации снова 'new'
+    // (иначе 'planned' запер бы раунд: ROUND_IN_PROGRESS). Прямым UPDATE:
+    // импорт edit-planner замкнул бы цикл (тот импортирует этот модуль)
+    await db
+      .update(recommendations)
+      .set({ status: "new", planId: null, stepIndex: null })
+      .where(
+        and(
+          eq(recommendations.synthesisId, synthesisId),
+          eq(recommendations.planId, planId),
+          eq(recommendations.status, "planned"),
+        ),
+      );
     sendToUser(userId, { type: "generation_resumed", synthesisId, mode });
     return;
   }

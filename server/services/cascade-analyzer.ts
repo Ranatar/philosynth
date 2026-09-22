@@ -606,6 +606,14 @@ export interface PlanActions {
   regen: string[];
   remove: string[];
   add: string[];
+  /**
+   * 10.2: разделы, ИЗМЕНЁННЫЕ действием мельче раздела (правка элемента,
+   * перегенерация подраздела). Для downstream, весов и режимов они — то же,
+   * что regen: их содержание меняется. Но сами на перегенерацию не ставятся
+   * и из затронутых НЕ вычищаются: раздел-хозяин правки может оказаться
+   * downstream другого действия того же плана.
+   */
+  touched?: string[];
 }
 
 /** «Обязательные зависимости отсутствуют» для добавляемого раздела (C1). */
@@ -797,7 +805,10 @@ export async function analyzeImpact(
 
   const affected = new Set<string>();
 
-  for (const key of plan.regen) {
+  const touched = (plan.touched ?? []).filter(
+    (k) => !activeSet.has(k) && !removeSet.has(k),
+  );
+  for (const key of [...plan.regen, ...touched]) {
     for (const dep of dependents[key] ?? new Set<string>()) {
       if (dep !== "sum") affected.add(dep);
     }
@@ -832,7 +843,7 @@ export async function analyzeImpact(
   // Весовые подсказки E1: chars от каждого источника плана (factReverse)
   const factualWeights: Record<string, FactualWeightHint[]> = {};
   for (const depKey of affected) {
-    for (const srcKey of [...plan.regen, ...plan.remove]) {
+    for (const srcKey of [...plan.regen, ...plan.remove, ...touched]) {
       const fi = factReverse[srcKey];
       if (fi) {
         const consumer = fi.consumers.find((c) => c.key === depKey);
@@ -949,7 +960,7 @@ export async function analyzeImpact(
   }
 
   // ══ E5. Затронутые режимы ══
-  const changedSections = [...plan.regen, ...plan.remove, ...plan.add];
+  const changedSections = [...plan.regen, ...plan.remove, ...plan.add, ...touched];
   const affectedModes = await getAffectedModes({
     modes: await loadModesState(synthesisId),
     generationOrder: p.generationOrder,

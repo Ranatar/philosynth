@@ -35,7 +35,7 @@
  */
 import { createHash } from "node:crypto";
 
-import { and, asc, desc, eq, max } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
 
 import {
   RECOMMENDATIONS_PROSE_SUBSECTION,
@@ -106,7 +106,11 @@ import type {
 export type RecommendationsErrorCode =
   | "NOT_FOUND"
   | "VALIDATION_ERROR"
-  | "RECOMMENDATIONS_TABLE_INVALID";
+  | "RECOMMENDATIONS_TABLE_INVALID"
+  /** 10.2: в раунде есть рекомендации 'planned' — новый раунд не открывается */
+  | "ROUND_IN_PROGRESS"
+  /** 10.2: ни одна из названных рекомендаций в план не вошла */
+  | "RECOMMENDATIONS_NOT_PLANNABLE";
 
 /**
  * NOT_FOUND — нет критики / нет прозы / нет таблицы (details.reason говорит,
@@ -639,6 +643,32 @@ export async function parseAndStore(synthesisId: string): Promise<Recommendation
       : [];
     const sameRound = prev.length > 0 && prev.every((p) => p.roundHash === roundHash);
     const round = sameRound ? latest : latest + 1;
+
+    // 10.2 — РАУНД В РАБОТЕ. Текст критики сменился (новый раунд), а в прежнем
+    // есть рекомендации, стоящие в плане: открыть round+1 значило бы оставить
+    // их висеть в плане против документа, о котором критика уже говорит иное.
+    // Сначала план — исполнить либо удалить; осиротевшие 'planned' (плана уже
+    // нет: FK обнулил plan_id) раунд не держат и снимаются здесь же.
+    if (!sameRound) {
+      const held = prev.filter((p) => p.status === "planned" && p.planId !== null);
+      if (held.length > 0)
+        throw new RecommendationsError(
+          "ROUND_IN_PROGRESS",
+          `Раунд ${latest} ещё в работе: ${held.length} рекомендаци${held.length === 1 ? "я стоит" : "й стоят"} в плане правок. ` +
+            "Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд.",
+          {
+            round: latest,
+            planIds: [...new Set(held.map((p) => p.planId as string))],
+            nums: [...new Set(held.map((p) => p.num))],
+          },
+        );
+      const orphans = prev.filter((p) => p.status === "planned" && p.planId === null);
+      if (orphans.length > 0)
+        await tx
+          .update(recommendations)
+          .set({ status: "new", stepIndex: null })
+          .where(inArray(recommendations.id, orphans.map((p) => p.id)));
+    }
 
     // Перенос строк, уже ушедших в работу (решение 2 шапки)
     // id строки при перечитке сохраняется у ВСЕХ узнанных строк (панель 10.3

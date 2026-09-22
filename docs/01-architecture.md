@@ -275,10 +275,17 @@ interface EditPlan {
 }
 
 interface EditStep {
-  type: "delete" | "regen" | "add" | "regen_subsection" | "regen_mode";
-  target: string;          // sectionKey или "sectionKey:subsectionName"
+  type: "delete" | "regen" | "add" | "regen_subsection" | "regen_mode"
+      | "edit_element" | "refine_element";     // 10.2 — шаги мельче раздела
+  target: string;          // sectionKey | "sectionKey:subsectionName" |
+                           // "modeKey:index" | "kind:elementId" (10.2)
   status: "pending" | "confirmed" | "running" | "done" | "skipped" | "failed";
-  context?: string;        // secCtx для этого шага
+  context?: string;        // secCtx шага; у regen_subsection — пожелание;
+                           // у refine_element — довод рекомендации
+  field?: string;          // 10.2: правимое поле элемента
+  value?: string;          // 10.2: edit_element — готовый текст
+  subsection?: string;     // 10.2: refine_element — "sectionKey:имя" для контекста
+  recommendations?: StepRecommendationRef[];   // 10.2: снимок породивших рекомендаций
   result?: {
     outputChars: number;
     inputTokens: number;
@@ -288,6 +295,23 @@ interface EditStep {
   cascadeGenerated: boolean; // true = шаг добавлен автоматически каскадом
 }
 ```
+
+**Шаги мельче раздела (беседа 10.2).** `edit_element` применяет ГОТОВЫЙ текст к
+полю элемента: модель не зовётся, квота не расходуется, стоимость 0.
+`refine_element` — точечная генерация В ЭЛЕМЕНТ: узкий контекст (элемент, его
+подраздел, довод) → новое значение одного поля (шаблон Registry
+`recommendations.refine_element`). Оба пишут значение функциями ручной правки
+5.1 (версия-снимок, перерисовка одной таблицы), источник версии —
+`'recommendation'`, в `element_versions.origin` — какая рекомендация правку
+породила. Каскад для них и для `regen_subsection` по выбору человека считается
+от РАЗДЕЛА-ХОЗЯИНА как от изменённого (`PlanActions.touched`): сам хозяин на
+перегенерацию не встаёт, его downstream — pending-шагами, как всегда; руками
+каскад не дополняется. Шаги элементов исполняются ПЕРВЫМИ. План без единого
+платного шага идёт под БЕСПЛАТНЫМ слотом (`SlotBillingOptions.free`): ни
+квоты, ни резерва, ни требования источника оплаты; предпроверка биллинга на
+`execute` — условная. Рекомендации критики переводит в такой план
+`recommendation-planner.buildPlanDraft` — только поштучно названные; входа
+«исполнить все» нет намеренно.
 
 **Workflow:**
 1. Клиент отправляет `POST /api/plans` с набором действий (аналог `_editPlan`)

@@ -41,7 +41,7 @@ import {
   isGenerationActive,
   loadSynthesis,
 } from "../services/generation-service.js";
-import { executePlan } from "../services/plan-executor.js";
+import { countBillableSteps, executePlan } from "../services/plan-executor.js";
 import { isUuid } from "./syntheses.js";
 
 import type { Context } from "hono";
@@ -262,7 +262,15 @@ plansRoutes.post("/:id/plans/impact", requireAuth, async (c) => {
 
 /* ── POST /syntheses/:id/plans/:planId/execute (беседа 2.2) ──────────── */
 
-plansRoutes.post("/:id/plans/:planId/execute", requireAuth, billingCheck({ quota: "regenerations" }), async (c) => {
+/*
+ * 10.2: предпроверка биллинга — УСЛОВНАЯ. План без единого платного шага
+ * (одни edit_element / delete) модель не зовёт: требовать у человека ключ,
+ * подписку или баланс ради готовой замены нельзя. Поэтому billingCheck стоит
+ * не в цепочке middleware, а зовётся из обработчика после чтения плана.
+ */
+const executeBillingCheck = billingCheck({ quota: "regenerations" });
+
+plansRoutes.post("/:id/plans/:planId/execute", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const planId = c.req.param("planId");
@@ -286,6 +294,10 @@ plansRoutes.post("/:id/plans/:planId/execute", requireAuth, billingCheck({ quota
         { error: "Генерация уже идёт", code: "PLAN_CONFLICT" },
         409,
       );
+    }
+    if (countBillableSteps(row.steps, 0) > 0) {
+      const denied = await executeBillingCheck(c, async () => undefined);
+      if (denied) return denied;
     }
   } catch (err) {
     return errJson(c, err);

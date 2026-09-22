@@ -4,11 +4,13 @@
  *   GET  /syntheses/:id/recommendations          ?round=N → RecommendationsResponse
  *   POST /syntheses/:id/recommendations/parse    → RecommendationsParseResponse
  *   POST /syntheses/:id/recommendations/extract  → RecommendationsExtractResponse
+ *   POST /syntheses/:id/recommendations/plan     { nums, fields? } →
+ *        RecommendationsPlanResponse (беседа 10.2; fields — 10.3)
  *
  * Отдельный роутер, а не routes/sections.ts: там сторожа 4ao/4ar считают
  * читающие и пишущие маршруты разделов, и рекомендации — не раздел.
  *
- * Доступ — ТОЛЬКО ВЛАДЕЛЕЦ на всех трёх путях, включая чтение: рекомендации
+ * Доступ — ТОЛЬКО ВЛАДЕЛЕЦ на всех четырёх путях, включая чтение: рекомендации
  * касаются правки, а не чтения; чужому — 403 и на публичной концепции. Гейт
  * тот же, что у правки (ownerEditGate 5.1/9.2): не-UUID/нет → 404, чужой →
  * 403, активная операция → 409 — у POST; у GET гейта активной операции нет
@@ -27,7 +29,9 @@ import { db } from "../db/index.js";
 import { syntheses } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { billingCheck } from "../middleware/billing-check.js";
+import { PlanError } from "../services/edit-planner.js";
 import { GenerationError } from "../services/generation-service.js";
+import { buildPlanDraft } from "../services/recommendation-planner.js";
 import {
   RecommendationsError,
   extractRecommendationsTable,
@@ -67,7 +71,19 @@ const BILLING_403 = new Set([
 function serviceError(c: Context, err: unknown): Response {
   if (err instanceof RecommendationsError) {
     const status =
-      err.code === "NOT_FOUND" ? 404 : err.code === "RECOMMENDATIONS_TABLE_INVALID" ? 422 : 400;
+      err.code === "NOT_FOUND" ? 404
+      : err.code === "RECOMMENDATIONS_TABLE_INVALID" ? 422
+      : err.code === "RECOMMENDATIONS_NOT_PLANNABLE" ? 422
+      : err.code === "ROUND_IN_PROGRESS" ? 409
+      : 400;
+    return c.json(
+      { error: err.message, code: err.code, ...(err.details ? { details: err.details } : {}) },
+      status,
+    );
+  }
+  if (err instanceof PlanError) {
+    const status =
+      err.code === "NOT_FOUND" ? 404 : err.code === "FORBIDDEN" ? 403 : err.code === "PLAN_CONFLICT" ? 409 : 400;
     return c.json(
       { error: err.message, code: err.code, ...(err.details ? { details: err.details } : {}) },
       status,
@@ -150,3 +166,33 @@ recommendationsRoutes.post(
     }
   },
 );
+
+/* ── POST /:id/recommendations/plan (беседа 10.2) ────────────────────── */
+/*
+ * Выбранные ПОШТУЧНО рекомендации → черновик плана правок (status 'draft'),
+ * строки → 'planned'. Исполнение — существующим POST /plans/:planId/execute,
+ * нового пути нет. Входа «исполнить все» нет и быть не должно: пустой nums —
+ * 400. Модель здесь не зовётся — billingCheck не нужен (платность решает
+ * execute по составу шагов). Гейт — как у правки: владелец, нет активной
+ * операции (идёт генерация → 409).
+ */
+recommendationsRoutes.post("/:id/recommendations/plan", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const gate = await ownerEditGate(c, id, user.id);
+  if (gate) return gate;
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+  }
+  const nums = body && typeof body === "object" ? (body as { nums?: unknown }).nums : undefined;
+  // 10.3: поле элемента выбирает человек — карта «id строки → поле»
+  const fields = body && typeof body === "object" ? (body as { fields?: unknown }).fields : undefined;
+  try {
+    return c.json(await buildPlanDraft(id, user.id, nums, fields));
+  } catch (err) {
+    return serviceError(c, err);
+  }
+});

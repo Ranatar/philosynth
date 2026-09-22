@@ -42,6 +42,10 @@ export type ApiErrorCode =
   | "META_NOT_ALLOWED" // 8.6: автор не разрешил чужой мета-синтез (403; details.title)
   | "SECTION_TABLE_LOCKED" // 9.2: подраздел рисуется из БД либо это капсула (409; details.reason)
   | "TOKEN_INVALID" // 9.1: довод из письма просрочен, использован или не существует (400)
+  | "RECOMMENDATIONS_TABLE_INVALID" // 10.1: таблица рекомендаций не разбирается / негодный ответ модели (422)
+  | "ROUND_IN_PROGRESS" // 10.2: текст критики сменился при рекомендациях в плане (409; details.nums)
+  | "RECOMMENDATIONS_NOT_PLANNABLE" // 10.2: ни одна названная рекомендация в план не вошла (422)
+  | "GENERATION_FAILED" // 10.1: синхронное обращение к модели оборвалось (502)
   | "GENERATION_PAUSED"
   | "RESUME_INVALID"
   | "NO_PARTICIPANTS_SEED_REQUIRED"

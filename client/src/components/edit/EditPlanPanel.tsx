@@ -10,7 +10,21 @@
  * во время исполнения pending-шаги (каскад/структурный
  * «sum:Структура документа» из plan_steps_added) — WS confirm_step;
  * «пропустить» на исполнении = просто не подтверждать (2.2).
+ *
+ * Беседа 10.3: отрисовка шагов мельче раздела (10.2) — у шага элемента
+ * видны вид, имя, правимое поле, у edit_element — готовый текст (разворотом),
+ * у любого шага из рекомендаций — их номера и раунд; бесплатный шаг помечен.
+ * Имя элемента шаг не несёт (target «kind:id») — оно приходит пропом
+ * elementNames от панели рекомендаций; нет имени — показывается вид.
  */
+import {
+  ELEMENT_STEP_FIELD_LABELS,
+  ELEMENT_STEP_KIND_LABELS,
+  defaultElementStepField,
+  isElementStepType,
+  isFreeStepType,
+  parseElementStepTarget,
+} from "@philosynth/shared/constants/edit-steps";
 import type { EditPlan, EditStep, StepResult } from "@philosynth/shared/types/edit-plan";
 
 export interface EditPlanPanelProps {
@@ -19,6 +33,8 @@ export interface EditPlanPanelProps {
   runningStep: number | null;
   isExecuting: boolean;
   labels: (key: string) => string;
+  /** 10.3: id элемента → имя (шаги edit_element / refine_element) */
+  elementNames?: Readonly<Record<string, string>> | undefined;
   onConfirmStep: (index: number) => void;
   onSkipStep: (index: number) => void;
 }
@@ -29,6 +45,10 @@ const TYPE_LABEL: Record<EditStep["type"], string> = {
   add: "Добавить",
   regen_subsection: "Перегенерировать подраздел",
   regen_mode: "Перегенерировать режим",
+  // 10.2: подписи новых шагов — чтобы тип оставался исчерпывающим; отрисовка
+  // шагов элемента (поле, значение, рекомендация) — панель 10.3
+  edit_element: "Применить готовую замену",
+  refine_element: "Уточнить элемент",
 };
 
 function stepIcon(step: EditStep, running: boolean): string {
@@ -66,7 +86,20 @@ function stepColor(step: EditStep, running: boolean): string {
 function targetLabel(
   step: EditStep,
   labels: (key: string) => string,
+  elementNames: Readonly<Record<string, string>> | undefined,
 ): string {
+  if (isElementStepType(step.type)) {
+    // 10.3: «категория «Имя» · определение»
+    const parsed = parseElementStepTarget(step.target);
+    if (!parsed) return step.target;
+    const name = elementNames?.[parsed.elementId];
+    const field = step.field ?? defaultElementStepField(parsed.kind);
+    return (
+      ELEMENT_STEP_KIND_LABELS[parsed.kind] +
+      (name ? ` «${name}»` : "") +
+      ` · ${ELEMENT_STEP_FIELD_LABELS[field] ?? field}`
+    );
+  }
   const idx = step.target.indexOf(":");
   if (idx < 0) return labels(step.target);
   const head = step.target.slice(0, idx);
@@ -83,6 +116,7 @@ export function EditPlanPanel({
   runningStep,
   isExecuting,
   labels,
+  elementNames,
   onConfirmStep,
   onSkipStep,
 }: EditPlanPanelProps) {
@@ -117,9 +151,10 @@ export function EditPlanPanel({
           const pendingActionable =
             step.status === "pending" &&
             (plan.status === "draft" || isExecuting);
+          const recs = step.recommendations ?? [];
           return (
+            <div key={i} data-testid="plan-step" data-step-type={step.type}>
             <div
-              key={i}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -137,7 +172,15 @@ export function EditPlanPanel({
             >
               <span className="step-icon">{stepIcon(step, running)}</span>
               <span>
-                {TYPE_LABEL[step.type]}: {targetLabel(step, labels)}
+                {TYPE_LABEL[step.type]}: {targetLabel(step, labels, elementNames)}
+                {recs.length > 0 && (
+                  <span className="plan-step-rec" data-testid="plan-step-rec">
+                    рекомендация {recs.map((r) => `№ ${r.num}`).join(", ")} · раунд {recs[0]?.round}
+                  </span>
+                )}
+                {isFreeStepType(step.type) && (
+                  <span className="plan-step-free" data-testid="plan-step-free">бесплатно</span>
+                )}
                 {step.cascadeGenerated && (
                   <span
                     style={{
@@ -190,6 +233,13 @@ export function EditPlanPanel({
                   )}
                 </span>
               )}
+            </div>
+            {step.type === "edit_element" && step.value && (
+              <details className="sec-disclosure plan-step-value" data-testid="plan-step-value">
+                <summary>Готовая замена</summary>
+                <div className="disclosure-body">{step.value}</div>
+              </details>
+            )}
             </div>
           );
         })}

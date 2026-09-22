@@ -1,0 +1,1 @@
+ALTER TABLE "element_versions" ADD COLUMN "origin" jsonb;

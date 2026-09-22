@@ -92,7 +92,9 @@ import type {
   GlossaryTermUpdateInput,
   HtmlSyncInfo,
   ImpactAnalysis,
+  ChangeSource,
   ThesisUpdateInput,
+  VersionOrigin,
   VersionedElementType,
 } from "@philosynth/shared/types/elements";
 import type { Category, CategoryEdge } from "@philosynth/shared/types/graph";
@@ -351,6 +353,16 @@ async function loadGlossaryRow(
 
 /* ── Синхронизация с HTML ────────────────────────────────────────────── */
 
+/**
+ * 10.2: чем вызвана правка. По умолчанию — рука человека ('manual'); шаги
+ * плана edit_element / refine_element передают 'recommendation' и снимок
+ * рекомендации — он ложится в element_versions.origin.
+ */
+export interface ElementUpdateOptions {
+  changeSource?: ChangeSource;
+  origin?: VersionOrigin | null;
+}
+
 function emptySync(): HtmlSyncInfo {
   return { rendered: [], patched: [], pending: [], sectionMissing: false };
 }
@@ -552,6 +564,7 @@ export async function updateCategory(
   synthesisId: string,
   categoryId: string,
   updates: unknown,
+  opts: ElementUpdateOptions = {},
 ): Promise<UpdateCategoryResult> {
   if (!isObj(updates)) fail({ body: "ожидается объект" });
   const d: Details = {};
@@ -587,7 +600,8 @@ export async function updateCategory(
   const { before, row, version } = await db.transaction(async (tx) => {
     const before = await loadCategoryRow(synthesisId, categoryId, tx);
     const version = await createVersion(
-      synthesisId, before.id, "category", snapshotOf(before), "manual", tx,
+      synthesisId, before.id, "category", snapshotOf(before),
+      opts.changeSource ?? "manual", tx, opts.origin ?? null,
     );
     const [row] = await tx
       .update(categories)
@@ -666,6 +680,7 @@ export async function updateCategoryEdge(
   synthesisId: string,
   edgeId: string,
   updates: unknown,
+  opts: ElementUpdateOptions = {},
 ): Promise<UpdateEdgeResult> {
   if (!isObj(updates)) fail({ body: "ожидается объект" });
   const d: Details = {};
@@ -695,7 +710,8 @@ export async function updateCategoryEdge(
   const { row, version, reflexiveChanged } = await db.transaction(async (tx) => {
     const before = await loadEdgeRow(synthesisId, edgeId, tx);
     const version = await createVersion(
-      synthesisId, before.id, "edge", snapshotOf(before), "manual", tx,
+      synthesisId, before.id, "edge", snapshotOf(before),
+      opts.changeSource ?? "manual", tx, opts.origin ?? null,
     );
     const [row] = await tx
       .update(categoryEdges)
@@ -880,6 +896,7 @@ export async function updateThesis(
   synthesisId: string,
   thesisId: string,
   updates: unknown,
+  opts: ElementUpdateOptions = {},
 ): Promise<UpdateThesisResult> {
   if (!isObj(updates)) fail({ body: "ожидается объект" });
   const d: Details = {};
@@ -903,7 +920,8 @@ export async function updateThesis(
   const { before, row, version } = await db.transaction(async (tx) => {
     const before = await loadThesisRow(synthesisId, thesisId, tx);
     const version = await createVersion(
-      synthesisId, before.id, "thesis", snapshotOf(before), "manual", tx,
+      synthesisId, before.id, "thesis", snapshotOf(before),
+      opts.changeSource ?? "manual", tx, opts.origin ?? null,
     );
     const [row] = await tx
       .update(theses)
@@ -969,6 +987,7 @@ export async function updateGlossaryTerm(
   synthesisId: string,
   termId: string,
   updates: unknown,
+  opts: ElementUpdateOptions = {},
 ): Promise<UpdateGlossaryTermResult> {
   if (!isObj(updates)) fail({ body: "ожидается объект" });
   const d: Details = {};
@@ -991,7 +1010,8 @@ export async function updateGlossaryTerm(
   const { before, row, version } = await db.transaction(async (tx) => {
     const before = await loadGlossaryRow(synthesisId, termId, tx);
     const version = await createVersion(
-      synthesisId, before.id, "glossary_term", snapshotOf(before), "manual", tx,
+      synthesisId, before.id, "glossary_term", snapshotOf(before),
+      opts.changeSource ?? "manual", tx, opts.origin ?? null,
     );
     const [row] = await tx
       .update(glossaryTerms)

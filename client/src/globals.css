@@ -5507,6 +5507,408 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 10.3 — панель рекомендаций критики ════════════════════════
+ * В исходнике инструмента нет вовсе: рекомендации критики там — только
+ * проза, которую человек читал глазами. Каркас панели — готовый:
+ * .edit-overlay / .edit-modal / -header / -body / -footer, .raw-close,
+ * .edit-sec-btn(.primary/.danger), .edit-dep-warn, .callout(.note/.warning),
+ * .sec-disclosure, .compat-chip + .chip-* (важность), .cert-badge,
+ * .pool-status, .form-label, .form-select, .edit-regen-progress. Своё — то,
+ * чего нет ни в исходнике, ни в ките: (1) строка рекомендации с адресом,
+ * элементом и операцией; (2) ПОМЕТКА «стоит ли это денег» — главное
+ * различение панели, читается с одного взгляда: зелёная рамка «правка ·
+ * бесплатно», синяя заливка «генерация», серая «вручную»; (3) рамка развилки;
+ * (4) группа негодных строк; (5) строка оценки в футере; (6) пометки шага
+ * плана и «почему» версии. Новых hex нет (фоны — те же, что у .compat-chip
+ * и .callout исходника), углы прямые, теней нет.
+ * ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  .rec-modal {
+    max-width: 920px;
+  }
+
+  .rec-gap {
+    margin-bottom: 12px;
+  }
+
+  /* (1) рекомендация: шапка с выбором, строки адресов, разворот с доводом */
+  .rec-item {
+    border: 1px solid var(--rule);
+    background: var(--white);
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    transition: border-color 0.15s;
+  }
+
+  .rec-item:hover {
+    border-color: var(--blue-corp);
+  }
+
+  .rec-item.selected {
+    border-color: var(--blue-corp);
+    border-left: 3px solid var(--blue-corp);
+    background: var(--blue-light);
+  }
+
+  .rec-item.inert {
+    background: var(--paper);
+  }
+
+  .rec-item-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .rec-pick {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .rec-pick input {
+    accent-color: var(--blue-corp);
+    cursor: pointer;
+  }
+
+  .rec-pick input:disabled {
+    cursor: not-allowed;
+  }
+
+  .rec-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--blue-corp);
+    white-space: nowrap;
+  }
+
+  .rec-toggle {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 2px 0;
+  }
+
+  .rec-toggle:hover {
+    color: var(--blue-corp);
+  }
+
+  .rec-row {
+    padding: 4px 0;
+    border-top: 1px dotted var(--rule);
+  }
+
+  .rec-row-line {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .rec-address {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--ink-mid);
+  }
+
+  .rec-element {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .rec-element-kind {
+    margin-left: 6px;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 400;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--violet);
+  }
+
+  .rec-op {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+
+  /* (2) пометка «стоит ли это денег» */
+  .rec-cost {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  .rec-cost.free {
+    border-color: var(--green-check);
+    color: var(--green-check);
+    background: #f0fff4;
+  }
+
+  .rec-cost.paid {
+    border-color: var(--blue-corp);
+    color: var(--white);
+    background: var(--blue-corp);
+  }
+
+  .rec-cost.manual {
+    border-color: var(--rule-strong);
+    color: var(--ink-dim);
+    background: transparent;
+  }
+
+  .rec-mismatch {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    line-height: 1.5;
+    color: var(--gold);
+  }
+
+  .rec-row-detail {
+    margin: 6px 0 4px;
+    padding-left: 10px;
+    border-left: 2px solid var(--rule);
+  }
+
+  .rec-action-text {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    color: var(--ink-dim);
+  }
+
+  .rec-replacement {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .rec-field {
+    display: block;
+    margin-top: 8px;
+    max-width: 320px;
+  }
+
+  .rec-body {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .rec-prose,
+  .rec-rationale {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink);
+    margin: 2px 0 10px;
+  }
+
+  /* (3) развилка: варианты исключают друг друга */
+  .rec-fork {
+    border: 1px solid var(--gold);
+    background: #fffbee;
+    padding: 10px 12px 4px;
+    margin-bottom: 8px;
+  }
+
+  .rec-fork-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  /* (4) негодные строки — отдельной группой, без выбора */
+  .rec-invalid {
+    border: 1px solid var(--red);
+    background: #fff5f5;
+    padding: 10px 14px;
+    margin: 14px 0 8px;
+  }
+
+  .rec-invalid-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 6px;
+  }
+
+  .rec-invalid-row {
+    padding: 6px 0;
+    border-top: 1px dotted var(--rule-strong);
+  }
+
+  .rec-invalid-reason {
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--red);
+    margin-top: 2px;
+  }
+
+  .rec-table-edit {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    color: var(--ink-mid);
+    margin-bottom: 14px;
+  }
+
+  .rec-plan-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    margin-top: 8px;
+  }
+
+  .rec-retrofit-cost {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    color: var(--gold);
+  }
+
+  .rec-empty {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--ink-dim);
+    padding: 12px 0;
+  }
+
+  .rec-past-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: baseline;
+    gap: 10px;
+    padding: 4px 0;
+    border-bottom: 1px dotted var(--rule);
+  }
+
+  .rec-status {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  /* (5) футер: оценка «N бесплатно, M платно» */
+  .rec-footer-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .rec-estimate {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--gold);
+  }
+
+  .rec-estimate-conflict {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--red);
+  }
+
+  .rec-estimate-hint {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.3px;
+    color: var(--ink-dim);
+  }
+
+  .rec-build {
+    padding: 10px 24px;
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+
+  /* (6) шаг плана из рекомендации и «почему» версии */
+  .plan-step-rec,
+  .plan-step-free {
+    margin-left: 8px;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  .plan-step-rec {
+    color: var(--violet);
+  }
+
+  .plan-step-free {
+    color: var(--green-check);
+    text-transform: uppercase;
+  }
+
+  .plan-step-value {
+    margin: 2px 0 4px 24px;
+  }
+
+  .version-origin {
+    padding: 4px 12px 8px 34px;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.3px;
+    line-height: 1.5;
+    color: var(--violet);
+  }
+}
+
+@media (max-width: 700px) {
+  .rec-cost,
+  .rec-toggle {
+    margin-left: 0;
+  }
+
+  .rec-past-row {
+    grid-template-columns: auto 1fr;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;

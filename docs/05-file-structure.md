@@ -118,6 +118,8 @@ philosynth-service/
 │   │       │                           #  генерат, тег переименован
 │   │       ├── 0008_file_genealogy.sql # 2026-09-21: syntheses.file_genealogy jsonb — дерево
 │   │       │                           #  импортированного файла (02 §2.4); генерат
+│   │       ├── 0009_version_origin.sql # 10.2: element_versions.origin jsonb — «почему
+│   │       │                           #  изменилось» (снимок рекомендации); генерат
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -226,6 +228,12 @@ philosynth-service/
 │   │   │                               # updateLiveCascade (updateLiveCascade())
 │   │   │
 │   │   ├── plan-executor.ts            # executePlan — последовательное исполнение шагов
+│   │   ├── recommendations.ts          # 10.1: разбор «Таблицы рекомендаций», сторож адресов,
+│   │   │                               #  хэш источника, раунд, ретрофит; 10.2: ROUND_IN_PROGRESS
+│   │   ├── recommendation-planner.ts   # 10.2: buildPlanDraft — рекомендации (поштучно) →
+│   │   │                               #  черновик плана; развилка, свёртка, устаревание
+│   │   ├── element-step.ts             # 10.2: шаги плана edit_element / refine_element
+│   │   │                               #  (запись функциями 5.1, версия 'recommendation' + origin)
 │   │   │                               # Адаптация executeEditPlan (executeEditPlan())
 │   │   │
 │   │   ├── compat-advisor.ts           # computeSectionRating + Advisor v2 (v11):
@@ -434,6 +442,7 @@ philosynth-service/
 │   │   │   ├── billing.ts              # 7 функций §2.10: ключ, пополнение, истории (6.2 СДЕЛАНО 2026-09-07)
 │   │   │   ├── admin.ts                # 8.1: listUsers / setUserRole / getAuditLog (вкладка «Доступ»)
 │   │   │   ├── subscription.ts         # 5 функций §2.10: подписка/тарифы/subscribe/cancel/resume (6.2 СДЕЛАНО)
+│   │   │   ├── recommendations.ts      # 10.3: list / parse / extract / plan (+ withBusyRetry на 409 после done)
 │   │   │   └── export.ts
 │   │   │
 │   │   ├── stores/
@@ -551,6 +560,9 @@ philosynth-service/
 │   │   │   │   │                           # индикатор «из каталога / свободный текст» (5.4)
 │   │   │   │   └── TransformPanel.tsx      # Кнопки graph→theses / theses→graph, превью, история
 │   │   │   │                               # (5.5; двухшаговое подтверждение, живой предпросмотр)
+│   │   │   │   └── RecommendationsPanel.tsx # 10.3: панель рекомендаций критики — поштучный выбор,
+│   │   │   │                               # пометки стоимости, развилка, негодные, ретрофит, оценка,
+│   │   │   │                               # передача плана EditModal; НЕТ «выбрать/исполнить все»
 │   │   │   │
 │   │   │   ├── modes/
 │   │   │   │   ├── ModeModal.tsx           # Модальное окно режима
@@ -612,6 +624,9 @@ philosynth-service/
 │   │       ├── format.ts                  # Форматирование чисел, дат (создан 6.2: fmtUsd/fmtMoney/fmtInt/fmtDateShort/fmtDateLong/toIsoDate)
 │   │       ├── text-diff.ts               # Построчный LCS-diff со свёрткой контекста (6.2; версии шаблонов и конфигов)
 │   │       ├── template-placeholders.ts   # {{плейсхолдеры}} шаблонов: PLACEHOLDER_RE ≡ реестру, SAMPLE_VALUES предпросмотра (6.2)
+│   │       ├── recommendations.ts         # 10.3: чистые функции панели — пометка стоимости (зеркало
+│   │       │                               # rowsToPlanActions, дрейф — 4au), группировка/развилка, оценка
+│   │       │                               # по шагам, проза по номеру, тексты отказов
 │   │       └── stripe.ts                  # Загрузчик Stripe.js без npm + VITE_STRIPE_PUBLISHABLE_KEY + appearance (6.2)
 │   │
 │   └── public/
@@ -690,6 +705,19 @@ philosynth-service/
     │                                   # раунд, ретрофит на ЖИВОМ файле (T101_FILE; без файла —
     │                                   # пропуск), края; мок Claude :3911; запуск через tsx;
     │                                   # smoke-101-request1 — чистые функции + Registry
+    │                                   # test-102 (10.2) — рекомендация → план → исполнение на ЖИВОМ
+    │                                   # файле (T102_FILE; без файла — пропуск): сервер с
+    │                                   # BILLING_ENFORCE=true, подписчик / человек без источника
+    │                                   # оплаты / чужой; мок Claude :3912 (точечная правка и
+    │                                   # критика узнаются первыми); HTTP + WS; запуск через tsx;
+    │                                   # smoke-102-request1 — чистые функции + живой файл без модели
+    │                                   # test-103 (10.3) — панель рекомендаций в Chrome 131 на ЖИВОМ файле
+    │                                   # (T103_FILE; без файла — пропуск): R2–R9 одним прогоном (вход,
+    │                                   # список, развилка, негодные + правка 9.2, ретрофит, оценка и
+    │                                   # передача плана, раунд с исполнением и перегенерацией критики,
+    │                                   # css-parity); сервер :3000 + vite :5199 + мок Claude :3913;
+    │                                   # smoke-103-request1 — чистые функции панели, дрейф клиент ↔
+    │                                   # планировщик, validateFieldChoices (без БД и браузера)
     │                                   # test-file-genealogy — дерево импортированного файла: запись,
     │                                   # подшивка в getAncestors, правило приоритета, SET NULL,
     │                                   # экспорт и roundtrip; живая БД, живой файл (TFG_FILE;

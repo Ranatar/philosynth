@@ -65,6 +65,14 @@ import { getAncestors } from "../api/lineage";
 import { DocumentView } from "../components/document/DocumentView";
 import { GenealogyTree } from "../components/lineage/GenealogyTree";
 import { EditModal } from "../components/edit/EditModal";
+import { RecommendationsPanel } from "../components/edit/RecommendationsPanel";
+import { listRecommendations } from "../api/recommendations";
+import { pendingCount } from "../utils/recommendations";
+import {
+  RECOMMENDATIONS_SECTION_KEY,
+  RECOMMENDATIONS_TABLE_SUBSECTION,
+} from "@philosynth/shared/constants/recommendations";
+import type { EditPlan } from "@philosynth/shared/types/edit-plan";
 import { TransformPanel } from "../components/edit/TransformPanel";
 import { ContextLogViewer } from "../components/logs/ContextLogViewer";
 import GraphModal from "../components/graph/GraphModal";
@@ -128,6 +136,14 @@ export function SynthesisPage() {
   const [editInitialRegen, setEditInitialRegen] = useState<string[] | undefined>(
     undefined,
   );
+  // Беседа 10.3: панель рекомендаций критики (только владельцу). План,
+  // собранный панелью, передаётся EditModal (initialPlan) — второй панели
+  // плана нет. recCount: число ждущих решения рекомендаций текущего раунда
+  // на кнопке входа; null — разборов ещё не было (число неизвестно)
+  const [recOpen, setRecOpen] = useState(false);
+  const [recCount, setRecCount] = useState<number | null>(null);
+  const [editInitialPlan, setEditInitialPlan] = useState<EditPlan | null>(null);
+  const [editElementNames, setEditElementNames] = useState<Record<string, string>>({});
   // Беседа 5.2 (п. 7): редактор строки таблицы тезисов/глоссария по месту
   const [inlineEdit, setInlineEdit] = useState<{
     sectionKey: string;
@@ -465,6 +481,42 @@ export function SynthesisPage() {
   // Беседа 5.2 («По факту 5.2»): владение — из SynthesisFull.isOwner
   // (оптимизм «покажем всем, 403 решит» 2.3/4.1 снят тем же флагом)
   const isOwner = synthesis?.isOwner ?? false;
+
+  /* ── Беседа 10.3: рекомендации критики ──
+     Число на кнопке — GET строк последнего раунда (разбор при загрузке
+     страницы НЕ зовётся: он пишет в БД и под гейтом активной операции; его
+     зовёт панель при открытии). Перечитывается после закрытия модалки правок
+     (план мог исполниться) и панели. Чужому и гостю запрос не делается:
+     маршрут — только владельцу. */
+  const hasCritique = sections.some((sec) => sec.key === RECOMMENDATIONS_SECTION_KEY);
+  const recSynthesisId = synthesis?.id ?? null;
+  useEffect(() => {
+    if (!recSynthesisId || !isOwner || live || !hasCritique || recOpen || editOpen) return;
+    let cancelled = false;
+    listRecommendations(recSynthesisId)
+      .then((res) => {
+        if (!cancelled) setRecCount(res.round > 0 ? pendingCount(res.rows) : null);
+      })
+      .catch(() => {
+        if (!cancelled) setRecCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [recSynthesisId, isOwner, live, hasCritique, recOpen, editOpen]);
+
+  const handleRecommendationsPlan = useCallback(
+    (plan: EditPlan, names: Record<string, string>) => {
+      // ПЕРЕДАЧА УПРАВЛЕНИЯ модалке правок 2.3: панель закрывается, план
+      // (черновик службы) принимает EditModal — каскад, шаги, исполнение там
+      setRecOpen(false);
+      setEditInitialRegen(undefined);
+      setEditInitialPlan(plan);
+      setEditElementNames(names);
+      setEditOpen(true);
+    },
+    [],
+  );
   // 8.7: что доступно смотрящему. Контент-роуты (граф, экспорт, /sections)
   // — под requireAuth и с гейтом витрины (8.6 «По факту» п.3):
   // зарегистрированному на 'full' — да, гостю и на витрине — нет.
@@ -796,7 +848,17 @@ export function SynthesisPage() {
         onSubsectionSave={(html) => void saveSubsectionEdit(html)}
         onSubsectionCancel={cancelSubsectionEdit}
         sectionActionsFor={(key) =>
-          key === "theses" && isOwner && !live ? (
+          key === RECOMMENDATIONS_SECTION_KEY && isOwner && !live ? (
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => setRecOpen(true)}
+              title="Рекомендации критики: что исполнять, решаете вы — поштучно"
+              data-testid="recommendations-btn"
+            >
+              ◈ Рекомендации{recCount !== null ? ` · ${recCount}` : ""}
+            </button>
+          ) : key === "theses" && isOwner && !live ? (
             <button
               type="button"
               className="action-btn"
@@ -889,11 +951,38 @@ export function SynthesisPage() {
       <EditModal
         open={editOpen}
         initialRegen={editInitialRegen}
+        initialPlan={editInitialPlan}
+        elementNames={editElementNames}
         onClose={() => {
           setEditOpen(false);
           setEditInitialRegen(undefined);
+          setEditInitialPlan(null);
         }}
       />
+
+      {/* Беседа 10.3: панель рекомендаций критики — только владельцу */}
+      {isOwner && !live && (
+        <RecommendationsPanel
+          open={recOpen}
+          synthesisId={synthesis.id}
+          onClose={() => setRecOpen(false)}
+          onPlanReady={handleRecommendationsPlan}
+          onRowsChanged={(rows) => setRecCount(pendingCount(rows))}
+          onEditTable={() => {
+            // Правка подраздела 9.2: «Таблица рекомендаций» замком не заперта
+            setRecOpen(false);
+            void openSubsectionEdit({
+              sectionKey: RECOMMENDATIONS_SECTION_KEY,
+              name: RECOMMENDATIONS_TABLE_SUBSECTION,
+            });
+            setTimeout(() => {
+              document
+                .querySelector(`[data-section="${RECOMMENDATIONS_TABLE_SUBSECTION}"]`)
+                ?.scrollIntoView({ block: "start" });
+            }, 50);
+          }}
+        />
+      )}
 
       <PauseModal
         open={pauseModalOpen && paused && isOwner}

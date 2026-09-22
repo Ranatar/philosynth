@@ -167,6 +167,10 @@ export interface UseEditPlanResult {
   confirmStep: (stepIndex: number) => Promise<void>;
   skipStep: (stepIndex: number) => Promise<void>;
   discard: () => Promise<void>;
+  /** 10.3: принять ГОТОВЫЙ план (черновик, собранный службой из рекомендаций
+   *  критики, либо план, к которому человек вернулся) — дальше всё как с
+   *  планом, созданным здесь: подтверждение шагов, исполнение, WS */
+  adopt: (plan: EditPlan) => void;
   refresh: () => Promise<void>;
   clearError: () => void;
 }
@@ -335,6 +339,14 @@ export function useEditPlan(options: UseEditPlanOptions): UseEditPlanResult {
 
   const clearError = useCallback(() => setError(null), [setError]);
 
+  const adopt = useCallback(
+    (plan: EditPlan) => {
+      setError(null);
+      setPlan(plan);
+    },
+    [setPlan, setError],
+  );
+
   return {
     plan: currentPlan,
     isExecuting,
@@ -347,6 +359,7 @@ export function useEditPlan(options: UseEditPlanOptions): UseEditPlanResult {
     confirmStep,
     skipStep,
     discard,
+    adopt,
     refresh,
     clearError,
   };

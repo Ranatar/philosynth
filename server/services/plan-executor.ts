@@ -38,11 +38,37 @@
  *  - delete результата режима: target «modeKey:index», index — позиция в
  *    списке результатов режима (created_at ASC); удаления исполняются в
  *    порядке шагов (buildPlanOrder уже отсортировал индексы по убыванию).
+ *
+ * Беседа 10.2:
+ *  - edit_element — готовый текст в поле элемента (element-step): без
+ *    модели, StepResult нулевой; refine_element — точечная генерация в
+ *    элемент под слотом плана; оба пишут версию 'recommendation' с origin;
+ *  - рекомендации шага: исполнен → 'done'; пропущен ЧЕЛОВЕКОМ (skip_step
+ *    после паузы) → 'rejected'; пропущен СЛУЖБОЙ (раздела больше нет) →
+ *    снова 'new' — отказа человека не было;
+ *  - план без единого платного шага идёт под БЕСПЛАТНЫМ слотом
+ *    (SlotBillingOptions.free): ни квоты, ни резерва, ни требования источника
+ *    оплаты. countBillableSteps больше не поднимает ноль до единицы —
+ *    прежде план из одних delete стоил подписчику единицу квоты;
+ *  - каскад после базовых шагов считается и от разделов-хозяев шагов мельче
+ *    раздела (PlanActions.touched) — руками он не дополняется.
  */
-import { and, asc, eq, sql as dsql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql as dsql } from "drizzle-orm";
+
+import {
+  ELEMENT_STEP_HOST,
+  isFreeStepType,
+  parseElementStepTarget,
+} from "@philosynth/shared/constants/edit-steps";
 
 import { db } from "../db/index.js";
-import { editPlans, generationLog, modeResults, syntheses } from "../db/schema.js";
+import {
+  editPlans,
+  generationLog,
+  modeResults,
+  recommendations,
+  syntheses,
+} from "../db/schema.js";
 import { connectionManager } from "../ws/connection-manager.js";
 
 import type { WsServerMessage } from "@philosynth/shared/types/ws-messages";
@@ -54,6 +80,7 @@ import {
   PlanError,
   toApiPlan,
 } from "./edit-planner.js";
+import { applyElementEdit, refineElement } from "./element-step.js";
 import {
   addSection,
   deleteSection,
@@ -184,6 +211,43 @@ async function deleteModeResult(
   await db.delete(modeResults).where(eq(modeResults.id, row.id));
 }
 
+/* ══ 10.2: судьба рекомендаций шага ═══════════════════════════════════ */
+
+/** Перевести рекомендации шага из 'planned' в итоговый статус. */
+async function settleStepRecommendations(
+  synthesisId: string,
+  step: EditStep,
+  status: "done" | "rejected" | "new",
+): Promise<void> {
+  const ids = (step.recommendations ?? []).map((r) => r.id);
+  if (ids.length === 0) return;
+  try {
+    await db
+      .update(recommendations)
+      .set(status === "new" ? { status, planId: null, stepIndex: null } : { status })
+      .where(
+        and(
+          eq(recommendations.synthesisId, synthesisId),
+          inArray(recommendations.id, ids),
+          eq(recommendations.status, "planned"),
+        ),
+      );
+  } catch (e) {
+    // учёт статусов не должен ронять исполненный шаг
+    console.warn("settleStepRecommendations:", e);
+  }
+}
+
+/** Раздел, чьё содержание меняет шаг мельче раздела (для каскада). */
+function touchedSectionOf(step: EditStep): string | null {
+  if (step.type === "regen_subsection") return step.target.slice(0, step.target.indexOf(":"));
+  if (step.type === "edit_element" || step.type === "refine_element") {
+    const ref = parseElementStepTarget(step.target);
+    return ref ? ELEMENT_STEP_HOST[ref.kind] : null;
+  }
+  return null;
+}
+
 /** Сводка плана для pausedState.plan (форма исходника [19776]). */
 function planSummaryFromSteps(steps: EditStep[]): {
   regen: string[];
@@ -312,6 +376,8 @@ async function bumpVersionsForPlan(
 async function runStep(
   handle: GenerationSlotHandle,
   step: EditStep,
+  planId: string,
+  stepIndex: number,
 ): Promise<StepResult> {
   const { synthesisId } = handle;
   switch (step.type) {
@@ -350,6 +416,16 @@ async function runStep(
         step.context !== undefined ? { userNote: step.context } : {},
       );
       return usageToResult(usage, 0);
+    }
+    case "edit_element": {
+      // 10.2: готовый текст — модель не зовётся, стоимость 0
+      await applyElementEdit(synthesisId, step, planId, stepIndex);
+      return ZERO_RESULT;
+    }
+    case "refine_element": {
+      // 10.2: точечная генерация в элемент — под слотом плана
+      const r = await refineElement(handle, step, planId, stepIndex);
+      return usageToResult(r.usage, r.outputChars);
     }
     case "regen_mode": {
       if (!modeRegenerator) {
@@ -401,6 +477,7 @@ async function runPlanSteps(
     if (step.type === "regen" && !sectionOrder.includes(step.target)) {
       step.status = "skipped";
       await persistSteps(planId, steps, i);
+      await settleStepRecommendations(synthesisId, step, "new"); // пропустила служба, не человек
       continue;
     }
     if (
@@ -409,6 +486,7 @@ async function runPlanSteps(
     ) {
       step.status = "skipped";
       await persistSteps(planId, steps, i);
+      await settleStepRecommendations(synthesisId, step, "new");
       continue;
     }
 
@@ -417,10 +495,11 @@ async function runPlanSteps(
     sendToUser(userId, { type: "plan_step_started", planId, stepIndex: i });
 
     try {
-      const result = await runStep(handle, step);
+      const result = await runStep(handle, step, planId, i);
       step.status = "done";
       step.result = result;
       await persistSteps(planId, steps, i + 1);
+      await settleStepRecommendations(synthesisId, step, "done");
       sendToUser(userId, {
         type: "plan_step_done",
         planId,
@@ -507,11 +586,17 @@ async function appendCascadeSteps(
   const remove = executed
     .filter((s) => s.type === "delete" && !s.target.includes(":"))
     .map((s) => s.target);
-  if (regen.length + add.length + remove.length === 0) return;
+  // 10.2: шаги мельче раздела меняют раздел-хозяин — каскад считается и от него
+  const touched = [
+    ...new Set(
+      executed.map(touchedSectionOf).filter((k): k is string => k !== null && k !== "sum"),
+    ),
+  ];
+  if (regen.length + add.length + remove.length + touched.length === 0) return;
 
   let affected: string[] = [];
   try {
-    const impact = await analyzeImpact(synthesisId, { regen, remove, add });
+    const impact = await analyzeImpact(synthesisId, { regen, remove, add, touched });
     affected = impact.affectedSections;
   } catch (e) {
     console.warn("appendCascadeSteps analyzeImpact:", e);
@@ -575,8 +660,10 @@ async function appendCascadeSteps(
 
 /** 6.1: сколько единиц квоты regenerations стоит прогон плана с шага from —
  *  подтверждённые шаги, требующие вызова Claude (regen / add /
- *  regen_subsection / regen_mode); delete — бесплатно; минимум 1
- *  (каскад может добавить шаги после — они не предоплачиваются). */
+ *  regen_subsection / regen_mode / refine_element). Бесплатные (delete,
+ *  edit_element — 10.2) не считаются. НОЛЬ — законный ответ: такой план идёт
+ *  под бесплатным слотом (slotBillingFor). До 10.2 ноль поднимался до
+ *  единицы, и план из одних delete стоил подписчику единицу квоты. */
 export function countBillableSteps(
   steps: readonly EditStep[],
   fromIndex = 0,
@@ -586,10 +673,19 @@ export function countBillableSteps(
     const st = steps[i];
     if (!st) continue;
     if (st.status !== "confirmed") continue;
-    if (st.type === "delete") continue;
+    if (isFreeStepType(st.type)) continue;
     n += 1;
   }
-  return Math.max(1, n);
+  return n;
+}
+
+/** Биллинг слота прогона: платных шагов нет → бесплатный слот. */
+export function slotBillingFor(
+  steps: readonly EditStep[],
+  fromIndex = 0,
+): { quota: "regenerations"; units: number } | { free: true } {
+  const units = countBillableSteps(steps, fromIndex);
+  return units > 0 ? { quota: "regenerations", units } : { free: true };
 }
 
 /* ══ executePlan [19514] ══════════════════════════════════════════════ */
@@ -637,7 +733,7 @@ export async function executePlan(
     await appendCascadeSteps(synthesisId, userId, planId, steps);
     await setPlanStatus(planId, "done");
     await sendPlanUpdated(synthesisId, planId, userId);
-  }, { quota: "regenerations", units: countBillableSteps(steps, 0) }); // 6.1: квота подписки
+  }, slotBillingFor(steps, 0)); // 6.1: квота подписки; 10.2: без платных шагов — бесплатный слот
 }
 
 /** plan_updated с живой оценкой (форма getPlan). */
@@ -721,7 +817,7 @@ export async function confirmStep(
       await setPlanStatus(planId, "done");
     }
     await sendPlanUpdated(synthesisId, planId, userId);
-  }, { quota: "regenerations", units: countBillableSteps(steps, stepIndex) }); // 6.1: квота подписки
+  }, slotBillingFor(steps, stepIndex)); // 6.1: квота подписки; 10.2: либо бесплатный слот
   return synthesisId;
 }
 
@@ -766,6 +862,8 @@ async function resumePlanExecutor(
     } else {
       failedStep.status = "skipped"; // пропустить и идти дальше
       fromIndex = stepIdx + 1;
+      // 10.2: шаг пропустил ЧЕЛОВЕК — рекомендация отклонена
+      await settleStepRecommendations(synthesisId, failedStep, "rejected");
     }
   } else {
     fromIndex = stepIdx + (mode === "skip_step" ? 1 : 0);
@@ -788,7 +886,7 @@ async function resumePlanExecutor(
     await appendCascadeSteps(synthesisId, userId, planId, steps);
     await setPlanStatus(planId, "done");
     await sendPlanUpdated(synthesisId, planId, userId);
-  }, { quota: "regenerations", units: countBillableSteps(steps, fromIndex) }); // 6.1: квота подписки
+  }, slotBillingFor(steps, fromIndex)); // 6.1: квота подписки; 10.2: либо бесплатный слот
 }
 
 /* ══ Регистрация разъёма (побочный эффект импорта; образец 1.4b) ══════ */

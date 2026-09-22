@@ -38,6 +38,8 @@ export const RECOMMENDATIONS_TABLE_TEMPLATE_KEY =
 export const RECOMMENDATIONS_PROSE_TEMPLATE_KEY =
   "section.critique.sub.recommendations";
 export const RECOMMENDATIONS_EXTRACT_TEMPLATE_KEY = "recommendations.extract";
+/** 10.2: точечная генерация В ЭЛЕМЕНТ (шаг плана refine_element). */
+export const RECOMMENDATIONS_REFINE_TEMPLATE_KEY = "recommendations.refine_element";
 
 const q = (list: readonly string[]): string => `"${list.join(" | ")}"`;
 const guillemets = (list: readonly string[]): string =>
@@ -138,6 +140,51 @@ const EXTRACT_BODY = `Составь ОДИН недостающий подра�
 СТРУКТУРА ОТВЕТА:
 <div data-section="${RECOMMENDATIONS_TABLE_SUBSECTION}"><h4>${RECOMMENDATIONS_TABLE_SUBSECTION}</h4><table class="doc-table">…</table></div>`;
 
+
+/* ── 10.2: точечная генерация в элемент ──────────────────────────────── */
+
+/**
+ * Узкий контекст: сам элемент, подраздел, где он живёт, довод рекомендации.
+ * Ответ — ТОЛЬКО новое значение одного поля, голым текстом: его служба
+ * пишет в строку БД и сама перерисовывает таблицу (5.1), поэтому разметка,
+ * кавычки и пояснения в ответе — брак, а не украшение. Образец строгости —
+ * тот же, что у таблицы рекомендаций: закрытые требования и прямые запреты.
+ */
+const REFINE_BODY = `ТОЧЕЧНАЯ ПРАВКА ОДНОГО ЭЛЕМЕНТА КОНЦЕПЦИИ.
+
+Ты правишь ОДНО поле ОДНОГО элемента уже написанного документа. Остальной документ не меняется и тебе не нужен.
+
+ЭЛЕМЕНТ: {{element_kind}} «{{element_name}}»
+ПРАВИМОЕ ПОЛЕ: {{field_label}}
+
+ТЕКУЩЕЕ ЗНАЧЕНИЕ ПОЛЯ:
+"""
+{{current_value}}
+"""
+
+ПРОЧИЕ ПОЛЯ ЭЛЕМЕНТА (для согласованности; НЕ менять):
+{{element_card}}
+
+ПОДРАЗДЕЛ ДОКУМЕНТА, ГДЕ ЭЛЕМЕНТ ЖИВЁТ — «{{subsection_name}}»:
+"""
+{{subsection_content}}
+"""
+
+ЧТО ТРЕБУЕТСЯ (довод рекомендации критического анализа):
+"""
+{{note}}
+"""
+
+ЗАДАНИЕ. Напиши НОВОЕ значение поля «{{field_label}}», которое устраняет названную проблему.
+
+СТРОГО:
+— Верни ТОЛЬКО новый текст поля. Ни вступления, ни пояснения, ни слов «Новое определение:» — ЗАПРЕЩЕНЫ.
+— Голый текст: HTML-теги, markdown, кавычки вокруг всего ответа — ЗАПРЕЩЕНЫ.
+— Один абзац, без переносов строк.
+— Сохрани всё, чего довод не касается: термины, объём и регистр текущего значения. Переписывать поле заново ради стиля — ЗАПРЕЩЕНО.
+— Названия других категорий, тезисов и терминов писать ТОЧНО так, как они записаны в подразделе выше.
+— Не ссылайся на рекомендацию, критику и на сам факт правки: текст поля читается в документе сам по себе.`;
+
 export const SEED_RECOMMENDATION_TEMPLATES: SeedPromptTemplate[] = [
   {
     key: RECOMMENDATIONS_TABLE_TEMPLATE_KEY,
@@ -151,6 +198,12 @@ export const SEED_RECOMMENDATION_TEMPLATES: SeedPromptTemplate[] = [
     description:
       "10.1: ретрофит — составить «Таблицу рекомендаций» по готовой прозе (одно обращение; новый текст, не из исходника)",
   },
+  {
+    key: RECOMMENDATIONS_REFINE_TEMPLATE_KEY,
+    body: REFINE_BODY,
+    description:
+      "10.2: точечная генерация в элемент — шаг плана refine_element (одно поле одного элемента; новый текст, не из исходника)",
+  },
 ];
 
 /** Плейсхолдеры шаблонов — для дрейф-контроля integration-check. */
@@ -162,6 +215,17 @@ export const RECOMMENDATIONS_EXTRACT_PLACEHOLDERS = [
   "theses",
   "terms",
   "table_contract",
+] as const;
+
+export const RECOMMENDATIONS_REFINE_PLACEHOLDERS = [
+  "element_kind",
+  "element_name",
+  "field_label",
+  "current_value",
+  "element_card",
+  "subsection_name",
+  "subsection_content",
+  "note",
 ] as const;
 
 /**

@@ -444,7 +444,15 @@ CREATE TABLE element_versions (
   version      INT NOT NULL,
   data         JSONB NOT NULL,  -- полный снимок элемента до изменения
   change_source TEXT NOT NULL DEFAULT 'manual',
-    -- 'manual'|'regenerated'|'cascade'|'auto_rename'
+    -- 'manual'|'regenerated'|'cascade'|'auto_rename'|'rollback'|'recommendation'
+    -- (текст без CHECK; 'recommendation' — 10.2: правка исполнила рекомендацию критики)
+  origin       JSONB,           -- 10.2 (миграция 0009): «почему изменилось» — снимок
+                                -- рекомендации, породившей версию: { kind:'recommendation',
+                                -- recommendationId, round, num, op, rationale, planId,
+                                -- stepIndex, stepType }. NULL — правка не по рекомендации.
+                                -- Снимок, а не FK: строки 'new' при перечитке таблицы
+                                -- пересобираются, план может быть удалён — ответ на
+                                -- «почему» обязан пережить и то и другое
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -462,7 +470,10 @@ CREATE TABLE edit_plans (
   status        TEXT NOT NULL DEFAULT 'draft',
     -- 'draft'|'executing'|'paused'|'done'|'failed'
   current_step  INT NOT NULL DEFAULT 0,
-  steps         JSONB NOT NULL DEFAULT '[]',  -- массив EditStep
+  steps         JSONB NOT NULL DEFAULT '[]',  -- массив EditStep; с 10.2 — и шаги мельче
+                                              -- раздела: edit_element / refine_element
+                                              -- (target «kind:elementId», field, value |
+                                              -- context, subsection, recommendations[])
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -1087,6 +1098,24 @@ formulation/justification; термин: term/definition/extra_columns), БЕЗ
 
 **`'stale'` заведён сразу**, хотя ставит его беседа 10.2: «текст изменился»
 отдельно от 'invalid' «адрес не найден».
+
+**Кто ставит статусы (беседа 10.2).** Постановка плана
+(`POST …/recommendations/plan`): строка → 'planned', `plan_id`, `step_index`;
+хэш источника разошёлся → 'stale', адресата нет → 'invalid' с причиной — ни та
+ни другая в план не идёт. Пересборка черновика (`PATCH` плана): шаг снят →
+'rejected', снова подтверждён → 'planned'; `step_index` пишется заново — шаги
+переставляются (`syncRecommendationSteps`). Исполнение: шаг done → 'done'; шаг
+пропущен ЧЕЛОВЕКОМ после паузы (`skip_step`) → 'rejected'; пропущен СЛУЖБОЙ
+(раздела больше нет) → снова 'new'. План удалён или остановлен (`stop`) — его
+'planned' возвращаются в 'new' (`releaseRecommendations`): FK обнулил бы
+`plan_id`, а строка осталась бы 'planned' навсегда. Перечитка того же текста
+возвращает 'stale' в 'new' со свежим хэшем.
+
+**Раунд в работе.** Пока в последнем раунде есть 'planned' с живым `plan_id`,
+разбор СМЕНИВШЕГОСЯ текста нового раунда не открывает — 409
+`ROUND_IN_PROGRESS` (`details`: round, planIds, nums). Перечитка того же
+текста при 'planned' проходит. Осиротевшие 'planned' (`plan_id` NULL) раунд
+не держат и снимаются тем же разбором.
 
 **Статусы прошлого раунда не наследуются**: новый раунд — новые строки 'new';
 строки прежних раундов остаются как были (`GET …/recommendations?round=N`).
