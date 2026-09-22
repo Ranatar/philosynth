@@ -143,12 +143,22 @@ function orderEntry(e) {
   return o;
 }
 
-/** Запись: meta развёрнуто, строки — по одной на строку файла, ключи по алфавиту. */
+/** Запись: meta развёрнуто, КАЖДОЕ ПОЛЕ записи — на своей строке файла,
+ *  ключи по алфавиту, порядок полей — FIELD_ORDER. Столбиком, а не в
+ *  строчку: так правка одного перевода — одна строка в diff, а не вся
+ *  запись, и файл читается глазами. Вложенные from/draft/where остаются
+ *  в строчку: они служебные и коротки. */
 export function writeTable(abs, table) {
   const keys = Object.keys(table.strings).sort();
   const lines = ["{", `  "meta": ${JSON.stringify(table.meta, null, 2).replace(/\n/g, "\n  ")},`, `  "strings": {`];
   keys.forEach((k, i) => {
-    lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(orderEntry(table.strings[k]))}${i < keys.length - 1 ? "," : ""}`);
+    const e = orderEntry(table.strings[k]);
+    const fields = Object.keys(e);
+    lines.push(`    ${JSON.stringify(k)}: {`);
+    fields.forEach((f, j) => {
+      lines.push(`      ${JSON.stringify(f)}: ${JSON.stringify(e[f])}${j < fields.length - 1 ? "," : ""}`);
+    });
+    lines.push(`    }${i < keys.length - 1 ? "," : ""}`);
   });
   lines.push("  }", "}", "");
   fs.writeFileSync(abs, lines.join("\n"));
