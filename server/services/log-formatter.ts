@@ -752,6 +752,17 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         lines.push("  ⚠ ОШИБКА: " + g.errorMessage);
       }
     }
+    // 11.1: предупреждения разбора (metadata.parseWarnings — generation-service):
+    // подставленные направления связей, роли вне ROLE_MAP, рёбра без концов,
+    // подраздел, опознанный по месту. Владелец видит, что документ разобран
+    // с потерями; в исходнике аналога нет — там это уходило в console.warn.
+    const parseWarnings = Array.isArray(meta["parseWarnings"])
+      ? (meta["parseWarnings"] as unknown[]).filter((w): w is string => typeof w === "string")
+      : [];
+    if (parseWarnings.length > 0) {
+      lines.push("  ⚠ РАЗБОР С ПОТЕРЯМИ (" + parseWarnings.length + "):");
+      for (const w of parseWarnings) lines.push("    ⚠ " + w);
+    }
     // Посекционная разбивка (plaintext)
     const subs = Array.isArray(meta["subsections"])
       ? (meta["subsections"] as SubsectionMeta[])

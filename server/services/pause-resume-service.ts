@@ -727,7 +727,8 @@ async function resumeFillMissingSubs(
     const sectionHtml = secRow?.htmlContent ?? "";
     if (sectionHtml) {
       const container = parseFragment(sectionHtml);
-      const div = findSubsection(container, streamingSub);
+      // 11.1: страховка по позиции — ожидаемый порядок из снимка паузы
+      const div = findSubsection(container, streamingSub, ps.expectedSubsections);
       if (div) {
         if (innerTextTrimmed(div).length >= RESUME_CONTINUE_THRESHOLD) {
           streamingContinueMode = true;

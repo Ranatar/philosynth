@@ -544,6 +544,11 @@ CREATE TABLE generation_log (
   error_message  TEXT,
   -- Метаданные (secCtxPreview, modeParam, subsections; v11: promptSkeleton —
   -- скелет промпта пишется при генерации, реконструкция — fallback импорта)
+  -- 11.1: + parseWarnings string[] — предупреждения разбора раздела
+  --   (подставленное направление связи, роль вне ROLE_MAP, таблица не
+  --   найдена по русскому data-section, подраздел опознан по месту /
+  --   не опознан). Пишутся jsonb_set с НАКОПЛЕНИЕМ (`||` по верхнему
+  --   ключу заменил бы массив); показ — log-formatter «РАЗБОР С ПОТЕРЯМИ»
   metadata       JSONB NOT NULL DEFAULT '{}',
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

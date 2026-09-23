@@ -34,7 +34,19 @@
  *    Текст типа (type/edge_type) НЕ меняется — документ и рендер таблиц
  *    остаются словами Claude. Fail-open: сбой каталога/Redis не роняет
  *    сохранение графа (предупреждение в warnings). Отключается опцией
- *    { normalizeTypes: false } (round-trip-смоуки 5.1 без каталогов).
+ *    { normalizeTypes: false } (round-trip-смоуки 5.1 без каталогов);
+ *  - беседа 11.1 (защита машинных значений при нерусской генерации): ПАРСЕР
+ *    ПЕРЕСТАЁТ МОЛЧАТЬ. Незнакомое направление связи (исходник и порт 1.4
+ *    молча делали его «однонаправленной») → ребро сохраняется с направлением
+ *    «однонаправленная» и ПОМЕТКОЙ dirSubstituted, а в ParsedGraph.warnings
+ *    ложится предупреждение со строкой таблицы и значением; роль топологии вне
+ *    ROLE_MAP (исходник и порт молча пропускали) → предупреждение, роль
+ *    по-прежнему не пишется. Синонимов на других языках в ROLE_MAP и в
+ *    разборе направления НЕТ намеренно: второй свод правил разошёлся бы с
+ *    шаблонами; путь один — модель пишет ключи по-русски (надстройка
+ *    lang-templates), парсер громко сообщает, когда она не смогла.
+ *    saveGraphToDb пробрасывает parsed.warnings в свой результат, чтобы
+ *    generation-service довёл их до генерационного лога раздела (2.4).
  */
 import { eq } from "drizzle-orm";
 
@@ -73,7 +85,12 @@ export interface ParsedGraphEdge {
   desc: string;
   tgt: string;
   type: string;
-  dir: string;
+  /** Канонизированное направление: одно из EDGE_DIRECTIONS (11.1). */
+  dir: EdgeDirection;
+  /** 11.1: значение ячейки не опознано → «однонаправленная» подставлена;
+   *  сырое значение — в dirRaw и в ParsedGraph.warnings. */
+  dirSubstituted?: boolean | undefined;
+  dirRaw?: string | undefined;
   str: number;
   // Расширенные характеристики связей (столбцы 6–10)
   certEdge?: number | undefined;
@@ -98,6 +115,38 @@ export interface ParsedGraph {
   nodes: ParsedGraphNode[];
   edges: ParsedGraphEdge[];
   topology: ParsedTopology;
+  /** 11.1: предупреждения разбора — подставленные направления, роли вне
+   *  ROLE_MAP. Пусто у документа, где все машинные значения по-русски. */
+  warnings: string[];
+}
+
+/* ── Направление связи (11.1) ────────────────────────────────────────── */
+
+/** Три значения контракта section.graph.sub.edges — «СТРОГО одно из трёх». */
+export const EDGE_DIRECTIONS = [
+  "однонаправленная",
+  "двунаправленная",
+  "рефлексивная",
+] as const;
+export type EdgeDirection = (typeof EDGE_DIRECTIONS)[number];
+
+/** Направление, которое подставляется вместо неопознанного (как в исходнике). */
+export const EDGE_DIRECTION_FALLBACK: EdgeDirection = "однонаправленная";
+
+/**
+ * Канонизация ячейки «Направление»: подстроки исходника («рефлекс»,
+ * «двунаправ») + «однонаправ». Всё прочее — recognized:false; вызывающий
+ * подставляет EDGE_DIRECTION_FALLBACK и пишет предупреждение. Английских и
+ * иных синонимов здесь нет намеренно (см. шапку модуля).
+ */
+export function normalizeEdgeDirection(
+  raw: string,
+): { dir: EdgeDirection; recognized: boolean } {
+  const s = raw.trim().toLowerCase();
+  if (s.includes("рефлекс")) return { dir: "рефлексивная", recognized: true };
+  if (s.includes("двунаправ")) return { dir: "двунаправленная", recognized: true };
+  if (s.includes("однонаправ")) return { dir: "однонаправленная", recognized: true };
+  return { dir: EDGE_DIRECTION_FALLBACK, recognized: false };
 }
 
 /* ── parseTopology [12696] ───────────────────────────────────────────── */
@@ -139,6 +188,7 @@ export const ROLE_MAP: Readonly<Record<string, string>> = {
 export function parseTopology(
   container: HtmlElement,
   nodeNames: string[],
+  warnings: string[] = [],
 ): ParsedTopology {
   const result: ParsedTopology = {
     clusters: {},
@@ -266,7 +316,9 @@ export function parseTopology(
     container.querySelector('[data-section="Топологическая таблица"]');
   const tableScope = topoSection || sec;
 
+  let rowNo = 0;
   for (const tr of tableScope.querySelectorAll("table.doc-table tbody tr")) {
+    rowNo += 1;
     const td = Array.from(tr.querySelectorAll("td")).map((c) =>
       (c.textContent ?? "").trim(),
     );
@@ -290,12 +342,22 @@ export function parseTopology(
       }
     }
 
+    // 11.1: роль вне ROLE_MAP — не молчаливая потеря, а предупреждение
+    const unknownRole = (column: string, part: string): void => {
+      warnings.push(
+        `топологическая таблица, строка ${rowNo} («${name}»), столбец «${column}»: ` +
+          `роль «${part.trim()}» не опознана (ожидается одна из ролей задания, по-русски) — пропущена`,
+      );
+    };
+
     // ── Столбец 2: Структурные роли ──
     const strRaw = (td[2] || "").trim();
     if (strRaw) {
       for (const part of strRaw.split(/[,/]+/)) {
+        if (!part.trim()) continue;
         const key = matchRole(part);
         if (key) addStructural(name, key);
+        else unknownRole("Структурные роли", part);
       }
     }
 
@@ -303,8 +365,10 @@ export function parseTopology(
     const procRaw = (td[3] || "").trim();
     if (procRaw) {
       for (const part of procRaw.split(/[,/]+/)) {
+        if (!part.trim()) continue;
         const key = matchRole(part);
         if (key) addProcedural(name, key);
+        else unknownRole("Процессуальные роли", part);
       }
     }
   }
@@ -322,8 +386,19 @@ export function parseTopology(
 export function parseGraphFromElement(ct: HtmlElement): ParsedGraph {
   const nodes: ParsedGraphNode[] = [];
   const edges: ParsedGraphEdge[] = [];
+  const warnings: string[] = [];
 
+  // 11.1: таблицы ищутся по русским data-section; переведённый атрибут раньше
+  // давал молчаливые нули в гранулярных таблицах — теперь предупреждение
+  const attrsOf = (): string =>
+    Array.from(ct.querySelectorAll("[data-section]"))
+      .map((e) => `"${e.getAttribute("data-section") ?? ""}"`)
+      .join(", ") || "нет";
   const nodeSection = ct.querySelector('[data-section="Таблица категорий"]');
+  if (!nodeSection)
+    warnings.push(
+      `подраздел «Таблица категорий» не найден — категории не разобраны (атрибуты data-section раздела: ${attrsOf()})`,
+    );
   if (nodeSection) {
     for (const tr of nodeSection.querySelectorAll("table.doc-table tbody tr")) {
       const td = Array.from(tr.querySelectorAll("td")).map((c) =>
@@ -354,20 +429,38 @@ export function parseGraphFromElement(ct: HtmlElement): ParsedGraph {
   }
 
   const edgeSection = ct.querySelector('[data-section="Таблица связей"]');
+  if (!edgeSection)
+    warnings.push(
+      `подраздел «Таблица связей» не найден — связи не разобраны (атрибуты data-section раздела: ${attrsOf()})`,
+    );
   if (edgeSection) {
+    let rowNo = 0;
     for (const tr of edgeSection.querySelectorAll("table.doc-table tbody tr")) {
+      rowNo += 1;
       const td = Array.from(tr.querySelectorAll("td")).map((c) =>
         (c.textContent ?? "").trim(),
       );
       if (td.length >= 4) {
+        // 11.1: незнакомое направление — подстановка С ПОМЕТКОЙ и предупреждением
+        const dirRaw = td[4] || "";
+        const dirNorm = normalizeEdgeDirection(dirRaw);
         const edge: ParsedGraphEdge = {
           src: normalizeName(td[0] as string),
           desc: td[1] || "",
           tgt: normalizeName(td[2] as string),
           type: td[3] || "",
-          dir: (td[4] || "однонаправленная").toLowerCase(),
+          dir: dirNorm.dir,
           str: parseFloat(td[5] ?? "") || 0.5,
         };
+        if (!dirNorm.recognized) {
+          edge.dirSubstituted = true;
+          edge.dirRaw = dirRaw;
+          warnings.push(
+            `таблица связей, строка ${rowNo} («${edge.src}» → «${edge.tgt}»): ` +
+              `направление «${dirRaw}» не опознано (ожидается ${EDGE_DIRECTIONS.join(" | ")}) — ` +
+              `подставлено «${EDGE_DIRECTION_FALLBACK}»`,
+          );
+        }
         // Расширенные характеристики связей (столбцы 6–10)
         if (td.length > 6 && td[6]) {
           edge.certEdge = parseFloat(td[6]) || 0;
@@ -385,10 +478,11 @@ export function parseGraphFromElement(ct: HtmlElement): ParsedGraph {
   const topology = parseTopology(
     ct,
     nodes.map((n) => n.name),
+    warnings,
   );
   // _rebuildNodeColors/_rebuildEdgeStyles — клиентские палитры (04 §1.7),
   // на сервере опущены (см. шапку модуля).
-  return { nodes, edges, topology };
+  return { nodes, edges, topology, warnings };
 }
 
 /** Как в 07: вход — HTML-строка раздела «graph» (обёртка над portом). */
@@ -405,7 +499,8 @@ export interface SaveGraphResult {
   /** Категорий/связей, получивших type_catalog_id (5.5) */
   categoriesNormalized: number;
   edgesNormalized: number;
-  /** Рёбра с концами вне таблицы категорий и прочие пропуски */
+  /** Предупреждения разбора (parsed.warnings, 11.1) + рёбра с концами вне
+   *  таблицы категорий и прочие пропуски записи */
   warnings: string[];
 }
 
@@ -503,7 +598,8 @@ export async function saveGraphToDb(
   parsed: ParsedGraph,
   opts: SaveGraphOptions = {},
 ): Promise<SaveGraphResult> {
-  const warnings: string[] = [];
+  // 11.1: предупреждения разбора идут первыми — потребителю одна корзина
+  const warnings: string[] = [...(parsed.warnings ?? [])];
 
   const saved = await db.transaction(async (tx) => {
     // Замена: рёбра удалятся и CASCADE'ом по категориям, DELETE явный —
@@ -583,11 +679,9 @@ export async function saveGraphToDb(
           targetId,
           description: e.desc,
           edgeType: e.type,
-          direction: e.dir.includes("рефлекс")
-            ? ("рефлексивная" as const)
-            : e.dir.includes("двунаправ")
-              ? ("двунаправленная" as const)
-              : ("однонаправленная" as const),
+          // 11.1: направление канонизировано парсером (normalizeEdgeDirection);
+          // неопознанное уже подставлено там с пометкой и предупреждением
+          direction: normalizeEdgeDirection(e.dir).dir,
           strength: e.str,
           ...(e._extended
             ? {

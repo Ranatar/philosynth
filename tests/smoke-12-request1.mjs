@@ -19,6 +19,11 @@ import { buildSectionDefs, buildSubsectionMap, serializeParts } from "../server/
 // (и отдельно проверяется, что оно ровно такое), всё остальное обязано совпасть.
 import { RECOMMENDATIONS_PROSE_SUBSECTION as REC_PROSE, RECOMMENDATIONS_TABLE_SUBSECTION as REC_TABLE } from "../packages/shared/constants/recommendations.ts";
 import { RECOMMENDATIONS_PROSE_ADDENDUM } from "../server/config/recommendation-templates.ts";
+// Беседа 11.1: второе намеренное отступление — system.lang_instruction при
+// lang ≠ Russian несёт правило машинных значений (надстройка lang-templates).
+// Байтовая сверка buildSYS сохраняется: добавка СНИМАЕТСЯ перед сравнением и
+// отдельно проверяется, что она стоит ровно один раз на своём месте.
+import { stripLangInstructionAddendum } from "../server/config/lang-templates.ts";
 function withoutDeparture101(def) {
   if (def.key !== "critique") return { def, departed: null };
   const subs = def.parts.subsections;
@@ -135,9 +140,11 @@ for (const { name, p } of CASES) {
 {
   console.log("\n═══ lang=English + quality + stop_signal ═══");
   const p = { phil: ["Кант"], lang: "English" };
-  const got = await buildSYS(p, {});
+  const gotRaw = await buildSYS(p, {});
   const exp = orig.buildSYS(p, {});
-  ok("buildSYS(lang=English) байт-в-байт", got === exp);
+  const { text: got, departed } = stripLangInstructionAddendum(gotRaw, p.lang);
+  ok("buildSYS(lang=English): отступление 11.1 ровно одно и на месте", departed);
+  ok("buildSYS(lang=English) байт-в-байт (без отступления 11.1)", got === exp);
   const q = await buildQualityReinforcement({ depth: "deep" });
   ok("buildQualityReinforcement(deep) байт-в-байт", q === orig.buildQualityReinforcement({ depth: "deep" }));
   ok("stop_signal байт-в-байт", (await getStopSignal()) === orig.STOP_SIGNAL);

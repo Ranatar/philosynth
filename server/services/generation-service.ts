@@ -1337,15 +1337,8 @@ export async function runGenerationPasses(
 
       /* Парсинг графа [25683–25688] и гранулярных элементов (02 §3) */
       if (i === graphBodyIdx) {
-        try {
-          const parsed = parseGraphFromHTML(html);
-          if (parsed.nodes.length > 0) {
-            const saved = await saveGraphToDb(synthesisId, parsed);
-            for (const w of saved.warnings) console.warn("Graph parse:", w);
-          }
-        } catch (e) {
-          console.warn("Graph parse:", e);
-        }
+        const parseWarnings = await parseAndSaveGraph(synthesisId, html, "Graph parse");
+        await appendParseWarnings(genEntryId, parseWarnings);
       }
       if (pass.some((d) => d.key === "theses")) {
         try {
@@ -1742,22 +1735,55 @@ export async function streamWithRetries(
   return { usage, html };
 }
 
-/** Side-effects раздела [20450–20454, 20661–20684]: graph/name/capsule. */
+/**
+ * 11.1: разбор графа и запись в БД с ВОЗВРАТОМ предупреждений (подставленные
+ * направления, роли вне ROLE_MAP, рёбра без концов). До 11.1 они уходили в
+ * console.warn и терялись; теперь вызывающий кладёт их в metadata.parseWarnings
+ * строки generation_log раздела — log-formatter (2.4) показывает владельцу.
+ */
+async function parseAndSaveGraph(
+  synthesisId: string,
+  html: string,
+  label: string,
+): Promise<string[]> {
+  try {
+    const parsed = parseGraphFromHTML(html);
+    if (parsed.nodes.length === 0) return parsed.warnings;
+    const saved = await saveGraphToDb(synthesisId, parsed);
+    for (const w of saved.warnings) console.warn(`${label}:`, w);
+    return saved.warnings;
+  } catch (e) {
+    console.warn(`${label}:`, e);
+    return [`разбор графа не удался: ${e instanceof Error ? e.message : String(e)}`];
+  }
+}
+
+/** 11.1: дописать предупреждения разбора в metadata строки генлога. */
+async function appendParseWarnings(
+  genEntryId: string,
+  parseWarnings: readonly string[],
+): Promise<void> {
+  if (parseWarnings.length === 0) return;
+  // jsonb `||` заменил бы ключ целиком — накапливаем массив
+  await db
+    .update(generationLog)
+    .set({
+      metadata: dsql`jsonb_set(metadata, '{parseWarnings}', coalesce(metadata->'parseWarnings', '[]'::jsonb) || ${JSON.stringify(parseWarnings)}::jsonb)`,
+    })
+    .where(eq(generationLog.id, genEntryId));
+}
+
+/** Side-effects раздела [20450–20454, 20661–20684]: graph/name/capsule.
+ *  11.1: возвращает предупреждения разбора графа (вызывающий кладёт их в
+ *  генлог через appendParseWarnings). */
 async function applySectionSideEffects(
   synthesisId: string,
   sectionKey: string,
   html: string,
-): Promise<void> {
+): Promise<string[]> {
+  let parseWarnings: string[] = [];
   if (sectionKey === "graph") {
-    try {
-      const parsed = parseGraphFromHTML(html);
-      if (parsed.nodes.length > 0) {
-        const saved = await saveGraphToDb(synthesisId, parsed);
-        for (const w of saved.warnings) console.warn("Graph parse:", w);
-      }
-    } catch (e) {
-      console.warn("Graph re-parse after edit:", e);
-    }
+    parseWarnings = await parseAndSaveGraph(synthesisId, html, "Graph re-parse after edit");
   }
   if (sectionKey === "theses") {
     try {
@@ -1795,6 +1821,7 @@ async function applySectionSideEffects(
       .set({ capsuleHtml: html, updatedAt: new Date() })
       .where(eq(syntheses.id, synthesisId));
   }
+  return parseWarnings;
 }
 
 /** SQL-инкременты totals (устойчиво к параллельным строкам; образец 1.4b). */
@@ -2066,7 +2093,10 @@ export async function regenerateSection(
     // ── 12. Раздел + editedSections [20676–20686] ──
     await upsertSection(synthesisId, def, html, newCtx ?? "", true);
     await bumpTotals(synthesisId, usage);
-    await applySectionSideEffects(synthesisId, sectionKey, html);
+    await appendParseWarnings(
+      genEntryId,
+      await applySectionSideEffects(synthesisId, sectionKey, html),
+    );
 
     await clearStreamState(synthesisId, sectionKey);
     sendToUser(userId, {
@@ -2143,19 +2173,90 @@ export interface SubsectionRegenOpts {
   userNote?: string | undefined;
 }
 
-/** Поиск подраздела [20390–20402]: точное имя → нечёткое включение. */
+/** Результат поиска подраздела (11.1). */
+export interface SubsectionLookup {
+  el: HtmlElement | null;
+  /** Фактическое значение data-section найденного элемента (может
+   *  отличаться от искомого имени — нечёткое совпадение или опознание по
+   *  месту); null — не найден. */
+  actualName: string | null;
+  /** Найден не по имени, а по позиции в ожидаемом порядке карты. */
+  byPosition: boolean;
+  /** Предупреждение для генлога (опознан по месту / не найден и почему). */
+  warning: string | null;
+}
+
+/**
+ * Поиск подраздела [20390–20402] со СТРАХОВКОЙ 11.1: точное имя → нечёткое
+ * включение (как в исходнике) → по позиции. Запрет переводить data-section в
+ * системном промпте — просьба, а не гарантия: модель, пишущая нерусский
+ * документ, может «исправить» русский атрибут. Порядок подразделов раздела
+ * задан картой subsection_map жёстко, поэтому при переданном ожидаемом
+ * порядке и СОВПАДАЮЩЕМ числе подразделов раздела подраздел опознаётся по
+ * месту с предупреждением; число не совпало — честный отказ (el: null), но с
+ * предупреждением о причине. Ожидаемый порядок — тот же buildSubsectionMap,
+ * по которому строилось задание раздела; второго списка нет.
+ */
+export function resolveSubsection(
+  container: HtmlElement,
+  name: string,
+  expectedOrder?: readonly string[] | undefined,
+): SubsectionLookup {
+  const exact = container.querySelector(`[data-section="${name}"]`);
+  if (exact) return { el: exact, actualName: name, byPosition: false, warning: null };
+  const all = Array.from(container.querySelectorAll("[data-section]"));
+  const lower = name.toLowerCase();
+  for (const sub of all) {
+    const attr = sub.getAttribute("data-section") ?? "";
+    const n = attr.toLowerCase();
+    if (n.includes(lower) || lower.includes(n))
+      return { el: sub, actualName: attr, byPosition: false, warning: null };
+  }
+  if (!expectedOrder || expectedOrder.length === 0) {
+    return {
+      el: null,
+      actualName: null,
+      byPosition: false,
+      warning: `подраздел «${name}» не найден по имени (атрибуты data-section раздела: ${all
+        .map((e) => `"${e.getAttribute("data-section") ?? ""}"`)
+        .join(", ") || "нет"}); ожидаемый порядок не передан — опознать по месту нельзя`,
+    };
+  }
+  const idx = expectedOrder.indexOf(name);
+  if (idx < 0) {
+    return {
+      el: null,
+      actualName: null,
+      byPosition: false,
+      warning: `подраздел «${name}» не найден по имени и отсутствует в ожидаемом порядке карты (${expectedOrder.length} имён) — опознать по месту нельзя`,
+    };
+  }
+  if (all.length !== expectedOrder.length) {
+    return {
+      el: null,
+      actualName: null,
+      byPosition: false,
+      warning: `подраздел «${name}» не найден по имени; опознать по месту нельзя: в разделе ${all.length} подраздел(ов), в карте ${expectedOrder.length}`,
+    };
+  }
+  const el = all[idx] as HtmlElement;
+  const attr = el.getAttribute("data-section") ?? "";
+  return {
+    el,
+    actualName: attr,
+    byPosition: true,
+    warning: `подраздел ${idx + 1} опознан по месту: атрибут "${attr}" вместо "${name}"`,
+  };
+}
+
+/** Порт findSubsection [20390–20402] + страховка по позиции (11.1):
+ *  тонкая обёртка над resolveSubsection, возвращает элемент. */
 export function findSubsection(
   container: HtmlElement,
   name: string,
+  expectedOrder?: readonly string[] | undefined,
 ): HtmlElement | null {
-  const exact = container.querySelector(`[data-section="${name}"]`);
-  if (exact) return exact;
-  const lower = name.toLowerCase();
-  for (const sub of container.querySelectorAll("[data-section]")) {
-    const n = (sub.getAttribute("data-section") ?? "").toLowerCase();
-    if (n.includes(lower) || lower.includes(n)) return sub;
-  }
-  return null;
+  return resolveSubsection(container, name, expectedOrder).el;
 }
 
 /** Порт extractSubsectionContent [19950]: таблицы → tableToText,
@@ -2291,6 +2392,17 @@ export async function regenerateSubsection(
   const sectionHtml = secRow?.htmlContent ?? "";
   const container = parseFragment(sectionHtml);
 
+  /* ── 0. Где подраздел (11.1: страховка по позиции) ──
+     Ожидаемый порядок — та же карта, по которой строилось задание раздела.
+     Переведённый моделью атрибут при совпадающем числе подразделов даёт
+     опознание по месту (предупреждение в генлог); актуальное имя атрибута
+     нужно чтению текущего содержимого и врезке результата — сам промпт и
+     контекстные карты работают с каноническим именем. */
+  const expectedOrder = (await buildSubsectionMap(p))[sectionKey] ?? [];
+  const lookup = resolveSubsection(container, subsectionName, expectedOrder);
+  const actualName = lookup.actualName ?? subsectionName;
+  if (lookup.warning) console.warn(`regenerateSubsection(${sectionKey}):`, lookup.warning);
+
   /* ── 1. Контексты ── */
   const intraSectionCtx = await extractRelevantIntraSectionContext(
     container,
@@ -2304,7 +2416,7 @@ export async function regenerateSubsection(
   }
 
   const currentContent = opts.includeCurrentContent
-    ? extractSubsectionContent(container, subsectionName)
+    ? extractSubsectionContent(container, actualName)
     : null;
 
   let priorCtx = "";
@@ -2401,6 +2513,7 @@ export async function regenerateSubsection(
     })
     .returning({ id: generationLog.id });
   const genEntryId = (genEntry as { id: string }).id;
+  if (lookup.warning) await appendParseWarnings(genEntryId, [lookup.warning]);
 
   /* ── 4. Стрим ── */
   const streamKey = `${sectionKey}:${subsectionName}`;
@@ -2440,8 +2553,10 @@ export async function regenerateSubsection(
       })
       .where(eq(generationLog.id, genEntryId));
 
+    // 11.1: врезка по ФАКТИЧЕСКОМУ атрибуту — опознанный по месту подраздел
+    // заменяется (и его атрибут чинится ответом модели), а не дописывается
     const newSectionHtml = spliceSubsectionHtml(
-      sectionHtml, subsectionName, html,
+      sectionHtml, actualName, html,
     );
     await db
       .update(sections)
@@ -2452,7 +2567,10 @@ export async function regenerateSubsection(
     await bumpTotals(synthesisId, usage);
 
     /* ── 6. Side-effects [20450–20454] + снимок структуры [20461] ── */
-    await applySectionSideEffects(synthesisId, sectionKey, newSectionHtml);
+    await appendParseWarnings(
+      genEntryId,
+      await applySectionSideEffects(synthesisId, sectionKey, newSectionHtml),
+    );
     if (sectionKey === "sum" && subsectionName === STRUCTURE_SUBSECTION) {
       const [fresh] = await db
         .select({ sectionOrder: syntheses.sectionOrder })
@@ -2893,7 +3011,10 @@ export async function addSection(
     await upsertSection(synthesisId, newDef, html, newCtx ?? "", true);
     inserted = true;
     await bumpTotals(synthesisId, usage);
-    await applySectionSideEffects(synthesisId, sectionKey, html);
+    await appendParseWarnings(
+      genEntryId,
+      await applySectionSideEffects(synthesisId, sectionKey, html),
+    );
 
     await clearStreamState(synthesisId, sectionKey);
     sendToUser(userId, {

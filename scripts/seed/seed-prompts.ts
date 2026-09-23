@@ -29,6 +29,7 @@ import {
   SEED_RECOMMENDATION_TEMPLATES,
   applyRecommendationTemplateOverrides,
 } from "../../server/config/recommendation-templates.js";
+import { applyLangTemplateOverrides } from "../../server/config/lang-templates.js";
 
 const { promptTemplates } = schema;
 
@@ -52,8 +53,14 @@ const { promptTemplates } = schema;
  * прозаическому шаблону рекомендаций дописывается одно требование.
  * section-templates.ts при этом не правится: он генерат из philosynth.html.
  */
+/**
+ * Беседа 11.1: защита машинных значений при нерусской генерации
+ * (server/config/lang-templates.ts — рукописная надстройка): шаблону
+ * system.lang_instruction дописывается правило закрытых списков.
+ * prompt-templates.ts при этом не правится: он генерат из philosynth.html.
+ */
 const ALL_TEMPLATES = [
-  ...SEED_PROMPT_TEMPLATES,
+  ...applyLangTemplateOverrides(SEED_PROMPT_TEMPLATES),
   ...applyRecommendationTemplateOverrides(SEED_SECTION_TEMPLATES),
   ...SEED_ENRICHMENT_TEMPLATES,
   ...SEED_TRANSFORM_TEMPLATES,

@@ -1067,6 +1067,17 @@ POST   /syntheses/:id/regenerate-subsection
                                   userNote?: string, includeCurrentContent?: boolean }
                                 → { ok: true }
                                 // Стриминг через WebSocket
+                                // 11.1: подраздел ищется по имени (точно →
+                                // нечётко), а при переведённых моделью
+                                // атрибутах data-section и СОВПАДАЮЩЕМ числе
+                                // подразделов с картой subsection_map —
+                                // ПО ПОЗИЦИИ (resolveSubsection), с
+                                // предупреждением в генлоге («подраздел N
+                                // опознан по месту: атрибут "X" вместо "Y"»);
+                                // врезка идёт по фактическому атрибуту и чинит
+                                // его ответом модели. Число не совпало —
+                                // прежнее поведение (результат дописывается в
+                                // конец) с предупреждением о причине
 ```
 
 ### 2.6. Edit Plans
@@ -1415,6 +1426,9 @@ GET    /syntheses/:id/logs/prompts     → { text: string | null } — дамп
                                          промптов (07 2.4; аналог
                                          downloadPrompts исходника)
                                        // Аналог formatCtxLog() и colorizeLog()
+                                       // 11.1: в блоке раздела — «⚠ РАЗБОР С
+                                       // ПОТЕРЯМИ (N)» + строки
+                                       // metadata.parseWarnings (02 §2.15)
 ```
 
 > **8.6 — гейт логов (`logsAllowed`, routes/logs.ts, все четыре пути):**

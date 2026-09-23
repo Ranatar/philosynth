@@ -60,7 +60,7 @@
  *    transform» / «No graph to transform») — роут проверяет синхронно
  *    (edge case протокола → 400).
  */
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql as dsql } from "drizzle-orm";
 
 import type { RepresentationTransform, TransformDirection } from "@philosynth/shared/types/elements";
 import type { WsServerMessage } from "@philosynth/shared/types/ws-messages";
@@ -395,6 +395,8 @@ async function buildTargetSectionTask(
 interface StreamedResult {
   html: string;
   usage: TransformUsage;
+  /** 11.1: строка генлога трансформации — для предупреждений разбора */
+  genEntryId: string;
 }
 
 /**
@@ -455,7 +457,7 @@ async function streamTransform(
       .where(eq(generationLog.id, genEntryId));
     await bumpTotals(synthesisId, usage);
     await clearStreamState(synthesisId, streamKey);
-    return { html: html.trim(), usage: { ...usage, costUsd } };
+    return { html: html.trim(), usage: { ...usage, costUsd }, genEntryId };
   } catch (rawErr) {
     const e = rawErr instanceof StreamError ? rawErr : classifyStreamError(rawErr, false);
     const eUsage = e.usage ?? { inputTokens: 0, outputTokens: 0 };
@@ -597,13 +599,23 @@ export async function transformThesesToGraph(handle: GenerationSlotHandle): Prom
   const SYS = await buildSYS(p, { outputMode: "full" });
 
   sendToUser(userId, { type: "transform_started", synthesisId, direction });
-  const { html, usage } = await streamTransform(handle, direction, prompt, SYS, "graph", title);
+  const { html, usage, genEntryId } = await streamTransform(handle, direction, prompt, SYS, "graph", title);
 
   const parsed = parseGraphFromHTML(html);
   if (parsed.nodes.length === 0)
     throw new TransformError("VALIDATION_ERROR", "В ответе не найдена «Таблица категорий» — граф не заменён");
   const saved = await saveGraphToDb(synthesisId, parsed);
   for (const w of saved.warnings) console.warn("transform theses→graph:", w);
+  // 11.1: предупреждения разбора (подставленные направления, роли вне ROLE_MAP,
+  // рёбра без концов) — в генлог трансформации, как у generation-service
+  if (saved.warnings.length > 0) {
+    await db
+      .update(generationLog)
+      .set({
+        metadata: dsql`jsonb_set(metadata, '{parseWarnings}', coalesce(metadata->'parseWarnings', '[]'::jsonb) || ${JSON.stringify(saved.warnings)}::jsonb)`,
+      })
+      .where(eq(generationLog.id, genEntryId));
+  }
   const sectionMissing = await replaceTargetSectionHtml(synthesisId, "graph", html);
 
   const summary: Record<string, number> = {
