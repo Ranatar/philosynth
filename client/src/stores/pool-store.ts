@@ -33,6 +33,7 @@ import {
   type ConceptParticipant,
   type PoolConceptEntry,
 } from "../utils/concept-file";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface PoolStatus {
   text: string;
@@ -135,7 +136,7 @@ export const usePoolStore = create<PoolState>((set, get) => {
       if (concepts.some((c) => c.filename === entry.filename)) {
         set({
           status: {
-            text: "⚠ Файл «" + entry.filename + "» уже загружен.",
+            text: tl("stores.poolStore.fileQuoteLead", "⚠ Файл «") + entry.filename + tl("stores.poolStore.alreadyLoaded", "» уже загружен."),
             cls: "err",
           },
         });
@@ -191,8 +192,8 @@ export const usePoolStore = create<PoolState>((set, get) => {
         // Включаем — проверяем пригодность
         if (!concept.participant) {
           window.alert(
-            "Концепция непригодна для мета-синтеза:\n" +
-              (concept.participantError || "Неизвестная ошибка"),
+            tl("stores.poolStore.unsuitableForMeta", "Концепция непригодна для мета-синтеза:\n") +
+              (concept.participantError || tl("stores.poolStore.unknownError", "Неизвестная ошибка")),
           );
           return;
         }
@@ -211,7 +212,7 @@ export const usePoolStore = create<PoolState>((set, get) => {
             ? {
                 status: {
                   text:
-                    "Мета-синтез отменён. Галочки разделов можно изменить вручную.",
+                    tl("stores.poolStore.metaCanceled", "Мета-синтез отменён. Галочки разделов можно изменить вручную."),
                   cls: "" as const,
                 },
               }
@@ -262,10 +263,10 @@ export const usePoolStore = create<PoolState>((set, get) => {
           // Сохраняем имя (могла быть переименована пользователем)
           updated.name = concept.participant?.name || updated.name;
           const sources: string[] = [];
-          if (updated.graphNodes) sources.push("граф");
-          if (updated.dialogueConcepts) sources.push("диалог");
-          if (updated.glossaryCompact) sources.push("глоссарий");
-          if (updated.thesesSummary) sources.push("тезисы");
+          if (updated.graphNodes) sources.push(tl("common.graphLower", "граф"));
+          if (updated.dialogueConcepts) sources.push(tl("stores.poolStore.dialogueLower", "диалог"));
+          if (updated.glossaryCompact) sources.push(tl("stores.poolStore.glossaryLower", "глоссарий"));
+          if (updated.thesesSummary) sources.push(tl("common.thesesLower", "тезисы"));
           commit(
             get().concepts.map((c) =>
               c.id === id ? { ...c, participant: updated, sources } : c,

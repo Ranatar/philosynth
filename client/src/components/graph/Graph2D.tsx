@@ -48,6 +48,7 @@ import type {
   PanelNodeData,
   RoleLayer,
 } from "./graph-utils";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Узел 2D-симуляции: G-узел + композиция ролей + поля d3 */
 type Node2D = GNode &
@@ -419,7 +420,7 @@ export function buildGraph2D(ct: HTMLDivElement, panels: PanelCallbacks): void {
     .attr("text-anchor", "middle")
     .attr("pointer-events", "none")
     .text((d) => {
-      const raw = topo.clusterLabels?.[d.clIdx] || `Кластер ${d.clIdx + 1}`;
+      const raw = topo.clusterLabels?.[d.clIdx] || tl("graph.graph2D.cluster", "Кластер {clIdx}", { clIdx: d.clIdx + 1 });
       return raw.replace(/^[IVXLCDM]+\s*[-–—]\s*/i, "").trim();
     });
 

@@ -28,6 +28,7 @@ import { getCookie } from "hono/cookie";
 import { env } from "../env.js";
 import { redis } from "../redis.js";
 import type { AuthEnv } from "./auth.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface RateLimiterOptions {
   /** Запросов на окно (по умолчанию env.rateLimit.httpRequestsPerMinute) */
@@ -85,7 +86,7 @@ export function rateLimiter(
       c.header("Retry-After", String(retryAfter));
       return c.json(
         {
-          error: "Превышен лимит запросов",
+          error: tl("server.middleware.rateLimiter.rateLimited", "Превышен лимит запросов"),
           code: "RATE_LIMIT",
           details: { retryAfter },
         },

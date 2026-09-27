@@ -21,6 +21,7 @@
 import type {
   CascadeImpactDto,
 } from "@philosynth/shared/types/edit-plan";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface CascadePanelProps {
   impact: CascadeImpactDto | null;
@@ -40,8 +41,8 @@ export interface CascadePanelProps {
 }
 
 const QUALITY_LABEL: Record<number, string> = {
-  3: "равноценная замена",
-  2: "частичная замена",
+  3: tl("edit.cascadePanel.equivalentReplacement", "равноценная замена"),
+  2: tl("edit.cascadePanel.partialReplacement", "частичная замена"),
 };
 
 export function CascadePanel({
@@ -73,27 +74,27 @@ export function CascadePanel({
 
   const title =
     hasUpstream && affected.length === 0
-      ? "Зависимости добавляемых разделов"
+      ? tl("edit.cascadePanel.addedSectionDeps", "Зависимости добавляемых разделов")
       : affected.length > 0 && !hasUpstream
-        ? "Каскад зависимостей"
-        : "Каскад и зависимости";
+        ? tl("edit.cascadePanel.dependencyCascade", "Каскад зависимостей")
+        : tl("edit.cascadePanel.cascadeAndDeps", "Каскад и зависимости");
 
   const descParts: string[] = [];
   if (affected.length > 0) {
     descParts.push(
-      "Следующие разделы будут затронуты выбранными действиями, " +
-        "но не включены в план. Рекомендуется отметить их для перегенерации.",
+      tl("edit.cascadePanel.affectedSectionsLead", "Следующие разделы будут затронуты выбранными действиями, ") +
+        tl("edit.cascadePanel.affectedSectionsTail", "но не включены в план. Рекомендуется отметить их для перегенерации."),
     );
   }
   if (missingHard.length > 0) {
     descParts.push(
-      "Обязательные зависимости отсутствуют — качество добавляемых разделов будет снижено.",
+      tl("edit.cascadePanel.requiredDepsMissing", "Обязательные зависимости отсутствуют — качество добавляемых разделов будет снижено."),
     );
   } else if (activeSubs.length > 0) {
-    descParts.push("Недостающий контекст заменён подстановками.");
+    descParts.push(tl("edit.cascadePanel.contextSubstituted", "Недостающий контекст заменён подстановками."));
   }
   if (affectedModes.length > 0) {
-    descParts.push("Сгенерированные режимы затронуты выбранными действиями.");
+    descParts.push(tl("edit.cascadePanel.modesAffected", "Сгенерированные режимы затронуты выбранными действиями."));
   }
 
   return (
@@ -130,7 +131,7 @@ export function CascadePanel({
                       marginLeft: 6,
                     }}
                   >
-                    {w.chars.toLocaleString("ru")} симв. от {labels(w.source)}
+                    {tl("edit.cascadePanel.charsFrom", "{chars} симв. от {source}", { chars: w.chars.toLocaleString("ru"), source: labels(w.source) })}
                   </span>
                 ))}
               </span>
@@ -149,7 +150,7 @@ export function CascadePanel({
                   }}
                   onClick={() => onMarkRegen(depKey)}
                 >
-                  отметить ↑
+                  {tl("edit.cascadePanel.markUp", "отметить ↑")}
                 </button>
               )}
             </div>
@@ -172,7 +173,7 @@ export function CascadePanel({
             >
               <span className="warn-icon">⚠</span>
               <span>
-                «{m.label}»: отсутствует обязательный контекст {srcNames}.
+                {tl("edit.cascadePanel.missingRequiredContext", "«{label}»: отсутствует обязательный контекст {srcNames}.", { label: m.label, srcNames })}
               </span>
               {m.sources
                 .filter((s) => {
@@ -209,9 +210,8 @@ export function CascadePanel({
           <div key={"sub-" + i} className="sec-substituted-item">
             <span className="rec-icon">⇄</span>
             <span>
-              «{s.consumerLabel}»: контекст «{s.ctxLabel}» используется как{" "}
-              {QUALITY_LABEL[s.quality] ?? "слабая замена"} для «
-              {s.replacedLabel}».
+              {tl("edit.cascadePanel.contextUsedAs", "«{consumerLabel}»: контекст «{ctxLabel}» используется как", { consumerLabel: s.consumerLabel, ctxLabel: s.ctxLabel })}
+              {QUALITY_LABEL[s.quality] ?? tl("edit.cascadePanel.weakReplacement", "слабая замена")} {tl("edit.cascadePanel.forSection", "для «{replacedLabel}».", { replacedLabel: s.replacedLabel })}
             </span>
           </div>
         ))}
@@ -219,13 +219,12 @@ export function CascadePanel({
         {/* E4. Рекомендации по optional */}
         {recommendations.map((r) => {
           const consumerList = r.consumers.map((c) => `«${c}»`).join(", ");
-          const word = r.consumers.length === 1 ? "раздела" : "разделов";
+          const word = r.consumers.length === 1 ? tl("edit.cascadePanel.sectionGen", "раздела") : tl("common.sectionsGen", "разделов");
           return (
             <div key={"rec-" + r.src} className="sec-recommend-item">
               <span className="rec-icon">💡</span>
               <span>
-                Включение «{r.label}» может улучшить качество {word}{" "}
-                {consumerList} (дополнительный контекст).
+                {tl("edit.cascadePanel.inclusionMayImprove", "Включение «{label}» может улучшить качество {word} {consumerList} (дополнительный контекст).", { label: r.label, word, consumerList })}
               </span>
               <button
                 type="button"
@@ -242,7 +241,7 @@ export function CascadePanel({
                 }}
                 onClick={() => onMarkAdd(r.src)}
               >
-                добавить ↓
+                {tl("edit.cascadePanel.addDown", "добавить ↓")}
               </button>
             </div>
           );
@@ -282,7 +281,7 @@ export function CascadePanel({
                 }}
                 onClick={() => onMarkModeRegen(am.modeKey, am.index)}
               >
-                отметить ↑
+                {tl("edit.cascadePanel.markUp", "отметить ↑")}
               </button>
             )}
           </div>

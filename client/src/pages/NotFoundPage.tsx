@@ -3,14 +3,15 @@
  * Беседа 0.4.
  */
 import { Link } from "react-router-dom";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export function NotFoundPage() {
   return (
     <div className="input-form">
-      <h1 className="form-section-title">Страница не найдена</h1>
+      <h1 className="form-section-title">{tl("notFoundPage.title", "Страница не найдена")}</h1>
       <p className="submit-note">
-        Такого маршрута нет. <Link to="/catalog">Вернуться в каталог</Link> ·{" "}
-        <Link to="/">на главную</Link>
+        {tl("notFoundPage.noSuchRoute", "Такого маршрута нет.")} <Link to="/catalog">{tl("notFoundPage.backToCatalog", "Вернуться в каталог")}</Link> ·{" "}
+        <Link to="/">{tl("notFoundPage.toHomeLower", "на главную")}</Link>
       </p>
     </div>
   );

@@ -102,6 +102,7 @@ const CTX = CTX_LABELS as Record<string, string>;
 /* ══ computeDependents [5473] ═════════════════════════════════════════ */
 
 import { computePredecessors } from "../utils/topo-sort.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /**
  * Обращение карты предшественников: dependents[B] = разделы, зависящие
@@ -434,9 +435,9 @@ export async function getAffectedModes(
             param: (results[i] as ModeResultLite).param,
             title: title + " · " + (results[i] as ModeResultLite).param,
             reason:
-              "Изменён раздел «" +
+              tl("server.cascadeAnalyzer.sectionChangedLead", "Изменён раздел «") +
               (LBL[src] || src) +
-              "» (контекст: " +
+              tl("server.cascadeAnalyzer.contextParen", "» (контекст: ") +
               (CTX[ctxKey] || ctxKey) +
               ")",
           });
@@ -463,9 +464,9 @@ export async function getAffectedModes(
               param: (results[i] as ModeResultLite).param,
               title: title + " · " + (results[i] as ModeResultLite).param,
               reason:
-                "Изменён подраздел «" +
+                tl("server.cascadeAnalyzer.subsectionChangedLead", "Изменён подраздел «") +
                 subName +
-                "» в «" +
+                tl("server.cascadeAnalyzer.subsectionChangedIn", "» в «") +
                 (LBL[secKey] || secKey) +
                 "»",
             });
@@ -699,7 +700,7 @@ async function loadSynthesisLocal(synthesisId: string): Promise<{
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
-  if (!row) throw new Error("Синтез не найден");
+  if (!row) throw new Error(tl("common.synthesisNotFound", "Синтез не найден"));
   const lineage = await db
     .select()
     .from(synthesisLineage)

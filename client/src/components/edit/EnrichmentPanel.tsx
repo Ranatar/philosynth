@@ -33,15 +33,16 @@ import {
   type EnrichmentStream,
 } from "../../hooks/useEnrichmentStream";
 import type { EnrichableElementKind } from "../../api/enrichment";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const CATEGORY_ENRICHMENT_OPTIONS: readonly {
   type: CategoryEnrichmentType;
   label: string;
   hint: string;
 }[] = [
-  { type: "description", label: "Описание", hint: "расширенное описание, трактовки, аналоги" },
-  { type: "evolution", label: "Эволюция", hint: "как категория может измениться в свете современных тенденций" },
-  { type: "justification", label: "Обоснование", hint: "философские основания категории и её места в графе" },
+  { type: "description", label: tl("common.description", "Описание"), hint: tl("edit.enrichmentPanel.extendedDescription", "расширенное описание, трактовки, аналоги") },
+  { type: "evolution", label: tl("edit.enrichmentPanel.evolution", "Эволюция"), hint: tl("edit.enrichmentPanel.evolutionHint", "как категория может измениться в свете современных тенденций") },
+  { type: "justification", label: tl("common.justification", "Обоснование"), hint: tl("edit.enrichmentPanel.categoryGrounds", "философские основания категории и её места в графе") },
 ];
 
 export const EDGE_ENRICHMENT_OPTIONS: readonly {
@@ -49,17 +50,17 @@ export const EDGE_ENRICHMENT_OPTIONS: readonly {
   label: string;
   hint: string;
 }[] = [
-  { type: "justification", label: "Обоснование", hint: "философское обоснование связи" },
-  { type: "counterarguments", label: "Контраргументы", hint: "возражения против связи, аналоги в других системах" },
+  { type: "justification", label: tl("common.justification", "Обоснование"), hint: tl("edit.enrichmentPanel.edgeGrounds", "философское обоснование связи") },
+  { type: "counterarguments", label: tl("edit.enrichmentPanel.counterarguments", "Контраргументы"), hint: tl("edit.enrichmentPanel.counterargumentsHint", "возражения против связи, аналоги в других системах") },
 ];
 
 /** Подпись типа обогащения (в т.ч. 'characteristic' для общей истории) */
 export const ENRICHMENT_TYPE_LABELS: Record<string, string> = {
-  description: "Описание",
-  evolution: "Эволюция",
-  justification: "Обоснование",
-  counterarguments: "Контраргументы",
-  characteristic: "Обоснование характеристики",
+  description: tl("common.description", "Описание"),
+  evolution: tl("edit.enrichmentPanel.evolution", "Эволюция"),
+  justification: tl("common.justification", "Обоснование"),
+  counterarguments: tl("edit.enrichmentPanel.counterarguments", "Контраргументы"),
+  characteristic: tl("edit.enrichmentPanel.characteristicJustification", "Обоснование характеристики"),
 };
 
 function fmtDate(iso: string): string {
@@ -173,7 +174,7 @@ export function EnrichmentPanel({
     <div className="enrich-panel" data-enrichment-panel={elementType}>
       <div className="enrich-panel-head">
         <span className="form-label enrich-panel-title">
-          Обогащение{elementLabel ? ` · ${elementLabel}` : ""}
+          {tl("edit.enrichmentPanel.enrichmentTitle", "Обогащение{elementLabel}", { elementLabel: elementLabel ? ` · ${elementLabel}` : "" })}
         </span>
         {history && history.length > 0 && (
           <span className="enrich-panel-total">
@@ -190,13 +191,13 @@ export function EnrichmentPanel({
             disabled={!!streamingHere || busyElsewhere}
             title={
               busyElsewhere
-                ? "Идёт другая операция — дождитесь её завершения"
-                : "Точечный запрос к Claude по этому элементу"
+                ? tl("edit.enrichmentPanel.otherOperation", "Идёт другая операция — дождитесь её завершения")
+                : tl("edit.enrichmentPanel.pointRequest", "Точечный запрос к Claude по этому элементу")
             }
             onClick={() => setChoosing((v) => !v)}
             data-testid="enrich-button"
           >
-            {streamingHere ? "Обогащение…" : "Обогатить"}
+            {streamingHere ? tl("edit.enrichmentPanel.enriching", "Обогащение…") : tl("edit.enrichmentPanel.enrich", "Обогатить")}
           </button>
           {choosing &&
             options.map((o) => (
@@ -227,17 +228,17 @@ export function EnrichmentPanel({
             <span className="enrich-card-type">
               {ENRICHMENT_TYPE_LABELS[streamingHere.enrichmentType] ?? streamingHere.enrichmentType}
             </span>
-            <span>генерируется… · {stream.liveChars.toLocaleString("ru")} симв.</span>
+            <span>{tl("edit.enrichmentPanel.generatingChars", "генерируется… · {liveChars} симв.", { liveChars: stream.liveChars.toLocaleString("ru") })}</span>
           </div>
           <div className="enrich-card-body">{stream.liveText}</div>
         </div>
       )}
 
       {history === null && !loadError && (
-        <div className="form-sublabel">загрузка истории…</div>
+        <div className="form-sublabel">{tl("edit.enrichmentPanel.loadingHistory", "загрузка истории…")}</div>
       )}
       {history && history.length === 0 && !streamingHere && (
-        <div className="form-sublabel">Обогащений ещё нет.</div>
+        <div className="form-sublabel">{tl("edit.enrichmentPanel.noEnrichments", "Обогащений ещё нет.")}</div>
       )}
       {history?.map((e) => {
         const isOpen = expanded.has(e.id);
@@ -261,8 +262,7 @@ export function EnrichmentPanel({
                 {ENRICHMENT_TYPE_LABELS[e.enrichmentType] ?? e.enrichmentType}
               </span>
               <span>
-                {fmtDate(e.createdAt)} · {e.inputTokens.toLocaleString("ru")} вх. +{" "}
-                {e.outputTokens.toLocaleString("ru")} вых. · ${e.costUsd.toFixed(4)}
+                {tl("edit.enrichmentPanel.usageLine", "{createdAt} · {inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { createdAt: fmtDate(e.createdAt), inputTokens: e.inputTokens.toLocaleString("ru"), outputTokens: e.outputTokens.toLocaleString("ru"), costUsd: e.costUsd.toFixed(4) })}
               </span>
             </div>
             {isOpen && (

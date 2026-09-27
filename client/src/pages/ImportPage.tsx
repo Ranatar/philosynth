@@ -43,6 +43,7 @@ import { LoadingSpinner } from "../components/shared/LoadingSpinner";
 
 import type { LineageCandidate } from "@philosynth/shared/types/lineage";
 import type { ImportWarning } from "@philosynth/shared/types/synthesis";
+import { tl } from "@philosynth/shared/i18n/t";
 
 type Phase = "idle" | "uploading" | "done";
 
@@ -53,18 +54,18 @@ type CandidateState =
   | { kind: "skipped" };
 
 function linkErrorText(err: unknown): string {
-  if (!(err instanceof ApiError)) return "Связать не удалось. Попробуйте ещё раз.";
+  if (!(err instanceof ApiError)) return tl("importPage.linkFailed", "Связать не удалось. Попробуйте ещё раз.");
   switch (err.code) {
     case "LINEAGE_SELF":
-      return "Концепция не может быть собственным родителем.";
+      return tl("importPage.selfParent", "Концепция не может быть собственным родителем.");
     case "LINEAGE_CYCLE":
-      return "Эта концепция — потомок импортированной: связь замкнула бы родословную в цикл.";
+      return tl("importPage.cycleParent", "Эта концепция — потомок импортированной: связь замкнула бы родословную в цикл.");
     case "LINEAGE_EXISTS":
-      return "Эта концепция уже указана родителем.";
+      return tl("importPage.alreadyParent", "Эта концепция уже указана родителем.");
     case "FORBIDDEN":
-      return "Концепция принадлежит другому пользователю — в родители не идёт.";
+      return tl("importPage.foreignParent", "Концепция принадлежит другому пользователю — в родители не идёт.");
     case "NOT_FOUND":
-      return "Концепция-родитель не найдена (удалена?).";
+      return tl("importPage.parentNotFound", "Концепция-родитель не найдена (удалена?).");
     default:
       return err.message;
   }
@@ -105,14 +106,14 @@ function LineageCandidateBlock({
     return () => document.removeEventListener("mousedown", onDown);
   }, [state, onArm]);
 
-  const label = `Концепция-родитель „${candidate.parentName}“`;
+  const label = tl("importPage.parentConcept", "Концепция-родитель „{parentName}“", { parentName: candidate.parentName });
 
   if (state.kind === "linked") {
     const m = candidate.matches.find((x) => x.id === state.matchId);
     return (
       <div className="callout gold" data-testid="lineage-candidate" data-state="linked">
         <span className="callout-label">{label}</span>
-        Связана с «{m?.title ?? "…"}».
+        {tl("importPage.linkedWith", "Связана с «{title}».", { title: m?.title ?? "…" })}
       </div>
     );
   }
@@ -120,7 +121,7 @@ function LineageCandidateBlock({
     return (
       <div className="callout" data-testid="lineage-candidate" data-state="skipped">
         <span className="callout-label">{label}</span>
-        Пропущено — связь не создана; ветка родителя показывается в древе снимком из файла.
+        {tl("importPage.skippedNote", "Пропущено — связь не создана; ветка родителя показывается в древе снимком из файла.")}
       </div>
     );
   }
@@ -134,7 +135,7 @@ function LineageCandidateBlock({
       data-parent-name={candidate.parentName}
     >
       <span className="callout-label">{label}</span>
-      В файле указана концепция-родитель „{candidate.parentName}“. В базе найдено:
+      {tl("importPage.parentInFile", "В файле указана концепция-родитель „{parentName}“. В базе найдено:", { parentName: candidate.parentName })}
       <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
         {candidate.matches.map((m) => {
           const armed = state.arm === m.id;
@@ -152,7 +153,7 @@ function LineageCandidateBlock({
                     onClick={() => void onLink(m.id)}
                     data-testid="lineage-link-confirm"
                   >
-                    Точно связать?
+                    {tl("importPage.confirmLink", "Точно связать?")}
                   </button>{" "}
                   <button
                     type="button"
@@ -161,7 +162,7 @@ function LineageCandidateBlock({
                     onClick={() => onArm(null)}
                     data-testid="lineage-link-cancel"
                   >
-                    Отмена
+                    {tl("common.cancel", "Отмена")}
                   </button>
                 </>
               ) : (
@@ -173,7 +174,7 @@ function LineageCandidateBlock({
                     onClick={() => onArm(m.id)}
                     data-testid="lineage-link"
                   >
-                    Связать
+                    {tl("importPage.link", "Связать")}
                   </button>{" "}
                   <button
                     type="button"
@@ -182,7 +183,7 @@ function LineageCandidateBlock({
                     onClick={onSkip}
                     data-testid="lineage-skip"
                   >
-                    Пропустить
+                    {tl("importPage.skip", "Пропустить")}
                   </button>
                 </>
               )}
@@ -222,7 +223,7 @@ export function ImportPage() {
     setCandStates([]);
     if (!f) return;
     if (!/\.html?$/i.test(f.name)) {
-      setError("Ожидается HTML-файл PhiloSynth (.html)");
+      setError(tl("importPage.htmlExpected", "Ожидается HTML-файл PhiloSynth (.html)"));
       setFile(null);
       return;
     }
@@ -270,7 +271,7 @@ export function ImportPage() {
       setError(
         err instanceof ApiError
           ? err.message
-          : "Импорт не удался. Попробуйте ещё раз.",
+          : tl("importPage.importFailed", "Импорт не удался. Попробуйте ещё раз."),
       );
     }
   }
@@ -310,18 +311,18 @@ export function ImportPage() {
 
   return (
     <div className="input-form">
-      <h1 className="form-section-title">Импорт HTML-файла PhiloSynth</h1>
+      <h1 className="form-section-title">{tl("importPage.title", "Импорт HTML-файла PhiloSynth")}</h1>
 
       {phase === "uploading" && (
-        <LoadingSpinner label="Загрузка и разбор файла…" />
+        <LoadingSpinner label={tl("importPage.uploading", "Загрузка и разбор файла…")} />
       )}
 
       {phase === "done" && resultId && (
         <div className="form-group full">
           <div className="submit-note">
             {warnings.length > 0
-              ? "Импорт завершён. Обнаружены проблемы с метаданными — документ отображается, проверьте параметры перед перегенерацией."
-              : "Импорт завершён."}
+              ? tl("importPage.importDoneWithIssues", "Импорт завершён. Обнаружены проблемы с метаданными — документ отображается, проверьте параметры перед перегенерацией.")
+              : tl("importPage.importDone", "Импорт завершён.")}
           </div>
           {candidates.map((cand, i) => {
             const st = candStates[i];
@@ -343,7 +344,7 @@ export function ImportPage() {
               {criticals.map((w, i) => (
                 <div key={`c${i}`} role="alert" className="sec-warning-item">
                   <span className="warn-icon">⚠</span>
-                  <span>КРИТИЧНО: {w.message}</span>
+                  <span>{tl("importPage.critical", "КРИТИЧНО: {message}", { message: w.message })}</span>
                 </div>
               ))}
             </div>
@@ -353,7 +354,7 @@ export function ImportPage() {
               {infos.map((w, i) => (
                 <div key={`i${i}`} className="sec-recommend-item">
                   <span className="rec-icon">⚡</span>
-                  <span>Внимание: {w.message}</span>
+                  <span>{tl("importPage.warning", "Внимание: {message}", { message: w.message })}</span>
                 </div>
               ))}
             </div>
@@ -364,10 +365,10 @@ export function ImportPage() {
               onClick={() => navigate(`/synthesis/${resultId}`)}
               className="action-btn primary"
             >
-              Перейти к синтезу
+              {tl("importPage.goToSynthesis", "Перейти к синтезу")}
             </button>
             <button type="button" onClick={reset} className="action-btn">
-              Импортировать ещё
+              {tl("importPage.importMore", "Импортировать ещё")}
             </button>
           </div>
         </div>
@@ -378,7 +379,7 @@ export function ImportPage() {
           <div
             role="button"
             tabIndex={0}
-            aria-label="Зона загрузки файла"
+            aria-label={tl("importPage.dropZone", "Зона загрузки файла")}
             onClick={() => inputRef.current?.click()}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
@@ -397,9 +398,9 @@ export function ImportPage() {
               ⇪
             </span>
             <p className="submit-note">
-              Перетащите сюда HTML-файл PhiloSynth
+              {tl("importPage.dropHere", "Перетащите сюда HTML-файл PhiloSynth")}
               <br />
-              или нажмите, чтобы выбрать
+              {tl("importPage.orClick", "или нажмите, чтобы выбрать")}
             </p>
             <input
               ref={inputRef}
@@ -415,7 +416,7 @@ export function ImportPage() {
               <div className="pool-card-info">
                 <div className="pool-card-name">{file.name}</div>
                 <div className="pool-card-meta">
-                  {(file.size / 1024).toFixed(0)} КБ
+                  {tl("importPage.fileSizeKb", "{file} КБ", { file: (file.size / 1024).toFixed(0) })}
                 </div>
               </div>
               <div className="pool-card-btns">
@@ -424,10 +425,10 @@ export function ImportPage() {
                   onClick={() => void confirmImport()}
                   className="action-btn primary"
                 >
-                  Подтвердить импорт
+                  {tl("importPage.confirmImport", "Подтвердить импорт")}
                 </button>
                 <button type="button" onClick={reset} className="action-btn">
-                  Отмена
+                  {tl("common.cancel", "Отмена")}
                 </button>
               </div>
             </div>
@@ -435,7 +436,7 @@ export function ImportPage() {
 
           {error && (
             <div role="alert" className="callout warning">
-              <span className="callout-label">Ошибка импорта</span>
+              <span className="callout-label">{tl("importPage.importError", "Ошибка импорта")}</span>
               {error}
             </div>
           )}

@@ -24,6 +24,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getFormattedLog, getPromptsDump } from "../../api/logs";
 
 import { transliterate } from "@philosynth/shared/utils/transliterate";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface ContextLogViewerProps {
   open: boolean;
@@ -59,7 +60,7 @@ export function ContextLogViewer({
   const [html, setHtml] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copyLabel, setCopyLabel] = useState("Скопировать лог");
+  const [copyLabel, setCopyLabel] = useState(tl("logs.contextLogViewer.copyLog", "Скопировать лог"));
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
@@ -70,7 +71,7 @@ export function ContextLogViewer({
       setText(data.text);
       setHtml(data.html);
     } catch {
-      setError("Не удалось загрузить лог.");
+      setError(tl("logs.contextLogViewer.loadFailed", "Не удалось загрузить лог."));
     } finally {
       setLoading(false);
     }
@@ -108,10 +109,10 @@ export function ContextLogViewer({
 
   const handleCopy = () => {
     void navigator.clipboard.writeText(text).then(() => {
-      setCopyLabel("✓ Скопировано");
+      setCopyLabel(tl("logs.contextLogViewer.copied", "✓ Скопировано"));
       if (copyTimer.current) clearTimeout(copyTimer.current);
       copyTimer.current = setTimeout(
-        () => setCopyLabel("Скопировать лог"),
+        () => setCopyLabel(tl("logs.contextLogViewer.copyLog", "Скопировать лог")),
         2000,
       );
     });
@@ -120,7 +121,7 @@ export function ContextLogViewer({
   const handleDownloadPrompts = async () => {
     const { text: dump } = await getPromptsDump(synthesisId);
     if (!dump) {
-      alert("Нет сохранённых промптов. Сгенерируйте хотя бы один раздел.");
+      alert(tl("logs.contextLogViewer.noPrompts", "Нет сохранённых промптов. Сгенерируйте хотя бы один раздел."));
       return;
     }
     const blob = new Blob([dump], { type: "text/markdown;charset=utf-8" });
@@ -146,14 +147,14 @@ export function ContextLogViewer({
     >
       <div className="raw-modal" style={{ maxWidth: 1000 }}>
         <div className="raw-modal-header">
-          <div className="raw-modal-title">◈ Лог Контекста</div>
+          <div className="raw-modal-title">{tl("logs.contextLogViewer.title", "◈ Лог Контекста")}</div>
           <button type="button" className="raw-close" onClick={onClose}>
-            ✕ Закрыть
+            {tl("common.closeWithIcon", "✕ Закрыть")}
           </button>
         </div>
         <div className="raw-modal-body">
           {loading && !html ? (
-            <pre style={{ fontSize: 12, lineHeight: 1.6 }}>Загрузка…</pre>
+            <pre style={{ fontSize: 12, lineHeight: 1.6 }}>{tl("common.loading", "Загрузка…")}</pre>
           ) : error ? (
             <pre style={{ fontSize: 12, lineHeight: 1.6, color: "var(--red)" }}>
               {error}
@@ -167,17 +168,17 @@ export function ContextLogViewer({
         </div>
         <div className="raw-modal-footer">
           <div className="raw-info">
-            {text ? `${sectionCount} разделов · ${lineCount} строк` : "—"}
+            {text ? tl("logs.contextLogViewer.stats", "{sectionCount} разделов · {lineCount} строк", { sectionCount, lineCount }) : "—"}
           </div>
           {promptsAvailable !== false && (
             <button
               type="button"
               className="raw-copy"
               onClick={() => void handleDownloadPrompts()}
-              title="Скачать все промпты за сессию в файл .md"
+              title={tl("logs.contextLogViewer.downloadHint", "Скачать все промпты за сессию в файл .md")}
               data-testid="log-prompts-btn"
             >
-              ⤓ Скачать промпты
+              {tl("logs.contextLogViewer.downloadPrompts", "⤓ Скачать промпты")}
             </button>
           )}
           <button type="button" className="raw-copy" onClick={handleCopy}>

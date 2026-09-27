@@ -52,6 +52,7 @@ import type {
   PlanImpactResponse,
   UpdatePlanRequest,
 } from "@philosynth/shared/types/edit-plan";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const plansRoutes = new Hono<AuthEnv>();
 
@@ -75,10 +76,10 @@ function errJson(c: Context, err: unknown): Response {
   }
   // loadSynthesis (generation-service) кидает GenerationError NOT_FOUND
   if (err instanceof GenerationError && err.code === "NOT_FOUND") {
-    return c.json({ error: "Синтез не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
   }
   console.error("[plans] internal error:", err);
-  return c.json({ error: "Внутренняя ошибка", code: "INTERNAL_ERROR" }, 500);
+  return c.json({ error: tl("server.routes.plans.internalError", "Внутренняя ошибка"), code: "INTERNAL_ERROR" }, 500);
 }
 
 /* ── POST /syntheses/:id/plans ───────────────────────────────────────── */
@@ -87,13 +88,13 @@ plansRoutes.post("/:id/plans", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   if (!isUuid(id))
-    return c.json({ error: "Синтез не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
 
   let body: CreatePlanRequest;
   try {
     body = (await c.req.json()) as CreatePlanRequest;
   } catch {
-    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+    return c.json({ error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" }, 400);
   }
 
   try {
@@ -111,7 +112,7 @@ plansRoutes.get("/:id/plans/:planId", requireAuth, async (c) => {
   const id = c.req.param("id");
   const planId = c.req.param("planId");
   if (!isUuid(id) || !isUuid(planId))
-    return c.json({ error: "План не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.planNotFound", "План не найден"), code: "NOT_FOUND" }, 404);
 
   try {
     const plan = await getPlan(id, planId, user.id);
@@ -128,13 +129,13 @@ plansRoutes.patch("/:id/plans/:planId", requireAuth, async (c) => {
   const id = c.req.param("id");
   const planId = c.req.param("planId");
   if (!isUuid(id) || !isUuid(planId))
-    return c.json({ error: "План не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.planNotFound", "План не найден"), code: "NOT_FOUND" }, 404);
 
   let body: UpdatePlanRequest;
   try {
     body = (await c.req.json()) as UpdatePlanRequest;
   } catch {
-    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+    return c.json({ error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" }, 400);
   }
 
   try {
@@ -152,7 +153,7 @@ plansRoutes.delete("/:id/plans/:planId", requireAuth, async (c) => {
   const id = c.req.param("id");
   const planId = c.req.param("planId");
   if (!isUuid(id) || !isUuid(planId))
-    return c.json({ error: "План не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.planNotFound", "План не найден"), code: "NOT_FOUND" }, 404);
 
   try {
     await deletePlan(id, planId, user.id);
@@ -181,13 +182,13 @@ plansRoutes.post("/:id/plans/impact", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   if (!isUuid(id))
-    return c.json({ error: "Синтез не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
 
   let body: PlanImpactRequest;
   try {
     body = (await c.req.json()) as PlanImpactRequest;
   } catch {
-    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+    return c.json({ error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" }, 400);
   }
   const strings = (v: unknown): string[] =>
     Array.isArray(v)
@@ -209,7 +210,7 @@ plansRoutes.post("/:id/plans/impact", requireAuth, async (c) => {
     // Владельческий гейт (превью каскада — edit-операция, правило 2.1)
     const { row, philosophers } = await loadSynthesis(id);
     if (row.userId !== user.id)
-      return c.json({ error: "Нет доступа к синтезу", code: "FORBIDDEN" }, 403);
+      return c.json({ error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"), code: "FORBIDDEN" }, 403);
 
     const impact = await analyzeImpact(id, { regen, remove, add });
 
@@ -275,7 +276,7 @@ plansRoutes.post("/:id/plans/:planId/execute", requireAuth, async (c) => {
   const id = c.req.param("id");
   const planId = c.req.param("planId");
   if (!isUuid(id) || !isUuid(planId))
-    return c.json({ error: "План не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.planNotFound", "План не найден"), code: "NOT_FOUND" }, 404);
 
   try {
     // Синхронные гейты (те же, что в executePlan) — честный HTTP-код
@@ -283,7 +284,7 @@ plansRoutes.post("/:id/plans/:planId/execute", requireAuth, async (c) => {
     if (row.status !== "draft") {
       return c.json(
         {
-          error: `План в статусе «${row.status}» нельзя исполнить`,
+          error: tl("server.routes.plans.planNotExecutable", "План в статусе «{status}» нельзя исполнить", { status: row.status }),
           code: "PLAN_CONFLICT",
         },
         409,
@@ -291,7 +292,7 @@ plansRoutes.post("/:id/plans/:planId/execute", requireAuth, async (c) => {
     }
     if (isGenerationActive(id)) {
       return c.json(
-        { error: "Генерация уже идёт", code: "PLAN_CONFLICT" },
+        { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "PLAN_CONFLICT" },
         409,
       );
     }

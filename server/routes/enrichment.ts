@@ -53,10 +53,11 @@ import {
   notFoundJson,
   showcaseForbiddenJson,
 } from "./syntheses.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const enrichmentRoutes = new Hono<AuthEnv>();
 
-const elementNotFoundJson = { error: "Элемент не найден", code: "NOT_FOUND" } as const;
+const elementNotFoundJson = { error: tl("common.elementNotFound", "Элемент не найден"), code: "NOT_FOUND" } as const;
 
 /** Гейт запуска: не-UUID/нет → 404, чужой → 403, активная операция → 409. */
 async function ownerEditGate(
@@ -74,7 +75,7 @@ async function ownerEditGate(
   if (row.userId !== userId) return c.json(forbiddenJson, 403);
   if (isGenerationActive(id))
     return c.json(
-      { error: "Генерация уже идёт", code: "GENERATION_IN_PROGRESS" },
+      { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" },
       409,
     );
   return null;
@@ -89,7 +90,7 @@ async function readJson(c: Context): Promise<unknown> {
 }
 
 function validationJson(c: Context, details: Record<string, string>): Response {
-  return c.json({ error: "Невалидные данные", code: "VALIDATION_ERROR", details }, 400);
+  return c.json({ error: tl("common.invalidData", "Невалидные данные"), code: "VALIDATION_ERROR", details }, 400);
 }
 
 /** Элемент принадлежит синтезу? (синхронный 404 до фона) */

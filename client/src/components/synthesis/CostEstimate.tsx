@@ -17,6 +17,7 @@ import {
   type CreateSynthesisInput,
   type SynthesisEstimate,
 } from "../../api/syntheses";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const DEBOUNCE_MS = 600;
 
@@ -29,7 +30,7 @@ export interface CostEstimateProps {
 function fmtEstimate(e: SynthesisEstimate): string {
   const inK = Math.round(e.inTokens / 1000);
   const outK = Math.round(e.outTokens / 1000);
-  return `≈ $${e.cost.toFixed(2)} · ${e.passes} проход(ов) · ~${inK}K in / ${outK}K out токенов`;
+  return tl("synthesis.costEstimate.estimate", "≈ ${cost} · {passes} проход(ов) · ~{inK}K in / {outK}K out токенов", { cost: e.cost.toFixed(2), passes: e.passes, inK, outK });
 }
 
 export function CostEstimate({ params }: CostEstimateProps) {
@@ -55,7 +56,7 @@ export function CostEstimate({ params }: CostEstimateProps) {
         })
         .catch(() => {
           if (seqRef.current !== seq) return;
-          setText("оценка недоступна");
+          setText(tl("synthesis.costEstimate.unavailable", "оценка недоступна"));
         })
         .finally(() => {
           if (seqRef.current === seq) setLoading(false);
@@ -81,7 +82,7 @@ export function CostEstimate({ params }: CostEstimateProps) {
         textAlign: "right",
       }}
     >
-      {loading ? "оценка…" : text}
+      {loading ? tl("synthesis.costEstimate.estimating", "оценка…") : text}
     </div>
   );
 }

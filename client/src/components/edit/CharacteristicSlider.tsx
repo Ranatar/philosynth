@@ -43,6 +43,7 @@ import {
 import type { CharacteristicJustification } from "@philosynth/shared/types/elements";
 
 import { messageOfEnrichmentError, type EnrichmentStream } from "../../hooks/useEnrichmentStream";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Шаг ползунка REAL-характеристик (как RangeField 5.2) */
 export const REAL_STEP = 0.05;
@@ -204,10 +205,10 @@ export function CharacteristicSlider({
           className={"char-slider-why" + (isStreamingThis || loading ? " loading" : "")}
           title={
             open
-              ? "Скрыть обоснование"
+              ? tl("edit.characteristicSlider.hideJustification", "Скрыть обоснование")
               : readOnly
-                ? "Показать сохранённые обоснования"
-                : "Обоснование значения (запрос к Claude)"
+                ? tl("edit.characteristicSlider.showSavedJustifications", "Показать сохранённые обоснования")
+                : tl("edit.characteristicSlider.justifyValue", "Обоснование значения (запрос к Claude)")
           }
           aria-expanded={open}
           onClick={() => void toggle()}
@@ -298,13 +299,13 @@ function JustificationBlock({
       data-testid="char-justification"
     >
       <div className="char-justification-meta">
-        обоснование · {spec.labelRu}
+        {tl("edit.characteristicSlider.justificationOf", "обоснование · {labelRu}", { labelRu: spec.labelRu })}
         {latest && !streaming
           ? ` = ${formatCharacteristic(spec, latest.value)} · ${fmtDate(latest.createdAt)} · $${latest.costUsd.toFixed(4)}`
           : streaming
-            ? " · генерируется…"
+            ? tl("edit.characteristicSlider.generatingSuffix", " · генерируется…")
             : loading
-              ? " · загрузка…"
+              ? tl("edit.characteristicSlider.loadingSuffix", " · загрузка…")
               : ""}
       </div>
       {streaming ? (
@@ -314,19 +315,19 @@ function JustificationBlock({
           <div>{latest.justification}</div>
           {latest.limitations && (
             <div className="char-justification-part">
-              <span className="char-justification-part-label">Ограничения</span>
+              <span className="char-justification-part-label">{tl("edit.characteristicSlider.limitations", "Ограничения")}</span>
               {latest.limitations}
             </div>
           )}
           {latest.alternativeApproaches && (
             <div className="char-justification-part">
-              <span className="char-justification-part-label">Альтернативные подходы</span>
+              <span className="char-justification-part-label">{tl("edit.characteristicSlider.alternativeApproaches", "Альтернативные подходы")}</span>
               {latest.alternativeApproaches}
             </div>
           )}
         </>
       ) : error ? null : loading ? null : (
-        <div>Обоснований ещё нет.</div>
+        <div>{tl("edit.characteristicSlider.noJustifications", "Обоснований ещё нет.")}</div>
       )}
       {error && <div className="pool-status err">{error}</div>}
       <div className="actions-bar-btns char-justification-actions">
@@ -337,11 +338,11 @@ function JustificationBlock({
             disabled={streaming || loading}
             onClick={onRequest}
           >
-            {latest ? "Обосновать заново" : "Обосновать"}
+            {latest ? tl("edit.characteristicSlider.justifyAgain", "Обосновать заново") : tl("edit.characteristicSlider.justify", "Обосновать")}
           </button>
         )}
         <button type="button" className="action-btn" onClick={onClose}>
-          Скрыть
+          {tl("edit.characteristicSlider.hide", "Скрыть")}
         </button>
       </div>
     </div>

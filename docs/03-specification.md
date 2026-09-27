@@ -211,18 +211,41 @@ POST   /auth/logout            (no body)
                                 → { ok: true }
 
 GET    /auth/me                → { user: { id, email, displayName, role, balanceUsd,
-                                            emailVerified } }
+                                            emailVerified, uiLocale, genLang } }
                                 // 9.1: emailVerified = users.email_verified_at
                                 // IS NOT NULL. Нужен полосе «Адрес не
                                 // подтверждён» в шапке; НИЧЕГО не ограничивает.
+                                // 11.2: uiLocale ('ru'|'en'|'de'|null) и genLang
+                                // (значение syntheses.lang | null) — users.ui_locale /
+                                // gen_lang; null — не выбирал. AuthUser сервера и
+                                // клиента несут оба поля (сторож 4e).
 
-PATCH  /auth/me                { displayName }
+PATCH  /auth/me                { displayName?, uiLocale?, genLang? }  — хотя бы одно
                                 → { user: { id, email, displayName, role, balanceUsd,
-                                            emailVerified } }
+                                            emailVerified, uiLocale, genLang } }
+                                // 11.2 — связь языков ОДНОСТОРОННЯЯ (правило
+                                // владельца, Фаза 11): {uiLocale} пишет ui_locale И
+                                // gen_lang = genLangForUi(uiLocale) (ru→Russian,
+                                // en→English, de→German, иначе English); {genLang}
+                                // пишет только gen_lang (trim, ≤ 60), ui_locale не
+                                // трогает. uiLocale вне UI_LOCALES → VALIDATION_ERROR
+                                // + details.uiLocale; genLang пустой → details.genLang;
+                                // ни одного поля → details.displayName «Обязательное поле».
                                 // Смена отображаемого имени (A3, беседа 0.6).
                                 // Требует сессии. trim; пустая строка → null;
                                 // длина > 100 → VALIDATION_ERROR +
                                 // details.displayName
+
+// ЯЗЫК ОТВЕТОВ СЕРВЕРА (11.2). Тексты ошибок и сообщений всех роутов
+// пишутся через tl(key, ru, params) (shared/i18n/t.ts) и отдаются на ЯЗЫКЕ
+// ЗАПРОСА: users.ui_locale вошедшего → cookie ui_locale → Accept-Language
+// (первый из UI_LOCALES по q; 'en-GB' → 'en') → ru. Контекст открывает
+// middleware requestLocale (server/i18n/locale.ts, AsyncLocalStorage) ДО
+// роутов; requireAuth/optionalAuth, найдя пользователя с ui_locale,
+// поднимают язык в том же контексте. Каталоги —
+// packages/shared/i18n/generated/<lang>.json (npm run i18n:split); нет
+// перевода → русский текст. Коды ошибок (code) и машинные значения языком
+// не меняются — клиент ветвится по code, не по тексту.
 
 POST   /auth/password-change   { currentPassword, newPassword }
                                 → { ok: true }
@@ -548,6 +571,12 @@ POST   /syntheses/:id/duplicate → { id: string }
 POST   /syntheses/import       multipart/form-data: file (HTML)
                                 → { id: string, warnings: ImportWarning[],
                                     lineageCandidates: LineageCandidate[] }
+                                // 11.2 (Д-16): предупреждения разбора графа 11.1
+                                // (направление связи подставлено, роль вне
+                                // ROLE_MAP, «Таблица категорий»/«Таблица связей»
+                                // не найдены по data-section) доходят до
+                                // warnings (field 'graph') И при нуле категорий —
+                                // раньше ветка с пустым графом их глотала.
                                 // 8.5: файлы одностраничника UUID не несут
                                 // (в живом файле 0 вхождений synthesisId) —
                                 // ветка UUID (4.3) для них мертва. После её
@@ -808,6 +837,12 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
                                  // GET /sections/:key; во вложенных sections
                                  // гостя поля нет. Клиент у запертых карандаша
                                  // НЕ рисует вовсе
+  parseWarnings?: string[];      // 11.2 (Д-16, аддитивно): предупреждения разбора
+                                 // раздела из генлога — metadata.parseWarnings строк
+                                 // ПОСЛЕДНЕЙ полной (пере)генерации раздела
+                                 // (source ≠ subsection_regen) и её подраздельных
+                                 // догенераций, без повторов. Пустой массив — разбор
+                                 // без потерь. Несёт GET /sections/:key; показ — 11.3
 }
 ```
 

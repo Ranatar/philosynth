@@ -15,6 +15,7 @@
  * BillingPage; полные типы не нужны.
  */
 
+import { tl } from "@philosynth/shared/i18n/t";
 export interface StripeElement {
   mount(target: HTMLElement | string): void;
   unmount(): void;
@@ -69,12 +70,12 @@ function loadScript(): Promise<StripeFactory> {
     const script = existing ?? document.createElement("script");
     const done = (): void => {
       if (window.Stripe) resolve(window.Stripe);
-      else reject(new Error("Stripe.js загружен, но window.Stripe отсутствует"));
+      else reject(new Error(tl("utils.stripe.stripeMissing", "Stripe.js загружен, но window.Stripe отсутствует")));
     };
     script.addEventListener("load", done);
     script.addEventListener("error", () => {
       loading = null;
-      reject(new Error("Не удалось загрузить Stripe.js (js.stripe.com недоступен)"));
+      reject(new Error(tl("utils.stripe.stripeLoadFailed", "Не удалось загрузить Stripe.js (js.stripe.com недоступен)")));
     });
     if (!existing) {
       script.src = SCRIPT_SRC;
@@ -90,7 +91,7 @@ let instance: StripeInstance | null = null;
 /** Экземпляр Stripe (один на вкладку). Бросает, если ключа нет или CDN недоступен. */
 export async function getStripe(): Promise<StripeInstance> {
   const pk = stripePublishableKey();
-  if (!pk) throw new Error("VITE_STRIPE_PUBLISHABLE_KEY не задан");
+  if (!pk) throw new Error(tl("utils.stripe.stripeKeyMissing", "VITE_STRIPE_PUBLISHABLE_KEY не задан"));
   if (instance) return instance;
   const factory = await loadScript();
   instance = factory(pk);

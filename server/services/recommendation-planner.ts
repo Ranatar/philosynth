@@ -64,7 +64,8 @@ import { KEY_LABELS, isSectionKey } from "@philosynth/shared/constants/section-l
 
 import { db } from "../db/index.js";
 import { recommendations, sections, syntheses } from "../db/schema.js";
-import { innerTextTrimmed, parseFragment, type HtmlElement } from "../utils/html-parser.js";
+import { innerTextTrimmed, parseFragment, resolveSubsection, type HtmlElement } from "../utils/html-parser.js";
+import { loadExpectedSubsectionOrder } from "./subsection-order.js"; // 11.2, Д-16
 import { truncateText } from "../utils/text.js";
 import { PlanError, createPlan } from "./edit-planner.js";
 import {
@@ -85,6 +86,7 @@ import type {
   RecommendationDecline,
   RecommendationsPlanResponse,
 } from "@philosynth/shared/types/recommendations";
+import { tl } from "@philosynth/shared/i18n/t";
 
 type RecRow = typeof recommendations.$inferSelect;
 
@@ -116,8 +118,8 @@ export function validateSelection(
   };
   if (!Array.isArray(requested) || requested.length === 0)
     fail(
-      "Назовите рекомендации поштучно: nums — непустой список номеров («2», «5а»). " +
-        "Исполнить все разом нельзя намеренно.",
+      tl("server.recommendationPlanner.nameOneByOne", "Назовите рекомендации поштучно: nums — непустой список номеров («2», «5а»). ") +
+        tl("server.recommendationPlanner.allAtOnceForbidden", "Исполнить все разом нельзя намеренно."),
     );
   const known = new Map<string, string>(); // нормализованный → как в таблице
   for (const n of roundNums) known.set(norm(n).replace(/\s+/g, ""), n);
@@ -130,18 +132,18 @@ export function validateSelection(
   const out: string[] = [];
   for (const raw of requested as unknown[]) {
     if (typeof raw !== "string" || !RECOMMENDATION_NUM_RE.test(raw.trim()))
-      fail(`«${String(raw)}» — не номер рекомендации (ожидается «2» или «5а»)`);
+      fail(tl("server.recommendationPlanner.notRecommendationNumber", "«{raw}» — не номер рекомендации (ожидается «2» или «5а»)", { raw: String(raw) }));
     const k = norm(raw as string).replace(/\s+/g, "");
     if (!known.has(k)) {
       const { base, variant } = splitNum(k);
       const forks = variantsOf.get(base);
       if (!variant && forks?.length)
         fail(
-          `Рекомендация ${base} — развилка: назовите вариант (${forks.join(" или ")}). ` +
-            "Выбор между вариантами делает человек, не служба.",
+          tl("server.recommendationPlanner.forkNameVariant", "Рекомендация {base} — развилка: назовите вариант ({forks}). ", { base, forks: forks.join(tl("server.recommendationPlanner.or", " или ")) }) +
+            tl("server.recommendationPlanner.humanChooses", "Выбор между вариантами делает человек, не служба."),
           { fork: forks },
         );
-      fail(`Рекомендации «${String(raw)}» в текущем раунде нет`, { available: [...known.values()] });
+      fail(tl("server.recommendationPlanner.notInRound", "Рекомендации «{raw}» в текущем раунде нет", { raw: String(raw) }), { available: [...known.values()] });
     }
     if (!out.includes(k)) out.push(k);
   }
@@ -153,7 +155,7 @@ export function validateSelection(
   for (const [base, vs] of chosenVariants)
     if (vs.length > 1)
       fail(
-        `Рекомендация ${base} — развилка, её варианты (${vs.join(", ")}) исключают друг друга: выберите один`,
+        tl("server.recommendationPlanner.forkExclusive", "Рекомендация {base} — развилка, её варианты ({vs}) исключают друг друга: выберите один", { base, vs: vs.join(", ") }),
         { fork: vs },
       );
   return { nums: out };
@@ -176,18 +178,18 @@ export function validateFieldChoices(
     throw new RecommendationsError("VALIDATION_ERROR", msg, { fields: msg, ...extra });
   };
   if (typeof requested !== "object" || Array.isArray(requested))
-    fail("fields — объект «id строки рекомендации → поле элемента»");
+    fail(tl("server.recommendationPlanner.fieldsObject", "fields — объект «id строки рекомендации → поле элемента»"));
   const byId = new Map(chosen.map((r) => [r.id, r]));
   for (const [id, field] of Object.entries(requested as Record<string, unknown>)) {
     const row = byId.get(id);
-    if (!row) fail(`Строки «${id}» нет среди выбранных рекомендаций`);
+    if (!row) fail(tl("server.recommendationPlanner.rowNotSelected", "Строки «{id}» нет среди выбранных рекомендаций", { id }));
     const r = row as (typeof chosen)[number];
     if (!r.elementId || !r.elementKind)
-      fail(`У рекомендации ${r.num} нет найденного элемента — поле выбирать не у чего`);
+      fail(tl("server.recommendationPlanner.noElementFound", "У рекомендации {num} нет найденного элемента — поле выбирать не у чего", { num: r.num }));
     const allowed = ELEMENT_STEP_FIELDS[r.elementKind as NonNullable<RecRow["elementKind"]>];
     if (typeof field !== "string" || !allowed.includes(field))
       fail(
-        `Поле «${String(field)}» у рекомендации ${r.num} недопустимо: ` +
+        tl("server.recommendationPlanner.fieldNotAllowed", "Поле «{field}» у рекомендации {num} недопустимо: ", { field: String(field), num: r.num }) +
           allowed.map((f) => `${f} (${ELEMENT_STEP_FIELD_LABELS[f] ?? f})`).join(", "),
         { allowed: [...allowed] },
       );
@@ -204,13 +206,17 @@ export function validateFieldChoices(
  * N-й пункт единственного списка; нет — null. Таблица несёт только название
  * подраздела критики («Основание»), сам довод живёт в прозе.
  */
-export function recommendationProseOf(critiqueHtml: string, num: string): string | null {
+export function recommendationProseOf(
+  critiqueHtml: string,
+  num: string,
+  expectedOrder?: readonly string[] | undefined,
+): string | null {
   const { base } = splitNum(num);
   if (!/^\d+$/.test(base)) return null;
   const root = parseFragment(critiqueHtml);
-  let host: HtmlElement | null = null;
-  for (const el of root.querySelectorAll("[data-section]"))
-    if ((el.getAttribute("data-section") ?? "") === RECOMMENDATIONS_PROSE_SUBSECTION) host = el;
+  // 11.2 (Д-16): проза ищется по каноническому имени со страховкой по месту
+  // (порядок карты critique), читается по фактическому атрибуту
+  const host: HtmlElement | null = resolveSubsection(root, RECOMMENDATIONS_PROSE_SUBSECTION, expectedOrder).el;
   if (!host) return null;
   const head = new RegExp(`^(?:рекомендация\\s*)?№?\\s*${base}(?:[а-яёa-z])?\\s*[.:)\\u2014-]`, "i");
   const blocks = Array.from(host.querySelectorAll("p, li"));
@@ -421,7 +427,7 @@ export async function buildPlanDraft(
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
-  if (!synth) throw new RecommendationsError("NOT_FOUND", "Синтез не найден");
+  if (!synth) throw new RecommendationsError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
 
   const all = await db
     .select()
@@ -432,7 +438,7 @@ export async function buildPlanDraft(
   if (round === 0)
     throw new RecommendationsError(
       "NOT_FOUND",
-      "Рекомендации ещё не разобраны — сначала POST …/recommendations/parse",
+      tl("server.recommendationPlanner.notParsed", "Рекомендации ещё не разобраны — сначала POST …/recommendations/parse"),
       { reason: "no_round" },
     );
   const roundRows = all.filter((r) => r.round === round);
@@ -452,11 +458,11 @@ export async function buildPlanDraft(
     if (r.status === "invalid") { invalid.push(r); continue; }
     if (r.status === "stale") { stale.push(r); continue; }
     if (r.status === "planned") {
-      declined.push({ id: r.id, num: r.num, position: r.position, code: "already_planned", reason: "Рекомендация уже стоит в плане правок" });
+      declined.push({ id: r.id, num: r.num, position: r.position, code: "already_planned", reason: tl("server.recommendationPlanner.alreadyInPlan", "Рекомендация уже стоит в плане правок") });
       continue;
     }
     if (r.status === "done") {
-      declined.push({ id: r.id, num: r.num, position: r.position, code: "already_done", reason: "Рекомендация уже исполнена" });
+      declined.push({ id: r.id, num: r.num, position: r.position, code: "already_done", reason: tl("server.recommendationPlanner.alreadyDone", "Рекомендация уже исполнена") });
       continue;
     }
     const now = sourceHashFor(doc, r);
@@ -490,9 +496,10 @@ export async function buildPlanDraft(
     .from(sections)
     .where(and(eq(sections.synthesisId, synthesisId), eq(sections.key, RECOMMENDATIONS_SECTION_KEY)))
     .limit(1);
+  const critiqueOrder = (await loadExpectedSubsectionOrder(synthesisId))[RECOMMENDATIONS_SECTION_KEY] ?? [];
   const proseCache = new Map<string, string | null>();
   const proseOf = (num: string): string | null => {
-    if (!proseCache.has(num)) proseCache.set(num, critique ? recommendationProseOf(critique.html, num) : null);
+    if (!proseCache.has(num)) proseCache.set(num, critique ? recommendationProseOf(critique.html, num, critiqueOrder) : null);
     return proseCache.get(num) ?? null;
   };
   const draft = rowsToPlanActions(eligible, proseOf, synth.sectionOrder ?? [], fieldChoices);
@@ -513,7 +520,7 @@ export async function buildPlanDraft(
   if (draft.plannedIds.length === 0)
     throw new RecommendationsError(
       "RECOMMENDATIONS_NOT_PLANNABLE",
-      hint ?? declined[0]?.reason ?? "Ни одна из названных рекомендаций в план не вошла",
+      hint ?? declined[0]?.reason ?? tl("server.recommendationPlanner.noneIncluded", "Ни одна из названных рекомендаций в план не вошла"),
       {
         stale: stale.map((r) => ({ id: r.id, num: r.num, position: r.position })),
         invalid: invalid.map((r) => ({ id: r.id, num: r.num, position: r.position, reason: r.invalidReason })),

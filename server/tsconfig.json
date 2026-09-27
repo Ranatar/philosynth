@@ -7,5 +7,5 @@
     "types": ["node"]
   },
   "references": [{ "path": "../packages/shared" }],
-  "include": ["index.ts", "env.ts", "redis.ts", "db", "middleware", "routes", "services", "config", "utils", "ws"]
+  "include": ["index.ts", "env.ts", "redis.ts", "db", "middleware", "routes", "services", "config", "utils", "ws", "i18n"]
 }

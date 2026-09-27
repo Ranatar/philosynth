@@ -73,6 +73,7 @@ import { SynthesisList } from "../components/catalog/SynthesisList";
 import { LineageSearch } from "../components/lineage/LineageSearch";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
 import { useAuthStore } from "../stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const PAGE_LIMIT = 20;
 const SEARCH_DEBOUNCE_MS = 400;
@@ -104,25 +105,25 @@ export function actionErrorText(
   if (err.code === "VALIDATION_ERROR" && field) {
     const d = err.details as Record<string, unknown> | undefined;
     const v = d && typeof d === "object" ? d[field] : undefined;
-    if (typeof v === "string") return `Название: ${v}`;
+    if (typeof v === "string") return tl("catalogPage.titleValue", "Название: {title}", { title: v });
   }
   if (err.code === "GENERATION_IN_PROGRESS")
-    return "Генерация ещё идёт — дождитесь завершения или остановите её.";
-  if (err.code === "FORBIDDEN") return "Действие доступно только владельцу.";
+    return tl("catalogPage.generationRunning", "Генерация ещё идёт — дождитесь завершения или остановите её.");
+  if (err.code === "FORBIDDEN") return tl("catalogPage.ownerOnlyAction", "Действие доступно только владельцу.");
   return err.message || fallback;
 }
 
 /** Текст ошибки сохранения публичности (8.7): details.visibility у 400,
  *  403 — только владелец, прочее — сообщение сервера */
 export function visibilityErrorText(err: unknown): string {
-  if (!(err instanceof ApiError)) return "Не удалось изменить публичность.";
+  if (!(err instanceof ApiError)) return tl("catalogPage.visibilityChangeFailed", "Не удалось изменить публичность.");
   if (err.code === "VALIDATION_ERROR") {
     const d = err.details as Record<string, unknown> | undefined;
     const v = d && typeof d === "object" ? d.visibility : undefined;
-    if (typeof v === "string") return `Публичность: ${v}`;
+    if (typeof v === "string") return tl("catalogPage.visibilityValue", "Публичность: {visibility}", { visibility: v });
   }
-  if (err.code === "FORBIDDEN") return "Публичность меняет только владелец.";
-  return err.message || "Не удалось изменить публичность.";
+  if (err.code === "FORBIDDEN") return tl("catalogPage.visibilityOwnerOnly", "Публичность меняет только владелец.");
+  return err.message || tl("catalogPage.visibilityChangeFailed", "Не удалось изменить публичность.");
 }
 
 export interface CatalogPageProps {
@@ -201,7 +202,7 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
       setItems([]);
       setTotal(0);
       setError(
-        err instanceof ApiError ? err.message : "Не удалось загрузить каталог.",
+        err instanceof ApiError ? err.message : tl("catalogPage.catalogLoadFailed", "Не удалось загрузить каталог."),
       );
     } finally {
       if (seq === reqSeq.current) setLoading(false);
@@ -260,7 +261,7 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
           );
           return null;
         } catch (err) {
-          return actionErrorText(err, "title", "Не удалось переименовать.");
+          return actionErrorText(err, "title", tl("catalogPage.renameFailed", "Не удалось переименовать."));
         }
       },
       onDuplicate: async (s) => {
@@ -269,7 +270,7 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
           await fetchList({ silent: true });
           return null;
         } catch (err) {
-          return actionErrorText(err, null, "Не удалось создать копию.");
+          return actionErrorText(err, null, tl("catalogPage.copyFailed", "Не удалось создать копию."));
         }
       },
       onDelete: async (s) => {
@@ -278,7 +279,7 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
           await fetchList({ silent: true });
           return null;
         } catch (err) {
-          return actionErrorText(err, null, "Не удалось удалить концепцию.");
+          return actionErrorText(err, null, tl("catalogPage.deleteFailed", "Не удалось удалить концепцию."));
         }
       },
       countDescendants: async (s) => {
@@ -329,29 +330,29 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
     <div>
       <div className="actions-bar">
         <h1 className="form-section-title" style={{ margin: 0, border: "none" }}>
-          {publicOnly ? "Публичные концепции" : "Каталог концепций"}
+          {publicOnly ? tl("catalogPage.publicConcepts", "Публичные концепции") : tl("catalogPage.conceptCatalog", "Каталог концепций")}
         </h1>
         {publicOnly ? (
           authenticated ? (
             <Link to="/catalog" className="action-btn">
-              Мой каталог
+              {tl("catalogPage.myCatalog", "Мой каталог")}
             </Link>
           ) : (
             <Link to="/register" className="action-btn primary" data-testid="explore-register">
-              Создать аккаунт
+              {tl("common.createAccount", "Создать аккаунт")}
             </Link>
           )
         ) : (
           <Link to="/synthesis/new" className="action-btn primary">
-            Новый синтез
+            {tl("catalogPage.newSynthesis", "Новый синтез")}
           </Link>
         )}
       </div>
 
       <div className="actions-bar" data-testid="catalog-tabs">
         <div className="actions-bar-btns">
-          {!publicOnly && tabBtn("mine", "Мои")}
-          {!publicOnly && tabBtn("public", "Публичные")}
+          {!publicOnly && tabBtn("mine", tl("catalogPage.tabMine", "Мои"))}
+          {!publicOnly && tabBtn("public", tl("catalogPage.tabPublic", "Публичные"))}
         </div>
         <div className="actions-bar-btns">
           {/* Поиск по генеалогии — /lineage/search под requireAuth: гостю
@@ -361,16 +362,16 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
               type="button"
               className="action-btn"
               onClick={() => setLineageSearchOpen((v) => !v)}
-              title="Поиск концепций по философам-предкам"
+              title={tl("catalogPage.lineageSearchHint", "Поиск концепций по философам-предкам")}
             >
-              {lineageSearchOpen ? "▾" : "▸"} Генеалогия
+              {tl("catalogPage.genealogyToggle", "{lineageSearchOpen} Генеалогия", { lineageSearchOpen: lineageSearchOpen ? "▾" : "▸" })}
             </button>
           )}
           <input
             type="search"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Поиск по названию…"
+            placeholder={tl("catalogPage.searchByTitle", "Поиск по названию…")}
             className="form-input"
             style={{ width: 256 }}
           />
@@ -387,15 +388,15 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
         <div className="callout gold catalog-filter-bar">
           <span>
             {descendantsError
-              ? "⚠ Не удалось загрузить потомков — фильтр не применён."
+              ? tl("catalogPage.descendantsLoadFailed", "⚠ Не удалось загрузить потомков — фильтр не применён.")
               : descendantIds === null
-                ? "Загрузка потомков…"
+                ? tl("catalogPage.loadingDescendants", "Загрузка потомков…")
                 : descendantIds.size === 0
-                  ? "У этой концепции нет потомков (видимых вам)."
-                  : "Показаны только потомки концепции (" +
+                  ? tl("catalogPage.noVisibleDescendants", "У этой концепции нет потомков (видимых вам).")
+                  : tl("catalogPage.onlyDescendantsLead", "Показаны только потомки концепции (") +
                     descendantIds.size +
-                    ") — пересечение с текущей вкладкой."}{" "}
-            <Link to={`/synthesis/${descendantsOf}`}>◈ к концепции</Link>
+                    tl("catalogPage.onlyDescendantsTail", ") — пересечение с текущей вкладкой.")}{" "}
+            <Link to={`/synthesis/${descendantsOf}`}>{tl("catalogPage.toConcept", "◈ к концепции")}</Link>
           </span>
           <button
             type="button"
@@ -406,17 +407,17 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
               setSearchParams(searchParams, { replace: true });
             }}
           >
-            ✕ Сбросить фильтр
+            {tl("catalogPage.resetFilter", "✕ Сбросить фильтр")}
           </button>
         </div>
       )}
 
       <div>
         {loading ? (
-          <LoadingSpinner label="загрузка каталога…" />
+          <LoadingSpinner label={tl("catalogPage.loadingCatalog", "загрузка каталога…")} />
         ) : error ? (
           <div className="callout warning">
-            <span className="callout-label">Ошибка</span>
+            <span className="callout-label">{tl("common.error", "Ошибка")}</span>
             {error}
           </div>
         ) : (
@@ -424,12 +425,12 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
             items={visibleItems}
             emptyText={
               descendantsOf && descendantIds !== null && !descendantsError
-                ? "На этой вкладке потомков выбранной концепции нет."
+                ? tl("catalogPage.noDescendantsInTab", "На этой вкладке потомков выбранной концепции нет.")
                 : search
-                  ? "Ничего не найдено по запросу."
+                  ? tl("catalogPage.nothingFound", "Ничего не найдено по запросу.")
                   : tab === "mine"
-                    ? "У вас пока нет синтезов — начните с «Новый синтез»."
-                    : "Публичных синтезов пока нет."
+                    ? tl("catalogPage.noSynthesesYet", "У вас пока нет синтезов — начните с «Новый синтез».")
+                    : tl("catalogPage.noPublicSyntheses", "Публичных синтезов пока нет.")
             }
             visibility={tab === "mine" ? cardVisibility : undefined}
             actions={tab === "mine" ? cardActions : undefined}
@@ -445,10 +446,10 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            ← Назад
+            {tl("catalogPage.back", "← Назад")}
           </button>
           <span className="pool-summary" style={{ margin: 0, border: "none", padding: 0 }}>
-            стр. {page} / {totalPages} · всего {total}
+            {tl("catalogPage.pageOfTotal", "стр. {page} / {totalPages} · всего {total}", { page, totalPages, total })}
           </span>
           <button
             type="button"
@@ -456,7 +457,7 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >
-            Вперёд →
+            {tl("catalogPage.forward", "Вперёд →")}
           </button>
         </div>
       )}

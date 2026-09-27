@@ -43,6 +43,7 @@ import {
   VISIBILITY_STEPS,
   type VisibilityFlagKey,
 } from "../../utils/visibility-text";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface VisibilityControlProps {
   synthesisId: string;
@@ -88,7 +89,7 @@ export function VisibilityControl({
       })
       .catch(() => {
         if (!cancelled)
-          setLoadError("Не удалось загрузить настройки публичности.");
+          setLoadError(tl("catalog.visibilityControl.loadFailed", "Не удалось загрузить настройки публичности."));
       });
     return () => {
       cancelled = true;
@@ -127,9 +128,9 @@ export function VisibilityControl({
       data-testid="visibility-control"
       onClick={stop}
     >
-      <div className="form-label">Публичность</div>
+      <div className="form-label">{tl("catalog.visibilityControl.visibility", "Публичность")}</div>
 
-      <div className="visibility-steps" role="radiogroup" aria-label="Ступень публичности">
+      <div className="visibility-steps" role="radiogroup" aria-label={tl("catalog.visibilityControl.visibilityLevel", "Ступень публичности")}>
         {VISIBILITY_STEPS.map((v) => (
           <button
             key={v}
@@ -156,7 +157,7 @@ export function VisibilityControl({
           {loadError}
         </div>
       )}
-      {!draft && !loadError && <div className="pool-status">Загрузка…</div>}
+      {!draft && !loadError && <div className="pool-status">{tl("common.loading", "Загрузка…")}</div>}
 
       {draft && shownFlags.length > 0 && (
         <div className="visibility-flags" data-testid="visibility-flags">
@@ -180,8 +181,7 @@ export function VisibilityControl({
       )}
       {draft && shownStep === "full" && (
         <div className="visibility-note">
-          Стоимость и токены галочкой не управляются: их видит любой
-          зарегистрированный, гость — никогда.
+          {tl("catalog.visibilityControl.costNote", "Стоимость и токены галочкой не управляются: их видит любой зарегистрированный, гость — никогда.")}
         </div>
       )}
 
@@ -208,7 +208,7 @@ export function VisibilityControl({
             void save();
           }}
         >
-          {busy ? "Сохраняю…" : "Сохранить"}
+          {busy ? tl("catalog.visibilityControl.saving", "Сохраняю…") : tl("common.save", "Сохранить")}
         </button>
         <button
           type="button"
@@ -219,7 +219,7 @@ export function VisibilityControl({
             onClose();
           }}
         >
-          Отмена
+          {tl("common.cancel", "Отмена")}
         </button>
       </div>
     </div>

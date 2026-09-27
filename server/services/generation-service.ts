@@ -73,6 +73,7 @@ import { env } from "../env.js";
 import {
   innerTextTrimmed,
   parseFragment,
+  resolveSubsection,
   spliceSubsectionHtml,
   type HtmlElement,
 } from "../utils/html-parser.js";
@@ -149,6 +150,7 @@ import {
   parseThesesFromHTML,
   saveElementsToDb,
 } from "./element-parser.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ══ Разъём провайдера родительского контекста (TODO 1.2 → 1.4) ═══════ */
 
@@ -516,7 +518,7 @@ export async function loadSynthesis(
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
-  if (!row) throw new GenerationError("NOT_FOUND", "Синтез не найден");
+  if (!row) throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
 
   const lineage = await db
     .select()
@@ -591,7 +593,7 @@ export function assertCanStartGeneration(userId: string): void {
   if (activeRunsOfUser(userId) >= env.rateLimit.concurrentGenerations) {
     throw new GenerationError(
       "RATE_LIMIT",
-      `Не более ${env.rateLimit.concurrentGenerations} одновременных генераций`,
+      tl("server.generationService.concurrencyLimit", "Не более {concurrentGenerations} одновременных генераций", { concurrentGenerations: env.rateLimit.concurrentGenerations }),
     );
   }
 }
@@ -676,7 +678,7 @@ export async function withGenerationSlot(
   if (activeRuns.has(synthesisId)) {
     throw new GenerationError(
       "GENERATION_IN_PROGRESS",
-      "Генерация уже запущена для этого синтеза",
+      tl("server.generationService.alreadyRunning", "Генерация уже запущена для этого синтеза"),
     );
   }
   assertCanStartGeneration(userId);
@@ -726,7 +728,7 @@ export async function generateSynthesis(
     async (handle) => {
       const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
       if (row.userId !== userId) {
-        throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
+        throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
       }
       Object.assign(secCtx, opts.sectionContexts ?? {});
       // 6.1: ключ — из решения биллинга (BYO пользователя или серверный)
@@ -765,7 +767,7 @@ export async function resumeSynthesisFromPass(
     async (handle) => {
       const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
       if (row.userId !== userId) {
-        throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
+        throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
       }
       Object.assign(secCtx, opts.sectionContexts ?? {});
       await runGenerationPasses(handle, row, philosophers, secCtx, handle.billing.apiKey, {
@@ -1143,7 +1145,7 @@ export async function runGenerationPasses(
           }
         }
         if (attemptUsage === null) {
-          throw lastErr ?? new StreamError("неизвестная ошибка", "pre-stream");
+          throw lastErr ?? new StreamError(tl("server.generationService.unknownError", "неизвестная ошибка"), "pre-stream");
         }
         usage = attemptUsage;
       } catch (rawErr) {
@@ -1731,7 +1733,7 @@ export async function streamWithRetries(
       throw e;
     }
   }
-  if (usage === null) throw new StreamError("неизвестная ошибка", "pre-stream");
+  if (usage === null) throw new StreamError(tl("server.generationService.unknownError", "неизвестная ошибка"), "pre-stream");
   return { usage, html };
 }
 
@@ -1896,7 +1898,7 @@ export async function regenerateSection(
   if (!sectionOrder.includes(sectionKey)) {
     throw new GenerationError(
       "VALIDATION_ERROR",
-      `Раздел «${sectionKey}» отсутствует в документе`,
+      tl("server.generationService.sectionMissing", "Раздел «{sectionKey}» отсутствует в документе", { sectionKey }),
     );
   }
 
@@ -1941,7 +1943,7 @@ export async function regenerateSection(
   if (!def) {
     throw new GenerationError(
       "VALIDATION_ERROR",
-      `Раздел «${sectionKey}» не найден в определениях.`,
+      tl("server.generationService.sectionNotInDefs", "Раздел «{sectionKey}» не найден в определениях.", { sectionKey }),
     );
   }
   const [secRow] = await db
@@ -2173,81 +2175,12 @@ export interface SubsectionRegenOpts {
   userNote?: string | undefined;
 }
 
-/** Результат поиска подраздела (11.1). */
-export interface SubsectionLookup {
-  el: HtmlElement | null;
-  /** Фактическое значение data-section найденного элемента (может
-   *  отличаться от искомого имени — нечёткое совпадение или опознание по
-   *  месту); null — не найден. */
-  actualName: string | null;
-  /** Найден не по имени, а по позиции в ожидаемом порядке карты. */
-  byPosition: boolean;
-  /** Предупреждение для генлога (опознан по месту / не найден и почему). */
-  warning: string | null;
-}
-
-/**
- * Поиск подраздела [20390–20402] со СТРАХОВКОЙ 11.1: точное имя → нечёткое
- * включение (как в исходнике) → по позиции. Запрет переводить data-section в
- * системном промпте — просьба, а не гарантия: модель, пишущая нерусский
- * документ, может «исправить» русский атрибут. Порядок подразделов раздела
- * задан картой subsection_map жёстко, поэтому при переданном ожидаемом
- * порядке и СОВПАДАЮЩЕМ числе подразделов раздела подраздел опознаётся по
- * месту с предупреждением; число не совпало — честный отказ (el: null), но с
- * предупреждением о причине. Ожидаемый порядок — тот же buildSubsectionMap,
- * по которому строилось задание раздела; второго списка нет.
- */
-export function resolveSubsection(
-  container: HtmlElement,
-  name: string,
-  expectedOrder?: readonly string[] | undefined,
-): SubsectionLookup {
-  const exact = container.querySelector(`[data-section="${name}"]`);
-  if (exact) return { el: exact, actualName: name, byPosition: false, warning: null };
-  const all = Array.from(container.querySelectorAll("[data-section]"));
-  const lower = name.toLowerCase();
-  for (const sub of all) {
-    const attr = sub.getAttribute("data-section") ?? "";
-    const n = attr.toLowerCase();
-    if (n.includes(lower) || lower.includes(n))
-      return { el: sub, actualName: attr, byPosition: false, warning: null };
-  }
-  if (!expectedOrder || expectedOrder.length === 0) {
-    return {
-      el: null,
-      actualName: null,
-      byPosition: false,
-      warning: `подраздел «${name}» не найден по имени (атрибуты data-section раздела: ${all
-        .map((e) => `"${e.getAttribute("data-section") ?? ""}"`)
-        .join(", ") || "нет"}); ожидаемый порядок не передан — опознать по месту нельзя`,
-    };
-  }
-  const idx = expectedOrder.indexOf(name);
-  if (idx < 0) {
-    return {
-      el: null,
-      actualName: null,
-      byPosition: false,
-      warning: `подраздел «${name}» не найден по имени и отсутствует в ожидаемом порядке карты (${expectedOrder.length} имён) — опознать по месту нельзя`,
-    };
-  }
-  if (all.length !== expectedOrder.length) {
-    return {
-      el: null,
-      actualName: null,
-      byPosition: false,
-      warning: `подраздел «${name}» не найден по имени; опознать по месту нельзя: в разделе ${all.length} подраздел(ов), в карте ${expectedOrder.length}`,
-    };
-  }
-  const el = all[idx] as HtmlElement;
-  const attr = el.getAttribute("data-section") ?? "";
-  return {
-    el,
-    actualName: attr,
-    byPosition: true,
-    warning: `подраздел ${idx + 1} опознан по месту: атрибут "${attr}" вместо "${name}"`,
-  };
-}
+/** Ядро поиска подраздела со страховкой по позиции (11.1) — с 11.2 живёт в
+ *  html-parser (единственная точка linkedom), откуда его берут и
+ *  context-builder, recommendations, element-step (долг Д-16): context-builder
+ *  generation-service импортировать не может (анти-цикл 2.1). Здесь —
+ *  реэкспорт под прежним именем; сигнатура прежняя. */
+export { resolveSubsection, type SubsectionLookup } from "../utils/html-parser.js";
 
 /** Порт findSubsection [20390–20402] + страховка по позиции (11.1):
  *  тонкая обёртка над resolveSubsection, возвращает элемент. */
@@ -2378,7 +2311,7 @@ export async function regenerateSubsection(
   if (!def.parts) {
     throw new GenerationError(
       "VALIDATION_ERROR",
-      `Раздел «${sectionKey}» не имеет структурированных parts.`,
+      tl("server.generationService.noStructuredParts", "Раздел «{sectionKey}» не имеет структурированных parts.", { sectionKey }),
     );
   }
 
@@ -2404,10 +2337,15 @@ export async function regenerateSubsection(
   if (lookup.warning) console.warn(`regenerateSubsection(${sectionKey}):`, lookup.warning);
 
   /* ── 1. Контексты ── */
+  // 11.2 (Д-16): соседние подразделы тоже опознаются по месту; их
+  // предупреждения уходят в генлог вместе с lookup.warning
+  const intraWarnings: string[] = [];
   const intraSectionCtx = await extractRelevantIntraSectionContext(
     container,
     sectionKey,
     subsectionName,
+    undefined,
+    { expectedOrder, warnings: intraWarnings },
   );
   if (intraSectionCtx) {
     await logIntraSectionContext(
@@ -2513,7 +2451,8 @@ export async function regenerateSubsection(
     })
     .returning({ id: generationLog.id });
   const genEntryId = (genEntry as { id: string }).id;
-  if (lookup.warning) await appendParseWarnings(genEntryId, [lookup.warning]);
+  const lookupWarnings = [...(lookup.warning ? [lookup.warning] : []), ...intraWarnings];
+  if (lookupWarnings.length) await appendParseWarnings(genEntryId, lookupWarnings);
 
   /* ── 4. Стрим ── */
   const streamKey = `${sectionKey}:${subsectionName}`;
@@ -2641,7 +2580,7 @@ export async function runSubsectionRegen(
   if (!def) {
     throw new GenerationError(
       "VALIDATION_ERROR",
-      `Раздел «${sectionKey}» не найден в определениях.`,
+      tl("server.generationService.sectionNotInDefs", "Раздел «{sectionKey}» не найден в определениях.", { sectionKey }),
     );
   }
   const [secRow] = await db
@@ -2836,13 +2775,13 @@ export async function addSection(
   if (sectionOrder.includes(sectionKey)) {
     throw new GenerationError(
       "VALIDATION_ERROR",
-      `Раздел «${sectionKey}» уже есть в документе`,
+      tl("server.generationService.sectionExists", "Раздел «{sectionKey}» уже есть в документе", { sectionKey }),
     );
   }
   if (!(ALL_SECTION_KEYS as readonly string[]).includes(sectionKey)) {
     throw new GenerationError(
       "VALIDATION_ERROR",
-      `Неизвестный раздел «${sectionKey}»`,
+      tl("server.generationService.unknownSection", "Неизвестный раздел «{sectionKey}»", { sectionKey }),
     );
   }
 
@@ -2869,7 +2808,7 @@ export async function addSection(
     if (!newDef) {
       throw new GenerationError(
         "VALIDATION_ERROR",
-        `Раздел «${sectionKey}» не найден в определениях.`,
+        tl("server.generationService.sectionNotInDefs", "Раздел «{sectionKey}» не найден в определениях.", { sectionKey }),
       );
     }
     newDef.num = sectionOrder.indexOf(sectionKey) + 1;
@@ -3082,12 +3021,12 @@ export async function deleteSection(
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
-  if (!row) throw new GenerationError("NOT_FOUND", "Синтез не найден");
+  if (!row) throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
   const sectionOrder: string[] = row.sectionOrder ?? [];
   if (sectionKey === "sum" || !sectionOrder.includes(sectionKey)) {
     throw new GenerationError(
       "VALIDATION_ERROR",
-      `Раздел «${sectionKey}» нельзя удалить`,
+      tl("server.generationService.sectionUndeletable", "Раздел «{sectionKey}» нельзя удалить", { sectionKey }),
     );
   }
 
@@ -3143,7 +3082,7 @@ export async function deleteSection(
   if (sectionKey === "name") {
     await db
       .update(syntheses)
-      .set({ title: "Синтез Философской Концепции", updatedAt: new Date() })
+      .set({ title: tl("common.appTitle", "Синтез Философской Концепции"), updatedAt: new Date() })
       .where(eq(syntheses.id, synthesisId));
   }
   if (sectionKey === "capsule") {

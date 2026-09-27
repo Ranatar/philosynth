@@ -60,6 +60,7 @@ import {
   SubscriptionError,
 } from "../services/subscription-service.js";
 import { CryptoConfigError } from "../utils/crypto.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const billingRoutes = new Hono<AuthEnv>();
 
@@ -157,7 +158,7 @@ billingRoutes.delete("/api-key/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   if (!UUID_RE.test(id)) {
-    return c.json({ error: "Ключ не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("server.routes.billing.keyNotFound", "Ключ не найден"), code: "NOT_FOUND" }, 404);
   }
   try {
     await deleteApiKey(id, user.id);
@@ -205,7 +206,7 @@ billingRoutes.post("/topup/confirm", async (c) => {
 function parseDate(v: string | undefined, name: string): { date?: Date; error?: string } {
   if (v === undefined || v === "") return {};
   const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return { error: `${name}: ожидается ISO-дата` };
+  if (Number.isNaN(d.getTime())) return { error: tl("server.routes.billing.isoDateExpected", "{name}: ожидается ISO-дата", { name }) };
   return { date: d };
 }
 
@@ -219,7 +220,7 @@ billingRoutes.get("/usage", async (c) => {
   if (to.error) details.to = to.error;
   if (synthesisId && !UUID_RE.test(synthesisId)) details.synthesisId = "ожидается UUID";
   if (Object.keys(details).length > 0) {
-    return c.json({ error: "Невалидные параметры", code: "VALIDATION_ERROR", details }, 400);
+    return c.json({ error: tl("server.routes.billing.invalidParams", "Невалидные параметры"), code: "VALIDATION_ERROR", details }, 400);
   }
   const history = await getUsageHistory(user.id, {
     from: from.date,
@@ -253,7 +254,7 @@ billingRoutes.post("/subscribe", async (c) => {
   const planId = typeof body.planId === "string" ? body.planId : "";
   if (!UUID_RE.test(planId)) {
     return c.json(
-      { error: "planId не задан", code: "VALIDATION_ERROR", details: { planId: "ожидается UUID тарифа" } },
+      { error: tl("server.routes.billing.planIdMissing", "planId не задан"), code: "VALIDATION_ERROR", details: { planId: tl("server.routes.billing.planUuidExpected", "ожидается UUID тарифа") } },
       400,
     );
   }

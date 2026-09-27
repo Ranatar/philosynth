@@ -99,6 +99,7 @@ import type {
 } from "@philosynth/shared/types/elements";
 import type { Category, CategoryEdge } from "@philosynth/shared/types/graph";
 import type { GlossaryTerm, Thesis } from "@philosynth/shared/types/elements";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Ошибки ──────────────────────────────────────────────────────────── */
 
@@ -207,7 +208,7 @@ function isObj(v: unknown): v is Record<string, unknown> {
 }
 
 function fail(details: Details): never {
-  throw new ElementEditorError("VALIDATION_ERROR", "Невалидные данные", details);
+  throw new ElementEditorError("VALIDATION_ERROR", tl("common.invalidData", "Невалидные данные"), details);
 }
 
 /** Строка: trim; пустая допустима только если allowEmpty. */
@@ -305,7 +306,7 @@ async function loadCategoryRow(
     .from(categories)
     .where(and(eq(categories.id, id), eq(categories.synthesisId, synthesisId)))
     .limit(1);
-  if (!row) throw new ElementEditorError("NOT_FOUND", "Категория не найдена");
+  if (!row) throw new ElementEditorError("NOT_FOUND", tl("server.elementEditor.categoryNotFound", "Категория не найдена"));
   return row;
 }
 
@@ -319,7 +320,7 @@ async function loadEdgeRow(
     .from(categoryEdges)
     .where(and(eq(categoryEdges.id, id), eq(categoryEdges.synthesisId, synthesisId)))
     .limit(1);
-  if (!row) throw new ElementEditorError("NOT_FOUND", "Связь не найдена");
+  if (!row) throw new ElementEditorError("NOT_FOUND", tl("server.elementEditor.edgeNotFound", "Связь не найдена"));
   return row;
 }
 
@@ -333,7 +334,7 @@ async function loadThesisRow(
     .from(theses)
     .where(and(eq(theses.id, id), eq(theses.synthesisId, synthesisId)))
     .limit(1);
-  if (!row) throw new ElementEditorError("NOT_FOUND", "Тезис не найден");
+  if (!row) throw new ElementEditorError("NOT_FOUND", tl("server.elementEditor.thesisNotFound", "Тезис не найден"));
   return row;
 }
 
@@ -347,7 +348,7 @@ async function loadGlossaryRow(
     .from(glossaryTerms)
     .where(and(eq(glossaryTerms.id, id), eq(glossaryTerms.synthesisId, synthesisId)))
     .limit(1);
-  if (!row) throw new ElementEditorError("NOT_FOUND", "Термин не найден");
+  if (!row) throw new ElementEditorError("NOT_FOUND", tl("server.elementEditor.termNotFound", "Термин не найден"));
   return row;
 }
 
@@ -566,7 +567,7 @@ export async function updateCategory(
   updates: unknown,
   opts: ElementUpdateOptions = {},
 ): Promise<UpdateCategoryResult> {
-  if (!isObj(updates)) fail({ body: "ожидается объект" });
+  if (!isObj(updates)) fail({ body: tl("server.elementEditor.objectExpected", "ожидается объект") });
   const d: Details = {};
   const patch: Partial<typeof categories.$inferInsert> = {};
   const set = <K extends keyof typeof patch>(k: K, v: (typeof patch)[K]) => {
@@ -595,7 +596,7 @@ export async function updateCategory(
   const tc = await catalogIdOrNull(updates["typeCatalogId"], "typeCatalogId", d, categoryTypeCatalog);
   if (tc !== undefined) patch.typeCatalogId = tc;
   if (Object.keys(d).length) fail(d);
-  if (Object.keys(patch).length === 0) fail({ body: "нет ни одного поля для обновления" });
+  if (Object.keys(patch).length === 0) fail({ body: tl("server.elementEditor.noFieldsToUpdate", "нет ни одного поля для обновления") });
 
   const { before, row, version } = await db.transaction(async (tx) => {
     const before = await loadCategoryRow(synthesisId, categoryId, tx);
@@ -608,7 +609,7 @@ export async function updateCategory(
       .set({ ...patch, source: "manual", updatedAt: new Date() })
       .where(eq(categories.id, before.id))
       .returning();
-    if (!row) throw new ElementEditorError("NOT_FOUND", "Категория не найдена");
+    if (!row) throw new ElementEditorError("NOT_FOUND", tl("server.elementEditor.categoryNotFound", "Категория не найдена"));
     return { before, row, version };
   });
 
@@ -682,7 +683,7 @@ export async function updateCategoryEdge(
   updates: unknown,
   opts: ElementUpdateOptions = {},
 ): Promise<UpdateEdgeResult> {
-  if (!isObj(updates)) fail({ body: "ожидается объект" });
+  if (!isObj(updates)) fail({ body: tl("server.elementEditor.objectExpected", "ожидается объект") });
   const d: Details = {};
   const patch: Partial<typeof categoryEdges.$inferInsert> = {};
   const set = <K extends keyof typeof patch>(k: K, v: (typeof patch)[K]) => {
@@ -705,7 +706,7 @@ export async function updateCategoryEdge(
   const tc = await catalogIdOrNull(updates["typeCatalogId"], "typeCatalogId", d, relationshipTypeCatalog);
   if (tc !== undefined) patch.typeCatalogId = tc;
   if (Object.keys(d).length) fail(d);
-  if (Object.keys(patch).length === 0) fail({ body: "нет ни одного поля для обновления" });
+  if (Object.keys(patch).length === 0) fail({ body: tl("server.elementEditor.noFieldsToUpdate", "нет ни одного поля для обновления") });
 
   const { row, version, reflexiveChanged } = await db.transaction(async (tx) => {
     const before = await loadEdgeRow(synthesisId, edgeId, tx);
@@ -718,7 +719,7 @@ export async function updateCategoryEdge(
       .set({ ...patch, sourceOrigin: "manual" })
       .where(eq(categoryEdges.id, before.id))
       .returning();
-    if (!row) throw new ElementEditorError("NOT_FOUND", "Связь не найдена");
+    if (!row) throw new ElementEditorError("NOT_FOUND", tl("server.elementEditor.edgeNotFound", "Связь не найдена"));
     const reflexiveChanged =
       "direction" in patch
         ? await recomputeReflexive(synthesisId, [row.sourceId, row.targetId], tx)
@@ -760,7 +761,7 @@ export async function createCategoryEdge(
   synthesisId: string,
   input: unknown,
 ): Promise<CreateEdgeResult> {
-  if (!isObj(input)) fail({ body: "ожидается объект" });
+  if (!isObj(input)) fail({ body: tl("server.elementEditor.objectExpected", "ожидается объект") });
   const d: Details = {};
   const values: Partial<typeof categoryEdges.$inferInsert> = {};
   const set = <K extends keyof typeof values>(k: K, v: (typeof values)[K]) => {
@@ -830,7 +831,7 @@ export async function createCategoryEdge(
         sourceOrigin: "manual",
       })
       .returning();
-    if (!row) throw new ElementEditorError("NOT_FOUND", "Связь не создана");
+    if (!row) throw new ElementEditorError("NOT_FOUND", tl("server.elementEditor.edgeNotCreated", "Связь не создана"));
     const reflexiveChanged =
       direction === "рефлексивная"
         ? await recomputeReflexive(synthesisId, [row.sourceId, row.targetId], tx)
@@ -898,7 +899,7 @@ export async function updateThesis(
   updates: unknown,
   opts: ElementUpdateOptions = {},
 ): Promise<UpdateThesisResult> {
-  if (!isObj(updates)) fail({ body: "ожидается объект" });
+  if (!isObj(updates)) fail({ body: tl("server.elementEditor.objectExpected", "ожидается объект") });
   const d: Details = {};
   const patch: Partial<typeof theses.$inferInsert> = {};
   const set = <K extends keyof typeof patch>(k: K, v: (typeof patch)[K]) => {
@@ -915,7 +916,7 @@ export async function updateThesis(
   }
   set("relatedCategories", strList(updates["relatedCategories"], "relatedCategories", d));
   if (Object.keys(d).length) fail(d);
-  if (Object.keys(patch).length === 0) fail({ body: "нет ни одного поля для обновления" });
+  if (Object.keys(patch).length === 0) fail({ body: tl("server.elementEditor.noFieldsToUpdate", "нет ни одного поля для обновления") });
 
   const { before, row, version } = await db.transaction(async (tx) => {
     const before = await loadThesisRow(synthesisId, thesisId, tx);
@@ -928,7 +929,7 @@ export async function updateThesis(
       .set({ ...patch, source: "manual", updatedAt: new Date() })
       .where(eq(theses.id, before.id))
       .returning();
-    if (!row) throw new ElementEditorError("NOT_FOUND", "Тезис не найден");
+    if (!row) throw new ElementEditorError("NOT_FOUND", tl("server.elementEditor.thesisNotFound", "Тезис не найден"));
     return { before, row, version };
   });
 
@@ -989,7 +990,7 @@ export async function updateGlossaryTerm(
   updates: unknown,
   opts: ElementUpdateOptions = {},
 ): Promise<UpdateGlossaryTermResult> {
-  if (!isObj(updates)) fail({ body: "ожидается объект" });
+  if (!isObj(updates)) fail({ body: tl("server.elementEditor.objectExpected", "ожидается объект") });
   const d: Details = {};
   const patch: Partial<typeof glossaryTerms.$inferInsert> = {};
   const set = <K extends keyof typeof patch>(k: K, v: (typeof patch)[K]) => {
@@ -1005,7 +1006,7 @@ export async function updateGlossaryTerm(
     else set("extraColumns", ec as Record<string, string>);
   }
   if (Object.keys(d).length) fail(d);
-  if (Object.keys(patch).length === 0) fail({ body: "нет ни одного поля для обновления" });
+  if (Object.keys(patch).length === 0) fail({ body: tl("server.elementEditor.noFieldsToUpdate", "нет ни одного поля для обновления") });
 
   const { before, row, version } = await db.transaction(async (tx) => {
     const before = await loadGlossaryRow(synthesisId, termId, tx);
@@ -1018,7 +1019,7 @@ export async function updateGlossaryTerm(
       .set({ ...patch, source: "manual", updatedAt: new Date() })
       .where(eq(glossaryTerms.id, before.id))
       .returning();
-    if (!row) throw new ElementEditorError("NOT_FOUND", "Термин не найден");
+    if (!row) throw new ElementEditorError("NOT_FOUND", tl("server.elementEditor.termNotFound", "Термин не найден"));
     return { before, row, version };
   });
 
@@ -1060,9 +1061,9 @@ export async function autoRenameReferences(
   const o = str(oldName, "oldName", d, { max: 300 });
   const n = str(newName, "newName", d, { max: 300 });
   if (Object.keys(d).length || !o || !n) fail(d);
-  if (o === n) fail({ newName: "совпадает с oldName" });
+  if (o === n) fail({ newName: tl("server.elementEditor.sameAsOldName", "совпадает с oldName") });
   const re = nameRegex(o);
-  if (!re) fail({ oldName: "слишком короткое имя" });
+  if (!re) fail({ oldName: tl("server.elementEditor.nameTooShort", "слишком короткое имя") });
 
   return db.transaction(async (tx) => {
     const secRows = await tx
@@ -1269,7 +1270,7 @@ export async function updateCapsule(
   html: unknown,
 ): Promise<UpdateCapsuleResult> {
   if (typeof html !== "string" || !html.trim())
-    fail({ html: "ожидается непустая HTML-строка" });
+    fail({ html: tl("server.elementEditor.htmlStringExpected", "ожидается непустая HTML-строка") });
   const value = html.trim();
   return db.transaction(async (tx) => {
     const [synth] = await tx
@@ -1277,7 +1278,7 @@ export async function updateCapsule(
       .from(syntheses)
       .where(eq(syntheses.id, synthesisId))
       .limit(1);
-    if (!synth) throw new ElementEditorError("NOT_FOUND", "Синтез не найден");
+    if (!synth) throw new ElementEditorError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
     const [capRow] = await tx
       .select()
       .from(sections)
@@ -1289,7 +1290,7 @@ export async function updateCapsule(
       "section",
       capRow
         ? snapshotOf(capRow)
-        : { key: "capsule", htmlContent: synth.capsule, title: KEY_LABELS["capsule"] ?? "Капсула" },
+        : { key: "capsule", htmlContent: synth.capsule, title: KEY_LABELS["capsule"] ?? tl("common.capsule", "Капсула") },
       "manual",
       tx,
     );
@@ -1403,7 +1404,7 @@ export interface UpdateSubsectionResult {
 function subsectionNotFound(sectionHtml: string, name: string): SubsectionEditError {
   return new SubsectionEditError(
     "NOT_FOUND",
-    `Подраздел «${name}» не найден`,
+    tl("server.elementEditor.subsectionNotFound", "Подраздел «{name}» не найден", { name }),
     { available: listSubsectionNames(sectionHtml) },
   );
 }
@@ -1427,7 +1428,7 @@ export async function getSubsectionSource(
     .from(sections)
     .where(and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)))
     .limit(1);
-  if (!row) throw new SubsectionEditError("NOT_FOUND", "Раздел не найден");
+  if (!row) throw new SubsectionEditError("NOT_FOUND", tl("common.sectionNotFound", "Раздел не найден"));
   const source = readSubsectionSource(row.html, subsectionName);
   if (!source) throw subsectionNotFound(row.html, subsectionName);
   return {
@@ -1457,8 +1458,8 @@ export async function updateSubsection(
   html: unknown,
 ): Promise<UpdateSubsectionResult> {
   if (typeof html !== "string")
-    throw new SubsectionEditError("VALIDATION_ERROR", "Невалидные данные", {
-      html: "ожидается строка с разметкой подраздела",
+    throw new SubsectionEditError("VALIDATION_ERROR", tl("common.invalidData", "Невалидные данные"), {
+      html: tl("server.elementEditor.markupStringExpected", "ожидается строка с разметкой подраздела"),
     });
   // Капсула — ДО поиска: после импорта (4.3) строки sections 'capsule' нет
   // вовсе, и 404 вместо «у капсулы свой путь» увёл бы человека искать не там
@@ -1474,7 +1475,7 @@ export async function updateSubsection(
       .where(and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)))
       .limit(1)
       .for("update");
-    if (!row) throw new SubsectionEditError("NOT_FOUND", "Раздел не найден");
+    if (!row) throw new SubsectionEditError("NOT_FOUND", tl("common.sectionNotFound", "Раздел не найден"));
     if (!readSubsectionSource(row.htmlContent, subsectionName))
       throw subsectionNotFound(row.htmlContent, subsectionName);
     const lock = subsectionLockOf(sectionKey, row.htmlContent, subsectionName);
@@ -1489,7 +1490,7 @@ export async function updateSubsection(
       result = replaceSubsectionContent(row.htmlContent, subsectionName, html);
     } catch (err) {
       if (err instanceof SubsectionHtmlError)
-        throw new SubsectionEditError("VALIDATION_ERROR", "Невалидные данные", {
+        throw new SubsectionEditError("VALIDATION_ERROR", tl("common.invalidData", "Невалидные данные"), {
           html: err.message,
           problem: err.problem,
         });
@@ -1510,8 +1511,8 @@ export async function updateSubsection(
     const before = listSubsectionNames(row.htmlContent);
     const after = listSubsectionNames(result.html);
     if (before.length !== after.length || before.some((n, i) => n !== after[i]))
-      throw new SubsectionEditError("VALIDATION_ERROR", "Невалидные данные", {
-        html: "правка изменила состав подразделов раздела — не сохранено",
+      throw new SubsectionEditError("VALIDATION_ERROR", tl("common.invalidData", "Невалидные данные"), {
+        html: tl("server.elementEditor.subsectionsChanged", "правка изменила состав подразделов раздела — не сохранено"),
       });
     const version = await createVersion(
       synthesisId,

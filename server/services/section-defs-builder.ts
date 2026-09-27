@@ -61,6 +61,7 @@ import {
   type PromptParams,
   sdText,
 } from "./prompt-builder.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Типы parts (структура buildSectionDefs) ─────────────────────────── */
 
@@ -155,7 +156,7 @@ export async function buildSubsectionMap(
 
   const critiqueBase = cfg.base.critique;
   if (!critiqueBase || critiqueBase.length === 0)
-    throw new Error("subsection_map: base.critique пуст или отсутствует");
+    throw new Error(tl("server.sectionDefsBuilder.subsectionMapEmpty", "subsection_map: base.critique пуст или отсутствует"));
   const critique = [
     critiqueBase[0] as string, // Внутренняя когерентность
     cfg.critiqueNovelty[level] || "Оценка новизны", // пункт 2
@@ -1157,7 +1158,7 @@ export function serializeSubsectionRegen(
   const items = parts.subsections;
   const subIdx = items.findIndex((s) => s.name === subsectionName);
   if (subIdx === -1) {
-    throw new Error("Подраздел «" + subsectionName + "» не найден в parts.");
+    throw new Error(tl("server.sectionDefsBuilder.subsectionLead", "Подраздел «") + subsectionName + tl("server.sectionDefsBuilder.notFoundInParts", "» не найден в parts."));
   }
   const sub = items[subIdx] as SectionSubsectionPart;
 

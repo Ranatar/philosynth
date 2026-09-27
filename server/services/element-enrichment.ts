@@ -89,6 +89,7 @@ import { ROLE_MAP } from "./graph-parser.js";
 import { buildSYS } from "./prompt-builder.js";
 import { renderTemplate } from "./prompt-registry.js";
 import { StreamError, classifyStreamError } from "./streaming-manager.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
   connectionManager.sendToUser(userId, msg);
@@ -226,7 +227,7 @@ async function loadCategory(synthesisId: string, categoryId: string): Promise<Ca
     .from(categories)
     .where(and(eq(categories.id, categoryId), eq(categories.synthesisId, synthesisId)))
     .limit(1);
-  if (!row) throw new EnrichmentError("NOT_FOUND", "Категория не найдена");
+  if (!row) throw new EnrichmentError("NOT_FOUND", tl("server.elementEnrichment.categoryNotFound", "Категория не найдена"));
   return row;
 }
 
@@ -236,7 +237,7 @@ async function loadEdge(synthesisId: string, edgeId: string): Promise<EdgeRow> {
     .from(categoryEdges)
     .where(and(eq(categoryEdges.id, edgeId), eq(categoryEdges.synthesisId, synthesisId)))
     .limit(1);
-  if (!row) throw new EnrichmentError("NOT_FOUND", "Связь не найдена");
+  if (!row) throw new EnrichmentError("NOT_FOUND", tl("server.elementEnrichment.edgeNotFound", "Связь не найдена"));
   return row;
 }
 
@@ -526,7 +527,7 @@ export async function enrichCategory(
   enrichmentType: CategoryEnrichmentType,
 ): Promise<EnrichResult> {
   if (!isCategoryEnrichmentType(enrichmentType))
-    throw new EnrichmentError("VALIDATION_ERROR", "Неизвестный тип обогащения категории", {
+    throw new EnrichmentError("VALIDATION_ERROR", tl("server.elementEnrichment.unknownCategoryEnrichment", "Неизвестный тип обогащения категории"), {
       type: String(enrichmentType),
     });
   const { synthesisId, userId } = handle;
@@ -576,7 +577,7 @@ export async function enrichEdge(
   enrichmentType: EdgeEnrichmentType,
 ): Promise<EnrichResult> {
   if (!isEdgeEnrichmentType(enrichmentType))
-    throw new EnrichmentError("VALIDATION_ERROR", "Неизвестный тип обогащения связи", {
+    throw new EnrichmentError("VALIDATION_ERROR", tl("server.elementEnrichment.unknownEdgeEnrichment", "Неизвестный тип обогащения связи"), {
       type: String(enrichmentType),
     });
   const { synthesisId, userId } = handle;
@@ -659,7 +660,7 @@ export function validateJustifyInput(body: unknown): JustifyInput {
     details.value = "Ожидается число";
   }
   if (Object.keys(details).length > 0)
-    throw new EnrichmentError("VALIDATION_ERROR", "Невалидные данные", details);
+    throw new EnrichmentError("VALIDATION_ERROR", tl("common.invalidData", "Невалидные данные"), details);
   return {
     elementId: b.elementId as string,
     elementType: elementType as CharacteristicElementType,
@@ -710,12 +711,12 @@ export async function justifyCharacteristic(
   const { synthesisId, userId } = handle;
   const spec = resolveCharacteristic(input.elementType, input.characteristic);
   if (!spec)
-    throw new EnrichmentError("VALIDATION_ERROR", "Неизвестная характеристика", {
+    throw new EnrichmentError("VALIDATION_ERROR", tl("server.elementEnrichment.unknownCharacteristic", "Неизвестная характеристика"), {
       characteristic: input.characteristic,
     });
   const valueErr = validateCharacteristicValue(spec, input.value);
   if (valueErr)
-    throw new EnrichmentError("VALIDATION_ERROR", "Невалидные данные", { value: valueErr });
+    throw new EnrichmentError("VALIDATION_ERROR", tl("common.invalidData", "Невалидные данные"), { value: valueErr });
 
   const { row, philosophers } = await loadSynthesis(synthesisId);
   const synthesisContext = await buildSynthesisContext(row, philosophers);
@@ -812,11 +813,11 @@ export async function startEnrichment(
     try {
       if (elementType === "category") {
         if (!isCategoryEnrichmentType(enrichmentType))
-          throw new EnrichmentError("VALIDATION_ERROR", `Неизвестный тип обогащения категории: ${enrichmentType}`);
+          throw new EnrichmentError("VALIDATION_ERROR", tl("server.elementEnrichment.unknownCategoryEnrichmentOf", "Неизвестный тип обогащения категории: {enrichmentType}", { enrichmentType }));
         await enrichCategory(handle, elementId, enrichmentType);
       } else {
         if (!isEdgeEnrichmentType(enrichmentType))
-          throw new EnrichmentError("VALIDATION_ERROR", `Неизвестный тип обогащения связи: ${enrichmentType}`);
+          throw new EnrichmentError("VALIDATION_ERROR", tl("server.elementEnrichment.unknownEdgeEnrichmentOf", "Неизвестный тип обогащения связи: {enrichmentType}", { enrichmentType }));
         await enrichEdge(handle, elementId, enrichmentType);
       }
     } catch (err) {

@@ -86,6 +86,7 @@ import { formatCharacteristic } from "./CharacteristicSlider";
 import { CATEGORY_CHARACTERISTICS, EDGE_CHARACTERISTICS } from "@philosynth/shared/constants/characteristics";
 import { ThesisEditor, thesisDiff, thesisToDraft, type ThesisDraft } from "./ThesisEditor";
 import { VersionHistory } from "./VersionHistory";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Общие мелочи для редакторов ─────────────────────────────────────── */
 
@@ -126,17 +127,17 @@ export const HOST_SECTION: Record<EditableKind, string> = {
 };
 
 const KIND_TITLE: Record<EditableKind, string> = {
-  category: "Категория графа",
-  edge: "Связь графа",
-  thesis: "Тезис",
-  glossary_term: "Термин глоссария",
+  category: tl("edit.elementEditor.graphCategory", "Категория графа"),
+  edge: tl("edit.elementEditor.graphEdge", "Связь графа"),
+  thesis: tl("common.thesis", "Тезис"),
+  glossary_term: tl("edit.elementEditor.glossaryTerm", "Термин глоссария"),
 };
 
 const HTML_SYNC_FIELD_LABELS: Record<string, string> = {
-  justification: "обоснование тезиса",
-  termCategory: "категория термина",
-  origin: "происхождение",
-  definition: "определение",
+  justification: tl("edit.elementEditor.thesisJustification", "обоснование тезиса"),
+  termCategory: tl("edit.elementEditor.termCategory", "категория термина"),
+  origin: tl("edit.elementEditor.originLower", "происхождение"),
+  definition: tl("common.definitionLower", "определение"),
 };
 
 const labelOf = (key: string): string =>
@@ -224,8 +225,8 @@ function detailsToFieldErrors(details: unknown): Record<string, string> {
 function messageOf(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === "GENERATION_IN_PROGRESS")
-      return "Идёт генерация — правки заблокированы до её завершения";
-    if (err.code === "FORBIDDEN") return "Редактировать может только владелец синтеза";
+      return tl("edit.elementEditor.lockedGenerating", "Идёт генерация — правки заблокированы до её завершения");
+    if (err.code === "FORBIDDEN") return tl("edit.elementEditor.ownerOnly", "Редактировать может только владелец синтеза");
     return err.message;
   }
   return err instanceof Error ? err.message : String(err);
@@ -458,7 +459,7 @@ export function ElementEditor({
             <button
               type="button"
               className="raw-close"
-              title="Закрыть"
+              title={tl("common.close", "Закрыть")}
               onClick={onClose}
             >
               ✕
@@ -469,8 +470,8 @@ export function ElementEditor({
 
       {disabled && (
         <div className="callout note">
-          <span className="callout-label">Правки заблокированы</span>
-          {disabledReason ?? "Идёт генерация — дождитесь её завершения."}
+          <span className="callout-label">{tl("edit.elementEditor.editsLocked", "Правки заблокированы")}</span>
+          {disabledReason ?? tl("edit.elementEditor.waitGeneration", "Идёт генерация — дождитесь её завершения.")}
         </div>
       )}
 
@@ -484,7 +485,7 @@ export function ElementEditor({
               disabled={disabled || saving || !dirty}
               onClick={() => void save()}
             >
-              {saving ? "Сохранение…" : "Сохранить"}
+              {saving ? tl("common.saving", "Сохранение…") : tl("common.save", "Сохранить")}
             </button>
             <button
               type="button"
@@ -492,9 +493,9 @@ export function ElementEditor({
               disabled={saving}
               onClick={cancel}
             >
-              Отмена
+              {tl("common.cancel", "Отмена")}
             </button>
-            {dirty && <span className="inline-edit-dirty">есть несохранённые правки</span>}
+            {dirty && <span className="inline-edit-dirty">{tl("edit.elementEditor.unsavedChanges", "есть несохранённые правки")}</span>}
           </div>
         </>
       ) : (
@@ -511,14 +512,14 @@ export function ElementEditor({
                 setEditing(true);
               }}
             >
-              ✎ Редактировать
+              {tl("common.editWithIcon", "✎ Редактировать")}
             </button>
             <button
               type="button"
               className={"action-btn" + (historyOpen ? " active" : "")}
               onClick={() => setHistoryOpen((v) => !v)}
             >
-              ◷ История версий
+              {tl("edit.elementEditor.versionHistory", "◷ История версий")}
             </button>
           </div>
         </>
@@ -595,14 +596,14 @@ export function ElementEditor({
               {target.kind === "category" ? ` · ${target.element.name}` : ""}
               {target.kind === "edge" ? ` · ${target.sourceName ?? "?"} → ${target.targetName ?? "?"}` : ""}
             </div>
-            <button type="button" className="raw-close" onClick={onClose} title="Закрыть">
+            <button type="button" className="raw-close" onClick={onClose} title={tl("common.close", "Закрыть")}>
               ✕
             </button>
           </div>
           <div className="edit-modal-body">{body}</div>
           <div className="edit-modal-footer">
             <button type="button" className="action-btn" onClick={onClose}>
-              Закрыть
+              {tl("common.close", "Закрыть")}
             </button>
           </div>
         </div>
@@ -636,9 +637,9 @@ function ElementSummary({
       const c = target.element;
       return (
         <div className="element-summary">
-          <Row label="Название" value={c.name} />
-          <Row label="Тип" value={c.type} />
-          <Row label="Определение" value={c.definition} />
+          <Row label={tl("common.title", "Название")} value={c.name} />
+          <Row label={tl("common.type", "Тип")} value={c.type} />
+          <Row label={tl("common.definition", "Определение")} value={c.definition} />
           {CATEGORY_CHARACTERISTICS.map((s) => (
             <Row
               key={s.key}
@@ -646,7 +647,7 @@ function ElementSummary({
               value={formatCharacteristic(s, (c as unknown as Record<string, number>)[s.dtoField] ?? s.min)}
             />
           ))}
-          <Row label={lastColName ?? "Происхождение"} value={c.origin} />
+          <Row label={lastColName ?? tl("common.origin", "Происхождение")} value={c.origin} />
         </div>
       );
     }
@@ -654,10 +655,10 @@ function ElementSummary({
       const e = target.element;
       return (
         <div className="element-summary">
-          <Row label="Связь" value={`${target.sourceName ?? "?"} → ${target.targetName ?? "?"}`} />
-          <Row label="Тип связи" value={e.edgeType} />
-          <Row label="Направление" value={e.direction} />
-          <Row label="Описание" value={e.description} />
+          <Row label={tl("edit.elementEditor.edge", "Связь")} value={`${target.sourceName ?? "?"} → ${target.targetName ?? "?"}`} />
+          <Row label={tl("common.edgeType", "Тип связи")} value={e.edgeType} />
+          <Row label={tl("common.direction", "Направление")} value={e.direction} />
+          <Row label={tl("common.description", "Описание")} value={e.description} />
           {EDGE_CHARACTERISTICS.map((s) => (
             <Row
               key={s.key}
@@ -672,17 +673,17 @@ function ElementSummary({
       const t = target.element;
       const typeLabel =
         t.thesisType === "epistemological"
-          ? "эпистемологический"
+          ? tl("edit.elementEditor.epistemological", "эпистемологический")
           : t.thesisType === "ethical"
-            ? "этический"
-            : "онтологический";
+            ? tl("edit.elementEditor.ethical", "этический")
+            : tl("edit.elementEditor.ontological", "онтологический");
       return (
         <div className="element-summary">
-          <Row label="Формулировка" value={t.formulation} />
-          <Row label="Обоснование" value={t.justification} />
-          <Row label="Тип тезиса" value={typeLabel} />
-          <Row label="Степень новизны" value={t.noveltyDegree} />
-          <Row label="Связанные категории" value={t.relatedCategories.join(", ")} />
+          <Row label={tl("common.formulation", "Формулировка")} value={t.formulation} />
+          <Row label={tl("common.justification", "Обоснование")} value={t.justification} />
+          <Row label={tl("common.thesisType", "Тип тезиса")} value={typeLabel} />
+          <Row label={tl("common.noveltyDegree", "Степень новизны")} value={t.noveltyDegree} />
+          <Row label={tl("edit.elementEditor.relatedCategories", "Связанные категории")} value={t.relatedCategories.join(", ")} />
         </div>
       );
     }
@@ -690,8 +691,8 @@ function ElementSummary({
       const g = target.element;
       return (
         <div className="element-summary">
-          <Row label="Термин" value={g.term} />
-          <Row label="Определение" value={g.definition} />
+          <Row label={tl("common.term", "Термин")} value={g.term} />
+          <Row label={tl("common.definition", "Определение")} value={g.definition} />
           {Object.entries(g.extraColumns).map(([k, v]) => (
             <Row key={k} label={k} value={v} />
           ))}
@@ -704,9 +705,9 @@ function ElementSummary({
 /* ── Блок анализа влияния + htmlSync ─────────────────────────────────── */
 
 const SEVERITY_TEXT: Record<ImpactAnalysis["severity"], string> = {
-  none: "Другие разделы на элемент не ссылаются — перегенерация не требуется.",
-  low: "Затронуты только структурные зависимости (контекст разделов ниже по порядку).",
-  high: "Имя элемента упомянуто в других разделах или тезисах — они ссылаются на прежнее состояние.",
+  none: tl("edit.elementEditor.noReferences", "Другие разделы на элемент не ссылаются — перегенерация не требуется."),
+  low: tl("edit.elementEditor.structuralOnly", "Затронуты только структурные зависимости (контекст разделов ниже по порядку)."),
+  high: tl("edit.elementEditor.nameMentioned", "Имя элемента упомянуто в других разделах или тезисах — они ссылаются на прежнее состояние."),
 };
 
 function htmlSyncFieldLabel(f: string): string {
@@ -737,33 +738,29 @@ function ImpactPanel({
   const sync: HtmlSyncInfo = htmlSync;
   return (
     <div className="cascade-panel visible" data-element-impact style={{ marginTop: 12 }}>
-      <div className="cascade-title">Анализ влияния</div>
+      <div className="cascade-title">{tl("edit.elementEditor.impactAnalysis", "Анализ влияния")}</div>
       <div className="cascade-desc">{SEVERITY_TEXT[impact.severity]}</div>
 
       {sync.rendered.length > 0 && (
         <div className="pool-status ok" style={{ marginBottom: 6 }}>
-          ✓ Перерисовано в документе: {sync.rendered.join(", ")}
+          {tl("edit.elementEditor.rerendered", "✓ Перерисовано в документе: {rendered}", { rendered: sync.rendered.join(", ") })}
         </div>
       )}
       {sync.patched.length > 0 && (
         <div className="pool-status ok" style={{ marginBottom: 6 }}>
-          ✓ Отражено точечной правкой абзаца:{" "}
-          {sync.patched.map(htmlSyncFieldLabel).join(", ")}
+          {tl("edit.elementEditor.paragraphPatched", "✓ Отражено точечной правкой абзаца: {htmlSyncFieldLabel}", { htmlSyncFieldLabel: sync.patched.map(htmlSyncFieldLabel).join(", ") })}
         </div>
       )}
       {sync.pending.length > 0 && (
         <div className="callout warning" data-testid="html-sync-pending">
-          <span className="callout-label">Не отражено в документе</span>
-          Поля {sync.pending.map((f) => `«${htmlSyncFieldLabel(f)}»`).join(", ")} сохранены
-          в данных, но в тексте раздела не обновлены — раздел «
-          {labelOf(HOST_SECTION[outcome.kind])}» требует перегенерации.
+          <span className="callout-label">{tl("edit.elementEditor.notReflected", "Не отражено в документе")}</span>
+          {tl("edit.elementEditor.fieldsPending", "Поля {pending} сохранены в данных, но в тексте раздела не обновлены — раздел «{kind}» требует перегенерации.", { pending: sync.pending.map((f) => `«${htmlSyncFieldLabel(f)}»`).join(", "), kind: labelOf(HOST_SECTION[outcome.kind]) })}
         </div>
       )}
       {sync.sectionMissing && (
         <div className="callout warning" data-testid="html-sync-missing">
-          <span className="callout-label">Раздела нет в документе</span>
-          Раздел «{labelOf(HOST_SECTION[outcome.kind])}» отсутствует среди разделов
-          синтеза — правка сохранена только в таблице данных.
+          <span className="callout-label">{tl("edit.elementEditor.sectionMissing", "Раздела нет в документе")}</span>
+          {tl("edit.elementEditor.sectionAbsent", "Раздел «{kind}» отсутствует среди разделов синтеза — правка сохранена только в таблице данных.", { kind: labelOf(HOST_SECTION[outcome.kind]) })}
         </div>
       )}
 
@@ -774,19 +771,19 @@ function ImpactPanel({
           {impact.affectedSections.map((k) => (
             <div className="sec-warning-item" key={`s:${k}`}>
               <span className="warn-icon">⚠</span>
-              <span>Раздел «{labelOf(k)}» использует элемент как контекст</span>
+              <span>{tl("edit.elementEditor.sectionUsesElement", "Раздел «{labelOf}» использует элемент как контекст", { labelOf: labelOf(k) })}</span>
             </div>
           ))}
           {impact.affectedSubsections.map((s) => (
             <div className="sec-warning-item" key={`ss:${s}`}>
               <span className="warn-icon">⚠</span>
-              <span>Подраздел {s}</span>
+              <span>{tl("edit.elementEditor.subsection", "Подраздел {subsection}", { subsection: s })}</span>
             </div>
           ))}
           {impact.affectedModes.map((m) => (
             <div className="sec-warning-item" key={`m:${m.modeKey}:${m.index}`}>
               <span className="warn-icon">⚠</span>
-              <span>Режим «{m.title}» (результат {m.index + 1})</span>
+              <span>{tl("edit.elementEditor.modeResult", "Режим «{title}» (результат {index})", { title: m.title, index: m.index + 1 })}</span>
             </div>
           ))}
         </div>
@@ -794,9 +791,8 @@ function ImpactPanel({
 
       {renameResult && (
         <div className="pool-status ok" style={{ marginTop: 8 }}>
-          ✓ Автозамена выполнена: разделов —{" "}
-          {renameResult.affectedSections.map(labelOf).join(", ") || "нет"}; тезисов —{" "}
-          {renameResult.affectedTheses}
+          {tl("edit.elementEditor.autoReplaceSections", "✓ Автозамена выполнена: разделов —")}
+          {renameResult.affectedSections.map(labelOf).join(", ") || tl("edit.elementEditor.none", "нет")}{tl("edit.elementEditor.thesesCount", "; тезисов — {affectedTheses}", { affectedTheses: renameResult.affectedTheses })}
         </div>
       )}
 
@@ -807,26 +803,26 @@ function ImpactPanel({
           disabled={disabled || regenTargets.length === 0}
           title={
             regenTargets.length
-              ? "Составить план перегенерации: " + regenTargets.map(labelOf).join(", ")
-              : "Затронутых разделов нет"
+              ? tl("edit.elementEditor.makeRegenPlan", "Составить план перегенерации: ") + regenTargets.map(labelOf).join(", ")
+              : tl("edit.elementEditor.noAffectedSections", "Затронутых разделов нет")
           }
           onClick={onRegenerate}
         >
-          Перегенерировать затронутые
+          {tl("edit.elementEditor.regenerateAffected", "Перегенерировать затронутые")}
         </button>
         {outcome.renamed && (
           <button
             type="button"
             className="action-btn"
             disabled={disabled || renaming || !!renameResult}
-            title={`«${outcome.renamed.oldName}» → «${outcome.renamed.newName}» во всех разделах и тезисах`}
+            title={tl("edit.elementEditor.renameEverywhere", "«{oldName}» → «{newName}» во всех разделах и тезисах", { oldName: outcome.renamed.oldName, newName: outcome.renamed.newName })}
             onClick={onAutoRename}
           >
-            {renaming ? "Замена…" : "Автозамена имён"}
+            {renaming ? tl("edit.elementEditor.replacing", "Замена…") : tl("edit.elementEditor.autoRename", "Автозамена имён")}
           </button>
         )}
         <button type="button" className="action-btn" onClick={onDismiss}>
-          Ничего
+          {tl("edit.elementEditor.nothing", "Ничего")}
         </button>
       </div>
     </div>

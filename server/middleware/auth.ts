@@ -22,7 +22,9 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 import { db, schema } from "../db/index.js";
 import { env } from "../env.js";
+import { setRequestLocale } from "../i18n/locale.js";
 import type { BillingContextVar } from "./billing-check.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Константы ───────────────────────────────────────────────────────── */
 
@@ -42,6 +44,12 @@ export interface AuthUser {
   /** Адрес подтверждён переходом по ссылке из письма (9.1). Пока ничего не
    *  ограничивает — нужен полосе-напоминанию в шапке клиента. */
   emailVerified: boolean;
+  /** Язык интерфейса (11.2): 'ru' | 'en' | 'de'; null — не выбирал
+   *  (язык запроса тогда по cookie ui_locale и Accept-Language). */
+  uiLocale: string | null;
+  /** Язык генерации по умолчанию (11.2), значение syntheses.lang; null —
+   *  не выбирал. Меняется вместе с uiLocale (genLangForUi) либо отдельно. */
+  genLang: string | null;
 }
 
 export interface SessionInfo {
@@ -165,6 +173,8 @@ function toAuthUser(u: typeof schema.users.$inferSelect): AuthUser {
     // numeric(10,4) приходит строкой из postgres.js
     balanceUsd: Number(u.balanceUsd),
     emailVerified: u.emailVerifiedAt !== null,
+    uiLocale: u.uiLocale,
+    genLang: u.genLang,
   };
 }
 
@@ -204,12 +214,13 @@ export const requireAuth: MiddlewareHandler<AuthEnv> = async (c, next) => {
   if (!result) {
     if (token) clearSessionCookie(c); // мёртвый cookie — подчистить
     return c.json(
-      { error: "Требуется авторизация", code: "AUTH_REQUIRED" },
+      { error: tl("common.authRequired", "Требуется авторизация"), code: "AUTH_REQUIRED" },
       401,
     );
   }
   c.set("user", result.user);
   c.set("session", result.session);
+  setRequestLocale(result.user.uiLocale); // 11.2: язык пользователя первым
   await next();
 };
 
@@ -235,6 +246,7 @@ export const optionalAuth: MiddlewareHandler = async (c, next) => {
   } else {
     c.set("user", result.user);
     c.set("session", result.session);
+    setRequestLocale(result.user.uiLocale); // 11.2: язык пользователя первым
   }
   await next();
 };

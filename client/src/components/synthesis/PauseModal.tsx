@@ -60,6 +60,7 @@ import { useState } from "react";
 
 import { storeApiKey } from "../../api/billing";
 import { ApiError } from "../../api/client";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const LABELS = KEY_LABELS as Record<string, string>;
 
@@ -136,7 +137,7 @@ function completedListOf(ps: PausedStateGen): string {
 function GenContent({ ps }: { ps: PausedStateGen }) {
   const completedCount = (ps.completedPasses ?? []).length;
   const completedList = completedListOf(ps);
-  const completedWord = completedCount === 1 ? "раздел" : "разделов";
+  const completedWord = completedCount === 1 ? tl("synthesis.pauseModal.sectionWord", "раздел") : tl("common.sectionsGen", "разделов");
 
   if (ps.isPartial) {
     // Partial: единая ветка для любых причин обрыва (сеть, max-tokens,
@@ -146,23 +147,21 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
     const missing = expected.filter((s) => !done.includes(s));
     const causeHint =
       ps.reasonKind === "max-tokens"
-        ? ` (превышен лимит max_tokens = ${(ps.maxTokensUsed ?? 20000).toLocaleString("ru")})`
+        ? tl("synthesis.pauseModal.maxTokensExceeded", " (превышен лимит max_tokens = {maxTokensUsed})", { maxTokensUsed: (ps.maxTokensUsed ?? 20000).toLocaleString("ru") })
         : ps.reasonKind === "stuck"
-          ? " (стрим завис без ответа)"
+          ? tl("synthesis.pauseModal.streamStuck", " (стрим завис без ответа)")
           : "";
     return (
       <div className="pause-content">
         <p>
-          Генерация раздела <strong>{ps.sectionLabel}</strong> оборвалась
-          {causeHint} — успело сгенерироваться{" "}
+          {tl("synthesis.pauseModal.sectionGeneration", "Генерация раздела")} <strong>{ps.sectionLabel}</strong> {tl("synthesis.pauseModal.brokeOff", "оборвалась{causeHint} — успело сгенерироваться", { causeHint })}
           <strong>
-            {done.length} из {expected.length}
-          </strong>{" "}
-          подразделов.
+            {tl("synthesis.pauseModal.countOf", "{doneCount} из {expectedCount}", { doneCount: done.length, expectedCount: expected.length })}
+          </strong>{tl("synthesis.pauseModal.subsectionsDot", "подразделов.")}
         </p>
         <ReasonBox reason={ps.reason} />
         <InfoBox>
-          <strong>Завершено ранее:</strong> {completedCount} {completedWord}
+          <strong>{tl("synthesis.pauseModal.completedEarlier", "Завершено ранее:")}</strong> {completedCount} {completedWord}
           {completedCount > 0 && (
             <>
               <br />
@@ -170,11 +169,11 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
             </>
           )}
           <br />
-          <strong>Прервано на:</strong> {ps.sectionLabel}
+          <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {ps.sectionLabel}
           {done.length > 0 && (
             <>
               <br />
-              <strong>Успевшие подразделы:</strong>
+              <strong>{tl("synthesis.pauseModal.doneSubsections", "Успевшие подразделы:")}</strong>
               {done.map((s) => (
                 <span key={s}>
                   <br />• <strong>{s}</strong>
@@ -185,7 +184,7 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
           {missing.length > 0 && (
             <>
               <br />
-              <strong>Недостающие:</strong>
+              <strong>{tl("synthesis.pauseModal.missing", "Недостающие:")}</strong>
               {missing.map((s) => (
                 <span key={s}>
                   <br />• {s}
@@ -195,9 +194,7 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
           )}
         </InfoBox>
         <Subtle>
-          Рекомендуется <strong>догенерировать</strong> только недостающие
-          подразделы — они будут созданы по очереди с учётом уже готовых
-          подразделов как контекста. Это дешевле перегенерации всего раздела.
+          {tl("synthesis.pauseModal.recommendedLead", "Рекомендуется")} <strong>{tl("synthesis.pauseModal.generateRemaining", "догенерировать")}</strong> {tl("synthesis.pauseModal.onlyMissingNote", "только недостающие подразделы — они будут созданы по очереди с учётом уже готовых подразделов как контекста. Это дешевле перегенерации всего раздела.")}
         </Subtle>
       </div>
     );
@@ -207,12 +204,11 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
   return (
     <div className="pause-content">
       <p>
-        Генерация раздела <strong>{ps.sectionLabel}</strong> не смогла
-        начаться — запрос к API не прошёл после 3 попыток.
+        {tl("synthesis.pauseModal.sectionGeneration", "Генерация раздела")} <strong>{ps.sectionLabel}</strong> {tl("synthesis.pauseModal.couldNotStart", "не смогла начаться — запрос к API не прошёл после 3 попыток.")}
       </p>
       <ReasonBox reason={ps.reason} />
       <InfoBox>
-        <strong>Завершено ранее:</strong> {completedCount} {completedWord}
+        <strong>{tl("synthesis.pauseModal.completedEarlier", "Завершено ранее:")}</strong> {completedCount} {completedWord}
         {completedCount > 0 && (
           <>
             <br />
@@ -220,11 +216,10 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
           </>
         )}
         <br />
-        <strong>Прервано на:</strong> {ps.sectionLabel}
+        <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {ps.sectionLabel}
       </InfoBox>
       <Subtle>
-        Возможные причины: перегрузка API, проблемы с сетью, превышение
-        лимита. Попробуйте ещё раз через несколько минут.
+        {tl("synthesis.pauseModal.possibleCauses", "Возможные причины: перегрузка API, проблемы с сетью, превышение лимита. Попробуйте ещё раз через несколько минут.")}
       </Subtle>
     </div>
   );
@@ -244,32 +239,32 @@ function GenFooter({
       <>
         <PauseBtn
           kind="primary"
-          title="Продолжить раздел с обрывочного подраздела (самое экономное)"
+          title={tl("synthesis.pauseModal.continueHint", "Продолжить раздел с обрывочного подраздела (самое экономное)")}
           onClick={() => onResume("fill-missing-subs")}
         >
-          🎯 Догенерировать недостающие
+          {tl("synthesis.pauseModal.generateMissing", "🎯 Догенерировать недостающие")}
           <CostSpan cost={estimates.fillMissingSubs} />
         </PauseBtn>
         <PauseBtn
-          title="Очистить частичный контент и начать раздел заново"
+          title={tl("synthesis.pauseModal.restartHint", "Очистить частичный контент и начать раздел заново")}
           onClick={() => onResume("retry")}
         >
-          ↻ Весь раздел заново
+          {tl("synthesis.pauseModal.restartSection", "↻ Весь раздел заново")}
           <CostSpan cost={estimates.wholeSection} />
         </PauseBtn>
         <PauseBtn
-          title="Оставить частичный контент, продолжить со следующего раздела (оценка — стоимость оставшихся разделов)"
+          title={tl("synthesis.pauseModal.skipHint", "Оставить частичный контент, продолжить со следующего раздела (оценка — стоимость оставшихся разделов)")}
           onClick={() => onResume("skip")}
         >
-          ⤴ Пропустить
-          <CostSpan cost={estimates.skipRemaining} prefix="далее" />
+          {tl("synthesis.pauseModal.skip", "⤴ Пропустить")}
+          <CostSpan cost={estimates.skipRemaining} prefix={tl("synthesis.pauseModal.next", "далее")} />
         </PauseBtn>
         <PauseBtn
           kind="danger"
-          title="Сохранить текущее состояние как финальное, завершить"
+          title={tl("synthesis.pauseModal.stopHint", "Сохранить текущее состояние как финальное, завершить")}
           onClick={() => onResume("stop")}
         >
-          ◼ Остановить
+          {tl("synthesis.pauseModal.stop", "◼ Остановить")}
         </PauseBtn>
       </>
     );
@@ -278,25 +273,25 @@ function GenFooter({
     <>
       <PauseBtn
         kind="primary"
-        title="Повторить запрос на этот раздел"
+        title={tl("synthesis.pauseModal.retryHint", "Повторить запрос на этот раздел")}
         onClick={() => onResume("retry")}
       >
-        ↻ Повторить сейчас
+        {tl("synthesis.pauseModal.retryNow", "↻ Повторить сейчас")}
         <CostSpan cost={estimates.wholeSection} />
       </PauseBtn>
       <PauseBtn
-        title="Пропустить этот раздел, продолжить со следующего (оценка — остальные разделы)"
+        title={tl("synthesis.pauseModal.skipSectionHint", "Пропустить этот раздел, продолжить со следующего (оценка — остальные разделы)")}
         onClick={() => onResume("skip")}
       >
-        ⤴ Пропустить
-        <CostSpan cost={estimates.skipRemaining} prefix="далее" />
+        {tl("synthesis.pauseModal.skip", "⤴ Пропустить")}
+        <CostSpan cost={estimates.skipRemaining} prefix={tl("synthesis.pauseModal.next", "далее")} />
       </PauseBtn>
       <PauseBtn
         kind="danger"
-        title="Сохранить текущее состояние как финальное, завершить"
+        title={tl("synthesis.pauseModal.stopHint", "Сохранить текущее состояние как финальное, завершить")}
         onClick={() => onResume("stop")}
       >
-        ◼ Остановить
+        {tl("synthesis.pauseModal.stop", "◼ Остановить")}
       </PauseBtn>
     </>
   );
@@ -313,10 +308,10 @@ function planOpLabel(op: PlanOp | null | undefined): string {
   if (!op) return "—";
   const prefix =
     op.action === "add"
-      ? "Добавление: "
+      ? tl("synthesis.pauseModal.stepAdd", "Добавление: ")
       : op.action === "remove"
-        ? "Удаление: "
-        : "Перегенерация: ";
+        ? tl("synthesis.pauseModal.stepDelete", "Удаление: ")
+        : tl("synthesis.pauseModal.stepRegenerate", "Перегенерация: ");
   const key = op.key ?? "?";
   return prefix + (LABELS[key] ?? key);
 }
@@ -333,22 +328,22 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
     )
     .join(", ");
   const moreHint =
-    remaining.length > 5 ? " и ещё " + (remaining.length - 5) : "";
-  const stepsWord = remaining.length === 1 ? "шаг" : "шагов";
+    remaining.length > 5 ? tl("synthesis.pauseModal.andMore", " и ещё ") + (remaining.length - 5) : "";
+  const stepsWord = remaining.length === 1 ? tl("synthesis.pauseModal.stepOne", "шаг") : tl("synthesis.pauseModal.stepMany", "шагов");
   return (
     <div className="pause-content">
       <p>
-        План редактирования остановлен на шаге{" "}
+        {tl("synthesis.pauseModal.planStoppedAt", "План редактирования остановлен на шаге")}
         <strong>
-          {ps.stepIdx + 1} из {ps.totalSteps}
+          {tl("synthesis.pauseModal.countOf", "{doneCount} из {expectedCount}", { doneCount: ps.stepIdx + 1, expectedCount: ps.totalSteps })}
         </strong>
         .
       </p>
       <ReasonBox reason={ps.reason} />
       <InfoBox>
-        <strong>Упавший шаг:</strong> {planOpLabel(op)}
+        <strong>{tl("synthesis.pauseModal.failedStep", "Упавший шаг:")}</strong> {planOpLabel(op)}
         <br />
-        <strong>Осталось:</strong> {remaining.length} {stepsWord}
+        <strong>{tl("synthesis.pauseModal.remaining", "Осталось:")}</strong> {remaining.length} {stepsWord}
         {remaining.length > 0 && (
           <>
             <br />
@@ -360,8 +355,7 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
         )}
       </InfoBox>
       <Subtle>
-        Изменения предыдущих шагов уже применены к документу. Выберите
-        действие:
+        {tl("synthesis.pauseModal.previousApplied", "Изменения предыдущих шагов уже применены к документу. Выберите действие:")}
       </Subtle>
     </div>
   );
@@ -376,23 +370,23 @@ function PlanFooter({
     <>
       <PauseBtn
         kind="primary"
-        title="Повторить текущий шаг и продолжить"
+        title={tl("synthesis.pauseModal.retryStepHint", "Повторить текущий шаг и продолжить")}
         onClick={() => onResume("retry")}
       >
-        ↻ Повторить шаг
+        {tl("synthesis.pauseModal.retryStep", "↻ Повторить шаг")}
       </PauseBtn>
       <PauseBtn
-        title="Пропустить текущий шаг и продолжить со следующего"
+        title={tl("synthesis.pauseModal.skipStepHint", "Пропустить текущий шаг и продолжить со следующего")}
         onClick={() => onResume("skip_step")}
       >
-        ⤴ Пропустить шаг
+        {tl("synthesis.pauseModal.skipStep", "⤴ Пропустить шаг")}
       </PauseBtn>
       <PauseBtn
         kind="danger"
-        title="Остановить план, очистить остаток"
+        title={tl("synthesis.pauseModal.stopPlanHint", "Остановить план, очистить остаток")}
         onClick={() => onResume("stop")}
       >
-        ◼ Остановить план
+        {tl("synthesis.pauseModal.stopPlan", "◼ Остановить план")}
       </PauseBtn>
     </>
   );
@@ -405,15 +399,15 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
   const completedList = (ps.completedPasses ?? [])
     .map((keys) => keys.join("+"))
     .join(", ");
-  const completedWord = completedCount === 1 ? "раздел" : "разделов";
+  const completedWord = completedCount === 1 ? tl("synthesis.pauseModal.sectionWord", "раздел") : tl("common.sectionsGen", "разделов");
   return (
     <div className="pause-content">
       <p>
-        Генерация приостановлена: <strong>баланс API исчерпан</strong>.
+        {tl("synthesis.pauseModal.pausedLead", "Генерация приостановлена:")} <strong>{tl("synthesis.pauseModal.balanceExhausted", "баланс API исчерпан")}</strong>.
       </p>
       <ReasonBox reason={ps.reason || "credit balance too low"} />
       <InfoBox>
-        <strong>Завершено до паузы:</strong> {completedCount} {completedWord}
+        <strong>{tl("synthesis.pauseModal.completedBeforePause", "Завершено до паузы:")}</strong> {completedCount} {completedWord}
         {completedCount > 0 && (
           <>
             <br />
@@ -421,20 +415,19 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
           </>
         )}
         <br />
-        <strong>Прервано на:</strong> {ps.sectionLabel || "?"}
+        <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {ps.sectionLabel || "?"}
       </InfoBox>
       <Subtle>
-        Пополните баланс на{" "}
+        {tl("synthesis.pauseModal.topUpLead", "Пополните баланс на")}
         <a
           href="https://console.anthropic.com/settings/billing"
           target="_blank"
           rel="noreferrer"
           style={{ color: "var(--gold)" }}
         >
-          console.anthropic.com
+          {tl("synthesis.pauseModal.consoleUrl", "console.anthropic.com")}
         </a>
-        , затем нажмите <strong>«Продолжить»</strong>. API-ключ менять не
-        нужно — он действителен.
+        {tl("synthesis.pauseModal.thenPress", ", затем нажмите")} <strong>{tl("synthesis.pauseModal.continueQuoted", "«Продолжить»")}</strong>{tl("synthesis.pauseModal.keyStillValid", ". API-ключ менять не нужно — он действителен.")}
       </Subtle>
     </div>
   );
@@ -449,23 +442,23 @@ function BillingFooter({
     <>
       <PauseBtn
         kind="primary"
-        title="Повторить запрос после пополнения баланса"
+        title={tl("synthesis.pauseModal.retryAfterTopUp", "Повторить запрос после пополнения баланса")}
         onClick={() => onResume("retry")}
       >
-        ▶ Продолжить
+        {tl("synthesis.pauseModal.continue", "▶ Продолжить")}
       </PauseBtn>
       <PauseBtn
-        title="Пропустить текущий раздел"
+        title={tl("synthesis.pauseModal.skipCurrentSection", "Пропустить текущий раздел")}
         onClick={() => onResume("skip")}
       >
-        ⤴ Пропустить
+        {tl("synthesis.pauseModal.skip", "⤴ Пропустить")}
       </PauseBtn>
       <PauseBtn
         kind="danger"
-        title="Сохранить текущее состояние"
+        title={tl("synthesis.pauseModal.saveCurrentState", "Сохранить текущее состояние")}
         onClick={() => onResume("stop")}
       >
-        ◼ Остановить
+        {tl("synthesis.pauseModal.stop", "◼ Остановить")}
       </PauseBtn>
     </>
   );
@@ -484,11 +477,11 @@ function AuthContent({ ps, form }: { ps: PausedState; form: AuthKeyForm }) {
   const context =
     ps.kind === "gen" ? (
       <>
-        на разделе <strong>{ps.sectionLabel || "—"}</strong>
+        {tl("synthesis.pauseModal.atSection", "на разделе")} <strong>{ps.sectionLabel || "—"}</strong>
       </>
     ) : (
       <>
-        на шаге <strong>{ps.stepIdx + 1}</strong> из {ps.totalSteps}
+        {tl("synthesis.pauseModal.atStep", "на шаге")} <strong>{ps.stepIdx + 1}</strong> {tl("synthesis.pauseModal.ofTotal", "из {totalSteps}", { totalSteps: ps.totalSteps })}
       </>
     );
   return (
@@ -499,15 +492,14 @@ function AuthContent({ ps, form }: { ps: PausedState; form: AuthKeyForm }) {
       </p>
       <ReasonBox reason={ps.reason} />
       <p>
-        Введите новый ключ — он будет сохранён как ваш ключ (BYO-Key), и
-        генерация продолжится с прерванного места:
+        {tl("synthesis.pauseModal.enterNewKey", "Введите новый ключ — он будет сохранён как ваш ключ (BYO-Key), и генерация продолжится с прерванного места:")}
       </p>
       <div className="pause-apikey-row">
         <input
           type="password"
           autoComplete="off"
-          placeholder="sk-ant-api..."
-          aria-label="Новый API-ключ Anthropic"
+          placeholder={tl("synthesis.pauseModal.keyPlaceholder", "sk-ant-api...")}
+          aria-label={tl("synthesis.pauseModal.newKeyLabel", "Новый API-ключ Anthropic")}
           value={form.value}
           disabled={form.pending}
           onChange={(e) => form.setValue(e.target.value)}
@@ -520,9 +512,7 @@ function AuthContent({ ps, form }: { ps: PausedState; form: AuthKeyForm }) {
         </div>
       )}
       <Subtle>
-        Если ключ уже заменён на странице «Биллинг» — нажмите «Повторить».
-        Если нового ключа нет — выберите «Остановить»: текущее состояние
-        будет сохранено, и вы сможете возобновить позже.
+        {tl("synthesis.pauseModal.keyReplacedNote", "Если ключ уже заменён на странице «Биллинг» — нажмите «Повторить». Если нового ключа нет — выберите «Остановить»: текущее состояние будет сохранено, и вы сможете возобновить позже.")}
       </Subtle>
     </div>
   );
@@ -551,22 +541,22 @@ function AuthFooter({
       <button
         type="button"
         className="pause-btn primary"
-        title="Сохранить новый ключ и возобновить"
+        title={tl("synthesis.pauseModal.saveKeyHint", "Сохранить новый ключ и возобновить")}
         disabled={form.pending || !hasKey}
         onClick={onSaveKey}
         data-testid="pause-save-key"
       >
-        {form.pending ? "Сохранение…" : "✓ Сохранить и продолжить"}
+        {form.pending ? tl("common.saving", "Сохранение…") : tl("synthesis.pauseModal.saveAndContinue", "✓ Сохранить и продолжить")}
       </button>
-      <PauseBtn title="Повторить с текущим ключом" onClick={retry}>
-        ↻ Повторить
+      <PauseBtn title={tl("synthesis.pauseModal.retryWithKeyHint", "Повторить с текущим ключом")} onClick={retry}>
+        {tl("synthesis.pauseModal.retry", "↻ Повторить")}
       </PauseBtn>
       <PauseBtn
         kind="danger"
-        title="Остановить, сохранить текущее состояние"
+        title={tl("synthesis.pauseModal.stopSaveHint", "Остановить, сохранить текущее состояние")}
         onClick={stop}
       >
-        ◼ Остановить
+        {tl("synthesis.pauseModal.stop", "◼ Остановить")}
       </PauseBtn>
     </>
   );
@@ -586,10 +576,10 @@ export function PauseBadge({
     <button
       type="button"
       onClick={onClick}
-      title="Генерация приостановлена — открыть действия"
+      title={tl("synthesis.pauseModal.pausedOpenActions", "Генерация приостановлена — открыть действия")}
       className="progress-pause-badge visible"
     >
-      ⏸ Приостановлено
+      {tl("synthesis.pauseModal.pausedBadge", "⏸ Приостановлено")}
     </button>
   );
 }
@@ -654,7 +644,7 @@ export function PauseModal({
       setKeyError(
         err instanceof ApiError
           ? `${err.message}${typeof details === "string" ? `: ${details}` : ""}`
-          : "Не удалось сохранить ключ",
+          : tl("synthesis.pauseModal.keySaveFailed", "Не удалось сохранить ключ"),
       );
     } finally {
       setKeyPending(false);
@@ -679,8 +669,8 @@ export function PauseModal({
       ).confirm;
       const sure =
         confirmFn?.(
-          `На пропускаемом контенте строятся разделы: ${list}. ` +
-            "Их качество может деградировать. Всё равно пропустить?",
+          tl("synthesis.pauseModal.dependentSections", "На пропускаемом контенте строятся разделы: {list}. ", { list }) +
+            tl("synthesis.pauseModal.confirmSkip", "Их качество может деградировать. Всё равно пропустить?"),
         ) ?? true;
       if (!sure) return;
     }
@@ -692,11 +682,11 @@ export function PauseModal({
   let body: React.ReactNode;
   let footer: React.ReactNode;
   if (ps.reasonKind === "billing" && ps.kind === "gen") {
-    title = "💳 Баланс API исчерпан";
+    title = tl("synthesis.pauseModal.titleBalance", "💳 Баланс API исчерпан");
     body = <BillingContent ps={ps} />;
     footer = <BillingFooter onResume={resumeGenConfirmed} />;
   } else if (ps.reasonKind === "auth") {
-    title = "🔑 API-ключ недействителен";
+    title = tl("synthesis.pauseModal.titleKeyInvalid", "🔑 API-ключ недействителен");
     body = <AuthContent ps={ps} form={keyForm} />;
     footer = (
       <AuthFooter
@@ -709,22 +699,22 @@ export function PauseModal({
     );
   } else if (ps.kind === "gen") {
     title = ps.isPartial
-      ? "⏸ Раздел прерван в середине"
-      : "⏸ Генерация не началась";
+      ? tl("synthesis.pauseModal.titleInterruptedMidway", "⏸ Раздел прерван в середине")
+      : tl("synthesis.pauseModal.titleNotStarted", "⏸ Генерация не началась");
     body = <GenContent ps={ps} />;
     footer = (
       <GenFooter ps={ps} estimates={estimates} onResume={resumeGenConfirmed} />
     );
   } else if (ps.kind === "plan") {
-    title = "⏸ План редактирования прерван";
+    title = tl("synthesis.pauseModal.titlePlanInterrupted", "⏸ План редактирования прерван");
     body = <PlanContent ps={ps} />;
     footer = <PlanFooter onResume={onResumePlan} />;
   } else {
-    title = "⏸ Генерация приостановлена";
-    body = <p>Неизвестный тип паузы.</p>;
+    title = tl("synthesis.pauseModal.titlePaused", "⏸ Генерация приостановлена");
+    body = <p>{tl("synthesis.pauseModal.unknownPause", "Неизвестный тип паузы.")}</p>;
     footer = (
-      <PauseBtn title="Закрыть" onClick={onClose}>
-        Закрыть
+      <PauseBtn title={tl("common.close", "Закрыть")} onClick={onClose}>
+        {tl("common.close", "Закрыть")}
       </PauseBtn>
     );
   }
@@ -743,7 +733,7 @@ export function PauseModal({
           <button
             type="button"
             onClick={onClose}
-            title="Свернуть (пауза сохраняется)"
+            title={tl("synthesis.pauseModal.minimize", "Свернуть (пауза сохраняется)")}
             className="pause-modal-close"
           >
             ✕

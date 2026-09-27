@@ -27,7 +27,8 @@ import type {
 
 import { db, schema } from "../db/index.js";
 import { redis } from "../redis.js";
-import { ADMIN_ACTIONS, writeAudit, type DbExecutor } from "./admin-audit.js"; // 8.1
+import { ADMIN_ACTIONS, writeAudit, type DbExecutor } from "./admin-audit.js";
+import { tl } from "@philosynth/shared/i18n/t"; // 8.1
 
 const { categoryTypeCatalog, relationshipTypeCatalog, categories, categoryEdges } =
   schema;
@@ -356,12 +357,12 @@ export async function createCustomType(
 ): Promise<CategoryType | RelationshipType> {
   if (!KEY_RE.test(key))
     throw new TaxonomyValidationError(
-      "Невалидный ключ типа: латиница в нижнем регистре, цифры и _, начинается с буквы, 2–64 символа",
+      tl("server.elementTaxonomy.invalidTypeKey", "Невалидный ключ типа: латиница в нижнем регистре, цифры и _, начинается с буквы, 2–64 символа"),
       { key },
     );
   const trimmedName = nameRu.trim();
   if (!trimmedName)
-    throw new TaxonomyValidationError("Русское название типа обязательно", {
+    throw new TaxonomyValidationError(tl("server.elementTaxonomy.russianNameRequired", "Русское название типа обязательно"), {
       nameRu,
     });
 
@@ -371,7 +372,7 @@ export async function createCustomType(
       columns: { id: true },
     });
     if (dup)
-      throw new TaxonomyValidationError(`Тип категории «${key}» уже существует`, {
+      throw new TaxonomyValidationError(tl("server.elementTaxonomy.categoryTypeExists", "Тип категории «{key}» уже существует", { key }), {
         key,
       });
     const [row] = await db
@@ -393,7 +394,7 @@ export async function createCustomType(
     columns: { id: true },
   });
   if (dup)
-    throw new TaxonomyValidationError(`Тип связи «${key}» уже существует`, {
+    throw new TaxonomyValidationError(tl("server.elementTaxonomy.edgeTypeExists", "Тип связи «{key}» уже существует", { key }), {
       key,
     });
   const [row] = await db
@@ -446,12 +447,12 @@ async function loadTypeRow(
   if (!row)
     throw new TaxonomyAccessError(
       "NOT_FOUND",
-      kind === "category" ? "Тип категории не найден" : "Тип связи не найден",
+      kind === "category" ? tl("server.elementTaxonomy.categoryTypeNotFound", "Тип категории не найден") : tl("server.elementTaxonomy.edgeTypeNotFound", "Тип связи не найден"),
     );
   if (row.isSystem)
     throw new TaxonomyAccessError(
       "FORBIDDEN",
-      "Системный тип каталога изменять и удалять нельзя",
+      tl("server.elementTaxonomy.systemTypeImmutable", "Системный тип каталога изменять и удалять нельзя"),
     );
   return row;
 }
@@ -478,7 +479,7 @@ export async function updateCustomType(
   if (patch.nameRu !== undefined) {
     const t = patch.nameRu.trim();
     if (!t)
-      throw new TaxonomyValidationError("Русское название типа обязательно", {
+      throw new TaxonomyValidationError(tl("server.elementTaxonomy.russianNameRequired", "Русское название типа обязательно"), {
         nameRu: patch.nameRu,
       });
     set.nameRu = t;

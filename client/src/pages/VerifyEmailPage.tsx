@@ -10,8 +10,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useAuthStore } from "../stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
-export const EMAIL_VERIFIED_NOTICE = "Адрес подтверждён. Войдите, чтобы продолжить.";
+export const EMAIL_VERIFIED_NOTICE = tl("verifyEmailPage.verifiedLogin", "Адрес подтверждён. Войдите, чтобы продолжить.");
 const REDIRECT_DELAY_MS = 1500;
 
 type Phase = { kind: "pending" } | { kind: "done" } | { kind: "error"; text: string };
@@ -48,16 +49,16 @@ export function VerifyEmailPage() {
         <div className="site-header auth-header">
           <div>
             <h1 className="brand-name">
-              Philo<span>Synth</span>
+              {tl("common.brandPhilo", "Philo")}<span>{tl("common.brandSynth", "Synth")}</span>
             </h1>
-            <div className="brand-tagline">подтверждение адреса</div>
+            <div className="brand-tagline">{tl("verifyEmailPage.verifyLower", "подтверждение адреса")}</div>
           </div>
         </div>
         <div className="input-form" data-testid="verify-email" data-phase={phase.kind}>
-          {phase.kind === "pending" && <span className="meta-label">проверка ссылки…</span>}
+          {phase.kind === "pending" && <span className="meta-label">{tl("verifyEmailPage.checkingLink", "проверка ссылки…")}</span>}
           {phase.kind === "done" && (
             <p role="status" className="callout note">
-              Адрес подтверждён. Открываем каталог…
+              {tl("verifyEmailPage.verifiedOpening", "Адрес подтверждён. Открываем каталог…")}
             </p>
           )}
           {phase.kind === "error" && (
@@ -66,11 +67,11 @@ export function VerifyEmailPage() {
                 {phase.text}
               </div>
               <p className="submit-note" style={{ textAlign: "center", maxWidth: "100%" }}>
-                Новое письмо отправляется из полосы «Адрес не подтверждён» в шапке — после входа.
+                {tl("verifyEmailPage.resendNote", "Новое письмо отправляется из полосы «Адрес не подтверждён» в шапке — после входа.")}
                 <br />
-                <Link to="/login">Войти</Link>
+                <Link to="/login">{tl("common.logIn", "Войти")}</Link>
                 {" · "}
-                <Link to="/">На главную</Link>
+                <Link to="/">{tl("common.toHome", "На главную")}</Link>
               </p>
             </>
           )}

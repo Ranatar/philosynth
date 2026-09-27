@@ -73,6 +73,7 @@ import {
   previewParts,
 } from "../utils/template-placeholders";
 import { diffLines, diffStats } from "../utils/text-diff";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Общее ───────────────────────────────────────────────────────────── */
 
@@ -80,7 +81,7 @@ type StatusMsg = { text: string; kind: "ok" | "err" } | null;
 
 function errText(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
-    if (err.code === "FORBIDDEN") return "Требуются права администратора";
+    if (err.code === "FORBIDDEN") return tl("adminPromptsPage.adminRequired", "Требуются права администратора");
     if (err.details && typeof err.details === "object") {
       const first = Object.values(err.details as Record<string, unknown>).find(
         (v) => typeof v === "string",
@@ -129,7 +130,7 @@ interface KeyTreeProps {
 
 function KeyTree({ keys, meta, selected, onSelect, testId }: KeyTreeProps) {
   const groups = useMemo(() => groupKeys(keys), [keys]);
-  if (keys.length === 0) return <div className="data-table-empty">ключей нет</div>;
+  if (keys.length === 0) return <div className="data-table-empty">{tl("adminPromptsPage.noKeys", "ключей нет")}</div>;
   return (
     <div className="key-tree" data-testid={testId}>
       {groups.map(([group, items]) => (
@@ -199,19 +200,19 @@ function VersionList({
           onClick={() => onSelect(v.version)}
           data-version={v.version}
         >
-          <span className="version-num">v{v.version}</span>
+          <span className="version-num">{tl("adminPromptsPage.versionLabel", "v{version}", { version: v.version })}</span>
           <span className="version-preview" title={v.description || undefined}>
             {v.description ? `${v.description} — ` : ""}
             {v.preview}
           </span>
           <span className="version-meta" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {v.isActive ? "активна · " : ""}
+            {v.isActive ? tl("adminPromptsPage.activePrefix", "активна · ") : ""}
             {fmtDateShort(v.createdAt)}
             <button
               type="button"
               className={["action-btn", v.version === compareWith ? "active" : ""].join(" ").trim()}
               style={{ padding: "1px 6px" }}
-              title="Сравнить с выбранной версией"
+              title={tl("adminPromptsPage.compareWithSelected", "Сравнить с выбранной версией")}
               onClick={(e) => {
                 e.stopPropagation();
                 onCompare(v.version === compareWith ? null : v.version);
@@ -226,14 +227,14 @@ function VersionList({
                 className="action-btn"
                 style={{ padding: "1px 6px" }}
                 disabled={pending}
-                title="Активировать эту версию (откат)"
+                title={tl("adminPromptsPage.activateVersionHint", "Активировать эту версию (откат)")}
                 onClick={(e) => {
                   e.stopPropagation();
                   onRollback(v.version);
                 }}
                 data-testid={`rollback-v${v.version}`}
               >
-                Откатить
+                {tl("adminPromptsPage.rollback", "Откатить")}
               </button>
             )}
           </span>
@@ -249,7 +250,7 @@ function DiffView({ older, newer, olderLabel, newerLabel }: { older: string; new
   return (
     <div className="form-group full" data-testid="diff-view">
       <div className="form-label">
-        Сравнение: {olderLabel} → {newerLabel}{" "}
+        {tl("adminPromptsPage.compare", "Сравнение: {olderLabel} → {newerLabel}", { olderLabel, newerLabel })}
         <span className="version-meta">
           (+{stats.added} / −{stats.removed})
         </span>
@@ -289,7 +290,7 @@ function TemplatesTab() {
     try {
       setTemplates(await listPrompts({ activeOnly }));
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось загрузить шаблоны"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.templatesLoadFailed", "Не удалось загрузить шаблоны")), kind: "err" });
     }
   }, [activeOnly]);
 
@@ -310,8 +311,8 @@ function TemplatesTab() {
       const rows = (templates ?? []).filter((t) => t.key === key);
       const active = rows.find((t) => t.isActive);
       const maxV = rows.reduce((m, t) => Math.max(m, t.version), 0);
-      if (active) return maxV > active.version ? `v${active.version} · черновик v${maxV}` : `v${active.version}`;
-      return rows.length ? `нет активной · v${maxV}` : "";
+      if (active) return maxV > active.version ? tl("adminPromptsPage.activeWithDraft", "v{version} · черновик v{maxV}", { version: active.version, maxV }) : `v${active.version}`;
+      return rows.length ? tl("adminPromptsPage.noActive", "нет активной · v{maxV}", { maxV }) : "";
     },
     [templates],
   );
@@ -331,7 +332,7 @@ function TemplatesTab() {
       setDescription("");
       setCompareWith(null);
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось загрузить версии"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.versionsLoadFailed", "Не удалось загрузить версии")), kind: "err" });
     }
   }, []);
 
@@ -350,7 +351,7 @@ function TemplatesTab() {
   async function saveDraft(): Promise<PromptTemplate | null> {
     if (!selectedKey) return null;
     if (!body.trim()) {
-      setStatus({ text: "Тело шаблона пусто", kind: "err" });
+      setStatus({ text: tl("adminPromptsPage.templateBodyEmpty", "Тело шаблона пусто"), kind: "err" });
       return null;
     }
     return createVersion(selectedKey, body, description.trim());
@@ -365,10 +366,10 @@ function TemplatesTab() {
       await loadList();
       if (created) {
         await loadVersions(selectedKey, created.version);
-        setStatus({ text: `Черновик сохранён как v${created.version} (не активен)`, kind: "ok" });
+        setStatus({ text: tl("adminPromptsPage.draftSaved", "Черновик сохранён как v{version} (не активен)", { version: created.version }), kind: "ok" });
       }
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось сохранить черновик"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.draftSaveFailed", "Не удалось сохранить черновик")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -379,7 +380,7 @@ function TemplatesTab() {
     const t = await activateVersion(selectedKey, version);
     await loadList();
     await loadVersions(selectedKey, t.version);
-    setStatus({ text: `Версия v${t.version} шаблона «${t.key}» активирована; кэш реестра сброшен`, kind: "ok" });
+    setStatus({ text: tl("adminPromptsPage.templateActivated", "Версия v{version} шаблона «{key}» активирована; кэш реестра сброшен", { version: t.version, key: t.key }), kind: "ok" });
   }
 
   async function handleActivate(): Promise<void> {
@@ -394,7 +395,7 @@ function TemplatesTab() {
         await activate(selectedVersion);
       }
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось активировать") , kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.activateFailed", "Не удалось активировать")) , kind: "err" });
     } finally {
       setPending(false);
     }
@@ -402,13 +403,13 @@ function TemplatesTab() {
 
   async function handleRollback(version: number): Promise<void> {
     if (!selectedKey) return;
-    if (!window.confirm(`Активировать версию v${version} шаблона «${selectedKey}»?`)) return;
+    if (!window.confirm(tl("adminPromptsPage.confirmActivateTemplate", "Активировать версию v{version} шаблона «{selectedKey}»?", { version, selectedKey }))) return;
     setPending(true);
     setStatus(null);
     try {
       await activate(version);
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось откатить"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.rollbackFailed", "Не удалось откатить")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -420,13 +421,13 @@ function TemplatesTab() {
     <div className="form-grid" data-testid="templates-tab">
       {/* ── Левая колонка: дерево ── */}
       <div className="form-group">
-        <div className="form-label">Ключи шаблонов</div>
+        <div className="form-label">{tl("adminPromptsPage.templateKeys", "Ключи шаблонов")}</div>
         <input
           className="form-input"
-          placeholder="поиск по ключу…"
+          placeholder={tl("adminPromptsPage.searchKeyPlaceholder", "поиск по ключу…")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Поиск по ключу"
+          aria-label={tl("adminPromptsPage.searchKey", "Поиск по ключу")}
           data-testid="template-search"
         />
         <label className="form-sublabel" style={{ display: "flex", gap: 6, alignItems: "center", margin: "6px 0" }}>
@@ -436,31 +437,31 @@ function TemplatesTab() {
             onChange={(e) => setActiveOnly(e.target.checked)}
             data-testid="template-active-only"
           />
-          только активные версии
+          {tl("adminPromptsPage.activeOnly", "только активные версии")}
         </label>
         {templates === null ? (
-          <div className="pool-status">Загрузка…</div>
+          <div className="pool-status">{tl("common.loading", "Загрузка…")}</div>
         ) : (
           <KeyTree keys={keys} meta={metaOf} selected={selectedKey} onSelect={selectKey} testId="template-tree" />
         )}
         <div className="version-meta" style={{ marginTop: 4 }}>
-          {keys.length} ключей
+          {tl("adminPromptsPage.keysCount", "{keysCount} ключей", { keysCount: keys.length })}
         </div>
       </div>
 
       {/* ── Правая колонка: редактор ── */}
       <div className="form-group">
         {!selectedKey ? (
-          <div className="data-table-empty">выберите ключ слева</div>
+          <div className="data-table-empty">{tl("adminPromptsPage.chooseKeyLeft", "выберите ключ слева")}</div>
         ) : versions === null ? (
-          <div className="pool-status">Загрузка версий…</div>
+          <div className="pool-status">{tl("adminPromptsPage.loadingVersions", "Загрузка версий…")}</div>
         ) : (
           <>
             <div className="form-label">
               {selectedKey}{" "}
               <span className="version-meta">
-                {current ? `v${current.version}${current.isActive ? " · активна" : " · черновик"}` : ""}
-                {dirty ? " · изменено" : ""}
+                {current ? `v${current.version}${current.isActive ? tl("adminPromptsPage.activeSuffix", " · активна") : tl("adminPromptsPage.draftSuffix", " · черновик")}` : ""}
+                {dirty ? tl("adminPromptsPage.modifiedSuffix", " · изменено") : ""}
               </span>
             </div>
             <textarea
@@ -468,13 +469,13 @@ function TemplatesTab() {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               spellCheck={false}
-              aria-label="Тело шаблона"
+              aria-label={tl("adminPromptsPage.templateBody", "Тело шаблона")}
               data-testid="template-body"
             />
             <div className={["code-status", missing.length ? "err" : "ok"].join(" ")} data-testid="placeholder-status">
               {placeholders.length === 0
-                ? "плейсхолдеров нет"
-                : `✓ плейсхолдеры распознаны: ${placeholders.length}${missing.length ? ` · без тестового значения: ${missing.length}` : ""}`}
+                ? tl("adminPromptsPage.noPlaceholders", "плейсхолдеров нет")
+                : tl("adminPromptsPage.placeholdersRecognized", "✓ плейсхолдеры распознаны: {placeholdersCount}{missingCount}", { placeholdersCount: placeholders.length, missingCount: missing.length ? tl("adminPromptsPage.withoutTestValue", " · без тестового значения: {missingCount}", { missingCount: missing.length }) : "" })}
             </div>
             {placeholders.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }} data-testid="placeholder-chips">
@@ -487,16 +488,16 @@ function TemplatesTab() {
             )}
             <input
               className="form-input"
-              placeholder="описание версии (необязательно)"
+              placeholder={tl("adminPromptsPage.versionDescriptionPlaceholder", "описание версии (необязательно)")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               style={{ marginTop: 8 }}
-              aria-label="Описание версии"
+              aria-label={tl("adminPromptsPage.versionDescription", "Описание версии")}
               data-testid="template-description"
             />
             <div className="inline-edit-actions">
               <button type="button" className="action-btn" disabled={pending || !body.trim()} onClick={() => void handleSaveDraft()} data-testid="template-save-draft">
-                Сохранить как черновик
+                {tl("adminPromptsPage.saveDraft", "Сохранить как черновик")}
               </button>
               <button
                 type="button"
@@ -505,13 +506,13 @@ function TemplatesTab() {
                 onClick={() => void handleActivate()}
                 data-testid="template-activate"
               >
-                {dirty ? "Сохранить и активировать" : "Активировать"}
+                {dirty ? tl("adminPromptsPage.saveAndActivate", "Сохранить и активировать") : tl("adminPromptsPage.activate", "Активировать")}
               </button>
-              {dirty && <span className="inline-edit-dirty">не сохранено</span>}
+              {dirty && <span className="inline-edit-dirty">{tl("adminPromptsPage.notSaved", "не сохранено")}</span>}
             </div>
 
             <div className="form-label" style={{ marginTop: 12 }}>
-              Предпросмотр (тестовые значения)
+              {tl("adminPromptsPage.previewTestValues", "Предпросмотр (тестовые значения)")}
             </div>
             <div className="doc-content" style={{ fontSize: 12, whiteSpace: "pre-wrap", border: "1px solid var(--rule)", padding: "8px 12px", background: "var(--white)" }} data-testid="template-preview">
               {preview.map((p, i) =>
@@ -526,7 +527,7 @@ function TemplatesTab() {
             </div>
 
             <div className="form-label" style={{ marginTop: 12 }}>
-              Версии
+              {tl("adminPromptsPage.versions", "Версии")}
             </div>
             <VersionList
               versions={versions.map((v) => ({
@@ -539,7 +540,7 @@ function TemplatesTab() {
               selected={selectedVersion}
               compareWith={compareWith}
               onSelect={(v) => {
-                if (dirty && !window.confirm("Несохранённые правки будут потеряны. Перейти к версии?")) return;
+                if (dirty && !window.confirm(tl("adminPromptsPage.unsavedLost", "Несохранённые правки будут потеряны. Перейти к версии?"))) return;
                 const row = versions.find((r) => r.version === v);
                 setSelectedVersion(v);
                 setBody(row?.body ?? "");
@@ -557,7 +558,7 @@ function TemplatesTab() {
               />
             )}
             {compareRow && current && compareRow.version === current.version && (
-              <div className="pool-status">Для сравнения выберите другую версию (⇄)</div>
+              <div className="pool-status">{tl("adminPromptsPage.chooseOtherVersion", "Для сравнения выберите другую версию (⇄)")}</div>
             )}
           </>
         )}
@@ -578,7 +579,7 @@ function lineCol(text: string, pos: number): string {
   const before = text.slice(0, Math.max(0, pos));
   const line = before.split("\n").length;
   const col = pos - before.lastIndexOf("\n");
-  return `строка ${line}, столбец ${col}`;
+  return tl("adminPromptsPage.lineColumn", "строка {line}, столбец {col}", { line, col });
 }
 
 /**
@@ -589,7 +590,7 @@ function lineCol(text: string, pos: number): string {
  * вхождения токена внутри фрагмента).
  */
 export function validateJson(text: string): { ok: true; value: unknown } | { ok: false; error: string } {
-  if (!text.trim()) return { ok: false, error: "пустой JSON" };
+  if (!text.trim()) return { ok: false, error: tl("adminPromptsPage.emptyJson", "пустой JSON") };
   try {
     return { ok: true, value: JSON.parse(text) as unknown };
   } catch (err) {
@@ -597,7 +598,7 @@ export function validateJson(text: string): { ok: true; value: unknown } | { ok:
     const short = raw.replace(/^JSON\.parse:\s*/i, "").replace(/\s*is not valid JSON$/i, "");
     const lc = /\(line (\d+) column (\d+)\)/i.exec(raw);
     if (lc) {
-      return { ok: false, error: `${short.replace(/\s*\(line \d+ column \d+\)/i, "")} (строка ${lc[1]}, столбец ${lc[2]})` };
+      return { ok: false, error: tl("adminPromptsPage.jsonErrorAt", "{message} (строка {line}, столбец {column})", { message: short.replace(/\s*\(line \d+ column \d+\)/i, ""), line: lc[1], column: lc[2] }) };
     }
     const posMatch = /position (\d+)/i.exec(raw);
     if (posMatch) {
@@ -633,7 +634,7 @@ function ConfigsTab() {
     try {
       setConfigs(await listConfigs(true));
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось загрузить конфиги"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.configsLoadFailed", "Не удалось загрузить конфиги")), kind: "err" });
     }
   }, []);
 
@@ -665,7 +666,7 @@ function ConfigsTab() {
       setDescription("");
       setCompareWith(null);
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось загрузить версии"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.versionsLoadFailed", "Не удалось загрузить версии")), kind: "err" });
     }
   }, []);
 
@@ -682,7 +683,7 @@ function ConfigsTab() {
   async function saveDraft(): Promise<SynthesisConfig | null> {
     if (!selectedKey) return null;
     if (!parsed.ok) {
-      setStatus({ text: `JSON невалиден: ${parsed.error}`, kind: "err" });
+      setStatus({ text: tl("adminPromptsPage.jsonInvalid", "JSON невалиден: {error}", { error: parsed.error }), kind: "err" });
       return null;
     }
     return updateConfig(selectedKey, parsed.value, description.trim());
@@ -697,10 +698,10 @@ function ConfigsTab() {
       await loadList();
       if (created) {
         await loadVersions(selectedKey, created.version);
-        setStatus({ text: `Черновик сохранён как v${created.version} (не активен)`, kind: "ok" });
+        setStatus({ text: tl("adminPromptsPage.draftSaved", "Черновик сохранён как v{version} (не активен)", { version: created.version }), kind: "ok" });
       }
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось сохранить черновик"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.draftSaveFailed", "Не удалось сохранить черновик")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -711,7 +712,7 @@ function ConfigsTab() {
     const c = await activateConfigVersion(selectedKey, version);
     await loadList();
     await loadVersions(selectedKey, c.version);
-    setStatus({ text: `Версия v${c.version} конфига «${c.key}» активирована; кэш сброшен`, kind: "ok" });
+    setStatus({ text: tl("adminPromptsPage.configActivated", "Версия v{version} конфига «{key}» активирована; кэш сброшен", { version: c.version, key: c.key }), kind: "ok" });
   }
 
   async function handleActivate(): Promise<void> {
@@ -726,7 +727,7 @@ function ConfigsTab() {
         await activate(selectedVersion);
       }
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось активировать"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.activateFailed", "Не удалось активировать")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -734,13 +735,13 @@ function ConfigsTab() {
 
   async function handleRollback(version: number): Promise<void> {
     if (!selectedKey) return;
-    if (!window.confirm(`Активировать версию v${version} конфига «${selectedKey}»?`)) return;
+    if (!window.confirm(tl("adminPromptsPage.confirmActivateConfig", "Активировать версию v{version} конфига «{selectedKey}»?", { version, selectedKey }))) return;
     setPending(true);
     setStatus(null);
     try {
       await activate(version);
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось откатить"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.rollbackFailed", "Не удалось откатить")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -751,18 +752,18 @@ function ConfigsTab() {
   return (
     <div className="form-grid" data-testid="configs-tab">
       <div className="form-group">
-        <div className="form-label">Ключи конфигов</div>
+        <div className="form-label">{tl("adminPromptsPage.configKeys", "Ключи конфигов")}</div>
         <input
           className="form-input"
-          placeholder="поиск по ключу…"
+          placeholder={tl("adminPromptsPage.searchKeyPlaceholder", "поиск по ключу…")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Поиск по ключу конфига"
+          aria-label={tl("adminPromptsPage.searchConfigKey", "Поиск по ключу конфига")}
           data-testid="config-search"
         />
         {configs === null ? (
           <div className="pool-status" style={{ marginTop: 8 }}>
-            Загрузка…
+            {tl("common.loading", "Загрузка…")}
           </div>
         ) : (
           <div style={{ marginTop: 8 }}>
@@ -773,16 +774,16 @@ function ConfigsTab() {
 
       <div className="form-group">
         {!selectedKey ? (
-          <div className="data-table-empty">выберите конфиг слева</div>
+          <div className="data-table-empty">{tl("adminPromptsPage.chooseConfigLeft", "выберите конфиг слева")}</div>
         ) : versions === null ? (
-          <div className="pool-status">Загрузка версий…</div>
+          <div className="pool-status">{tl("adminPromptsPage.loadingVersions", "Загрузка версий…")}</div>
         ) : (
           <>
             <div className="form-label">
               {selectedKey}{" "}
               <span className="version-meta">
-                {current ? `v${current.version}${current.isActive ? " · активна" : " · черновик"}` : ""}
-                {dirty ? " · изменено" : ""}
+                {current ? `v${current.version}${current.isActive ? tl("adminPromptsPage.activeSuffix", " · активна") : tl("adminPromptsPage.draftSuffix", " · черновик")}` : ""}
+                {dirty ? tl("adminPromptsPage.modifiedSuffix", " · изменено") : ""}
               </span>
             </div>
             <textarea
@@ -790,24 +791,24 @@ function ConfigsTab() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               spellCheck={false}
-              aria-label="JSON конфига"
+              aria-label={tl("adminPromptsPage.configJson", "JSON конфига")}
               data-testid="config-json"
             />
             <div className={["code-status", parsed.ok ? "ok" : "err"].join(" ")} data-testid="config-json-status">
-              {parsed.ok ? "✓ JSON валиден" : `✗ JSON: ${parsed.error}`}
+              {parsed.ok ? tl("adminPromptsPage.jsonValid", "✓ JSON валиден") : `✗ JSON: ${parsed.error}`}
             </div>
             <input
               className="form-input"
-              placeholder="описание версии (необязательно)"
+              placeholder={tl("adminPromptsPage.versionDescriptionPlaceholder", "описание версии (необязательно)")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               style={{ marginTop: 8 }}
-              aria-label="Описание версии конфига"
+              aria-label={tl("adminPromptsPage.configVersionDescription", "Описание версии конфига")}
               data-testid="config-description"
             />
             <div className="inline-edit-actions">
               <button type="button" className="action-btn" disabled={pending || !parsed.ok} onClick={() => void handleSaveDraft()} data-testid="config-save-draft">
-                Сохранить как черновик
+                {tl("adminPromptsPage.saveDraft", "Сохранить как черновик")}
               </button>
               <button
                 type="button"
@@ -816,16 +817,16 @@ function ConfigsTab() {
                 onClick={() => void handleActivate()}
                 data-testid="config-activate"
               >
-                {dirty ? "Сохранить и активировать" : "Активировать"}
+                {dirty ? tl("adminPromptsPage.saveAndActivate", "Сохранить и активировать") : tl("adminPromptsPage.activate", "Активировать")}
               </button>
               <button type="button" className="action-btn" disabled={!parsed.ok} onClick={() => parsed.ok && setText(prettyJson(parsed.value))}>
-                Форматировать
+                {tl("adminPromptsPage.format", "Форматировать")}
               </button>
-              {dirty && <span className="inline-edit-dirty">не сохранено</span>}
+              {dirty && <span className="inline-edit-dirty">{tl("adminPromptsPage.notSaved", "не сохранено")}</span>}
             </div>
 
             <div className="form-label" style={{ marginTop: 12 }}>
-              Версии
+              {tl("adminPromptsPage.versions", "Версии")}
             </div>
             <VersionList
               versions={versions.map((v) => ({
@@ -838,7 +839,7 @@ function ConfigsTab() {
               selected={selectedVersion}
               compareWith={compareWith}
               onSelect={(v) => {
-                if (dirty && !window.confirm("Несохранённые правки будут потеряны. Перейти к версии?")) return;
+                if (dirty && !window.confirm(tl("adminPromptsPage.unsavedLost", "Несохранённые правки будут потеряны. Перейти к версии?"))) return;
                 const row = versions.find((r) => r.version === v);
                 setSelectedVersion(v);
                 setText(row ? prettyJson(row.value) : "");
@@ -867,9 +868,9 @@ function ConfigsTab() {
 
 const DIRECTIONS: RelationshipDirection[] = ["unidirectional", "bidirectional", "reflexive"];
 const DIRECTION_LABELS: Record<RelationshipDirection, string> = {
-  unidirectional: "однонаправленная",
-  bidirectional: "двунаправленная",
-  reflexive: "рефлексивная",
+  unidirectional: tl("common.directionOneWay", "однонаправленная"),
+  bidirectional: tl("common.directionTwoWay", "двунаправленная"),
+  reflexive: tl("common.directionReflexive", "рефлексивная"),
 };
 
 function directionOf(t: CatalogType): RelationshipDirection | null {
@@ -901,7 +902,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
     try {
       setRows(isRel ? await getRelationshipTypes() : await getCategoryTypes());
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось загрузить каталог"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.catalogLoadFailed", "Не удалось загрузить каталог")), kind: "err" });
     }
   }, [isRel]);
 
@@ -925,7 +926,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
   async function saveEdit(): Promise<void> {
     if (!edit) return;
     if (!edit.nameRu.trim()) {
-      setStatus({ text: "Русское название типа обязательно", kind: "err" });
+      setStatus({ text: tl("adminPromptsPage.russianNameRequired", "Русское название типа обязательно"), kind: "err" });
       return;
     }
     setPending(true);
@@ -938,9 +939,9 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
       });
       await load();
       setEdit(null);
-      setStatus({ text: `Тип «${t.key}» сохранён; кэш каталога сброшен`, kind: "ok" });
+      setStatus({ text: tl("adminPromptsPage.typeSaved", "Тип «{key}» сохранён; кэш каталога сброшен", { key: t.key }), kind: "ok" });
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось сохранить тип"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.typeSaveFailed", "Не удалось сохранить тип")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -949,7 +950,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
   async function remove(t: CatalogType): Promise<void> {
     if (
       !window.confirm(
-        `Удалить тип «${t.key}» (${t.nameRu})? Ссылающиеся ${isRel ? "связи" : "категории"} сохранят текст типа, но потеряют привязку к каталогу.`,
+        tl("adminPromptsPage.confirmDeleteType", "Удалить тип «{key}» ({nameRu})? Ссылающиеся {isRel} сохранят текст типа, но потеряют привязку к каталогу.", { key: t.key, nameRu: t.nameRu, isRel: isRel ? tl("adminPromptsPage.edgesWord", "связи") : tl("adminPromptsPage.categoriesWord", "категории") }),
       )
     )
       return;
@@ -960,11 +961,11 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
       await load();
       if (edit?.id === t.id) setEdit(null);
       setStatus({
-        text: `Тип «${t.key}» удалён; отвязано ${isRel ? "связей" : "категорий"}: ${r.unlinked}`,
+        text: tl("adminPromptsPage.typeDeleted", "Тип «{key}» удалён; отвязано {isRel}: {unlinked}", { key: t.key, isRel: isRel ? tl("adminPromptsPage.edgesGen", "связей") : tl("adminPromptsPage.categoriesGen", "категорий"), unlinked: r.unlinked }),
         kind: "ok",
       });
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось удалить тип"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.typeDeleteFailed", "Не удалось удалить тип")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -977,14 +978,14 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
       <div className="data-table-toolbar">
         <input
           className="form-input"
-          placeholder="поиск по ключу или названию…"
+          placeholder={tl("adminPromptsPage.searchCatalogPlaceholder", "поиск по ключу или названию…")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Поиск по каталогу"
+          aria-label={tl("adminPromptsPage.searchCatalog", "Поиск по каталогу")}
           data-testid={`${testId}-search`}
         />
         <span className="form-sublabel">
-          {rows ? `${rows.length} типов, системных: ${rows.filter((t) => t.isSystem).length}` : ""}
+          {rows ? tl("adminPromptsPage.typesCount", "{rowsCount} типов, системных: {isSystemCount}", { rowsCount: rows.length, isSystemCount: rows.filter((t) => t.isSystem).length }) : ""}
         </span>
       </div>
       {status && (
@@ -993,18 +994,18 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
         </div>
       )}
       {rows === null ? (
-        <div className="pool-status">Загрузка…</div>
+        <div className="pool-status">{tl("common.loading", "Загрузка…")}</div>
       ) : visible.length === 0 ? (
-        <div className="data-table-empty">типов нет</div>
+        <div className="data-table-empty">{tl("adminPromptsPage.noTypes", "типов нет")}</div>
       ) : (
         <table className="data-table">
           <thead>
             <tr>
-              <th>Ключ</th>
-              <th>Название</th>
-              <th>Описание</th>
-              {isRel && <th>Направление</th>}
-              <th>Происхождение</th>
+              <th>{tl("adminPromptsPage.key", "Ключ")}</th>
+              <th>{tl("common.title", "Название")}</th>
+              <th>{tl("common.description", "Описание")}</th>
+              {isRel && <th>{tl("common.direction", "Направление")}</th>}
+              <th>{tl("common.origin", "Происхождение")}</th>
               <th />
             </tr>
           </thead>
@@ -1020,7 +1021,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                       className="form-input"
                       value={edit.nameRu}
                       onChange={(e) => setEdit({ ...edit, nameRu: e.target.value })}
-                      aria-label="Название типа"
+                      aria-label={tl("adminPromptsPage.typeName", "Название типа")}
                       data-testid={`${testId}-edit-name`}
                     />
                   </td>
@@ -1029,7 +1030,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                       className="form-input"
                       value={edit.description}
                       onChange={(e) => setEdit({ ...edit, description: e.target.value })}
-                      aria-label="Описание типа"
+                      aria-label={tl("adminPromptsPage.typeDescription", "Описание типа")}
                       data-testid={`${testId}-edit-description`}
                     />
                   </td>
@@ -1041,7 +1042,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                         onChange={(e) =>
                           setEdit({ ...edit, defaultDirection: e.target.value as RelationshipDirection })
                         }
-                        aria-label="Направление по умолчанию"
+                        aria-label={tl("adminPromptsPage.defaultDirection", "Направление по умолчанию")}
                         data-testid={`${testId}-edit-direction`}
                       >
                         {DIRECTIONS.map((d) => (
@@ -1053,7 +1054,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                     </td>
                   )}
                   <td>
-                    <span className={originClass(t.isSystem)}>{t.isSystem ? "системный" : "пользовательский"}</span>
+                    <span className={originClass(t.isSystem)}>{t.isSystem ? tl("adminPromptsPage.system", "системный") : tl("adminPromptsPage.custom", "пользовательский")}</span>
                   </td>
                   <td className="num">
                     <button
@@ -1063,10 +1064,10 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                       onClick={() => void saveEdit()}
                       data-testid={`${testId}-edit-save`}
                     >
-                      Сохранить
+                      {tl("common.save", "Сохранить")}
                     </button>{" "}
                     <button type="button" className="action-btn" disabled={pending} onClick={() => setEdit(null)}>
-                      Отмена
+                      {tl("common.cancel", "Отмена")}
                     </button>
                   </td>
                 </tr>
@@ -1079,7 +1080,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                   <td>{t.description}</td>
                   {isRel && <td>{(() => { const d = directionOf(t); return d ? DIRECTION_LABELS[d] : ""; })()}</td>}
                   <td>
-                    <span className={originClass(t.isSystem)}>{t.isSystem ? "системный" : "пользовательский"}</span>
+                    <span className={originClass(t.isSystem)}>{t.isSystem ? tl("adminPromptsPage.system", "системный") : tl("adminPromptsPage.custom", "пользовательский")}</span>
                   </td>
                   <td className="num">
                     {!t.isSystem && (
@@ -1091,7 +1092,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                           onClick={() => startEdit(t)}
                           data-testid={`${testId}-edit-${t.key}`}
                         >
-                          ✎ Изменить
+                          {tl("adminPromptsPage.editIcon", "✎ Изменить")}
                         </button>{" "}
                         <button
                           type="button"
@@ -1100,7 +1101,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                           onClick={() => void remove(t)}
                           data-testid={`${testId}-delete-${t.key}`}
                         >
-                          ✕ Удалить
+                          {tl("adminPromptsPage.deleteIcon", "✕ Удалить")}
                         </button>
                       </>
                     )}
@@ -1119,15 +1120,14 @@ function CatalogsTab() {
   return (
     <div className="form-grid" data-testid="catalogs-tab">
       <div className="form-group full">
-        <div className="form-label">Типы категорий</div>
+        <div className="form-label">{tl("adminPromptsPage.categoryTypes", "Типы категорий")}</div>
         <div className="form-sublabel">
-          Системные типы (посев 0.3b) неизменяемы; пользовательские — созданные из TaxonomySelector —
-          можно переименовать или удалить. Ключ типа не меняется: на него завязаны алиасы нормализации.
+          {tl("adminPromptsPage.typesNote", "Системные типы (посев 0.3b) неизменяемы; пользовательские — созданные из TaxonomySelector — можно переименовать или удалить. Ключ типа не меняется: на него завязаны алиасы нормализации.")}
         </div>
         <CatalogTable kind="category" />
       </div>
       <div className="form-group full">
-        <div className="form-label">Типы связей</div>
+        <div className="form-label">{tl("adminPromptsPage.edgeTypes", "Типы связей")}</div>
         <CatalogTable kind="relationship" />
       </div>
     </div>
@@ -1139,18 +1139,18 @@ function CatalogsTab() {
 const AUDIT_LIMIT = 50;
 const USERS_PAGE = 50;
 
-const ROLE_LABELS: Record<UserRole, string> = { user: "пользователь", admin: "администратор" };
+const ROLE_LABELS: Record<UserRole, string> = { user: tl("adminPromptsPage.roleUser", "пользователь"), admin: tl("adminPromptsPage.roleAdmin", "администратор") };
 
 const ACTION_LABELS: Record<string, string> = {
-  "prompt.version.created": "версия шаблона создана",
-  "prompt.version.activated": "версия шаблона активирована",
-  "config.version.created": "версия конфига создана",
-  "config.version.activated": "версия конфига активирована",
-  "taxonomy.type.updated": "тип каталога изменён",
-  "taxonomy.type.deleted": "тип каталога удалён",
-  "user.role.changed": "роль изменена",
-  "user.bootstrapped": "первый администратор заведён",
-  "account.deleted": "аккаунт удалён",
+  "prompt.version.created": tl("adminPromptsPage.auditTemplateCreated", "версия шаблона создана"),
+  "prompt.version.activated": tl("adminPromptsPage.auditTemplateActivated", "версия шаблона активирована"),
+  "config.version.created": tl("adminPromptsPage.auditConfigCreated", "версия конфига создана"),
+  "config.version.activated": tl("adminPromptsPage.auditConfigActivated", "версия конфига активирована"),
+  "taxonomy.type.updated": tl("adminPromptsPage.auditTypeChanged", "тип каталога изменён"),
+  "taxonomy.type.deleted": tl("adminPromptsPage.auditTypeDeleted", "тип каталога удалён"),
+  "user.role.changed": tl("adminPromptsPage.auditRoleChanged", "роль изменена"),
+  "user.bootstrapped": tl("adminPromptsPage.auditFirstAdmin", "первый администратор заведён"),
+  "account.deleted": tl("adminPromptsPage.auditAccountDeleted", "аккаунт удалён"),
 };
 
 /** Класс бейджа роли (литералы вне JSX — css-parity-audit) */
@@ -1169,7 +1169,7 @@ function auditDetails(e: AdminAuditEntry): string {
 }
 
 function actorLabel(e: AdminAuditEntry): string {
-  if (!e.actorId) return "— (аккаунт удалён)";
+  if (!e.actorId) return tl("adminPromptsPage.accountDeletedDash", "— (аккаунт удалён)");
   return e.actorEmail ?? e.actorId.slice(0, 8) + "…";
 }
 
@@ -1196,7 +1196,7 @@ function AccessTab() {
     const q = search.trim();
     const t = setTimeout(() => {
       loadUsers(q).catch((err) =>
-        setStatus({ text: errText(err, "Не удалось загрузить пользователей"), kind: "err" }),
+        setStatus({ text: errText(err, tl("adminPromptsPage.usersLoadFailed", "Не удалось загрузить пользователей")), kind: "err" }),
       );
     }, 300);
     return () => clearTimeout(t);
@@ -1204,19 +1204,19 @@ function AccessTab() {
 
   useEffect(() => {
     loadAudit().catch((err) =>
-      setStatus({ text: errText(err, "Не удалось загрузить журнал"), kind: "err" }),
+      setStatus({ text: errText(err, tl("adminPromptsPage.auditLoadFailed", "Не удалось загрузить журнал")), kind: "err" }),
     );
   }, [loadAudit]);
 
   async function toggleRole(u: AdminUserRow): Promise<void> {
     const to: UserRole = u.role === "admin" ? "user" : "admin";
-    const verb = to === "admin" ? "Назначить администратором" : "Снять права администратора у";
+    const verb = to === "admin" ? tl("adminPromptsPage.makeAdmin", "Назначить администратором") : tl("adminPromptsPage.revokeAdminFrom", "Снять права администратора у");
     if (
       !window.confirm(
         `${verb} ${u.email}? ${
           to === "admin"
-            ? "Администратор правит шаблоны промптов — активированная версия меняет генерацию у всех."
-            : "Пользователь потеряет доступ к админке; синтезы и баланс не затрагиваются."
+            ? tl("adminPromptsPage.adminNote", "Администратор правит шаблоны промптов — активированная версия меняет генерацию у всех.")
+            : tl("adminPromptsPage.revokeNote", "Пользователь потеряет доступ к админке; синтезы и баланс не затрагиваются.")
         }`,
       )
     )
@@ -1229,12 +1229,12 @@ function AccessTab() {
       await Promise.all([loadUsers(search.trim()), loadAudit()]);
       setStatus({
         text: r.changed
-          ? `${r.user.email}: роль теперь «${ROLE_LABELS[r.user.role]}»`
-          : `${r.user.email}: роль уже была «${ROLE_LABELS[r.user.role]}»`,
+          ? tl("adminPromptsPage.roleNow", "{email}: роль теперь «{role}»", { email: r.user.email, role: ROLE_LABELS[r.user.role] })
+          : tl("adminPromptsPage.roleAlready", "{email}: роль уже была «{role}»", { email: r.user.email, role: ROLE_LABELS[r.user.role] }),
         kind: "ok",
       });
     } catch (err) {
-      setStatus({ text: errText(err, "Не удалось изменить роль"), kind: "err" });
+      setStatus({ text: errText(err, tl("adminPromptsPage.roleChangeFailed", "Не удалось изменить роль")), kind: "err" });
     } finally {
       setPending(null);
     }
@@ -1245,24 +1245,22 @@ function AccessTab() {
   return (
     <div className="form-grid" data-testid="access-tab">
       <div className="form-group full">
-        <div className="form-label">Пользователи и роли</div>
+        <div className="form-label">{tl("adminPromptsPage.usersAndRoles", "Пользователи и роли")}</div>
         <div className="form-sublabel">
-          Ролей две: пользователь и администратор. Свою роль изменить нельзя — единственный
-          администратор не может понизить сам себя; последнего администратора не понизит никто.
-          Первый администратор заводится только скриптом <code>npm run seed:admin</code>.
+          {tl("adminPromptsPage.rolesNote", "Ролей две: пользователь и администратор. Свою роль изменить нельзя — единственный администратор не может понизить сам себя; последнего администратора не понизит никто. Первый администратор заводится только скриптом")} <code>{tl("adminPromptsPage.seedAdminCommand", "npm run seed:admin")}</code>.
         </div>
         <div className="data-table-wrap" data-testid="access-users">
           <div className="data-table-toolbar">
             <input
               className="form-input"
-              placeholder="поиск по email или имени…"
+              placeholder={tl("adminPromptsPage.searchUsersPlaceholder", "поиск по email или имени…")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              aria-label="Поиск пользователей"
+              aria-label={tl("adminPromptsPage.searchUsers", "Поиск пользователей")}
               data-testid="access-search"
             />
             <span className="form-sublabel" data-testid="access-users-count">
-              {users ? `показано ${users.length} из ${total}, администраторов в выдаче: ${admins}` : ""}
+              {users ? tl("adminPromptsPage.shownOf", "показано {usersCount} из {total}, администраторов в выдаче: {admins}", { usersCount: users.length, total, admins }) : ""}
             </span>
           </div>
           {status && (
@@ -1275,17 +1273,17 @@ function AccessTab() {
             </div>
           )}
           {users === null ? (
-            <div className="pool-status">Загрузка…</div>
+            <div className="pool-status">{tl("common.loading", "Загрузка…")}</div>
           ) : users.length === 0 ? (
-            <div className="data-table-empty">пользователей нет</div>
+            <div className="data-table-empty">{tl("adminPromptsPage.noUsers", "пользователей нет")}</div>
           ) : (
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Email</th>
-                  <th>Имя</th>
-                  <th>Роль</th>
-                  <th>Зарегистрирован</th>
+                  <th>{tl("common.email", "Email")}</th>
+                  <th>{tl("adminPromptsPage.name", "Имя")}</th>
+                  <th>{tl("adminPromptsPage.role", "Роль")}</th>
+                  <th>{tl("adminPromptsPage.registered", "Зарегистрирован")}</th>
                   <th />
                 </tr>
               </thead>
@@ -1296,7 +1294,7 @@ function AccessTab() {
                     <tr key={u.id} data-testid={`access-row-${u.email}`} data-role={u.role}>
                       <td>
                         <code>{u.email}</code>
-                        {isMe && <span className="form-sublabel"> (вы)</span>}
+                        {isMe && <span className="form-sublabel"> {tl("adminPromptsPage.you", "(вы)")}</span>}
                       </td>
                       <td>{u.displayName ?? ""}</td>
                       <td>
@@ -1312,7 +1310,7 @@ function AccessTab() {
                             onClick={() => void toggleRole(u)}
                             data-testid={`access-toggle-${u.email}`}
                           >
-                            {u.role === "admin" ? "↓ Снять права" : "↑ Назначить администратором"}
+                            {u.role === "admin" ? tl("adminPromptsPage.revoke", "↓ Снять права") : tl("adminPromptsPage.makeAdminIcon", "↑ Назначить администратором")}
                           </button>
                         )}
                       </td>
@@ -1326,25 +1324,24 @@ function AccessTab() {
       </div>
 
       <div className="form-group full">
-        <div className="form-label">Журнал действий</div>
+        <div className="form-label">{tl("adminPromptsPage.auditLog", "Журнал действий")}</div>
         <div className="form-sublabel">
-          Последние {AUDIT_LIMIT} строк admin_audit: версии шаблонов и конфигов, правки каталогов,
-          смены ролей, удаления аккаунтов. Строка пишется той же транзакцией, что и действие.
+          {tl("adminPromptsPage.auditNote", "Последние {limit} строк admin_audit: версии шаблонов и конфигов, правки каталогов, смены ролей, удаления аккаунтов. Строка пишется той же транзакцией, что и действие.", { limit: AUDIT_LIMIT })}
         </div>
         <div className="data-table-wrap" data-testid="access-audit">
           {audit === null ? (
-            <div className="pool-status">Загрузка…</div>
+            <div className="pool-status">{tl("common.loading", "Загрузка…")}</div>
           ) : audit.length === 0 ? (
-            <div className="data-table-empty">журнал пуст</div>
+            <div className="data-table-empty">{tl("adminPromptsPage.auditEmpty", "журнал пуст")}</div>
           ) : (
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Когда</th>
-                  <th>Кто</th>
-                  <th>Действие</th>
-                  <th>Цель</th>
-                  <th>Подробности</th>
+                  <th>{tl("adminPromptsPage.when", "Когда")}</th>
+                  <th>{tl("adminPromptsPage.who", "Кто")}</th>
+                  <th>{tl("adminPromptsPage.action", "Действие")}</th>
+                  <th>{tl("adminPromptsPage.target", "Цель")}</th>
+                  <th>{tl("adminPromptsPage.details", "Подробности")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1389,7 +1386,7 @@ export function AdminPromptsPage() {
   const isAccess = tab === "access";
   return (
     <div className="input-form" data-testid="admin-prompts-page">
-      <h1 className="form-section-title">Prompt Registry</h1>
+      <h1 className="form-section-title">{tl("adminPromptsPage.promptRegistry", "Prompt Registry")}</h1>
       <div className="actions-bar-btns" style={{ display: "flex", gap: 8, marginBottom: 12 }} role="tablist">
         <button
           type="button"
@@ -1399,7 +1396,7 @@ export function AdminPromptsPage() {
           onClick={() => setTab("templates")}
           data-testid="tab-templates"
         >
-          Шаблоны
+          {tl("adminPromptsPage.tabTemplates", "Шаблоны")}
         </button>
         <button
           type="button"
@@ -1409,7 +1406,7 @@ export function AdminPromptsPage() {
           onClick={() => setTab("configs")}
           data-testid="tab-configs"
         >
-          Конфиги
+          {tl("adminPromptsPage.tabConfigs", "Конфиги")}
         </button>
         <button
           type="button"
@@ -1419,7 +1416,7 @@ export function AdminPromptsPage() {
           onClick={() => setTab("catalogs")}
           data-testid="tab-catalogs"
         >
-          Каталоги
+          {tl("adminPromptsPage.tabCatalogs", "Каталоги")}
         </button>
         <button
           type="button"
@@ -1429,13 +1426,12 @@ export function AdminPromptsPage() {
           onClick={() => setTab("access")}
           data-testid="tab-access"
         >
-          Доступ
+          {tl("adminPromptsPage.tabAccess", "Доступ")}
         </button>
       </div>
       {!isCatalogs && !isAccess && (
         <div className="form-sublabel" style={{ marginBottom: 10 }}>
-          Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация
-          сбрасывает кэш реестра — следующая генерация берёт новый текст.
+          {tl("adminPromptsPage.registryNote", "Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация сбрасывает кэш реестра — следующая генерация берёт новый текст.")}
         </div>
       )}
       {isTemplates ? (

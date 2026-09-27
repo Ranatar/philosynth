@@ -106,6 +106,7 @@ import { ROLE_MAP, parseGraphFromHTML, saveGraphToDb } from "./graph-parser.js";
 import { buildSYS } from "./prompt-builder.js";
 import { renderTemplate } from "./prompt-registry.js";
 import { StreamError, classifyStreamError } from "./streaming-manager.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
   connectionManager.sendToUser(userId, msg);
@@ -379,7 +380,7 @@ async function buildTargetSectionTask(
     : { ...row, sectionOrder: [...order, targetKey] };
   const infra = await buildEditInfra(rowForInfra, philosophers, secCtx);
   const def = infra.defs.find((d) => d.key === targetKey);
-  if (!def) throw new TransformError("VALIDATION_ERROR", `Раздел «${targetKey}» не найден в определениях`);
+  if (!def) throw new TransformError("VALIDATION_ERROR", tl("server.representationTransformer.sectionNotInDefs", "Раздел «{targetKey}» не найден в определениях", { targetKey }));
   const [secRow] = await db
     .select({ sectionNum: sections.sectionNum })
     .from(sections)
@@ -560,7 +561,7 @@ export async function transformGraphToTheses(handle: GenerationSlotHandle): Prom
 
   const parsed = parseThesesFromHTML(html);
   if (parsed.length === 0)
-    throw new TransformError("VALIDATION_ERROR", "В ответе не найдена «Сводная таблица тезисов» — тезисы не заменены");
+    throw new TransformError("VALIDATION_ERROR", tl("server.representationTransformer.thesesTableMissing", "В ответе не найдена «Сводная таблица тезисов» — тезисы не заменены"));
   await saveElementsToDb(synthesisId, "theses", { theses: parsed });
   const sectionMissing = await replaceTargetSectionHtml(synthesisId, "theses", html);
 
@@ -603,7 +604,7 @@ export async function transformThesesToGraph(handle: GenerationSlotHandle): Prom
 
   const parsed = parseGraphFromHTML(html);
   if (parsed.nodes.length === 0)
-    throw new TransformError("VALIDATION_ERROR", "В ответе не найдена «Таблица категорий» — граф не заменён");
+    throw new TransformError("VALIDATION_ERROR", tl("server.representationTransformer.categoryTableMissing", "В ответе не найдена «Таблица категорий» — граф не заменён"));
   const saved = await saveGraphToDb(synthesisId, parsed);
   for (const w of saved.warnings) console.warn("transform theses→graph:", w);
   // 11.1: предупреждения разбора (подставленные направления, роли вне ROLE_MAP,
@@ -756,7 +757,7 @@ export async function rollbackTransform(
     .from(representationTransforms)
     .where(and(eq(representationTransforms.id, transformId), eq(representationTransforms.synthesisId, synthesisId)))
     .limit(1);
-  if (!row) throw new TransformError("NOT_FOUND", "Трансформация не найдена");
+  if (!row) throw new TransformError("NOT_FOUND", tl("server.representationTransformer.transformNotFound", "Трансформация не найдена"));
 
   const targetKey = TRANSFORM_TARGET_SECTION[row.direction];
   const snap = row.targetSnapshot as unknown;
@@ -764,12 +765,12 @@ export async function rollbackTransform(
   let summary: Record<string, number>;
 
   if (targetKey === "theses") {
-    if (!isThesesSnapshot(snap)) throw new TransformError("VALIDATION_ERROR", "Снимок тезисов повреждён — откат невозможен");
+    if (!isThesesSnapshot(snap)) throw new TransformError("VALIDATION_ERROR", tl("server.representationTransformer.thesesSnapshotCorrupt", "Снимок тезисов повреждён — откат невозможен"));
     before = await snapshotTheses(synthesisId);
     await restoreTheses(synthesisId, snap);
     summary = { rollback: 1, thesesCreated: snap.theses.length, thesesRemoved: before.theses.length };
   } else {
-    if (!isGraphSnapshot(snap)) throw new TransformError("VALIDATION_ERROR", "Снимок графа повреждён — откат невозможен");
+    if (!isGraphSnapshot(snap)) throw new TransformError("VALIDATION_ERROR", tl("server.representationTransformer.graphSnapshotCorrupt", "Снимок графа повреждён — откат невозможен"));
     before = await snapshotGraph(synthesisId);
     await restoreGraph(synthesisId, snap);
     summary = {

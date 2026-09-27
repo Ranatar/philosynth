@@ -63,6 +63,18 @@ philosynth-service/
 │       │                               # DISPLAY_NAME_MAX_LENGTH — единый свод правил
 │       │                               # аккаунта (routes/auth, bootstrap-admin, RegisterPage)
 │       │
+│       ├── i18n/                       # 11.2: перевод строк интерфейса (общий клиент + сервер)
+│       │   ├── t.ts                    # tl(key, ru, params): второй аргумент — русский текст и запасной
+│       │   │                           # вариант; ICU-плюралы по Intl.PluralRules языка каталога;
+│       │   │                           # setCatalogProvider({ locale, strings })
+│       │   ├── locales.ts              # UI_LOCALES, UI_TO_GEN, GEN_FALLBACK, genLangForUi (правило
+│       │   │                           # владельца интерфейс → генерация); LANG_OPTIONS формы (из
+│       │   │                           # SynthesisForm 1.5) — один список
+│       │   ├── strings.json            # мастер-таблица переводов (ru/en/de, from, draft, params,
+│       │   │                           # where, отметки data/static/obsolete); правится инструментами
+│       │   └── generated/              # каталоги рантайма — npm run i18n:split, руками не править;
+│       │       ├── en.json             # { locale, strings }; ru-каталога нет (ru — в коде)
+│       │       └── de.json
 │       ├── types/
 │       │   ├── synthesis.ts            # SynthesisParams, SynthesisFull, SynthesisPreview
 │       │   ├── section.ts              # SectionDef, SectionFull, SectionSummary
@@ -96,6 +108,12 @@ philosynth-service/
 │   ├── tsconfig.json
 │   │
 │   ├── index.ts                        # Точка входа: Hono app + WebSocket
+│   │                                   # 11.2: requestLocale ДО rate-limiter и роутов,
+│   │                                   # installServerCatalogProvider()
+│   ├── i18n/                           # 11.2
+│   │   └── locale.ts                   # язык запроса (AsyncLocalStorage): пользователь → cookie
+│   │                                   # ui_locale → Accept-Language → ru; каталоги generated/*;
+│   │                                   # провайдер tl() — все ответы на языке запроса
 │   ├── env.ts                          # Типизированные env-переменные
 │   │
 │   ├── db/
@@ -120,6 +138,8 @@ philosynth-service/
 │   │       │                           #  импортированного файла (02 §2.4); генерат
 │   │       ├── 0009_version_origin.sql # 10.2: element_versions.origin jsonb — «почему
 │   │       │                           #  изменилось» (снимок рекомендации); генерат
+│   │       ├── 0010_user_locale.sql    # 11.2: users.ui_locale, users.gen_lang (text, NULL);
+│   │       │                           #  генерат, тег переименован
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -339,6 +359,9 @@ philosynth-service/
 │   │   │                               # resume-ветки fill-missing-subs/retry/skip/stop
 │   │   │                               # (v11, 01 §4.12)
 │   │   │
+│   │   ├── subsection-order.ts         # 11.2 (Д-16): loadExpectedSubsectionOrder(synthesisId) —
+│   │   │                               # порядок подразделов сохранённого синтеза для страховки
+│   │   │                               # по месту в recommendations / planner / element-step
 │   │   ├── context-quality.ts          # getSectionContextQuality поверх context_log:
 │   │   │                               # score + issues → бейдж в Edit Modal (v11)
 │   │   │
@@ -651,6 +674,22 @@ philosynth-service/
 │   │   │                               # «другой админ уже есть»
 │   │   └── stripe-create-prices.ts     # 8.3: Product+Price в Stripe ключом владельца,
 │   │                                   # идемпотентно по lookup_key philosynth_<name>
+│   ├── i18n/                           # инструменты перевода интерфейса (сделаны вне бесед;
+│   │   │                               # впервые применены к коду в 11.2) — см. scripts/i18n/README.md
+│   │   ├── README.md
+│   │   ├── i18n-core.mjs               # таблица, names.json (+ params 11.2), сверка tl(), плюралы,
+│   │   │                               # MIRROR_EXCLUSIONS (зеркала с данными — общий список codemod/check)
+│   │   ├── ui-strings-lib.mjs          # опись литералов интерфейса (ts-morph)
+│   │   ├── names.json                  # рукописные ключи и английские черновики
+│   │   ├── i18n-init.mjs               # одноразово: опись + names → strings.json
+│   │   ├── i18n-codemod.mjs            # литералы → tl() (применён к репозиторию в 11.2)
+│   │   ├── i18n-export.mjs             # сверка кода с таблицей + файл для переводчика
+│   │   ├── i18n-import.mjs             # вливание перевода (подстановки, формы плюрала)
+│   │   ├── i18n-check.mjs              # отчёт приёмки
+│   │   ├── i18n-params.mjs             # 11.2: говорящие имена подстановок из names.json → таблица
+│   │   ├── i18n-split.mjs              # 11.2: нарезка каталогов generated/<lang>.json (--check)
+│   │   ├── extract-ui-strings.mjs      # временная оснастка (опись в один JSON)
+│   │   └── build-localized.mjs         # временная оснастка (копия проекта с переводом)
 │   ├── checks/                         # проверки, идущие без браузера
 │   │   ├── check-dotfiles.mjs          # 8.7: сторож правок .env.example/.gitignore
 │   │   │                               # 9.1: + восемь переменных почты и MAIL_TRANSPORT стенда
@@ -726,6 +765,10 @@ philosynth-service/
     │                                   # smoke-111-request1 — чистые функции 11.1: надстройка поверх
     │                                   # генерата, strip, обороты «СТРОГО» покрыты правилом, направление/
     │                                   # роли (EN → предупреждения, RU → нет), resolveSubsection (без БД)
+    │                                   # smoke-112-request1 — чистые функции 11.2: словарь языков и
+    │                                   # genLangForUi, ICU-плюралы, каталоги ≡ нарезке, язык запроса по
+    │                                   # cookie/Accept-Language, зеркала MIRROR_EXCLUSIONS нетронуты,
+    │                                   # Д-16 на переведённых атрибутах (без БД и браузера)
     │                                   # test-111-requests2-8 — R2–R8 11.1 на живом сервере :3000 + мок
     │                                   # Claude :3921 (без браузера): путь обновления сида + smoke-12,
     │                                   # SYS по lang, английские направления/роли → генлог и /logs/

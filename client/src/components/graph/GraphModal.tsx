@@ -82,6 +82,7 @@ import type {
   PanelLink,
   PanelNodeData,
 } from "./graph-utils";
+import { tl } from "@philosynth/shared/i18n/t";
 
 type PanelState =
   | { kind: "node"; d: PanelNodeData; links: PanelLink[] }
@@ -111,12 +112,12 @@ export interface GraphModalProps {
 
 /** Текст ошибки удаления связи (8.4): коды 03 §4.3 */
 export function messageOfEdgeDeleteError(err: unknown): string {
-  if (!(err instanceof ApiError)) return "Не удалось удалить связь.";
+  if (!(err instanceof ApiError)) return tl("graph.graphModal.deleteEdgeFailed", "Не удалось удалить связь.");
   if (err.code === "GENERATION_IN_PROGRESS")
-    return "Генерация ещё идёт — правки заблокированы.";
-  if (err.code === "FORBIDDEN") return "Связь может удалить только владелец.";
-  if (err.code === "NOT_FOUND") return "Связь уже удалена.";
-  return err.message || "Не удалось удалить связь.";
+    return tl("graph.graphModal.lockedGenerating", "Генерация ещё идёт — правки заблокированы.");
+  if (err.code === "FORBIDDEN") return tl("graph.graphModal.ownerOnlyDelete", "Связь может удалить только владелец.");
+  if (err.code === "NOT_FOUND") return tl("graph.graphModal.edgeAlreadyDeleted", "Связь уже удалена.");
+  return err.message || tl("graph.graphModal.deleteEdgeFailed", "Не удалось удалить связь.");
 }
 
 export default function GraphModal({
@@ -306,7 +307,7 @@ export default function GraphModal({
   // Беседа 8.4 (п. 7): удаление связи из EdgePanel — DELETE /edges/:edgeId
   const handleDeleteEdge = useCallback(
     async (e: GEdge): Promise<string | null> => {
-      if (!data || !synthesisId) return "Связь не найдена в данных графа.";
+      if (!data || !synthesisId) return tl("graph.graphModal.edgeNotFound", "Связь не найдена в данных графа.");
       const edge =
         (e.dbId ? data.edges.find((x) => x.id === e.dbId) : undefined) ??
         data.edges.find(
@@ -315,7 +316,7 @@ export default function GraphModal({
             x.targetId === nameToId.get(e.tgt.toLowerCase().trim()) &&
             x.edgeType === e.type,
         );
-      if (!edge) return "Связь не найдена в данных графа.";
+      if (!edge) return tl("graph.graphModal.edgeNotFound", "Связь не найдена в данных графа.");
       try {
         const res = await deleteEdge(synthesisId, edge.id);
         setPanel(null);
@@ -365,7 +366,7 @@ export default function GraphModal({
 
   const G = graphState.G;
   const empty = G.nodes.length === 0;
-  const nodeTypes = new Set(G.nodes.map((n) => n.type || "другое"));
+  const nodeTypes = new Set(G.nodes.map((n) => n.type || tl("graph.graphModal.other", "другое")));
   const edgeTypes = new Set(G.edges.map((e) => e.type).filter(Boolean));
   const clusterLabels = G.topology?.clusterLabels || [];
 
@@ -390,46 +391,46 @@ export default function GraphModal({
         }}
       />
       <div className="gm-header">
-        <div className="gm-title">◈ Граф Категорий</div>
+        <div className="gm-title">{tl("graph.graphModal.title", "◈ Граф Категорий")}</div>
         <div className="gm-actions">
           <div className="gm-tabs">
             <button
               className={"gm-btn" + (mode === "3d" ? " active" : "")}
               onClick={() => switchView("3d")}
             >
-              3D
+              {tl("graph.graphModal.view3d", "3D")}
             </button>
             <button
               className={"gm-btn" + (clustersOn ? " active" : "")}
               onClick={toggleClusters}
             >
-              ◎ Кластеры
+              {tl("graph.graphModal.clusters", "◎ Кластеры")}
             </button>
             <button
               className={"gm-btn" + (mode === "2d" ? " active" : "")}
               onClick={() => switchView("2d")}
             >
-              2D
+              {tl("graph.graphModal.view2d", "2D")}
             </button>
           </div>
           {editable && synthesisId && data && data.categories.length > 0 && (
             <button
               className="gm-btn gold"
               onClick={() => setCreateEdgeFrom(null)}
-              title="Создать связь между категориями (7.1)"
+              title={tl("graph.graphModal.createEdgeHint", "Создать связь между категориями (7.1)")}
               data-testid="gm-add-edge-btn"
             >
-              + Связь
+              {tl("graph.graphModal.addEdge", "+ Связь")}
             </button>
           )}
           {editable && onTransform && data && data.categories.length > 0 && (
             <button
               className="gm-btn gold"
               onClick={() => onTransform("graph_to_theses")}
-              title="Трансформировать граф в тезисы (Representation Transformer)"
+              title={tl("graph.graphModal.toThesesHint", "Трансформировать граф в тезисы (Representation Transformer)")}
               data-testid="gm-transform-btn"
             >
-              → Тезисы
+              {tl("graph.graphModal.toTheses", "→ Тезисы")}
             </button>
           )}
           <div className={"gm-export-wrap" + (exportOpen ? " open" : "")}>
@@ -447,19 +448,19 @@ export default function GraphModal({
                 className="gm-export-item"
                 onClick={() => doExport("mmd")}
               >
-                MMD
+                {tl("graph.graphModal.exportMmd", "MMD")}
               </button>
               <button
                 className="gm-export-item"
                 onClick={() => doExport("png")}
               >
-                PNG
+                {tl("graph.graphModal.exportPng", "PNG")}
               </button>
               <button
                 className="gm-export-item"
                 onClick={() => doExport("json")}
               >
-                JSON
+                {tl("graph.graphModal.exportJson", "JSON")}
               </button>
             </div>
           </div>
@@ -483,7 +484,7 @@ export default function GraphModal({
               letterSpacing: 1,
             }}
           >
-            Нет данных графа — раздел «Граф» ещё не сгенерирован.
+            {tl("graph.graphModal.noGraphData", "Нет данных графа — раздел «Граф» ещё не сгенерирован.")}
           </div>
         ) : (
           <>
@@ -494,8 +495,8 @@ export default function GraphModal({
             )}
             <div className="gm-hint">
               {mode === "3d"
-                ? "Вращение: мышь · Зум: колёсико · Перетаскивание узлов"
-                : "Перетаскивание узлов · Зум: колёсико"}
+                ? tl("graph.graphModal.controls3d", "Вращение: мышь · Зум: колёсико · Перетаскивание узлов")
+                : tl("graph.graphModal.controls2d", "Перетаскивание узлов · Зум: колёсико")}
             </div>
             <GraphLegend
               nodeTypes={nodeTypes}

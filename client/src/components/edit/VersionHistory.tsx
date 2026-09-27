@@ -33,14 +33,15 @@ import {
   rollbackToVersion,
   type RollbackResponse,
 } from "../../api/elements";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const SOURCE_LABELS: Record<ChangeSource, string> = {
-  manual: "правка вручную",
-  regenerated: "перегенерация",
-  cascade: "каскад",
-  auto_rename: "автозамена имени",
-  rollback: "откат",
-  recommendation: "по рекомендации критики", // 10.2; «почему» (origin) — ниже, 10.3
+  manual: tl("edit.versionHistory.sourceManual", "правка вручную"),
+  regenerated: tl("edit.versionHistory.sourceRegeneration", "перегенерация"),
+  cascade: tl("edit.versionHistory.sourceCascade", "каскад"),
+  auto_rename: tl("edit.versionHistory.sourceRename", "автозамена имени"),
+  rollback: tl("edit.versionHistory.sourceRollback", "откат"),
+  recommendation: tl("edit.versionHistory.sourceRecommendation", "по рекомендации критики"), // 10.2; «почему» (origin) — ниже, 10.3
 };
 
 const HIDDEN_FIELDS = new Set([
@@ -57,25 +58,25 @@ const HIDDEN_FIELDS = new Set([
 ]);
 
 const FIELD_LABELS: Record<string, string> = {
-  name: "Название",
-  type: "Тип",
-  definition: "Определение",
-  centrality: "Центральность",
-  certainty: "Определённость",
-  origin: "Происхождение",
-  formulation: "Формулировка",
-  justification: "Обоснование",
-  thesisType: "Тип тезиса",
-  noveltyDegree: "Степень новизны",
-  relatedCategories: "Связанные категории",
-  term: "Термин",
-  extraColumns: "Столбцы уровня",
-  termCategory: "Категория термина",
-  description: "Описание связи",
-  edgeType: "Тип связи",
-  direction: "Направление",
-  strength: "Сила",
-  htmlContent: "HTML раздела",
+  name: tl("common.title", "Название"),
+  type: tl("common.type", "Тип"),
+  definition: tl("common.definition", "Определение"),
+  centrality: tl("common.centrality", "Центральность"),
+  certainty: tl("common.certainty", "Определённость"),
+  origin: tl("common.origin", "Происхождение"),
+  formulation: tl("common.formulation", "Формулировка"),
+  justification: tl("common.justification", "Обоснование"),
+  thesisType: tl("common.thesisType", "Тип тезиса"),
+  noveltyDegree: tl("common.noveltyDegree", "Степень новизны"),
+  relatedCategories: tl("edit.versionHistory.relatedCategories", "Связанные категории"),
+  term: tl("common.term", "Термин"),
+  extraColumns: tl("edit.versionHistory.levelColumns", "Столбцы уровня"),
+  termCategory: tl("edit.versionHistory.termCategory", "Категория термина"),
+  description: tl("edit.versionHistory.edgeDescription", "Описание связи"),
+  edgeType: tl("common.edgeType", "Тип связи"),
+  direction: tl("common.direction", "Направление"),
+  strength: tl("edit.versionHistory.strength", "Сила"),
+  htmlContent: tl("edit.versionHistory.sectionHtml", "HTML раздела"),
 };
 
 function fmtDate(iso: string): string {
@@ -137,8 +138,8 @@ export function diffSnapshots(
     if (a) out.push({ kind: "del", text: a });
     if (b) out.push({ kind: "add", text: b });
   }
-  if (!out.length) out.push({ kind: "ctx", text: "Различий по полям нет" });
-  else if (same) out.push({ kind: "ctx", text: `(без изменений: ${same} полей)` });
+  if (!out.length) out.push({ kind: "ctx", text: tl("edit.versionHistory.noFieldDiffs", "Различий по полям нет") });
+  else if (same) out.push({ kind: "ctx", text: tl("edit.versionHistory.unchangedFields", "(без изменений: {same} полей)", { same }) });
   return out;
 }
 
@@ -182,7 +183,7 @@ export function VersionHistory({
       .catch((err: unknown) => {
         if (cancelled) return;
         setVersions([]);
-        setError(err instanceof ApiError ? err.message : "Не удалось загрузить историю");
+        setError(err instanceof ApiError ? err.message : tl("edit.versionHistory.historyLoadFailed", "Не удалось загрузить историю"));
       });
     return () => {
       cancelled = true;
@@ -203,8 +204,8 @@ export function VersionHistory({
     if (selected === null || busy) return;
     if (
       !window.confirm(
-        `Откатить элемент к версии v${selected}? Текущее состояние сохранится ` +
-          "новой версией (источник «откат»).",
+        tl("edit.versionHistory.confirmRollbackLead", "Откатить элемент к версии v{selected}? Текущее состояние сохранится ", { selected }) +
+          tl("edit.versionHistory.confirmRollbackTail", "новой версией (источник «откат»)."),
       )
     )
       return;
@@ -214,7 +215,7 @@ export function VersionHistory({
       const res = await rollbackToVersion(synthesisId, elementType, elementId, selected);
       onRolledBack?.(res);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Откат не выполнен");
+      setError(err instanceof ApiError ? err.message : tl("edit.versionHistory.rollbackFailed", "Откат не выполнен"));
     } finally {
       setBusy(false);
     }
@@ -222,19 +223,19 @@ export function VersionHistory({
 
   return (
     <div data-version-history>
-      <div className="form-label">История версий</div>
+      <div className="form-label">{tl("edit.versionHistory.title", "История версий")}</div>
       {versions === null ? (
         <div className="version-meta" style={{ padding: "6px 0" }}>
-          загрузка…
+          {tl("edit.versionHistory.loading", "загрузка…")}
         </div>
       ) : (
         <div className="version-list">
-          <div className="version-item current" title="Текущее состояние элемента">
+          <div className="version-item current" title={tl("edit.versionHistory.currentState", "Текущее состояние элемента")}>
             <span className="version-num">
-              v{(versions[0]?.version ?? 0) + 1}
+              {tl("edit.versionHistory.versionLabel", "v{version}", { version: (versions[0]?.version ?? 0) + 1 })}
             </span>
             <span className="version-preview">{versionPreview(currentData)}</span>
-            <span className="version-meta">текущее состояние</span>
+            <span className="version-meta">{tl("edit.versionHistory.currentStateLower", "текущее состояние")}</span>
           </div>
           {versions.map((v) => (
             <Fragment key={v.id}>
@@ -250,7 +251,7 @@ export function VersionHistory({
                 }
               }}
             >
-              <span className="version-num">v{v.version}</span>
+              <span className="version-num">{tl("edit.versionHistory.versionLabel", "v{version}", { version: v.version })}</span>
               <span className="version-preview">{versionPreview(v.data)}</span>
               <span className="version-meta">
                 {fmtDate(v.createdAt)} · {SOURCE_LABELS[v.changeSource] ?? v.changeSource}
@@ -261,20 +262,19 @@ export function VersionHistory({
                 и удаление плана */}
             {v.origin?.kind === "recommendation" && (
               <div className="version-origin" data-testid="version-origin">
-                Почему: рекомендация № {v.origin.num} критики (раунд {v.origin.round}) —{" "}
-                {v.origin.op}
-                {v.origin.rationale ? `; проблема установлена в «${v.origin.rationale}»` : ""}
+                {tl("edit.versionHistory.whyRecommendation", "Почему: рекомендация № {num} критики (раунд {origin}) — {op}", { num: v.origin.num, origin: v.origin.round, op: v.origin.op })}
+                {v.origin.rationale ? tl("edit.versionHistory.problemIn", "; проблема установлена в «{rationale}»", { rationale: v.origin.rationale }) : ""}
                 {" · "}
                 {v.origin.stepType === "edit_element"
-                  ? "вписана готовая замена"
-                  : "значение написано моделью"}
+                  ? tl("edit.versionHistory.replacementInserted", "вписана готовая замена")
+                  : tl("edit.versionHistory.valueByModel", "значение написано моделью")}
               </div>
             )}
             </Fragment>
           ))}
           {versions.length === 0 && (
             <div className="version-meta" style={{ padding: "8px 12px" }}>
-              правок ещё не было
+              {tl("edit.versionHistory.noEditsYet", "правок ещё не было")}
             </div>
           )}
         </div>
@@ -283,9 +283,9 @@ export function VersionHistory({
       {diff && selected !== null && (
         <>
           <div className="form-sublabel" style={{ marginTop: 8 }}>
-            Сравнение: v{selected} →{" "}
+            {tl("edit.versionHistory.compare", "Сравнение: v{selected} →", { selected })}
             {versions && versions[0]?.version === selected
-              ? "текущее состояние"
+              ? tl("edit.versionHistory.currentStateLower", "текущее состояние")
               : `v${selected + 1}`}
           </div>
           <div className="diff" style={{ marginTop: 4 }}>
@@ -302,7 +302,7 @@ export function VersionHistory({
               disabled={disabled || busy}
               onClick={() => void doRollback()}
             >
-              {busy ? "Откат…" : `Откатить к v${selected}`}
+              {busy ? tl("edit.versionHistory.rollingBack", "Откат…") : tl("edit.versionHistory.rollbackTo", "Откатить к v{selected}", { selected })}
             </button>
           </div>
         </>

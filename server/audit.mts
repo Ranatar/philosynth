@@ -54,7 +54,7 @@ const PAIRS: Pair[] = [
       "authorName", "scope", "sections"] },
   { table: "sections", file: "section.ts", iface: "SectionFull",
     schemaOnly: ["id", "synthesisId", "createdAt", "updatedAt"],
-    typeOnly: ["subsections", "lockedSubsections"], renamed: { secContext: "secContext" } },
+    typeOnly: ["subsections", "lockedSubsections", "parseWarnings"], renamed: { secContext: "secContext" } }, // parseWarnings — 11.2 (Д-16): из генлога, вычисляемое
   { table: "categories", file: "graph.ts", iface: "Category" },
   { table: "categoryEdges", file: "graph.ts", iface: "CategoryEdge" },
   { table: "clusterLabels", file: "graph.ts", iface: "ClusterLabel" },

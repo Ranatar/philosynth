@@ -47,6 +47,7 @@ import { updateSynthesis } from "../../api/syntheses";
 import { useSynthesisStore } from "../../stores/synthesis-store";
 import { buildCapsuleHtml } from "../../utils/capsule-html";
 import { extractCapsuleText } from "../../utils/concept-file";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface DocumentHeaderProps {
   synthesis: SynthesisFull;
@@ -70,16 +71,16 @@ function subtitleFor(s: SynthesisFull): string {
 
 /** Текст ошибки сохранения капсулы (8.4): коды 03 §4.3 + details.html */
 export function capsuleErrorText(err: unknown): string {
-  if (!(err instanceof ApiError)) return "Не удалось сохранить капсулу.";
+  if (!(err instanceof ApiError)) return tl("document.documentHeader.capsuleSaveFailed", "Не удалось сохранить капсулу.");
   if (err.code === "GENERATION_IN_PROGRESS")
-    return "Генерация ещё идёт — правка капсулы заблокирована.";
-  if (err.code === "FORBIDDEN") return "Капсулу может менять только владелец.";
+    return tl("document.documentHeader.capsuleLockedGenerating", "Генерация ещё идёт — правка капсулы заблокирована.");
+  if (err.code === "FORBIDDEN") return tl("document.documentHeader.capsuleOwnerOnly", "Капсулу может менять только владелец.");
   if (err.code === "VALIDATION_ERROR") {
     const d = err.details as Record<string, unknown> | undefined;
     const v = d && typeof d === "object" ? d.html : undefined;
-    return typeof v === "string" ? `Капсула: ${v}` : err.message;
+    return typeof v === "string" ? tl("document.documentHeader.capsuleValue", "Капсула: {capsule}", { capsule: v }) : err.message;
   }
-  return err.message || "Не удалось сохранить капсулу.";
+  return err.message || tl("document.documentHeader.capsuleSaveFailed", "Не удалось сохранить капсулу.");
 }
 
 function Disclosure({ label, text }: { label: string; text: string }) {
@@ -111,7 +112,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
   const saveCapsule = async () => {
     if (!capsuleEdit || capsuleEdit.busy) return;
     if (!capsuleEdit.text.trim()) {
-      setCapsuleEdit({ ...capsuleEdit, error: "Капсула не может быть пустой." });
+      setCapsuleEdit({ ...capsuleEdit, error: tl("document.documentHeader.capsuleEmpty", "Капсула не может быть пустой.") });
       return;
     }
     setCapsuleEdit({ ...capsuleEdit, busy: true, error: null });
@@ -140,7 +141,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
     const defaultTitle = "Синтез Философской Концепции";
     const current = synthesis.title.trim();
     const newTitle = prompt(
-      "Название концепции:",
+      tl("document.documentHeader.conceptTitleLabel", "Название концепции:"),
       current === defaultTitle ? "" : current,
     );
     if (!newTitle?.trim()) return;
@@ -152,8 +153,8 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
     } catch (err) {
       alert(
         err instanceof ApiError && err.code === "FORBIDDEN"
-          ? "Название может менять только владелец синтеза."
-          : "Не удалось сохранить название.",
+          ? tl("document.documentHeader.titleOwnerOnly", "Название может менять только владелец синтеза.")
+          : tl("document.documentHeader.titleSaveFailed", "Не удалось сохранить название."),
       );
     }
   };
@@ -161,7 +162,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
   return (
     <div className="doc-header">
       <div className="doc-type">
-        PhiloSynth Pro™ · Синтез Философской Концепции
+        {tl("document.documentHeader.brandFull", "PhiloSynth Pro™ · Синтез Философской Концепции")}
       </div>
       <div className="doc-title">
         {synthesis.title}
@@ -169,7 +170,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
           <button
             type="button"
             className="doc-title-edit-btn"
-            title="Редактировать название"
+            title={tl("document.documentHeader.editTitle", "Редактировать название")}
             onClick={() => void onEditTitle()}
           >
             ✎
@@ -188,26 +189,26 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
         }}
       >
         {synthesis.seed && (
-          <Disclosure label="Зерно концепции" text={synthesis.seed} />
+          <Disclosure label={tl("document.documentHeader.conceptSeed", "Зерно концепции")} text={synthesis.seed} />
         )}
         {synthesis.context && (
           <Disclosure
-            label="Дополнительный контекст"
+            label={tl("document.documentHeader.extraContext", "Дополнительный контекст")}
             text={synthesis.context}
           />
         )}
         {capsuleText && (
           <details className="header-disclosure-capsule" open>
             <summary>
-              ◈ Капсула концепции
+              {tl("document.documentHeader.capsuleHeading", "◈ Капсула концепции")}
               {synthesis.isOwner && !capsuleEdit && (
                 <button
                   type="button"
                   className="doc-title-edit-btn"
                   title={
                     live
-                      ? "Идёт генерация — правка капсулы заблокирована"
-                      : "Редактировать капсулу"
+                      ? tl("document.documentHeader.capsuleLockedShort", "Идёт генерация — правка капсулы заблокирована")
+                      : tl("document.documentHeader.editCapsule", "Редактировать капсулу")
                   }
                   disabled={live}
                   data-testid="capsule-edit"
@@ -252,7 +253,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
                     onClick={() => void saveCapsule()}
                     data-testid="capsule-save"
                   >
-                    Сохранить
+                    {tl("common.save", "Сохранить")}
                   </button>
                   <button
                     type="button"
@@ -260,7 +261,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
                     disabled={capsuleEdit.busy}
                     onClick={() => setCapsuleEdit(null)}
                   >
-                    Отмена
+                    {tl("common.cancel", "Отмена")}
                   </button>
                 </div>
               </div>
@@ -273,28 +274,28 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
 
       <div className="doc-meta-grid" style={{ marginTop: 20 }}>
         <div className="doc-meta-item">
-          <span className="doc-meta-key">Документ №</span>
+          <span className="doc-meta-key">{tl("document.documentHeader.documentNo", "Документ №")}</span>
           <span className="doc-meta-val">{synthesis.docNum || "—"}</span>
         </div>
         <div className="doc-meta-item">
-          <span className="doc-meta-key">Дата составления</span>
+          <span className="doc-meta-key">{tl("document.documentHeader.compiledDate", "Дата составления")}</span>
           <span className="doc-meta-val">{docDate}</span>
         </div>
         <div className="doc-meta-item">
-          <span className="doc-meta-key">Метод синтеза</span>
+          <span className="doc-meta-key">{tl("document.documentHeader.synthesisMethod", "Метод синтеза")}</span>
           <span className="doc-meta-val gold">{ML[synthesis.method]}</span>
         </div>
         <div className="doc-meta-item">
-          <span className="doc-meta-key">Глубина</span>
+          <span className="doc-meta-key">{tl("document.documentHeader.depth", "Глубина")}</span>
           <span className="doc-meta-val gold">{DL[synthesis.depth]}</span>
         </div>
         <div className="doc-meta-item">
-          <span className="doc-meta-key">Уровень синтеза</span>
+          <span className="doc-meta-key">{tl("document.documentHeader.synthesisLevel", "Уровень синтеза")}</span>
           <span className="doc-meta-val gold">{SL[synthesis.synthLevel]}</span>
         </div>
         {synthesis.authorName && (
           <div className="doc-meta-item" data-testid="doc-author">
-            <span className="doc-meta-key">Автор</span>
+            <span className="doc-meta-key">{tl("document.documentHeader.author", "Автор")}</span>
             <span className="doc-meta-val">{synthesis.authorName}</span>
           </div>
         )}

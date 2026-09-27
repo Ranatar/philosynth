@@ -69,13 +69,14 @@ import { EditSectionCard } from "./EditSectionCard";
 import { ModeResultsPanel } from "./ModeResultsPanel";
 import { TransformHistory } from "./TransformHistory";
 import { SubsectionRegenPanel } from "./SubsectionRegenPanel";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** ALL_SECTION_KEYS [20906] без «sum» — клиентская копия перечня
  *  (серверный getAvailableSectionsToAdd клиенту недоступен; источник
  *  истины один — ключи KEY_LABELS минус sum) */
 const ADDABLE_KEYS = Object.keys(KEY_LABELS).filter((k) => k !== "sum");
 
-const STRUCTURE_SUBSECTION = "Структура документа";
+const STRUCTURE_SUBSECTION = tl("edit.editModal.documentStructure", "Структура документа");
 
 const labelOf = (key: string): string =>
   (KEY_LABELS as Record<string, string>)[key] ?? key;
@@ -322,7 +323,7 @@ export function EditModal({
       subsectionName: STRUCTURE_SUBSECTION,
     }).catch((err) => {
       setStructureBusy(false);
-      alert("Ошибка: " + (err instanceof Error ? err.message : String(err)));
+      alert(tl("edit.editModal.errorPrefix", "Ошибка: ") + (err instanceof Error ? err.message : String(err)));
     });
   }, [synthesisId, structureBusy]);
 
@@ -362,7 +363,7 @@ export function EditModal({
   const handleClose = useCallback(() => {
     if (isExecuting) {
       const ok = window.confirm(
-        "План исполняется. Закрыть окно? Исполнение продолжится на сервере.",
+        tl("edit.editModal.closeWhileExecuting", "План исполняется. Закрыть окно? Исполнение продолжится на сервере."),
       );
       if (!ok) return;
     }
@@ -379,11 +380,11 @@ export function EditModal({
   const controlsDisabled = !!plan; // после составления плана чекбоксы заморожены
 
   const footerInfoParts: string[] = [];
-  if (regenArr.length) footerInfoParts.push(regenArr.length + " перегенер.");
-  if (removeArr.length) footerInfoParts.push(removeArr.length + " удал.");
-  if (addArr.length) footerInfoParts.push(addArr.length + " добавл.");
+  if (regenArr.length) footerInfoParts.push(regenArr.length + tl("edit.editModal.countRegenerate", " перегенер."));
+  if (removeArr.length) footerInfoParts.push(removeArr.length + tl("edit.editModal.countDelete", " удал."));
+  if (addArr.length) footerInfoParts.push(addArr.length + tl("edit.editModal.countAdd", " добавл."));
   const modeCount = modeRegenPairs.length + modeRemovePairs.length;
-  if (modeCount) footerInfoParts.push(modeCount + " режим.");
+  if (modeCount) footerInfoParts.push(modeCount + tl("edit.editModal.countMode", " режим."));
 
   const footerCost =
     plan && plan.estimatedCost > 0
@@ -395,9 +396,9 @@ export function EditModal({
     footerCost !== null
       ? `≈ $${footerCost.toFixed(4)} (${(footerCost * 100).toFixed(2)}¢)`
       : plan && plan.costBreakdown.paid.steps === 0 && plan.costBreakdown.free.steps > 0
-        ? "План бесплатен: модель не зовётся"
+        ? tl("edit.editModal.planFree", "План бесплатен: модель не зовётся")
         : removeArr.length > 0 && regenArr.length + addArr.length === 0
-          ? "Удаление бесплатно"
+          ? tl("edit.editModal.deletionFree", "Удаление бесплатно")
           : "";
 
   // 10.3: у плана бесплатное показано ОТДЕЛЬНО от платного, а каскадные шаги,
@@ -416,17 +417,17 @@ export function EditModal({
       else paid += 1;
     }
     return (
-      `План: ${free} бесплатно · ${paid} платно` +
-      (pending ? ` · ${pending} каскадных ждут решения (оценка — с ними)` : "")
+      tl("edit.editModal.planCostSplit", "План: {free} бесплатно · {paid} платно", { free, paid }) +
+      (pending ? tl("edit.editModal.cascadePending", " · {pending} каскадных ждут решения (оценка — с ними)", { pending }) : "")
     );
   })();
 
   const runLabel = !plan
-    ? "▶ Составить план"
+    ? tl("edit.editModal.makePlan", "▶ Составить план")
     : plan.status === "draft"
-      ? "▶ Исполнить"
+      ? tl("edit.editModal.execute", "▶ Исполнить")
       : plan.status === "executing"
-        ? "Исполняется…"
+        ? tl("edit.editModal.executing", "Исполняется…")
         : plan.status;
 
   return (
@@ -438,13 +439,13 @@ export function EditModal({
     >
       <div className="edit-modal">
         <div className="edit-modal-header">
-          <div className="edit-modal-title">✎ Редактирование Разделов</div>
+          <div className="edit-modal-title">{tl("edit.editModal.editSectionsTitle", "✎ Редактирование Разделов")}</div>
           <button
             type="button"
             className="raw-close"
             onClick={handleClose}
           >
-            ✕ Закрыть
+            {tl("common.closeWithIcon", "✕ Закрыть")}
           </button>
         </div>
 
@@ -486,8 +487,8 @@ export function EditModal({
               >
                 <span style={{ marginRight: 6 }}>⚡</span>
                 {synthesis.structureSections === null
-                  ? "Актуальность подраздела «Структура документа» в Резюме не определена. Рекомендуется обновить."
-                  : "Подраздел «Структура документа» в Резюме устарел (перечень разделов изменился)."}
+                  ? tl("edit.editModal.structureUnknown", "Актуальность подраздела «Структура документа» в Резюме не определена. Рекомендуется обновить.")
+                  : tl("edit.editModal.structureOutdated", "Подраздел «Структура документа» в Резюме устарел (перечень разделов изменился).")}
               </div>
               <button
                 type="button"
@@ -501,7 +502,7 @@ export function EditModal({
                 onClick={handleRegenStructure}
                 disabled={structureBusy}
               >
-                {structureBusy ? "Генерация..." : "Обновить"}
+                {structureBusy ? tl("edit.editModal.generating", "Генерация...") : tl("edit.editModal.update", "Обновить")}
               </button>
             </div>
           )}
@@ -517,8 +518,7 @@ export function EditModal({
                 color: "var(--green-check)",
               }}
             >
-              <span style={{ marginRight: 6 }}>✓</span>Подраздел «Структура
-              документа» обновлён.
+              <span style={{ marginRight: 6 }}>✓</span>{tl("edit.editModal.structureUpdated", "Подраздел «Структура документа» обновлён.")}
             </div>
           )}
 
@@ -606,11 +606,9 @@ export function EditModal({
               неразрушающим путём (reloadSections + applySynthesis), граф
               SynthesisPage перечитает при открытии модалки графа */}
           <div className="transform-section" data-testid="edit-transforms">
-            <div className="form-label transform-section-title">⇄ Трансформации</div>
+            <div className="form-label transform-section-title">{tl("edit.editModal.transformations", "⇄ Трансформации")}</div>
             <div className="form-sublabel">
-              Прямая конверсия граф ↔ тезисы (Representation Transformer). Запуск —
-              кнопками «→ Тезисы» в графе и «→ Граф» у раздела тезисов; здесь —
-              история и откат.
+              {tl("edit.editModal.transformationsNote", "Прямая конверсия граф ↔ тезисы (Representation Transformer). Запуск — кнопками «→ Тезисы» в графе и «→ Граф» у раздела тезисов; здесь — история и откат.")}
             </div>
             <TransformHistory
               synthesisId={synthesisId}
@@ -656,7 +654,7 @@ export function EditModal({
                 ? planInfo
                 : footerInfoParts.length
                   ? footerInfoParts.join(" · ")
-                  : "Выберите действия"}
+                  : tl("edit.editModal.chooseActions", "Выберите действия")}
             </div>
             <div
               style={{
@@ -675,7 +673,7 @@ export function EditModal({
               className="edit-sec-btn"
               onClick={handleDiscardPlan}
             >
-              Отменить план
+              {tl("edit.editModal.cancelPlan", "Отменить план")}
             </button>
           )}
           <button

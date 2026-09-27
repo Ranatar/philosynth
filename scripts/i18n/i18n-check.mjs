@@ -8,17 +8,20 @@
  *   · вызовы tl(): ключ и русский текст — литералы, один ключ — один текст;
  *   · ключи в коде, которых нет в таблице; расхождение русского текста код ↔ таблица;
  *   · ключи таблицы, которых нет в коде (кроме data);
- *   · подстановки перевода ≠ русским;
+ *   · подстановки перевода ≠ русским; формы плюрала не своего языка (и у ru);
  *   · по языкам: нет перевода / устарел / черновик;
  *   · строки интерфейса, всё ещё стоящие в коде литералами: с ключом в таблице
- *     (codemod не применён) и без ключа (новая строка без имени в names.json).
+ *     (codemod не применён) и без ключа (новая строка без имени в names.json);
+ *     литералы строк data (зеркала с данными, MIRROR_EXCLUSIONS codemod'а) —
+ *     отдельной справкой, не ошибкой: они переводятся по месту показа (11.4).
  * --strict: код возврата 1, если есть что-то кроме непереведённого и черновиков.
  */
 
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractProject, namespaceOf, isDataFile } from "./ui-strings-lib.mjs";
-import { LANGS, readTable, scanCalls, placeholderSet, isStale, loadNames, resolveName } from "./i18n-core.mjs";
+import { LANGS, LANG_LOCALE, readTable, scanCalls, placeholderSet, isStale, loadNames, resolveName, pluralFormProblems, mirrorExclusionFor } from "./i18n-core.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argv = process.argv.slice(2);
@@ -28,7 +31,7 @@ const table = readTable(ROOT);
 const S = table.strings;
 const { calls, problems } = scanCalls(ROOT);
 
-const notInTable = [], ruMismatch = [], notInCode = [], badPlaceholders = [];
+const notInTable = [], ruMismatch = [], notInCode = [], badPlaceholders = [], badPlurals = [];
 for (const [key, c] of calls) {
   if (!S[key]) notInTable.push(`${key} (${c.where[0]})`);
   else if (S[key].ru !== c.ru) ruMismatch.push(`${key}: код «${c.ru}» ≠ таблица «${S[key].ru}»`);
@@ -37,26 +40,28 @@ if (calls.size) for (const [key, row] of Object.entries(S)) if (!row.data && !ca
 const perLang = Object.fromEntries(langs.map((l) => [l, { missing: 0, stale: 0, draft: 0 }]));
 for (const [key, row] of Object.entries(S)) {
   if (row.obsolete) continue;
+  for (const pr of pluralFormProblems(row.ru, "ru")) badPlurals.push(`${key} [ru]: ${pr}`);
   for (const l of langs) {
     if (row[l] == null) perLang[l].missing++;
     else {
       if (isStale(row, l)) perLang[l].stale++;
       if (row.draft?.includes(l)) perLang[l].draft++;
       if (placeholderSet(row[l]) !== placeholderSet(row.ru)) badPlaceholders.push(`${key} [${l}]`);
+      for (const pr of pluralFormProblems(row[l], LANG_LOCALE[l] ?? l)) badPlurals.push(`${key} [${l}]: ${pr}`);
     }
   }
 }
 
 // строки, оставшиеся литералами
 const names = loadNames(ROOT);
-const literalKeyed = [], literalUnnamed = [];
+const literalKeyed = [], literalUnnamed = [], literalData = [];
 for (const f of extractProject(ROOT, { withWarnings: false }).files) {
   if (isDataFile(f.rel)) continue;
   const ns = namespaceOf(f.rel);
   for (const e of f.entries) {
     const r = resolveName(names, ns, e);
     if (!r) literalUnnamed.push(`${f.rel}:${e.line} ${e.text}`);
-    else if (!r.exclude) literalKeyed.push(`${f.rel}:${e.line} ${r.key}`);
+    else if (!r.exclude) (S[r.key]?.data || mirrorExclusionFor(f.rel, fs.readFileSync(path.join(ROOT, f.rel), "utf8"), e) ? literalData : literalKeyed).push(`${f.rel}:${e.line} ${r.key}`);
   }
 }
 
@@ -71,10 +76,12 @@ show("ключи кода, которых нет в таблице (нужен i
 show("русский текст код ≠ таблица (нужен i18n:export)", ruMismatch);
 show("ключи таблицы, которых нет в коде", notInCode);
 show("подстановки перевода ≠ русским", badPlaceholders);
+show("формы плюрала не своего языка", badPlurals);
 show("литералы с ключом — codemod не применён", literalKeyed, 5);
+console.log(`· литералы строк data (зеркала с данными, по месту показа — 11.4): ${literalData.length}`);
 show("литералы без ключа — дополнить names.json", literalUnnamed);
 for (const l of langs) console.log(`  ${l}: нет перевода ${perLang[l].missing}, устарел ${perLang[l].stale}, черновик ${perLang[l].draft}`);
 
-const fatal = problems.length + notInTable.length + ruMismatch.length + badPlaceholders.length + literalUnnamed.length +
+const fatal = problems.length + notInTable.length + ruMismatch.length + badPlaceholders.length + badPlurals.length + literalUnnamed.length +
   (calls.size ? literalKeyed.length + notInCode.length : 0);
 process.exit(argv.includes("--strict") && fatal ? 1 : 0);

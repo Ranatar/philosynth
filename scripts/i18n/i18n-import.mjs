@@ -9,6 +9,8 @@
  *   русский текст в таблице уже другой  → отклонено целиком: перевод сделан
  *                                         с прежней версии, её надо выгрузить заново;
  *   подстановки перевода ≠ русским      → отклонён этот язык;
+ *   формы плюрала не своего языка       → отклонён этот язык (few в английском,
+ *                                         нет many в русском; правила — Intl.PluralRules);
  *   иначе                               → перевод записан, from[язык] = ru,
  *                                         отметка draft снята (с --draft — ставится:
  *                                         так вливают машинный черновик);
@@ -21,7 +23,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { LANGS, TABLE_PATH, readTable, writeTable, placeholderSet, isStale } from "./i18n-core.mjs";
+import { LANGS, LANG_LOCALE, TABLE_PATH, readTable, writeTable, placeholderSet, isStale, pluralFormProblems } from "./i18n-core.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argv = process.argv.slice(2);
@@ -45,6 +47,11 @@ for (const [key, item] of Object.entries(incoming)) {
     if (v == null || v === "") { rep.empty++; continue; }
     if (placeholderSet(v) !== placeholderSet(row.ru)) {
       rep.rejected.push(`${key} [${l}]: подстановки ${placeholderSet(v) || "—"} ≠ ${placeholderSet(row.ru) || "—"}`);
+      continue;
+    }
+    const plural = pluralFormProblems(v, LANG_LOCALE[l] ?? l);
+    if (plural.length) {
+      rep.rejected.push(`${key} [${l}]: ${plural.join("; ")}`);
       continue;
     }
     const inTableDraft = row.draft?.includes(l);

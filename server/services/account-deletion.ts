@@ -48,6 +48,7 @@ import { hashPassword } from "../middleware/auth.js";
 import { ADMIN_ACTIONS, ADMIN_SET_LOCK_KEY, writeAudit, type DbExecutor } from "./admin-audit.js"; // 8.1
 import { hasActiveGenerationForUser } from "./generation-service.js";
 import { cancelSubscription, SubscriptionError } from "./subscription-service.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const { users, sessions, apiKeys, syntheses, userSubscriptions, adminAudit, authTokens } = schema;
 
@@ -102,11 +103,11 @@ export async function deleteAccount(
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  if (!u) throw new AccountDeletionError("NOT_FOUND", "Пользователь не найден");
+  if (!u) throw new AccountDeletionError("NOT_FOUND", tl("common.userNotFound", "Пользователь не найден"));
   if (hasActiveGenerationForUser(userId)) {
     throw new AccountDeletionError(
       "GENERATION_IN_PROGRESS",
-      "Идёт генерация — дождитесь завершения или остановите её перед удалением аккаунта",
+      tl("server.accountDeletion.stopBeforeAccountDelete", "Идёт генерация — дождитесь завершения или остановите её перед удалением аккаунта"),
     );
   }
   // 8.1: предварительный заслон — до побочного эффекта в Stripe
@@ -135,7 +136,7 @@ export async function deleteAccount(
       .where(eq(users.id, userId))
       .for("update")
       .limit(1);
-    if (!fresh) throw new AccountDeletionError("NOT_FOUND", "Пользователь не найден");
+    if (!fresh) throw new AccountDeletionError("NOT_FOUND", tl("common.userNotFound", "Пользователь не найден"));
     await assertNotLastAdmin(tx, fresh.role);
 
     const own = await tx

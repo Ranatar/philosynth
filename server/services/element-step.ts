@@ -49,7 +49,8 @@ import {
   sections,
   theses,
 } from "../db/schema.js";
-import { parseFragment } from "../utils/html-parser.js";
+import { parseFragment, resolveSubsection } from "../utils/html-parser.js";
+import { loadExpectedSubsectionOrder } from "./subsection-order.js"; // 11.2, Д-16
 import { truncateText } from "../utils/text.js";
 import { PRICE_IN, PRICE_OUT } from "./cost-estimator.js";
 import {
@@ -76,6 +77,7 @@ import { clearStreamState } from "../ws/stream-state.js";
 
 import type { EditStep, ElementStepKind } from "@philosynth/shared/types/edit-plan";
 import type { HtmlSyncInfo, VersionOrigin } from "@philosynth/shared/types/elements";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ══ Ошибки ═══════════════════════════════════════════════════════════ */
 
@@ -120,7 +122,7 @@ export function resolveStepField(kind: ElementStepKind, field: string | undefine
   if (!ELEMENT_STEP_FIELDS[kind].includes(f))
     throw new ElementStepError(
       "VALIDATION_ERROR",
-      `Поле «${f}» у элемента вида «${kind}» шагом не правится`,
+      tl("server.elementStep.fieldNotEditable", "Поле «{field}» у элемента вида «{kind}» шагом не правится", { field: f, kind }),
       { field: f, allowed: [...ELEMENT_STEP_FIELDS[kind]] },
     );
   return f;
@@ -232,11 +234,11 @@ async function writeField(
   if (!v)
     throw new ElementStepError(
       "VALIDATION_ERROR",
-      "Пустое значение: удаление — отдельная операция, а не пустая правка",
+      tl("server.elementStep.emptyValue", "Пустое значение: удаление — отдельная операция, а не пустая правка"),
       { field },
     );
   if (v.length > ELEMENT_FIELD_MAX_CHARS)
-    throw new ElementStepError("VALIDATION_ERROR", `Значение длиннее ${ELEMENT_FIELD_MAX_CHARS} знаков`, {
+    throw new ElementStepError("VALIDATION_ERROR", tl("server.elementStep.valueTooLong", "Значение длиннее {maxChars} знаков", { maxChars: ELEMENT_FIELD_MAX_CHARS }), {
       field,
       length: v.length,
     });
@@ -266,7 +268,7 @@ async function writeField(
 function stepElementRef(step: EditStep): { kind: ElementStepKind; elementId: string } {
   const ref = parseElementStepTarget(step.target);
   if (!ref)
-    throw new ElementStepError("VALIDATION_ERROR", `Цель шага «${step.target}» — не «вид:идентификатор»`);
+    throw new ElementStepError("VALIDATION_ERROR", tl("server.elementStep.targetFormat", "Цель шага «{target}» — не «вид:идентификатор»", { target: step.target }));
   return ref;
 }
 
@@ -286,10 +288,10 @@ export async function applyElementEdit(
   const { kind, elementId } = stepElementRef(step);
   const field = resolveStepField(kind, step.field);
   if (typeof step.value !== "string")
-    throw new ElementStepError("VALIDATION_ERROR", "У шага edit_element нет значения");
+    throw new ElementStepError("VALIDATION_ERROR", tl("server.elementStep.noValue", "У шага edit_element нет значения"));
   const el = await loadStepElement(synthesisId, kind, elementId);
   if (!el)
-    throw new ElementStepError("NOT_FOUND", `Элемент шага не найден: ${ELEMENT_STEP_KIND_LABELS[kind]} ${elementId}`);
+    throw new ElementStepError("NOT_FOUND", tl("server.elementStep.elementNotFound", "Элемент шага не найден: {kind} {elementId}", { kind: ELEMENT_STEP_KIND_LABELS[kind], elementId }));
   const origin = originOf(step, planId, stepIndex);
   return writeField(synthesisId, el, field, step.value, {
     changeSource: origin ? "recommendation" : "manual",
@@ -369,7 +371,7 @@ export async function refineElement(
   const field = resolveStepField(kind, step.field);
   const el = await loadStepElement(synthesisId, kind, elementId);
   if (!el)
-    throw new ElementStepError("NOT_FOUND", `Элемент шага не найден: ${ELEMENT_STEP_KIND_LABELS[kind]} ${elementId}`);
+    throw new ElementStepError("NOT_FOUND", tl("server.elementStep.elementNotFound", "Элемент шага не найден: {kind} {elementId}", { kind: ELEMENT_STEP_KIND_LABELS[kind], elementId }));
 
   // Подраздел: названный рекомендацией («sectionKey:имя»), иначе — таблица вида
   const host = ELEMENT_STEP_HOST[kind];
@@ -387,7 +389,16 @@ export async function refineElement(
     .from(sections)
     .where(and(eq(sections.synthesisId, synthesisId), eq(sections.key, secKey)))
     .limit(1);
-  const subText = sec ? (extractSubsectionContent(parseFragment(sec.html), subName) ?? "") : "";
+  // 11.2 (Д-16): подраздел ищется со страховкой по месту (переведённые
+  // атрибуты data-section), читается по фактическому атрибуту
+  let subText = "";
+  if (sec) {
+    const container = parseFragment(sec.html);
+    const order = (await loadExpectedSubsectionOrder(synthesisId))[secKey] ?? [];
+    const found = resolveSubsection(container, subName, order);
+    if (found.warning && found.el) console.warn(`refineElement(${secKey}):`, found.warning);
+    subText = found.actualName ? (extractSubsectionContent(container, found.actualName) ?? "") : "";
+  }
 
   const { row, philosophers } = await loadSynthesis(synthesisId);
   const prompt = await renderTemplate(
@@ -481,7 +492,7 @@ export async function refineElement(
   await clearStreamState(synthesisId, streamKey);
   if (bad || value === null)
     // Негодный ответ в элемент НЕ пишется; токены потрачены и учтены
-    throw new ElementStepError("MODEL_ANSWER_INVALID", `Точечная правка не удалась: ${bad}. Элемент не изменён.`);
+    throw new ElementStepError("MODEL_ANSWER_INVALID", tl("server.elementStep.pointEditFailed", "Точечная правка не удалась: {bad}. Элемент не изменён.", { bad }));
 
   const origin = originOf(step, planId, stepIndex);
   const applied = await writeField(synthesisId, el, field, value, {

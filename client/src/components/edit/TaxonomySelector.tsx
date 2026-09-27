@@ -43,6 +43,7 @@ import {
   type RelationshipDirection,
   type TaxonomyKind,
 } from "../../api/taxonomy";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface TaxonomyValue {
   type: string;
@@ -91,9 +92,9 @@ interface ListItem {
 }
 
 const DIRECTION_LABELS: Record<RelationshipDirection, string> = {
-  unidirectional: "однонаправленная",
-  bidirectional: "двунаправленная",
-  reflexive: "рефлексивная",
+  unidirectional: tl("common.directionOneWay", "однонаправленная"),
+  bidirectional: tl("common.directionTwoWay", "двунаправленная"),
+  reflexive: tl("common.directionReflexive", "рефлексивная"),
 };
 
 export function TaxonomySelector({
@@ -289,7 +290,7 @@ export function TaxonomySelector({
           aria-expanded={open}
           aria-autocomplete="list"
           autoComplete="off"
-          placeholder={placeholder ?? (kind === "category" ? "тип категории" : "тип связи")}
+          placeholder={placeholder ?? (kind === "category" ? tl("edit.taxonomySelector.categoryType", "тип категории") : tl("edit.taxonomySelector.edgeType", "тип связи"))}
           value={value.type}
           disabled={disabled}
           onFocus={() => setOpen(true)}
@@ -308,22 +309,22 @@ export function TaxonomySelector({
           className={"type-origin " + (fromCatalog ? "catalog" : "free")}
           title={
             fromCatalog
-              ? `Каталог: ${catalogRow?.nameRu} (${catalogRow?.key})`
-              : "Тип не привязан к каталогу"
+              ? tl("edit.taxonomySelector.catalogEntry", "Каталог: {nameRu} ({key})", { nameRu: catalogRow?.nameRu, key: catalogRow?.key })
+              : tl("edit.taxonomySelector.notInCatalog", "Тип не привязан к каталогу")
           }
           data-testid="type-origin"
         >
-          {fromCatalog ? "из каталога" : "свободный текст"}
+          {fromCatalog ? tl("edit.taxonomySelector.fromCatalog", "из каталога") : tl("edit.taxonomySelector.freeText", "свободный текст")}
         </span>
       </div>
-      {loadError && <div className="pool-status err">Каталог недоступен: {loadError}</div>}
+      {loadError && <div className="pool-status err">{tl("edit.taxonomySelector.catalogUnavailable", "Каталог недоступен: {loadError}", { loadError })}</div>}
       {error && <div className="pool-status err">{error}</div>}
 
       {open && !disabled && !creating && (items.length > 0 || canCreate || catalog === null) && (
         <div className="combobox-list" role="listbox">
           {catalog === null && !loadError && (
             <div className="combobox-item">
-              <span>загрузка каталога…</span>
+              <span>{tl("edit.taxonomySelector.loadingCatalog", "загрузка каталога…")}</span>
             </div>
           )}
           {items.map((it, i) => (
@@ -342,7 +343,7 @@ export function TaxonomySelector({
               </span>
               <span className="combobox-item-code">
                 {it.key}
-                {it.id === null ? " · нет в каталоге" : ""}
+                {it.id === null ? tl("edit.taxonomySelector.notInCatalogSuffix", " · нет в каталоге") : ""}
               </span>
             </div>
           ))}
@@ -356,7 +357,7 @@ export function TaxonomySelector({
               onClick={() => setCreating(true)}
               data-testid="taxonomy-create"
             >
-              + Создать тип «{value.type.trim()}»
+              {tl("edit.taxonomySelector.createType", "+ Создать тип «{type}»", { type: value.type.trim() })}
             </div>
           )}
         </div>
@@ -427,10 +428,10 @@ function CreateTypeForm({
 
   return (
     <div className="combobox-create-form" data-testid="taxonomy-create-form">
-      <div className="form-label">Новый тип {kind === "category" ? "категории" : "связи"}</div>
+      <div className="form-label">{tl("edit.taxonomySelector.newType", "Новый тип")} {kind === "category" ? tl("edit.taxonomySelector.ofCategory", "категории") : tl("edit.taxonomySelector.ofEdge", "связи")}</div>
       <div className="form-grid">
         <div className="form-group">
-          <label className="form-label" htmlFor={`newtype-${kind}-name`}>Название</label>
+          <label className="form-label" htmlFor={`newtype-${kind}-name`}>{tl("common.title", "Название")}</label>
           <input
             id={`newtype-${kind}-name`}
             className="form-input"
@@ -444,7 +445,7 @@ function CreateTypeForm({
           {errors.nameRu && <div className="pool-status err">{errors.nameRu}</div>}
         </div>
         <div className="form-group">
-          <label className="form-label" htmlFor={`newtype-${kind}-key`}>Ключ (латиница)</label>
+          <label className="form-label" htmlFor={`newtype-${kind}-key`}>{tl("edit.taxonomySelector.keyLatin", "Ключ (латиница)")}</label>
           <input
             id={`newtype-${kind}-key`}
             className="form-input"
@@ -459,7 +460,7 @@ function CreateTypeForm({
         </div>
       </div>
       <div className="form-group full">
-        <label className="form-label" htmlFor={`newtype-${kind}-desc`}>Описание</label>
+        <label className="form-label" htmlFor={`newtype-${kind}-desc`}>{tl("common.description", "Описание")}</label>
         <input
           id={`newtype-${kind}-desc`}
           className="form-input"
@@ -470,7 +471,7 @@ function CreateTypeForm({
       </div>
       {kind === "relationship" && (
         <div className="form-group">
-          <label className="form-label" htmlFor={`newtype-${kind}-dir`}>Направление по умолчанию</label>
+          <label className="form-label" htmlFor={`newtype-${kind}-dir`}>{tl("edit.taxonomySelector.defaultDirection", "Направление по умолчанию")}</label>
           <select
             id={`newtype-${kind}-dir`}
             className="form-select"
@@ -493,10 +494,10 @@ function CreateTypeForm({
           disabled={saving || !nameRu.trim() || !key.trim()}
           onClick={() => void submit()}
         >
-          {saving ? "Создание…" : "Создать"}
+          {saving ? tl("common.creating", "Создание…") : tl("edit.taxonomySelector.create", "Создать")}
         </button>
         <button type="button" className="action-btn" disabled={saving} onClick={onCancel}>
-          Отмена
+          {tl("common.cancel", "Отмена")}
         </button>
       </div>
     </div>

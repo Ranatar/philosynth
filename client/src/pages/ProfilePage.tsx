@@ -13,6 +13,7 @@
 import { useState } from "react";
 
 import { useAuthStore } from "../stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Ошибки по полям формы (ключ = имя поля; ключ "_" — общая) */
 type FieldErrors = Record<string, string>;
@@ -68,13 +69,13 @@ export function ProfilePage() {
   async function handleDeleteSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!deletePassword) {
-      setDeleteError("Введите пароль для подтверждения");
+      setDeleteError(tl("profilePage.enterPasswordToConfirm", "Введите пароль для подтверждения"));
       return;
     }
     if (
       !window.confirm(
-        "Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, " +
-          "подписка отменена. История платежей сохраняется обезличенной.",
+        tl("profilePage.confirmDeleteLead", "Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, ") +
+          tl("profilePage.confirmDeleteTail", "подписка отменена. История платежей сохраняется обезличенной."),
       )
     )
       return;
@@ -118,7 +119,7 @@ export function ProfilePage() {
     setPasswordErrors({});
     setPasswordChanged(false);
     if (newPassword !== repeatPassword) {
-      setPasswordErrors({ repeatPassword: "Пароли не совпадают" });
+      setPasswordErrors({ repeatPassword: tl("profilePage.passwordsMismatch", "Пароли не совпадают") });
       return;
     }
     setPasswordPending(true);
@@ -144,21 +145,21 @@ export function ProfilePage() {
   return (
     <div>
       <h1 className="form-section-title" style={{ border: "none" }}>
-        Профиль
+        {tl("profilePage.title", "Профиль")}
       </h1>
 
       {/* ── Профиль ── */}
       <form onSubmit={handleProfileSubmit} className="input-form">
-        <div className="form-section-title">Данные</div>
+        <div className="form-section-title">{tl("profilePage.data", "Данные")}</div>
         <Field
-          label="Email"
+          label={tl("common.email", "Email")}
           type="email"
           value={user?.email ?? ""}
           onChange={() => undefined}
           disabled
         />
         <Field
-          label="Отображаемое имя"
+          label={tl("profilePage.displayName", "Отображаемое имя")}
           autoComplete="name"
           value={displayName}
           onChange={(v) => {
@@ -176,7 +177,7 @@ export function ProfilePage() {
         )}
         {profileSaved && (
           <p role="status" className="callout note">
-            Сохранено
+            {tl("profilePage.saved", "Сохранено")}
           </p>
         )}
         <button
@@ -185,7 +186,7 @@ export function ProfilePage() {
           className="submit-btn"
           style={{ alignSelf: "flex-start", marginTop: 4 }}
         >
-          {profilePending ? "Сохранение…" : "Сохранить"}
+          {profilePending ? tl("common.saving", "Сохранение…") : tl("common.save", "Сохранить")}
         </button>
       </form>
 
@@ -194,9 +195,9 @@ export function ProfilePage() {
         onSubmit={handlePasswordSubmit}
         className="input-form"
       >
-        <div className="form-section-title">Смена пароля</div>
+        <div className="form-section-title">{tl("profilePage.changePasswordTitle", "Смена пароля")}</div>
         <Field
-          label="Текущий пароль"
+          label={tl("profilePage.currentPassword", "Текущий пароль")}
           type="password"
           autoComplete="current-password"
           value={currentPassword}
@@ -208,7 +209,7 @@ export function ProfilePage() {
           error={passwordErrors.currentPassword}
         />
         <Field
-          label="Новый пароль"
+          label={tl("profilePage.newPassword", "Новый пароль")}
           type="password"
           autoComplete="new-password"
           value={newPassword}
@@ -220,7 +221,7 @@ export function ProfilePage() {
           error={passwordErrors.newPassword}
         />
         <Field
-          label="Новый пароль ещё раз"
+          label={tl("profilePage.newPasswordAgain", "Новый пароль ещё раз")}
           type="password"
           autoComplete="new-password"
           value={repeatPassword}
@@ -238,7 +239,7 @@ export function ProfilePage() {
         )}
         {passwordChanged && (
           <p role="status" className="callout note">
-            Пароль изменён; прочие сессии завершены
+            {tl("profilePage.passwordChanged", "Пароль изменён; прочие сессии завершены")}
           </p>
         )}
         <button
@@ -247,19 +248,18 @@ export function ProfilePage() {
           className="submit-btn"
           style={{ alignSelf: "flex-start", marginTop: 4 }}
         >
-          {passwordPending ? "Смена…" : "Сменить пароль"}
+          {passwordPending ? tl("profilePage.changing", "Смена…") : tl("profilePage.changePassword", "Сменить пароль")}
         </button>
       </form>
 
       {/* ── Удаление аккаунта (7.1) ── */}
       <form onSubmit={handleDeleteSubmit} className="input-form" data-testid="delete-account-form">
-        <div className="form-section-title">Удаление аккаунта</div>
+        <div className="form-section-title">{tl("profilePage.deleteAccountTitle", "Удаление аккаунта")}</div>
         <div className="form-sublabel">
-          Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история
-          платежей и использования остаётся обезличенной. Действие необратимо.
+          {tl("profilePage.deleteAccountNote", "Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история платежей и использования остаётся обезличенной. Действие необратимо.")}
         </div>
         <Field
-          label="Пароль для подтверждения"
+          label={tl("profilePage.passwordToConfirm", "Пароль для подтверждения")}
           type="password"
           autoComplete="current-password"
           value={deletePassword}
@@ -281,7 +281,7 @@ export function ProfilePage() {
           style={{ alignSelf: "flex-start", marginTop: 4, color: "var(--red)", borderColor: "var(--red)" }}
           data-testid="delete-account-btn"
         >
-          {deletePending ? "Удаление…" : "✕ Удалить аккаунт"}
+          {deletePending ? tl("profilePage.deleting", "Удаление…") : tl("profilePage.deleteAccount", "✕ Удалить аккаунт")}
         </button>
       </form>
     </div>

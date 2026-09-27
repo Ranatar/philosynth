@@ -28,6 +28,7 @@ import {
   type BillingDecision,
 } from "../services/billing-service.js";
 import type { QuotaType } from "../services/subscription-service.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Что кладётся в контекст запроса (apiKey — только для BYO). */
 export interface BillingContextVar {
@@ -58,7 +59,7 @@ export function billingCheck(
     const user = c.get("user");
     if (!user) {
       return c.json(
-        { error: "Требуется авторизация", code: "AUTH_REQUIRED" },
+        { error: tl("common.authRequired", "Требуется авторизация"), code: "AUTH_REQUIRED" },
         401,
       );
     }

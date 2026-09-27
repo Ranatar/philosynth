@@ -22,7 +22,8 @@
  * возвращает тот же текст с точностью до схлопывания пробелов.
  */
 
-const CAPSULE_SECTION = "Капсула";
+import { tl } from "@philosynth/shared/i18n/t";
+const CAPSULE_SECTION = tl("common.capsule", "Капсула");
 
 function escapeHtml(s: string): string {
   return s

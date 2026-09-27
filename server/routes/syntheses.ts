@@ -141,6 +141,7 @@ import type { SectionFull } from "@philosynth/shared/types/section";
 import { effectiveFlags } from "@philosynth/shared/utils/visibility";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
 import type { PauseEstimates } from "@philosynth/shared/types/ws-messages";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Допустимые значения (зеркало enum'ов схемы 02) ──────────────────── */
 
@@ -258,24 +259,24 @@ export function metaAllowedFor(
 
 /** Единые JSON-ответы отказа доступа (03 §4.3). */
 export const notFoundJson = {
-  error: "Синтез не найден",
+  error: tl("common.synthesisNotFound", "Синтез не найден"),
   code: "NOT_FOUND",
 } as const;
 export const forbiddenJson = {
-  error: "Нет доступа к синтезу",
+  error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"),
   code: "FORBIDDEN",
 } as const;
 /** 8.6: витрина не раскрывает содержания — ответ контент-роутов
  *  (разделы, элементы, режимы, преобразования, обогащение, экспорт)
  *  невладельцу при scope='showcase'. Код тот же FORBIDDEN (§4.3). */
 export const showcaseForbiddenJson = {
-  error: "Концепция открыта витриной: доступны капсула и метаданные, содержание — нет",
+  error: tl("server.routes.syntheses.showcaseOnly", "Концепция открыта витриной: доступны капсула и метаданные, содержание — нет"),
   code: "FORBIDDEN",
 } as const;
 /** 8.6 п.8: чужая концепция без действенного allow_meta в участниках. */
 export const metaNotAllowedJson = (title: string, synthesisId: string) =>
   ({
-    error: `Автор концепции «${title}» не разрешил использовать её в мета-синтезе`,
+    error: tl("server.routes.syntheses.metaForbidden", "Автор концепции «{title}» не разрешил использовать её в мета-синтезе", { title }),
     code: "META_NOT_ALLOWED",
     details: { participants: synthesisId, title },
   }) as const;
@@ -661,7 +662,7 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
     body = (await c.req.json()) as PostBody;
   } catch {
     return c.json(
-      { error: "Невалидный JSON", code: "VALIDATION_ERROR" },
+      { error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" },
       400,
     );
   }
@@ -756,7 +757,7 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
   if (Object.keys(details).length > 0) {
     return c.json(
       {
-        error: "Невалидные параметры синтеза",
+        error: tl("server.routes.syntheses.invalidSynthesisParams", "Невалидные параметры синтеза"),
         code: noParticipantsSeedMissing
           ? "NO_PARTICIPANTS_SEED_REQUIRED"
           : "VALIDATION_ERROR",
@@ -777,9 +778,9 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
     if (new Set(conceptIds).size !== conceptIds.length) {
       return c.json(
         {
-          error: "Невалидные параметры синтеза",
+          error: tl("server.routes.syntheses.invalidSynthesisParams", "Невалидные параметры синтеза"),
           code: "VALIDATION_ERROR",
-          details: { participants: "участники-концепции не должны повторяться" },
+          details: { participants: tl("server.routes.syntheses.duplicateParticipants", "участники-концепции не должны повторяться") },
         },
         400,
       );
@@ -789,9 +790,9 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
       if (access.access === "notfound") {
         return c.json(
           {
-            error: "Невалидные параметры синтеза",
+            error: tl("server.routes.syntheses.invalidSynthesisParams", "Невалидные параметры синтеза"),
             code: "VALIDATION_ERROR",
-            details: { participants: `концепция ${cid} не найдена` },
+            details: { participants: tl("server.routes.syntheses.conceptNotFound", "концепция {cid} не найдена", { cid }) },
           },
           400,
         );
@@ -799,7 +800,7 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
       if (access.access === "forbidden") {
         return c.json(
           {
-            error: "Нет доступа к концепции-участнику",
+            error: tl("server.routes.syntheses.noParticipantAccess", "Нет доступа к концепции-участнику"),
             code: "FORBIDDEN",
             details: { participants: cid },
           },
@@ -815,7 +816,7 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
       if (!check.valid) {
         return c.json(
           {
-            error: "Концепция-участник непригодна для мета-синтеза",
+            error: tl("server.routes.syntheses.participantUnsuitable", "Концепция-участник непригодна для мета-синтеза"),
             code: "VALIDATION_ERROR",
             details: {
               participants: unsuitableConceptMessage(
@@ -1004,7 +1005,7 @@ synthesesRoutes.post("/advice", requireAuth, async (c) => {
   try {
     body = (await c.req.json()) as PostBody;
   } catch {
-    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+    return c.json({ error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" }, 400);
   }
 
   const details: Record<string, string> = {};
@@ -1024,7 +1025,7 @@ synthesesRoutes.post("/advice", requireAuth, async (c) => {
   }
   if (Object.keys(details).length > 0) {
     return c.json(
-      { error: "Невалидные параметры", code: "VALIDATION_ERROR", details },
+      { error: tl("server.routes.syntheses.invalidParams", "Невалидные параметры"), code: "VALIDATION_ERROR", details },
       400,
     );
   }
@@ -1050,7 +1051,7 @@ synthesesRoutes.post("/advice", requireAuth, async (c) => {
   } catch (err) {
     console.warn("[syntheses] advice failed:", err);
     return c.json(
-      { error: "Анализ совместимости недоступен", code: "INTERNAL_ERROR" },
+      { error: tl("server.routes.syntheses.compatUnavailable", "Анализ совместимости недоступен"), code: "INTERNAL_ERROR" },
       500,
     );
   }
@@ -1207,7 +1208,7 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
   try {
     body = (await c.req.json()) as PostBody;
   } catch {
-    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+    return c.json({ error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" }, 400);
   }
 
   const details: Record<string, string> = {};
@@ -1263,7 +1264,7 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
 
   if (Object.keys(details).length > 0) {
     return c.json(
-      { error: "Невалидные параметры оценки", code: "VALIDATION_ERROR", details },
+      { error: tl("server.routes.syntheses.invalidEstimateParams", "Невалидные параметры оценки"), code: "VALIDATION_ERROR", details },
       400,
     );
   }
@@ -1296,7 +1297,7 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
     // Оценка — вспомогательная: сбой Registry/конфигов не должен ронять форму
     console.warn("[syntheses] estimate failed:", err);
     return c.json(
-      { error: "Оценка стоимости недоступна", code: "INTERNAL_ERROR" },
+      { error: tl("server.routes.syntheses.estimateUnavailable", "Оценка стоимости недоступна"), code: "INTERNAL_ERROR" },
       500,
     );
   }
@@ -1347,7 +1348,7 @@ synthesesRoutes.get("/", requireAuth, async (c) => {
     ) {
       return c.json(
         {
-          error: "Невалидные параметры",
+          error: tl("server.routes.syntheses.invalidParams", "Невалидные параметры"),
           code: "VALIDATION_ERROR",
           details: { status: "draft|generating|paused|ready|error" },
         },
@@ -1360,9 +1361,9 @@ synthesesRoutes.get("/", requireAuth, async (c) => {
     if (!METHODS.has(q.method)) {
       return c.json(
         {
-          error: "Невалидные параметры",
+          error: tl("server.routes.syntheses.invalidParams", "Невалидные параметры"),
           code: "VALIDATION_ERROR",
-          details: { method: "неизвестный метод" },
+          details: { method: tl("server.routes.syntheses.unknownMethod", "неизвестный метод") },
         },
         400,
       );
@@ -1498,7 +1499,7 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
   try {
     body = (await c.req.json()) as Record<string, unknown>;
   } catch {
-    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+    return c.json({ error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" }, 400);
   }
 
   const details: Record<string, string> = {};
@@ -1538,7 +1539,7 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
   }
   if (Object.keys(details).length > 0) {
     return c.json(
-      { error: "Невалидные параметры", code: "VALIDATION_ERROR", details },
+      { error: tl("server.routes.syntheses.invalidParams", "Невалидные параметры"), code: "VALIDATION_ERROR", details },
       400,
     );
   }
@@ -1546,7 +1547,7 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
     return c.json(
       {
         error:
-          "Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta",
+          tl("server.routes.syntheses.fieldRequired", "Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta"),
         code: "VALIDATION_ERROR",
         details: {
           body: "title? | extGraphMetrics? | visibility? | showAuthor? | showLogs? | showPrompts? | allowMeta?",
@@ -1597,7 +1598,7 @@ synthesesRoutes.delete("/:id", requireAuth, async (c) => {
   if (isGenerationActive(id)) {
     return c.json(
       {
-        error: "Генерация ещё идёт — остановите её перед удалением",
+        error: tl("server.routes.syntheses.stopBeforeDelete", "Генерация ещё идёт — остановите её перед удалением"),
         code: "GENERATION_IN_PROGRESS",
       },
       409,
@@ -1629,7 +1630,7 @@ synthesesRoutes.post("/:id/duplicate", requireAuth, async (c) => {
   if (row.status === "generating" || isGenerationActive(id)) {
     return c.json(
       {
-        error: "Синтез ещё генерируется — дождитесь завершения",
+        error: tl("server.routes.syntheses.stillGenerating", "Синтез ещё генерируется — дождитесь завершения"),
         code: "GENERATION_IN_PROGRESS",
       },
       409,
@@ -1656,7 +1657,7 @@ synthesesRoutes.post("/:id/duplicate", requireAuth, async (c) => {
         keepFullBudget: row.keepFullBudget,
         context: row.context,
         lang: row.lang,
-        title: `${row.title} (копия)`,
+        title: tl("server.routes.syntheses.copySuffix", "{title} (копия)", { title: row.title }),
         docNum: makeDocNum(),
         status: row.status,
         visibility: "private",

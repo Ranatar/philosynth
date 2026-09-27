@@ -31,6 +31,7 @@ import { listPublicSyntheses } from "../api/syntheses";
 import { PlansTable } from "../components/billing/PlansTable";
 import { SynthesisList } from "../components/catalog/SynthesisList";
 import { useAuthStore } from "../stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Сколько карточек живой витрины показывать (три-четыре по протоколу) */
 export const LANDING_SHOWCASE_LIMIT = 4;
@@ -38,34 +39,34 @@ export const LANDING_SHOWCASE_LIMIT = 4;
 /** Что такое PhiloSynth — четыре опоры, языком документа */
 export const LANDING_FEATURES: readonly { title: string; text: string }[] = [
   {
-    title: "Синтез концепций",
+    title: tl("landingPage.featureSynthesis", "Синтез концепций"),
     text:
-      "Из зерна — вопроса, тезиса, интуиции — и выбранных философских традиций " +
-      "строится структурированный документ: цели и метод, портреты участников, " +
-      "напряжения, критический анализ. Шесть методов синтеза, три уровня — от " +
-      "сравнительного до порождающего, четыре глубины проработки.",
+      tl("landingPage.featureSynthesisText1", "Из зерна — вопроса, тезиса, интуиции — и выбранных философских традиций ") +
+      tl("landingPage.featureSynthesisText2", "строится структурированный документ: цели и метод, портреты участников, ") +
+      tl("landingPage.featureSynthesisText3", "напряжения, критический анализ. Шесть методов синтеза, три уровня — от ") +
+      tl("landingPage.featureSynthesisText4", "сравнительного до порождающего, четыре глубины проработки."),
   },
   {
-    title: "Граф категорий",
+    title: tl("common.categoryGraph", "Граф категорий"),
     text:
-      "Категории новой концепции и связи между ними извлекаются в таблицы и " +
-      "рисуются интерактивным графом — 3D и 2D, с ролями, кластерами и " +
-      "топологией. Граф и корпус тезисов — два представления одного содержания " +
-      "и порождают друг друга.",
+      tl("landingPage.featureGraphText1", "Категории новой концепции и связи между ними извлекаются в таблицы и ") +
+      tl("landingPage.featureGraphText2", "рисуются интерактивным графом — 3D и 2D, с ролями, кластерами и ") +
+      tl("landingPage.featureGraphText3", "топологией. Граф и корпус тезисов — два представления одного содержания ") +
+      tl("landingPage.featureGraphText4", "и порождают друг друга."),
   },
   {
-    title: "Мета-синтез",
+    title: tl("landingPage.featureMeta", "Мета-синтез"),
     text:
-      "Готовая концепция становится участником следующей: капсула, категории, " +
-      "глоссарий и тезисы родителя входят в контекст порождения. Родословная " +
-      "концепций хранится и рисуется деревом.",
+      tl("landingPage.featureMetaText1", "Готовая концепция становится участником следующей: капсула, категории, ") +
+      tl("landingPage.featureMetaText2", "глоссарий и тезисы родителя входят в контекст порождения. Родословная ") +
+      tl("landingPage.featureMetaText3", "концепций хранится и рисуется деревом."),
   },
   {
-    title: "Режимы",
+    title: tl("landingPage.featureModes", "Режимы"),
     text:
-      "Оппонент — критика с позиций названного философа; переводчик — " +
-      "изложение в терминах другой традиции; временной срез — концепция, " +
-      "помещённая в иную эпоху. Каждый результат хранится рядом с документом.",
+      tl("landingPage.featureModesText1", "Оппонент — критика с позиций названного философа; переводчик — ") +
+      tl("landingPage.featureModesText2", "изложение в терминах другой традиции; временной срез — концепция, ") +
+      tl("landingPage.featureModesText3", "помещённая в иную эпоху. Каждый результат хранится рядом с документом."),
   },
 ];
 
@@ -112,7 +113,7 @@ export function LandingPage() {
   if (status === "restoring") {
     return (
       <div className="auth-screen">
-        <span className="meta-label">проверка сессии…</span>
+        <span className="meta-label">{tl("landingPage.checkingSession", "проверка сессии…")}</span>
       </div>
     );
   }
@@ -123,24 +124,20 @@ export function LandingPage() {
     <div className="app-landing" data-testid="landing">
       {/* 1a. Что это */}
       <section className="input-form app-landing-hero">
-        <h1 className="form-section-title">Синтез философских концепций</h1>
+        <h1 className="form-section-title">{tl("landingPage.heroTitle", "Синтез философских концепций")}</h1>
         <p className="app-landing-lead">
-          PhiloSynth собирает новую философскую концепцию из зерна и выбранных
-          традиций: строит документ с разделами, извлекает категории в граф,
-          формулирует тезисы и глоссарий, проводит критический разбор — и
-          хранит результат так, что его можно править по месту, перегенерировать
-          каскадом, брать в следующий синтез и открывать другим.
+          {tl("landingPage.heroText", "PhiloSynth собирает новую философскую концепцию из зерна и выбранных традиций: строит документ с разделами, извлекает категории в граф, формулирует тезисы и глоссарий, проводит критический разбор — и хранит результат так, что его можно править по месту, перегенерировать каскадом, брать в следующий синтез и открывать другим.")}
         </p>
         {/* 1d. Единственное действие гостя — в теле страницы, крупно */}
         <div className="app-landing-cta-row">
           <Link to="/register" className="submit-btn app-landing-cta" data-testid="landing-register">
-            Создать аккаунт
+            {tl("common.createAccount", "Создать аккаунт")}
           </Link>
           <Link to="/login" state={loginState} className="action-btn" data-testid="landing-login">
-            Войти
+            {tl("common.logIn", "Войти")}
           </Link>
           <Link to="/explore" className="action-btn" data-testid="landing-explore">
-            Смотреть публичный каталог
+            {tl("landingPage.viewPublicCatalog", "Смотреть публичный каталог")}
           </Link>
         </div>
       </section>
@@ -160,21 +157,21 @@ export function LandingPage() {
       <section className="input-form" data-testid="landing-showcase">
         <div className="actions-bar" style={{ marginTop: 0 }}>
           <h2 className="form-section-title" style={{ margin: 0, border: "none" }}>
-            Публичные концепции
+            {tl("landingPage.publicConcepts", "Публичные концепции")}
           </h2>
           <Link to="/explore" className="action-btn">
-            Все публичные →
+            {tl("landingPage.allPublic", "Все публичные →")}
           </Link>
         </div>
         {showcase === null ? (
-          <div className="pool-status">загрузка витрины…</div>
+          <div className="pool-status">{tl("landingPage.loadingShowcase", "загрузка витрины…")}</div>
         ) : (
           <SynthesisList
             items={showcase}
             emptyText={
               showcaseError
-                ? "Не удалось загрузить публичный каталог."
-                : "Публичных концепций пока нет — первой может стать ваша."
+                ? tl("landingPage.publicCatalogFailed", "Не удалось загрузить публичный каталог.")
+                : tl("landingPage.noPublicConcepts", "Публичных концепций пока нет — первой может стать ваша.")
             }
           />
         )}
@@ -182,16 +179,12 @@ export function LandingPage() {
 
       {/* 1c. Цены — до регистрации */}
       <section className="input-form" data-testid="landing-plans">
-        <h2 className="form-section-title">Тарифы</h2>
+        <h2 className="form-section-title">{tl("landingPage.plans", "Тарифы")}</h2>
         <p className="submit-note" style={{ maxWidth: "100%" }}>
-          Работать можно тремя способами: со своим ключом Anthropic (стоимость
-          для службы нулевая), по подписке с месячными квотами или с баланса —
-          пополнение через Stripe, списание по себестоимости запроса с наценкой
-          службы. Стоимость каждого синтеза показывается до запуска и в футере
-          готового документа.
+          {tl("landingPage.plansText", "Работать можно тремя способами: со своим ключом Anthropic (стоимость для службы нулевая), по подписке с месячными квотами или с баланса — пополнение через Stripe, списание по себестоимости запроса с наценкой службы. Стоимость каждого синтеза показывается до запуска и в футере готового документа.")}
         </p>
         {plansError ? (
-          <div className="pool-status err">Не удалось загрузить тарифы.</div>
+          <div className="pool-status err">{tl("landingPage.plansLoadFailed", "Не удалось загрузить тарифы.")}</div>
         ) : (
           <PlansTable plans={plans} testId="landing-plans-table" />
         )}
@@ -199,7 +192,7 @@ export function LandingPage() {
 
       <section className="input-form app-landing-foot">
         <Link to="/register" className="submit-btn app-landing-cta" data-testid="landing-register-bottom">
-          Создать аккаунт
+          {tl("common.createAccount", "Создать аккаунт")}
         </Link>
       </section>
     </div>

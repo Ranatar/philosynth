@@ -61,6 +61,7 @@ import {
   findBillableSubscription,
   type QuotaType,
 } from "./subscription-service.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const { users, transactions, apiUsage } = schema;
 
@@ -128,7 +129,7 @@ export async function getBalance(userId: string): Promise<number> {
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  if (!row) throw new BillingError("NOT_FOUND", "Пользователь не найден");
+  if (!row) throw new BillingError("NOT_FOUND", tl("common.userNotFound", "Пользователь не найден"));
   return Number(row.balanceUsd);
 }
 
@@ -148,8 +149,8 @@ export async function createTopup(
     amountUsd < TOPUP_MIN_USD ||
     amountUsd > TOPUP_MAX_USD
   ) {
-    throw new BillingError("VALIDATION_ERROR", "Неверная сумма пополнения", {
-      amountUsd: `от ${TOPUP_MIN_USD} до ${TOPUP_MAX_USD} USD`,
+    throw new BillingError("VALIDATION_ERROR", tl("server.billingService.invalidTopUpAmount", "Неверная сумма пополнения"), {
+      amountUsd: tl("server.billingService.amountRange", "от {minUsd} до {maxUsd} USD", { minUsd: TOPUP_MIN_USD, maxUsd: TOPUP_MAX_USD }),
     });
   }
   const amountCents = Math.round(amountUsd * 100);
@@ -186,8 +187,8 @@ export async function confirmTopup(
   paymentIntentId: string,
 ): Promise<TopupResult> {
   if (typeof paymentIntentId !== "string" || !paymentIntentId.trim()) {
-    throw new BillingError("VALIDATION_ERROR", "paymentIntentId не задан", {
-      paymentIntentId: "обязательное поле",
+    throw new BillingError("VALIDATION_ERROR", tl("server.billingService.paymentIntentMissing", "paymentIntentId не задан"), {
+      paymentIntentId: tl("server.billingService.requiredFieldLower", "обязательное поле"),
     });
   }
   const [existing] = await db
@@ -213,15 +214,15 @@ export async function confirmTopup(
       throw new BillingError("STRIPE_UNAVAILABLE", err.message);
     }
     if (err instanceof StripeError && err.status === 404) {
-      throw new BillingError("NOT_FOUND", "Платёж не найден");
+      throw new BillingError("NOT_FOUND", tl("server.billingService.paymentNotFound", "Платёж не найден"));
     }
     throw err;
   }
   if (pi.metadata?.userId && pi.metadata.userId !== userId) {
-    throw new BillingError("NOT_FOUND", "Платёж не найден");
+    throw new BillingError("NOT_FOUND", tl("server.billingService.paymentNotFound", "Платёж не найден"));
   }
   if (pi.status !== "succeeded") {
-    throw new BillingError("VALIDATION_ERROR", "Платёж ещё не завершён", {
+    throw new BillingError("VALIDATION_ERROR", tl("server.billingService.paymentNotCompleted", "Платёж ещё не завершён"), {
       status: pi.status,
     });
   }
@@ -236,7 +237,7 @@ export async function confirmTopup(
       })
       .where(eq(users.id, userId))
       .returning({ balanceUsd: users.balanceUsd });
-    if (!u) throw new BillingError("NOT_FOUND", "Пользователь не найден");
+    if (!u) throw new BillingError("NOT_FOUND", tl("common.userNotFound", "Пользователь не найден"));
     const [row] = await t
       .insert(transactions)
       .values({
@@ -284,7 +285,7 @@ export async function chargeUsage(
       })
       .where(eq(users.id, userId))
       .returning({ balanceUsd: users.balanceUsd });
-    if (!u) throw new BillingError("NOT_FOUND", "Пользователь не найден");
+    if (!u) throw new BillingError("NOT_FOUND", tl("common.userNotFound", "Пользователь не найден"));
     const balanceAfter = Number(u.balanceUsd);
     const [trx] = await t
       .insert(transactions)
@@ -486,7 +487,7 @@ export interface ResolveBillingOptions {
 /** Серверный ключ для режимов subscription/balance. */
 function serverApiKeyOrThrow(): string {
   if (!env.anthropic.apiKey) {
-    throw new BillingError("API_KEY_MISSING", "API-ключ Anthropic не задан на сервере");
+    throw new BillingError("API_KEY_MISSING", tl("server.billingService.serverKeyMissing", "API-ключ Anthropic не задан на сервере"));
   }
   return env.anthropic.apiKey;
 }
@@ -548,20 +549,20 @@ export async function resolveBilling(
   if (quotaExceeded) {
     throw new BillingError(
       "QUOTA_EXCEEDED",
-      `Квота подписки «${quotaExceeded.quotaType}» исчерпана (${quotaExceeded.used}/${quotaExceeded.quota}), баланса недостаточно`,
+      tl("server.billingService.quotaExhausted", "Квота подписки «{quotaType}» исчерпана ({used}/{quota}), баланса недостаточно", { quotaType: quotaExceeded.quotaType, used: quotaExceeded.used, quota: quotaExceeded.quota }),
       quotaExceeded,
     );
   }
   if (balance > 0) {
     throw new BillingError(
       "INSUFFICIENT_BALANCE",
-      `Недостаточно средств: баланс $${balance.toFixed(4)}, требуется не менее $${threshold.toFixed(4)}`,
+      tl("server.billingService.insufficientFunds", "Недостаточно средств: баланс ${balance}, требуется не менее ${threshold}", { balance: balance.toFixed(4), threshold: threshold.toFixed(4) }),
       { balanceUsd: balance, requiredUsd: threshold },
     );
   }
   throw new BillingError(
     "BILLING_REQUIRED",
-    "Нет источника оплаты: добавьте API-ключ Anthropic, оформите подписку или пополните баланс",
+    tl("server.billingService.noPaymentSource", "Нет источника оплаты: добавьте API-ключ Anthropic, оформите подписку или пополните баланс"),
   );
 }
 

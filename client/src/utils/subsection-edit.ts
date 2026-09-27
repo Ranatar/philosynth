@@ -9,6 +9,7 @@
  * присланное сервер сам чистит по белому списку тегов документа.
  */
 import { ApiError } from "../api/client";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Что рисует SectionView на месте подраздела, пока он правится. */
 export interface SubsectionEditState {
@@ -39,17 +40,17 @@ function detailOf(err: ApiError, field: string): string | null {
 /** Текст отказа по кодам 03 §4.3; у SECTION_TABLE_LOCKED сообщение сервера
  *  уже говорит, ЧЕМ править, — его и показываем. */
 export function subsectionErrorText(err: unknown): string {
-  if (!(err instanceof ApiError)) return "Не удалось сохранить подраздел.";
+  if (!(err instanceof ApiError)) return tl("utils.subsectionEdit.saveFailed", "Не удалось сохранить подраздел.");
   if (err.code === "GENERATION_IN_PROGRESS")
-    return "Генерация ещё идёт — правка подраздела заблокирована.";
-  if (err.code === "FORBIDDEN") return "Править концепцию может только владелец.";
+    return tl("utils.subsectionEdit.lockedGenerating", "Генерация ещё идёт — правка подраздела заблокирована.");
+  if (err.code === "FORBIDDEN") return tl("utils.subsectionEdit.ownerOnly", "Править концепцию может только владелец.");
   if (err.code === "SECTION_TABLE_LOCKED")
-    return err.message || "Этот подраздел вручную не правится.";
+    return err.message || tl("utils.subsectionEdit.notEditable", "Этот подраздел вручную не правится.");
   if (err.code === "VALIDATION_ERROR") {
     const v = detailOf(err, "html");
-    return v ? `Разметка не принята: ${v}` : err.message;
+    return v ? tl("utils.subsectionEdit.markupRejected", "Разметка не принята: {reason}", { reason: v }) : err.message;
   }
   if (err.code === "NOT_FOUND")
-    return "Подраздел не найден — документ изменился. Закройте правку и откройте её заново.";
-  return err.message || "Не удалось сохранить подраздел.";
+    return tl("utils.subsectionEdit.subsectionGone", "Подраздел не найден — документ изменился. Закройте правку и откройте её заново.");
+  return err.message || tl("utils.subsectionEdit.saveFailed", "Не удалось сохранить подраздел.");
 }

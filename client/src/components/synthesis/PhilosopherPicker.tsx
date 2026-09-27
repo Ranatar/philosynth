@@ -14,6 +14,7 @@
  * .phil-group-label + .checkbox-item; выбранный получает ._checked.
  */
 import { PHILOSOPHER_EPOCHS } from "@philosynth/shared/constants/philosophers";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface PhilosopherPickerProps {
   selected: readonly string[];
@@ -36,11 +37,9 @@ export function PhilosopherPicker({
 
   return (
     <div className="form-group full">
-      <div className="form-label">Философы для Синтеза</div>
+      <div className="form-label">{tl("synthesis.philosopherPicker.title", "Философы для Синтеза")}</div>
       <div className="form-sublabel">
-        Опционально: без выбранных философов синтез идёт только из зерна
-        (свободный синтез). Рекомендуется 2–5 для лучшего результата.
-        Выбрано: {selected.length}.
+        {tl("synthesis.philosopherPicker.description", "Опционально: без выбранных философов синтез идёт только из зерна (свободный синтез). Рекомендуется 2–5 для лучшего результата. Выбрано: {selectedCount}.", { selectedCount: selected.length })}
       </div>
 
       <div className="checkboxes-row">

@@ -106,6 +106,7 @@ import type {
   StepResult,
 } from "@philosynth/shared/types/edit-plan";
 import type { PauseReasonKind } from "@philosynth/shared/types/synthesis";
+import { tl } from "@philosynth/shared/i18n/t";
 
 type PlanRow = typeof editPlans.$inferSelect;
 
@@ -205,7 +206,7 @@ async function deleteModeResult(
   if (!row) {
     throw new PlanError(
       "VALIDATION_ERROR",
-      `Результат режима ${modeKey}[${index}] не найден`,
+      tl("server.planExecutor.modeResultNotFound", "Результат режима {modeKey}[{index}] не найден", { modeKey, index }),
     );
   }
   await db.delete(modeResults).where(eq(modeResults.id, row.id));
@@ -431,7 +432,7 @@ async function runStep(
       if (!modeRegenerator) {
         throw new PlanError(
           "VALIDATION_ERROR",
-          "Перегенерация режимов требует mode-service (беседа 4.1)",
+          tl("server.planExecutor.needsModeService", "Перегенерация режимов требует mode-service (беседа 4.1)"),
         );
       }
       const { modeKey, index } = parseModeTarget(step.target);
@@ -441,7 +442,7 @@ async function runStep(
     default:
       throw new PlanError(
         "VALIDATION_ERROR",
-        `Неизвестный тип шага: ${String(step.type)}`,
+        tl("server.planExecutor.unknownStepType", "Неизвестный тип шага: {type}", { type: String(step.type) }),
       );
   }
 }
@@ -703,15 +704,15 @@ export async function executePlan(
   if (row.status !== "draft") {
     throw new PlanError(
       "PLAN_CONFLICT",
-      `План в статусе «${row.status}» нельзя исполнить`,
+      tl("server.planExecutor.planNotExecutable", "План в статусе «{status}» нельзя исполнить", { status: row.status }),
     );
   }
   if (isGenerationActive(synthesisId)) {
-    throw new PlanError("PLAN_CONFLICT", "Генерация уже идёт");
+    throw new PlanError("PLAN_CONFLICT", tl("common.generationInProgress", "Генерация уже идёт"));
   }
   const steps: EditStep[] = [...row.steps];
   if (!steps.some((s) => s.status === "confirmed")) {
-    throw new PlanError("VALIDATION_ERROR", "В плане нет подтверждённых шагов");
+    throw new PlanError("VALIDATION_ERROR", tl("server.planExecutor.noConfirmedSteps", "В плане нет подтверждённых шагов"));
   }
 
   await bumpVersionsForPlan(synthesisId, steps);
@@ -781,26 +782,26 @@ export async function confirmStep(
     .from(editPlans)
     .where(eq(editPlans.id, planId))
     .limit(1);
-  if (!row) throw new PlanError("NOT_FOUND", "План не найден");
+  if (!row) throw new PlanError("NOT_FOUND", tl("common.planNotFound", "План не найден"));
   if (row.userId !== userId) {
-    throw new PlanError("FORBIDDEN", "Нет доступа к плану");
+    throw new PlanError("FORBIDDEN", tl("server.planExecutor.noPlanAccess", "Нет доступа к плану"));
   }
   const synthesisId = row.synthesisId;
   if (row.status !== "done" && row.status !== "executing") {
     throw new PlanError(
       "PLAN_CONFLICT",
-      `Подтверждение шага недоступно для плана в статусе «${row.status}»`,
+      tl("server.planExecutor.confirmUnavailable", "Подтверждение шага недоступно для плана в статусе «{status}»", { status: row.status }),
     );
   }
   if (isGenerationActive(synthesisId)) {
-    throw new PlanError("PLAN_CONFLICT", "Генерация уже идёт");
+    throw new PlanError("PLAN_CONFLICT", tl("common.generationInProgress", "Генерация уже идёт"));
   }
   const steps: EditStep[] = [...row.steps];
   const step = steps[stepIndex];
   if (!step || step.status !== "pending") {
     throw new PlanError(
       "VALIDATION_ERROR",
-      `Шаг ${stepIndex} не ожидает подтверждения`,
+      tl("server.planExecutor.stepNotAwaiting", "Шаг {stepIndex} не ожидает подтверждения", { stepIndex }),
     );
   }
   step.status = "confirmed";
@@ -839,7 +840,7 @@ async function resumePlanExecutor(
   if (row.status !== "paused") {
     throw new PlanError(
       "PLAN_CONFLICT",
-      `План в статусе «${row.status}» нельзя возобновить`,
+      tl("server.planExecutor.planNotResumable", "План в статусе «{status}» нельзя возобновить", { status: row.status }),
     );
   }
   const [synthRow] = await db

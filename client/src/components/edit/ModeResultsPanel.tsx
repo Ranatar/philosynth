@@ -17,6 +17,7 @@ import type { AffectedModeDto } from "@philosynth/shared/types/edit-plan";
 import type { ModeResult } from "@philosynth/shared/types/modes";
 
 import { MODE_ORDER, MODE_UI } from "../modes/ModeModal";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface ModeResultsPanelProps {
   /** modeKey → результаты (порядок created_at ASC = индексы API) */
@@ -64,7 +65,7 @@ export function ModeResultsPanel({
           marginBottom: 10,
         }}
       >
-        РЕЖИМЫ
+        {tl("edit.modeResultsPanel.modesHeading", "РЕЖИМЫ")}
       </div>
       {withResults.map((mk) =>
         (modes[mk] ?? []).map((r, i) => {
@@ -106,7 +107,7 @@ export function ModeResultsPanel({
                     disabled={disabled}
                     onChange={(e) => onToggleRegen(mk, i, e.target.checked)}
                   />
-                  Перегенерировать
+                  {tl("common.regenerate", "Перегенерировать")}
                 </label>
                 <label className="edit-sec-check delete-check">
                   <input
@@ -116,7 +117,7 @@ export function ModeResultsPanel({
                     disabled={disabled}
                     onChange={(e) => onToggleRemove(mk, i, e.target.checked)}
                   />
-                  Удалить
+                  {tl("common.delete", "Удалить")}
                 </label>
               </div>
               {affected.length > 0 && (
@@ -131,7 +132,7 @@ export function ModeResultsPanel({
                     padding: "5px 10px",
                   }}
                 >
-                  ⚡ {affected[0]?.reason} — рекомендуется перегенерация
+                  {tl("edit.modeResultsPanel.regenRecommended", "⚡ {reason} — рекомендуется перегенерация", { reason: affected[0]?.reason })}
                 </div>
               )}
             </div>

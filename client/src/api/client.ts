@@ -13,6 +13,7 @@
  * делает redirect на /login).
  */
 
+import { tl } from "@philosynth/shared/i18n/t";
 const BASE_URL = "/api/v1";
 
 /** Коды ошибок API (03-specification §4.3) + клиентские NETWORK_ERROR/BAD_RESPONSE */
@@ -132,7 +133,7 @@ export async function api<T>(
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new ApiError(
-      "Сервер недоступен. Проверьте соединение.",
+      tl("api.client.serverUnavailable", "Сервер недоступен. Проверьте соединение."),
       "NETWORK_ERROR",
       0,
     );
@@ -149,7 +150,7 @@ export async function api<T>(
     } catch {
       if (response.ok) {
         throw new ApiError(
-          "Сервер вернул не-JSON ответ",
+          tl("api.client.nonJsonResponse", "Сервер вернул не-JSON ответ"),
           "BAD_RESPONSE",
           response.status,
         );
@@ -169,7 +170,7 @@ export async function api<T>(
     const message =
       typeof errBody.error === "string"
         ? errBody.error
-        : `Ошибка запроса (HTTP ${response.status})`;
+        : tl("api.client.requestFailedHttp", "Ошибка запроса (HTTP {status})", { status: response.status });
 
     if (response.status === 401 && !skipUnauthorizedHandler && onUnauthorized)
       onUnauthorized();

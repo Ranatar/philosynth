@@ -4,7 +4,9 @@
  *   POST /auth/login     { email, password }               → { user } + cookie
  *   POST /auth/logout    (no body)                         → { ok: true }
  *   GET  /auth/me                                          → { user }
- *   PATCH /auth/me       { displayName } → { user }  (беседа 0.6, A3:
+ *   PATCH /auth/me       { displayName?, uiLocale?, genLang? } → { user }
+ *                        (беседа 0.6, A3; 11.2: uiLocale пишет и gen_lang
+ *                        правилом genLangForUi, genLang — только gen_lang):
  *     trim; пустая строка → null; длина > 100 → VALIDATION_ERROR + details)
  *   POST /auth/password-change { currentPassword, newPassword } → { ok: true }
  *     (беседа 0.5, требование A3: неверный currentPassword →
@@ -79,6 +81,7 @@ import {
   TOKEN_INVALID_MESSAGE,
 } from "@philosynth/shared/constants/auth";
 import type { AdminUserRow, UserRole } from "@philosynth/shared/types/admin";
+import { UI_LOCALES, genLangForUi, isUiLocale } from "@philosynth/shared/i18n/locales"; // 11.2
 import { and, count, desc, eq, ilike, isNull, ne, notLike, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
@@ -114,6 +117,7 @@ import {
   revokeTokens,
 } from "../services/auth-tokens.js"; // 9.1
 import { rateLimiter } from "../middleware/rate-limiter.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Валидация тела запроса ──────────────────────────────────────────── */
 
@@ -161,7 +165,7 @@ function parseCredentials(
   let displayName: string | undefined;
   if (displayNameRaw !== undefined) {
     if (typeof displayNameRaw !== "string") {
-      details.displayName = "Должно быть строкой";
+      details.displayName = tl("server.routes.auth.mustBeString", "Должно быть строкой");
     } else {
       displayName = displayNameRaw.trim() || undefined;
     }
@@ -180,7 +184,7 @@ authRoutes.post("/register", async (c) => {
   if (!parsed.ok) {
     return c.json(
       {
-        error: "Невалидные данные",
+        error: tl("common.invalidData", "Невалидные данные"),
         code: "VALIDATION_ERROR",
         details: parsed.details,
       },
@@ -216,9 +220,9 @@ authRoutes.post("/register", async (c) => {
     if (e.code === "23505" || e.cause?.code === "23505") {
       return c.json(
         {
-          error: "Пользователь с таким email уже зарегистрирован",
+          error: tl("server.routes.auth.emailTaken", "Пользователь с таким email уже зарегистрирован"),
           code: "VALIDATION_ERROR",
-          details: { email: "Уже зарегистрирован" },
+          details: { email: tl("server.routes.auth.alreadyRegistered", "Уже зарегистрирован") },
         },
         409,
       );
@@ -232,7 +236,7 @@ authRoutes.post("/login", async (c) => {
   if (!parsed.ok) {
     return c.json(
       {
-        error: "Невалидные данные",
+        error: tl("common.invalidData", "Невалидные данные"),
         code: "VALIDATION_ERROR",
         details: parsed.details,
       },
@@ -252,7 +256,7 @@ authRoutes.post("/login", async (c) => {
     : false;
   if (!user || !valid) {
     return c.json(
-      { error: "Неверный email или пароль", code: "AUTH_REQUIRED" },
+      { error: tl("server.routes.auth.wrongCredentials", "Неверный email или пароль"), code: "AUTH_REQUIRED" },
       401,
     );
   }
@@ -292,7 +296,7 @@ authRoutes.post("/password-change", requireAuth, async (c) => {
   }
   if (Object.keys(details).length > 0) {
     return c.json(
-      { error: "Невалидные данные", code: "VALIDATION_ERROR", details },
+      { error: tl("common.invalidData", "Невалидные данные"), code: "VALIDATION_ERROR", details },
       400,
     );
   }
@@ -313,7 +317,7 @@ authRoutes.post("/password-change", requireAuth, async (c) => {
     : false;
   if (!dbUser || !valid) {
     return c.json(
-      { error: "Неверный текущий пароль", code: "AUTH_REQUIRED" },
+      { error: tl("server.routes.auth.wrongCurrentPassword", "Неверный текущий пароль"), code: "AUTH_REQUIRED" },
       401,
     );
   }
@@ -345,7 +349,7 @@ authRoutes.delete("/me", requireAuth, async (c) => {
   const password = typeof body?.password === "string" ? body.password : "";
   if (!password) {
     return c.json(
-      { error: "Невалидные данные", code: "VALIDATION_ERROR", details: { password: "Обязательное поле" } },
+      { error: tl("common.invalidData", "Невалидные данные"), code: "VALIDATION_ERROR", details: { password: tl("server.routes.auth.requiredField", "Обязательное поле") } },
       400,
     );
   }
@@ -357,7 +361,7 @@ authRoutes.delete("/me", requireAuth, async (c) => {
   const dbUser = rows[0];
   const valid = dbUser ? await verifyPassword(password, dbUser.passwordHash) : false;
   if (!dbUser || !valid) {
-    return c.json({ error: "Неверный пароль", code: "AUTH_REQUIRED" }, 401);
+    return c.json({ error: tl("server.routes.auth.wrongPassword", "Неверный пароль"), code: "AUTH_REQUIRED" }, 401);
   }
   try {
     const result = await deleteAccount(user.id, { ip: clientIpOf(c) });
@@ -379,6 +383,20 @@ authRoutes.delete("/me", requireAuth, async (c) => {
   }
 });
 
+/** Полный user, как в GET /auth/me (numeric приходит строкой из postgres.js). */
+function userDto(u: typeof schema.users.$inferSelect) {
+  return {
+    id: u.id,
+    email: u.email,
+    displayName: u.displayName,
+    role: u.role,
+    balanceUsd: Number(u.balanceUsd),
+    emailVerified: u.emailVerifiedAt !== null,
+    uiLocale: u.uiLocale,
+    genLang: u.genLang,
+  };
+}
+
 authRoutes.get("/me", requireAuth, (c) => {
   const user = c.get("user");
   return c.json({
@@ -389,66 +407,74 @@ authRoutes.get("/me", requireAuth, (c) => {
       role: user.role,
       balanceUsd: user.balanceUsd,
       emailVerified: user.emailVerified,
+      uiLocale: user.uiLocale, // 11.2
+      genLang: user.genLang, // 11.2
     },
   });
 });
 
+/** Предел длины языка генерации, введённого руками («Другой…» в форме). */
+const GEN_LANG_MAX_LENGTH = 60;
+
 authRoutes.patch("/me", requireAuth, async (c) => {
   // 03-spec §2.1 (беседа 0.6, A3): смена отображаемого имени.
+  // 11.2: + { uiLocale } — язык интерфейса И язык генерации по правилу
+  // владельца (genLangForUi); { genLang } — только язык генерации, интерфейс
+  // не трогается. Связь односторонняя. Поля независимы и необязательны, но
+  // хотя бы одно обязано быть.
   const body = await readJson(c);
-  const raw = body?.displayName;
-  if (raw === undefined || typeof raw !== "string") {
-    return c.json(
-      {
-        error: "Невалидные данные",
-        code: "VALIDATION_ERROR",
-        details: {
-          displayName:
-            raw === undefined ? "Обязательное поле" : "Должно быть строкой",
-        },
-      },
-      400,
-    );
+  const details: Record<string, string> = {};
+  const patch: Partial<typeof schema.users.$inferInsert> = {};
+
+  const rawName = body?.displayName;
+  if (rawName !== undefined) {
+    if (typeof rawName !== "string") details.displayName = tl("server.routes.auth.mustBeString", "Должно быть строкой");
+    else {
+      const trimmed = rawName.trim();
+      if (trimmed.length > DISPLAY_NAME_MAX_LENGTH) {
+        details.displayName = tl("server.routes.auth.maxLength", "Максимальная длина — {maxLength} символов", { maxLength: DISPLAY_NAME_MAX_LENGTH });
+      } else patch.displayName = trimmed || null; // пустая строка = сброс имени
+    }
   }
-  const trimmed = raw.trim();
-  if (trimmed.length > DISPLAY_NAME_MAX_LENGTH) {
-    return c.json(
-      {
-        error: "Невалидные данные",
-        code: "VALIDATION_ERROR",
-        details: {
-          displayName: `Максимальная длина — ${DISPLAY_NAME_MAX_LENGTH} символов`,
-        },
-      },
-      400,
-    );
+
+  const rawUi = body?.uiLocale;
+  if (rawUi !== undefined) {
+    if (!isUiLocale(rawUi)) {
+      details.uiLocale = tl("server.routes.auth.uiLocaleAllowed", "Допустимые языки интерфейса: {locales}", { locales: UI_LOCALES.join(", ") });
+    } else {
+      patch.uiLocale = rawUi;
+      patch.genLang = genLangForUi(rawUi); // правило владельца: интерфейс → генерация
+    }
   }
-  const displayName = trimmed || null; // пустая строка = сброс имени
+
+  const rawGen = body?.genLang;
+  if (rawGen !== undefined) {
+    if (typeof rawGen !== "string" || !rawGen.trim()) details.genLang = tl("server.routes.auth.mustBeNonEmptyString", "Должно быть непустой строкой");
+    else if (rawGen.trim().length > GEN_LANG_MAX_LENGTH) details.genLang = tl("server.routes.auth.maxLength", "Максимальная длина — {maxLength} символов", { maxLength: GEN_LANG_MAX_LENGTH });
+    else patch.genLang = rawGen.trim(); // интерфейс НЕ меняется
+  }
+
+  if (rawName === undefined && rawUi === undefined && rawGen === undefined) {
+    details.displayName = tl("server.routes.auth.requiredField", "Обязательное поле");
+  }
+  if (Object.keys(details).length) {
+    return c.json({ error: tl("common.invalidData", "Невалидные данные"), code: "VALIDATION_ERROR", details }, 400);
+  }
 
   const sessionUser = c.get("user");
   const [updated] = await db
     .update(schema.users)
-    .set({ displayName, updatedAt: new Date() })
+    .set({ ...patch, updatedAt: new Date() })
     .where(eq(schema.users.id, sessionUser.id))
     .returning();
   if (!updated) {
     // Пользователь исчез под живой сессией — единый 401, как везде в auth
     return c.json(
-      { error: "Требуется авторизация", code: "AUTH_REQUIRED" },
+      { error: tl("common.authRequired", "Требуется авторизация"), code: "AUTH_REQUIRED" },
       401,
     );
   }
-  // Полный user, как в GET /auth/me (numeric приходит строкой из postgres.js)
-  return c.json({
-    user: {
-      id: updated.id,
-      email: updated.email,
-      displayName: updated.displayName,
-      role: updated.role,
-      balanceUsd: Number(updated.balanceUsd),
-      emailVerified: updated.emailVerifiedAt !== null,
-    },
-  });
+  return c.json({ user: userDto(updated) });
 });
 
 /* ── Почта: подтверждение адреса и сброс пароля (беседа 9.1) ─────────── */
@@ -480,7 +506,7 @@ authRoutes.post("/email/verify/request", mailLimiter, requireAuth, async (c) => 
   });
   if (!sent) {
     return c.json(
-      { error: "Не удалось поставить письмо в очередь — попробуйте позже", code: "INTERNAL_ERROR" },
+      { error: tl("server.routes.auth.emailQueueFailed", "Не удалось поставить письмо в очередь — попробуйте позже"), code: "INTERNAL_ERROR" },
       500,
     );
   }
@@ -512,9 +538,9 @@ authRoutes.post("/password-reset/request", mailLimiter, async (c) => {
     // Формат адреса существования не выдаёт — отказ по форме допустим
     return c.json(
       {
-        error: "Невалидные данные",
+        error: tl("common.invalidData", "Невалидные данные"),
         code: "VALIDATION_ERROR",
-        details: { email: email ? "Невалидный email" : "Обязательное поле" },
+        details: { email: email ? tl("server.routes.auth.invalidEmail", "Невалидный email") : tl("server.routes.auth.requiredField", "Обязательное поле") },
       },
       400,
     );
@@ -549,7 +575,7 @@ authRoutes.post("/password-reset/confirm", async (c) => {
     details.newPassword = PASSWORD_TOO_SHORT_MESSAGE;
   }
   if (Object.keys(details).length > 0) {
-    return c.json({ error: "Невалидные данные", code: "VALIDATION_ERROR", details }, 400);
+    return c.json({ error: tl("common.invalidData", "Невалидные данные"), code: "VALIDATION_ERROR", details }, 400);
   }
   // Дешёвая предпроверка — bcrypt не гоняется на заведомо негодном доводе;
   // решает погашение в транзакции ниже
@@ -649,16 +675,16 @@ authRoutes.get("/users", requireAuth, requireAdmin, async (c) => {
 authRoutes.post("/users/:id/role", requireAuth, requireAdmin, async (c) => {
   const id = c.req.param("id");
   if (!UUID_RE.test(id)) {
-    return c.json({ error: "Пользователь не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.userNotFound", "Пользователь не найден"), code: "NOT_FOUND" }, 404);
   }
   const body = await readJson(c);
   const role = body?.role;
   if (typeof role !== "string" || !(USER_ROLES as readonly string[]).includes(role)) {
     return c.json(
       {
-        error: "Невалидные данные",
+        error: tl("common.invalidData", "Невалидные данные"),
         code: "VALIDATION_ERROR",
-        details: { role: "Ожидается 'user' или 'admin'" },
+        details: { role: tl("server.routes.auth.expectedRole", "Ожидается 'user' или 'admin'") },
       },
       400,
     );
@@ -668,7 +694,7 @@ authRoutes.post("/users/:id/role", requireAuth, requireAdmin, async (c) => {
     // Иначе единственный администратор понижает сам себя
     return c.json(
       {
-        error: "Свою роль изменить нельзя — попросите другого администратора",
+        error: tl("server.routes.auth.ownRoleForbidden", "Свою роль изменить нельзя — попросите другого администратора"),
         code: "SELF_ROLE_CHANGE",
       },
       409,
@@ -715,12 +741,12 @@ authRoutes.post("/users/:id/role", requireAuth, requireAdmin, async (c) => {
   });
 
   if (outcome.kind === "not_found") {
-    return c.json({ error: "Пользователь не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.userNotFound", "Пользователь не найден"), code: "NOT_FOUND" }, 404);
   }
   if (outcome.kind === "last_admin") {
     return c.json(
       {
-        error: "Нельзя понизить последнего администратора — сначала назначьте второго",
+        error: tl("server.routes.auth.lastAdminForbidden", "Нельзя понизить последнего администратора — сначала назначьте второго"),
         code: "LAST_ADMIN",
       },
       409,

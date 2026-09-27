@@ -104,6 +104,7 @@ import {
   lineageNodeToGenealogy,
   type GenealogyNode,
 } from "../utils/genealogy";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export function SynthesisPage() {
   const { id } = useParams<{ id: string }>();
@@ -204,7 +205,7 @@ export function SynthesisPage() {
           const t =
             (Number.isFinite(num) ? theses.find((x) => x.thesisNum === num) : undefined) ??
             theses[row.rowIndex];
-          if (!t) throw new Error("Строка тезиса не найдена в данных синтеза");
+          if (!t) throw new Error(tl("synthesisPage.thesisRowNotFound", "Строка тезиса не найдена в данных синтеза"));
           setInlineEdit({
             sectionKey: row.sectionKey,
             target: { kind: "thesis", element: t },
@@ -219,7 +220,7 @@ export function SynthesisPage() {
             g && byText && g.id !== byText.id && g.term !== (row.cells[0] ?? "")
               ? byText
               : g;
-          if (!chosen) throw new Error("Строка глоссария не найдена в данных синтеза");
+          if (!chosen) throw new Error(tl("synthesisPage.glossaryRowNotFound", "Строка глоссария не найдена в данных синтеза"));
           const columnKeys = [
             ...new Set([
               ...row.headers.slice(2),
@@ -233,7 +234,7 @@ export function SynthesisPage() {
         }
       } catch (err) {
         setInlineEditError(
-          err instanceof Error ? err.message : "Не удалось открыть редактор",
+          err instanceof Error ? err.message : tl("synthesisPage.editorOpenFailed", "Не удалось открыть редактор"),
         );
       }
     },
@@ -589,9 +590,9 @@ export function SynthesisPage() {
       // затронутых требует deps с сервера, расширение /advice — 2.1/2.2)
       const label = pausedState?.kind === "gen" ? pausedState.sectionLabel : "?";
       const ok = window.confirm(
-        `Пропуск раздела «${label}» может привести к деградации ` +
-          "качества следующих разделов, которые от него зависят " +
-          "(для части из них нет замены).\n\nВсё равно продолжить?",
+        tl("synthesisPage.skipDegradeLead", "Пропуск раздела «{label}» может привести к деградации ", { label }) +
+          tl("synthesisPage.skipDegradeMid", "качества следующих разделов, которые от него зависят ") +
+          tl("synthesisPage.skipDegradeTail", "(для части из них нет замены).\n\nВсё равно продолжить?"),
       );
       if (!ok) return;
     }
@@ -601,9 +602,9 @@ export function SynthesisPage() {
 
   const handleAbort = () => {
     const ok = window.confirm(
-      "Остановить текущую генерацию?\n\n" +
-        "Успевший контент будет зафиксирован как финальное состояние " +
-        "документа (без возможности возобновления).",
+      tl("synthesisPage.confirmStop", "Остановить текущую генерацию?\n\n") +
+        tl("synthesisPage.partialKeptLead", "Успевший контент будет зафиксирован как финальное состояние ") +
+        tl("synthesisPage.partialKeptTail", "документа (без возможности возобновления)."),
     );
     if (!ok) return;
     stream.cancel();
@@ -627,7 +628,7 @@ export function SynthesisPage() {
 
   if (errorCode === "NOT_FOUND") {
     return (
-      <PageError code="404" text="Синтез не найден или был удалён." />
+      <PageError code="404" text={tl("synthesisPage.notFoundOrDeleted", "Синтез не найден или был удалён.")} />
     );
   }
   if (errorCode === "FORBIDDEN") {
@@ -639,33 +640,33 @@ export function SynthesisPage() {
         code="403"
         text={
           isGuest
-            ? "Эта концепция приватна: автор не открыл её посторонним."
-            : "Этот синтез приватный: доступен только владельцу."
+            ? tl("synthesisPage.privateConcept", "Эта концепция приватна: автор не открыл её посторонним.")
+            : tl("synthesisPage.privateSynthesis", "Этот синтез приватный: доступен только владельцу.")
         }
         testId="forbidden-page"
       >
         {isGuest && (
           <p className="submit-note" style={{ maxWidth: "100%", textAlign: "center" }}>
-            Если это ваша концепция —{" "}
+            {tl("synthesisPage.ifYoursLead", "Если это ваша концепция —")}
             <Link
               to="/login"
               state={{ from: location.pathname + location.search }}
               data-testid="forbidden-login"
             >
-              войдите
+              {tl("synthesisPage.logInLower", "войдите")}
             </Link>
-            . Иначе — <Link to="/explore">публичный каталог</Link>.
+            {tl("synthesisPage.otherwise", ". Иначе —")} <Link to="/explore">{tl("synthesisPage.publicCatalogLower", "публичный каталог")}</Link>.
           </p>
         )}
       </PageError>
     );
   }
   if (errorCode) {
-    return <PageError code="Ошибка" text="Не удалось загрузить синтез." />;
+    return <PageError code={tl("common.error", "Ошибка")} text={tl("synthesisPage.loadFailed", "Не удалось загрузить синтез.")} />;
   }
 
   if (loading || !synthesis) {
-    return <LoadingSpinner label="загрузка синтеза…" />;
+    return <LoadingSpinner label={tl("synthesisPage.loading", "загрузка синтеза…")} />;
   }
 
   return (
@@ -674,13 +675,13 @@ export function SynthesisPage() {
       {!isOwner && (
         <div className="app-view-banner" data-testid="view-banner" data-viewer={isGuest ? "guest" : "user"}>
           <span className="app-view-banner-text">
-            Вы смотрите публичную концепцию
-            {synthesis.scope === "showcase" ? " (витрина)" : ""}
-            {synthesis.authorName ? ` · автор: ${synthesis.authorName}` : ""}
+            {tl("synthesisPage.viewingPublic", "Вы смотрите публичную концепцию")}
+            {synthesis.scope === "showcase" ? tl("synthesisPage.showcaseParen", " (витрина)") : ""}
+            {synthesis.authorName ? tl("synthesisPage.authorSuffix", " · автор: {authorName}", { authorName: synthesis.authorName }) : ""}
           </span>
           {isGuest && (
             <Link to="/register" className="action-btn primary" data-testid="view-banner-register">
-              Создать аккаунт
+              {tl("common.createAccount", "Создать аккаунт")}
             </Link>
           )}
         </div>
@@ -699,9 +700,9 @@ export function SynthesisPage() {
         >
           {isOwner
             ? live
-              ? "ГЕНЕРАЦИЯ ДОКУМЕНТА"
-              : "ДОКУМЕНТ СГЕНЕРИРОВАН"
-            : `РЕЖИМ ПРОСМОТРА · ${visibilityBadge(synthesis.visibility).toUpperCase()}`}
+              ? tl("synthesisPage.generatingBadge", "ГЕНЕРАЦИЯ ДОКУМЕНТА")
+              : tl("synthesisPage.generatedBadge", "ДОКУМЕНТ СГЕНЕРИРОВАН")
+            : tl("synthesisPage.viewModeBadge", "РЕЖИМ ПРОСМОТРА · {visibility}", { visibility: visibilityBadge(synthesis.visibility).toUpperCase() })}
         </div>
         <div className="actions-bar-btns">
           {contentAvailable && (
@@ -711,7 +712,7 @@ export function SynthesisPage() {
               onClick={() => void handleOpenGraph()}
               disabled={graphLoading}
             >
-              {graphLoading ? "Загрузка…" : "◈ Граф"}
+              {graphLoading ? tl("common.loading", "Загрузка…") : tl("synthesisPage.graph", "◈ Граф")}
             </button>
           )}
           {isOwner && (
@@ -721,7 +722,7 @@ export function SynthesisPage() {
               onClick={() => setEditOpen(true)}
               disabled={live}
             >
-              ✎ Изменить
+              {tl("synthesisPage.editIcon", "✎ Изменить")}
             </button>
           )}
           {hasCapsule &&
@@ -765,7 +766,7 @@ export function SynthesisPage() {
                 onClick={() => setExportOpen((v) => !v)}
                 disabled={live}
               >
-                ⤓ Экспорт
+                {tl("synthesisPage.export", "⤓ Экспорт")}
               </button>
               {exportOpen && (
                 <div
@@ -804,7 +805,7 @@ export function SynthesisPage() {
             className="action-btn"
             onClick={() => window.print()}
           >
-            Распечатать
+            {tl("synthesisPage.print", "Распечатать")}
           </button>
         </div>
       </div>
@@ -821,7 +822,7 @@ export function SynthesisPage() {
           />
           {stream.error && (
             <div className="callout warning">
-              <span className="callout-label">Ошибка генерации</span>
+              <span className="callout-label">{tl("synthesisPage.generationError", "Ошибка генерации")}</span>
               {stream.error}
             </div>
           )}
@@ -830,7 +831,7 @@ export function SynthesisPage() {
 
       {inlineEditError && (
         <div className="callout warning">
-          <span className="callout-label">Редактор</span>
+          <span className="callout-label">{tl("synthesisPage.editor", "Редактор")}</span>
           {inlineEditError}
         </div>
       )}
@@ -853,20 +854,20 @@ export function SynthesisPage() {
               type="button"
               className="action-btn"
               onClick={() => setRecOpen(true)}
-              title="Рекомендации критики: что исполнять, решаете вы — поштучно"
+              title={tl("synthesisPage.recommendationsHint", "Рекомендации критики: что исполнять, решаете вы — поштучно")}
               data-testid="recommendations-btn"
             >
-              ◈ Рекомендации{recCount !== null ? ` · ${recCount}` : ""}
+              {tl("synthesisPage.recommendations", "◈ Рекомендации{recCount}", { recCount: recCount !== null ? ` · ${recCount}` : "" })}
             </button>
           ) : key === "theses" && isOwner && !live ? (
             <button
               type="button"
               className="action-btn"
               onClick={() => openTransform("theses_to_graph")}
-              title="Трансформировать тезисы в граф (Representation Transformer)"
+              title={tl("synthesisPage.toGraphHint", "Трансформировать тезисы в граф (Representation Transformer)")}
               data-testid="theses-transform-btn"
             >
-              → Граф
+              {tl("synthesisPage.toGraph", "→ Граф")}
             </button>
           ) : undefined
         }
@@ -893,7 +894,7 @@ export function SynthesisPage() {
           // parentSyntheses (SynthesisFull) + кликабельные узлы дерева.
           isMetaSynthesis ? (
             <details className="header-disclosure" open>
-              <summary>Генеалогическое древо</summary>
+              <summary>{tl("synthesisPage.genealogyTree", "Генеалогическое древо")}</summary>
               <div
                 className="disclosure-body"
                 style={{ padding: 16, overflowX: "auto" }}
@@ -902,7 +903,7 @@ export function SynthesisPage() {
                   <GenealogyTree node={genealogyTree} light={false} />
                 ) : (
                   <div className="doc-meta-val">
-                    Родительские концепции:{" "}
+                    {tl("synthesisPage.parentConcepts", "Родительские концепции:")}
                     {synthesis.parentSyntheses.map((p, i) => (
                       <span key={p.id}>
                         {i > 0 && ", "}
@@ -921,7 +922,7 @@ export function SynthesisPage() {
                 {!isGuest && (
                   <div className="doc-meta-key" style={{ marginTop: 8 }}>
                     <Link to={`/catalog?descendantsOf=${synthesis.id}`}>
-                      ◈ Потомки этой концепции в каталоге
+                      {tl("synthesisPage.descendantsInCatalog", "◈ Потомки этой концепции в каталоге")}
                     </Link>
                   </div>
                 )}

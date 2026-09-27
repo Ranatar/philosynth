@@ -30,6 +30,7 @@ import {
 } from "./CharacteristicSlider";
 import { FieldError } from "./ElementEditor";
 import { TaxonomySelector } from "./TaxonomySelector";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const EDGE_DIRECTIONS: readonly EdgeDirectionInput[] = [
   "однонаправленная",
@@ -120,7 +121,7 @@ export function EdgeEditor({
       <div className="form-grid">
         <div className="form-group">
           <label className="form-label" htmlFor="edge-ed-type">
-            Тип связи
+            {tl("common.edgeType", "Тип связи")}
           </label>
           <TaxonomySelector
             id="edge-ed-type"
@@ -133,7 +134,7 @@ export function EdgeEditor({
         </div>
         <div className="form-group">
           <label className="form-label" htmlFor="edge-ed-dir">
-            Направление
+            {tl("common.direction", "Направление")}
           </label>
           <select
             id="edge-ed-dir"
@@ -154,7 +155,7 @@ export function EdgeEditor({
 
       <div className="form-group full">
         <label className="form-label" htmlFor="edge-ed-desc">
-          Описание
+          {tl("common.description", "Описание")}
         </label>
         <textarea
           id="edge-ed-desc"
@@ -168,7 +169,7 @@ export function EdgeEditor({
       </div>
 
       <div className="form-label" style={{ marginTop: 10 }}>
-        Характеристики связи
+        {tl("edit.edgeEditor.edgeCharacteristics", "Характеристики связи")}
       </div>
       <CharacteristicSliderGroup
         elementType="edge"

@@ -73,6 +73,7 @@ import {
   listSubsectionNames,
   parseFragment,
   readSubsectionSource,
+  resolveSubsection,
   type HtmlElement,
 } from "../utils/html-parser.js";
 import { PRICE_IN, PRICE_OUT } from "./cost-estimator.js";
@@ -87,6 +88,7 @@ import {
 } from "./generation-service.js";
 import { buildSYS } from "./prompt-builder.js";
 import { renderTemplate } from "./prompt-registry.js";
+import { loadExpectedSubsectionOrder } from "./subsection-order.js"; // 11.2, Д-16
 import {
   addressableSectionKeys,
   formatDocumentSubsections,
@@ -100,6 +102,7 @@ import type {
   RecommendationsParseResponse,
   RecommendationsResponse,
 } from "@philosynth/shared/types/recommendations";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ══ Ошибки ═══════════════════════════════════════════════════════════ */
 
@@ -167,8 +170,8 @@ export function parseRecommendationsTable(sectionHtml: string): RawRecommendatio
   if (!host)
     throw new RecommendationsError(
       "NOT_FOUND",
-      `В разделе «Критический анализ» нет подраздела «${RECOMMENDATIONS_TABLE_SUBSECTION}». ` +
-        "Концепция создана до контракта рекомендаций — составьте таблицу по готовой прозе: " +
+      tl("server.recommendations.noTableSubsection", "В разделе «Критический анализ» нет подраздела «{tableSubsection}». ", { tableSubsection: RECOMMENDATIONS_TABLE_SUBSECTION }) +
+        tl("server.recommendations.legacyConcept", "Концепция создана до контракта рекомендаций — составьте таблицу по готовой прозе: ") +
         "POST /syntheses/:id/recommendations/extract",
       { reason: "no_table", available: listSubsectionNames(sectionHtml) },
     );
@@ -176,7 +179,7 @@ export function parseRecommendationsTable(sectionHtml: string): RawRecommendatio
   if (!table)
     throw new RecommendationsError(
       "RECOMMENDATIONS_TABLE_INVALID",
-      `В подразделе «${RECOMMENDATIONS_TABLE_SUBSECTION}» нет таблицы (<table class="doc-table">)`,
+      tl("server.recommendations.noTable", "В подразделе «{tableSubsection}» нет таблицы (<table class=\"doc-table\">)", { tableSubsection: RECOMMENDATIONS_TABLE_SUBSECTION }),
       { problem: "no_table_element" },
     );
 
@@ -208,9 +211,9 @@ export function parseRecommendationsTable(sectionHtml: string): RawRecommendatio
   if (missing.length > 0)
     throw new RecommendationsError(
       "RECOMMENDATIONS_TABLE_INVALID",
-      `В таблице рекомендаций не найден столбец: ${missing.map((m) => `«${m}»`).join(", ")}. ` +
-        `Найдены заголовки: ${found.length ? found.map((f) => `«${f}»`).join(", ") : "—"}. ` +
-        "Порядок столбцов не важен, названия — важны.",
+      tl("server.recommendations.columnMissing", "В таблице рекомендаций не найден столбец: {missing}. ", { missing: missing.map((m) => `«${m}»`).join(", ") }) +
+        tl("server.recommendations.headersFound", "Найдены заголовки: {foundCount}. ", { foundCount: found.length ? found.map((f) => `«${f}»`).join(", ") : "—" }) +
+        tl("server.recommendations.orderIrrelevant", "Порядок столбцов не важен, названия — важны."),
       { problem: "missing_columns", missing, found },
     );
 
@@ -235,7 +238,7 @@ export function parseRecommendationsTable(sectionHtml: string): RawRecommendatio
   if (rows.length === 0)
     throw new RecommendationsError(
       "RECOMMENDATIONS_TABLE_INVALID",
-      "В таблице рекомендаций нет ни одной строки",
+      tl("server.recommendations.tableEmpty", "В таблице рекомендаций нет ни одной строки"),
       { problem: "no_rows" },
     );
   return rows;
@@ -244,28 +247,52 @@ export function parseRecommendationsTable(sectionHtml: string): RawRecommendatio
 /* ══ Индекс документа для сторожа ═════════════════════════════════════ */
 
 export interface DocumentIndex {
-  /** Раздел → его data-section в порядке появления (все разделы документа) */
+  /** Раздел → имена его подразделов в порядке появления (все разделы
+   *  документа). 11.2 (Д-16): КАНОНИЧЕСКИЕ имена карты subsection_map там,
+   *  где подраздел опознан (по имени, нечётко или по месту); подразделы вне
+   *  карты — фактическим атрибутом. Адреса рекомендаций и закрытый список
+   *  {{document_subsections}} остаются каноническими при любом языке. */
   subsectionsBySection: Record<string, string[]>;
+  /** Фактический атрибут data-section по каноническому имени (когда они
+   *  различаются — переведённый моделью атрибут); читать документ — по нему. */
+  actualNameOf(sectionKey: string, canonicalName: string): string;
+  /** Предупреждения опознания подразделов по месту (для владельца). */
+  lookupWarnings: string[];
   categories: { id: string; name: string; value: string }[];
   /** labels — как тезис назван в «Сводной таблице тезисов» («Э-2») и числом */
   theses: { id: string; labels: string[]; formulation: string; value: string }[];
   terms: { id: string; term: string; value: string }[];
-  /** Исходник подраздела (readSubsectionSource) — для хэша; null — нет */
+  /** Исходник подраздела (readSubsectionSource) — для хэша; null — нет.
+   *  Имя — каноническое либо фактическое: разрешается через actualNameOf. */
   subsectionSource(sectionKey: string, name: string): string | null;
 }
 
+/** Канонический подраздел «Сводная таблица тезисов» карты theses. */
+const THESES_SUMMARY_TABLE = "Сводная таблица тезисов";
+
 /** Номера тезисов, как они записаны в документе: первая ячейка строки
  *  сводной таблицы → формулировка. В БД живёт только целое thesis_num, а
- *  документ нумерует «О-1», «Э-2» (parseInt даёт NaN → порядковый номер). */
-function thesisLabelsFromHtml(thesesHtml: string): Map<string, string> {
+ *  документ нумерует «О-1», «Э-2» (parseInt даёт NaN → порядковый номер).
+ *  11.2 (Д-16): подраздел ищется resolveSubsection по каноническому имени со
+ *  страховкой по месту (expectedOrder — карта theses); прежний нечёткий поиск
+ *  «сводная таблица» остаётся запасным ходом. */
+export function thesisLabelsFromHtml(
+  thesesHtml: string,
+  expectedOrder?: readonly string[] | undefined,
+  warnings?: string[] | undefined,
+): Map<string, string> {
   const out = new Map<string, string>();
   if (!thesesHtml) return out;
   const root = parseFragment(thesesHtml);
-  let host: HtmlElement | null = null;
-  for (const el of root.querySelectorAll("[data-section]")) {
-    if ((el.getAttribute("data-section") ?? "").toLowerCase().includes("сводная таблица")) {
-      host = el;
-      break;
+  const found = resolveSubsection(root, THESES_SUMMARY_TABLE, expectedOrder);
+  let host: HtmlElement | null = found.el;
+  if (found.el && found.warning && warnings) warnings.push(`метки тезисов: ${found.warning}`);
+  if (!host) {
+    for (const el of root.querySelectorAll("[data-section]")) {
+      if ((el.getAttribute("data-section") ?? "").toLowerCase().includes("сводная таблица")) {
+        host = el;
+        break;
+      }
     }
   }
   const table = host?.querySelector("table.doc-table") ?? host?.querySelector("table");
@@ -286,6 +313,34 @@ const canonicalJson = (v: unknown): string =>
     return val;
   });
 
+/**
+ * Подразделы раздела в КАНОНИЧЕСКИХ именах (11.2, Д-16): каждое имя карты
+ * ищется resolveSubsection (точно → нечётко → по месту при совпадающем числе);
+ * найденное получает канон в списке и запись «канон → фактический атрибут»;
+ * атрибуты, не опознанные ни одним каноном, идут в список как есть, в
+ * порядке документа. Чистая функция — сверяется смоуком без БД.
+ */
+export function indexSectionSubsections(
+  sectionKey: string,
+  sectionHtml: string,
+  expectedOrder: readonly string[],
+  actualByCanon: Map<string, string>,
+  warnings: string[],
+): string[] {
+  const actual = listSubsectionNames(sectionHtml);
+  if (!expectedOrder.length) return actual;
+  const root = parseFragment(sectionHtml);
+  const canonByActual = new Map<string, string>();
+  for (const canon of expectedOrder) {
+    const found = resolveSubsection(root, canon, expectedOrder);
+    if (!found.el || found.actualName === null || canonByActual.has(found.actualName)) continue;
+    canonByActual.set(found.actualName, canon);
+    if (found.actualName !== canon) actualByCanon.set(`${sectionKey}\u0000${canon}`, found.actualName);
+    if (found.warning) warnings.push(`${sectionKey}: ${found.warning}`);
+  }
+  return actual.map((a) => canonByActual.get(a) ?? a);
+}
+
 /** Индекс живого документа из БД. */
 export async function loadDocumentIndex(synthesisId: string): Promise<DocumentIndex> {
   const secRows = await db
@@ -293,8 +348,16 @@ export async function loadDocumentIndex(synthesisId: string): Promise<DocumentIn
     .from(sections)
     .where(eq(sections.synthesisId, synthesisId));
   const htmlByKey = new Map(secRows.map((r) => [r.key, r.html]));
+  const expected = await loadExpectedSubsectionOrder(synthesisId);
+  const lookupWarnings: string[] = [];
   const subsectionsBySection: Record<string, string[]> = {};
-  for (const r of secRows) subsectionsBySection[r.key] = listSubsectionNames(r.html);
+  const actualByCanon = new Map<string, string>(); // `${key}\u0000${canon}` → атрибут
+  for (const r of secRows) {
+    const canonList = indexSectionSubsections(r.key, r.html, expected[r.key] ?? [], actualByCanon, lookupWarnings);
+    subsectionsBySection[r.key] = canonList;
+  }
+  const actualNameOf = (sectionKey: string, name: string): string =>
+    actualByCanon.get(`${sectionKey}\u0000${name}`) ?? name;
 
   const cats = await db
     .select()
@@ -311,11 +374,13 @@ export async function loadDocumentIndex(synthesisId: string): Promise<DocumentIn
     .from(glossaryTerms)
     .where(eq(glossaryTerms.synthesisId, synthesisId))
     .orderBy(asc(glossaryTerms.position));
-  const labels = thesisLabelsFromHtml(htmlByKey.get("theses") ?? "");
+  const labels = thesisLabelsFromHtml(htmlByKey.get("theses") ?? "", expected["theses"], lookupWarnings);
 
   const sourceCache = new Map<string, string | null>();
   return {
     subsectionsBySection,
+    actualNameOf,
+    lookupWarnings,
     categories: cats.map((c) => ({
       id: c.id,
       name: c.name,
@@ -339,7 +404,8 @@ export async function loadDocumentIndex(synthesisId: string): Promise<DocumentIn
       const k = `${sectionKey}\u0000${name}`;
       if (!sourceCache.has(k)) {
         const html = htmlByKey.get(sectionKey);
-        sourceCache.set(k, html ? (readSubsectionSource(html, name)?.html ?? null) : null);
+        // 11.2: читать по фактическому атрибуту (канон → атрибут, иначе как есть)
+        sourceCache.set(k, html ? (readSubsectionSource(html, actualNameOf(sectionKey, name))?.html ?? null) : null);
       }
       return sourceCache.get(k) ?? null;
     },
@@ -597,8 +663,8 @@ async function loadCritiqueHtml(synthesisId: string): Promise<{ id: string; html
   if (!row || !row.html.trim())
     throw new RecommendationsError(
       "NOT_FOUND",
-      "Раздел «Критический анализ» ещё не сгенерирован — рекомендаций у концепции нет. " +
-        "Добавьте раздел в документ (Изменить → добавить раздел), затем разберите рекомендации.",
+      tl("server.recommendations.critiqueNotGenerated", "Раздел «Критический анализ» ещё не сгенерирован — рекомендаций у концепции нет. ") +
+        tl("server.recommendations.addCritique", "Добавьте раздел в документ (Изменить → добавить раздел), затем разберите рекомендации."),
       { reason: "no_critique" },
     );
   return row;
@@ -654,8 +720,8 @@ export async function parseAndStore(synthesisId: string): Promise<Recommendation
       if (held.length > 0)
         throw new RecommendationsError(
           "ROUND_IN_PROGRESS",
-          `Раунд ${latest} ещё в работе: ${held.length} рекомендаци${held.length === 1 ? "я стоит" : "й стоят"} в плане правок. ` +
-            "Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд.",
+          tl("server.recommendations.roundInProgress", "Раунд {round} ещё в работе: {heldCount} рекомендаци{heldWordEnding} в плане правок. ", { round: latest, heldCount: held.length, heldWordEnding: held.length === 1 ? tl("server.recommendations.isSingular", "я стоит") : tl("server.recommendations.arePlural", "й стоят") }) +
+            tl("server.recommendations.executeOrDelete", "Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд."),
           {
             round: latest,
             planIds: [...new Set(held.map((p) => p.planId as string))],
@@ -737,7 +803,7 @@ export async function listRecommendations(
   const latestRound = await latestRoundOf(synthesisId);
   const want = round ?? latestRound;
   if (round !== undefined && (round < 1 || round > latestRound))
-    throw new RecommendationsError("NOT_FOUND", `Раунда ${round} у концепции нет (последний — ${latestRound})`, {
+    throw new RecommendationsError("NOT_FOUND", tl("server.recommendations.roundMissing", "Раунда {round} у концепции нет (последний — {latestRound})", { round, latestRound }), {
       reason: "no_round",
       latestRound,
     });
@@ -821,8 +887,8 @@ export async function extractRecommendationsTable(
   if (!prose)
     throw new RecommendationsError(
       "NOT_FOUND",
-      `В критике нет подраздела «${RECOMMENDATIONS_PROSE_SUBSECTION}» — составлять таблицу не по чему. ` +
-        "Перегенерируйте раздел «Критический анализ».",
+      tl("server.recommendations.noProseSubsection", "В критике нет подраздела «{proseSubsection}» — составлять таблицу не по чему. ", { proseSubsection: RECOMMENDATIONS_PROSE_SUBSECTION }) +
+        tl("server.recommendations.regenerateCritique", "Перегенерируйте раздел «Критический анализ»."),
       { reason: "no_prose", available: listSubsectionNames(critique.html) },
     );
 
@@ -921,7 +987,7 @@ export async function extractRecommendationsTable(
       if (!inner)
         throw new RecommendationsError(
           "RECOMMENDATIONS_TABLE_INVALID",
-          "Модель не вернула таблицу — документ не изменён. Повторите запрос.",
+          tl("server.recommendations.noTableReturned", "Модель не вернула таблицу — документ не изменён. Повторите запрос."),
           { problem: "model_no_table" },
         );
 
@@ -933,7 +999,7 @@ export async function extractRecommendationsTable(
           .where(eq(sections.id, critique.id))
           .limit(1)
           .for("update");
-        if (!sec) throw new RecommendationsError("NOT_FOUND", "Раздел не найден", { reason: "no_critique" });
+        if (!sec) throw new RecommendationsError("NOT_FOUND", tl("common.sectionNotFound", "Раздел не найден"), { reason: "no_critique" });
         let ins;
         try {
           ins = insertSubsectionAfter(
@@ -946,7 +1012,7 @@ export async function extractRecommendationsTable(
           if (err instanceof SubsectionHtmlError)
             throw new RecommendationsError(
               "RECOMMENDATIONS_TABLE_INVALID",
-              `Ответ модели не годится в документ: ${err.message}`,
+              tl("server.recommendations.responseUnfit", "Ответ модели не годится в документ: {message}", { message: err.message }),
               { problem: "model_html", detail: err.problem },
             );
           throw err;
@@ -954,7 +1020,7 @@ export async function extractRecommendationsTable(
         if (!ins)
           throw new RecommendationsError(
             "NOT_FOUND",
-            `В критике нет подраздела «${RECOMMENDATIONS_PROSE_SUBSECTION}»`,
+            tl("server.recommendations.noProseSubsectionShort", "В критике нет подраздела «{proseSubsection}»", { proseSubsection: RECOMMENDATIONS_PROSE_SUBSECTION }),
             { reason: "no_prose" },
           );
         // Негодную таблицу в документ не пишем: проверка ДО записи

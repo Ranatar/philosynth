@@ -46,24 +46,25 @@ import {
 } from "./graph-utils";
 
 import type { PanelLink, PanelNodeData } from "./graph-utils";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const ROLE_LABELS: Record<string, string> = {
-  central: "Центральная",
-  peripheral: "Периферийная",
-  bridge: "Мост",
-  synthesis: "Точка синтеза",
-  thesis: "Тезис",
-  antithesis: "Антитезис",
-  generative: "Генеративная",
-  core: "Ядро пересечений",
-  deconstructed: "Деконструированная",
-  reassembled: "Пересобранная",
-  "horizon-expansion": "Расширение горизонта",
-  "pre-horizon": "Предгоризонт",
-  integrating: "Интегрирующая",
-  foundation: "Основание",
-  formalized: "Формализованная",
-  verifying: "Верифицирующая",
+  central: tl("common.central", "Центральная"),
+  peripheral: tl("common.peripheral", "Периферийная"),
+  bridge: tl("common.bridge", "Мост"),
+  synthesis: tl("graph.nodePanel.synthesisPoint", "Точка синтеза"),
+  thesis: tl("common.thesis", "Тезис"),
+  antithesis: tl("common.antithesis", "Антитезис"),
+  generative: tl("common.generative", "Генеративная"),
+  core: tl("graph.nodePanel.intersectionCore", "Ядро пересечений"),
+  deconstructed: tl("graph.nodePanel.deconstructed", "Деконструированная"),
+  reassembled: tl("common.reassembled", "Пересобранная"),
+  "horizon-expansion": tl("graph.nodePanel.horizonExpansion", "Расширение горизонта"),
+  "pre-horizon": tl("common.prehorizon", "Предгоризонт"),
+  integrating: tl("common.integrating", "Интегрирующая"),
+  foundation: tl("common.ground", "Основание"),
+  formalized: tl("common.formalized", "Формализованная"),
+  verifying: tl("common.verifying", "Верифицирующая"),
 };
 
 const endId = (v: PanelLink["source"]): number =>
@@ -95,7 +96,7 @@ function RoleGroup({
 function EdgeRow({ l, dir }: { l: PanelLink; dir: "out" | "in" | "ref" }) {
   const other =
     dir === "ref" ? (
-      <em>(рефлексивная)</em>
+      <em>{tl("graph.nodePanel.reflexiveParen", "(рефлексивная)")}</em>
     ) : dir === "out" ? (
       endName(l.target)
     ) : (
@@ -246,7 +247,7 @@ export default function NodePanel({
           {d.type || "—"}
         </span>
         {clusterIdx.map((idx) => {
-          const label = clusterLabels[idx] || `Кластер ${idx + 1}`;
+          const label = clusterLabels[idx] || tl("graph.nodePanel.cluster", "Кластер {idx}", { idx: idx + 1 });
           const cc = CPAL[idx % CPAL.length]!;
           return (
             <span
@@ -263,9 +264,9 @@ export default function NodePanel({
         <div className="gm-panel-roles">
           <RoleGroup
             roles={d.structuralRoles || d.roles}
-            groupLabel="Структурные"
+            groupLabel={tl("graph.nodePanel.structural", "Структурные")}
           />
-          <RoleGroup roles={d.proceduralRoles} groupLabel="Процессуальные" />
+          <RoleGroup roles={d.proceduralRoles} groupLabel={tl("graph.nodePanel.procedural", "Процессуальные")} />
         </div>
       ) : null}
       {onEdit ? (
@@ -276,29 +277,29 @@ export default function NodePanel({
             disabled={editDisabled}
             title={
               editDisabled
-                ? "Идёт генерация — правки заблокированы"
-                : "Редактировать категорию"
+                ? tl("graph.nodePanel.lockedGenerating", "Идёт генерация — правки заблокированы")
+                : tl("graph.nodePanel.editCategory", "Редактировать категорию")
             }
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
             }}
           >
-            ✎ Редактировать
+            {tl("common.editWithIcon", "✎ Редактировать")}
           </button>
           {onAddEdge ? (
             <button
               type="button"
               className="gm-btn gm-panel-edit-btn"
               disabled={editDisabled}
-              title={editDisabled ? "Идёт генерация — правки заблокированы" : "Новая связь от этой категории"}
+              title={editDisabled ? tl("graph.nodePanel.lockedGenerating", "Идёт генерация — правки заблокированы") : tl("graph.nodePanel.newEdgeFromCategory", "Новая связь от этой категории")}
               onClick={(e) => {
                 e.stopPropagation();
                 onAddEdge();
               }}
               data-testid="gm-panel-add-edge"
             >
-              + Связь
+              {tl("graph.nodePanel.addEdge", "+ Связь")}
             </button>
           ) : null}
         </div>
@@ -307,19 +308,19 @@ export default function NodePanel({
       <div className="gm-panel-def">{d.def || ""}</div>
       {d.orig ? (
         <div className="gm-panel-orig">
-          <div className="gm-panel-orig-label">Происхождение / генеалогия</div>
+          <div className="gm-panel-orig-label">{tl("graph.nodePanel.originGenealogy", "Происхождение / генеалогия")}</div>
           <div className="gm-panel-orig-text">{d.orig}</div>
         </div>
       ) : null}
       <div className="gm-panel-metrics">
         <Metric
-          label="Центральность"
+          label={tl("common.centrality", "Центральность")}
           pct={cenPct}
           color={color}
           value={(d.cen ?? 0.5).toFixed(2)}
         />
         <Metric
-          label="Определённость"
+          label={tl("common.certainty", "Определённость")}
           pct={certPct}
           color="#7f8c8d"
           value={(d.cert ?? 0.5).toFixed(2)}
@@ -343,40 +344,40 @@ export default function NodePanel({
               marginBottom: 4,
             }}
           >
-            РАСШИРЕННЫЕ
+            {tl("graph.nodePanel.extendedHeading", "РАСШИРЕННЫЕ")}
           </div>
           <Metric
-            label="Ист. значимость"
+            label={tl("graph.nodePanel.historicalSignificanceShort", "Ист. значимость")}
             pct={Math.round((d.histSig ?? 0) * 100)}
             color="#e67e22"
             value={(d.histSig ?? 0).toFixed(2)}
           />
           <Metric
-            label="Инновация"
+            label={tl("graph.nodePanel.innovation", "Инновация")}
             pct={Math.round((((d.innovDeg ?? 1) - 1) / 4) * 100)}
             color="#e74c3c"
             value={`${d.innovDeg ?? 1}/5`}
           />
           <Metric
-            label="Ясность"
+            label={tl("graph.nodePanel.clarity", "Ясность")}
             pct={Math.round((d.clarity ?? 0) * 100)}
             color="#2ecc71"
             value={(d.clarity ?? 0).toFixed(2)}
           />
           <Metric
-            label="Широта"
+            label={tl("graph.nodePanel.breadth", "Широта")}
             pct={Math.round((d.breadth ?? 0) * 100)}
             color="#3498db"
             value={(d.breadth ?? 0).toFixed(2)}
           />
           <Metric
-            label="Глубина"
+            label={tl("graph.nodePanel.depth", "Глубина")}
             pct={Math.round((d.depth ?? 0) * 100)}
             color="#9b59b6"
             value={(d.depth ?? 0).toFixed(2)}
           />
           <Metric
-            label="Применимость"
+            label={tl("graph.nodePanel.applicability", "Применимость")}
             pct={Math.round((d.applic ?? 0) * 100)}
             color="#1abc9c"
             value={(d.applic ?? 0).toFixed(2)}
@@ -385,7 +386,7 @@ export default function NodePanel({
       ) : null}
       {out.length ? (
         <>
-          <div className="gm-panel-el-label">Исходящие</div>
+          <div className="gm-panel-el-label">{tl("graph.nodePanel.outgoing", "Исходящие")}</div>
           {out.map((l, i) => (
             <EdgeRow key={`o${i}`} l={l} dir="out" />
           ))}
@@ -393,7 +394,7 @@ export default function NodePanel({
       ) : null}
       {incAll.length ? (
         <>
-          <div className="gm-panel-el-label">Входящие</div>
+          <div className="gm-panel-el-label">{tl("graph.nodePanel.incoming", "Входящие")}</div>
           {incAll.map((l, i) => (
             <EdgeRow key={`i${i}`} l={l} dir="in" />
           ))}
@@ -401,7 +402,7 @@ export default function NodePanel({
       ) : null}
       {ref.length ? (
         <>
-          <div className="gm-panel-el-label">Рефлексивные</div>
+          <div className="gm-panel-el-label">{tl("graph.nodePanel.reflexive", "Рефлексивные")}</div>
           {ref.map((l, i) => (
             <EdgeRow key={`r${i}`} l={l} dir="ref" />
           ))}
@@ -436,9 +437,9 @@ function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
         setStatus({
           ok: true,
           text:
-            "Сохранено" +
+            tl("graph.nodePanel.saved", "Сохранено") +
             (res.htmlSync.rendered.length
-              ? " · перерисовано: " + res.htmlSync.rendered.join(", ")
+              ? tl("graph.nodePanel.rerenderedSuffix", " · перерисовано: ") + res.htmlSync.rendered.join(", ")
               : ""),
         });
         onPatched(res);
@@ -446,9 +447,9 @@ function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
         const msg =
           err instanceof ApiError
             ? err.code === "GENERATION_IN_PROGRESS"
-              ? "Идёт генерация — правки заблокированы"
+              ? tl("graph.nodePanel.lockedGenerating", "Идёт генерация — правки заблокированы")
               : err.code === "FORBIDDEN"
-                ? "Редактировать может только владелец"
+                ? tl("graph.nodePanel.ownerOnly", "Редактировать может только владелец")
                 : err.message
             : String(err);
         setStatus({ ok: false, text: msg });
@@ -468,7 +469,7 @@ function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
       data-node-inline-edit
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="gm-panel-el-label">Тип</div>
+      <div className="gm-panel-el-label">{tl("common.type", "Тип")}</div>
       <TaxonomySelector
         id={`np-type-${category.id}`}
         kind="category"
@@ -491,12 +492,12 @@ function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
             disabled={saving !== null}
             onClick={() => void patch({ type: type.type.trim(), typeCatalogId: null }, "type")}
           >
-            Сохранить тип «{type.type.trim()}»
+            {tl("graph.nodePanel.saveType", "Сохранить тип «{type}»", { type: type.type.trim() })}
           </button>
         </div>
       )}
 
-      <div className="gm-panel-el-label" style={{ marginTop: 6 }}>Характеристики</div>
+      <div className="gm-panel-el-label" style={{ marginTop: 6 }}>{tl("graph.nodePanel.characteristics", "Характеристики")}</div>
       <CharacteristicSliderGroup
         elementType="category"
         idPrefix={`np-${category.id}`}
@@ -524,7 +525,7 @@ function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
           onClick={() => setEnrichOpen((v) => !v)}
           data-testid="node-enrich-toggle"
         >
-          ✦ Обогатить
+          {tl("graph.nodePanel.enrich", "✦ Обогатить")}
         </button>
       </div>
       {enrichOpen && (

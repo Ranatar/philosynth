@@ -19,6 +19,7 @@ import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
 import { ApiError } from "../../api/client";
 import { searchByPhilosophers } from "../../api/lineage";
 import { SynthesisCard } from "../catalog/SynthesisCard";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export function LineageSearch() {
   const [input, setInput] = useState("");
@@ -40,7 +41,7 @@ export function LineageSearch() {
 
   const handleSearch = async () => {
     if (selected.length === 0) {
-      setError("Добавьте хотя бы одного философа.");
+      setError(tl("lineage.lineageSearch.addPhilosopher", "Добавьте хотя бы одного философа."));
       return;
     }
     setLoading(true);
@@ -52,7 +53,7 @@ export function LineageSearch() {
       setError(
         err instanceof ApiError
           ? err.message
-          : "Не удалось выполнить поиск по генеалогии.",
+          : tl("lineage.lineageSearch.searchFailed", "Не удалось выполнить поиск по генеалогии."),
       );
     } finally {
       setLoading(false);
@@ -61,10 +62,9 @@ export function LineageSearch() {
 
   return (
     <div className="pool-block lineage-search">
-      <div className="pool-block-title">Поиск по генеалогии</div>
+      <div className="pool-block-title">{tl("lineage.lineageSearch.title", "Поиск по генеалогии")}</div>
       <div className="pool-block-desc">
-        Концепции, в генеалогии которых присутствуют ВСЕ указанные философы
-        (включая предков через мета-синтез).
+        {tl("lineage.lineageSearch.description", "Концепции, в генеалогии которых присутствуют ВСЕ указанные философы (включая предков через мета-синтез).")}
       </div>
 
       <div className="pool-url-row visible">
@@ -78,7 +78,7 @@ export function LineageSearch() {
               addName();
             }
           }}
-          placeholder="Имя философа (напр. Кант)"
+          placeholder={tl("lineage.lineageSearch.philosopherPlaceholder", "Имя философа (напр. Кант)")}
           className="import-url-input"
         />
         <datalist id="lineage-search-philosophers">
@@ -91,7 +91,7 @@ export function LineageSearch() {
           onClick={addName}
           className="import-url-btn"
         >
-          + Добавить
+          {tl("lineage.lineageSearch.add", "+ Добавить")}
         </button>
         <button
           type="button"
@@ -99,7 +99,7 @@ export function LineageSearch() {
           onClick={() => void handleSearch()}
           className="action-btn primary"
         >
-          {loading ? "…" : "Найти"}
+          {loading ? "…" : tl("lineage.lineageSearch.find", "Найти")}
         </button>
       </div>
 
@@ -115,7 +115,7 @@ export function LineageSearch() {
               <button
                 type="button"
                 onClick={() => removeName(name)}
-                aria-label={"Убрать " + name}
+                aria-label={tl("lineage.lineageSearch.removePrefix", "Убрать ") + name}
                 className="pool-card-btn remove"
               >
                 ✕
@@ -134,8 +134,7 @@ export function LineageSearch() {
         <div className="lineage-results">
           {results.length === 0 ? (
             <div className="pool-status">
-              Концепций с философами {selected.join(", ")} в генеалогии не
-              найдено.
+              {tl("lineage.lineageSearch.notFound", "Концепций с философами {selected} в генеалогии не найдено.", { selected: selected.join(", ") })}
             </div>
           ) : (
             <div className="catalog-list">

@@ -594,6 +594,23 @@ data-section → предупреждение; синонимов на друг�
 43 ✓, tests/test-111-requests2-8.mjs 48 ✓ ×2 (живой сервер + мок, без браузера),
 check:integration += 2ak/4av/5ai; доки — scripts/patches/patch-docs-conv111.py.
 Долгов нет; ближайшая — 11.2.
+Беседа 11.2 (основа локализации и сервер; бэкенд + codemod) ЗАКРЫТА 2026-09-27.
+`shared/i18n/locales.ts` (UI_LOCALES, UI_TO_GEN, genLangForUi; LANG_OPTIONS формы
+перенесён сюда — один список); `t.ts` — ICU-плюралы по Intl.PluralRules языка
+каталога, `setCatalogProvider({ locale, strings })`; `i18n:params` (32 говорящих
+имени подстановок), `i18n:split` → `generated/en.json` (1850), `de.json` (0);
+миграция 0010 `users.ui_locale/gen_lang`, `PATCH /me` с односторонней связью
+языков; `server/i18n/locale.ts` — язык запроса (ALS: пользователь → cookie →
+Accept-Language → ru), все ответы сервера через tl() на языке запроса. Codemod
+применён к репозиторию (132 файла, 2268 строк); зеркала с данными —
+`MIRROR_EXCLUSIONS` (пять, не два: + MODE_CONFIG, два умолчания заголовка) —
+литералами; сторожа читают tl() (`unTl`); 4x/4y/4au не ослаблены. Д-16 закрыт:
+ядро `resolveSubsection` в html-parser, `subsection-order.ts`, intra-контекст /
+рекомендации / планировщик / element-step ищут подраздел по месту и читают по
+фактическому атрибуту, импорт доносит предупреждения, `SectionFull.parseWarnings`.
+Смоук 81 ✓ ×2, tests/test-112-requests2-9.mjs 69 ✓ ×2 (живой сервер + мок, без
+браузера), check:integration += 2al/4aw/5aj; доки — patch-docs-conv112.py.
+Долгов нет; ближайшая — 11.3.
 
 Перед этой связкой снят предпатч доков
 `scripts/patch-docs-conv16-pre.py` (идемпотентный). Он разделил беседу
@@ -5058,6 +5075,73 @@ Table" вместо "Таблица связей"»), иначе честный 
 беседе о подразделах — `resolveSubsection` (generation-service) и границы п.6
 «По факту 11.1».
 
+### Беседа 11.2 — Основа локализации и сервер (бэкенд + codemod) [ЗАКРЫТА 2026-09-27]
+
+**Вход:** HEAD 5992187, `check:dotfiles` чист, `npm install` в самом клоне.
+Вторая беседа Фазы 11; впервые применяет к коду инструменты `scripts/i18n/*`.
+Условие закрытия — зелёный `check:integration` без ослабления 4x/4y/4au.
+
+**Сделано (первый запрос, девять пунктов).** (1) `packages/shared/i18n/locales.ts`:
+`UI_LOCALES` (ru, en, de), `UI_TO_GEN`, `GEN_FALLBACK = English`, `genLangForUi`
+(правило владельца «интерфейс → генерация»); `LANG_OPTIONS` формы создания перенесён
+сюда из SynthesisForm — один список (сторож 4aw: `UI_TO_GEN ⊆ LANG_OPTIONS`).
+(2) `t.ts`: разбор сообщения (`parseMessage`), ICU-плюралы `{n, plural, one{} few{}
+many{} other{}}` с `#` и точными `=N`, форма по `Intl.PluralRules` языка каталога;
+`setCatalogProvider` отдаёт `{ locale, strings }`; `placeholderNames` /
+`pluralFormsOf` общие с инструментами — `i18n:import`/`i18n:check` отвергают формы не
+своего языка. (3) `i18n:split` → `generated/<lang>.json` (`{ locale, strings }`;
+черновики входят, `data`/`obsolete` нет, русского каталога нет), `--check` — для
+сторожа. (4) Миграция `0010_user_locale`: `users.ui_locale`, `gen_lang` (text, NULL —
+не выбирал). (5) `PATCH /auth/me`: `{uiLocale}` пишет ui_locale И gen_lang =
+genLangForUi; `{genLang}` — только gen_lang; неверный язык → 400 `details.uiLocale`;
+`GET /me` отдаёт оба; `AuthUser` сервера и клиента расширены (4e). (6)
+`server/i18n/locale.ts`: AsyncLocalStorage — `requestLocale` в index.ts ДО роутов
+(cookie `ui_locale` → Accept-Language → ru), `requireAuth`/`optionalAuth` поднимают
+`ui_locale` пользователя, `catalogFor(locale)` читает генераты,
+`installServerCatalogProvider` ставит провайдер tl(). (7) Codemod в жёстком порядке:
+`i18n:params` (поле `params` в names.json → 32 говорящих имени) → `MIRROR_EXCLUSIONS`
+в i18n-core (пять зеркал с доводами) → `unTl` в сторожах (4au) → `--in-place` (132
+файла, 2268 строк; 33 строки зеркал литералами с отметкой `data`) → зелёный
+`check:integration`. (8) Сторож 2al/4aw/5aj. (9) Д-16: ядро `resolveSubsection` — в
+`html-parser` (generation-service реэкспортирует); `services/subsection-order.ts`
+(`loadExpectedSubsectionOrder`: строка + генеалогия → buildSubsectionMap);
+`extractRelevantIntraSectionContext` — опция `{ expectedOrder, warnings }`,
+предупреждения соседей — в генлог; `DocumentIndex` в канонических именах +
+`actualNameOf`, `thesisLabelsFromHtml`, `subsectionSource`, `recommendationProseOf`,
+`refineElement` — по месту, читают фактический атрибут; импорт доносит предупреждения
+разбора и при нуле категорий; `SectionFull.parseWarnings` (последняя полная
+(пере)генерация + подраздельные догенерации, отбор по `key` и префиксу `key:`).
+
+**Тестовые запросы R2–R9** — `tests/test-112-requests2-9.mjs` (69 ✓ ×2): плюралы;
+отказ импорта на few в английском с ключом; связь языков (de → German, French не
+трогает интерфейс, fr → 400); язык ответов (ui_locale первее Accept-Language, гость:
+без заголовков и с `de` — русское, с `en` — английское, cookie первее заголовка);
+имена подстановок; codemod (`check:integration`, `typecheck`, `audit`, зеркала
+литералами); `buildSYS` для Russian/English и `formatCtxLog` побайтово те же, что даёт
+код ДО codemod'а (git worktree HEAD; единственная разница — строка «Дата»); Д-16 —
+intra-контекст перегенерации при переведённых атрибутах несёт содержимое соседа,
+рекомендация с каноническим адресом находит подраздел и хэш источника, адрес
+фактическим атрибутом негоден, `parseWarnings` в GET /sections/graph, импорт с
+«Category Table» → warnings.graph.
+
+**Отступления и находки** — «По факту 11.2» (07 §8): пять зеркал вместо двух;
+`section_key` подраздельных догенераций «key:подраздел» (найдено тестом R9); правка
+клиента ценой типа `AuthUser`; сторож 4at ужесточён; сообщения `details.*` минуют
+опись codemod'а. **Что осталось 11.3:** переключатель и cookie `ui_locale` на
+клиенте, каталог и провайдер на клиенте, 251 `static`-строка, `PauseModal.keyInvalid`
+(JSX в подстановке), показ `parseWarnings`; 11.4 — строки `data` по месту показа.
+
+**Файлы беседы:** `packages/shared/i18n/{locales.ts,t.ts,strings.json,generated/}`,
+`scripts/i18n/{i18n-core,i18n-codemod,i18n-check,i18n-import,i18n-init,i18n-params,
+i18n-split,ui-strings-lib}.mjs`, `names.json`, `README.md`; `server/i18n/locale.ts`,
+`server/services/subsection-order.ts`, правки `html-parser`, `generation-service`,
+`context-builder`, `recommendations`, `recommendation-planner`, `element-step`,
+`import-service`, `routes/{auth,sections}.ts`, `middleware/auth.ts`, `index.ts`,
+`db/schema.ts`, миграция 0010, `audit.mts`, `integration-check.mts`; клиент —
+codemod (132 файла), `SynthesisForm.tsx` (импорт LANG_OPTIONS), `auth-store.ts`;
+тесты `smoke-112-request1.mjs`, `test-112-requests2-9.mjs`;
+`scripts/patches/patch-docs-conv112.py`.
+
 ### Беседа 10.3 — Панель рекомендаций (клиент; одна правка сервера) [ЗАКРЫТА 2026-09-22 — Фаза 10 закрыта]
 
 **Вход:** HEAD dd1d315, `check:dotfiles` чист. Живой файл (T103_FILE) — БЕЗ
@@ -5763,6 +5847,16 @@ dotfile и `.gitignore`, потерянные загрузкой; float-срав
 > test-file-genealogy; 07 — поправка к «По факту 8.5»; 09 — §3; deploy —
 > девять миграций. Скрипт — scripts/patches/patch-docs-file-genealogy.py.
 
+> **Правки 2026-09-27 (итоги беседы 11.2)**: основа локализации и сервер.
+> 02 — §2.1 `users.ui_locale/gen_lang`; 03 — §2.1 GET/PATCH /auth/me и язык
+> ответов сервера, §2.2 предупреждения импорта, §2.3 `SectionFull.parseWarnings`;
+> 04 — §2.4 (resolveSubsection → html-parser, потребители Д-16), §4 (locales,
+> t.ts, server/i18n/locale, subsection-order); 05 — shared/i18n/, server/i18n/,
+> subsection-order, миграция 0010, scripts/i18n/, тесты 112; 07 — «По факту 11.2»,
+> §12 (Д-16 закрыт), врезка Фазы 11; 08 — Части I–IV; 09 — §2, §4, §5; README.
+> Скрипт — scripts/patches/patch-docs-conv112.py (часть I — при первом запросе,
+> часть II — при закрытии).
+
 > **Правки 2026-09-23 (итоги беседы 11.1)**: защита машинных значений при
 > нерусской генерации закрыта. 01 — §4.6 факт 11.1; 02 — §2.15
 > `metadata.parseWarnings`; 03 — §2.5 (страховка по позиции), §2.12 (блок
@@ -6235,6 +6329,7 @@ dotfile и `.gitignore`, потерянные загрузкой; float-срав
 
 | Долг | Адресат | Заведён | Состояние |
 |---|---|---|---|
+| Д-16 — нерусская генерация теряет контекст молча (intra-контекст, рекомендации, element-step ищут подразделы по каноническим именам; предупреждения импорта не доходят; parseWarnings только в /logs/formatted) | 11.2 (+ показ 11.3) | ревизия §12 2026-09-23 («По факту 11.1» пп.5–6) | ЗАКРЫТ 11.2 (2026-09-27): ядро `resolveSubsection` в html-parser, `subsection-order.ts`, потребители ищут по месту и читают `actualName`, индекс рекомендаций в канонических именах + `actualNameOf`, импорт доносит предупреждения и при нуле категорий, `SectionFull.parseWarnings` (по `key` и префиксу `key:`); показ в интерфейсе — 11.3 |
 | `getEffectiveModeDepsFromConfig` / `MODE_TITLES` — локальные порты в cascade-analyzer; владелец `getEffectiveModeDeps`/`MODE_CONFIG` — mode-service (метки TODO(4.1) в коде) | 4.1 | 2.1 | ЗАКРЫТ 4.1 (2026-08-28): MODE_TITLES удалён, делегаты — ленивые await import("./mode-service.js") (анти-цикл через generation-service) |
 | Регистрация `regenerateModeSilent` в разъём `setModeRegenerator` (plan-executor; до неё шаги regen_mode → failed, план продолжается) | 4.1 | 2.2 | ЗАКРЫТ 4.1 (2026-08-28): регистрация побочным эффектом импорта mode-service |
 | Карточки результатов режимов в EditModal [18560–18630] (транспорт GET /modes готов с 4.1) | 4.1 | 4.1 | ЗАКРЫТ 4.1 (2026-08-28, довыполнение): ModeResultsPanel (панель «РЕЖИМЫ», чекбоксы с id исходника, ⚡-строки затронутости; взаимоисключение — паритет валидации edit-planner, исходник позволял оба) + план modeRegen/modeRemove из EditModal + кнопка «отметить ↑» в CascadePanel E5 [19483] + refetch панели по onPlanFinished и счётчиков SynthesisPage при закрытии модалки; тест R6 |

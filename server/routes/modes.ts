@@ -55,6 +55,7 @@ import {
 
 import type { GenerationOrder } from "@philosynth/shared/types/synthesis";
 import type { ModeResult } from "@philosynth/shared/types/modes";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const modesRoutes = new Hono<AuthEnv>();
 
@@ -109,14 +110,14 @@ async function ownerEditGate(
   if (row.userId !== userId) return c.json(forbiddenJson, 403);
   if (isGenerationActive(id)) {
     return c.json(
-      { error: "Генерация уже идёт", code: "GENERATION_IN_PROGRESS" },
+      { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" },
       409,
     );
   }
   return null;
 }
 
-const modeNotFoundJson = { error: "Режим не найден", code: "NOT_FOUND" } as const;
+const modeNotFoundJson = { error: tl("server.routes.modes.modeNotFound", "Режим не найден"), code: "NOT_FOUND" } as const;
 
 /* ── GET /syntheses/:id/modes — все режимы с результатами (§2.7) ────── */
 
@@ -193,9 +194,9 @@ modesRoutes.post("/:id/modes/:modeKey/run", requireAuth, billingCheck({ quota: "
   if (!param) {
     return c.json(
       {
-        error: "Невалидные данные",
+        error: tl("common.invalidData", "Невалидные данные"),
         code: "VALIDATION_ERROR",
-        details: { param: "Заполните параметр." },
+        details: { param: tl("common.fillParameter", "Заполните параметр.") },
       },
       400,
     );

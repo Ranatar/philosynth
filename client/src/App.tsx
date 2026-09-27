@@ -57,6 +57,7 @@ import {
 import { SynthesisPage } from "./pages/SynthesisPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { useAuthStore } from "./stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const status = useAuthStore((s) => s.status);
@@ -65,7 +66,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   if (status === "restoring") {
     return (
       <div className="auth-screen">
-        <span className="meta-label">проверка сессии…</span>
+        <span className="meta-label">{tl("app.checkingSession", "проверка сессии…")}</span>
       </div>
     );
   }

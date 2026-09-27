@@ -22,6 +22,7 @@ import { ApiError } from "../../api/client";
 import { createEdge, type CreateEdgeResponse } from "../../api/elements";
 import { EdgeEditor, type EdgeDraft } from "./EdgeEditor";
 import { FieldError } from "./ElementEditor";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const EMPTY_EDGE_DRAFT: EdgeDraft = {
   description: "",
@@ -113,9 +114,9 @@ export function EdgeCreateForm({
         }
         setError(
           err.code === "GENERATION_IN_PROGRESS"
-            ? "Идёт генерация — правки заблокированы до её завершения"
+            ? tl("edit.edgeCreateForm.lockedGenerating", "Идёт генерация — правки заблокированы до её завершения")
             : err.code === "FORBIDDEN"
-              ? "Редактировать может только владелец синтеза"
+              ? tl("edit.edgeCreateForm.ownerOnly", "Редактировать может только владелец синтеза")
               : err.message,
         );
       } else {
@@ -134,28 +135,26 @@ export function EdgeCreateForm({
       }}
       data-testid="edge-create-form"
     >
-      <div className="edit-modal" role="dialog" aria-label="Новая связь">
+      <div className="edit-modal" role="dialog" aria-label={tl("edit.edgeCreateForm.newEdge", "Новая связь")}>
         <div className="edit-modal-header">
           <div className="edit-modal-title">
-            + Новая связь
-            {sourceId && targetId ? ` · ${nameOf(sourceId) ?? "?"} → ${nameOf(targetId) ?? "?"}` : ""}
+            {tl("edit.edgeCreateForm.addNewEdge", "+ Новая связь{targetId}", { targetId: sourceId && targetId ? ` · ${nameOf(sourceId) ?? "?"} → ${nameOf(targetId) ?? "?"}` : "" })}
           </div>
-          <button type="button" className="raw-close" onClick={onClose} title="Закрыть">
+          <button type="button" className="raw-close" onClick={onClose} title={tl("common.close", "Закрыть")}>
             ✕
           </button>
         </div>
         <div className="edit-modal-body">
           {sorted.length < 1 ? (
             <div className="callout warning">
-              <span className="callout-label">Нет категорий</span> Связь соединяет категории графа —
-              сначала нужен хотя бы один узел.
+              <span className="callout-label">{tl("edit.edgeCreateForm.noCategories", "Нет категорий")}</span> {tl("edit.edgeCreateForm.edgeNeedsNodes", "Связь соединяет категории графа — сначала нужен хотя бы один узел.")}
             </div>
           ) : (
             <>
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label" htmlFor="edge-new-source">
-                    Источник
+                    {tl("edit.edgeCreateForm.source", "Источник")}
                   </label>
                   <select
                     id="edge-new-source"
@@ -175,7 +174,7 @@ export function EdgeCreateForm({
                 </div>
                 <div className="form-group">
                   <label className="form-label" htmlFor="edge-new-target">
-                    Цель
+                    {tl("edit.edgeCreateForm.target", "Цель")}
                   </label>
                   <select
                     id="edge-new-target"
@@ -194,7 +193,7 @@ export function EdgeCreateForm({
                   <FieldError
                     text={
                       fieldErrors.targetId ??
-                      (endsInvalid ? "Совпадение концов допустимо только у рефлексивной связи" : undefined)
+                      (endsInvalid ? tl("edit.edgeCreateForm.sameEndsReflexiveOnly", "Совпадение концов допустимо только у рефлексивной связи") : undefined)
                     }
                   />
                 </div>
@@ -217,7 +216,7 @@ export function EdgeCreateForm({
         </div>
         <div className="edit-modal-footer">
           <button type="button" className="action-btn" onClick={onClose} disabled={saving}>
-            Отмена
+            {tl("common.cancel", "Отмена")}
           </button>
           <button
             type="button"
@@ -226,7 +225,7 @@ export function EdgeCreateForm({
             disabled={!canSave}
             data-testid="edge-new-save"
           >
-            {saving ? "Создание…" : "Создать связь"}
+            {saving ? tl("common.creating", "Создание…") : tl("edit.edgeCreateForm.createEdge", "Создать связь")}
           </button>
         </div>
       </div>

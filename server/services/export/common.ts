@@ -13,6 +13,7 @@ import { db } from "../../db/index.js";
 import { syntheses, synthesisLineage } from "../../db/schema.js";
 import { unlinkedFileParents } from "../lineage-service.js";
 import { getDocFilename } from "./filename.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export type ExportErrorCode = "NOT_FOUND" | "NO_GRAPH";
 
@@ -46,7 +47,7 @@ export async function loadExportSynthesis(
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
-  if (!row) throw new ExportError("NOT_FOUND", "Синтез не найден");
+  if (!row) throw new ExportError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
 
   const lineageRows = await db
     .select()

@@ -27,6 +27,7 @@ import ts from "typescript";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { placeholderNames, pluralFormsOf, pluralCategoriesOf } from "../../packages/shared/i18n/t.ts";
 
 export const FN = "tl";
 export const FN_MODULE = "@philosynth/shared/i18n/t";
@@ -45,8 +46,15 @@ export const NAMES_PATH = "scripts/i18n/names.json";
  *  Файл правится руками, поэтому разбор строгий: лишние и недостающие поля,
  *  id вне своего ns и дубль пары (ns, ru) — отказ с номером записи, а не
  *  молчаливый пропуск. Переводы на прочие языки сюда НЕ пишутся: после
- *  i18n:init они живут в strings.json и приходят через i18n:import. */
+ *  i18n:init они живут в strings.json и приходят через i18n:import.
+ *  Необязательное поле params (беседа 11.2, п.7а) — говорящие имена
+ *  подстановок по позициям {0},{1}…: ["line","column"]. Без него имя
+ *  выводится из выражения (paramNames), и получаются `value`/`lc2`,
+ *  которые переводчик не поймёт. Имя — идентификатор, в записи без повторов,
+ *  число имён = число {N} в ru. Применяет к таблице i18n:params. */
 const NAME_FIELDS = ["ns", "id", "ru", "en"];
+const NAME_OPTIONAL = ["params"];
+const IDENT_RE = /^[A-Za-z_$][\w$]*$/;
 
 export function loadNames(root) {
   const list = JSON.parse(fs.readFileSync(path.join(root, NAMES_PATH), "utf8"));
@@ -59,13 +67,21 @@ export function loadNames(root) {
       errs.push(`${at}: ожидался объект { ns, id, ru, en } (прежний вид [ns, ru, имя, en] больше не читается)`);
       return;
     }
-    const extra = Object.keys(rec).filter((k) => !NAME_FIELDS.includes(k));
+    const extra = Object.keys(rec).filter((k) => !NAME_FIELDS.includes(k) && !NAME_OPTIONAL.includes(k));
     const missing = NAME_FIELDS.filter((k) => !(k in rec));
     if (extra.length || missing.length) {
       errs.push(`${at}: ${missing.length ? `нет полей ${missing.join(", ")}` : ""}${missing.length && extra.length ? "; " : ""}${extra.length ? `лишние поля ${extra.join(", ")}` : ""}`);
       return;
     }
-    const { ns, id, ru, en } = rec;
+    const { ns, id, ru, en, params } = rec;
+    if (params !== undefined) {
+      const slots = new Set((typeof ru === "string" ? ru.match(/\{(\d+)\}/g) ?? [] : []));
+      if (!Array.isArray(params) || params.some((x) => typeof x !== "string" || !IDENT_RE.test(x)))
+        errs.push(`${at}: params — массив идентификаторов`);
+      else if (new Set(params).size !== params.length) errs.push(`${at}: params содержит повтор`);
+      else if (params.length !== slots.size) errs.push(`${at}: params (${params.length}) ≠ числу подстановок {N} в ru (${slots.size})`);
+      else if (id === null) errs.push(`${at}: params у исключённой строки (id: null) бессмысленны`);
+    }
     if (typeof ns !== "string" || !ns) errs.push(`${at}: ns — непустая строка`);
     if (typeof ru !== "string" || !ru) errs.push(`${at}: ru — непустая строка`);
     if (id !== null && (typeof id !== "string" || !id.startsWith(`${ns}.`) || id.length <= ns.length + 1))
@@ -73,7 +89,7 @@ export function loadNames(root) {
     if (en !== null && typeof en !== "string") errs.push(`${at}: en — строка или null`);
     const k = `${ns}\u0000${ru}`;
     if (map.has(k)) errs.push(`${at}: пара (ns, ru) уже встречалась — «${ns}» / «${ru.slice(0, 40)}»`);
-    map.set(k, { leaf: id === null ? null : id.slice(ns.length + 1), en });
+    map.set(k, { leaf: id === null ? null : id.slice(ns.length + 1), en, params: params ?? null });
   });
   if (errs.length) throw new Error(`names.json не разобран:\n  ${errs.slice(0, 20).join("\n  ")}${errs.length > 20 ? `\n  … ещё ${errs.length - 20}` : ""}`);
   return map;
@@ -82,10 +98,10 @@ export function loadNames(root) {
 /** Ключ записи описи: сначала пространство имён файла, затем common. */
 export function resolveName(names, ns, entry) {
   const own = names.get(`${ns}\u0000${entry.text}`);
-  if (own) return own.leaf ? { key: `${ns}.${own.leaf}`, en: own.en } : { exclude: true };
+  if (own) return own.leaf ? { key: `${ns}.${own.leaf}`, en: own.en, params: own.params } : { exclude: true };
   if (!entry.args) {
     const common = names.get(`common\u0000${entry.text}`);
-    if (common?.leaf) return { key: `common.${common.leaf}`, en: common.en };
+    if (common?.leaf) return { key: `common.${common.leaf}`, en: common.en, params: common.params };
   }
   return null;
 }
@@ -100,8 +116,10 @@ const NOISE = new Set([
 ]);
 
 /** Имена подстановок по выражениям: synthesis.authorName → authorName,
- *  response.status → status, (cost as number).toFixed(4) → cost. */
-export function paramNames(args) {
+ *  response.status → status, (cost as number).toFixed(4) → cost.
+ *  given — говорящие имена из names.json (params), если заданы: берутся как есть. */
+export function paramNames(args, given = null) {
+  if (given && given.length === args.length) return [...given];
   const used = new Map();
   return args.map((expr) => {
     // слова внутри строковых литералов — не имена
@@ -121,10 +139,30 @@ export function toNamed(text, names) {
   return text.replace(/\{(\d+)\}/g, (w, i) => (names[+i] !== undefined ? `{${names[+i]}}` : w));
 }
 
-/** Множество подстановок {имя} в тексте (для сверки перевода). */
+/** Множество подстановок {имя} в тексте (для сверки перевода) — включая
+ *  аргументы плюралов {n, plural, …}; разбор — тот же, что у tl() (t.ts). */
 export function placeholderSet(text) {
-  return [...new Set((text ?? "").match(/\{[A-Za-z_$][\w$]*\}/g) ?? [])].sort().join(",");
+  return placeholderNames(text ?? "").map((n) => `{${n}}`).join(",");
 }
+
+/** Формы плюралов языка, которых текст НЕ должен иметь и которых ему не
+ *  хватает: перевод с формами не своего языка — отказ (беседа 11.2, п.2).
+ *  Точные формы «=N» допустимы в любом языке. → [] — всё в порядке. */
+export function pluralFormProblems(text, lang) {
+  const allowed = new Set(pluralCategoriesOf(lang));
+  const problems = [];
+  for (const { name, forms } of pluralFormsOf(text ?? "")) {
+    const cats = forms.filter((f) => !f.startsWith("="));
+    const extra = cats.filter((f) => !allowed.has(f));
+    const missing = [...allowed].filter((f) => !cats.includes(f));
+    if (extra.length) problems.push(`{${name}, plural}: формы не языка «${lang}»: ${extra.join(", ")}`);
+    if (missing.length) problems.push(`{${name}, plural}: нет форм языка «${lang}»: ${missing.join(", ")}`);
+  }
+  return problems;
+}
+
+/** Язык колонки таблицы по имени языка (ru/en/de совпадают с BCP-47). */
+export const LANG_LOCALE = { ru: "ru", en: "en", de: "de" };
 
 /* ───────────── Мастер-таблица ───────────── */
 
@@ -229,4 +267,63 @@ export function scanCalls(root) {
     }
   }
   return { calls, problems };
+}
+
+/**
+ * Зеркала с данными — codemod'ом НЕ переписываются (беседа 11.2, п.7б);
+ * список общий для i18n-codemod (пропуск) и i18n-check (не «codemod не применён»).
+ * Каждая запись: файл, область (пара маркеров текста — от первого до второго
+ * включая строку с ним) либо точный русский текст, и довод. Строки в области
+ * помечаются в таблице отметкой data (переводятся по месту показа — 11.4).
+ *
+ * Почему не по типу литерала: одна сторона пары — данные для промптов и
+ * экспорта (MODE_CONFIG уходит в промпт и в шапки экспорта режимов; ветки
+ * подзаголовка — в md-/html-экспорт), другая — её клиентская копия, и сторож
+ * сверяет обе как русский текст. Перепиши одну — сторож прав, что кричит.
+ */
+export const MIRROR_EXCLUSIONS = [
+  {
+    file: "server/services/mode-service.ts",
+    block: ["export const MODE_CONFIG", "export const MODE_KEYS"],
+    reason: "MODE_CONFIG — данные режимов: title уходит в промпт и заголовки экспорта (buildModesExportSection 4.2); зеркало — MODE_UI клиента, сторож 4x",
+  },
+  {
+    file: "client/src/components/modes/ModeModal.tsx",
+    block: ["export const MODE_UI", "export function"],
+    reason: "MODE_UI — клиентская копия статики MODE_CONFIG (4.1); сторож 4x сверяет поля дословно в обе стороны; перевод — по месту показа (11.4)",
+  },
+  {
+    file: "client/src/components/document/DocumentHeader.tsx",
+    block: ["function subtitleFor(", "\n}\n"],
+    reason: "три ветки подзаголовка [12126] — зеркало subtitleForExport md-/html-экспорта (4.2); сторож 4y сверяет текст веток; перевод — по месту показа (11.4)",
+  },
+  {
+    file: "client/src/components/document/DocumentHeader.tsx",
+    text: "Синтез Философской Концепции",
+    reason: "defaultTitle сравнивается с syntheses.title (умолчание БД, 02 §2.3) — значение, не надпись",
+  },
+  {
+    file: "client/src/components/logs/ContextLogViewer.tsx",
+    text: "Синтез Философской Концепции",
+    reason: "DEFAULT_TITLE сравнивается с заголовком синтеза (умолчание БД) — значение, не надпись",
+  },
+];
+
+/** Диапазон [start, end) области исключения в тексте файла (либо null). */
+export function exclusionSpan(src, [beg, end]) {
+  const a = src.indexOf(beg);
+  if (a < 0) return null;
+  const b = src.indexOf(end, a + beg.length);
+  return [a, b < 0 ? src.length : b + end.length];
+}
+
+/** Исключение для записи описи файла rel (по области или по тексту) либо null. */
+export function mirrorExclusionFor(rel, src, e) {
+  for (const x of MIRROR_EXCLUSIONS) {
+    if (x.file !== rel) continue;
+    if (x.text !== undefined) { if (e.text === x.text) return x; continue; }
+    const span = exclusionSpan(src, x.block);
+    if (span && e.start >= span[0] && e.end <= span[1]) return x;
+  }
+  return null;
 }

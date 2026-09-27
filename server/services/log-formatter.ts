@@ -55,6 +55,7 @@ import {
 import { formatVersion } from "@philosynth/shared/utils/version";
 
 import type { ContextEntry, ParentSpecLog } from "@philosynth/shared/types/generation";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Локальные типы строк/метаданных ─────────────────────────────────── */
 
@@ -145,17 +146,17 @@ async function loadLogs(synthesisId: string): Promise<{
 
 export async function formatCtxLog(synthesisId: string): Promise<string> {
   const loaded = await loadLogs(synthesisId);
-  if (!loaded) return "Лог пуст. Сгенерируйте документ.";
+  if (!loaded) return tl("server.logFormatter.logEmpty", "Лог пуст. Сгенерируйте документ.");
   const { row, ctxRows, genCommon } = loaded;
   // Служебная строка _genCommon в цикл записей не входит [02 §2.15]
   const genLog = loaded.genRows.filter((g) => g.sectionKey !== "_genCommon");
 
   if (genLog.length === 0 && ctxRows.length === 0)
-    return "Лог пуст. Сгенерируйте документ.";
+    return tl("server.logFormatter.logEmpty", "Лог пуст. Сгенерируйте документ.");
 
   const lines: string[] = [];
-  lines.push("PHILOSYNTH PRO — ЛОГ КОНТЕКСТА И ГЕНЕРАЦИИ");
-  lines.push("Дата: " + new Date().toLocaleString("ru-RU"));
+  lines.push(tl("server.logFormatter.logTitle", "PHILOSYNTH PRO — ЛОГ КОНТЕКСТА И ГЕНЕРАЦИИ"));
+  lines.push(tl("server.logFormatter.date", "Дата: ") + new Date().toLocaleString("ru-RU"));
   const verStr = formatVersion({
     base: row.versionBase,
     sub: row.versionSub,
@@ -163,39 +164,39 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
     modeRegen: row.versionModeRegen,
   });
   if (verStr !== "v1") {
-    lines.push("Текущая версия: " + verStr);
+    lines.push(tl("server.logFormatter.currentVersion", "Текущая версия: ") + verStr);
   }
   lines.push("═".repeat(70));
 
   // --- Общие элементы промпта (с разбивкой родительского контекста) ---
   if (genCommon) {
     lines.push("");
-    lines.push("ОБЩИЕ ЭЛЕМЕНТЫ ПРОМПТА:");
+    lines.push(tl("server.logFormatter.commonElements", "ОБЩИЕ ЭЛЕМЕНТЫ ПРОМПТА:"));
     lines.push(
-      "  Системный промпт          " +
+      tl("server.logFormatter.systemPrompt", "  Системный промпт          ") +
         num(genCommon.sysChars).padStart(7) +
-        " симв.  (одинаков для всех)",
+        tl("server.logFormatter.charsSameForAll", " симв.  (одинаков для всех)"),
     );
     if ((genCommon.rulesChars ?? 0) > 0) {
       lines.push(
-        "  Правила форматирования    " +
+        tl("server.logFormatter.formattingRules", "  Правила форматирования    ") +
           num(genCommon.rulesChars).padStart(7) +
-          " симв.",
+          tl("server.logFormatter.chars", " симв."),
       );
       lines.push(
-        "  Требования к качеству     " +
+        tl("server.logFormatter.qualityRequirements", "  Требования к качеству     ") +
           num(genCommon.qualityChars).padStart(7) +
-          " симв.",
+          tl("server.logFormatter.chars", " симв."),
       );
     } else if ((genCommon.qualityChars ?? 0) > 0) {
-      lines.push("  (вкл. форматирование в системном промпте)");
+      lines.push(tl("server.logFormatter.inclFormatting", "  (вкл. форматирование в системном промпте)"));
       lines.push(
-        "  Требования к качеству     " +
+        tl("server.logFormatter.qualityRequirements", "  Требования к качеству     ") +
           num(genCommon.qualityChars).padStart(7) +
-          " симв.",
+          tl("server.logFormatter.chars", " симв."),
       );
     } else {
-      lines.push("  (вкл. форматирование и требования к качеству)");
+      lines.push(tl("server.logFormatter.inclFormattingQuality", "  (вкл. форматирование и требования к качеству)"));
     }
     // Новый формат: статическая часть + родители отдельно
     const _hasParents =
@@ -207,14 +208,14 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       typeof genCommon.baseCharsWithoutConcepts === "number"
     ) {
       lines.push(
-        "  Параметры синтеза (статика)" +
+        tl("server.logFormatter.synthesisParamsStatic", "  Параметры синтеза (статика)") +
           num(genCommon.baseCharsWithoutConcepts).padStart(7) +
-          " симв.  (одинаковы для всех)",
+          tl("server.logFormatter.charsSameForAllPl", " симв.  (одинаковы для всех)"),
       );
       const specMap = genCommon.parentSpecBySection || {};
       const keysForSpec = Object.keys(specMap).filter((k) => specMap[k]);
       if (keysForSpec.length > 0) {
-        lines.push("  Контекст родителей (варьируется по разделам):");
+        lines.push(tl("server.logFormatter.parentContextVarying", "  Контекст родителей (варьируется по разделам):"));
         let totalSum = 0,
           maxSum = 0,
           maxKey = "";
@@ -228,7 +229,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
             "    " +
               label +
               num(spec.totalChars).padStart(7) +
-              " симв.  (" +
+              tl("server.logFormatter.charsParenOpen", " симв.  (") +
               fieldsUsed.join(", ") +
               ")",
           );
@@ -240,9 +241,9 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         }
         const avg = Math.round(totalSum / Math.max(keysForSpec.length, 1));
         lines.push(
-          "    Средний вес:     " +
+          tl("server.logFormatter.averageWeight", "    Средний вес:     ") +
             num(avg).padStart(7) +
-            " симв.   Максимум: " +
+            tl("server.logFormatter.charsMaximum", " симв.   Максимум: ") +
             num(maxSum) +
             " (" +
             labelOf(maxKey) +
@@ -250,47 +251,47 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         );
       } else {
         lines.push(
-          "  Контекст родителей (монолит): " +
+          tl("server.logFormatter.parentContextMonolith", "  Контекст родителей (монолит): ") +
             num(genCommon.totalConceptOverhead || 0) +
-            " симв.",
+            tl("server.logFormatter.chars", " симв."),
         );
       }
       // Per-parent breakdown (ТЗ tz_budget_mode 2.2.А) — полный вес каждого родителя
       const cbs = genCommon.conceptBlockSizes || [];
       if (cbs.length > 0) {
         const totalCbs = cbs.reduce((s, x) => s + (x.chars || 0), 0);
-        lines.push("  Участники (полный вес, для справки):");
+        lines.push(tl("server.logFormatter.participantsFullWeight", "  Участники (полный вес, для справки):"));
         for (const pp of cbs) {
           const nm = ("«" + pp.name + "»").padEnd(40);
-          lines.push("    " + nm + num(pp.chars).padStart(7) + " симв.");
+          lines.push("    " + nm + num(pp.chars).padStart(7) + tl("server.logFormatter.chars", " симв."));
         }
         lines.push(
           "    " +
-            "Σ всего полного веса".padEnd(40) +
+            tl("server.logFormatter.fullWeightTotal", "Σ всего полного веса").padEnd(40) +
             num(totalCbs).padStart(7) +
-            " симв. (" +
+            tl("server.logFormatter.charsParen", " симв. (") +
             cbs.length +
-            " концепции)",
+            tl("server.logFormatter.conceptsParenClose", " концепции)"),
         );
       }
     } else {
       lines.push(
-        "  Параметры синтеза          " +
+        tl("server.logFormatter.synthesisParams", "  Параметры синтеза          ") +
           num(genCommon.baseChars).padStart(7) +
-          " симв.  (одинаковы для всех)",
+          tl("server.logFormatter.charsSameForAllPl", " симв.  (одинаковы для всех)"),
       );
     }
     lines.push(
-      "  Служебный каркас          " +
+      tl("server.logFormatter.serviceFrame", "  Служебный каркас          ") +
         num(genCommon.scaffoldChars).padStart(7) +
-        " симв.",
+        tl("server.logFormatter.chars", " симв."),
     );
     if (_hasParents) {
       const modeLabel =
         genCommon.budgetMode === "full"
-          ? "полный (без ужимания)"
-          : "ужатый (под давлением родителей)";
-      lines.push("  Режим бюджета секций:     " + modeLabel);
+          ? tl("server.logFormatter.budgetFull", "полный (без ужимания)")
+          : tl("server.logFormatter.budgetCompressed", "ужатый (под давлением родителей)");
+      lines.push(tl("server.logFormatter.budgetMode", "  Режим бюджета секций:     ") + modeLabel);
     }
     lines.push("─".repeat(70));
   }
@@ -316,7 +317,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       lines.push("═".repeat(70));
       const gv =
         typeof meta["version"] === "string" ? (meta["version"] as string) : "";
-      lines.push("  ВЕРСИЯ" + (gv ? " " + gv : "") + (dt ? "  ·  " + dt : ""));
+      lines.push(tl("server.logFormatter.versionHeading", "  ВЕРСИЯ") + (gv ? " " + gv : "") + (dt ? "  ·  " + dt : ""));
       // Адаптация 2.2: metadata.actions — плоские строки «тип: метка»;
       // группировка обратно в Перегенерировано/Удалено/Добавлено
       const flat = Array.isArray(meta["actions"])
@@ -331,9 +332,9 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         else if (kind === "add") acts.add.push(label);
         else acts.regen.push(label); // regen | regen_subsection | regen_mode
       }
-      if (acts.regen.length) lines.push("  Перегенерировано: " + acts.regen.join(", "));
-      if (acts.remove.length) lines.push("  Удалено: " + acts.remove.join(", "));
-      if (acts.add.length) lines.push("  Добавлено: " + acts.add.join(", "));
+      if (acts.regen.length) lines.push(tl("server.logFormatter.regenerated", "  Перегенерировано: ") + acts.regen.join(", "));
+      if (acts.remove.length) lines.push(tl("server.logFormatter.deleted", "  Удалено: ") + acts.remove.join(", "));
+      if (acts.add.length) lines.push(tl("server.logFormatter.added", "  Добавлено: ") + acts.add.join(", "));
       lines.push("═".repeat(70));
       continue;
     }
@@ -348,28 +349,28 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       const kindLabel =
         (
           {
-            auth: "Ошибка авторизации",
-            billing: "Баланс API исчерпан",
-            "pre-stream": "Ошибка сети",
-            partial: "Обрыв стрима",
-            stuck: "Таймаут (стрим завис)",
+            auth: tl("server.logFormatter.errAuth", "Ошибка авторизации"),
+            billing: tl("server.logFormatter.errBilling", "Баланс API исчерпан"),
+            "pre-stream": tl("server.logFormatter.errNetwork", "Ошибка сети"),
+            partial: tl("server.logFormatter.errPartial", "Обрыв стрима"),
+            stuck: tl("server.logFormatter.errStuck", "Таймаут (стрим завис)"),
             "max-tokens":
-              "Превышен лимит max_tokens" +
+              tl("server.logFormatter.errMaxTokens", "Превышен лимит max_tokens") +
               (maxTokensUsed ? " (" + maxTokensUsed.toLocaleString("ru") + ")" : ""),
-            "user-abort": "Остановка пользователем",
-            "context-error": "Ошибка построения контекста",
+            "user-abort": tl("server.logFormatter.errUserAbort", "Остановка пользователем"),
+            "context-error": tl("server.logFormatter.errContext", "Ошибка построения контекста"),
           } as Record<string, string>
         )[reasonKind] ?? reasonKind;
       lines.push("");
       lines.push("─".repeat(70));
-      lines.push("  ⏸  ПАУЗА" + (dt ? "  ·  " + dt : ""));
+      lines.push(tl("server.logFormatter.pauseHeading", "  ⏸  ПАУЗА") + (dt ? "  ·  " + dt : ""));
       lines.push(
-        "    Раздел: " +
+        tl("server.logFormatter.pauseSection", "    Раздел: ") +
           (g.sectionLabel || String(meta["sectionLabel"] ?? "") || "?"),
       );
-      lines.push("    Причина: " + kindLabel);
-      if (meta["reason"]) lines.push("    Детали: " + String(meta["reason"]));
-      if (meta["isPartial"]) lines.push("    Частичное содержимое сохранено");
+      lines.push(tl("server.logFormatter.pauseCause", "    Причина: ") + kindLabel);
+      if (meta["reason"]) lines.push(tl("server.logFormatter.pauseDetails", "    Детали: ") + String(meta["reason"]));
+      if (meta["isPartial"]) lines.push(tl("server.logFormatter.partialSaved", "    Частичное содержимое сохранено"));
       lines.push("─".repeat(70));
       continue;
     }
@@ -380,32 +381,32 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       const modeLabel =
         (
           {
-            retry: "Перегенерация раздела",
-            skip: "Пропуск раздела",
-            stop: "Остановка с сохранением",
-            "fill-missing-subs": "Догенерация недостающих подразделов",
+            retry: tl("server.logFormatter.actionRegenSection", "Перегенерация раздела"),
+            skip: tl("server.logFormatter.actionSkipSection", "Пропуск раздела"),
+            stop: tl("server.logFormatter.actionStopSave", "Остановка с сохранением"),
+            "fill-missing-subs": tl("server.logFormatter.actionFillMissing", "Догенерация недостающих подразделов"),
             // resumePlan (2.2): режимы плана
-            skip_step: "Пропуск шага плана",
+            skip_step: tl("server.logFormatter.actionSkipStep", "Пропуск шага плана"),
           } as Record<string, string>
         )[mode] ?? mode;
       lines.push("");
       lines.push("─".repeat(70));
-      lines.push("  ▶  ВОЗОБНОВЛЕНИЕ" + (dt ? "  ·  " + dt : ""));
-      lines.push("    Действие: " + modeLabel);
-      if (g.sectionLabel) lines.push("    Раздел: " + g.sectionLabel);
+      lines.push(tl("server.logFormatter.resumeHeading", "  ▶  ВОЗОБНОВЛЕНИЕ") + (dt ? "  ·  " + dt : ""));
+      lines.push(tl("server.logFormatter.resumeAction", "    Действие: ") + modeLabel);
+      if (g.sectionLabel) lines.push(tl("server.logFormatter.pauseSection", "    Раздел: ") + g.sectionLabel);
       // Адаптация: opDescription исходника план не пишет; для kind='plan'
       // печатаем шаг из stepIdx/totalSteps (metadata resume_marker 2.2)
       if (typeof meta["opDescription"] === "string") {
-        lines.push("    Шаг плана: " + meta["opDescription"]);
+        lines.push(tl("server.logFormatter.resumePlanStep", "    Шаг плана: ") + meta["opDescription"]);
       } else if (
         meta["kind"] === "plan" &&
         typeof meta["stepIdx"] === "number" &&
         typeof meta["totalSteps"] === "number"
       ) {
         lines.push(
-          "    Шаг плана: " +
+          tl("server.logFormatter.resumePlanStep", "    Шаг плана: ") +
             ((meta["stepIdx"] as number) + 1) +
-            " из " +
+            tl("server.logFormatter.of", " из ") +
             meta["totalSteps"],
         );
       }
@@ -419,13 +420,13 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       const actionLabel =
         (
           {
-            abort: "Остановлена текущая генерация",
-            "api-key-updated": "Обновлён API-ключ",
+            abort: tl("server.logFormatter.actionStopped", "Остановлена текущая генерация"),
+            "api-key-updated": tl("server.logFormatter.actionKeyUpdated", "Обновлён API-ключ"),
           } as Record<string, string>
         )[action] ?? action;
       lines.push("");
       lines.push("─".repeat(70));
-      lines.push("  👤  ДЕЙСТВИЕ ПОЛЬЗОВАТЕЛЯ" + (dt ? "  ·  " + dt : ""));
+      lines.push(tl("server.logFormatter.userActionHeading", "  👤  ДЕЙСТВИЕ ПОЛЬЗОВАТЕЛЯ") + (dt ? "  ·  " + dt : ""));
       lines.push("    " + actionLabel);
       lines.push("─".repeat(70));
       continue;
@@ -435,7 +436,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
     if (g.logType === "schema_migration_marker") {
       lines.push("");
       lines.push("─".repeat(70));
-      lines.push("  ↻  МИГРАЦИЯ СХЕМЫ" + (dt ? "  ·  " + dt : ""));
+      lines.push(tl("server.logFormatter.schemaMigrationHeading", "  ↻  МИГРАЦИЯ СХЕМЫ") + (dt ? "  ·  " + dt : ""));
       lines.push(
         "    " +
           String(meta["fromSchema"] ?? "?") +
@@ -443,7 +444,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
           String(meta["toSchema"] ?? "?"),
       );
       if (g.sectionLabel) {
-        lines.push("    при перегенерации раздела: " + g.sectionLabel);
+        lines.push(tl("server.logFormatter.onSectionRegen", "    при перегенерации раздела: ") + g.sectionLabel);
       }
       lines.push("─".repeat(70));
       continue;
@@ -458,7 +459,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
           ? String(meta["sectionNum"])
           : "?";
       lines.push(
-        "  ✗ УДАЛЁН: § " +
+        tl("server.logFormatter.deletedSection", "  ✗ УДАЛЁН: § ") +
           secNum +
           " — " +
           g.sectionLabel +
@@ -475,7 +476,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
 
     // --- Состав входа ---
     lines.push("");
-    lines.push("ВХОД:");
+    lines.push(tl("server.logFormatter.inputHeading", "ВХОД:"));
     const isMode = g.sectionKey.startsWith("mode:");
     const commonChars = isMode
       ? (genCommon?.sysChars ?? 0)
@@ -505,14 +506,14 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         (genCommon.scaffoldChars || 0) +
         (genCommon.rulesChars || 0);
       lines.push(
-        "  Общие элементы             " +
+        tl("server.logFormatter.inCommonElements", "  Общие элементы             ") +
           num(staticCommon).padStart(7) +
-          " симв.",
+          tl("server.logFormatter.chars", " симв."),
       );
       lines.push(
-        "  Контекст родителей         " +
+        tl("server.logFormatter.inParentContext", "  Контекст родителей         ") +
           num(_parentOv).padStart(7) +
-          " симв." +
+          tl("server.logFormatter.chars", " симв.") +
           (_fieldsUsed && _fieldsUsed.length
             ? "  (" + _fieldsUsed.join(", ") + ")"
             : ""),
@@ -526,7 +527,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         // Опущенные поля: берём из первого родителя (они одинаковы для всех при per-section)
         const _omitted = _pspec.perParent[0]!.omittedFields || [];
         if (_omitted.length > 0) {
-          lines.push("    Опущено: " + _omitted.join(", "));
+          lines.push(tl("server.logFormatter.omitted", "    Опущено: ") + _omitted.join(", "));
         }
         // Предупреждения о missingRequired (по каждому родителю)
         for (const pp of _pspec.perParent) {
@@ -534,28 +535,28 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
             lines.push(
               "    ⚠ «" +
                 pp.name +
-                "»: отсутствует обязательное поле: " +
+                tl("server.logFormatter.missingRequiredField", "»: отсутствует обязательное поле: ") +
                 pp.missingRequired.join(", "),
             );
           }
         }
       }
       if (meta["budgetMode"] === "full") {
-        lines.push("  Режим бюджета: полный (без ужимания)");
+        lines.push(tl("server.logFormatter.budgetModeFull", "  Режим бюджета: полный (без ужимания)"));
       }
     } else {
       lines.push(
-        "  Общие элементы             " +
+        tl("server.logFormatter.inCommonElements", "  Общие элементы             ") +
           num(commonChars).padStart(7) +
-          " симв.",
+          tl("server.logFormatter.chars", " симв."),
       );
     }
 
     if (g.priorChars > 0) {
       lines.push(
-        "  Контекст пред. разделов   " +
+        tl("server.logFormatter.prevSectionsContext", "  Контекст пред. разделов   ") +
           num(g.priorChars).padStart(7) +
-          " симв.",
+          tl("server.logFormatter.chars", " симв."),
       );
 
       for (const k of keys) {
@@ -565,11 +566,11 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         if (isIntraCtxKey(k)) {
           const parentKey = k.split(":")[0]!;
           lines.push(
-            "    Контекст подразделов «" +
+            tl("server.logFormatter.subsectionContextLead", "    Контекст подразделов «") +
               labelOf(parentKey) +
               "»: " +
               num(ctx.totalUsed) +
-              " симв.",
+              tl("server.logFormatter.chars", " симв."),
           );
         } else {
           const _raw = await rawFor(k);
@@ -580,15 +581,15 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
           );
           if (_raw && _applied > 0) {
             lines.push(
-              "    Бюджет: " +
+              tl("server.logFormatter.budget", "    Бюджет: ") +
                 num(ctx.budget) +
-                " из " +
+                tl("server.logFormatter.of", " из ") +
                 num(_raw) +
-                " симв. " +
-                "(сжат родителями на " +
+                tl("server.logFormatter.charsSpace", " симв. ") +
+                tl("server.logFormatter.compressedByParentsBy", "(сжат родителями на ") +
                 num(_applied) +
                 "), " +
-                "использовано: " +
+                tl("server.logFormatter.usedLabel", "использовано: ") +
                 num(ctx.totalUsed) +
                 " (" +
                 _usedPct +
@@ -596,10 +597,10 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
             );
           } else if (_raw && ctx.budgetMode === "full") {
             lines.push(
-              "    Бюджет: " +
+              tl("server.logFormatter.budget", "    Бюджет: ") +
                 num(ctx.budget) +
-                " симв. (полный, без ужимания), " +
-                "использовано: " +
+                tl("server.logFormatter.charsFullNoCompression", " симв. (полный, без ужимания), ") +
+                tl("server.logFormatter.usedLabel", "использовано: ") +
                 num(ctx.totalUsed) +
                 " (" +
                 _usedPct +
@@ -607,10 +608,10 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
             );
           } else {
             lines.push(
-              "    Бюджет: " +
+              tl("server.logFormatter.budget", "    Бюджет: ") +
                 num(ctx.budget) +
-                " симв., " +
-                "использовано: " +
+                tl("server.logFormatter.charsComma", " симв., ") +
+                tl("server.logFormatter.usedLabel", "использовано: ") +
                 num(ctx.totalUsed) +
                 " (" +
                 _usedPct +
@@ -623,40 +624,40 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         const intraSec = k.split(":")[0]!;
         const reqEntries = entries.filter((e) => e.priority === "required");
         if (reqEntries.length) {
-          lines.push("    Обязательный:");
+          lines.push(tl("server.logFormatter.required", "    Обязательный:"));
           for (const e of reqEntries) {
             const lbl = ctxLabelOf(e.key, intraSec).padEnd(42);
             if (e.status === "found") {
-              const subMark = e.isSubstitute ? " [замена]" : "";
+              const subMark = e.isSubstitute ? tl("server.logFormatter.substitute", " [замена]") : "";
               lines.push(
-                "      ✓ " + lbl + num(e.len).padStart(7) + " симв." + subMark,
+                "      ✓ " + lbl + num(e.len).padStart(7) + tl("server.logFormatter.chars", " симв.") + subMark,
               );
             } else if (e.status === "dropped") {
               lines.push(
-                "      ✗ " + lbl + "утрачён [" + String(e["note"] ?? "") + "]",
+                "      ✗ " + lbl + tl("server.logFormatter.lostBracket", "утрачён [") + String(e["note"] ?? "") + "]",
               );
             } else {
-              lines.push("      ✗ " + lbl + "НЕ НАЙДЕН");
+              lines.push("      ✗ " + lbl + tl("server.logFormatter.notFoundUpper", "НЕ НАЙДЕН"));
             }
           }
         }
 
         const optEntries = entries.filter((e) => e.priority === "optional");
         if (optEntries.length) {
-          lines.push("    Опциональный:");
+          lines.push(tl("server.logFormatter.optional", "    Опциональный:"));
           for (const e of optEntries) {
             const lbl = ctxLabelOf(e.key, intraSec).padEnd(42);
             if (e.status === "found") {
-              const subMark = e.isSubstitute ? " [замена]" : "";
+              const subMark = e.isSubstitute ? tl("server.logFormatter.substitute", " [замена]") : "";
               lines.push(
-                "      ✓ " + lbl + num(e.len).padStart(7) + " симв." + subMark,
+                "      ✓ " + lbl + num(e.len).padStart(7) + tl("server.logFormatter.chars", " симв.") + subMark,
               );
             } else if (e.status === "truncated") {
               lines.push(
                 "      ◦ " +
                   lbl +
                   num(e.len).padStart(7) +
-                  " симв. [" +
+                  tl("server.logFormatter.charsBracket", " симв. [") +
                   String(e["note"] ?? "") +
                   "]",
               );
@@ -664,41 +665,41 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
               lines.push(
                 "      ◌ " +
                   lbl +
-                  "пропущен [" +
-                  String(e["note"] ?? "бюджет исчерпан") +
+                  tl("server.logFormatter.skippedBracket", "пропущен [") +
+                  String(e["note"] ?? tl("server.logFormatter.budgetExhausted", "бюджет исчерпан")) +
                   "]",
               );
             } else if (e.status === "dropped") {
               lines.push(
-                "      ✗ " + lbl + "утрачён [" + String(e["note"] ?? "") + "]",
+                "      ✗ " + lbl + tl("server.logFormatter.lostBracket", "утрачён [") + String(e["note"] ?? "") + "]",
               );
             } else {
-              lines.push("      ✗ " + lbl + "не найден");
+              lines.push("      ✗ " + lbl + tl("server.logFormatter.notFound", "не найден"));
             }
           }
         }
       }
     } else {
-      lines.push("  Контекст пред. разделов           — (первый раздел)");
+      lines.push(tl("server.logFormatter.prevSectionsFirst", "  Контекст пред. разделов           — (первый раздел)"));
     }
 
     // ── Дополнительные метаданные перегенерации ──
     if (meta["hasCurrentContent"]) {
       lines.push(
-        "  Текущее содержимое подраздела " +
+        tl("server.logFormatter.currentSubsectionContent", "  Текущее содержимое подраздела ") +
           num(
             typeof meta["currentContentChars"] === "number"
               ? (meta["currentContentChars"] as number)
               : 0,
           ).padStart(7) +
-          " симв. [включено]",
+          tl("server.logFormatter.charsIncluded", " симв. [включено]"),
       );
     }
     const secCtxChars =
       typeof meta["secCtxChars"] === "number" ? (meta["secCtxChars"] as number) : 0;
     if (secCtxChars > 0) {
       lines.push(
-        "  Доп. контекст раздела      " + num(secCtxChars).padStart(7) + " симв.",
+        tl("server.logFormatter.sectionExtraContext", "  Доп. контекст раздела      ") + num(secCtxChars).padStart(7) + tl("server.logFormatter.chars", " симв."),
       );
       if (typeof meta["secCtxPreview"] === "string" && meta["secCtxPreview"]) {
         lines.push("    «" + meta["secCtxPreview"] + "»");
@@ -708,21 +709,21 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       typeof meta["ctxChars"] === "number" ? (meta["ctxChars"] as number) : 0;
     if (ctxChars > 0 && isMode) {
       lines.push(
-        "  Контекст режима            " + num(ctxChars).padStart(7) + " симв.",
+        tl("server.logFormatter.modeContext", "  Контекст режима            ") + num(ctxChars).padStart(7) + tl("server.logFormatter.chars", " симв."),
       );
     }
 
     lines.push(
-      "  Задание секции             " + num(g.taskChars).padStart(7) + " симв.",
+      tl("server.logFormatter.sectionTask", "  Задание секции             ") + num(g.taskChars).padStart(7) + tl("server.logFormatter.chars", " симв."),
     );
     lines.push(
-      "                       ИТОГО " +
+      tl("server.logFormatter.total", "                       ИТОГО ") +
         num(g.inputChars).padStart(7) +
-        " симв. → " +
+        tl("server.logFormatter.charsArrow", " симв. → ") +
         num(g.inputTokens) +
-        " токенов" +
+        tl("server.logFormatter.tokens", " токенов") +
         (g.inputChars > 0 && g.inputTokens > 0
-          ? " (" + (g.inputChars / g.inputTokens).toFixed(1) + " с/т)"
+          ? " (" + (g.inputChars / g.inputTokens).toFixed(1) + tl("server.logFormatter.charsPerToken", " с/т)")
           : ""),
     );
 
@@ -730,26 +731,26 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
     lines.push("");
     const cost = Number(g.costUsd);
     if (g.status === "streaming") {
-      lines.push("ВЫХОД: " + num(g.outputChars) + " симв. ⟳ генерация...");
+      lines.push(tl("server.logFormatter.outputPrefix", "ВЫХОД: ") + num(g.outputChars) + tl("server.logFormatter.charsGenerating", " симв. ⟳ генерация..."));
     } else if (g.status === "error") {
-      lines.push("ВЫХОД: ⚠ ОШИБКА: " + (g.errorMessage ?? ""));
+      lines.push(tl("server.logFormatter.outputError", "ВЫХОД: ⚠ ОШИБКА: ") + (g.errorMessage ?? ""));
     } else {
-      lines.push("ВЫХОД:");
+      lines.push(tl("server.logFormatter.outputHeading", "ВЫХОД:"));
       lines.push(
         "  " +
           num(g.outputChars) +
-          " симв. → " +
+          tl("server.logFormatter.charsArrow", " симв. → ") +
           num(g.outputTokens) +
-          " токенов" +
+          tl("server.logFormatter.tokens", " токенов") +
           (g.outputChars > 0 && g.outputTokens > 0
-            ? " (" + (g.outputChars / g.outputTokens).toFixed(1) + " с/т)"
+            ? " (" + (g.outputChars / g.outputTokens).toFixed(1) + tl("server.logFormatter.charsPerToken", " с/т)")
             : ""),
       );
       lines.push(
-        "  Стоимость: $" + cost.toFixed(4) + " (" + (cost * 100).toFixed(2) + "¢)",
+        tl("server.logFormatter.costPrefix", "  Стоимость: $") + cost.toFixed(4) + " (" + (cost * 100).toFixed(2) + "¢)",
       );
       if (g.errorMessage) {
-        lines.push("  ⚠ ОШИБКА: " + g.errorMessage);
+        lines.push(tl("server.logFormatter.errorPrefix", "  ⚠ ОШИБКА: ") + g.errorMessage);
       }
     }
     // 11.1: предупреждения разбора (metadata.parseWarnings — generation-service):
@@ -760,7 +761,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       ? (meta["parseWarnings"] as unknown[]).filter((w): w is string => typeof w === "string")
       : [];
     if (parseWarnings.length > 0) {
-      lines.push("  ⚠ РАЗБОР С ПОТЕРЯМИ (" + parseWarnings.length + "):");
+      lines.push(tl("server.logFormatter.parseWarningsHeader", "  ⚠ РАЗБОР С ПОТЕРЯМИ (") + parseWarnings.length + "):");
       for (const w of parseWarnings) lines.push("    ⚠ " + w);
     }
     // Посекционная разбивка (plaintext)
@@ -772,7 +773,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       : [];
     if (expected.length > 0) {
       lines.push("");
-      lines.push("  СЕКЦИИ:");
+      lines.push(tl("server.logFormatter.sectionsHeading", "  СЕКЦИИ:"));
 
       const foundMap: Record<string, SubsectionMeta> = {};
       for (const s of subs) foundMap[s.name] = s;
@@ -783,10 +784,10 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         if (s) {
           if (s.status === "streaming") {
             lines.push(
-              "    ⟳ " + lbl + num(s.chars).padStart(7) + " симв.  генерация",
+              "    ⟳ " + lbl + num(s.chars).padStart(7) + tl("server.logFormatter.charsGeneration", " симв.  генерация"),
             );
           } else {
-            lines.push("    ✓ " + lbl + num(s.chars).padStart(7) + " симв.");
+            lines.push("    ✓ " + lbl + num(s.chars).padStart(7) + tl("server.logFormatter.chars", " симв."));
           }
         } else {
           lines.push("    ◌ " + lbl + "     —");
@@ -815,12 +816,12 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
     );
 
     lines.push("");
-    lines.push("═══ ИТОГО ═══");
-    lines.push("Разделов: " + doneEntries.length + " из " + genLog.length);
-    lines.push("Вход:  " + num(t.inC) + " симв. → " + num(t.inT) + " токенов");
-    lines.push("Выход: " + num(t.outC) + " симв. → " + num(t.outT) + " токенов");
+    lines.push(tl("server.logFormatter.totalHeading", "═══ ИТОГО ═══"));
+    lines.push(tl("server.logFormatter.sectionsCount", "Разделов: ") + doneEntries.length + tl("server.logFormatter.of", " из ") + genLog.length);
+    lines.push(tl("server.logFormatter.inputShort", "Вход:  ") + num(t.inC) + tl("server.logFormatter.charsArrow", " симв. → ") + num(t.inT) + tl("server.logFormatter.tokens", " токенов"));
+    lines.push(tl("server.logFormatter.outputShort", "Выход: ") + num(t.outC) + tl("server.logFormatter.charsArrow", " симв. → ") + num(t.outT) + tl("server.logFormatter.tokens", " токенов"));
     lines.push(
-      "Стоимость: $" +
+      tl("server.logFormatter.costShort", "Стоимость: $") +
         t.cost.toFixed(4) +
         " (" +
         (t.cost * 100).toFixed(2) +
@@ -899,17 +900,17 @@ export async function formatPromptsForExport(
   const subsep = "─".repeat(80);
 
   // ── Шапка ──
-  lines.push("# PHILOSYNTH PRO — ЭКСПОРТ ПРОМПТОВ");
+  lines.push(tl("server.logFormatter.exportTitle", "# PHILOSYNTH PRO — ЭКСПОРТ ПРОМПТОВ"));
   lines.push("");
-  lines.push("Дата: " + new Date().toLocaleString("ru-RU"));
-  lines.push("Метод: " + ((ML as Record<string, string>)[row.method] ?? row.method));
+  lines.push(tl("server.logFormatter.date", "Дата: ") + new Date().toLocaleString("ru-RU"));
+  lines.push(tl("server.logFormatter.method", "Метод: ") + ((ML as Record<string, string>)[row.method] ?? row.method));
   lines.push(
-    "Уровень: " + ((SL as Record<string, string>)[row.synthLevel] ?? row.synthLevel),
+    tl("server.logFormatter.level", "Уровень: ") + ((SL as Record<string, string>)[row.synthLevel] ?? row.synthLevel),
   );
-  lines.push("Глубина: " + (row.depth || "?"));
+  lines.push(tl("server.logFormatter.depth", "Глубина: ") + (row.depth || "?"));
   lines.push(
-    "Порядок: " +
-      (row.generationOrder === "genetic" ? "генетический" : "архитектурный"),
+    tl("server.logFormatter.order", "Порядок: ") +
+      (row.generationOrder === "genetic" ? tl("server.logFormatter.orderGenetic", "генетический") : tl("server.logFormatter.orderArchitectural", "архитектурный")),
   );
   const lineageRows = await db
     .select()
@@ -919,21 +920,21 @@ export async function formatPromptsForExport(
   const phil = lineageRows
     .filter((l) => l.parentType === "philosopher" && l.parentName)
     .map((l) => l.parentName as string);
-  if (phil.length) lines.push("Участники: " + phil.join(", "));
-  if (row.seed) lines.push("Зерно: " + row.seed);
+  if (phil.length) lines.push(tl("server.logFormatter.participants", "Участники: ") + phil.join(", "));
+  if (row.seed) lines.push(tl("server.logFormatter.seed", "Зерно: ") + row.seed);
   // ТЗ: режим бюджета + схема селективности родительского контекста
   const _hasMetaP = lineageRows.some((l) => l.parentType === "synthesis");
   if (_hasMetaP) {
     const _mode =
       row.keepFullBudget || genCommon?.budgetMode === "full"
-        ? "полный (без ужимания)"
-        : "ужатый (множитель сжатия 0.4)";
-    lines.push("Режим бюджета секций: " + _mode);
+        ? tl("server.logFormatter.budgetFull", "полный (без ужимания)")
+        : tl("server.logFormatter.budgetCompressedFactor", "ужатый (множитель сжатия 0.4)");
+    lines.push(tl("server.logFormatter.budgetModeLabel", "Режим бюджета секций: ") + _mode);
     lines.push(
-      "Схема родительского контекста: " +
+      tl("server.logFormatter.parentSchemeLabel", "Схема родительского контекста: ") +
         (row.parentContextSchema === "monolithic"
-          ? "монолитная (legacy)"
-          : "селективная (PARENT_DEPS_BASE, v1)"),
+          ? tl("server.logFormatter.schemeMonolithic", "монолитная (legacy)")
+          : tl("server.logFormatter.schemeSelective", "селективная (PARENT_DEPS_BASE, v1)")),
     );
   }
   lines.push("");
@@ -946,9 +947,9 @@ export async function formatPromptsForExport(
     .find((s): s is string => typeof s === "string" && s.length > 0);
   if (firstSys) {
     lines.push(sep);
-    lines.push("## СИСТЕМНЫЙ ПРОМПТ");
+    lines.push(tl("server.logFormatter.systemPromptHeading", "## СИСТЕМНЫЙ ПРОМПТ"));
     lines.push(
-      "(одинаков для всех запросов; включает правила форматирования и требования к качеству)",
+      tl("server.logFormatter.systemPromptNote", "(одинаков для всех запросов; включает правила форматирования и требования к качеству)"),
     );
     lines.push(sep);
     lines.push("");
@@ -969,8 +970,8 @@ export async function formatPromptsForExport(
   }
   if (baseCtxText) {
     lines.push(sep);
-    lines.push("## ПАРАМЕТРЫ СИНТЕЗА");
-    lines.push("(одинаковы для всех запросов)");
+    lines.push(tl("server.logFormatter.synthesisParamsHeading", "## ПАРАМЕТРЫ СИНТЕЗА"));
+    lines.push(tl("server.logFormatter.sameForAllRequests", "(одинаковы для всех запросов)"));
     lines.push(sep);
     lines.push("");
     lines.push(baseCtxText);
@@ -990,9 +991,9 @@ export async function formatPromptsForExport(
     const isCascade = g.source === "cascade" || g.source === "mode_cascade";
 
     let title = g.sectionLabel || g.sectionKey;
-    if (isSubRegen) title += " [подразделовая перегенерация]";
-    if (isCascade) title += " [каскад]";
-    if (isMode) title += " [режим]";
+    if (isSubRegen) title += tl("server.logFormatter.tagSubsectionRegen", " [подразделовая перегенерация]");
+    if (isCascade) title += tl("server.logFormatter.tagCascade", " [каскад]");
+    if (isMode) title += tl("server.logFormatter.tagMode", " [режим]");
 
     lines.push("## " + title.toUpperCase());
     lines.push(sep);
@@ -1004,7 +1005,7 @@ export async function formatPromptsForExport(
       skeleton = (await reconstructSkeleton(g, rc)) ?? "";
     }
     if (!skeleton) {
-      lines.push("[промпт недоступен (импортированная запись)]");
+      lines.push(tl("server.logFormatter.promptUnavailable", "[промпт недоступен (импортированная запись)]"));
     } else {
       skeleton = skeleton.replace(
         /^ПАРАМЕТРЫ СИНТЕЗА:\n[\s\S]*?(?=\nКОНТЕКСТ ИЗ ПРЕДЫДУЩИХ|\nКОНТЕКСТ ДРУГИХ|\nЗАДАНИЕ:|\n(?:Перегенерируй|Доработай) ТОЛЬКО)/,
@@ -1016,20 +1017,20 @@ export async function formatPromptsForExport(
     lines.push("");
     lines.push(subsep);
     lines.push(
-      "Вход: " +
+      tl("server.logFormatter.inputPrefix", "Вход: ") +
         (g.inputChars || 0).toLocaleString("ru") +
-        " симв. → " +
+        tl("server.logFormatter.charsArrow", " симв. → ") +
         (g.inputTokens || 0).toLocaleString("ru") +
-        " токенов",
+        tl("server.logFormatter.tokens", " токенов"),
     );
     lines.push(
-      "Выход: " +
+      tl("server.logFormatter.outputShort", "Выход: ") +
         (g.outputChars || 0).toLocaleString("ru") +
-        " симв. → " +
+        tl("server.logFormatter.charsArrow", " симв. → ") +
         (g.outputTokens || 0).toLocaleString("ru") +
-        " токенов",
+        tl("server.logFormatter.tokens", " токенов"),
     );
-    lines.push("Стоимость: $" + Number(g.costUsd).toFixed(4));
+    lines.push(tl("server.logFormatter.costShort", "Стоимость: $") + Number(g.costUsd).toFixed(4));
     // ТЗ: информация о родительском контексте и бюджете раздела
     const meta = metaOf(g);
     const parentOv =
@@ -1041,10 +1042,10 @@ export async function formatPromptsForExport(
         ? (meta["parentFieldsUsed"] as string[]).join(", ")
         : "";
       lines.push(
-        "Контекст родителей: " +
+        tl("server.logFormatter.parentContextPrefix", "Контекст родителей: ") +
           parentOv.toLocaleString("ru") +
-          " симв." +
-          (fields ? "  (поля: " + fields + ")" : ""),
+          tl("server.logFormatter.chars", " симв.") +
+          (fields ? tl("server.logFormatter.fieldsParen", "  (поля: ") + fields + ")" : ""),
       );
     }
     // Бюджет секционного контекста из ctxLog (last-win, как в formatCtxLog)
@@ -1060,19 +1061,19 @@ export async function formatPromptsForExport(
         _ctx.budgetMode === "shrink" ? Math.max(0, _raw - _ctx.budget) : 0;
       if (_applied > 0) {
         lines.push(
-          "Бюджет секц. контекста: " +
+          tl("server.logFormatter.sectionContextBudget", "Бюджет секц. контекста: ") +
             _ctx.budget.toLocaleString("ru") +
-            " из " +
+            tl("server.logFormatter.of", " из ") +
             _raw.toLocaleString("ru") +
-            " симв. [ужато]",
+            tl("server.logFormatter.charsCompressed", " симв. [ужато]"),
         );
       } else if (_ctx.budgetMode === "full") {
         lines.push(
-          "Бюджет секц. контекста: " + _raw.toLocaleString("ru") + " симв. [полный]",
+          tl("server.logFormatter.sectionContextBudget", "Бюджет секц. контекста: ") + _raw.toLocaleString("ru") + tl("server.logFormatter.charsFull", " симв. [полный]"),
         );
       }
     }
-    if (g.status === "error") lines.push("⚠ ОШИБКА: " + (g.errorMessage ?? ""));
+    if (g.status === "error") lines.push(tl("server.logFormatter.errorWarn", "⚠ ОШИБКА: ") + (g.errorMessage ?? ""));
     lines.push("");
   }
 

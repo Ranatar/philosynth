@@ -79,17 +79,18 @@ import {
   type RecommendationItem,
   type RetrofitReason,
 } from "../../utils/recommendations";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const labelOf = (key: string): string =>
   (KEY_LABELS as Record<string, string>)[key] ?? key;
 
 const STATUS_LABEL: Record<Recommendation["status"], string> = {
-  new: "ждёт решения",
-  planned: "в плане",
-  done: "исполнена",
-  rejected: "отклонена",
-  invalid: "негодна",
-  stale: "текст изменился",
+  new: tl("edit.recommendationsPanel.statusPending", "ждёт решения"),
+  planned: tl("edit.recommendationsPanel.statusPlanned", "в плане"),
+  done: tl("edit.recommendationsPanel.statusDone", "исполнена"),
+  rejected: tl("edit.recommendationsPanel.statusRejected", "отклонена"),
+  invalid: tl("edit.recommendationsPanel.statusInvalid", "негодна"),
+  stale: tl("edit.recommendationsPanel.statusTextChanged", "текст изменился"),
 };
 
 export interface RecommendationsPanelProps {
@@ -303,10 +304,10 @@ export function RecommendationsPanel({
       setPhase("ready");
       setRetrofitReason(null);
       setNote(
-        `Таблица составлена: строк — ${res.rows.length}` +
-          (res.invalidCount ? `, негодных — ${res.invalidCount}` : "") +
+        tl("edit.recommendationsPanel.tableBuilt", "Таблица составлена: строк — {rowsCount}", { rowsCount: res.rows.length }) +
+          (res.invalidCount ? tl("edit.recommendationsPanel.invalidCount", ", негодных — {invalidCount}", { invalidCount: res.invalidCount }) : "") +
           ` · $${res.usage.costUsd.toFixed(4)}` +
-          (res.warnings.length ? ` · снято при чистке разметки: ${res.warnings.join("; ")}` : ""),
+          (res.warnings.length ? tl("edit.recommendationsPanel.strippedOnCleanup", " · снято при чистке разметки: {warnings}", { warnings: res.warnings.join("; ") }) : ""),
       );
     });
 
@@ -344,7 +345,7 @@ export function RecommendationsPanel({
     void guarded("open-plan", async () => {
       const plan = await getPlan(synthesisId, planId);
       if (plan.status === "done" || plan.status === "failed") {
-        setNote("План уже завершён — строки перечитаны.");
+        setNote(tl("edit.recommendationsPanel.planAlreadyDone", "План уже завершён — строки перечитаны."));
         await refresh({ reparse: true });
         return;
       }
@@ -355,7 +356,7 @@ export function RecommendationsPanel({
     void guarded("delete-plan", async () => {
       setConfirmDeletePlan(null);
       await withBusyRetry(() => deletePlan(synthesisId, planId));
-      setNote("План удалён — его рекомендации снова ждут решения.");
+      setNote(tl("edit.recommendationsPanel.planDeleted", "План удалён — его рекомендации снова ждут решения."));
       await refresh({ reparse: true });
     });
 
@@ -370,7 +371,7 @@ export function RecommendationsPanel({
     });
 
   const round = current?.round ?? 0;
-  const title = round > 0 ? `◈ Рекомендации критики · раунд ${round}` : "◈ Рекомендации критики";
+  const title = round > 0 ? tl("edit.recommendationsPanel.titleRound", "◈ Рекомендации критики · раунд {round}", { round }) : tl("edit.recommendationsPanel.title", "◈ Рекомендации критики");
   const controlsDisabled = busy !== null;
   const reparseBlocked = roundInWork || controlsDisabled;
   const leftoverOf = (r: Recommendation): string | null =>
@@ -409,8 +410,7 @@ export function RecommendationsPanel({
         )}
         {r.status === "stale" && (
           <div className="rec-mismatch" data-testid="rec-stale">
-            <span className="dep-icon">↻</span> Текст адресата изменился после разбора — довод
-            мог обессмыслиться. Перечитайте рекомендации и решите заново.
+            <span className="dep-icon">↻</span> {tl("edit.recommendationsPanel.targetTextChanged", "Текст адресата изменился после разбора — довод мог обессмыслиться. Перечитайте рекомендации и решите заново.")}
           </div>
         )}
         {declinedReason && (
@@ -423,13 +423,13 @@ export function RecommendationsPanel({
             <div className="rec-action-text">{actionTextOf(r)}</div>
             {r.replacement && (
               <div className="rec-replacement" data-testid="rec-replacement">
-                <span className="form-label">Готовая замена</span>
+                <span className="form-label">{tl("common.readyReplacement", "Готовая замена")}</span>
                 <div>{r.replacement}</div>
               </div>
             )}
             {canChooseField && (
               <label className="rec-field" data-testid="rec-field">
-                <span className="form-label">Какое поле править</span>
+                <span className="form-label">{tl("edit.recommendationsPanel.whichField", "Какое поле править")}</span>
                 <select
                   className="form-select"
                   value={fields[r.id] ?? options[0]?.field ?? ""}
@@ -447,7 +447,7 @@ export function RecommendationsPanel({
                   {options.map((o, i) => (
                     <option key={o.field} value={o.field}>
                       {o.label}
-                      {i === 0 ? " (по умолчанию)" : ""}
+                      {i === 0 ? tl("edit.recommendationsPanel.defaultSuffix", " (по умолчанию)") : ""}
                     </option>
                   ))}
                 </select>
@@ -471,7 +471,7 @@ export function RecommendationsPanel({
     return (
       <div className={itemClass} key={item.key} data-testid="rec-item" data-rec-num={item.num}>
         <div className="rec-item-head">
-          <label className="rec-pick" title={item.selectable ? "Взять в план" : "В план не берётся"}>
+          <label className="rec-pick" title={item.selectable ? tl("edit.recommendationsPanel.takeIntoPlan", "Взять в план") : tl("edit.recommendationsPanel.notTaken", "В план не берётся")}>
             <input
               type={fork ? "radio" : "checkbox"}
               name={fork ? `rec-fork-${item.base}` : undefined}
@@ -489,9 +489,9 @@ export function RecommendationsPanel({
           <span className={"compat-chip " + severityChipOf(first.severity)} data-testid="rec-severity">
             {first.severity || "—"}
           </span>
-          {first.status === "rejected" && <span className="cert-badge">отклонялась</span>}
-          {stale && <span className="cert-badge gold">текст изменился</span>}
-          {manualOnly && <span className="cert-badge">исполняется вручную</span>}
+          {first.status === "rejected" && <span className="cert-badge">{tl("edit.recommendationsPanel.wasRejected", "отклонялась")}</span>}
+          {stale && <span className="cert-badge gold">{tl("edit.recommendationsPanel.statusTextChanged", "текст изменился")}</span>}
+          {manualOnly && <span className="cert-badge">{tl("edit.recommendationsPanel.manualExecution", "исполняется вручную")}</span>}
           <button
             type="button"
             className="rec-toggle"
@@ -499,21 +499,21 @@ export function RecommendationsPanel({
             aria-expanded={isOpen}
             onClick={() => toggleExpanded(item.key)}
           >
-            {isOpen ? "▾ свернуть" : "▸ довод"}
+            {isOpen ? tl("edit.recommendationsPanel.collapse", "▾ свернуть") : tl("edit.recommendationsPanel.argument", "▸ довод")}
           </button>
         </div>
         {item.rows.map((r) => renderRow(r, item))}
         {isOpen && (
           <div className="rec-body" data-testid="rec-body">
-            <div className="form-label">Рекомендация</div>
+            <div className="form-label">{tl("edit.recommendationsPanel.recommendation", "Рекомендация")}</div>
             <div className="rec-prose" data-testid="rec-prose">
-              {prose ?? "Текст рекомендации в прозе не найден — см. подраздел «Рекомендации по улучшению»."}
+              {prose ?? tl("edit.recommendationsPanel.proseNotFound", "Текст рекомендации в прозе не найден — см. подраздел «Рекомендации по улучшению».")}
             </div>
-            <div className="form-label">Основание</div>
+            <div className="form-label">{tl("common.ground", "Основание")}</div>
             <div className="rec-rationale" data-testid="rec-rationale">
               {first.rationale
-                ? `Проблема установлена в подразделе критики «${first.rationale}».`
-                : "Подраздел критики не назван."}
+                ? tl("edit.recommendationsPanel.problemIdentifiedIn", "Проблема установлена в подразделе критики «{rationale}».", { rationale: first.rationale })
+                : tl("edit.recommendationsPanel.subsectionUnnamed", "Подраздел критики не назван.")}
             </div>
           </div>
         )}
@@ -545,14 +545,14 @@ export function RecommendationsPanel({
         <div className="edit-modal-header">
           <div className="edit-modal-title" data-testid="rec-title">{title}</div>
           <button type="button" className="raw-close" onClick={onClose} disabled={controlsDisabled}>
-            ✕ Закрыть
+            {tl("common.closeWithIcon", "✕ Закрыть")}
           </button>
         </div>
 
         <div className="edit-modal-body">
           {phase === "loading" && (
             <div className="edit-regen-progress active">
-              <span className="edit-regen-spinner" /> Читаю рекомендации…
+              <span className="edit-regen-spinner" /> {tl("edit.recommendationsPanel.readingRecommendations", "Читаю рекомендации…")}
             </div>
           )}
 
@@ -571,19 +571,14 @@ export function RecommendationsPanel({
           {/* ── Ретрофит: таблицы нет, рекомендации есть в прозе ── */}
           {phase === "retrofit" && (
             <div className="callout note rec-gap" data-testid="rec-retrofit">
-              <span className="callout-label">Таблицы рекомендаций нет</span>
+              <span className="callout-label">{tl("edit.recommendationsPanel.noTable", "Таблицы рекомендаций нет")}</span>
               {retrofitReason === "no_table" ? (
                 <>
                   <p>
-                    Концепция создана до того, как критика стала писать машиночитаемую таблицу:
-                    рекомендации есть в прозе, но исполнять их пока нечем. Можно составить таблицу
-                    по имеющимся рекомендациям — текст критики при этом не меняется, в документ
-                    добавляется подраздел «{RECOMMENDATIONS_TABLE_SUBSECTION}».
+                    {tl("edit.recommendationsPanel.legacyConcept", "Концепция создана до того, как критика стала писать машиночитаемую таблицу: рекомендации есть в прозе, но исполнять их пока нечем. Можно составить таблицу по имеющимся рекомендациям — текст критики при этом не меняется, в документ добавляется подраздел «{tableSubsection}».", { tableSubsection: RECOMMENDATIONS_TABLE_SUBSECTION })}
                   </p>
                   <p className="rec-retrofit-cost" data-testid="rec-retrofit-cost">
-                    Цена — одно обращение к модели: единица квоты перегенераций по подписке либо
-                    списание с баланса по факту (порядка нескольких центов); стоимость войдёт в
-                    итог документа и будет показана здесь.
+                    {tl("edit.recommendationsPanel.costNote", "Цена — одно обращение к модели: единица квоты перегенераций по подписке либо списание с баланса по факту (порядка нескольких центов); стоимость войдёт в итог документа и будет показана здесь.")}
                   </p>
                   <button
                     type="button"
@@ -592,16 +587,15 @@ export function RecommendationsPanel({
                     onClick={handleExtract}
                     disabled={controlsDisabled}
                   >
-                    {busy === "extract" ? "Составляю таблицу…" : "Составить таблицу по имеющимся рекомендациям"}
+                    {busy === "extract" ? tl("edit.recommendationsPanel.buildingTable", "Составляю таблицу…") : tl("edit.recommendationsPanel.buildTable", "Составить таблицу по имеющимся рекомендациям")}
                   </button>
                 </>
               ) : retrofitReason === "no_prose" ? (
                 <p>
-                  В разделе критики нет подраздела «Рекомендации по улучшению» — составлять таблицу
-                  не по чему. Перегенерируйте раздел «{labelOf(RECOMMENDATIONS_SECTION_KEY)}».
+                  {tl("edit.recommendationsPanel.noImprovementSubsection", "В разделе критики нет подраздела «Рекомендации по улучшению» — составлять таблицу не по чему. Перегенерируйте раздел «{labelOf}».", { labelOf: labelOf(RECOMMENDATIONS_SECTION_KEY) })}
                 </p>
               ) : (
-                <p>В документе нет раздела «{labelOf(RECOMMENDATIONS_SECTION_KEY)}».</p>
+                <p>{tl("edit.recommendationsPanel.noSectionInDocument", "В документе нет раздела «{labelOf}».", { labelOf: labelOf(RECOMMENDATIONS_SECTION_KEY) })}</p>
               )}
             </div>
           )}
@@ -609,16 +603,14 @@ export function RecommendationsPanel({
           {/* ── Раунд в работе ── */}
           {phase === "ready" && roundInWork && (
             <div className="callout warning rec-gap" data-testid="rec-round-in-work">
-              <span className="callout-label">Раунд {round} в работе</span>
+              <span className="callout-label">{tl("edit.recommendationsPanel.roundInProgress", "Раунд {round} в работе", { round })}</span>
               <p>
-                Часть рекомендаций стоит в плане правок. Пока план не исполнен и не удалён, новый
-                выбор и разбор заново недоступны: сменившаяся критика открыла бы новый раунд и
-                оставила бы план без рекомендаций, которые его породили.
+                {tl("edit.recommendationsPanel.planLocksRound", "Часть рекомендаций стоит в плане правок. Пока план не исполнен и не удалён, новый выбор и разбор заново недоступны: сменившаяся критика открыла бы новый раунд и оставила бы план без рекомендаций, которые его породили.")}
               </p>
               {[...plannedByPlan.entries()].map(([planId, list]) => (
                 <div className="rec-plan-line" key={planId} data-rec-plan-actions>
                   <span>
-                    В плане: {[...new Set(list.map((r) => `№ ${r.num}`))].join(", ")}
+                    {tl("edit.recommendationsPanel.inPlan", "В плане: {list}", { list: [...new Set(list.map((r) => `№ ${r.num}`))].join(", ") })}
                   </span>
                   <button
                     type="button"
@@ -627,7 +619,7 @@ export function RecommendationsPanel({
                     onClick={() => handleOpenPlan(planId)}
                     disabled={controlsDisabled}
                   >
-                    Открыть план
+                    {tl("edit.recommendationsPanel.openPlan", "Открыть план")}
                   </button>
                   {confirmDeletePlan === planId ? (
                     <>
@@ -638,14 +630,14 @@ export function RecommendationsPanel({
                         onClick={() => handleDeletePlan(planId)}
                         disabled={controlsDisabled}
                       >
-                        Точно удалить?
+                        {tl("common.confirmDelete", "Точно удалить?")}
                       </button>
                       <button
                         type="button"
                         className="edit-sec-btn"
                         onClick={() => setConfirmDeletePlan(null)}
                       >
-                        Отмена
+                        {tl("common.cancel", "Отмена")}
                       </button>
                     </>
                   ) : (
@@ -656,7 +648,7 @@ export function RecommendationsPanel({
                       onClick={() => setConfirmDeletePlan(planId)}
                       disabled={controlsDisabled}
                     >
-                      Удалить план
+                      {tl("edit.recommendationsPanel.deletePlan", "Удалить план")}
                     </button>
                   )}
                 </div>
@@ -668,8 +660,8 @@ export function RecommendationsPanel({
           {phase === "ready" && groups.open.length === 0 && !roundInWork && groups.invalid.length === 0 && (
             <div className="rec-empty" data-testid="rec-empty">
               {groups.done.length > 0
-                ? "Все рекомендации этого раунда исполнены."
-                : "В таблице рекомендаций нет строк."}
+                ? tl("edit.recommendationsPanel.allDone", "Все рекомендации этого раунда исполнены.")
+                : tl("edit.recommendationsPanel.tableEmpty", "В таблице рекомендаций нет строк.")}
             </div>
           )}
           {phase === "ready" &&
@@ -677,8 +669,7 @@ export function RecommendationsPanel({
               g.fork ? (
                 <div className="rec-fork" key={g.base} data-testid="rec-fork" data-rec-base={g.base}>
                   <div className="rec-fork-title">
-                    Рекомендация {g.base} — развилка: варианты исключают друг друга, выберите не
-                    более одного
+                    {tl("edit.recommendationsPanel.forkNote", "Рекомендация {base} — развилка: варианты исключают друг друга, выберите не более одного", { base: g.base })}
                   </div>
                   {g.items.map((item) => renderItem(item, true))}
                 </div>
@@ -691,7 +682,7 @@ export function RecommendationsPanel({
           {phase === "ready" && groups.done.length > 0 && (
             <details className="sec-disclosure rec-gap" data-testid="rec-done">
               <summary>
-                Раунд {round} · исполнено: {new Set(groups.done.map((r) => numKey(r.num))).size}
+                {tl("edit.recommendationsPanel.roundDone", "Раунд {round} · исполнено: {doneCount}", { round, doneCount: new Set(groups.done.map((r) => numKey(r.num))).size })}
               </summary>
               <div className="disclosure-body">{groups.done.map(renderPlainRow)}</div>
             </details>
@@ -701,7 +692,7 @@ export function RecommendationsPanel({
           {phase === "ready" && groups.invalid.length > 0 && (
             <div className="rec-invalid" data-testid="rec-invalid">
               <div className="rec-invalid-title">
-                Негодные строки · {groups.invalid.length} — в план не берутся
+                {tl("edit.recommendationsPanel.invalidRows", "Негодные строки · {invalidCount} — в план не берутся", { invalidCount: groups.invalid.length })}
               </div>
               {groups.invalid.map((r) => (
                 <div className="rec-invalid-row" key={r.id} data-testid="rec-invalid-row" data-rec-num={r.num}>
@@ -712,7 +703,7 @@ export function RecommendationsPanel({
                     <span className="rec-op">{r.op}</span>
                   </div>
                   <div className="rec-invalid-reason" data-testid="rec-invalid-reason">
-                    {r.invalidReason ?? "причина не названа"}
+                    {r.invalidReason ?? tl("edit.recommendationsPanel.reasonUnnamed", "причина не названа")}
                   </div>
                 </div>
               ))}
@@ -721,8 +712,7 @@ export function RecommendationsPanel({
           {(phase === "ready" || phase === "failed") && hasTableSubsection && (groups.invalid.length > 0 || phase === "failed" || error) && (
             <div className="rec-table-edit">
               <span>
-                Подраздел «{RECOMMENDATIONS_TABLE_SUBSECTION}» замком не заперт: адрес или элемент
-                можно поправить руками, затем перечитать.
+                {tl("edit.recommendationsPanel.subsectionUnlocked", "Подраздел «{tableSubsection}» замком не заперт: адрес или элемент можно поправить руками, затем перечитать.", { tableSubsection: RECOMMENDATIONS_TABLE_SUBSECTION })}
               </span>
               <button
                 type="button"
@@ -731,7 +721,7 @@ export function RecommendationsPanel({
                 onClick={onEditTable}
                 disabled={controlsDisabled}
               >
-                ✎ Править таблицу рекомендаций вручную
+                {tl("edit.recommendationsPanel.editTableManually", "✎ Править таблицу рекомендаций вручную")}
               </button>
             </div>
           )}
@@ -743,7 +733,7 @@ export function RecommendationsPanel({
             return (
               <details className="sec-disclosure rec-gap" key={p.round} data-testid="rec-past-round" data-rec-round={p.round}>
                 <summary>
-                  Раунд {p.round} · исполнено: {count("done")} · отклонено: {count("rejected")}
+                  {tl("edit.recommendationsPanel.roundSummary", "Раунд {round} · исполнено: {doneCount} · отклонено: {rejectedCount}", { round: p.round, doneCount: count("done"), rejectedCount: count("rejected") })}
                 </summary>
                 <div className="disclosure-body">{p.rows.map(renderPlainRow)}</div>
               </details>
@@ -763,8 +753,7 @@ export function RecommendationsPanel({
             ))}
             {phase === "ready" && estimate.free + estimate.paid > 0 && (
               <div className="rec-estimate-hint">
-                Каскадные шаги (в том числе перегенерацию критики) добавит план — их можно будет
-                подтвердить или пропустить.
+                {tl("edit.recommendationsPanel.cascadeStepsNote", "Каскадные шаги (в том числе перегенерацию критики) добавит план — их можно будет подтвердить или пропустить.")}
               </div>
             )}
           </div>
@@ -777,11 +766,11 @@ export function RecommendationsPanel({
               disabled={reparseBlocked}
               title={
                 roundInWork
-                  ? "Раунд в работе: сначала исполните либо удалите план"
-                  : "Прочитать таблицу рекомендаций заново"
+                  ? tl("edit.recommendationsPanel.roundBusy", "Раунд в работе: сначала исполните либо удалите план")
+                  : tl("edit.recommendationsPanel.rereadTable", "Прочитать таблицу рекомендаций заново")
               }
             >
-              {busy === "parse" ? "Перечитываю…" : "↻ Перечитать"}
+              {busy === "parse" ? tl("edit.recommendationsPanel.rereading", "Перечитываю…") : tl("edit.recommendationsPanel.reread", "↻ Перечитать")}
             </button>
           )}
           {phase === "ready" && (
@@ -792,7 +781,7 @@ export function RecommendationsPanel({
               onClick={handleBuildPlan}
               disabled={controlsDisabled || roundInWork || estimate.free + estimate.paid === 0}
             >
-              {busy === "plan" ? "Собираю…" : "▶ Собрать план"}
+              {busy === "plan" ? tl("edit.recommendationsPanel.assembling", "Собираю…") : tl("edit.recommendationsPanel.assemblePlan", "▶ Собрать план")}
             </button>
           )}
         </div>

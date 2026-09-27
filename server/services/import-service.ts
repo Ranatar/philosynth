@@ -124,6 +124,7 @@ import type {
   SynthesisMethod,
   SynthLevel,
 } from "@philosynth/shared/types/synthesis";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ══ Ошибка импорта (03 §4.3 IMPORT_INVALID) ══════════════════════════ */
 
@@ -513,7 +514,7 @@ export function validateImportMeta(
     warnings.push({
       field: "phil",
       message:
-        "Список философов не найден. Перегенерация разделов невозможна без него.",
+        tl("server.importService.philosophersNotFound", "Список философов не найден. Перегенерация разделов невозможна без него."),
       critical: true,
     });
   }
@@ -525,7 +526,7 @@ export function validateImportMeta(
   if (!methodDisplay || !REVERSE_ML[methodDisplay]) {
     warnings.push({
       field: "method",
-      message: `Метод синтеза не распознан (найдено: «${methodDisplay || "—"}»). Подставлен «Диалектический» по умолчанию.`,
+      message: tl("server.importService.methodUnrecognized", "Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию.", { methodDisplay: methodDisplay || "—" }),
       critical: false,
     });
   }
@@ -533,7 +534,7 @@ export function validateImportMeta(
   if (!depthDisplay || !REVERSE_DL[depthDisplay]) {
     warnings.push({
       field: "depth",
-      message: `Глубина не распознана (найдено: «${depthDisplay || "—"}»). Подставлена «Стандартная» по умолчанию.`,
+      message: tl("server.importService.depthUnrecognized", "Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию.", { depthDisplay: depthDisplay || "—" }),
       critical: false,
     });
   }
@@ -541,7 +542,7 @@ export function validateImportMeta(
   if (!synthDisplay || !REVERSE_SL[synthDisplay]) {
     warnings.push({
       field: "synthLevel",
-      message: `Уровень синтеза не распознан (найдено: «${synthDisplay || "—"}»). Подставлен «Сравнительный» по умолчанию.`,
+      message: tl("server.importService.levelUnrecognized", "Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию.", { synthDisplay: synthDisplay || "—" }),
       critical: false,
     });
   }
@@ -550,8 +551,8 @@ export function validateImportMeta(
     warnings.push({
       field: "log",
       message:
-        "Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. " +
-        "Лог начнёт накапливаться заново при редактировании.",
+        tl("server.importService.logMissing", "Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. ") +
+        tl("server.importService.logWillAccumulate", "Лог начнёт накапливаться заново при редактировании."),
       critical: false,
     });
   }
@@ -602,7 +603,7 @@ export function extractSections(
       );
       warnings?.push({
         field: "sections",
-        message: `Не удалось определить ключ для раздела «${titleText}» — раздел пропущен.`,
+        message: tl("server.importService.sectionKeyUnknown", "Не удалось определить ключ для раздела «{titleText}» — раздел пропущен.", { titleText }),
         critical: false,
       });
       continue;
@@ -915,7 +916,7 @@ export async function importHTML(
   // Проверка: это PhiloSynth-документ?
   const docOutput = doc.getElementById("docOutput");
   if (!docOutput) {
-    throw new ImportError("Не найден элемент #docOutput. Это не файл PhiloSynth.");
+    throw new ImportError(tl("server.importService.docOutputMissing", "Не найден элемент #docOutput. Это не файл PhiloSynth."));
   }
 
   // ── b. Метаданные шапки ──
@@ -925,7 +926,7 @@ export async function importHTML(
   const warnings: ImportWarning[] = [];
   const parsedSections = extractSections(doc, warnings);
   if (parsedSections.length === 0) {
-    throw new ImportError("В файле не найдено ни одного раздела (.doc-section).");
+    throw new ImportError(tl("server.importService.noSections", "В файле не найдено ни одного раздела (.doc-section)."));
   }
 
   // ── d. Встроенное состояние ──
@@ -940,7 +941,7 @@ export async function importHTML(
     if (byKey.has(sec.key)) {
       warnings.push({
         field: "sections",
-        message: `Раздел «${sec.title}» дублирует ключ «${sec.key}» — использован первый экземпляр.`,
+        message: tl("server.importService.duplicateSectionKey", "Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр.", { title: sec.title, key: sec.key }),
         critical: false,
       });
       continue;
@@ -995,7 +996,7 @@ export async function importHTML(
       sectionOrder.push(k);
       warnings.push({
         field: "sections",
-        message: `Раздел «${k}» отсутствует во встроенном sectionOrder — добавлен в конец порядка.`,
+        message: tl("server.importService.sectionNotInOrder", "Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка.", { sectionKey: k }),
         critical: false,
       });
     }
@@ -1077,7 +1078,7 @@ export async function importHTML(
       totalCostUsd: String(totals.cost),
     })
     .returning({ id: syntheses.id });
-  if (!created) throw new Error("Импорт: запись syntheses не создана");
+  if (!created) throw new Error(tl("server.importService.synthesisNotCreated", "Импорт: запись syntheses не создана"));
   const synthesisId = created.id;
   const lineageCandidates: LineageCandidate[] = [];
 
@@ -1104,7 +1105,15 @@ export async function importHTML(
         const parsed = parseGraphFromHTML(graphSec.html);
         if (parsed.nodes.length > 0) {
           const res = await saveGraphToDb(synthesisId, parsed);
+          // res.warnings ⊇ parsed.warnings (11.1)
           for (const w of res.warnings) {
+            warnings.push({ field: "graph", message: w, critical: false });
+          }
+        } else {
+          // 11.2 (Д-16): ноль категорий — чаще всего переведённая моделью
+          // «Таблица категорий»; предупреждения разбора 11.1 доходят до
+          // ответа импорта и без записи в БД (ImportPage их показывает)
+          for (const w of parsed.warnings ?? []) {
             warnings.push({ field: "graph", message: w, critical: false });
           }
         }
@@ -1114,7 +1123,7 @@ export async function importHTML(
         warnings.push({
           field: "graph",
           message:
-            "Не удалось распарсить граф — категории и связи не восстановлены.",
+            tl("server.importService.graphParseFailed", "Не удалось распарсить граф — категории и связи не восстановлены."),
           critical: false,
         });
       }
@@ -1136,7 +1145,7 @@ export async function importHTML(
         warnings.push({
           field: thesesSec ? "theses" : "glossary",
           message:
-            "Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены.",
+            tl("server.importService.thesesParseFailed", "Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены."),
           critical: false,
         });
       }
@@ -1253,8 +1262,8 @@ export async function importHTML(
         field: "lineage",
         message:
           matches.length > 0
-            ? `Концепция-родитель «${p.name}» не связана автоматически: в базе найдено ${matches.length} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).`
-            : `Концепция-родитель «${p.name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.`,
+            ? tl("server.importService.parentAmbiguous", "Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).", { name: p.name, matchesCount: matches.length })
+            : tl("server.importService.parentMissing", "Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.", { name: p.name }),
         critical: false,
       });
     }

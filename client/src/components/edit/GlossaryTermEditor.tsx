@@ -19,6 +19,7 @@ import type {
 } from "@philosynth/shared/types/elements";
 
 import { FieldError } from "./ElementEditor";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export type GlossaryDraft = {
   term: string;
@@ -79,7 +80,7 @@ export function GlossaryTermEditor({
     <div>
       <div className="form-group full">
         <label className="form-label" htmlFor="gl-ed-term">
-          Термин
+          {tl("common.term", "Термин")}
         </label>
         <input
           id="gl-ed-term"
@@ -92,7 +93,7 @@ export function GlossaryTermEditor({
       </div>
       <div className="form-group full">
         <label className="form-label" htmlFor="gl-ed-def">
-          Принятое определение в данной концепции
+          {tl("edit.glossaryTermEditor.acceptedDefinition", "Принятое определение в данной концепции")}
         </label>
         <textarea
           id="gl-ed-def"
@@ -106,7 +107,7 @@ export function GlossaryTermEditor({
       </div>
       {keys.length > 0 && (
         <>
-          <div className="form-label">Столбцы уровня синтеза</div>
+          <div className="form-label">{tl("edit.glossaryTermEditor.synthesisLevelColumns", "Столбцы уровня синтеза")}</div>
           <div className="form-grid">
             {keys.map((k, i) => (
               <div className="form-group" key={k}>

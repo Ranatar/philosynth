@@ -18,12 +18,13 @@ import type {
 } from "@philosynth/shared/types/elements";
 
 import { FieldError } from "./ElementEditor";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const THESIS_TYPE_OPTIONS: readonly { value: ThesisType; label: string }[] =
   [
-    { value: "ontological", label: "онтологический" },
-    { value: "epistemological", label: "эпистемологический" },
-    { value: "ethical", label: "этический" },
+    { value: "ontological", label: tl("edit.thesisEditor.ontological", "онтологический") },
+    { value: "epistemological", label: tl("edit.thesisEditor.epistemological", "эпистемологический") },
+    { value: "ethical", label: tl("edit.thesisEditor.ethical", "этический") },
   ];
 
 export type ThesisDraft = Required<
@@ -73,7 +74,7 @@ export function ThesisEditor({
     <div>
       <div className="form-group full">
         <label className="form-label" htmlFor="th-ed-form">
-          Формулировка
+          {tl("common.formulation", "Формулировка")}
         </label>
         <textarea
           id="th-ed-form"
@@ -87,7 +88,7 @@ export function ThesisEditor({
       </div>
       <div className="form-group full">
         <label className="form-label" htmlFor="th-ed-just">
-          Обоснование
+          {tl("common.justification", "Обоснование")}
         </label>
         <textarea
           id="th-ed-just"
@@ -98,15 +99,14 @@ export function ThesisEditor({
           onChange={(e) => set("justification", e.target.value)}
         />
         <div className="form-sublabel">
-          Обоснование живёт вне сводной таблицы — правится точечно в абзаце
-          раздела; если абзац не найден, раздел потребует перегенерации
+          {tl("edit.thesisEditor.justificationNote", "Обоснование живёт вне сводной таблицы — правится точечно в абзаце раздела; если абзац не найден, раздел потребует перегенерации")}
         </div>
         <FieldError text={errors.justification} />
       </div>
       <div className="form-grid">
         <div className="form-group">
           <label className="form-label" htmlFor="th-ed-type">
-            Тип тезиса
+            {tl("common.thesisType", "Тип тезиса")}
           </label>
           <select
             id="th-ed-type"
@@ -125,7 +125,7 @@ export function ThesisEditor({
         </div>
         <div className="form-group">
           <label className="form-label" htmlFor="th-ed-nov">
-            Степень новизны
+            {tl("common.noveltyDegree", "Степень новизны")}
           </label>
           <input
             id="th-ed-nov"

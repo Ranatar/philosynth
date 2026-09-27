@@ -87,6 +87,7 @@ import { setModeRegenerator } from "./plan-executor.js";
 import { buildSYS } from "./prompt-builder.js";
 import { getConfig, renderTemplate } from "./prompt-registry.js";
 import { StreamError, classifyStreamError } from "./streaming-manager.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
   connectionManager.sendToUser(userId, msg);
@@ -358,8 +359,8 @@ export async function computeModeDepsWarnings(
       warnings.push({
         level: "error",
         text:
-          "Обязательный контекст «" + ctxLabel(ctxKey) +
-          "» недоступен (раздел «" + keyLabel(src) + "» не сгенерирован).",
+          tl("server.modeService.requiredContextLead", "Обязательный контекст «") + ctxLabel(ctxKey) +
+          tl("server.modeService.unavailableSectionLead", "» недоступен (раздел «") + keyLabel(src) + tl("server.modeService.notGenerated", "» не сгенерирован)."),
       });
     }
   }
@@ -370,8 +371,8 @@ export async function computeModeDepsWarnings(
       warnings.push({
         level: "info",
         text:
-          "Дополнительный контекст «" + ctxLabel(ctxKey) +
-          "» недоступен — качество может быть снижено.",
+          tl("server.modeService.extraContextLead", "Дополнительный контекст «") + ctxLabel(ctxKey) +
+          tl("server.modeService.unavailableQuality", "» недоступен — качество может быть снижено."),
       });
     }
   }
@@ -465,11 +466,11 @@ export async function runMode(
   const { synthesisId, userId } = handle;
   const config = getModeConfig(modeKey);
   if (!config) {
-    throw new GenerationError("NOT_FOUND", `Режим «${modeKey}» не существует`);
+    throw new GenerationError("NOT_FOUND", tl("server.modeService.modeMissing", "Режим «{modeKey}» не существует", { modeKey }));
   }
   const param = paramValue.trim();
   if (!param) {
-    throw new GenerationError("VALIDATION_ERROR", "Заполните параметр.");
+    throw new GenerationError("VALIDATION_ERROR", tl("common.fillParameter", "Заполните параметр."));
   }
   const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
 

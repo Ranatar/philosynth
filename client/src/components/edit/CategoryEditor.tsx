@@ -38,6 +38,7 @@ import {
 } from "./CharacteristicSlider";
 import { FieldError, fmtNum } from "./ElementEditor";
 import { TaxonomySelector } from "./TaxonomySelector";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export type CategoryDraft = Required<
   Pick<
@@ -121,7 +122,7 @@ export function CategoryEditor({
   onChange,
   errors = {},
   disabled = false,
-  lastColName = "Происхождение",
+  lastColName = tl("common.origin", "Происхождение"),
   justify,
 }: CategoryEditorProps) {
   const set = <K extends keyof CategoryDraft>(k: K, v: CategoryDraft[K]) =>
@@ -132,7 +133,7 @@ export function CategoryEditor({
       <div className="form-grid">
         <div className="form-group">
           <label className="form-label" htmlFor="cat-ed-name">
-            Название категории
+            {tl("edit.categoryEditor.categoryName", "Название категории")}
           </label>
           <input
             id="cat-ed-name"
@@ -145,7 +146,7 @@ export function CategoryEditor({
         </div>
         <div className="form-group">
           <label className="form-label" htmlFor="cat-ed-type">
-            Тип
+            {tl("common.type", "Тип")}
           </label>
           <TaxonomySelector
             id="cat-ed-type"
@@ -160,7 +161,7 @@ export function CategoryEditor({
 
       <div className="form-group full">
         <label className="form-label" htmlFor="cat-ed-def">
-          Определение
+          {tl("common.definition", "Определение")}
         </label>
         <textarea
           id="cat-ed-def"
@@ -174,7 +175,7 @@ export function CategoryEditor({
       </div>
 
       <div className="form-label" style={{ marginTop: 10 }}>
-        Характеристики
+        {tl("edit.categoryEditor.characteristics", "Характеристики")}
       </div>
       <CharacteristicSliderGroup
         elementType="category"
@@ -204,17 +205,17 @@ export function CategoryEditor({
       {/* Предпросмотр строки «Таблицы категорий» (порядок столбцов —
           THESES/CATEGORIES «Столбцы СТРОГО» section-templates ≡ element-renderer) */}
       <div className="form-label" style={{ marginTop: 10 }}>
-        Предпросмотр строки таблицы графа
+        {tl("edit.categoryEditor.graphRowPreview", "Предпросмотр строки таблицы графа")}
       </div>
       <div style={{ overflowX: "auto" }}>
         <table className="doc-table element-preview-table">
           <thead>
             <tr>
-              <th>Категория</th>
-              <th>Тип</th>
-              <th>Определение</th>
-              <th>Центральность</th>
-              <th>Определённость</th>
+              <th>{tl("edit.categoryEditor.category", "Категория")}</th>
+              <th>{tl("common.type", "Тип")}</th>
+              <th>{tl("common.definition", "Определение")}</th>
+              <th>{tl("common.centrality", "Центральность")}</th>
+              <th>{tl("common.certainty", "Определённость")}</th>
               <th>{lastColName}</th>
             </tr>
           </thead>

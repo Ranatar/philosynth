@@ -47,6 +47,7 @@ import {
   notFoundJson,
   showcaseForbiddenJson,
 } from "./syntheses.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const transformRoutes = new Hono<AuthEnv>();
 
@@ -61,7 +62,7 @@ async function ownerEditGate(c: Context, id: string, userId: string): Promise<Re
   if (!row) return c.json(notFoundJson, 404);
   if (row.userId !== userId) return c.json(forbiddenJson, 403);
   if (isGenerationActive(id))
-    return c.json({ error: "Генерация уже идёт", code: "GENERATION_IN_PROGRESS" }, 409);
+    return c.json({ error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" }, 409);
   return null;
 }
 
@@ -116,7 +117,7 @@ transformRoutes.post("/:id/transforms/:transformId/rollback", requireAuth, async
   const gate = await ownerEditGate(c, id, user.id);
   if (gate) return gate;
   if (!isUuid(transformId))
-    return c.json({ error: "Трансформация не найдена", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("server.routes.transforms.transformNotFound", "Трансформация не найдена"), code: "NOT_FOUND" }, 404);
   try {
     const { transform, summary } = await rollbackTransform(id, transformId);
     return c.json({ ok: true, transform, summary });

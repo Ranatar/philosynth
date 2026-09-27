@@ -12,6 +12,7 @@
  * заменяются одной строкой «… N строк без изменений …».
  */
 
+import { tl } from "@philosynth/shared/i18n/t";
 export interface DiffLine {
   kind: "ctx" | "del" | "add";
   text: string;
@@ -66,7 +67,7 @@ export function diffLines(older: string, newer: string, opts: DiffOptions = {}):
   const context = opts.context ?? 2;
   const a = older.split("\n");
   const b = newer.split("\n");
-  if (older === newer) return [{ kind: "ctx", text: "Различий нет" }];
+  if (older === newer) return [{ kind: "ctx", text: tl("utils.textDiff.noDifferences", "Различий нет") }];
 
   const ops = lcsOps(a, b);
   const keep = new Array<boolean>(ops.length).fill(false);
@@ -82,7 +83,7 @@ export function diffLines(older: string, newer: string, opts: DiffOptions = {}):
   let skipped = 0;
   const flush = (): void => {
     if (skipped > 0) {
-      out.push({ kind: "ctx", text: `… ${skipped} ${pluralLines(skipped)} без изменений …` });
+      out.push({ kind: "ctx", text: tl("utils.textDiff.unchangedLines", "… {skipped} {linesWord} без изменений …", { skipped, linesWord: pluralLines(skipped) }) });
       skipped = 0;
     }
   };
@@ -102,9 +103,9 @@ export function diffLines(older: string, newer: string, opts: DiffOptions = {}):
 function pluralLines(n: number): string {
   const r10 = n % 10;
   const r100 = n % 100;
-  if (r10 === 1 && r100 !== 11) return "строка";
-  if (r10 >= 2 && r10 <= 4 && (r100 < 12 || r100 > 14)) return "строки";
-  return "строк";
+  if (r10 === 1 && r100 !== 11) return tl("utils.textDiff.lineOne", "строка");
+  if (r10 >= 2 && r10 <= 4 && (r100 < 12 || r100 > 14)) return tl("utils.textDiff.lineFew", "строки");
+  return tl("utils.textDiff.lineMany", "строк");
 }
 
 /** Сводка diff: сколько строк добавлено/удалено. */

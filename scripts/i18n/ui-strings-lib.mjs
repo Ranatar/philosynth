@@ -554,7 +554,7 @@ export function namespaceOf(rel) {
   if ((m = rel.match(/^client\/src\/components\/([^/]+)\/(.+)$/))) return `${camel(m[1])}.${camel(m[2].replace(/\//g, "."))}`;
   if ((m = rel.match(/^client\/src\/([^/]+)\/(.+)$/))) return `${camel(m[1])}.${camel(m[2])}`;
   if ((m = rel.match(/^client\/src\/(.+)$/))) return camel(m[1]);
-  if ((m = rel.match(/^packages\/shared\/(?:constants|utils|types)\/(.+)$/))) return `shared.${camel(m[1])}`;
+  if ((m = rel.match(/^packages\/shared\/(?:constants|utils|types|i18n)\/(.+)$/))) return `shared.${camel(m[1])}`;
   if (rel === "server/config/compat-matrix.ts") return "data.compatMatrix";
   if (rel === "scripts/seed/seed-taxonomy.ts") return "data.taxonomy";
   if ((m = rel.match(/^server\/services\/(.+)$/))) return `server.${m[1].split("/").map(camel).join(".")}`;

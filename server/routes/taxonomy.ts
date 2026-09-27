@@ -50,6 +50,7 @@ import {
   type RelationshipDirection,
   type TaxonomyKind,
 } from "../services/element-taxonomy.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const taxonomyRoutes = new Hono<AuthEnv>();
 
@@ -135,7 +136,7 @@ taxonomyRoutes.post("/category-types", requireAuth, async (c) => {
 
 taxonomyRoutes.patch("/category-types/:id", requireAuth, requireAdmin, async (c) => {
   const id = c.req.param("id");
-  if (!UUID_RE.test(id)) return c.json({ error: "Тип категории не найден", code: "NOT_FOUND" }, 404);
+  if (!UUID_RE.test(id)) return c.json({ error: tl("server.routes.taxonomy.categoryTypeNotFound", "Тип категории не найден"), code: "NOT_FOUND" }, 404);
   const parsed = readPatchBody(await readJson(c));
   if (!parsed.ok) return validationJson(c, parsed.details);
   try {
@@ -147,7 +148,7 @@ taxonomyRoutes.patch("/category-types/:id", requireAuth, requireAdmin, async (c)
 
 taxonomyRoutes.delete("/category-types/:id", requireAuth, requireAdmin, async (c) => {
   const id = c.req.param("id");
-  if (!UUID_RE.test(id)) return c.json({ error: "Тип категории не найден", code: "NOT_FOUND" }, 404);
+  if (!UUID_RE.test(id)) return c.json({ error: tl("server.routes.taxonomy.categoryTypeNotFound", "Тип категории не найден"), code: "NOT_FOUND" }, 404);
   try {
     return c.json(await deleteCustomType("category", id, c.get("user").id));
   } catch (err) {
@@ -190,7 +191,7 @@ taxonomyRoutes.post("/relationship-types", requireAuth, async (c) => {
 
 taxonomyRoutes.patch("/relationship-types/:id", requireAuth, requireAdmin, async (c) => {
   const id = c.req.param("id");
-  if (!UUID_RE.test(id)) return c.json({ error: "Тип связи не найден", code: "NOT_FOUND" }, 404);
+  if (!UUID_RE.test(id)) return c.json({ error: tl("server.routes.taxonomy.edgeTypeNotFound", "Тип связи не найден"), code: "NOT_FOUND" }, 404);
   const body = await readJson(c);
   const parsed = readPatchBody(body);
   if (!parsed.ok) return validationJson(c, parsed.details);
@@ -222,7 +223,7 @@ taxonomyRoutes.patch("/relationship-types/:id", requireAuth, requireAdmin, async
 
 taxonomyRoutes.delete("/relationship-types/:id", requireAuth, requireAdmin, async (c) => {
   const id = c.req.param("id");
-  if (!UUID_RE.test(id)) return c.json({ error: "Тип связи не найден", code: "NOT_FOUND" }, 404);
+  if (!UUID_RE.test(id)) return c.json({ error: tl("server.routes.taxonomy.edgeTypeNotFound", "Тип связи не найден"), code: "NOT_FOUND" }, 404);
   try {
     return c.json(await deleteCustomType("relationship", id, c.get("user").id));
   } catch (err) {

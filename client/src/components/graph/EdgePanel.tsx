@@ -35,6 +35,7 @@ import {
 } from "./graph-utils";
 
 import type { GEdge, GNode } from "./graph-utils";
+import { tl } from "@philosynth/shared/i18n/t";
 
 function Metric({
   label,
@@ -77,7 +78,7 @@ function NodeBlock({
       <div className="gm-panel-ep-block">
         <div className="gm-panel-ep-label">{labelPrefix}</div>
         <div className="gm-panel-ep-name">{nodeName}</div>
-        <div className="gm-panel-ep-missing">не найден в графе</div>
+        <div className="gm-panel-ep-missing">{tl("graph.edgePanel.notInGraph", "не найден в графе")}</div>
       </div>
     );
   }
@@ -101,7 +102,7 @@ function NodeBlock({
           {n.type || "—"}
         </span>
         {clusters.map((ci) => {
-          const label = clusterLabels[ci] || `Кластер ${ci + 1}`;
+          const label = clusterLabels[ci] || tl("graph.edgePanel.cluster", "Кластер {ci}", { ci: ci + 1 });
           const cc = CPAL[ci % CPAL.length]!;
           return (
             <span
@@ -129,13 +130,13 @@ function NodeBlock({
       ) : null}
       <div className="gm-panel-metrics" style={{ marginBottom: 4 }}>
         <Metric
-          label="Центральность"
+          label={tl("common.centrality", "Центральность")}
           pct={cenPct}
           color={color}
           value={(n.cen ?? 0.5).toFixed(2)}
         />
         <Metric
-          label="Определённость"
+          label={tl("common.certainty", "Определённость")}
           pct={certPct}
           color="#7f8c8d"
           value={(n.cert ?? 0.5).toFixed(2)}
@@ -216,10 +217,10 @@ export default function EdgePanel({
   const isBi = edgeData.dir.includes("двунаправлен");
   const dirIcon = isRefl ? "↺" : isBi ? "↔" : "→";
   const dirLabel = isRefl
-    ? "рефлексивная"
+    ? tl("common.directionReflexive", "рефлексивная")
     : isBi
-      ? "двунаправленная"
-      : "однонаправленная";
+      ? tl("common.directionTwoWay", "двунаправленная")
+      : tl("common.directionOneWay", "однонаправленная");
 
   // Сила
   const strPct = Math.round((edgeData.str || 0.5) * 100);
@@ -239,7 +240,7 @@ export default function EdgePanel({
           />
         </svg>
         <div className="gm-panel-name" style={{ fontSize: 11.5 }}>
-          {edgeData.type || "Связь"}
+          {edgeData.type || tl("graph.edgePanel.edge", "Связь")}
         </div>
         <button
           className="gm-panel-close"
@@ -268,15 +269,15 @@ export default function EdgePanel({
               disabled={editDisabled || deleting}
               title={
                 editDisabled
-                  ? "Идёт генерация — правки заблокированы"
-                  : "Редактировать связь"
+                  ? tl("graph.edgePanel.lockedGenerating", "Идёт генерация — правки заблокированы")
+                  : tl("graph.edgePanel.editEdge", "Редактировать связь")
               }
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit();
               }}
             >
-              ✎ Редактировать
+              {tl("common.editWithIcon", "✎ Редактировать")}
             </button>
           ) : null}
           {onDelete && !armed ? (
@@ -286,8 +287,8 @@ export default function EdgePanel({
               disabled={editDisabled || deleting}
               title={
                 editDisabled
-                  ? "Идёт генерация — правки заблокированы"
-                  : "Удалить связь"
+                  ? tl("graph.edgePanel.lockedGenerating", "Идёт генерация — правки заблокированы")
+                  : tl("graph.edgePanel.deleteEdge", "Удалить связь")
               }
               data-testid="edge-delete"
               onClick={(e) => {
@@ -296,14 +297,13 @@ export default function EdgePanel({
                 setArmed(true);
               }}
             >
-              ✕ Удалить связь
+              {tl("graph.edgePanel.deleteEdgeIcon", "✕ Удалить связь")}
             </button>
           ) : null}
           {onDelete && armed ? (
             <>
               <div className="gm-panel-danger-note" data-testid="edge-delete-warn">
-                Связь будет удалена; таблица связей документа перерисуется.
-                Снимок останется в истории версий.
+                {tl("graph.edgePanel.deleteEdgeNote", "Связь будет удалена; таблица связей документа перерисуется. Снимок останется в истории версий.")}
               </div>
               <button
                 type="button"
@@ -315,7 +315,7 @@ export default function EdgePanel({
                   void confirmDelete();
                 }}
               >
-                {deleting ? "Удаляю…" : "Точно удалить?"}
+                {deleting ? tl("graph.edgePanel.deleting", "Удаляю…") : tl("common.confirmDelete", "Точно удалить?")}
               </button>
               <button
                 type="button"
@@ -327,7 +327,7 @@ export default function EdgePanel({
                   setArmed(false);
                 }}
               >
-                Отмена
+                {tl("common.cancel", "Отмена")}
               </button>
             </>
           ) : null}
@@ -343,7 +343,7 @@ export default function EdgePanel({
       ) : null}
       <div className="gm-panel-metrics">
         <Metric
-          label="Сила связи"
+          label={tl("graph.edgePanel.edgeStrength", "Сила связи")}
           pct={strPct}
           color={edgeColor}
           value={(edgeData.str || 0.5).toFixed(2)}
@@ -367,34 +367,34 @@ export default function EdgePanel({
               marginBottom: 4,
             }}
           >
-            РАСШИРЕННЫЕ
+            {tl("graph.edgePanel.extendedHeading", "РАСШИРЕННЫЕ")}
           </div>
           <Metric
-            label="Определённость"
+            label={tl("common.certainty", "Определённость")}
             pct={Math.round((edgeData.certEdge ?? 0) * 100)}
             color="#e67e22"
             value={(edgeData.certEdge ?? 0).toFixed(2)}
           />
           <Metric
-            label="Инновация"
+            label={tl("graph.edgePanel.innovation", "Инновация")}
             pct={Math.round((((edgeData.innovDeg ?? 1) - 1) / 4) * 100)}
             color="#e74c3c"
             value={`${edgeData.innovDeg ?? 1}/5`}
           />
           <Metric
-            label="Ист. подкрепл."
+            label={tl("graph.edgePanel.historicalSupportShort", "Ист. подкрепл.")}
             pct={Math.round((edgeData.histSupport ?? 0) * 100)}
             color="#f39c12"
             value={(edgeData.histSupport ?? 0).toFixed(2)}
           />
           <Metric
-            label="Лог. необходим."
+            label={tl("graph.edgePanel.logicalNecessityShort", "Лог. необходим.")}
             pct={Math.round((edgeData.logNec ?? 0) * 100)}
             color="#3498db"
             value={(edgeData.logNec ?? 0).toFixed(2)}
           />
           <Metric
-            label="Контекст. завис."
+            label={tl("graph.edgePanel.contextDependenceShort", "Контекст. завис.")}
             pct={Math.round((edgeData.ctxDep ?? 0) * 100)}
             color="#9b59b6"
             value={(edgeData.ctxDep ?? 0).toFixed(2)}
@@ -404,7 +404,7 @@ export default function EdgePanel({
       <div className="gm-panel-ep-divider" />
       <NodeBlock
         nodeName={edgeData.src}
-        labelPrefix={isRefl ? "УЗЕЛ" : "ИСТОЧНИК"}
+        labelPrefix={isRefl ? tl("graph.edgePanel.nodeHeading", "УЗЕЛ") : tl("graph.edgePanel.sourceHeading", "ИСТОЧНИК")}
         allNodes={allNodes}
         clusterLabels={clusterLabels}
       />
@@ -413,7 +413,7 @@ export default function EdgePanel({
           <div className="gm-panel-ep-divider" />
           <NodeBlock
             nodeName={edgeData.tgt}
-            labelPrefix="ЦЕЛЬ"
+            labelPrefix={tl("graph.edgePanel.targetHeading", "ЦЕЛЬ")}
             allNodes={allNodes}
             clusterLabels={clusterLabels}
           />

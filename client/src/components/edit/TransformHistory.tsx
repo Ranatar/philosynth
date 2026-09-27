@@ -21,16 +21,17 @@ import type {
 
 import { ApiError } from "../../api/client";
 import { getTransformHistory, rollbackTransform } from "../../api/transforms";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const DIRECTION_LABELS: Readonly<Record<TransformDirection, string>> = {
-  graph_to_theses: "Граф → Тезисы",
-  theses_to_graph: "Тезисы → Граф",
+  graph_to_theses: tl("edit.transformHistory.graphToTheses", "Граф → Тезисы"),
+  theses_to_graph: tl("edit.transformHistory.thesesToGraph", "Тезисы → Граф"),
 };
 
 /** Что восстановит откат записи данного направления. */
 export const ROLLBACK_TARGET_LABELS: Readonly<Record<TransformDirection, string>> = {
-  graph_to_theses: "тезисы",
-  theses_to_graph: "граф",
+  graph_to_theses: tl("common.thesesLower", "тезисы"),
+  theses_to_graph: tl("common.graphLower", "граф"),
 };
 
 export function fmtTransformDate(iso: string): string {
@@ -45,13 +46,13 @@ export function summaryText(summary: Record<string, number>): string {
   const parts: string[] = [];
   const s = summary;
   if (s.thesesCreated !== undefined || s.thesesRemoved !== undefined)
-    parts.push(`тезисов: создано ${s.thesesCreated ?? 0}, удалено ${s.thesesRemoved ?? 0}`);
+    parts.push(tl("edit.transformHistory.thesesCreatedRemoved", "тезисов: создано {thesesCreated}, удалено {thesesRemoved}", { thesesCreated: s.thesesCreated ?? 0, thesesRemoved: s.thesesRemoved ?? 0 }));
   if (s.categoriesCreated !== undefined || s.categoriesRemoved !== undefined)
-    parts.push(`категорий: создано ${s.categoriesCreated ?? 0}, удалено ${s.categoriesRemoved ?? 0}`);
+    parts.push(tl("edit.transformHistory.categoriesCreatedRemoved", "категорий: создано {categoriesCreated}, удалено {categoriesRemoved}", { categoriesCreated: s.categoriesCreated ?? 0, categoriesRemoved: s.categoriesRemoved ?? 0 }));
   if (s.edgesCreated !== undefined || s.edgesRemoved !== undefined)
-    parts.push(`связей: создано ${s.edgesCreated ?? 0}, удалено ${s.edgesRemoved ?? 0}`);
-  if (s.categoriesNormalized) parts.push(`типов привязано к каталогу: ${s.categoriesNormalized} + ${s.edgesNormalized ?? 0}`);
-  if (s.sectionMissing) parts.push("раздела нет в документе — заменены только таблицы");
+    parts.push(tl("edit.transformHistory.edgesCreatedRemoved", "связей: создано {edgesCreated}, удалено {edgesRemoved}", { edgesCreated: s.edgesCreated ?? 0, edgesRemoved: s.edgesRemoved ?? 0 }));
+  if (s.categoriesNormalized) parts.push(tl("edit.transformHistory.typesLinked", "типов привязано к каталогу: {categoriesNormalized} + {edgesNormalized}", { categoriesNormalized: s.categoriesNormalized, edgesNormalized: s.edgesNormalized ?? 0 }));
+  if (s.sectionMissing) parts.push(tl("edit.transformHistory.tablesOnly", "раздела нет в документе — заменены только таблицы"));
   return parts.join(" · ") || "—";
 }
 
@@ -89,7 +90,7 @@ export function TransformHistory({
       .catch((err) => {
         if (!cancelled) {
           setItems([]);
-          setLoadError(err instanceof ApiError ? err.message : "История не загружена");
+          setLoadError(err instanceof ApiError ? err.message : tl("edit.transformHistory.historyNotLoaded", "История не загружена"));
         }
       });
     return () => {
@@ -100,7 +101,7 @@ export function TransformHistory({
   const doRollback = useCallback(
     async (t: RepresentationTransform) => {
       const what = ROLLBACK_TARGET_LABELS[t.direction];
-      if (!window.confirm(`Восстановить ${what} на момент ${fmtTransformDate(t.createdAt)}? Текущее состояние сохранится в истории и его тоже можно будет откатить.`))
+      if (!window.confirm(tl("edit.transformHistory.confirmRestore", "Восстановить {what} на момент {createdAt}? Текущее состояние сохранится в истории и его тоже можно будет откатить.", { what, createdAt: fmtTransformDate(t.createdAt) })))
         return;
       setBusyId(t.id);
       setError(null);
@@ -112,9 +113,9 @@ export function TransformHistory({
         setError(
           err instanceof ApiError
             ? err.code === "GENERATION_IN_PROGRESS"
-              ? "Идёт другая операция — дождитесь её завершения"
+              ? tl("edit.transformHistory.otherOperation", "Идёт другая операция — дождитесь её завершения")
               : err.message
-            : "Откат не выполнен",
+            : tl("edit.transformHistory.rollbackFailed", "Откат не выполнен"),
         );
       } finally {
         setBusyId(null);
@@ -125,15 +126,15 @@ export function TransformHistory({
 
   return (
     <div data-testid="transform-history">
-      {!compact && <div className="form-label">История трансформаций</div>}
+      {!compact && <div className="form-label">{tl("edit.transformHistory.title", "История трансформаций")}</div>}
       {error && (
         <div className="pool-status err" role="alert">{error}</div>
       )}
       {loadError && <div className="pool-status err">{loadError}</div>}
       {items === null ? (
-        <div className="form-sublabel">загрузка истории…</div>
+        <div className="form-sublabel">{tl("edit.transformHistory.loadingHistory", "загрузка истории…")}</div>
       ) : items.length === 0 ? (
-        <div className="form-sublabel">Трансформаций ещё не было.</div>
+        <div className="form-sublabel">{tl("edit.transformHistory.noTransformations", "Трансформаций ещё не было.")}</div>
       ) : (
         <div className="version-list">
           {items.map((t) => {
@@ -141,7 +142,7 @@ export function TransformHistory({
             return (
               <div key={t.id} className="version-item transform-item" data-transform-id={t.id}>
                 <div className="version-num">
-                  {isRollback ? "↶ откат · " : ""}
+                  {isRollback ? tl("edit.transformHistory.rollbackLabel", "↶ откат · ") : ""}
                   {DIRECTION_LABELS[t.direction]}
                 </div>
                 <div className="version-preview">{summaryText(t.resultSummary as Record<string, number>)}</div>
@@ -149,8 +150,7 @@ export function TransformHistory({
                   {fmtTransformDate(t.createdAt)}
                   {t.inputTokens + t.outputTokens > 0 && (
                     <>
-                      {" · "}
-                      {t.inputTokens.toLocaleString("ru")} вх. + {t.outputTokens.toLocaleString("ru")} вых. · ${t.costUsd.toFixed(4)}
+                      {tl("edit.transformHistory.usageLine", "· {inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { inputTokens: t.inputTokens.toLocaleString("ru"), outputTokens: t.outputTokens.toLocaleString("ru"), costUsd: t.costUsd.toFixed(4) })}
                     </>
                   )}
                 </div>
@@ -161,7 +161,7 @@ export function TransformHistory({
                     disabled={disabled || busyId !== null}
                     onClick={() => void doRollback(t)}
                   >
-                    {busyId === t.id ? "Откат…" : "Откатить"}
+                    {busyId === t.id ? tl("edit.transformHistory.rollingBack", "Откат…") : tl("edit.transformHistory.rollback", "Откатить")}
                   </button>
                 </div>
               </div>

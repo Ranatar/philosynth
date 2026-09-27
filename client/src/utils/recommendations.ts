@@ -35,6 +35,7 @@ import type {
 } from "@philosynth/shared/types/recommendations";
 
 import { ApiError } from "../api/client";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ══ Номер и развилка ═════════════════════════════════════════════════ */
 
@@ -54,8 +55,8 @@ export const numKey = (num: string): string => norm(num).replace(/\s+/g, "");
  *  не исполняется (долг §12 беседы 10.2: показывать как исполняемое вручную). */
 export type RecommendationCostKind = "free" | "paid" | "manual";
 
-const OP_DELETE = "удалить";
-const OP_REGENERATE = "перегенерировать";
+const OP_DELETE = tl("utils.recommendations.opDelete", "удалить");
+const OP_REGENERATE = tl("utils.recommendations.opRegenerate", "перегенерировать");
 
 export function costKindOf(row: Recommendation): RecommendationCostKind {
   if (norm(row.op) === OP_DELETE) return "manual";
@@ -67,19 +68,19 @@ export function actionTextOf(row: Recommendation): string {
   const kind = costKindOf(row);
   if (kind === "manual")
     return row.elementId
-      ? "планом не исполняется: удаление элемента — вручную либо перегенерацией подраздела"
-      : "планом не исполняется: удаление подраздела — вручную";
-  if (kind === "free") return "готовая замена будет вписана в поле элемента";
-  if (row.elementId && row.elementKind) return "новое значение поля напишет модель";
+      ? tl("utils.recommendations.elementDeletionManual", "планом не исполняется: удаление элемента — вручную либо перегенерацией подраздела")
+      : tl("utils.recommendations.subsectionDeletionManual", "планом не исполняется: удаление подраздела — вручную");
+  if (kind === "free") return tl("utils.recommendations.replacementWritten", "готовая замена будет вписана в поле элемента");
+  if (row.elementId && row.elementKind) return tl("utils.recommendations.modelWritesValue", "новое значение поля напишет модель");
   if (norm(row.op) === OP_REGENERATE && row.addressSection && row.addressSection !== "sum")
-    return "раздел будет перегенерирован целиком";
-  return "подраздел будет перегенерирован";
+    return tl("utils.recommendations.sectionRegenerated", "раздел будет перегенерирован целиком");
+  return tl("utils.recommendations.subsectionRegenerated", "подраздел будет перегенерирован");
 }
 
 export const COST_KIND_LABEL: Record<RecommendationCostKind, string> = {
-  free: "правка · бесплатно",
-  paid: "генерация",
-  manual: "вручную",
+  free: tl("utils.recommendations.editFree", "правка · бесплатно"),
+  paid: tl("utils.recommendations.generation", "генерация"),
+  manual: tl("utils.recommendations.manually", "вручную"),
 };
 
 /** Выбирать можно только то, что план исполнит: годные строки вне работы. */
@@ -239,13 +240,13 @@ export function estimateSelection(
   for (const r of elementRows) {
     const host = ELEMENT_STEP_HOST[r.elementKind as NonNullable<Recommendation["elementKind"]>];
     if (sectionRegen.has(host)) {
-      conflicts.push(`Рекомендация ${r.num}: раздел её элемента этим же выбором перегенерируется целиком — исполните по очереди`);
+      conflicts.push(tl("utils.recommendations.conflictWholeSection", "Рекомендация {num}: раздел её элемента этим же выбором перегенерируется целиком — исполните по очереди", { num: r.num }));
       continue;
     }
     const key = `${r.elementKind}:${r.elementId}`;
     const holder = taken.get(key);
     if (holder !== undefined) {
-      conflicts.push(`Рекомендации ${holder} и ${r.num} правят один элемент — исполните по очереди`);
+      conflicts.push(tl("utils.recommendations.conflictSameElement", "Рекомендации {holder} и {num} правят один элемент — исполните по очереди", { holder, num: r.num }));
       continue;
     }
     taken.set(key, r.num);
@@ -266,10 +267,10 @@ const plural = (n: number, one: string, few: string, many: string): string => {
 /** «1 бесплатно, 1 платно» — числом, а не «бесплатно/платно» вообще. */
 export function estimateText(e: SelectionEstimate): string {
   const steps = e.free + e.paid;
-  if (steps === 0) return "Ничего не выбрано";
+  if (steps === 0) return tl("utils.recommendations.nothingSelected", "Ничего не выбрано");
   return (
-    `${steps} ${plural(steps, "шаг", "шага", "шагов")}: ` +
-    `${e.free} бесплатно, ${e.paid} платно`
+    `${steps} ${plural(steps, tl("utils.recommendations.stepOne", "шаг"), tl("utils.recommendations.stepFew", "шага"), tl("utils.recommendations.stepMany", "шагов"))}: ` +
+    tl("utils.recommendations.freePaid", "{free} бесплатно, {paid} платно", { free: e.free, paid: e.paid })
   );
 }
 
@@ -307,9 +308,9 @@ export function kindMismatchText(
   const host = ELEMENT_STEP_HOST[row.elementKind];
   if (host === row.addressSection) return null;
   return (
-    `Адрес указывает на раздел «${sectionLabel(row.addressSection)}», а элемент найден как ` +
-    `${ELEMENT_STEP_KIND_LABELS[row.elementKind]} (раздел «${sectionLabel(host)}»): ` +
-    "правка попадёт туда."
+    tl("utils.recommendations.addressMismatch", "Адрес указывает на раздел «{addressSection}», а элемент найден как ", { addressSection: sectionLabel(row.addressSection) }) +
+    tl("utils.recommendations.elementInSection", "{elementKind} (раздел «{host}»): ", { elementKind: ELEMENT_STEP_KIND_LABELS[row.elementKind], host: sectionLabel(host) }) +
+    tl("utils.recommendations.editGoesThere", "правка попадёт туда.")
   );
 }
 
@@ -355,31 +356,31 @@ export function notFoundReasonOf(err: unknown): RetrofitReason {
 }
 
 export function recommendationsErrorText(err: unknown): string {
-  if (!(err instanceof ApiError)) return "Не удалось выполнить запрос.";
+  if (!(err instanceof ApiError)) return tl("utils.recommendations.requestFailed", "Не удалось выполнить запрос.");
   switch (err.code) {
     case "GENERATION_IN_PROGRESS":
-      return "Идёт генерация либо исполнение плана — дождитесь окончания и повторите.";
+      return tl("utils.recommendations.busy", "Идёт генерация либо исполнение плана — дождитесь окончания и повторите.");
     case "FORBIDDEN":
-      return "Рекомендации доступны только владельцу концепции.";
+      return tl("utils.recommendations.ownerOnly", "Рекомендации доступны только владельцу концепции.");
     case "ROUND_IN_PROGRESS":
-      return err.message || "Раунд в работе: сначала исполните либо удалите план.";
+      return err.message || tl("utils.recommendations.roundBusy", "Раунд в работе: сначала исполните либо удалите план.");
     case "RECOMMENDATIONS_TABLE_INVALID":
       return (
-        (err.message || "Подраздел «Таблица рекомендаций» не разбирается как таблица.") +
-        " Поправьте её вручную и перечитайте."
+        (err.message || tl("utils.recommendations.tableUnparsable", "Подраздел «Таблица рекомендаций» не разбирается как таблица.")) +
+        tl("utils.recommendations.fixManually", " Поправьте её вручную и перечитайте.")
       );
     case "RECOMMENDATIONS_NOT_PLANNABLE":
-      return err.message || "Ни одна из выбранных рекомендаций в план не вошла.";
+      return err.message || tl("utils.recommendations.noneIncluded", "Ни одна из выбранных рекомендаций в план не вошла.");
     case "GENERATION_FAILED":
-      return "Обращение к модели оборвалось — документ не тронут, запрос можно повторить.";
+      return tl("utils.recommendations.modelCallBroke", "Обращение к модели оборвалось — документ не тронут, запрос можно повторить.");
     case "QUOTA_EXCEEDED":
     case "BILLING_REQUIRED":
     case "INSUFFICIENT_BALANCE":
     case "API_KEY_MISSING":
     case "API_KEY_INVALID":
-      return err.message || "Нет источника оплаты для обращения к модели.";
+      return err.message || tl("utils.recommendations.noPaymentSource", "Нет источника оплаты для обращения к модели.");
     default:
-      return err.message || "Не удалось выполнить запрос.";
+      return err.message || tl("utils.recommendations.requestFailed", "Не удалось выполнить запрос.");
   }
 }
 

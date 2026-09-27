@@ -43,6 +43,7 @@ import { ownerEditGate } from "./elements.js";
 import { forbiddenJson, isUuid, notFoundJson } from "./syntheses.js";
 
 import type { Context } from "hono";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const recommendationsRoutes = new Hono<AuthEnv>();
 
@@ -123,7 +124,7 @@ recommendationsRoutes.get("/:id/recommendations", requireAuth, async (c) => {
     round = Number(q);
     if (!Number.isInteger(round) || round < 1)
       return c.json(
-        { error: "Невалидные данные", code: "VALIDATION_ERROR", details: { round: "ожидается целое ≥ 1" } },
+        { error: tl("common.invalidData", "Невалидные данные"), code: "VALIDATION_ERROR", details: { round: tl("server.routes.recommendations.integerExpected", "ожидается целое ≥ 1") } },
         400,
       );
   }
@@ -185,7 +186,7 @@ recommendationsRoutes.post("/:id/recommendations/plan", requireAuth, async (c) =
   try {
     body = await c.req.json();
   } catch {
-    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+    return c.json({ error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" }, 400);
   }
   const nums = body && typeof body === "object" ? (body as { nums?: unknown }).nums : undefined;
   // 10.3: поле элемента выбирает человек — карта «id строки → поле»

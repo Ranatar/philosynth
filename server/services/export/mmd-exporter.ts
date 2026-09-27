@@ -23,11 +23,12 @@ import {
 } from "./graph-style.js";
 
 import type { GModel } from "./graph-model.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Ядро на готовой модели G (переиспользуется тестами/роутом). */
 export function buildMMD(G: GModel): string {
   if (!G.nodes.length) {
-    throw new ExportError("NO_GRAPH", "Нет графа.");
+    throw new ExportError("NO_GRAPH", tl("common.noGraph", "Нет графа."));
   }
   const style = createGraphStyle(G);
 

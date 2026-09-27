@@ -80,6 +80,8 @@ import {
   type PickableSectionKey,
 } from "./SectionPicker";
 import { SectionWarnings } from "./SectionWarnings";
+import { LANG_OPTIONS } from "@philosynth/shared/i18n/locales";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Клиентская копия CONTEXT_BUDGET [7529] — ТОЛЬКО для превью бюджета.
  *  Канон живёт в Registry (config context_budget) и применяется сервером;
@@ -201,29 +203,29 @@ function FullBudgetPreview({
         color: "var(--ink-dim)",
       }}
     >
-      {"Контекст родителей: " +
+      {tl("synthesis.synthesisForm.parentContextLead", "Контекст родителей: ") +
         conceptChars.toLocaleString("ru") +
-        " симв. (" +
+        tl("synthesis.synthesisForm.charsParen", " симв. (") +
         N +
         ")\n" +
-        "При ужимании:       бюджет секций " +
+        tl("synthesis.synthesisForm.whenCompressed", "При ужимании:       бюджет секций ") +
         shrunkBudget.toLocaleString("ru") +
         " / " +
         rawBudget.toLocaleString("ru") +
-        " симв.\n" +
-        "Без ужимания:       бюджет секций " +
+        tl("synthesis.synthesisForm.charsNewline", " симв.\n") +
+        tl("synthesis.synthesisForm.withoutCompression", "Без ужимания:       бюджет секций ") +
         rawBudget.toLocaleString("ru") +
-        " симв." +
+        tl("synthesis.synthesisForm.chars", " симв.") +
         (diff
-          ? "\nОценка с родителями: " +
+          ? tl("synthesis.synthesisForm.estimateWithParents", "\nОценка с родителями: ") +
             fmtUsd(diff.withParents.cost) +
-            " · без: " +
+            tl("synthesis.synthesisForm.without", " · без: ") +
             fmtUsd(diff.without.cost) +
-            " · разница: +" +
+            tl("synthesis.synthesisForm.difference", " · разница: +") +
             fmtUsd(Math.max(diffCost, 0)) +
             " (+" +
             Math.max(diffTokens, 0).toLocaleString("ru") +
-            " ток. входа)"
+            tl("synthesis.synthesisForm.inputTokensParen", " ток. входа)")
           : "")}
     </pre>
   );
@@ -231,43 +233,34 @@ function FullBudgetPreview({
 
 /* Опции — тексты дословно из селектов формы исходника */
 const METHOD_OPTIONS = [
-  ["dialectical", "Диалектический (тезис → антитезис → синтез)"],
-  ["integrative", "Интегративный (поиск общих оснований)"],
-  ["deconstructive", "Деконструктивный (разбор и пересборка)"],
-  ["hermeneutical", "Герменевтический (интерпретация и горизонт)"],
-  ["analytical", "Аналитический (формализация и уточнение)"],
-  ["creative", "Творческий (свободная комбинаторика)"],
+  ["dialectical", tl("synthesis.synthesisForm.methodDialectical", "Диалектический (тезис → антитезис → синтез)")],
+  ["integrative", tl("synthesis.synthesisForm.methodIntegrative", "Интегративный (поиск общих оснований)")],
+  ["deconstructive", tl("synthesis.synthesisForm.methodDeconstructive", "Деконструктивный (разбор и пересборка)")],
+  ["hermeneutical", tl("synthesis.synthesisForm.methodHermeneutic", "Герменевтический (интерпретация и горизонт)")],
+  ["analytical", tl("synthesis.synthesisForm.methodAnalytical", "Аналитический (формализация и уточнение)")],
+  ["creative", tl("synthesis.synthesisForm.methodCreative", "Творческий (свободная комбинаторика)")],
 ] as const;
 
 const ORDER_OPTIONS = [
-  ["architectural", "Архитектурный (граф → определения → тезисы → диалог)"],
-  ["genetic", "Генетический (диалог → тезисы → определения → граф)"],
+  ["architectural", tl("synthesis.synthesisForm.orderArchitectural", "Архитектурный (граф → определения → тезисы → диалог)")],
+  ["genetic", tl("synthesis.synthesisForm.orderGenetic", "Генетический (диалог → тезисы → определения → граф)")],
 ] as const;
 
 const LEVEL_OPTIONS = [
-  ["comparative", "Сравнительный (заимствование и переопределение)"],
-  ["transformative", "Преобразующий (из напряжений между философами)"],
-  ["generative", "Порождающий (от проблемы, не от философов)"],
+  ["comparative", tl("synthesis.synthesisForm.levelComparative", "Сравнительный (заимствование и переопределение)")],
+  ["transformative", tl("synthesis.synthesisForm.levelTransformative", "Преобразующий (из напряжений между философами)")],
+  ["generative", tl("synthesis.synthesisForm.levelGenerative", "Порождающий (от проблемы, не от философов)")],
 ] as const;
 
 const DEPTH_OPTIONS = [
-  ["overview", "Обзорная (компактный документ)"],
-  ["standard", "Стандартная (развёрнутый анализ)"],
-  ["deep", "Глубокая (академический уровень)"],
-  ["exhaustive", "Исчерпывающая (монография)"],
+  ["overview", tl("synthesis.synthesisForm.depthOverview", "Обзорная (компактный документ)")],
+  ["standard", tl("synthesis.synthesisForm.depthStandard", "Стандартная (развёрнутый анализ)")],
+  ["deep", tl("synthesis.synthesisForm.depthDeep", "Глубокая (академический уровень)")],
+  ["exhaustive", tl("synthesis.synthesisForm.depthExhaustive", "Исчерпывающая (монография)")],
 ] as const;
 
-const LANG_OPTIONS = [
-  ["Russian", "Русский"],
-  ["English", "English"],
-  ["German", "Deutsch"],
-  ["French", "Français"],
-  ["Spanish", "Español"],
-  ["Chinese", "中文"],
-  ["Japanese", "日本語"],
-  ["Latin", "Latina"],
-  ["__custom", "Другой…"],
-] as const;
+// LANG_OPTIONS — из @philosynth/shared/i18n/locales (11.2): один список для
+// формы и правила связи языков; сторож 4aw сверяет UI_TO_GEN ⊆ LANG_OPTIONS.
 
 /** Чекбоксы, отмеченные в исходнике по умолчанию */
 const DEFAULT_SECTIONS: PickableSectionKey[] = [
@@ -337,8 +330,8 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
     if (hasSynthConcepts && !prev && !synthReady) {
       handleSynthReadyChange(true);
       setPoolStatus(
-        "☑ Включены разделы, обязательные для мета-синтеза " +
-          "(граф, глоссарий, тезисы, диалог, критика, капсула)",
+        tl("synthesis.synthesisForm.metaSectionsIncluded", "☑ Включены разделы, обязательные для мета-синтеза ") +
+          tl("synthesis.synthesisForm.metaSectionsList", "(граф, глоссарий, тезисы, диалог, критика, капсула)"),
         "ok",
       );
     } else if (!hasSynthConcepts && prev && synthReady) {
@@ -455,7 +448,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           const tree = await getAncestors(p.synthesisId);
           parts.push({
             type: "concept",
-            name: p.name || "[безымянная концепция]",
+            name: p.name || tl("synthesis.synthesisForm.unnamedConcept", "[безымянная концепция]"),
             genealogy: lineageNodeToGenealogy(tree),
           });
         } catch {
@@ -464,7 +457,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       } else {
         parts.push({
           type: "concept",
-          name: p.name || "[безымянная концепция]",
+          name: p.name || tl("synthesis.synthesisForm.unnamedConcept", "[безымянная концепция]"),
           genealogy: p.genealogy,
         });
       }
@@ -476,13 +469,13 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
     const participantsCount =
       philosophers.length + conceptParticipants.length;
     if (sections.length === 0) {
-      setFormError("Выберите хотя бы один раздел документа.");
+      setFormError(tl("synthesis.synthesisForm.chooseSection", "Выберите хотя бы один раздел документа."));
       return;
     }
     if (participantsCount === 0 && !seed.trim()) {
       setFormError(
-        "Свободный синтез (без философов и концепций) требует зерна: " +
-          "заполните «Зерно концепции» или выберите участников.",
+        tl("synthesis.synthesisForm.freeSynthesisNeedsSeed", "Свободный синтез (без философов и концепций) требует зерна: ") +
+          tl("synthesis.synthesisForm.fillSeedOrParticipants", "заполните «Зерно концепции» или выберите участников."),
       );
       return;
     }
@@ -501,7 +494,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
         for (const entry of fileEntries) {
           if (!entry.rawHTML) {
             setFormError(
-              "Концепция «" + entry.name + "» не содержит HTML файла — импорт невозможен; снимите ☑.",
+              tl("synthesis.synthesisForm.conceptQuoteLead", "Концепция «") + entry.name + tl("synthesis.synthesisForm.noHtmlFile", "» не содержит HTML файла — импорт невозможен; снимите ☑."),
             );
             return;
           }
@@ -512,10 +505,10 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
             usePoolStore.getState().attachSynthesisId(entry.id, res.id);
             usePoolStore
               .getState()
-              .setPoolStatus("✓ «" + entry.name + "» импортирована в каталог", "ok");
+              .setPoolStatus("✓ «" + entry.name + tl("synthesis.synthesisForm.importedToCatalog", "» импортирована в каталог"), "ok");
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
-            setFormError("Импорт файловой концепции «" + entry.name + "» не удался: " + msg);
+            setFormError(tl("synthesis.synthesisForm.fileImportLead", "Импорт файловой концепции «") + entry.name + tl("synthesis.synthesisForm.importFailed", "» не удался: ") + msg);
             return;
           }
         }
@@ -535,9 +528,9 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       }
       if (texts.length > 0) {
         const ok = window.confirm(
-          "Генеалогические пересечения участников:\n\n— " +
+          tl("synthesis.synthesisForm.genealogyOverlaps", "Генеалогические пересечения участников:\n\n— ") +
             texts.join("\n— ") +
-            "\n\nПродолжить генерацию?",
+            tl("synthesis.synthesisForm.continueGeneration", "\n\nПродолжить генерацию?"),
         );
         if (!ok) return;
       }
@@ -556,15 +549,14 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       <div className="form-grid">
       {/* Зерно */}
       <div className="form-group full">
-        <div className={labelCls}>Зерно концепции</div>
+        <div className={labelCls}>{tl("synthesis.synthesisForm.conceptSeed", "Зерно концепции")}</div>
         <div className={sublabelCls}>
-          Исходная идея, проблема или интуиция. Обязательно при свободном
-          синтезе (0 участников).
+          {tl("synthesis.synthesisForm.seedHint", "Исходная идея, проблема или интуиция. Обязательно при свободном синтезе (0 участников).")}
         </div>
         <textarea
           value={seed}
           onChange={(e) => setSeed(e.target.value)}
-          placeholder="Например: время как ткань межличностных обязательств..."
+          placeholder={tl("synthesis.synthesisForm.seedPlaceholder", "Например: время как ткань межличностных обязательств...")}
           className="form-textarea"
         />
       </div>
@@ -577,9 +569,9 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
 
       {/* Метод / порядок / уровень / глубина / язык */}
         <div className="form-group">
-          <div className={labelCls}>Метод Синтеза</div>
+          <div className={labelCls}>{tl("synthesis.synthesisForm.synthesisMethod", "Метод Синтеза")}</div>
           <div className={sublabelCls}>
-            Стратегия объединения идей выбранных философов.
+            {tl("synthesis.synthesisForm.methodHint", "Стратегия объединения идей выбранных философов.")}
           </div>
           <select
             value={method}
@@ -594,9 +586,9 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           </select>
         </div>
         <div className="form-group">
-          <div className={labelCls}>Порядок Генерации</div>
+          <div className={labelCls}>{tl("synthesis.synthesisForm.generationOrder", "Порядок Генерации")}</div>
           <div className={sublabelCls}>
-            Последовательность порождения разделов.
+            {tl("synthesis.synthesisForm.orderHint", "Последовательность порождения разделов.")}
           </div>
           <select
             value={generationOrder}
@@ -611,9 +603,9 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           </select>
         </div>
         <div className="form-group">
-          <div className={labelCls}>Уровень Синтеза</div>
+          <div className={labelCls}>{tl("synthesis.synthesisForm.synthesisLevel", "Уровень Синтеза")}</div>
           <div className={sublabelCls}>
-            Насколько радикально категории отрываются от исходных традиций.
+            {tl("synthesis.synthesisForm.levelHint", "Насколько радикально категории отрываются от исходных традиций.")}
           </div>
           <select
             value={synthLevel}
@@ -628,9 +620,9 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           </select>
         </div>
         <div className="form-group">
-          <div className={labelCls}>Глубина Проработки</div>
+          <div className={labelCls}>{tl("synthesis.synthesisForm.elaborationDepth", "Глубина Проработки")}</div>
           <div className={sublabelCls}>
-            Влияет на объём и детализацию каждого раздела.
+            {tl("synthesis.synthesisForm.depthHint", "Влияет на объём и детализацию каждого раздела.")}
           </div>
           <select
             value={depth}
@@ -645,7 +637,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           </select>
         </div>
         <div className="form-group">
-          <div className={labelCls}>Язык генерации</div>
+          <div className={labelCls}>{tl("synthesis.synthesisForm.generationLanguage", "Язык генерации")}</div>
           <select
             value={langChoice}
             onChange={(e) => setLangChoice(e.target.value)}
@@ -660,11 +652,11 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
         </div>
         {langChoice === "__custom" && (
           <div className="form-group">
-            <div className={labelCls}>Укажите язык (по-английски)</div>
+            <div className={labelCls}>{tl("synthesis.synthesisForm.customLanguage", "Укажите язык (по-английски)")}</div>
             <input
               value={customLang}
               onChange={(e) => setCustomLang(e.target.value)}
-              placeholder="e.g. Korean, Ancient Greek, Hindi"
+              placeholder={tl("synthesis.synthesisForm.customLanguagePlaceholder", "e.g. Korean, Ancient Greek, Hindi")}
               className="form-input"
             />
           </div>
@@ -672,14 +664,14 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
 
       {/* Доп. контекст */}
       <div className="form-group full">
-        <div className={labelCls}>Дополнительный Контекст</div>
+        <div className={labelCls}>{tl("synthesis.synthesisForm.extraContext", "Дополнительный Контекст")}</div>
         <div className={sublabelCls}>
-          Опционально. Любые уточнения, ограничения, фокус внимания.
+          {tl("synthesis.synthesisForm.extraContextHint", "Опционально. Любые уточнения, ограничения, фокус внимания.")}
         </div>
         <textarea
           value={context}
           onChange={(e) => setContext(e.target.value)}
-          placeholder="Например: фокус на этике, игнорировать метафизику, интересует применимость к образованию..."
+          placeholder={tl("synthesis.synthesisForm.extraContextPlaceholder", "Например: фокус на этике, игнорировать метафизику, интересует применимость к образованию...")}
           className="form-textarea"
           style={{ height: 60 }}
         />
@@ -740,10 +732,9 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
               onChange={(e) => setKeepFullBudget(e.target.checked)}
             />
             <span>
-              <strong>Сохранять полный бюджет секций</strong>
+              <strong>{tl("synthesis.synthesisForm.keepFullBudget", "Сохранять полный бюджет секций")}</strong>
               <span style={{ color: "var(--ink-dim)", fontWeight: "normal" }}>
-                {" "}
-                — не ужимать из-за контекста родительских концепций
+                {tl("synthesis.synthesisForm.keepFullBudgetHint", "— не ужимать из-за контекста родительских концепций")}
               </span>
             </span>
           </label>
@@ -758,9 +749,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
       {/* Submit-строка [4101–4113] */}
       <div className="submit-row">
         <div className="submit-note">
-          Генерация выполняется в несколько проходов с потоковым выводом.
-          Каждый проход — отдельный запрос к Claude API. Полный документ может
-          занять 2–5 минут в зависимости от глубины и количества разделов.
+          {tl("synthesis.synthesisForm.generationNote", "Генерация выполняется в несколько проходов с потоковым выводом. Каждый проход — отдельный запрос к Claude API. Полный документ может занять 2–5 минут в зависимости от глубины и количества разделов.")}
         </div>
         {/* Кнопка всегда видна (07, тест responsive) */}
         <div
@@ -782,10 +771,10 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           >
             <div className="spinner" />
             {busy
-              ? "Запуск…"
+              ? tl("synthesis.synthesisForm.starting", "Запуск…")
               : submitChecking
-                ? "Проверка генеалогии…"
-                : "Синтезировать Концепцию"}
+                ? tl("synthesis.synthesisForm.checkingGenealogy", "Проверка генеалогии…")
+                : tl("synthesis.synthesisForm.synthesize", "Синтезировать Концепцию")}
           </button>
           <CostEstimate params={estimateParams} />
         </div>
@@ -793,7 +782,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
 
       {(formError || serverError) && (
         <div className="callout warning">
-          <span className="callout-label">Ошибка</span>
+          <span className="callout-label">{tl("common.error", "Ошибка")}</span>
           {formError ?? serverError}
         </div>
       )}

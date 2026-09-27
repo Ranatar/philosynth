@@ -57,6 +57,7 @@ import type { SectionFull } from "@philosynth/shared/types/section";
 import type { SubsectionEditState, SubsectionRef } from "../../utils/subsection-edit";
 
 import { subsectionSlugId } from "./TableOfContents";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Строка таблицы, редактируемая по месту (беседа 5.2, п. 7) */
 export type EditableRowKind = "thesis" | "glossary_term";
@@ -127,7 +128,7 @@ export function addInlineEditButtons(doc: Document, root: Element): void {
     for (const hr of table.querySelectorAll("thead tr")) {
       const th = doc.createElement("th");
       th.className = "inline-edit-cell";
-      th.setAttribute("aria-label", "Правка");
+      th.setAttribute("aria-label", tl("document.sectionView.edit", "Правка"));
       hr.appendChild(th);
     }
     const rows = table.querySelectorAll("tbody tr");
@@ -138,7 +139,7 @@ export function addInlineEditButtons(doc: Document, root: Element): void {
       btn.type = "button";
       btn.className = "inline-edit-btn";
       btn.textContent = "✎";
-      btn.title = kind === "thesis" ? "Редактировать тезис" : "Редактировать термин";
+      btn.title = kind === "thesis" ? tl("document.sectionView.editThesis", "Редактировать тезис") : tl("document.sectionView.editTerm", "Редактировать термин");
       btn.setAttribute("data-edit-kind", kind);
       btn.setAttribute("data-edit-row", String(i));
       td.appendChild(btn);
@@ -177,7 +178,7 @@ export function addSubsectionPencils(
     btn.type = "button";
     btn.className = "inline-edit-btn subsection-edit-btn";
     btn.textContent = "✎";
-    btn.title = "Править подраздел";
+    btn.title = tl("document.sectionView.editSubsection", "Править подраздел");
     btn.setAttribute("data-edit-subsection", name);
     h4.appendChild(btn);
   }
@@ -216,12 +217,12 @@ export function renderSubsectionEditor(
   form.setAttribute("data-subsection-editor", edit.name);
 
   if (edit.phase === "saved") {
-    form.appendChild(el("div", "subsection-edit-note", "Сохранено. Сервер поправил разметку:"));
+    form.appendChild(el("div", "subsection-edit-note", tl("document.sectionView.savedServerFixedMarkup", "Сохранено. Сервер поправил разметку:")));
     const ul = el("ul", "subsection-edit-warnings");
     for (const w of edit.warnings) ul.appendChild(el("li", "", w));
     form.appendChild(ul);
     const actions = el("div", "inline-edit-actions");
-    const ok = el("button", "action-btn", "Понятно");
+    const ok = el("button", "action-btn", tl("document.sectionView.gotIt", "Понятно"));
     ok.setAttribute("type", "button");
     ok.setAttribute("data-subsection-action", "cancel");
     actions.appendChild(ok);
@@ -232,7 +233,7 @@ export function renderSubsectionEditor(
 
   // Исходник не приехал (замок, 409, сеть): поля нет — только отказ и «Отмена»
   const loadFailed = edit.phase === "loading" && !!edit.error;
-  form.appendChild(el("label", "form-label", "Разметка подраздела"));
+  form.appendChild(el("label", "form-label", tl("document.sectionView.subsectionMarkup", "Разметка подраздела")));
   const area = doc.createElement("textarea");
   area.className = "form-textarea subsection-edit-source";
   area.setAttribute("data-subsection-source", "1");
@@ -243,16 +244,16 @@ export function renderSubsectionEditor(
   // (enrichSectionHtml): экранирование содержимого <textarea> при
   // сериализации у DOM-реализаций разное (браузер экранирует, linkedom —
   // нет), а </textarea> в разметке человека не должен закрыть поле
-  area.textContent = edit.phase === "loading" ? "Загрузка…" : SUBSECTION_DRAFT_TOKEN;
+  area.textContent = edit.phase === "loading" ? tl("common.loading", "Загрузка…") : SUBSECTION_DRAFT_TOKEN;
   if (!loadFailed) form.appendChild(area);
   if (!loadFailed) form.appendChild(
     el(
       "div",
       "subsection-edit-note",
-      "Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. " +
-        "Заголовок подраздела здесь не правится." +
+      tl("document.sectionView.markupHelp", "Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. ") +
+        tl("document.sectionView.headingNotEditable", "Заголовок подраздела здесь не правится.") +
         (edit.nested.length
-          ? " Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять."
+          ? tl("document.sectionView.nestedSubsectionLine", " Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять.")
           : ""),
     ),
   );
@@ -263,17 +264,17 @@ export function renderSubsectionEditor(
     form.appendChild(err);
   }
   const actions = el("div", "inline-edit-actions");
-  const save = el("button", "action-btn primary", edit.phase === "saving" ? "Сохранение…" : "Сохранить");
+  const save = el("button", "action-btn primary", edit.phase === "saving" ? tl("common.saving", "Сохранение…") : tl("common.save", "Сохранить"));
   save.setAttribute("type", "button");
   save.setAttribute("data-subsection-action", "save");
   if (edit.phase !== "ready") save.setAttribute("disabled", "");
-  const cancel = el("button", "action-btn", "Отмена");
+  const cancel = el("button", "action-btn", tl("common.cancel", "Отмена"));
   cancel.setAttribute("type", "button");
   cancel.setAttribute("data-subsection-action", "cancel");
   if (edit.phase === "saving") cancel.setAttribute("disabled", "");
   if (!loadFailed) actions.appendChild(save);
   actions.appendChild(cancel);
-  if (!loadFailed) actions.appendChild(el("span", "subsection-edit-keys", "Esc — отмена · Ctrl+Enter — сохранить"));
+  if (!loadFailed) actions.appendChild(el("span", "subsection-edit-keys", tl("document.sectionView.keysHint", "Esc — отмена · Ctrl+Enter — сохранить")));
   form.appendChild(actions);
   sub.appendChild(form);
 }
@@ -284,7 +285,7 @@ function appendBackBtn(doc: Document, host: Element) {
   btn.setAttribute("href", "#docTOC");
   btn.className = "toc-back-btn";
   btn.textContent = "⏫";
-  btn.setAttribute("title", "К содержанию");
+  btn.setAttribute("title", tl("document.sectionView.toContents", "К содержанию"));
   host.appendChild(btn);
 }
 
@@ -471,7 +472,7 @@ export function SectionView({
           в globals.css с 1.6b) */}
       {section.secContext && (
         <details className="sec-disclosure">
-          <summary>Дополнительный контекст раздела</summary>
+          <summary>{tl("document.sectionView.sectionExtraContext", "Дополнительный контекст раздела")}</summary>
           <div className="disclosure-body">{section.secContext}</div>
         </details>
       )}

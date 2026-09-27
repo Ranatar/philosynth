@@ -14,6 +14,7 @@ import { emptyTopology, loadGModel } from "./graph-model.js";
 import { createGraphStyle } from "./graph-style.js";
 
 import type { GModel } from "./graph-model.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface GraphExportJSON {
   meta: {
@@ -49,7 +50,7 @@ export function buildJSON(
   G: GModel,
   doc: { docNum: string; title: string },
 ): GraphExportJSON {
-  if (!G.nodes.length) throw new ExportError("NO_GRAPH", "Нет графа.");
+  if (!G.nodes.length) throw new ExportError("NO_GRAPH", tl("common.noGraph", "Нет графа."));
   const style = createGraphStyle(G);
   const topo = G.topology || emptyTopology();
 

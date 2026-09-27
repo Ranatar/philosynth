@@ -83,6 +83,16 @@ export const users = pgTable("users", {
    *  подтверждён. Пока НЕ ограничивает ничего: вход разрешён, у всех
    *  пользователей до 9.1 колонка пуста — запрет вышвырнул бы их разом. */
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  /** Язык интерфейса (миграция 0010, беседа 11.2): 'ru' | 'en' | 'de'
+   *  (UI_LOCALES shared/i18n/locales); NULL — не выбирал: язык запроса
+   *  берётся из cookie ui_locale и Accept-Language (server/i18n/locale.ts).
+   *  Проверяется кодом, не CHECK: список языков растёт без миграции. */
+  uiLocale: text("ui_locale"),
+  /** Язык генерации по умолчанию для новых синтезов (миграция 0010, 11.2):
+   *  значение syntheses.lang («Russian», «German», …). Смена uiLocale
+   *  переписывает его правилом genLangForUi; смена genLang интерфейс не
+   *  трогает (связь односторонняя). NULL — не выбирал. */
+  genLang: text("gen_lang"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

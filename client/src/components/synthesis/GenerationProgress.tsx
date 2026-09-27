@@ -17,6 +17,7 @@
  */
 import { PauseBadge } from "./PauseModal";
 import type { SectionProgress } from "../../hooks/useStreamingGeneration";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const STEP_ICON: Record<SectionProgress["status"], string> = {
   pending: "◯",
@@ -56,8 +57,8 @@ export function GenerationProgress({
       <div className="progress-panel-header">
         <div className="progress-title">
           {complete
-            ? "✓ Синтез Философской Концепции — Завершён"
-            : "⚙ Синтез Философской Концепции — В Процессе"}
+            ? tl("synthesis.generationProgress.completeTitle", "✓ Синтез Философской Концепции — Завершён")
+            : tl("synthesis.generationProgress.inProgressTitle", "⚙ Синтез Философской Концепции — В Процессе")}
         </div>
         <div className="progress-panel-actions">
           <PauseBadge visible={paused} onClick={onPauseBadgeClick} />
@@ -65,10 +66,10 @@ export function GenerationProgress({
             <button
               type="button"
               onClick={onAbort}
-              title="Остановить текущую генерацию"
+              title={tl("synthesis.generationProgress.stopHint", "Остановить текущую генерацию")}
               className="progress-abort-btn visible"
             >
-              ⏹ Остановить
+              {tl("synthesis.generationProgress.stop", "⏹ Остановить")}
             </button>
           )}
         </div>
@@ -86,7 +87,7 @@ export function GenerationProgress({
             <span>{s.label}</span>
             {s.chars > 0 && (
               <span style={{ marginLeft: "auto" }}>
-                {s.chars.toLocaleString("ru-RU")} симв.
+                {tl("synthesis.generationProgress.chars", "{chars} симв.", { chars: s.chars.toLocaleString("ru-RU") })}
               </span>
             )}
             {s.status === "streaming" && s.subsections.length > 0 && (
@@ -94,7 +95,7 @@ export function GenerationProgress({
                 style={{ fontSize: 10, opacity: 0.7 }}
                 title={s.subsections.join(" · ")}
               >
-                подразделов: {s.subsections.length}
+                {tl("synthesis.generationProgress.subsectionsCount", "подразделов: {subsectionsCount}", { subsectionsCount: s.subsections.length })}
               </span>
             )}
           </div>
@@ -102,7 +103,7 @@ export function GenerationProgress({
         {sections.length === 0 && (
           <div className="progress-step">
             <span className="step-icon">◯</span>
-            <span>ожидание первых данных стрима…</span>
+            <span>{tl("synthesis.generationProgress.waitingStream", "ожидание первых данных стрима…")}</span>
           </div>
         )}
       </div>

@@ -18,6 +18,7 @@
  */
 import type { SectionSummary } from "@philosynth/shared/types/section";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export function subsectionSlugId(key: string, subName: string): string {
   return "subsec-" + key + "-" + subName.replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, "_");
@@ -43,7 +44,7 @@ export function TableOfContents({
   return (
     <details open id="docTOC" className="doc-body">
       <summary>
-        <span className="toc-arrow">▶</span> Содержание
+        <span className="toc-arrow">▶</span> {tl("document.tableOfContents.contents", "Содержание")}
       </summary>
       <div className="toc-body">
         {visible.map((key) => {

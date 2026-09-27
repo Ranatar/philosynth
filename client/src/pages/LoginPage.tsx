@@ -9,6 +9,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuthStore } from "../stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
@@ -34,9 +35,9 @@ export function LoginPage() {
         <div className="site-header auth-header">
           <div>
             <h1 className="brand-name">
-              Philo<span>Synth</span>
+              {tl("common.brandPhilo", "Philo")}<span>{tl("common.brandSynth", "Synth")}</span>
             </h1>
-            <div className="brand-tagline">вход</div>
+            <div className="brand-tagline">{tl("loginPage.loginLower", "вход")}</div>
           </div>
         </div>
 
@@ -50,7 +51,7 @@ export function LoginPage() {
             </p>
           )}
           <label className="form-group">
-            <span className="form-label">Email</span>
+            <span className="form-label">{tl("common.email", "Email")}</span>
             <input
               type="email"
               required
@@ -65,7 +66,7 @@ export function LoginPage() {
           </label>
 
           <label className="form-group">
-            <span className="form-label">Пароль</span>
+            <span className="form-label">{tl("loginPage.password", "Пароль")}</span>
             <input
               type="password"
               required
@@ -91,17 +92,17 @@ export function LoginPage() {
             className="submit-btn"
             style={{ justifyContent: "center", marginTop: 8 }}
           >
-            {pending ? "Вход…" : "Войти"}
+            {pending ? tl("loginPage.loggingIn", "Вход…") : tl("common.logIn", "Войти")}
           </button>
 
           <p className="submit-note" style={{ textAlign: "center", maxWidth: "100%" }}>
-            Нет аккаунта? <Link to="/register">Регистрация</Link>
+            {tl("loginPage.noAccount", "Нет аккаунта?")} <Link to="/register">{tl("loginPage.register", "Регистрация")}</Link>
             {" · "}
             <Link to="/reset-password" data-testid="forgot-password-link">
-              Забыли пароль?
+              {tl("loginPage.forgotPassword", "Забыли пароль?")}
             </Link>
             {" · "}
-            <Link to="/">На главную</Link>
+            <Link to="/">{tl("common.toHome", "На главную")}</Link>
           </p>
         </form>
       </div>

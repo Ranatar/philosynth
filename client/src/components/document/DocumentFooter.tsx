@@ -21,6 +21,7 @@
  * футер получает только onOpenLog; без пропа кнопка не рендерится.
  */
 import type { SynthesisFull } from "@philosynth/shared/types/synthesis";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface DocumentFooterProps {
   synthesis: SynthesisFull;
@@ -37,23 +38,21 @@ export function DocumentFooter({ synthesis, onOpenLog }: DocumentFooterProps) {
   const footerPhil =
     synthesis.philosophers.length === 0 &&
     synthesis.parentSyntheses.length === 0
-      ? "свободный синтез"
+      ? tl("common.freeSynthesisLower", "свободный синтез")
       : synthesis.philosophers.join(", ") || "—";
 
   return (
     <div className="doc-footer">
       <div className="doc-footer-left">
-        PhiloSynth Pro™ · v1.0
+        {tl("document.documentFooter.brandVersion", "PhiloSynth Pro™ · v1.0")}
         <br />
-        Документ сгенерирован на основе анализа ИИ (Claude)
+        {tl("document.documentFooter.aiGenerated", "Документ сгенерирован на основе анализа ИИ (Claude)")}
         <br />
-        Сессия: <span>{synthesis.docNum || "—"}</span>
+        {tl("document.documentFooter.session", "Сессия:")} <span>{synthesis.docNum || "—"}</span>
         <br />
         {hasCost && (
           <span style={{ color: "var(--gold)" }}>
-            Токены: {(synthesis.totalInputTokens as number).toLocaleString("ru")} вх. +{" "}
-            {(synthesis.totalOutputTokens as number).toLocaleString("ru")} вых. · Стоимость: $
-            {(cost as number).toFixed(4)} ({((cost as number) * 100).toFixed(2)}¢)
+            {tl("document.documentFooter.tokensCost", "Токены: {totalInputTokens} вх. + {totalOutputTokens} вых. · Стоимость: ${costUsd} ({costCents}¢)", { totalInputTokens: (synthesis.totalInputTokens as number).toLocaleString("ru"), totalOutputTokens: (synthesis.totalOutputTokens as number).toLocaleString("ru"), costUsd: (cost as number).toFixed(4), costCents: ((cost as number) * 100).toFixed(2) })}
           </span>
         )}
       </div>
@@ -64,20 +63,20 @@ export function DocumentFooter({ synthesis, onOpenLog }: DocumentFooterProps) {
               type="button"
               className="raw-copy"
               onClick={onOpenLog}
-              title="Лог контекста и генерации"
+              title={tl("document.documentFooter.contextLog", "Лог контекста и генерации")}
             >
-              ◈ Лог
+              {tl("document.documentFooter.logButton", "◈ Лог")}
             </button>
             <br />
           </>
         )}
         {synthesis.status === "ready" && (
           <>
-            <div className="validity-stamp">СИНТЕЗ ЗАВЕРШЁН</div>
+            <div className="validity-stamp">{tl("document.documentFooter.synthesisComplete", "СИНТЕЗ ЗАВЕРШЁН")}</div>
             <br />
           </>
         )}
-        Философы: <span>{footerPhil}</span>
+        {tl("document.documentFooter.philosophers", "Философы:")} <span>{footerPhil}</span>
       </div>
     </div>
   );

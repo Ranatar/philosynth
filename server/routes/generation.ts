@@ -56,6 +56,7 @@ import type {
   SubsectionImpactRequest,
   SubsectionImpactResponse,
 } from "@philosynth/shared/types/edit-plan";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const generationRoutes = new Hono<AuthEnv>();
 
@@ -66,19 +67,19 @@ async function ownerGate(
   userId: string,
 ): Promise<Response | null> {
   if (!isUuid(id))
-    return c.json({ error: "Синтез не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
   const [row] = await db
     .select({ userId: syntheses.userId })
     .from(syntheses)
     .where(eq(syntheses.id, id))
     .limit(1);
   if (!row)
-    return c.json({ error: "Синтез не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
   if (row.userId !== userId)
-    return c.json({ error: "Нет доступа к синтезу", code: "FORBIDDEN" }, 403);
+    return c.json({ error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"), code: "FORBIDDEN" }, 403);
   if (isGenerationActive(id)) {
     return c.json(
-      { error: "Генерация уже идёт", code: "GENERATION_IN_PROGRESS" },
+      { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" },
       409,
     );
   }
@@ -132,7 +133,7 @@ generationRoutes.post(
     try {
       body = (await c.req.json()) as typeof body;
     } catch {
-      return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+      return c.json({ error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" }, 400);
     }
     if (
       typeof body.sectionKey !== "string" ||
@@ -140,7 +141,7 @@ generationRoutes.post(
     ) {
       return c.json(
         {
-          error: "Требуются sectionKey и subsectionName",
+          error: tl("server.routes.generation.sectionAndSubsectionRequired", "Требуются sectionKey и subsectionName"),
           code: "VALIDATION_ERROR",
         },
         400,
@@ -181,13 +182,13 @@ generationRoutes.post("/:id/subsection-impact", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   if (!isUuid(id))
-    return c.json({ error: "Синтез не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
 
   let body: SubsectionImpactRequest;
   try {
     body = (await c.req.json()) as SubsectionImpactRequest;
   } catch {
-    return c.json({ error: "Невалидный JSON", code: "VALIDATION_ERROR" }, 400);
+    return c.json({ error: tl("common.invalidJson", "Невалидный JSON"), code: "VALIDATION_ERROR" }, 400);
   }
   if (
     typeof body.sectionKey !== "string" ||
@@ -195,7 +196,7 @@ generationRoutes.post("/:id/subsection-impact", requireAuth, async (c) => {
   ) {
     return c.json(
       {
-        error: "Требуются sectionKey и subsectionName",
+        error: tl("server.routes.generation.sectionAndSubsectionRequired", "Требуются sectionKey и subsectionName"),
         code: "VALIDATION_ERROR",
       },
       400,
@@ -206,7 +207,7 @@ generationRoutes.post("/:id/subsection-impact", requireAuth, async (c) => {
   try {
     const { row, philosophers, secCtx } = await loadSynthesis(id);
     if (row.userId !== user.id)
-      return c.json({ error: "Нет доступа к синтезу", code: "FORBIDDEN" }, 403);
+      return c.json({ error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"), code: "FORBIDDEN" }, 403);
 
     const sectionOrder: readonly string[] = row.sectionOrder ?? [];
     const infra = await buildEditInfra(row, philosophers, secCtx);
@@ -306,8 +307,8 @@ generationRoutes.post("/:id/subsection-impact", requireAuth, async (c) => {
     return c.json(response);
   } catch (err) {
     if (err instanceof GenerationError && err.code === "NOT_FOUND")
-      return c.json({ error: "Синтез не найден", code: "NOT_FOUND" }, 404);
+      return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
     console.error("[generation] subsection-impact:", err);
-    return c.json({ error: "Внутренняя ошибка", code: "INTERNAL_ERROR" }, 500);
+    return c.json({ error: tl("server.routes.generation.internalError", "Внутренняя ошибка"), code: "INTERNAL_ERROR" }, 500);
   }
 });

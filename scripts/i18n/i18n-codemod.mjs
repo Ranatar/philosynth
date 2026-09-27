@@ -14,7 +14,10 @@
  * шаблона переписываются там же (вложенность учитывается).
  *
  * Не трогает: файлы-данные (packages/shared, сиды БД), строки без ключа
- * (исключённые как неинтерфейсные), файлы, где имя tl уже занято.
+ * (исключённые как неинтерфейсные), файлы, где имя tl уже занято, и
+ * ЗЕРКАЛА С ДАННЫМИ из явного списка MIRROR_EXCLUSIONS ниже (беседа 11.2,
+ * п.7б): их строки остаются литералами, а сторожа check:integration 4x/4y
+ * сравнивают русский текст пары как есть.
  * Отчёт перечисляет static-строки (вычисляются при импорте модуля) — их
  * при смене языка нужно переделать вручную.
  */
@@ -24,7 +27,7 @@ import path from "node:path";
 import ts from "typescript";
 import { fileURLToPath } from "node:url";
 import { extractProject, namespaceOf, isDataFile, parseErrors } from "./ui-strings-lib.mjs";
-import { FN, FN_MODULE, TABLE_PATH, loadNames, resolveName, readTable } from "./i18n-core.mjs";
+import { FN, FN_MODULE, TABLE_PATH, MIRROR_EXCLUSIONS, mirrorExclusionFor, loadNames, resolveName, readTable, writeTable } from "./i18n-core.mjs";
 
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argv = process.argv.slice(2);
@@ -86,19 +89,41 @@ function addImport(src, abs) {
   return src.slice(0, end) + "\n" + line.trimEnd() + src.slice(end);
 }
 
-const report = { files: 0, rewritten: 0, skippedFiles: [], static: [], syntax: [], noKey: 0, manual: [] };
+const report = { files: 0, rewritten: 0, skippedFiles: [], static: [], syntax: [], noKey: [], manual: [], mirrors: [] };
+const seenExclusions = new Set();
+
+// Ключи, у которых есть хоть один НЕ исключённый вызов: такие строки живут и
+// как надпись (tl), и как данные (зеркало) — отметка data им не ставится
+// (i18n:export снял бы её на первой же сверке).
+const liveKeys = new Set();
+for (const f of project.files) {
+  if (isDataFile(f.rel) || !f.entries.length) continue;
+  const src0 = fs.readFileSync(path.join(SRC, f.rel), "utf8");
+  for (const e of f.entries) {
+    const r = resolveName(names, namespaceOf(f.rel), e);
+    if (r && !r.exclude && !mirrorExclusionFor(f.rel, src0, e)) liveKeys.add(r.key);
+  }
+}
 
 for (const f of project.files) {
   if (isDataFile(f.rel) || !f.entries.length) continue;
   const abs = path.join(OUT, f.rel);
   const ns = namespaceOf(f.rel);
+  const srcForExcl = fs.readFileSync(path.join(SRC, f.rel), "utf8");
 
   const chosen = [];
   for (const e of f.entries) {
     const r = resolveName(names, ns, e);
-    if (!r || r.exclude) { if (!r) report.noKey++; continue; }
+    if (!r || r.exclude) { if (!r) report.noKey.push(`${f.rel}:${e.line} ${e.text.slice(0, 60)}`); continue; }
     const row = table.strings[r.key];
-    if (!row) { report.noKey++; continue; }
+    if (!row) { report.noKey.push(`${f.rel}:${e.line} ${r.key} — ключа нет в таблице`); continue; }
+    const mirror = mirrorExclusionFor(f.rel, srcForExcl, e);
+    if (mirror) {
+      seenExclusions.add(mirror);
+      report.mirrors.push(`${f.rel}:${e.line} ${r.key} — ${mirror.reason.split(";")[0]}`);
+      if (!row.data && !liveKeys.has(r.key)) { row.data = true; report.tableTouched = true; }
+      continue;
+    }
     if (e.unprintable) { report.manual.push(`${f.rel}:${e.line} ${r.key} — подстановка не строка и не число (JSX-элемент?)`); continue; }
     chosen.push({ e, key: r.key, row });
   }
@@ -159,9 +184,13 @@ const show = (title, list, limit = 20) => {
   for (const s of list.slice(0, limit)) console.log("  " + s.slice(0, 160));
   if (list.length > limit) console.log(`  … ещё ${list.length - limit}`);
 };
+for (const x of MIRROR_EXCLUSIONS) if (!seenExclusions.has(x)) report.syntax.push(`исключение без единой строки: ${x.file} (${x.block ? x.block[0] : x.text}) — область не найдена или уже переписана`);
+if (report.tableTouched) writeTable(path.join(OUT, TABLE_PATH), table); // зеркала помечены data
 console.log(`${inPlace ? "в репозитории" : `копия: ${OUT}`}`);
-console.log(`файлов переписано ${report.files}, строк ${report.rewritten}; без ключа ${report.noKey}; ошибок синтаксиса ${report.syntax.length}`);
+console.log(`файлов переписано ${report.files}, строк ${report.rewritten}; без ключа ${report.noKey.length}; зеркал с данными оставлено ${report.mirrors.length}; ошибок синтаксиса ${report.syntax.length}`);
 show("файлы пропущены", report.skippedFiles);
+show("без ключа — дополнить names.json", report.noKey);
+show("зеркала с данными — оставлены литералами (MIRROR_EXCLUSIONS, помечены data в таблице)", report.mirrors, 40);
 show("оставлены как есть — переделать вручную", report.manual);
 show("ошибки синтаксиса", report.syntax);
 show("static — вычисляются при импорте модуля, при смене языка не обновятся (переделать вручную)", report.static, 15);

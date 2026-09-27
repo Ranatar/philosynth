@@ -36,6 +36,7 @@ import {
   useStreamingGeneration,
 } from "../hooks/useStreamingGeneration";
 import { usePoolStore } from "../stores/pool-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const REDIRECT_DELAY_MS = 1200;
 
@@ -48,8 +49,8 @@ export function metaNotAllowedText(details: unknown): string {
     : {};
   const title = typeof d.title === "string" && d.title.trim() ? d.title.trim() : null;
   return title
-    ? `Концепция «${title}»: автор не разрешил брать её в мета-синтез — уберите её из участников.`
-    : "Автор одной из концепций-участников не разрешил брать её в мета-синтез.";
+    ? tl("createSynthesisPage.metaForbiddenTitled", "Концепция «{title}»: автор не разрешил брать её в мета-синтез — уберите её из участников.", { title })
+    : tl("createSynthesisPage.metaForbidden", "Автор одной из концепций-участников не разрешил брать её в мета-синтез.");
 }
 
 export function serverErrorMessage(err: unknown): string {
@@ -63,7 +64,7 @@ export function serverErrorMessage(err: unknown): string {
         : "";
     return details ? `${err.message} (${details})` : err.message;
   }
-  return err instanceof Error ? err.message : "Не удалось запустить генерацию";
+  return err instanceof Error ? err.message : tl("createSynthesisPage.startFailed", "Не удалось запустить генерацию");
 }
 
 export function CreateSynthesisPage() {
@@ -148,9 +149,9 @@ export function CreateSynthesisPage() {
         ? stream.pause.pausedState.sectionLabel
         : "?";
       const ok = window.confirm(
-        `Пропуск раздела «${label}» может привести к деградации ` +
-          "качества следующих разделов, которые от него зависят " +
-          "(для части из них нет замены).\n\nВсё равно продолжить?",
+        tl("createSynthesisPage.skipDegradeLead", "Пропуск раздела «{label}» может привести к деградации ", { label }) +
+          tl("createSynthesisPage.skipDegradeMid", "качества следующих разделов, которые от него зависят ") +
+          tl("createSynthesisPage.skipDegradeTail", "(для части из них нет замены).\n\nВсё равно продолжить?"),
       );
       if (!ok) return; // pausedState цел — модалка остаётся
     }
@@ -160,9 +161,9 @@ export function CreateSynthesisPage() {
 
   const handleAbort = () => {
     const ok = window.confirm(
-      "Остановить текущую генерацию?\n\n" +
-        "Успевший контент будет зафиксирован как финальное состояние " +
-        "документа (без возможности возобновления).",
+      tl("createSynthesisPage.confirmStop", "Остановить текущую генерацию?\n\n") +
+        tl("createSynthesisPage.partialKeptLead", "Успевший контент будет зафиксирован как финальное состояние ") +
+        tl("createSynthesisPage.partialKeptTail", "документа (без возможности возобновления)."),
     );
     if (!ok) return;
     stream.cancel();
@@ -175,7 +176,7 @@ export function CreateSynthesisPage() {
       {/* Контейнер формы исходника [3628]: .input-form + .form-section-title */}
       <div className="input-form">
         <h1 className="form-section-title">
-          Новый синтез — § 0, Параметры Синтеза Концепции
+          {tl("createSynthesisPage.pageTitle", "Новый синтез — § 0, Параметры Синтеза Концепции")}
         </h1>
         <SynthesisForm
           onSubmit={handleSubmit}
@@ -210,12 +211,12 @@ export function CreateSynthesisPage() {
           />
           {stream.error && (
             <div className="callout warning">
-              <span className="callout-label">Ошибка генерации</span>
+              <span className="callout-label">{tl("createSynthesisPage.generationError", "Ошибка генерации")}</span>
               {stream.error}
             </div>
           )}
           {stream.complete && (
-            <div className="pool-status ok">Готово — открываю документ…</div>
+            <div className="pool-status ok">{tl("createSynthesisPage.doneOpening", "Готово — открываю документ…")}</div>
           )}
         </div>
       )}

@@ -14,10 +14,11 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useAuthStore } from "../stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Пояснение на /login после сброса (LoginPage читает location.state.notice) */
 export const PASSWORD_RESET_DONE_NOTICE =
-  "Пароль изменён; все прежние сессии завершены. Войдите с новым паролем.";
+  tl("resetPasswordPage.passwordChangedLogin", "Пароль изменён; все прежние сессии завершены. Войдите с новым паролем.");
 
 function AuthShell({ tagline, children }: { tagline: string; children: React.ReactNode }) {
   return (
@@ -26,7 +27,7 @@ function AuthShell({ tagline, children }: { tagline: string; children: React.Rea
         <div className="site-header auth-header">
           <div>
             <h1 className="brand-name">
-              Philo<span>Synth</span>
+              {tl("common.brandPhilo", "Philo")}<span>{tl("common.brandSynth", "Synth")}</span>
             </h1>
             <div className="brand-tagline">{tagline}</div>
           </div>
@@ -40,9 +41,9 @@ function AuthShell({ tagline, children }: { tagline: string; children: React.Rea
 function BackLinks() {
   return (
     <p className="submit-note" style={{ textAlign: "center", maxWidth: "100%" }}>
-      <Link to="/login">Войти</Link>
+      <Link to="/login">{tl("common.logIn", "Войти")}</Link>
       {" · "}
-      <Link to="/">На главную</Link>
+      <Link to="/">{tl("common.toHome", "На главную")}</Link>
     </p>
   );
 }
@@ -66,7 +67,7 @@ export function ResetPasswordRequestPage() {
   }
 
   return (
-    <AuthShell tagline="сброс пароля">
+    <AuthShell tagline={tl("resetPasswordPage.resetLower", "сброс пароля")}>
       {done ? (
         <div className="input-form" data-testid="reset-request-done">
           <p role="status" className="callout note">
@@ -77,7 +78,7 @@ export function ResetPasswordRequestPage() {
       ) : (
         <form onSubmit={handleSubmit} className="input-form" data-testid="reset-request-form">
           <label className="form-group">
-            <span className="form-label">Email учётной записи</span>
+            <span className="form-label">{tl("resetPasswordPage.accountEmail", "Email учётной записи")}</span>
             <input
               type="email"
               required
@@ -101,7 +102,7 @@ export function ResetPasswordRequestPage() {
             className="submit-btn"
             style={{ justifyContent: "center", marginTop: 8 }}
           >
-            {pending ? "Отправка…" : "Прислать ссылку"}
+            {pending ? tl("resetPasswordPage.sending", "Отправка…") : tl("resetPasswordPage.sendLink", "Прислать ссылку")}
           </button>
           <BackLinks />
         </form>
@@ -124,7 +125,7 @@ export function ResetPasswordConfirmPage() {
     if (pending) return;
     setErrors({});
     if (newPassword !== repeatPassword) {
-      setErrors({ repeatPassword: "Пароли не совпадают" });
+      setErrors({ repeatPassword: tl("resetPasswordPage.passwordsMismatch", "Пароли не совпадают") });
       return;
     }
     setPending(true);
@@ -142,10 +143,10 @@ export function ResetPasswordConfirmPage() {
   };
 
   return (
-    <AuthShell tagline="новый пароль">
+    <AuthShell tagline={tl("resetPasswordPage.newPasswordLower", "новый пароль")}>
       <form onSubmit={handleSubmit} className="input-form" data-testid="reset-confirm-form">
         <label className="form-group">
-          <span className="form-label">Новый пароль (не короче {PASSWORD_MIN_LENGTH} символов)</span>
+          <span className="form-label">{tl("resetPasswordPage.newPasswordMinLength", "Новый пароль (не короче {minLength} символов)", { minLength: PASSWORD_MIN_LENGTH })}</span>
           <input
             type="password"
             required
@@ -164,7 +165,7 @@ export function ResetPasswordConfirmPage() {
           )}
         </label>
         <label className="form-group">
-          <span className="form-label">Новый пароль ещё раз</span>
+          <span className="form-label">{tl("resetPasswordPage.newPasswordAgain", "Новый пароль ещё раз")}</span>
           <input
             type="password"
             required
@@ -185,7 +186,7 @@ export function ResetPasswordConfirmPage() {
         {errors._ && (
           <div role="alert" className="callout warning" data-testid="reset-confirm-error">
             {errors._}{" "}
-            <Link to="/reset-password">Запросить новую ссылку</Link>
+            <Link to="/reset-password">{tl("resetPasswordPage.requestNewLink", "Запросить новую ссылку")}</Link>
           </div>
         )}
         <button
@@ -194,7 +195,7 @@ export function ResetPasswordConfirmPage() {
           className="submit-btn"
           style={{ justifyContent: "center", marginTop: 8 }}
         >
-          {pending ? "Смена…" : "Сменить пароль"}
+          {pending ? tl("resetPasswordPage.changing", "Смена…") : tl("resetPasswordPage.changePassword", "Сменить пароль")}
         </button>
         <BackLinks />
       </form>

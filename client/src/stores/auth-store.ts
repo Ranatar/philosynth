@@ -34,6 +34,7 @@ import {
   apiPost,
   setUnauthorizedHandler,
 } from "../api/client";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Пользователь (ответ GET /auth/me; после login — до restore — role/balanceUsd могут отсутствовать) */
 export interface AuthUser {
@@ -45,6 +46,11 @@ export interface AuthUser {
   /** 9.1: адрес подтверждён; до дотяжки GET /auth/me — undefined (полоса
    *  в шапке рисуется только при строгом false) */
   emailVerified?: boolean;
+  /** 11.2: язык интерфейса ('ru'|'en'|'de') и язык генерации по умолчанию;
+   *  null — не выбирал; до дотяжки GET /auth/me — undefined. Переключатель и
+   *  применение на клиенте — 11.3 */
+  uiLocale?: string | null;
+  genLang?: string | null;
 }
 
 /** Итог повторной отправки письма с подтверждением (9.1) */
@@ -149,7 +155,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         status: "anonymous",
         pending: false,
         error:
-          err instanceof ApiError ? err.message : "Не удалось выполнить вход",
+          err instanceof ApiError ? err.message : tl("stores.authStore.loginFailed", "Не удалось выполнить вход"),
       });
       return false;
     }
@@ -173,7 +179,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error:
           err instanceof ApiError
             ? err.message
-            : "Не удалось зарегистрироваться",
+            : tl("stores.authStore.registerFailed", "Не удалось зарегистрироваться"),
       });
       return false;
     }
@@ -209,7 +215,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user });
       return { ok: true };
     } catch (err) {
-      return toActionFailure(err, "Не удалось сохранить профиль");
+      return toActionFailure(err, tl("stores.authStore.profileSaveFailed", "Не удалось сохранить профиль"));
     }
   },
 
@@ -228,10 +234,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         ok: false,
         error:
           err instanceof ApiError && err.code === "RATE_LIMIT"
-            ? "Слишком много писем за час — попробуйте позже"
+            ? tl("stores.authStore.tooManyEmails", "Слишком много писем за час — попробуйте позже")
             : err instanceof ApiError
               ? err.message
-              : "Не удалось отправить письмо",
+              : tl("stores.authStore.emailSendFailed", "Не удалось отправить письмо"),
       };
     }
   },
@@ -243,7 +249,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (user) set({ user: { ...user, emailVerified: true } });
       return { ok: true };
     } catch (err) {
-      return toActionFailure(err, "Не удалось подтвердить адрес");
+      return toActionFailure(err, tl("stores.authStore.verifyFailed", "Не удалось подтвердить адрес"));
     }
   },
 
@@ -255,7 +261,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       );
       return { ok: true, message: res.message ?? PASSWORD_RESET_REQUESTED_MESSAGE };
     } catch (err) {
-      const f = toActionFailure(err, "Не удалось отправить запрос");
+      const f = toActionFailure(err, tl("stores.authStore.requestFailed", "Не удалось отправить запрос"));
       return f.ok ? { ok: true, message: PASSWORD_RESET_REQUESTED_MESSAGE } : f;
     }
   },
@@ -268,7 +274,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (get().status === "authenticated") await get().restore();
       return { ok: true };
     } catch (err) {
-      return toActionFailure(err, "Не удалось сменить пароль");
+      return toActionFailure(err, tl("stores.authStore.passwordChangeFailed", "Не удалось сменить пароль"));
     }
   },
 
@@ -283,12 +289,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { ok: true };
     } catch (err) {
       if (err instanceof ApiError && err.code === "AUTH_REQUIRED") {
-        return { ok: false, error: "Неверный пароль" };
+        return { ok: false, error: tl("stores.authStore.wrongPassword", "Неверный пароль") };
       }
       if (err instanceof ApiError && err.code === "GENERATION_IN_PROGRESS") {
         return { ok: false, error: err.message };
       }
-      return toActionFailure(err, "Не удалось удалить аккаунт");
+      return toActionFailure(err, tl("stores.authStore.deleteFailed", "Не удалось удалить аккаунт"));
     }
   },
 
@@ -306,9 +312,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { ok: true };
     } catch (err) {
       if (err instanceof ApiError && err.code === "AUTH_REQUIRED") {
-        return { ok: false, error: "Неверный текущий пароль" };
+        return { ok: false, error: tl("stores.authStore.wrongCurrentPassword", "Неверный текущий пароль") };
       }
-      return toActionFailure(err, "Не удалось сменить пароль");
+      return toActionFailure(err, tl("stores.authStore.passwordChangeFailed", "Не удалось сменить пароль"));
     }
   },
 }));

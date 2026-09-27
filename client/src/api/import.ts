@@ -13,6 +13,7 @@ import { ApiError, type ApiErrorCode } from "./client";
 
 import type { LineageCandidate } from "@philosynth/shared/types/lineage";
 import type { ImportWarning } from "@philosynth/shared/types/synthesis";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface ImportFileResult {
   id: string;
@@ -34,7 +35,7 @@ export async function importFile(file: File): Promise<ImportFileResult> {
     });
   } catch {
     throw new ApiError(
-      "Сервер недоступен. Проверьте соединение.",
+      tl("api.import.serverUnavailable", "Сервер недоступен. Проверьте соединение."),
       "NETWORK_ERROR",
       0,
     );
@@ -48,7 +49,7 @@ export async function importFile(file: File): Promise<ImportFileResult> {
     } catch {
       if (response.ok) {
         throw new ApiError(
-          "Сервер вернул не-JSON ответ",
+          tl("api.import.nonJsonResponse", "Сервер вернул не-JSON ответ"),
           "BAD_RESPONSE",
           response.status,
         );
@@ -67,7 +68,7 @@ export async function importFile(file: File): Promise<ImportFileResult> {
     const message =
       typeof errBody.error === "string"
         ? errBody.error
-        : `Ошибка запроса (HTTP ${response.status})`;
+        : tl("api.import.requestFailedHttp", "Ошибка запроса (HTTP {status})", { status: response.status });
     throw new ApiError(message, code, response.status, errBody.details);
   }
 

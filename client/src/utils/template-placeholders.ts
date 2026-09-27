@@ -14,6 +14,7 @@
  * без .filled) — админ видит, что подстановка не задана.
  */
 
+import { tl } from "@philosynth/shared/i18n/t";
 export const PLACEHOLDER_RE = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
 /** Уникальные имена плейсхолдеров в порядке первого появления. */
@@ -38,8 +39,8 @@ export const SAMPLE_VALUES: Record<string, string> = {
   participant_word_sg_cap: "Философа",
   each_participant: "каждого философа",
   participants_note: "Участники синтеза: Кант, Хайдеггер.",
-  philosopher: "Кант",
-  method_label: "Диалектический",
+  philosopher: tl("common.kant", "Кант"),
+  method_label: tl("common.dialectical", "Диалектический"),
   method_desc: "снятие противоречий между традициями через новую категорию",
   level_label: "Трансформативный",
   level_desc: "исходные категории переосмысляются в поле напряжения",
@@ -66,7 +67,7 @@ export const SAMPLE_VALUES: Record<string, string> = {
   // 10.2 — точечная генерация в элемент (шаблон recommendations.refine_element)
   // (element_kind и current_value — общие с шаблонами обогащения 5.3, ниже)
   element_name: "Dasein",
-  field_label: "определение",
+  field_label: tl("common.definitionLower", "определение"),
   element_card: "— тип: онтологическая\n— происхождение: Хайдеггер, «Бытие и время»",
   subsection_name: "Таблица категорий",
   subsection_content: "[текст подраздела, где живёт элемент]",
@@ -75,7 +76,7 @@ export const SAMPLE_VALUES: Record<string, string> = {
   graph_block: "[таблицы категорий и связей]",
   theses_block: "[сводная таблица тезисов]",
   sum_portrait_extra: "",
-  graph_last_col_name: "Происхождение",
+  graph_last_col_name: tl("common.origin", "Происхождение"),
   graph_last_col_spec: "из какой традиции категория выросла",
   extra_category_types: "",
   extra_edge_types: "",
@@ -90,7 +91,7 @@ export const SAMPLE_VALUES: Record<string, string> = {
   source_definition: "Безусловное требование практического разума.",
   target_definition: "Экстатическое единство будущего, бывшего и настоящего.",
   edge_type: "диалектическая",
-  edge_direction: "двунаправленная",
+  edge_direction: tl("common.directionTwoWay", "двунаправленная"),
   edge_description: "Долг раскрывает временность как поле ответственности.",
   edge_metrics: "strength 0.8 · certainty 0.6",
   related_edges: "Долг → Свобода (иерархическая)",

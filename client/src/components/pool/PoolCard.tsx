@@ -19,11 +19,12 @@ import { Link } from "react-router-dom";
 import { ML, SL } from "@philosynth/shared/constants/labels";
 
 import type { PoolConceptEntry } from "../../utils/concept-file";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** ORDER_LABELS [5023] — дословно */
 const ORDER_LABELS: Readonly<Record<string, string>> = {
-  genetic: "генетич.",
-  architectural: "архитект.",
+  genetic: tl("pool.poolCard.geneticShort", "генетич."),
+  architectural: tl("pool.poolCard.architecturalShort", "архитект."),
 };
 
 export interface PoolCardProps {
@@ -46,7 +47,7 @@ export function PoolCard({
   const levelLabel =
     (SL as Record<string, string>)[c.synthLevel] || c.synthLevel || "?";
   const orderLabel = ORDER_LABELS[c.generationOrder] ?? "";
-  const sourcesStr = c.sources.length ? c.sources.join(", ") : "только капсула";
+  const sourcesStr = c.sources.length ? c.sources.join(", ") : tl("pool.poolCard.capsuleOnly", "только капсула");
 
   const synthDisabled = !c.participant;
   const showWarn = !!c.participantError && !c.participant;
@@ -65,12 +66,12 @@ export function PoolCard({
       <div className="pool-card-controls">
         <input
           type="checkbox"
-          title="Участник мета-синтеза"
+          title={tl("pool.poolCard.metaParticipant", "Участник мета-синтеза")}
           checked={c.isSynthParticipant}
           disabled={synthDisabled}
           onChange={() => onToggleSynth(c.id)}
         />
-        <label>Синтез</label>
+        <label>{tl("common.synthesis", "Синтез")}</label>
       </div>
 
       {/* Колонка 2: радио просмотра. Каталожная запись (беседа 3.2):
@@ -78,22 +79,22 @@ export function PoolCard({
           синтеза (полный просмотр там) */}
       <div className="pool-card-controls">
         {c.synthesisId ? (
-          <Link to={`/synthesis/${c.synthesisId}`} title="Открыть страницу синтеза">
-            ↗<label>Открыть</label>
+          <Link to={`/synthesis/${c.synthesisId}`} title={tl("pool.poolCard.openSynthesisPage", "Открыть страницу синтеза")}>
+            ↗<label>{tl("pool.poolCard.open", "Открыть")}</label>
           </Link>
         ) : (
           <>
             <input
               type="radio"
               name="poolView"
-              title="Просмотр и редактирование"
+              title={tl("pool.poolCard.viewAndEdit", "Просмотр и редактирование")}
               checked={c.isSelected}
               onClick={() => onSelectForViewing(c.id)}
               onChange={() => {
                 /* toggle в onClick — как в исходнике (повторный клик = деселект) */
               }}
             />
-            <label>Просм.</label>
+            <label>{tl("pool.poolCard.viewShort", "Просм.")}</label>
           </>
         )}
       </div>
@@ -115,7 +116,7 @@ export function PoolCard({
         <button
           type="button"
           onClick={() => onRename(c.id)}
-          title="Переименовать"
+          title={tl("pool.poolCard.rename", "Переименовать")}
           className="pool-card-btn"
         >
           ✎
@@ -123,7 +124,7 @@ export function PoolCard({
         <button
           type="button"
           onClick={() => onRemove(c.id)}
-          title="Удалить из пула"
+          title={tl("pool.poolCard.removeFromPool", "Удалить из пула")}
           className="pool-card-btn remove"
         >
           ✕

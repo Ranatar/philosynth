@@ -25,6 +25,7 @@ import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAuthStore } from "../../stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -67,12 +68,11 @@ function UnverifiedEmailBanner({ email }: { email: string }) {
       style={{ marginBottom: 0 }}
     >
       <span className="app-view-banner-text">
-        Адрес не подтверждён · {email}
-        {error ? ` · ${error}` : ""}
+        {tl("layout.header.emailUnverified", "Адрес не подтверждён · {email}{error}", { email, error: error ? ` · ${error}` : "" })}
       </span>
       {phase === "sent" ? (
         <span className="app-view-banner-text" role="status" data-testid="unverified-sent">
-          Письмо отправлено — проверьте почту
+          {tl("layout.header.emailSent", "Письмо отправлено — проверьте почту")}
         </span>
       ) : (
         <button
@@ -82,7 +82,7 @@ function UnverifiedEmailBanner({ email }: { email: string }) {
           disabled={phase === "pending"}
           data-testid="unverified-resend"
         >
-          {phase === "pending" ? "Отправка…" : "Отправить письмо ещё раз"}
+          {phase === "pending" ? tl("layout.header.sending", "Отправка…") : tl("layout.header.resendEmail", "Отправить письмо ещё раз")}
         </button>
       )}
     </div>
@@ -109,22 +109,22 @@ export function Header({ onToggleSidebar, showBurger = true }: HeaderProps) {
             <button
               type="button"
               onClick={onToggleSidebar}
-              aria-label="Открыть меню"
+              aria-label={tl("layout.header.openMenu", "Открыть меню")}
               className="app-topbar-btn app-burger"
             >
               ☰
             </button>
           )}
-          <span>PhiloSynth Pro™</span>
-          <span className="topbar-badge">Synthesis Engine v1.0</span>
+          <span>{tl("layout.header.brand", "PhiloSynth Pro™")}</span>
+          <span className="topbar-badge">{tl("layout.header.engineVersion", "Synthesis Engine v1.0")}</span>
           <span className="topbar-tagline">
-            Платформа синтеза философских концепций · Claude-Powered · 3D/2D Graph
+            {tl("layout.header.tagline", "Платформа синтеза философских концепций · Claude-Powered · 3D/2D Graph")}
           </span>
         </div>
         <div className="topbar-right app-topbar-right" data-testid="topbar-right">
           {user ? (
             <>
-              <Link to="/profile" title="Профиль" className="app-topbar-link">
+              <Link to="/profile" title={tl("layout.header.profile", "Профиль")} className="app-topbar-link">
                 <span>{user.displayName || user.email}</span>
               </Link>
               <button
@@ -132,17 +132,17 @@ export function Header({ onToggleSidebar, showBurger = true }: HeaderProps) {
                 onClick={handleLogout}
                 className="app-topbar-btn"
               >
-                Выйти
+                {tl("layout.header.logOut", "Выйти")}
               </button>
             </>
           ) : status === "anonymous" ? (
             <span className="app-guest-links" data-testid="guest-links">
               <Link to="/login" className="app-guest-link">
-                Войти
+                {tl("common.logIn", "Войти")}
               </Link>
               <span className="app-guest-sep">·</span>
               <Link to="/register" className="app-guest-link">
-                Регистрация
+                {tl("layout.header.register", "Регистрация")}
               </Link>
             </span>
           ) : null}
@@ -155,24 +155,20 @@ export function Header({ onToggleSidebar, showBurger = true }: HeaderProps) {
         <div>
           <Link to={user ? "/catalog" : "/"} className="brand-link">
             <div className="brand-name">
-              Philo<span>Synth</span>
+              {tl("common.brandPhilo", "Philo")}<span>{tl("common.brandSynth", "Synth")}</span>
             </div>
           </Link>
           <div className="brand-tagline">
-            Система Синтеза Философских Концепций · Professional Grade
+            {tl("layout.header.heroTitle", "Система Синтеза Философских Концепций · Professional Grade")}
           </div>
           <div className="brand-desc">
-            Платформа для автоматизированного синтеза, анализа и формализации
-            философских концепций на основе выбранных философских традиций.
-            Генерация графов категорий с интерактивной 3D/2D-визуализацией,
-            тезисов, диалогов, исторической контекстуализации и критического
-            анализа — в формате единого структурированного документа.
+            {tl("layout.header.heroText", "Платформа для автоматизированного синтеза, анализа и формализации философских концепций на основе выбранных философских традиций. Генерация графов категорий с интерактивной 3D/2D-визуализацией, тезисов, диалогов, исторической контекстуализации и критического анализа — в формате единого структурированного документа.")}
           </div>
         </div>
         <div className="header-badges">
-          <div className="cert-badge gold">★ AI-POWERED SYNTHESIS</div>
-          <div className="cert-badge">THREE.JS + D3.JS GRAPH</div>
-          <div className="cert-badge">STREAMING OUTPUT</div>
+          <div className="cert-badge gold">{tl("layout.header.badgeAi", "★ AI-POWERED SYNTHESIS")}</div>
+          <div className="cert-badge">{tl("layout.header.badgeGraph", "THREE.JS + D3.JS GRAPH")}</div>
+          <div className="cert-badge">{tl("layout.header.badgeStreaming", "STREAMING OUTPUT")}</div>
         </div>
       </div>
     </header>

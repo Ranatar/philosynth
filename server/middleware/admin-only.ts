@@ -6,13 +6,14 @@
 import type { MiddlewareHandler } from "hono";
 
 import type { AuthEnv } from "./auth.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** role === 'admin' → дальше; иначе 403 FORBIDDEN (03-spec §4.3). */
 export const requireAdmin: MiddlewareHandler<AuthEnv> = async (c, next) => {
   const user = c.get("user");
   if (!user || user.role !== "admin") {
     return c.json(
-      { error: "Требуются права администратора", code: "FORBIDDEN" },
+      { error: tl("server.middleware.adminOnly.adminRequired", "Требуются права администратора"), code: "FORBIDDEN" },
       403,
     );
   }

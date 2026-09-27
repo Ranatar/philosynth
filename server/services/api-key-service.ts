@@ -32,6 +32,7 @@ import {
   packSecret,
   unpackSecret,
 } from "../utils/crypto.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const { apiKeys } = schema;
 
@@ -68,16 +69,16 @@ function encryptionKey(): Buffer {
 /** Валидация формата; возвращает нормализованный (trim) ключ. */
 export function validateApiKeyFormat(raw: unknown): string {
   if (typeof raw !== "string" || !raw.trim()) {
-    throw new ApiKeyError("VALIDATION_ERROR", "Ключ не задан", {
-      key: "Введите API-ключ Anthropic",
+    throw new ApiKeyError("VALIDATION_ERROR", tl("server.apiKeyService.keyMissing", "Ключ не задан"), {
+      key: tl("server.apiKeyService.enterAnthropicKey", "Введите API-ключ Anthropic"),
     });
   }
   const key = raw.trim();
   if (key.length < API_KEY_MIN_LENGTH || !API_KEY_RE.test(key)) {
     throw new ApiKeyError(
       "VALIDATION_ERROR",
-      "Неверный формат ключа",
-      { key: "Ожидается ключ Anthropic вида sk-ant-…" },
+      tl("server.apiKeyService.invalidKeyFormat", "Неверный формат ключа"),
+      { key: tl("server.apiKeyService.anthropicKeyExpected", "Ожидается ключ Anthropic вида sk-ant-…") },
     );
   }
   return key;
@@ -147,7 +148,7 @@ export async function deleteApiKey(
     .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
     .returning({ id: apiKeys.id });
   if (deleted.length === 0) {
-    throw new ApiKeyError("NOT_FOUND", "Ключ не найден");
+    throw new ApiKeyError("NOT_FOUND", tl("server.apiKeyService.keyNotFound", "Ключ не найден"));
   }
 }
 

@@ -26,6 +26,7 @@
  * сохраняется — GenealogyTree рисует кликабельные ссылки (п. 4).
  */
 import type { LineageNode } from "@philosynth/shared/types/lineage";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ─────────────────────────── Типы ─────────────────────────── */
 
@@ -150,7 +151,7 @@ export function reconstructGenealogy(
   // иначе явный плейсхолдер. Это защищает от транзитивного
   // распространения «Синтез Философской Концепции» через многоступенчатый
   // метасинтез.
-  const resolvedName = resolveConceptName(doc) || "[безымянная концепция]";
+  const resolvedName = resolveConceptName(doc) || tl("utils.genealogy.unnamedConcept", "[безымянная концепция]");
 
   // Если в embedded state есть participants с концепциями — используем их
   if (embeddedState?.participants) {
@@ -231,7 +232,7 @@ export function normalizeGenealogyNames(
     copy.name =
       fallbackName && !isPlaceholderConceptName(fallbackName)
         ? fallbackName
-        : "[безымянная концепция]";
+        : tl("utils.genealogy.unnamedConcept", "[безымянная концепция]");
   }
   if (copy.participants) {
     copy.participants = copy.participants
@@ -307,13 +308,13 @@ export function checkGenealogyOverlaps(
         warnings.push({
           level: "info",
           text:
-            "Концепции «" +
+            tl("utils.genealogy.conceptsLead", "Концепции «") +
             a.name +
-            "» и «" +
+            tl("utils.genealogy.andQuote", "» и «") +
             b.name +
-            "» имеют общих предков: " +
+            tl("utils.genealogy.haveCommonAncestors", "» имеют общих предков: ") +
             overlap.join(", ") +
-            ". Это может привести к доминированию их позиций.",
+            tl("utils.genealogy.mayDominate", ". Это может привести к доминированию их позиций."),
         });
       }
     }
@@ -329,12 +330,12 @@ export function checkGenealogyOverlaps(
       warnings.push({
         level: "warn",
         text:
-          "Философ(ы) " +
+          tl("utils.genealogy.philosophersLead", "Философ(ы) ") +
           overlap.join(", ") +
-          " выбран(ы) для синтеза и одновременно присутствуют в генеалогии " +
-          "концепции «" +
+          tl("utils.genealogy.selectedAndInGenealogy", " выбран(ы) для синтеза и одновременно присутствуют в генеалогии ") +
+          tl("utils.genealogy.ofConcept", "концепции «") +
           cs.name +
-          "». Их влияние будет удвоено.",
+          tl("utils.genealogy.influenceDoubled", "». Их влияние будет удвоено."),
       });
     }
   }

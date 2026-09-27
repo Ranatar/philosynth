@@ -47,6 +47,7 @@ import type {
   CtxLogEntry,
   GenLogEntry,
 } from "@philosynth/shared/types/generation";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const logsRoutes = new Hono<AuthEnv>();
 
@@ -64,11 +65,11 @@ export function logsAllowed(
 }
 
 const logsForbiddenJson = {
-  error: "Автор не открыл лог генерации этой концепции",
+  error: tl("server.routes.logs.logClosed", "Автор не открыл лог генерации этой концепции"),
   code: "FORBIDDEN",
 } as const;
 const promptsForbiddenJson = {
-  error: "Автор не открыл тексты запросов этой концепции",
+  error: tl("server.routes.logs.promptsClosed", "Автор не открыл тексты запросов этой концепции"),
   code: "FORBIDDEN",
 } as const;
 

@@ -37,6 +37,7 @@ import {
   getStreamState,
   saveStreamState,
 } from "../ws/stream-state.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export { getStreamState, clearStreamState };
 export type { StreamState } from "../ws/stream-state.js";
@@ -222,7 +223,7 @@ export async function streamSection(
   const onOuterAbort = (): void => ctrl.abort();
   if (opts.signal) {
     if (opts.signal.aborted) {
-      throw new StreamError("Генерация остановлена", "user-abort");
+      throw new StreamError(tl("server.streamingManager.generationStopped", "Генерация остановлена"), "user-abort");
     }
     opts.signal.addEventListener("abort", onOuterAbort, { once: true });
   }
@@ -295,7 +296,7 @@ export async function streamSection(
 
   if (!resp.body) {
     opts.signal?.removeEventListener("abort", onOuterAbort);
-    throw new StreamError("Пустое тело ответа API", "pre-stream");
+    throw new StreamError(tl("server.streamingManager.emptyResponseBody", "Пустое тело ответа API"), "pre-stream");
   }
 
   const reader = resp.body.getReader();
@@ -397,8 +398,8 @@ export async function streamSection(
   if (stopReason === "max_tokens") {
     saveState("error", true);
     const err = new StreamError(
-      `Ответ оборван по лимиту токенов (max_tokens = ${maxTokens.toLocaleString("ru")}). ` +
-        "Раздел слишком объёмный для одного запроса.",
+      tl("server.streamingManager.truncatedByMaxTokens", "Ответ оборван по лимиту токенов (max_tokens = {maxTokens}). ", { maxTokens: maxTokens.toLocaleString("ru") }) +
+        tl("server.streamingManager.sectionTooLarge", "Раздел слишком объёмный для одного запроса."),
       "max-tokens",
     );
     err.maxTokensUsed = maxTokens;

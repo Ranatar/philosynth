@@ -46,6 +46,7 @@ import {
   type EnrichableElementKind,
 } from "../api/enrichment";
 import { useWebSocket, type WsStatus } from "./useWebSocket";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export type EnrichmentOperation =
   | {
@@ -109,8 +110,8 @@ export interface UseEnrichmentStreamOptions {
 export function messageOfEnrichmentError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === "GENERATION_IN_PROGRESS")
-      return "Идёт другая операция (генерация, режим или обогащение) — дождитесь её завершения";
-    if (err.code === "FORBIDDEN") return "Обогащать элементы может только владелец синтеза";
+      return tl("hooks.useEnrichmentStream.otherOperation", "Идёт другая операция (генерация, режим или обогащение) — дождитесь её завершения");
+    if (err.code === "FORBIDDEN") return tl("hooks.useEnrichmentStream.ownerOnly", "Обогащать элементы может только владелец синтеза");
     if (err.code === "VALIDATION_ERROR" && err.details && typeof err.details === "object") {
       const d = Object.values(err.details as Record<string, unknown>).filter(
         (v) => typeof v === "string",
@@ -196,7 +197,7 @@ export function useEnrichmentStream(
   const begin = useCallback(
     async (op: EnrichmentOperation, post: () => Promise<unknown>): Promise<boolean> => {
       if (activeRef.current) {
-        setError("Предыдущее обогащение ещё не завершено — дождитесь результата");
+        setError(tl("hooks.useEnrichmentStream.previousNotDone", "Предыдущее обогащение ещё не завершено — дождитесь результата"));
         return false;
       }
       setError(null);

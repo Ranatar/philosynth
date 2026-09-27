@@ -38,6 +38,7 @@ import type {
   VersionOrigin,
   VersionedElementType,
 } from "@philosynth/shared/types/elements";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const VERSIONED_ELEMENT_TYPES: readonly VersionedElementType[] = [
   "category",
@@ -126,7 +127,7 @@ export async function createVersion(
       ...(origin ? { origin } : {}),
     })
     .returning();
-  if (!row) throw new Error("element-versioning: insert без returning");
+  if (!row) throw new Error(tl("server.elementVersioning.insertWithoutReturning", "element-versioning: insert без returning"));
   return toDto(row);
 }
 
@@ -226,7 +227,7 @@ export async function restoreElementData(
     .where(and(eq(t.id, elementId), eq(t.synthesisId, synthesisId)))
     .returning();
   const row = rows[0] as Record<string, unknown> | undefined;
-  if (!row) throw new VersioningError("NOT_FOUND", "Элемент не найден");
+  if (!row) throw new VersioningError("NOT_FOUND", tl("common.elementNotFound", "Элемент не найден"));
   return row;
 }
 
@@ -263,10 +264,10 @@ export async function rollbackToVersion(
         ),
       )
       .limit(1);
-    if (!target) throw new VersioningError("NOT_FOUND", "Версия не найдена");
+    if (!target) throw new VersioningError("NOT_FOUND", tl("server.elementVersioning.versionNotFound", "Версия не найдена"));
 
     const current = await loadElementRow(synthesisId, elementType, elementId, tx);
-    if (!current) throw new VersioningError("NOT_FOUND", "Элемент не найден");
+    if (!current) throw new VersioningError("NOT_FOUND", tl("common.elementNotFound", "Элемент не найден"));
 
     const created = await createVersion(
       synthesisId,

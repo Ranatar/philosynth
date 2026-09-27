@@ -47,6 +47,7 @@ import {
   type StripeInvoice,
   type StripeSubscription,
 } from "./stripe-client.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const { subscriptionPlans, userSubscriptions, users } = schema;
 
@@ -293,7 +294,7 @@ export async function ensureStripeCustomer(userId: string): Promise<string> {
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  if (!u) throw new SubscriptionError("NOT_FOUND", "Пользователь не найден");
+  if (!u) throw new SubscriptionError("NOT_FOUND", tl("common.userNotFound", "Пользователь не найден"));
   if (u.customerId) return u.customerId;
 
   const customer = await stripe.createCustomer({
@@ -331,13 +332,13 @@ export async function createSubscription(
     .from(subscriptionPlans)
     .where(and(eq(subscriptionPlans.id, planId), eq(subscriptionPlans.isActive, true)))
     .limit(1);
-  if (!plan) throw new SubscriptionError("NOT_FOUND", "Тариф не найден");
+  if (!plan) throw new SubscriptionError("NOT_FOUND", tl("server.subscriptionService.planNotFound", "Тариф не найден"));
 
   const existing = await findBillableSubscription(userId);
   if (existing) {
     throw new SubscriptionError(
       "VALIDATION_ERROR",
-      "У пользователя уже есть активная подписка",
+      tl("server.subscriptionService.alreadySubscribed", "У пользователя уже есть активная подписка"),
       { planId: existing.plan.name },
     );
   }
@@ -385,7 +386,7 @@ async function setCancelFlag(
 ): Promise<UserSubscription> {
   const found = await findBillableSubscription(userId);
   if (!found) {
-    throw new SubscriptionError("NOT_FOUND", "Активной подписки нет");
+    throw new SubscriptionError("NOT_FOUND", tl("server.subscriptionService.noActiveSubscription", "Активной подписки нет"));
   }
   const s = found.subscription;
   await stripe.updateSubscription(s.stripeSubscriptionId, {
@@ -430,7 +431,7 @@ export async function checkQuota(
     .innerJoin(subscriptionPlans, eq(userSubscriptions.planId, subscriptionPlans.id))
     .where(eq(userSubscriptions.id, subscriptionId))
     .limit(1);
-  if (!row) throw new SubscriptionError("NOT_FOUND", "Подписка не найдена");
+  if (!row) throw new SubscriptionError("NOT_FOUND", tl("server.subscriptionService.subscriptionNotFound", "Подписка не найдена"));
   const used = usedOf(row.subscription, quotaType);
   const quota = quotaOf(row.plan, quotaType);
   return { ok: used + units <= quota, used, quota, remaining: Math.max(0, quota - used) };

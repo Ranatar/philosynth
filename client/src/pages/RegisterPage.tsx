@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAuthStore } from "../stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -28,9 +29,9 @@ export function RegisterPage() {
         <div className="site-header auth-header">
           <div>
             <h1 className="brand-name">
-              Philo<span>Synth</span>
+              {tl("common.brandPhilo", "Philo")}<span>{tl("common.brandSynth", "Synth")}</span>
             </h1>
-            <div className="brand-tagline">регистрация</div>
+            <div className="brand-tagline">{tl("registerPage.registrationLower", "регистрация")}</div>
           </div>
         </div>
 
@@ -39,7 +40,7 @@ export function RegisterPage() {
           className="input-form"
         >
           <label className="form-group">
-            <span className="form-label">Email</span>
+            <span className="form-label">{tl("common.email", "Email")}</span>
             <input
               type="email"
               required
@@ -54,7 +55,7 @@ export function RegisterPage() {
           </label>
 
           <label className="form-group">
-            <span className="form-label">Пароль (не короче {PASSWORD_MIN_LENGTH} символов)</span>
+            <span className="form-label">{tl("registerPage.passwordMinLength", "Пароль (не короче {minLength} символов)", { minLength: PASSWORD_MIN_LENGTH })}</span>
             <input
               type="password"
               required
@@ -70,7 +71,7 @@ export function RegisterPage() {
           </label>
 
           <label className="form-group">
-            <span className="form-label">Отображаемое имя (необязательно)</span>
+            <span className="form-label">{tl("registerPage.displayNameOptional", "Отображаемое имя (необязательно)")}</span>
             <input
               type="text"
               autoComplete="nickname"
@@ -92,13 +93,13 @@ export function RegisterPage() {
             className="submit-btn"
             style={{ justifyContent: "center", marginTop: 8 }}
           >
-            {pending ? "Создание…" : "Создать аккаунт"}
+            {pending ? tl("common.creating", "Создание…") : tl("common.createAccount", "Создать аккаунт")}
           </button>
 
           <p className="submit-note" style={{ textAlign: "center", maxWidth: "100%" }}>
-            Уже есть аккаунт? <Link to="/login">Войти</Link>
+            {tl("registerPage.haveAccount", "Уже есть аккаунт?")} <Link to="/login">{tl("common.logIn", "Войти")}</Link>
             {" · "}
-            <Link to="/">На главную</Link>
+            <Link to="/">{tl("common.toHome", "На главную")}</Link>
           </p>
         </form>
       </div>

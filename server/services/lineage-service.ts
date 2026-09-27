@@ -41,6 +41,7 @@ import type {
   LineageRecord,
   ParticipantInput,
 } from "@philosynth/shared/types/lineage";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const MAX_LINEAGE_DEPTH = 10;
 
@@ -600,7 +601,7 @@ export async function linkParent(
   if (synthesisId === parentSynthesisId) {
     throw new LineageLinkError(
       "LINEAGE_SELF",
-      "Концепция не может быть собственным родителем",
+      tl("server.lineageService.selfParent", "Концепция не может быть собственным родителем"),
     );
   }
   const [dup] = await db
@@ -617,13 +618,13 @@ export async function linkParent(
   if (dup) {
     throw new LineageLinkError(
       "LINEAGE_EXISTS",
-      "Эта концепция уже указана родителем",
+      tl("server.lineageService.alreadyParent", "Эта концепция уже указана родителем"),
     );
   }
   if (await isDescendantOf(synthesisId, parentSynthesisId)) {
     throw new LineageLinkError(
       "LINEAGE_CYCLE",
-      "Нельзя назначить родителем собственного потомка — родословная замкнётся в цикл",
+      tl("server.lineageService.descendantAsParent", "Нельзя назначить родителем собственного потомка — родословная замкнётся в цикл"),
     );
   }
   // Позиция связи. Правило приоритета дерева файла: если в file_genealogy
@@ -669,7 +670,7 @@ export async function linkParent(
       position,
     })
     .returning();
-  if (!row) throw new Error("synthesis_lineage: строка связи не создана");
+  if (!row) throw new Error(tl("server.lineageService.lineageRowNotCreated", "synthesis_lineage: строка связи не создана"));
   return {
     id: row.id,
     synthesisId: row.synthesisId,

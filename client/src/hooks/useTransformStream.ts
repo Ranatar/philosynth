@@ -23,6 +23,7 @@ import type { TokenUsage, WsServerMessage } from "@philosynth/shared/types/ws-me
 import { ApiError } from "../api/client";
 import { startTransformRequest } from "../api/transforms";
 import { useWebSocket, type WsStatus } from "./useWebSocket";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface TransformDoneEvent {
   direction: TransformDirection;
@@ -57,8 +58,8 @@ export const TRANSFORM_STREAM_PREFIX = "transform:";
 export function messageOfTransformError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === "GENERATION_IN_PROGRESS")
-      return "Идёт другая операция (генерация, режим, обогащение или трансформация) — дождитесь её завершения";
-    if (err.code === "FORBIDDEN") return "Трансформировать представления может только владелец синтеза";
+      return tl("hooks.useTransformStream.otherOperation", "Идёт другая операция (генерация, режим, обогащение или трансформация) — дождитесь её завершения");
+    if (err.code === "FORBIDDEN") return tl("hooks.useTransformStream.ownerOnly", "Трансформировать представления может только владелец синтеза");
     if (err.code === "VALIDATION_ERROR" && err.details && typeof err.details === "object") {
       const d = Object.values(err.details as Record<string, unknown>).filter(
         (v) => typeof v === "string",
@@ -137,7 +138,7 @@ export function useTransformStream(options: UseTransformStreamOptions): Transfor
   const start = useCallback<TransformStream["start"]>(
     async (direction) => {
       if (activeRef.current) {
-        setError("Предыдущая трансформация ещё не завершена — дождитесь результата");
+        setError(tl("hooks.useTransformStream.previousNotDone", "Предыдущая трансформация ещё не завершена — дождитесь результата"));
         return false;
       }
       setError(null);

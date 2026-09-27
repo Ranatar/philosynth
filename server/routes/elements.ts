@@ -79,6 +79,7 @@ import type {
   GraphData,
   TopologyInfo,
 } from "@philosynth/shared/types/graph";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const elementsRoutes = new Hono<AuthEnv>();
 
@@ -218,7 +219,7 @@ export async function ownerEditGate(
   if (row.userId !== userId) return c.json(forbiddenJson, 403);
   if (isGenerationActive(id))
     return c.json(
-      { error: "Генерация уже идёт", code: "GENERATION_IN_PROGRESS" },
+      { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" },
       409,
     );
   return null;
@@ -250,7 +251,7 @@ function serviceError(c: Context, err: unknown): Response {
   throw err;
 }
 
-const invalidIdJson = { error: "Элемент не найден", code: "NOT_FOUND" } as const;
+const invalidIdJson = { error: tl("common.elementNotFound", "Элемент не найден"), code: "NOT_FOUND" } as const;
 
 /* ── GET /:id/categories/:catId ──────────────────────────────────────── */
 
@@ -416,7 +417,7 @@ elementsRoutes.get(
     const elementId = c.req.param("elementId");
     if (!isVersionedElementType(elementType))
       return c.json(
-        { error: "Неизвестный тип элемента", code: "VALIDATION_ERROR", details: { elementType } },
+        { error: tl("server.routes.elements.unknownElementType", "Неизвестный тип элемента"), code: "VALIDATION_ERROR", details: { elementType } },
         400,
       );
     if (!isUuid(elementId)) return c.json(invalidIdJson, 404);
@@ -442,7 +443,7 @@ elementsRoutes.post(
     const elementId = c.req.param("elementId");
     if (!isVersionedElementType(elementType))
       return c.json(
-        { error: "Неизвестный тип элемента", code: "VALIDATION_ERROR", details: { elementType } },
+        { error: tl("server.routes.elements.unknownElementType", "Неизвестный тип элемента"), code: "VALIDATION_ERROR", details: { elementType } },
         400,
       );
     if (!isUuid(elementId)) return c.json(invalidIdJson, 404);
@@ -451,7 +452,7 @@ elementsRoutes.post(
       body && typeof body === "object" ? (body as { version?: unknown }).version : undefined;
     if (typeof version !== "number" || !Number.isInteger(version) || version < 1)
       return c.json(
-        { error: "Требуется version ≥ 1", code: "VALIDATION_ERROR", details: { version: "целое ≥ 1" } },
+        { error: tl("server.routes.elements.versionRequired", "Требуется version ≥ 1"), code: "VALIDATION_ERROR", details: { version: tl("server.routes.elements.integerAtLeastOne", "целое ≥ 1") } },
         400,
       );
     try {

@@ -15,6 +15,7 @@ import { closeDb, sql } from "./db/index.js";
 import { closeRedis, connectRedis } from "./redis.js";
 import type { AuthEnv } from "./middleware/auth.js";
 import { rateLimiter } from "./middleware/rate-limiter.js";
+import { installServerCatalogProvider, requestLocale } from "./i18n/locale.js"; // беседа 11.2
 import { authRoutes } from "./routes/auth.js";
 import { synthesesRoutes } from "./routes/syntheses.js";
 import { sectionsRoutes } from "./routes/sections.js";
@@ -78,6 +79,11 @@ app.get("/api/v1/health", async (c) => {
 
 /* ── API-роуты (под rate-limiter) ────────────────────────────────────── */
 
+// Язык запроса (11.2): контекст ДО роутов — по cookie ui_locale и
+// Accept-Language; requireAuth/optionalAuth поднимают язык пользователя.
+// Провайдер каталога tl() читает его же.
+installServerCatalogProvider();
+app.use("/api/v1/*", requestLocale);
 app.use("/api/v1/*", rateLimiter());
 app.route("/api/v1/auth", authRoutes);
 app.route("/api/v1/syntheses", synthesesRoutes); // беседа 1.4 + 1.6

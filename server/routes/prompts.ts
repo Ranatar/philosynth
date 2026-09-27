@@ -39,6 +39,7 @@ import {
   listVersions,
   RegistryNotFoundError,
 } from "../services/prompt-registry.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const promptsRoutes = new Hono<AuthEnv>();
 
@@ -51,7 +52,7 @@ const KEY_RE = /^[A-Za-z0-9._:-]{1,200}$/;
 
 function badKey(c: Context<AuthEnv>): Response {
   return c.json(
-    { error: "Невалидный ключ", code: "VALIDATION_ERROR", details: { key: "допустимы [A-Za-z0-9._:-]" } },
+    { error: tl("server.routes.prompts.invalidKey", "Невалидный ключ"), code: "VALIDATION_ERROR", details: { key: tl("server.routes.prompts.allowedChars", "допустимы [A-Za-z0-9._:-]") } },
     400,
   );
 }
@@ -97,7 +98,7 @@ promptsRoutes.post("/prompts/:key", async (c) => {
   const body = await readJson(c);
   if (typeof body.body !== "string" || !body.body.trim()) {
     return c.json(
-      { error: "Тело шаблона пусто", code: "VALIDATION_ERROR", details: { body: "непустая строка" } },
+      { error: tl("server.routes.prompts.templateBodyEmpty", "Тело шаблона пусто"), code: "VALIDATION_ERROR", details: { body: tl("server.routes.prompts.nonEmptyString", "непустая строка") } },
       400,
     );
   }
@@ -114,7 +115,7 @@ promptsRoutes.post("/prompts/:key/activate", async (c) => {
   const version = parseVersion(body.version);
   if (version === null) {
     return c.json(
-      { error: "version не задан", code: "VALIDATION_ERROR", details: { version: "целое ≥ 1" } },
+      { error: tl("server.routes.prompts.versionMissing", "version не задан"), code: "VALIDATION_ERROR", details: { version: tl("server.routes.prompts.integerAtLeastOne", "целое ≥ 1") } },
       400,
     );
   }
@@ -152,7 +153,7 @@ promptsRoutes.put("/configs/:key", async (c) => {
   const body = await readJson(c);
   if (!("value" in body) || body.value === undefined) {
     return c.json(
-      { error: "value не задано", code: "VALIDATION_ERROR", details: { value: "JSON-значение конфига" } },
+      { error: tl("server.routes.prompts.valueMissing", "value не задано"), code: "VALIDATION_ERROR", details: { value: tl("server.routes.prompts.configJsonValue", "JSON-значение конфига") } },
       400,
     );
   }
@@ -168,7 +169,7 @@ promptsRoutes.post("/configs/:key/activate", async (c) => {
   const version = parseVersion(body.version);
   if (version === null) {
     return c.json(
-      { error: "version не задан", code: "VALIDATION_ERROR", details: { version: "целое ≥ 1" } },
+      { error: tl("server.routes.prompts.versionMissing", "version не задан"), code: "VALIDATION_ERROR", details: { version: tl("server.routes.prompts.integerAtLeastOne", "целое ≥ 1") } },
       400,
     );
   }

@@ -55,7 +55,7 @@ import { sourceOf } from "../utils/topo-sort.js";
 import { truncateText } from "../utils/text.js";
 import type { HtmlElement } from "../utils/html-parser.js";
 import { tableToText } from "../utils/text.js";
-import { innerTextTrimmed } from "../utils/html-parser.js";
+import { innerTextTrimmed, resolveSubsection } from "../utils/html-parser.js";
 import { getConfig } from "./prompt-registry.js";
 import { getCanonicalizer } from "./cascade-analyzer.js";
 import { findSubstitute, getActiveSubstitutionMap } from "./synthesis-engine.js";
@@ -520,11 +520,20 @@ export { extractIntraSectionContext };
  *    тождество: при кардинальности ≠ multi имена подразделов теперь
  *    совпадают с каноном INTRA_DEPS и без явного колбэка.
  */
+export interface IntraContextOptions {
+  /** Ожидаемый порядок подразделов раздела (buildSubsectionMap) — включает
+   *  страховку по позиции 11.1 для переведённых атрибутов data-section. */
+  expectedOrder?: readonly string[] | undefined;
+  /** Куда складывать предупреждения опознания (в генлог пишет вызывающий). */
+  warnings?: string[] | undefined;
+}
+
 export async function extractRelevantIntraSectionContext(
   container: HtmlElement,
   sectionKey: string,
   subsectionName: string,
   canonicalize?: (sectionKey: string, name: string) => string,
+  opts: IntraContextOptions = {},
 ): Promise<string> {
   canonicalize ??= await getCanonicalizer();
   const intraDeps =
@@ -553,11 +562,40 @@ export async function extractRelevantIntraSectionContext(
     }
   }
 
-  const parts: string[] = [];
+  /* 11.2 (Д-16): подразделы ищутся по КАНОНИЧЕСКИМ именам карты через
+     resolveSubsection — точно → нечётко → по месту (при переданном порядке и
+     совпадающем числе подразделов); читаются по фактическому атрибуту.
+     Раньше цикл шёл по фактическим атрибутам и сверял их канон с needed —
+     переведённые атрибуты не совпадали ни с чем и терялись молча. */
+  const self = resolveSubsection(container, subsectionName, opts.expectedOrder);
+  const selfEl = self.el;
+  const seen = new Set<HtmlElement>();
+  const picked: { name: string; sec: HtmlElement }[] = [];
+  const candidates = opts.expectedOrder && opts.expectedOrder.length
+    ? opts.expectedOrder.filter((n) => needed.has(canonicalize(sectionKey, n)))
+    : [...needed];
+  for (const canonName of candidates) {
+    const found = resolveSubsection(container, canonName, opts.expectedOrder);
+    if (found.warning && found.el && opts.warnings) opts.warnings.push(`intra-контекст: ${found.warning}`);
+    if (!found.el || found.el === selfEl || seen.has(found.el)) continue;
+    seen.add(found.el);
+    picked.push({ name: found.actualName ?? canonName, sec: found.el });
+  }
+  // запасной ход прежнего цикла: подразделы, чей фактический атрибут сам
+  // каноничен, но в карте не значатся (документы без карты, ручные правки)
   for (const sec of container.querySelectorAll("[data-section]")) {
     const name = sec.getAttribute("data-section");
-    if (name === null || name === subsectionName) continue; // себя не включаем
-    if (!needed.has(canonicalize(sectionKey, name))) continue;
+    if (name === null || sec === selfEl || seen.has(sec)) continue;
+    if (name === subsectionName || !needed.has(canonicalize(sectionKey, name))) continue;
+    seen.add(sec);
+    picked.push({ name, sec });
+  }
+  // порядок — как в документе
+  const order = Array.from(container.querySelectorAll("[data-section]"));
+  picked.sort((a, b) => order.indexOf(a.sec) - order.indexOf(b.sec));
+
+  const parts: string[] = [];
+  for (const { name, sec } of picked) {
     const tables = Array.from(sec.querySelectorAll("table.doc-table"));
     if (tables.length > 0) {
       const tableParts = tables.map((t) => tableToText(t));

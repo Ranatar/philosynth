@@ -40,10 +40,10 @@
  */
 import { Hono } from "hono";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, like, or } from "drizzle-orm";
 
 import { db } from "../db/index.js";
-import { sections, synthesisLineage } from "../db/schema.js";
+import { generationLog, sections, synthesisLineage } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
 import { getSectionContextQualityMap } from "../services/context-quality.js";
@@ -77,6 +77,7 @@ import type {
   SubsectionSource,
   SubsectionUpdateResult,
 } from "@philosynth/shared/types/section";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const sectionsRoutes = new Hono<AuthEnv>();
 
@@ -147,6 +148,43 @@ sectionsRoutes.get("/:id/sections", requireAuth, async (c) => {
   return c.json({ sections: list });
 });
 
+/* ── Предупреждения разбора раздела (11.2, Д-16) ─────────────────────── */
+
+/**
+ * metadata.parseWarnings строк генлога раздела начиная с ПОСЛЕДНЕЙ полной
+ * (пере)генерации (source ≠ subsection_regen): более ранние потери
+ * относятся к тексту, которого в документе уже нет. Строки подраздельных
+ * догенераций после неё входят — они пишутся с section_key вида
+ * «graph:Таблица связей» (generation-service 2.2), поэтому отбор —
+ * по точному ключу ИЛИ по префиксу «key:» (нашёл тест R9 11.2).
+ * Пустой массив — разбор без потерь.
+ */
+export async function loadSectionParseWarnings(synthesisId: string, sectionKey: string): Promise<string[]> {
+  const rows = await db
+    .select({
+      source: generationLog.source,
+      metadata: generationLog.metadata,
+      createdAt: generationLog.createdAt,
+    })
+    .from(generationLog)
+    .where(
+      and(
+        eq(generationLog.synthesisId, synthesisId),
+        or(eq(generationLog.sectionKey, sectionKey), like(generationLog.sectionKey, `${sectionKey}:%`)),
+        eq(generationLog.logType, "generation"),
+      ),
+    )
+    .orderBy(desc(generationLog.createdAt));
+  const out: string[] = [];
+  for (const r of rows) {
+    const meta = (r.metadata ?? {}) as { parseWarnings?: unknown };
+    if (Array.isArray(meta.parseWarnings))
+      out.unshift(...meta.parseWarnings.filter((w): w is string => typeof w === "string"));
+    if (r.source !== "subsection_regen") break; // граница последней полной (пере)генерации
+  }
+  return [...new Set(out)];
+}
+
 /* ── GET /:id/sections/:key ──────────────────────────────────────────── */
 
 sectionsRoutes.get("/:id/sections/:key", requireAuth, async (c) => {
@@ -164,7 +202,7 @@ sectionsRoutes.get("/:id/sections/:key", requireAuth, async (c) => {
     .where(and(eq(sections.synthesisId, res.row.id), eq(sections.key, key)))
     .limit(1);
   if (!row) {
-    return c.json({ error: "Раздел не найден", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("common.sectionNotFound", "Раздел не найден"), code: "NOT_FOUND" }, 404);
   }
 
   const section: SectionFull = {
@@ -177,6 +215,8 @@ sectionsRoutes.get("/:id/sections/:key", requireAuth, async (c) => {
     subsections: listSubsections(row.htmlContent),
     // 9.2: вычисляемый заслон — клиент не рисует карандаш у запертых
     lockedSubsections: lockedSubsectionNames(row.key, row.htmlContent),
+    // 11.2 (Д-16): предупреждения разбора из генлога — показ в 11.3
+    parseWarnings: await loadSectionParseWarnings(res.row.id, row.key),
   };
   return c.json({ section });
 });
@@ -199,7 +239,7 @@ function subsectionError(c: Context, err: unknown): Response {
 // Ключ — по isSectionKey (shared), НЕ по SEC_NAMES: в SEC_NAMES нет «sum»
 // (это перечень ВЫБИРАЕМЫХ разделов), а резюме правится наравне с прочими —
 // найдено тестом R2 беседы 9.2 на первом же подразделе
-const unknownSectionJson = { error: "Неизвестный раздел", code: "NOT_FOUND" } as const;
+const unknownSectionJson = { error: tl("server.routes.sections.unknownSection", "Неизвестный раздел"), code: "NOT_FOUND" } as const;
 
 /** Исходник правки: разметка содержимого подраздела без обёртки и <h4>. */
 sectionsRoutes.get("/:id/sections/:key/subsections/:name", requireAuth, async (c) => {
@@ -271,7 +311,7 @@ sectionsRoutes.get("/:id/sections/:key/context", requireAuth, async (c) => {
 
   const key = c.req.param("key");
   if (!(key in SEC_NAMES)) {
-    return c.json({ error: "Неизвестный раздел", code: "NOT_FOUND" }, 404);
+    return c.json({ error: tl("server.routes.sections.unknownSection", "Неизвестный раздел"), code: "NOT_FOUND" }, 404);
   }
 
   try {
@@ -356,7 +396,7 @@ sectionsRoutes.get("/:id/sections/:key/context", requireAuth, async (c) => {
   } catch (err) {
     console.warn("[sections] context preview failed:", err);
     return c.json(
-      { error: "Превью контекста недоступно", code: "INTERNAL_ERROR" },
+      { error: tl("server.routes.sections.previewUnavailable", "Превью контекста недоступно"), code: "INTERNAL_ERROR" },
       500,
     );
   }

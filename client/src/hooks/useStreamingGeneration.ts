@@ -43,6 +43,7 @@ import type {
 } from "@philosynth/shared/types/ws-messages";
 
 import { useWebSocket, type WsStatus } from "./useWebSocket";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export type SectionStepStatus = "pending" | "streaming" | "done" | "error";
 
@@ -315,7 +316,7 @@ export function useStreamingGeneration(
           break;
         case "error":
           if (msg.code === "RATE_LIMIT") {
-            setError(`Превышен лимит сообщений; повторите через ${msg.retryAfter} с.`);
+            setError(tl("hooks.useStreamingGeneration.rateLimited", "Превышен лимит сообщений; повторите через {retryAfter} с.", { retryAfter: msg.retryAfter }));
           }
           break;
         default:

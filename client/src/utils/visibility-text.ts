@@ -18,6 +18,7 @@ import type {
   VisibilityFlags,
 } from "@philosynth/shared/types/synthesis";
 import { effectiveFlags } from "@philosynth/shared/utils/visibility";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Порядок ступеней в переключателе — от закрытой к открытой */
 export const VISIBILITY_STEPS: readonly SynthesisVisibility[] = [
@@ -27,16 +28,16 @@ export const VISIBILITY_STEPS: readonly SynthesisVisibility[] = [
 ];
 
 export const VISIBILITY_LABELS: Record<SynthesisVisibility, string> = {
-  private: "Приватная",
-  showcase: "Витрина",
-  full: "Публичная",
+  private: tl("utils.visibilityText.private", "Приватная"),
+  showcase: tl("utils.visibilityText.showcase", "Витрина"),
+  full: tl("utils.visibilityText.public", "Публичная"),
 };
 
 /** Короткое пояснение ступени под её кнопкой */
 export const VISIBILITY_DESCRIPTIONS: Record<SynthesisVisibility, string> = {
-  private: "видите только вы",
-  showcase: "капсула и метаданные — всем, содержание закрыто",
-  full: "произведение целиком — всем, включая гостей",
+  private: tl("utils.visibilityText.privateHint", "видите только вы"),
+  showcase: tl("utils.visibilityText.showcaseHint", "капсула и метаданные — всем, содержание закрыто"),
+  full: tl("utils.visibilityText.publicHint", "произведение целиком — всем, включая гостей"),
 };
 
 /** Ключи флагов и порядок галочек в переключателе */
@@ -50,10 +51,10 @@ export const FLAG_ORDER: readonly VisibilityFlagKey[] = [
 ];
 
 export const FLAG_LABELS: Record<VisibilityFlagKey, string> = {
-  showAuthor: "показывать авторство",
-  showLogs: "показывать логи генерации",
-  showPrompts: "показывать запросы к модели",
-  allowMeta: "разрешить брать в мета-синтез",
+  showAuthor: tl("utils.visibilityText.showAuthorship", "показывать авторство"),
+  showLogs: tl("utils.visibilityText.showLogs", "показывать логи генерации"),
+  showPrompts: tl("utils.visibilityText.showPrompts", "показывать запросы к модели"),
+  allowMeta: tl("utils.visibilityText.allowMeta", "разрешить брать в мета-синтез"),
 };
 
 /** Какие галочки ПОКАЗЫВАТЬ на ступени (8.7 п.5b): на витрине — только
@@ -70,47 +71,47 @@ export function flagsShownFor(
 
 /** Строка-пояснение под галочками витрины (8.7 п.5b) */
 export const SHOWCASE_FLAGS_NOTE =
-  "Логи, запросы к модели и участие в мета-синтезе на витрине не применяются: " +
-  "содержание закрыто. Их значения сохранены и вернутся на публичной ступени.";
+  tl("utils.visibilityText.showcaseFlagsLead", "Логи, запросы к модели и участие в мета-синтезе на витрине не применяются: ") +
+  tl("utils.visibilityText.showcaseFlagsTail", "содержание закрыто. Их значения сохранены и вернутся на публичной ступени.");
 
 /** Что увидит посторонний — подпись под переключателем (8.7 п.5d), словами.
  *  Считается через effectiveFlags: действенность, а не сырые значения. */
 export function audienceText(flags: VisibilityFlags): string {
   const eff = effectiveFlags(flags);
   if (flags.visibility === "private") {
-    return "Концепцию не видит никто, кроме вас: её нет в публичном каталоге и по прямой ссылке.";
+    return tl("utils.visibilityText.privateSummary", "Концепцию не видит никто, кроме вас: её нет в публичном каталоге и по прямой ссылке.");
   }
-  const who = eff.showAuthor ? "с вашим именем" : "без имени автора";
+  const who = eff.showAuthor ? tl("utils.visibilityText.withYourName", "с вашим именем") : tl("utils.visibilityText.withoutAuthorName", "без имени автора");
   if (flags.visibility === "showcase") {
     return (
-      `Посторонний увидит карточку в публичном каталоге и по ссылке — капсулу, ` +
-      `метаданные, философов и дату, ${who}. Разделы, граф, тезисы, логи и ` +
-      `запросы к модели закрыты; в чужой мета-синтез концепцию взять нельзя. ` +
-      `Зарегистрированные видят также стоимость и токены.`
+      tl("utils.visibilityText.showcaseSummary1", "Посторонний увидит карточку в публичном каталоге и по ссылке — капсулу, ") +
+      tl("utils.visibilityText.showcaseSummary2", "метаданные, философов и дату, {who}. Разделы, граф, тезисы, логи и ", { who }) +
+      tl("utils.visibilityText.showcaseSummary3", "запросы к модели закрыты; в чужой мета-синтез концепцию взять нельзя. ") +
+      tl("utils.visibilityText.showcaseSummary4", "Зарегистрированные видят также стоимость и токены.")
     );
   }
   const parts: string[] = [
-    `Посторонний прочтёт документ целиком ${who}; гость — без стоимости, токенов, логов и запросов.`,
+    tl("utils.visibilityText.publicSummary", "Посторонний прочтёт документ целиком {who}; гость — без стоимости, токенов, логов и запросов.", { who }),
   ];
   parts.push(
     eff.showLogs
-      ? "Зарегистрированным открыты логи генерации."
-      : "Логи генерации закрыты для всех, кроме вас.",
+      ? tl("utils.visibilityText.logsOpen", "Зарегистрированным открыты логи генерации.")
+      : tl("utils.visibilityText.logsClosed", "Логи генерации закрыты для всех, кроме вас."),
   );
   parts.push(
     eff.showPrompts
-      ? "Зарегистрированные могут скачать запросы к модели."
-      : "Запросы к модели закрыты для всех, кроме вас.",
+      ? tl("utils.visibilityText.promptsOpen", "Зарегистрированные могут скачать запросы к модели.")
+      : tl("utils.visibilityText.promptsClosed", "Запросы к модели закрыты для всех, кроме вас."),
   );
   parts.push(
     eff.allowMeta
-      ? "Концепцию можно брать участником в чужой мета-синтез."
-      : "В чужой мета-синтез концепцию взять нельзя.",
+      ? tl("utils.visibilityText.metaAllowed", "Концепцию можно брать участником в чужой мета-синтез.")
+      : tl("utils.visibilityText.metaForbidden", "В чужой мета-синтез концепцию взять нельзя."),
   );
   return parts.join(" ");
 }
 
 /** Короткая метка ступени для карточки чужого каталога / полосы просмотра */
 export function visibilityBadge(v: SynthesisVisibility): string {
-  return v === "showcase" ? "витрина" : v === "full" ? "публичная" : "приватная";
+  return v === "showcase" ? tl("utils.visibilityText.badgeShowcase", "витрина") : v === "full" ? tl("utils.visibilityText.badgePublic", "публичная") : tl("utils.visibilityText.badgePrivate", "приватная");
 }

@@ -31,6 +31,7 @@ import {
   SECTION_LABELS,
   type SectionKey,
 } from "@philosynth/shared/constants/section-labels";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export type PickableSectionKey = Exclude<SectionKey, "sum">;
 
@@ -90,10 +91,9 @@ export function SectionPicker({
 
   return (
     <div className="form-group full">
-      <div className="form-label">Разделы Документа</div>
+      <div className="form-label">{tl("synthesis.sectionPicker.title", "Разделы Документа")}</div>
       <div className="form-sublabel">
-        Выберите, какие разделы включить в итоговый документ. Исполнительное
-        резюме включается всегда.
+        {tl("synthesis.sectionPicker.description", "Выберите, какие разделы включить в итоговый документ. Исполнительное резюме включается всегда.")}
       </div>
 
       <div className="checkboxes-row sections-row">
@@ -133,7 +133,7 @@ export function SectionPicker({
                 </label>
                 <button
                   type="button"
-                  title="Доп. контекст для раздела"
+                  title={tl("synthesis.sectionPicker.extraContextFor", "Доп. контекст для раздела")}
                   onClick={() => toggleCtx(key)}
                   className={ctxOpen ? "sec-ctx-btn open" : "sec-ctx-btn"}
                 >
@@ -157,7 +157,7 @@ export function SectionPicker({
                       checked={extGraphMetrics}
                       onChange={(e) => onExtGraphMetricsChange(e.target.checked)}
                     />
-                    Расширенные характеристики
+                    {tl("synthesis.sectionPicker.extendedCharacteristics", "Расширенные характеристики")}
                   </label>
                 </div>
               )}
@@ -165,7 +165,7 @@ export function SectionPicker({
               <textarea
                 value={ctxValue}
                 onChange={(e) => onSectionContextChange(key, e.target.value)}
-                placeholder={`Особые требования, акценты, ограничения для «${SECTION_LABELS[id]}»...`}
+                placeholder={tl("synthesis.sectionPicker.requirementsFor", "Особые требования, акценты, ограничения для «{id}»...", { id: SECTION_LABELS[id] })}
                 className={ctxOpen ? "sec-ctx-field open" : "sec-ctx-field"}
               />
             </div>
@@ -187,22 +187,18 @@ export function SectionPicker({
             checked={synthReady}
             onChange={(e) => onSynthReadyChange(e.target.checked)}
           />
-          ◈ Пригодность к дальнейшему синтезу
+          {tl("synthesis.sectionPicker.metaReadiness", "◈ Пригодность к дальнейшему синтезу")}
         </label>
         <div className="form-sublabel">
-          Включает разделы, обязательные для использования концепции как
-          участника мета-синтеза (граф, глоссарий, тезисы, диалог, критика,
-          капсула).
+          {tl("synthesis.sectionPicker.metaReadinessHint", "Включает разделы, обязательные для использования концепции как участника мета-синтеза (граф, глоссарий, тезисы, диалог, критика, капсула).")}
         </div>
         {/* synthReadyHint [5580–5589]: совет про «Анализ названия» */}
         {synthReady && !selectedSet.has("name") && (
           <div className="sec-recommendations">
             <div className="sec-recommend-item">
-              <span className="rec-icon">ℹ</span>
+              <span className="rec-icon">{tl("synthesis.sectionPicker.infoIcon", "ℹ")}</span>
               <span>
-                Совет: для качественной капсулы полезен раздел «Анализ
-                названия». Если он не выбран, задайте название вручную
-                (кнопка ✎ в шапке) после генерации.
+                {tl("synthesis.sectionPicker.nameAnalysisTip", "Совет: для качественной капсулы полезен раздел «Анализ названия». Если он не выбран, задайте название вручную (кнопка ✎ в шапке) после генерации.")}
               </span>
             </div>
           </div>

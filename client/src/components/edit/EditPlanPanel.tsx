@@ -26,6 +26,7 @@ import {
   parseElementStepTarget,
 } from "@philosynth/shared/constants/edit-steps";
 import type { EditPlan, EditStep, StepResult } from "@philosynth/shared/types/edit-plan";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface EditPlanPanelProps {
   plan: EditPlan;
@@ -40,15 +41,15 @@ export interface EditPlanPanelProps {
 }
 
 const TYPE_LABEL: Record<EditStep["type"], string> = {
-  regen: "Перегенерировать",
-  delete: "Удалить",
-  add: "Добавить",
-  regen_subsection: "Перегенерировать подраздел",
-  regen_mode: "Перегенерировать режим",
+  regen: tl("common.regenerate", "Перегенерировать"),
+  delete: tl("common.delete", "Удалить"),
+  add: tl("edit.editPlanPanel.add", "Добавить"),
+  regen_subsection: tl("edit.editPlanPanel.regenerateSubsection", "Перегенерировать подраздел"),
+  regen_mode: tl("edit.editPlanPanel.regenerateMode", "Перегенерировать режим"),
   // 10.2: подписи новых шагов — чтобы тип оставался исчерпывающим; отрисовка
   // шагов элемента (поле, значение, рекомендация) — панель 10.3
-  edit_element: "Применить готовую замену",
-  refine_element: "Уточнить элемент",
+  edit_element: tl("edit.editPlanPanel.applyReplacement", "Применить готовую замену"),
+  refine_element: tl("edit.editPlanPanel.refineElement", "Уточнить элемент"),
 };
 
 function stepIcon(step: EditStep, running: boolean): string {
@@ -140,9 +141,8 @@ export function EditPlanPanel({
           marginBottom: 8,
         }}
       >
-        План редактирования · {plan.status}
-        {plan.estimatedCost > 0 &&
-          ` · ≈ $${plan.estimatedCost.toFixed(4)} (${(plan.estimatedCost * 100).toFixed(2)}¢)`}
+        {tl("edit.editPlanPanel.planTitle", "План редактирования · {status}{estimatedCost}", { status: plan.status, estimatedCost: plan.estimatedCost > 0 &&
+          ` · ≈ $${plan.estimatedCost.toFixed(4)} (${(plan.estimatedCost * 100).toFixed(2)}¢)` })}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {plan.steps.map((step, i) => {
@@ -175,11 +175,11 @@ export function EditPlanPanel({
                 {TYPE_LABEL[step.type]}: {targetLabel(step, labels, elementNames)}
                 {recs.length > 0 && (
                   <span className="plan-step-rec" data-testid="plan-step-rec">
-                    рекомендация {recs.map((r) => `№ ${r.num}`).join(", ")} · раунд {recs[0]?.round}
+                    {tl("edit.editPlanPanel.recommendationRound", "рекомендация {nums} · раунд {round}", { nums: recs.map((r) => `№ ${r.num}`).join(", "), round: recs[0]?.round })}
                   </span>
                 )}
                 {isFreeStepType(step.type) && (
-                  <span className="plan-step-free" data-testid="plan-step-free">бесплатно</span>
+                  <span className="plan-step-free" data-testid="plan-step-free">{tl("edit.editPlanPanel.free", "бесплатно")}</span>
                 )}
                 {step.cascadeGenerated && (
                   <span
@@ -189,7 +189,7 @@ export function EditPlanPanel({
                       color: "var(--gold)",
                     }}
                   >
-                    каскад
+                    {tl("edit.editPlanPanel.cascade", "каскад")}
                   </span>
                 )}
               </span>
@@ -201,8 +201,7 @@ export function EditPlanPanel({
                     color: "var(--ink-dim)",
                   }}
                 >
-                  {result.outputChars.toLocaleString("ru")} симв. · $
-                  {result.costUsd.toFixed(4)}
+                  {tl("edit.editPlanPanel.charsCost", "{outputChars} симв. · ${costUsd}", { outputChars: result.outputChars.toLocaleString("ru"), costUsd: result.costUsd.toFixed(4) })}
                 </span>
               )}
               {pendingActionable && (
@@ -219,7 +218,7 @@ export function EditPlanPanel({
                     style={{ fontSize: 8, padding: "2px 8px" }}
                     onClick={() => onConfirmStep(i)}
                   >
-                    подтвердить
+                    {tl("edit.editPlanPanel.confirm", "подтвердить")}
                   </button>
                   {plan.status === "draft" && (
                     <button
@@ -228,7 +227,7 @@ export function EditPlanPanel({
                       style={{ fontSize: 8, padding: "2px 8px" }}
                       onClick={() => onSkipStep(i)}
                     >
-                      пропустить
+                      {tl("edit.editPlanPanel.skip", "пропустить")}
                     </button>
                   )}
                 </span>
@@ -236,7 +235,7 @@ export function EditPlanPanel({
             </div>
             {step.type === "edit_element" && step.value && (
               <details className="sec-disclosure plan-step-value" data-testid="plan-step-value">
-                <summary>Готовая замена</summary>
+                <summary>{tl("common.readyReplacement", "Готовая замена")}</summary>
                 <div className="disclosure-body">{step.value}</div>
               </details>
             )}

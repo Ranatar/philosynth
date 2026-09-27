@@ -38,6 +38,7 @@ import { apiPost } from "../../api/client";
 import { getModeResults, regenerateModeResult } from "../../api/modes";
 import { getSubsectionImpact, regenerateSubsection } from "../../api/plans";
 import type { SectionEvent } from "../../hooks/useEditPlan";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface SubsectionRegenPanelProps {
   synthesisId: string;
@@ -116,7 +117,7 @@ export function SubsectionRegenPanel({
       setRunning(item);
       if (item.kind === "mode") {
         // Паритет прогресса исходника [19032]: «Каскад: {title}...»
-        setProgressText(`Каскад: ${item.title}…`);
+        setProgressText(tl("edit.subsectionRegenPanel.cascadeProgress", "Каскад: {title}…", { title: item.title }));
         try {
           await regenerateModeResult(synthesisId, item.modeKey, item.index);
           // Дальше ждём mode_done/stream_error по WS
@@ -133,7 +134,7 @@ export function SubsectionRegenPanel({
         item.kind === "sub"
           ? `${labels(item.section)} → ${item.subsection}`
           : labels(item.section);
-      setProgressText(`Перегенерация: ${label}…`);
+      setProgressText(tl("edit.subsectionRegenPanel.regenProgress", "Перегенерация: {label}…", { label }));
       try {
         if (item.kind === "sub") {
           const isMain =
@@ -186,17 +187,17 @@ export function SubsectionRegenPanel({
     const modeNames = affected.map((a) => a.title).join(", ");
     const costStr =
       costTotal > 0
-        ? "\nОценка стоимости: ≈ $" + costTotal.toFixed(4) +
+        ? tl("edit.subsectionRegenPanel.costEstimatePrefix", "\nОценка стоимости: ≈ $") + costTotal.toFixed(4) +
           " (" + (costTotal * 100).toFixed(2) + "¢), " +
-          affected.length + " запр."
+          affected.length + tl("edit.subsectionRegenPanel.requestsAbbr", " запр.")
         : "";
     const doRegen = window.confirm(
-      "Подраздел «" + subsectionName + "» обновлён.\n\n" +
-      "Затронутые режимы: " + modeNames + "." + costStr + "\n\n" +
-      "Перегенерировать их?",
+      tl("edit.subsectionRegenPanel.subsectionUpdatedLead", "Подраздел «") + subsectionName + tl("edit.subsectionRegenPanel.subsectionUpdatedTail", "» обновлён.\n\n") +
+      tl("edit.subsectionRegenPanel.affectedModesPrefix", "Затронутые режимы: ") + modeNames + "." + costStr + "\n\n" +
+      tl("edit.subsectionRegenPanel.regenerateThem", "Перегенерировать их?"),
     );
     if (!doRegen) {
-      setProgressText("✓ Готово");
+      setProgressText(tl("edit.subsectionRegenPanel.done", "✓ Готово"));
       return;
     }
     const [first, ...rest] = affected.map(
@@ -225,7 +226,7 @@ export function SubsectionRegenPanel({
     )
       return; // чужое событие (например, параллельная вкладка)
     if (sectionEvent.kind === "stream_error") {
-      setProgressText("⚠ Перегенерация прервана — очередь остановлена.");
+      setProgressText(tl("edit.subsectionRegenPanel.regenInterrupted", "⚠ Перегенерация прервана — очередь остановлена."));
       setRunning(null);
       setQueue([]);
       return;
@@ -250,7 +251,7 @@ export function SubsectionRegenPanel({
       setRunning(null);
       void askModeCascade();
     } else {
-      setProgressText("✓ Готово");
+      setProgressText(tl("edit.subsectionRegenPanel.done", "✓ Готово"));
       setRunning(null);
     }
   }, [sectionEvent, running, queue, startItem, impact, askModeCascade]);
@@ -318,7 +319,7 @@ export function SubsectionRegenPanel({
       <textarea
         className="edit-sec-ctx-field"
         style={{ height: 40 }}
-        placeholder="Дополнительная инструкция (необязательно)..."
+        placeholder={tl("edit.subsectionRegenPanel.extraInstruction", "Дополнительная инструкция (необязательно)...")}
         value={note}
         onChange={(e) => setNote(e.target.value)}
         disabled={busy}
@@ -332,7 +333,7 @@ export function SubsectionRegenPanel({
               onChange={(e) => setIncludeContent(e.target.checked)}
               disabled={busy}
             />
-            Включить текущее содержимое подраздела в контекст
+            {tl("edit.subsectionRegenPanel.includeCurrentContent", "Включить текущее содержимое подраздела в контекст")}
           </label>
         </div>
       )}
@@ -347,17 +348,17 @@ export function SubsectionRegenPanel({
           lineHeight: 1.6,
         }}
       >
-        {impactState === "loading" && "Анализ зависимостей…"}
+        {impactState === "loading" && tl("edit.subsectionRegenPanel.analyzingDeps", "Анализ зависимостей…")}
         {impactState === "error" && (
           <span style={{ color: "var(--red)" }}>
-            Не удалось получить зависимости подраздела.
+            {tl("edit.subsectionRegenPanel.depsFailed", "Не удалось получить зависимости подраздела.")}
           </span>
         )}
         {impactState === "ready" && impact && (
           <>
             {impact.intraDependents.length > 0 && (
               <div>
-                ⚡ Также будут предложены к перегенерации:{" "}
+                {tl("edit.subsectionRegenPanel.alsoProposed", "⚡ Также будут предложены к перегенерации:")}
                 {impact.intraDependents.map((d, i) => (
                   <label
                     key={d}
@@ -384,14 +385,14 @@ export function SubsectionRegenPanel({
             )}
             {crossGrouped.size > 0 && (
               <div style={{ marginTop: 6 }}>
-                <div>⚡ Затронуты в других разделах:</div>
+                <div>{tl("edit.subsectionRegenPanel.affectedElsewhere", "⚡ Затронуты в других разделах:")}</div>
                 <div style={{ margin: "4px 0 0 12px", lineHeight: 1.8 }}>
                   {[...crossGrouped.entries()].map(([sec, deps]) => (
                     <div key={sec}>
                       • <b>{labels(sec)}</b>
                       {deps.some((d) => d.subsection && sec !== "capsule")
                         ? ": "
-                        : " (весь раздел)"}
+                        : tl("edit.subsectionRegenPanel.wholeSectionParen", " (весь раздел)")}
                       {deps.map((d) => (
                         <label
                           key={itemKey(d)}
@@ -413,7 +414,7 @@ export function SubsectionRegenPanel({
                           />
                           {d.subsection && sec !== "capsule"
                             ? `«${d.subsection}»`
-                            : "весь раздел"}
+                            : tl("edit.subsectionRegenPanel.wholeSection", "весь раздел")}
                         </label>
                       ))}
                     </div>
@@ -423,17 +424,14 @@ export function SubsectionRegenPanel({
             )}
             {impact.affectedModes.length > 0 && (
               <div style={{ marginTop: 6, color: "var(--violet)" }}>
-                ⚡ Затронутые режимы:{" "}
-                {[...new Set(impact.affectedModes.map((m) => m.title))]
+                {tl("edit.subsectionRegenPanel.affectedModes", "⚡ Затронутые режимы: {title}", { title: [...new Set(impact.affectedModes.map((m) => m.title))]
                   .map((n) => `«${n}»`)
-                  .join(", ")}
+                  .join(", ") })}
               </div>
             )}
             {impact.estimate && (
               <div style={{ marginTop: 4 }}>
-                ≈ ${impact.estimate.cost.toFixed(4)} (~
-                {Math.round(impact.estimate.inTokens / 1000)}K вх. + ~
-                {Math.round(impact.estimate.outTokens / 1000)}K вых.)
+                {tl("edit.subsectionRegenPanel.estimate", "≈ ${cost} (~{inTokens}K вх. + ~{outTokens}K вых.)", { cost: impact.estimate.cost.toFixed(4), inTokens: Math.round(impact.estimate.inTokens / 1000), outTokens: Math.round(impact.estimate.outTokens / 1000) })}
               </div>
             )}
           </>
@@ -448,7 +446,7 @@ export function SubsectionRegenPanel({
           onClick={handleRun}
           disabled={busy || impactState === "loading"}
         >
-          ▶ Перегенерировать
+          {tl("edit.subsectionRegenPanel.regenerate", "▶ Перегенерировать")}
         </button>
         <button
           type="button"
@@ -457,7 +455,7 @@ export function SubsectionRegenPanel({
           onClick={onClose}
           disabled={busy}
         >
-          Отмена
+          {tl("common.cancel", "Отмена")}
         </button>
       </div>
 

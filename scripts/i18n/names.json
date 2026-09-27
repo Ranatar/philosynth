@@ -687,7 +687,13 @@
     "ns": "document.documentFooter",
     "id": "document.documentFooter.tokensCost",
     "ru": "Токены: {0} вх. + {1} вых. · Стоимость: ${2} ({3}¢)",
-    "en": "Tokens: {0} in + {1} out · Cost: ${2} ({3}¢)"
+    "en": "Tokens: {0} in + {1} out · Cost: ${2} ({3}¢)",
+    "params": [
+      "totalInputTokens",
+      "totalOutputTokens",
+      "costUsd",
+      "costCents"
+    ]
   },
   {
     "ns": "document.documentFooter",
@@ -753,7 +759,10 @@
     "ns": "document.documentHeader",
     "id": "document.documentHeader.capsuleValue",
     "ru": "Капсула: {0}",
-    "en": "Capsule: {0}"
+    "en": "Capsule: {0}",
+    "params": [
+      "capsule"
+    ]
   },
   {
     "ns": "document.documentHeader",
@@ -1431,7 +1440,11 @@
     "ns": "edit.editPlanPanel",
     "id": "edit.editPlanPanel.recommendationRound",
     "ru": "рекомендация {0} · раунд {1}",
-    "en": "recommendation {0} · round {1}"
+    "en": "recommendation {0} · round {1}",
+    "params": [
+      "nums",
+      "round"
+    ]
   },
   {
     "ns": "edit.editPlanPanel",
@@ -1701,7 +1714,10 @@
     "ns": "edit.elementEditor",
     "id": "edit.elementEditor.subsection",
     "ru": "Подраздел {0}",
-    "en": "Subsection {0}"
+    "en": "Subsection {0}",
+    "params": [
+      "subsection"
+    ]
   },
   {
     "ns": "edit.elementEditor",
@@ -1965,7 +1981,10 @@
     "ns": "edit.recommendationsPanel",
     "id": "edit.recommendationsPanel.titleRound",
     "ru": "◈ Рекомендации критики · раунд {0}",
-    "en": "◈ Critique recommendations · round {0}"
+    "en": "◈ Critique recommendations · round {0}",
+    "params": [
+      "round"
+    ]
   },
   {
     "ns": "edit.recommendationsPanel",
@@ -2067,7 +2086,10 @@
     "ns": "edit.recommendationsPanel",
     "id": "edit.recommendationsPanel.legacyConcept",
     "ru": "Концепция создана до того, как критика стала писать машиночитаемую таблицу: рекомендации есть в прозе, но исполнять их пока нечем. Можно составить таблицу по имеющимся рекомендациям — текст критики при этом не меняется, в документ добавляется подраздел «{0}».",
-    "en": "The concept was created before the critique began writing a machine-readable table: the recommendations exist in prose, but there is nothing to execute them with yet. A table can be compiled from the existing recommendations — the critique text does not change, and a “{0}” subsection is added to the document."
+    "en": "The concept was created before the critique began writing a machine-readable table: the recommendations exist in prose, but there is nothing to execute them with yet. A table can be compiled from the existing recommendations — the critique text does not change, and a “{0}” subsection is added to the document.",
+    "params": [
+      "tableSubsection"
+    ]
   },
   {
     "ns": "edit.recommendationsPanel",
@@ -2103,7 +2125,10 @@
     "ns": "edit.recommendationsPanel",
     "id": "edit.recommendationsPanel.roundInProgress",
     "ru": "Раунд {0} в работе",
-    "en": "Round {0} in progress"
+    "en": "Round {0} in progress",
+    "params": [
+      "round"
+    ]
   },
   {
     "ns": "edit.recommendationsPanel",
@@ -2151,7 +2176,11 @@
     "ns": "edit.recommendationsPanel",
     "id": "edit.recommendationsPanel.roundDone",
     "ru": "Раунд {0} · исполнено: {1}",
-    "en": "Round {0} · done: {1}"
+    "en": "Round {0} · done: {1}",
+    "params": [
+      "round",
+      "doneCount"
+    ]
   },
   {
     "ns": "edit.recommendationsPanel",
@@ -2169,7 +2198,10 @@
     "ns": "edit.recommendationsPanel",
     "id": "edit.recommendationsPanel.subsectionUnlocked",
     "ru": "Подраздел «{0}» замком не заперт: адрес или элемент можно поправить руками, затем перечитать.",
-    "en": "The “{0}” subsection is not locked: an address or element can be corrected by hand and then re-read."
+    "en": "The “{0}” subsection is not locked: an address or element can be corrected by hand and then re-read.",
+    "params": [
+      "tableSubsection"
+    ]
   },
   {
     "ns": "edit.recommendationsPanel",
@@ -2181,7 +2213,12 @@
     "ns": "edit.recommendationsPanel",
     "id": "edit.recommendationsPanel.roundSummary",
     "ru": "Раунд {0} · исполнено: {1} · отклонено: {2}",
-    "en": "Round {0} · done: {1} · rejected: {2}"
+    "en": "Round {0} · done: {1} · rejected: {2}",
+    "params": [
+      "round",
+      "doneCount",
+      "rejectedCount"
+    ]
   },
   {
     "ns": "edit.recommendationsPanel",
@@ -5088,14 +5125,14 @@
     "en": "Exhaustive (monograph)"
   },
   {
-    "ns": "synthesis.synthesisForm",
-    "id": "synthesis.synthesisForm.langRussian",
+    "ns": "shared.locales",
+    "id": "shared.locales.langRussian",
     "ru": "Русский",
     "en": "Русский"
   },
   {
-    "ns": "synthesis.synthesisForm",
-    "id": "synthesis.synthesisForm.langOther",
+    "ns": "shared.locales",
+    "id": "shared.locales.langOther",
     "ru": "Другой…",
     "en": "Other…"
   },
@@ -5637,7 +5674,12 @@
     "ns": "adminPromptsPage",
     "id": "adminPromptsPage.jsonErrorAt",
     "ru": "{0} (строка {1}, столбец {2})",
-    "en": "{0} (line {1}, column {2})"
+    "en": "{0} (line {1}, column {2})",
+    "params": [
+      "message",
+      "line",
+      "column"
+    ]
   },
   {
     "ns": "adminPromptsPage",
@@ -6075,7 +6117,10 @@
     "ns": "adminPromptsPage",
     "id": "adminPromptsPage.auditNote",
     "ru": "Последние {0} строк admin_audit: версии шаблонов и конфигов, правки каталогов, смены ролей, удаления аккаунтов. Строка пишется той же транзакцией, что и действие.",
-    "en": "The last {0} rows of admin_audit: template and config versions, catalog edits, role changes, account deletions. A row is written in the same transaction as the action."
+    "en": "The last {0} rows of admin_audit: template and config versions, catalog edits, role changes, account deletions. A row is written in the same transaction as the action.",
+    "params": [
+      "limit"
+    ]
   },
   {
     "ns": "adminPromptsPage",
@@ -6783,7 +6828,12 @@
     "ns": "billingPage",
     "id": "billingPage.modeSummary",
     "ru": "{0} — {1} запр., {2}",
-    "en": "{0} — {1} req., {2}"
+    "en": "{0} — {1} req., {2}",
+    "params": [
+      "modeLabel",
+      "requests",
+      "costUsd"
+    ]
   },
   {
     "ns": "billingPage",
@@ -6849,7 +6899,10 @@
     "ns": "catalogPage",
     "id": "catalogPage.titleValue",
     "ru": "Название: {0}",
-    "en": "Title: {0}"
+    "en": "Title: {0}",
+    "params": [
+      "title"
+    ]
   },
   {
     "ns": "catalogPage",
@@ -6873,7 +6926,10 @@
     "ns": "catalogPage",
     "id": "catalogPage.visibilityValue",
     "ru": "Публичность: {0}",
-    "en": "Visibility: {0}"
+    "en": "Visibility: {0}",
+    "params": [
+      "visibility"
+    ]
   },
   {
     "ns": "catalogPage",
@@ -7659,7 +7715,10 @@
     "ns": "registerPage",
     "id": "registerPage.passwordMinLength",
     "ru": "Пароль (не короче {0} символов)",
-    "en": "Password (at least {0} characters)"
+    "en": "Password (at least {0} characters)",
+    "params": [
+      "minLength"
+    ]
   },
   {
     "ns": "registerPage",
@@ -7719,7 +7778,10 @@
     "ns": "resetPasswordPage",
     "id": "resetPasswordPage.newPasswordMinLength",
     "ru": "Новый пароль (не короче {0} символов)",
-    "en": "New password (at least {0} characters)"
+    "en": "New password (at least {0} characters)",
+    "params": [
+      "minLength"
+    ]
   },
   {
     "ns": "resetPasswordPage",
@@ -8283,7 +8345,11 @@
     "ns": "utils.conceptFile",
     "id": "utils.conceptFile.proxyAttempt",
     "ru": "Прокси {0}/{1}...",
-    "en": "Proxy {0}/{1}..."
+    "en": "Proxy {0}/{1}...",
+    "params": [
+      "attempt",
+      "total"
+    ]
   },
   {
     "ns": "utils.conceptFile",
@@ -8577,7 +8643,10 @@
     "ns": "utils.subsectionEdit",
     "id": "utils.subsectionEdit.markupRejected",
     "ru": "Разметка не принята: {0}",
-    "en": "Markup rejected: {0}"
+    "en": "Markup rejected: {0}",
+    "params": [
+      "reason"
+    ]
   },
   {
     "ns": "utils.subsectionEdit",
@@ -8961,7 +9030,11 @@
     "ns": "utils.textDiff",
     "id": "utils.textDiff.unchangedLines",
     "ru": "… {0} {1} без изменений …",
-    "en": "… {0} {1} unchanged …"
+    "en": "… {0} {1} unchanged …",
+    "params": [
+      "skipped",
+      "linesWord"
+    ]
   },
   {
     "ns": "utils.textDiff",
@@ -9159,7 +9232,10 @@
     "ns": "shared.auth",
     "id": "shared.auth.passwordMinLength",
     "ru": "Минимальная длина пароля — {0} символов",
-    "en": "The minimum password length is {0} characters"
+    "en": "The minimum password length is {0} characters",
+    "params": [
+      "minLength"
+    ]
   },
   {
     "ns": "shared.auth",
@@ -12459,7 +12535,10 @@
     "ns": "server.routes.auth",
     "id": "server.routes.auth.maxLength",
     "ru": "Максимальная длина — {0} символов",
-    "en": "The maximum length is {0} characters"
+    "en": "The maximum length is {0} characters",
+    "params": [
+      "maxLength"
+    ]
   },
   {
     "ns": "server.routes.auth",
@@ -12873,7 +12952,11 @@
     "ns": "server.billingService",
     "id": "server.billingService.amountRange",
     "ru": "от {0} до {1} USD",
-    "en": "from {0} to {1} USD"
+    "en": "from {0} to {1} USD",
+    "params": [
+      "minUsd",
+      "maxUsd"
+    ]
   },
   {
     "ns": "server.billingService",
@@ -13149,7 +13232,11 @@
     "ns": "server.elementStep",
     "id": "server.elementStep.fieldNotEditable",
     "ru": "Поле «{0}» у элемента вида «{1}» шагом не правится",
-    "en": "Field “{0}” of an element of kind “{1}” is not edited by a step"
+    "en": "Field “{0}” of an element of kind “{1}” is not edited by a step",
+    "params": [
+      "field",
+      "kind"
+    ]
   },
   {
     "ns": "server.elementStep",
@@ -13161,7 +13248,10 @@
     "ns": "server.elementStep",
     "id": "server.elementStep.valueTooLong",
     "ru": "Значение длиннее {0} знаков",
-    "en": "The value is longer than {0} characters"
+    "en": "The value is longer than {0} characters",
+    "params": [
+      "maxChars"
+    ]
   },
   {
     "ns": "server.elementStep",
@@ -13377,7 +13467,10 @@
     "ns": "server.importService",
     "id": "server.importService.sectionNotInOrder",
     "ru": "Раздел «{0}» отсутствует во встроенном sectionOrder — добавлен в конец порядка.",
-    "en": "Section “{0}” is missing from the embedded sectionOrder — added to the end of the order."
+    "en": "Section “{0}” is missing from the embedded sectionOrder — added to the end of the order.",
+    "params": [
+      "sectionKey"
+    ]
   },
   {
     "ns": "server.importService",
@@ -13749,7 +13842,10 @@
     "ns": "server.recommendations",
     "id": "server.recommendations.noTableSubsection",
     "ru": "В разделе «Критический анализ» нет подраздела «{0}». ",
-    "en": "The “Critical analysis” section has no “{0}” subsection. "
+    "en": "The “Critical analysis” section has no “{0}” subsection. ",
+    "params": [
+      "tableSubsection"
+    ]
   },
   {
     "ns": "server.recommendations",
@@ -13761,7 +13857,10 @@
     "ns": "server.recommendations",
     "id": "server.recommendations.noTable",
     "ru": "В подразделе «{0}» нет таблицы (<table class=\"doc-table\">)",
-    "en": "The “{0}” subsection has no table (<table class=\"doc-table\">)"
+    "en": "The “{0}” subsection has no table (<table class=\"doc-table\">)",
+    "params": [
+      "tableSubsection"
+    ]
   },
   {
     "ns": "server.recommendations",
@@ -13803,7 +13902,12 @@
     "ns": "server.recommendations",
     "id": "server.recommendations.roundInProgress",
     "ru": "Раунд {0} ещё в работе: {1} рекомендаци{2} в плане правок. ",
-    "en": "Round {0} is still in progress: {1} recommendation{2} in the edit plan. "
+    "en": "Round {0} is still in progress: {1} recommendation{2} in the edit plan. ",
+    "params": [
+      "round",
+      "heldCount",
+      "heldWordEnding"
+    ]
   },
   {
     "ns": "server.recommendations",
@@ -13827,13 +13931,20 @@
     "ns": "server.recommendations",
     "id": "server.recommendations.roundMissing",
     "ru": "Раунда {0} у концепции нет (последний — {1})",
-    "en": "The concept has no round {0} (the last is {1})"
+    "en": "The concept has no round {0} (the last is {1})",
+    "params": [
+      "round",
+      "latestRound"
+    ]
   },
   {
     "ns": "server.recommendations",
     "id": "server.recommendations.noProseSubsection",
     "ru": "В критике нет подраздела «{0}» — составлять таблицу не по чему. ",
-    "en": "The critique has no “{0}” subsection — there is nothing to compile a table from. "
+    "en": "The critique has no “{0}” subsection — there is nothing to compile a table from. ",
+    "params": [
+      "proseSubsection"
+    ]
   },
   {
     "ns": "server.recommendations",
@@ -13857,7 +13968,10 @@
     "ns": "server.recommendations",
     "id": "server.recommendations.noProseSubsectionShort",
     "ru": "В критике нет подраздела «{0}»",
-    "en": "The critique has no “{0}” subsection"
+    "en": "The critique has no “{0}” subsection",
+    "params": [
+      "proseSubsection"
+    ]
   },
   {
     "ns": "server.representationTransformer",
@@ -14116,5 +14230,11 @@
     "id": "server.middleware.rateLimiter.rateLimited",
     "ru": "Превышен лимит запросов",
     "en": "Request limit exceeded"
+  },
+  {
+    "ns": "server.logFormatter",
+    "id": "server.logFormatter.parseWarningsHeader",
+    "ru": "  ⚠ РАЗБОР С ПОТЕРЯМИ (",
+    "en": "  ⚠ PARSED WITH LOSSES ("
   }
 ]

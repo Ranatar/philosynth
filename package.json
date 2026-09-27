@@ -35,7 +35,9 @@
     "i18n:codemod": "node scripts/i18n/i18n-codemod.mjs",
     "i18n:export": "node scripts/i18n/i18n-export.mjs",
     "i18n:import": "node scripts/i18n/i18n-import.mjs",
-    "i18n:check": "node scripts/i18n/i18n-check.mjs"
+    "i18n:check": "node scripts/i18n/i18n-check.mjs",
+    "i18n:params": "node scripts/i18n/i18n-params.mjs",
+    "i18n:split": "node scripts/i18n/i18n-split.mjs"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.0",

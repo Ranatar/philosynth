@@ -46,6 +46,7 @@ import { deleteMode, getModeResults, runMode as runModeApi } from "../../api/mod
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { ModeContent } from "./ModeContent";
 import { ModeTabBar } from "./ModeTabBar";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Клиентская статика MODE_CONFIG [22578] (дословно) ─────────────── */
 
@@ -199,8 +200,8 @@ export function ModeModal({
           setLiveHtml("");
           setRunChars(0);
           setDoneInfo(
-            msg.usage.inputTokens.toLocaleString("ru") + " вх. + " +
-              msg.usage.outputTokens.toLocaleString("ru") + " вых. · $" +
+            msg.usage.inputTokens.toLocaleString("ru") + tl("modes.modeModal.tokensInSuffix", " вх. + ") +
+              msg.usage.outputTokens.toLocaleString("ru") + tl("modes.modeModal.tokensOutCost", " вых. · $") +
               msg.usage.costUsd.toFixed(4),
           );
           void refetch(msg.index);
@@ -233,7 +234,7 @@ export function ModeModal({
     const value = param.trim();
     if (!value) {
       // alert("Заполните параметр.") исходника
-      (globalThis as { alert?: (m: string) => void }).alert?.("Заполните параметр.");
+      (globalThis as { alert?: (m: string) => void }).alert?.(tl("common.fillParameter", "Заполните параметр."));
       return;
     }
     setRunning(true);
@@ -271,7 +272,7 @@ export function ModeModal({
       const confirmFn = (globalThis as {
         confirm?: (m: string) => boolean;
       }).confirm;
-      if (confirmFn && !confirmFn(`Удалить результат «${target.paramValue}»?`)) {
+      if (confirmFn && !confirmFn(tl("modes.modeModal.confirmDeleteResult", "Удалить результат «{paramValue}»?", { paramValue: target.paramValue }))) {
         return;
       }
       deleteMode(synthesisId, mk, index)
@@ -304,7 +305,7 @@ export function ModeModal({
   const contentHtml = running
     ? liveHtml
     : runError
-      ? `<div class="callout warning"><span class="callout-label">⚠ Ошибка</span>${escapeHtml(runError)}</div>`
+      ? tl("modes.modeModal.errorCallout", "<div class=\"callout warning\"><span class=\"callout-label\">⚠ Ошибка</span>{runError}</div>", { runError: escapeHtml(runError) })
       : (active?.htmlContent ?? "");
 
   return (
@@ -321,7 +322,7 @@ export function ModeModal({
             {ui.title}
           </div>
           <button type="button" className="mode-modal-close" onClick={onClose}>
-            ✕ Закрыть
+            {tl("common.closeWithIcon", "✕ Закрыть")}
           </button>
         </div>
 
@@ -386,19 +387,19 @@ export function ModeModal({
               onClick={handleRun}
             >
               {running
-                ? `Генерация... ${runChars > 0 ? `${runChars} симв.` : ""}`
-                : "Генерировать"}
+                ? tl("modes.modeModal.generatingProgress", "Генерация... {runChars}", { runChars: runChars > 0 ? tl("modes.modeModal.chars", "{runChars} симв.", { runChars }) : "" })
+                : tl("modes.modeModal.generate", "Генерировать")}
             </button>
             {running && (
               <button
                 type="button"
                 className="action-btn"
                 id="modeAbortBtn"
-                title="Остановить генерацию режима"
+                title={tl("modes.modeModal.stopHint", "Остановить генерацию режима")}
                 style={{ marginLeft: 4 }}
                 onClick={handleAbort}
               >
-                ⏹ Остановить
+                {tl("modes.modeModal.stop", "⏹ Остановить")}
               </button>
             )}
             <div
@@ -412,8 +413,8 @@ export function ModeModal({
             >
               {estimate
                 ? "≈ $" + estimate.cost.toFixed(4) + " (~" +
-                  Math.round(estimate.inTokens / 1000) + "K вх. + ~" +
-                  Math.round(estimate.outTokens / 1000) + "K вых.)"
+                  Math.round(estimate.inTokens / 1000) + tl("modes.modeModal.tokensInMid", "K вх. + ~") +
+                  Math.round(estimate.outTokens / 1000) + tl("modes.modeModal.tokensOutTail", "K вых.)")
                 : ""}
             </div>
           </div>
@@ -441,7 +442,7 @@ export function ModeModal({
             {footerInfo}
           </div>
           <button type="button" className="mode-modal-copy" onClick={handleCopy}>
-            Скопировать
+            {tl("modes.modeModal.copy", "Скопировать")}
           </button>
         </div>
       </div>

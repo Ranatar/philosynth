@@ -67,6 +67,7 @@ import {
   stripeConfigured,
   type StripeElements,
 } from "../utils/stripe";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const LABELS = KEY_LABELS as Record<string, string>;
 
@@ -78,7 +79,7 @@ type StatusMsg = { text: string; kind: "ok" | "err" } | null;
 export function billingErrorText(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
     if (err.code === "STRIPE_UNAVAILABLE")
-      return "Платежи недоступны: Stripe не настроен на сервере.";
+      return tl("billingPage.paymentsUnavailable", "Платежи недоступны: Stripe не настроен на сервере.");
     if (err.details && typeof err.details === "object") {
       const first = Object.values(err.details as Record<string, unknown>).find(
         (v) => typeof v === "string",
@@ -117,15 +118,15 @@ function sectionLabel(key: string | null): string {
 }
 
 const MODE_LABELS: Record<BillingMode, string> = {
-  byo: "свой ключ",
-  subscription: "подписка",
-  balance: "баланс",
+  byo: tl("billingPage.sourceOwnKey", "свой ключ"),
+  subscription: tl("billingPage.sourceSubscription", "подписка"),
+  balance: tl("billingPage.sourceBalance", "баланс"),
 };
 
 const TX_LABELS: Record<TransactionType, string> = {
-  topup: "пополнение",
-  usage: "списание",
-  refund: "возврат",
+  topup: tl("billingPage.txTopUp", "пополнение"),
+  usage: tl("billingPage.txCharge", "списание"),
+  refund: tl("billingPage.txRefund", "возврат"),
 };
 
 /** Бейдж режима/типа: gold — баланс/пополнение (литералы вне className —
@@ -178,7 +179,7 @@ function StripePaymentBox({ clientSecret, submitLabel, onPaid, onCancel }: Strip
         element.mount(hostRef.current);
         setReady(true);
       } catch (err) {
-        if (!cancelled) setError(billingErrorText(err, "Не удалось загрузить платёжную форму"));
+        if (!cancelled) setError(billingErrorText(err, tl("billingPage.paymentFormFailed", "Не удалось загрузить платёжную форму")));
       }
     })();
     return () => {
@@ -202,18 +203,18 @@ function StripePaymentBox({ clientSecret, submitLabel, onPaid, onCancel }: Strip
         redirect: "if_required",
       });
       if (result.error) {
-        setError(result.error.message ?? "Платёж отклонён");
+        setError(result.error.message ?? tl("billingPage.paymentDeclined", "Платёж отклонён"));
         return;
       }
       if (!result.paymentIntent || result.paymentIntent.status !== "succeeded") {
         setError(
-          `Платёж не завершён (статус: ${result.paymentIntent?.status ?? "неизвестен"})`,
+          tl("billingPage.paymentIncomplete", "Платёж не завершён (статус: {status})", { status: result.paymentIntent?.status ?? tl("billingPage.unknownStatus", "неизвестен") }),
         );
         return;
       }
       await onPaid(result.paymentIntent.id);
     } catch (err) {
-      setError(billingErrorText(err, "Ошибка платежа"));
+      setError(billingErrorText(err, tl("billingPage.paymentError", "Ошибка платежа")));
     } finally {
       setPending(false);
     }
@@ -222,7 +223,7 @@ function StripePaymentBox({ clientSecret, submitLabel, onPaid, onCancel }: Strip
   return (
     <div className="form-group full" data-testid="stripe-payment-box">
       <div ref={hostRef} style={{ minHeight: 120 }} />
-      {!ready && !error && <Hint text="Загрузка платёжной формы…" />}
+      {!ready && !error && <Hint text={tl("billingPage.loadingPaymentForm", "Загрузка платёжной формы…")} />}
       {error && <Status msg={{ text: error, kind: "err" }} />}
       <div className="inline-edit-actions">
         <button
@@ -231,10 +232,10 @@ function StripePaymentBox({ clientSecret, submitLabel, onPaid, onCancel }: Strip
           disabled={!ready || pending}
           onClick={() => void handlePay()}
         >
-          {pending ? "Оплата…" : submitLabel}
+          {pending ? tl("billingPage.paying", "Оплата…") : submitLabel}
         </button>
         <button type="button" className="action-btn" disabled={pending} onClick={onCancel}>
-          Отмена
+          {tl("common.cancel", "Отмена")}
         </button>
       </div>
     </div>
@@ -258,7 +259,7 @@ function ApiKeySection() {
     try {
       setKeys(await listApiKeys());
     } catch (err) {
-      setStatus({ text: billingErrorText(err, "Не удалось загрузить ключи"), kind: "err" });
+      setStatus({ text: billingErrorText(err, tl("billingPage.keysLoadFailed", "Не удалось загрузить ключи")), kind: "err" });
     }
   }, []);
 
@@ -272,7 +273,7 @@ function ApiKeySection() {
     e.preventDefault();
     const key = newKey.trim();
     if (!key) {
-      setStatus({ text: "Введите ключ", kind: "err" });
+      setStatus({ text: tl("billingPage.enterKey", "Введите ключ"), kind: "err" });
       return;
     }
     setPending(true);
@@ -280,10 +281,10 @@ function ApiKeySection() {
     try {
       const stored = await storeApiKey(key);
       setNewKey("");
-      setStatus({ text: `Ключ ${stored.prefix}… сохранён и активен`, kind: "ok" });
+      setStatus({ text: tl("billingPage.keySaved", "Ключ {prefix}… сохранён и активен", { prefix: stored.prefix }), kind: "ok" });
       await reload();
     } catch (err) {
-      setStatus({ text: billingErrorText(err, "Не удалось сохранить ключ"), kind: "err" });
+      setStatus({ text: billingErrorText(err, tl("billingPage.keySaveFailed", "Не удалось сохранить ключ")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -293,7 +294,7 @@ function ApiKeySection() {
     if (!active) return;
     if (
       !window.confirm(
-        "Удалить активный API-ключ? Генерация пойдёт с подписки или баланса сервиса.",
+        tl("billingPage.confirmDeleteKey", "Удалить активный API-ключ? Генерация пойдёт с подписки или баланса сервиса."),
       )
     )
       return;
@@ -301,10 +302,10 @@ function ApiKeySection() {
     setStatus(null);
     try {
       await deleteApiKey(active.id);
-      setStatus({ text: "Ключ удалён", kind: "ok" });
+      setStatus({ text: tl("billingPage.keyDeleted", "Ключ удалён"), kind: "ok" });
       await reload();
     } catch (err) {
-      setStatus({ text: billingErrorText(err, "Не удалось удалить ключ"), kind: "err" });
+      setStatus({ text: billingErrorText(err, tl("billingPage.keyDeleteFailed", "Не удалось удалить ключ")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -312,17 +313,17 @@ function ApiKeySection() {
 
   return (
     <section className="input-form" data-testid="billing-api-key">
-      <SectionTitle>API-ключ Anthropic (BYO-Key)</SectionTitle>
+      <SectionTitle>{tl("billingPage.apiKeyTitle", "API-ключ Anthropic (BYO-Key)")}</SectionTitle>
       <div className="form-group full">
         {keys === null ? (
-          <Hint text="Загрузка…" />
+          <Hint text={tl("common.loading", "Загрузка…")} />
         ) : active ? (
           <div style={rowStyle}>
             <span className="masked-key" data-testid="api-key-masked">
               {maskApiKey(active.prefix)}
-              <span className="masked-key-status active">активен</span>
+              <span className="masked-key-status active">{tl("billingPage.active", "активен")}</span>
             </span>
-            <span className="version-meta">с {fmtDateShort(active.createdAt)}</span>
+            <span className="version-meta">{tl("billingPage.since", "с {createdAt}", { createdAt: fmtDateShort(active.createdAt) })}</span>
             <button
               type="button"
               className="action-btn"
@@ -330,24 +331,22 @@ function ApiKeySection() {
               onClick={() => void handleDelete()}
               data-testid="api-key-delete"
             >
-              Удалить
+              {tl("common.delete", "Удалить")}
             </button>
           </div>
         ) : (
           <div className="masked-key" data-testid="api-key-absent">
-            ключ не задан
-            <span className="masked-key-status absent">не задан</span>
+            {tl("billingPage.keyNotSet", "ключ не задан")}
+            <span className="masked-key-status absent">{tl("billingPage.notSet", "не задан")}</span>
           </div>
         )}
         <div className="form-sublabel">
-          С собственным ключом запросы к Claude идут через сервер с вашим ключом и не
-          списываются с баланса; без ключа — подписка или баланс сервиса (приоритет:
-          ключ → подписка → баланс).
+          {tl("billingPage.byoKeyNote", "С собственным ключом запросы к Claude идут через сервер с вашим ключом и не списываются с баланса; без ключа — подписка или баланс сервиса (приоритет: ключ → подписка → баланс).")}
         </div>
       </div>
       <form onSubmit={(e) => void handleStore(e)} className="form-group full">
         <label className="form-label" htmlFor="billing-new-key">
-          {active ? "Заменить ключ" : "Добавить ключ"}
+          {active ? tl("billingPage.replaceKey", "Заменить ключ") : tl("billingPage.addKey", "Добавить ключ")}
         </label>
         <div style={{ ...rowStyle, gap: 8 }}>
           <input
@@ -355,7 +354,7 @@ function ApiKeySection() {
             type="password"
             autoComplete="off"
             className="form-input"
-            placeholder="sk-ant-api03-…"
+            placeholder={tl("billingPage.keyPlaceholder", "sk-ant-api03-…")}
             style={{ flex: "1 1 260px" }}
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
@@ -367,12 +366,11 @@ function ApiKeySection() {
             disabled={pending || !newKey.trim()}
             data-testid="api-key-save"
           >
-            Сохранить
+            {tl("common.save", "Сохранить")}
           </button>
         </div>
         <div className="form-sublabel">
-          Ключ шифруется на сервере (AES-256-GCM) и в открытом виде не хранится; новый
-          ключ деактивирует прежний.
+          {tl("billingPage.keyEncryptedNote", "Ключ шифруется на сервере (AES-256-GCM) и в открытом виде не хранится; новый ключ деактивирует прежний.")}
         </div>
       </form>
       <Status msg={status} />
@@ -405,7 +403,7 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
 
   async function handleCreate(): Promise<void> {
     if (!amountValid) {
-      setStatus({ text: "Сумма — от $1 до $1000", kind: "err" });
+      setStatus({ text: tl("billingPage.amountRange", "Сумма — от $1 до $1000"), kind: "err" });
       return;
     }
     setPending(true);
@@ -413,7 +411,7 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
     try {
       setIntent(await createTopup(Math.round(amount * 100) / 100));
     } catch (err) {
-      setStatus({ text: billingErrorText(err, "Не удалось создать платёж"), kind: "err" });
+      setStatus({ text: billingErrorText(err, tl("billingPage.paymentCreateFailed", "Не удалось создать платёж")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -426,13 +424,13 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
         const result = await confirmTopup(paymentIntentId);
         setIntent(null);
         setStatus({
-          text: `Баланс пополнен на ${fmtMoney(result.transaction.amountUsd)}; текущий баланс ${fmtMoney(result.balanceUsd)}`,
+          text: tl("billingPage.balanceToppedUp", "Баланс пополнен на {amountUsd}; текущий баланс {balanceUsd}", { amountUsd: fmtMoney(result.transaction.amountUsd), balanceUsd: fmtMoney(result.balanceUsd) }),
           kind: "ok",
         });
         await restore(); // balanceUsd в auth-store — из GET /auth/me
         onBalanceChanged();
       } catch (err) {
-        setStatus({ text: billingErrorText(err, "Платёж не подтверждён"), kind: "err" });
+        setStatus({ text: billingErrorText(err, tl("billingPage.paymentNotConfirmed", "Платёж не подтверждён")), kind: "err" });
       } finally {
         setPending(false);
       }
@@ -442,27 +440,27 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
 
   return (
     <section className="input-form" data-testid="billing-balance">
-      <SectionTitle>Баланс сервиса</SectionTitle>
+      <SectionTitle>{tl("billingPage.serviceBalance", "Баланс сервиса")}</SectionTitle>
       <div className="stat-row">
         <div>
           <div className="stat-value gold" data-testid="balance-value">
             {balance === undefined ? "—" : fmtMoney(balance)}
           </div>
-          <div className="stat-label">баланс</div>
+          <div className="stat-label">{tl("billingPage.sourceBalance", "баланс")}</div>
         </div>
       </div>
       {intent ? (
         <>
           <div className="form-sublabel" style={{ marginBottom: 8 }}>
-            Платёж на {fmtMoney(intent.amountUsd)} создан.{" "}
+            {tl("billingPage.paymentCreated", "Платёж на {amountUsd} создан.", { amountUsd: fmtMoney(intent.amountUsd) })}
             {live
-              ? "Введите данные карты и подтвердите оплату."
-              : "Stripe.js не настроен (VITE_STRIPE_PUBLISHABLE_KEY) — тестовый режим: подтверждение платежа сервером."}
+              ? tl("billingPage.enterCardData", "Введите данные карты и подтвердите оплату.")
+              : tl("billingPage.stripeTestMode", "Stripe.js не настроен (VITE_STRIPE_PUBLISHABLE_KEY) — тестовый режим: подтверждение платежа сервером.")}
           </div>
           {live ? (
             <StripePaymentBox
               clientSecret={intent.clientSecret}
-              submitLabel={`Оплатить ${fmtMoney(intent.amountUsd)}`}
+              submitLabel={tl("billingPage.payAmount", "Оплатить {amountUsd}", { amountUsd: fmtMoney(intent.amountUsd) })}
               onPaid={(id) => finish(id)}
               onCancel={() => setIntent(null)}
             />
@@ -475,7 +473,7 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
                 onClick={() => void finish(intent.paymentIntentId)}
                 data-testid="topup-confirm-dev"
               >
-                {pending ? "Подтверждение…" : "Подтвердить платёж"}
+                {pending ? tl("billingPage.confirming", "Подтверждение…") : tl("billingPage.confirmPayment", "Подтвердить платёж")}
               </button>
               <button
                 type="button"
@@ -483,7 +481,7 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
                 disabled={pending}
                 onClick={() => setIntent(null)}
               >
-                Отмена
+                {tl("common.cancel", "Отмена")}
               </button>
             </div>
           )}
@@ -503,7 +501,7 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
           ))}
           <input
             className="form-input"
-            placeholder="своя сумма"
+            placeholder={tl("billingPage.customAmount", "своя сумма")}
             inputMode="decimal"
             style={{ width: 130 }}
             value={custom}
@@ -512,7 +510,7 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
               setPreset("custom");
               setCustom(e.target.value);
             }}
-            aria-label="Своя сумма пополнения, USD"
+            aria-label={tl("billingPage.customAmountLabel", "Своя сумма пополнения, USD")}
             data-testid="amount-custom"
           />
           <button
@@ -522,7 +520,7 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
             onClick={() => void handleCreate()}
             data-testid="topup-start"
           >
-            {pending ? "…" : `Пополнить${amountValid ? ` на ${fmtMoney(amount)}` : ""}`}
+            {pending ? "…" : tl("billingPage.topUp", "Пополнить{amountValid}", { amountValid: amountValid ? tl("billingPage.byAmount", " на {amount}", { amount: fmtMoney(amount) }) : "" })}
           </button>
         </div>
       )}
@@ -534,20 +532,20 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
 /* ── Секция «Подписка» ───────────────────────────────────────────────── */
 
 const SUB_STATUS_LABELS: Record<string, string> = {
-  active: "активна",
-  trialing: "пробный период",
-  past_due: "просрочена оплата",
-  canceled: "отменена",
-  incomplete: "ожидает оплаты",
+  active: tl("billingPage.subActive", "активна"),
+  trialing: tl("billingPage.subTrialing", "пробный период"),
+  past_due: tl("billingPage.subPastDue", "просрочена оплата"),
+  canceled: tl("billingPage.subCanceled", "отменена"),
+  incomplete: tl("billingPage.subIncomplete", "ожидает оплаты"),
 };
 
 type QuotaKey = keyof SubscriptionOverview["quotas"];
 
 const QUOTA_LABELS: Record<QuotaKey, string> = {
-  syntheses: "синтезы",
-  regenerations: "перегенерации",
-  modes: "режимы",
-  enrichments: "обогащения",
+  syntheses: tl("billingPage.quotaSyntheses", "синтезы"),
+  regenerations: tl("billingPage.quotaRegenerations", "перегенерации"),
+  modes: tl("billingPage.quotaModes", "режимы"),
+  enrichments: tl("billingPage.quotaEnrichments", "обогащения"),
 };
 
 function SubscriptionSection() {
@@ -562,7 +560,7 @@ function SubscriptionSection() {
     try {
       setOverview(await getSubscription());
     } catch (err) {
-      setStatus({ text: billingErrorText(err, "Не удалось загрузить подписку"), kind: "err" });
+      setStatus({ text: billingErrorText(err, tl("billingPage.subscriptionLoadFailed", "Не удалось загрузить подписку")), kind: "err" });
     }
   }, []);
 
@@ -576,7 +574,7 @@ function SubscriptionSection() {
       try {
         setPlans(await getPlans());
       } catch (err) {
-        setStatus({ text: billingErrorText(err, "Не удалось загрузить тарифы"), kind: "err" });
+        setStatus({ text: billingErrorText(err, tl("billingPage.plansLoadFailed", "Не удалось загрузить тарифы")), kind: "err" });
       }
     }
   }
@@ -591,13 +589,13 @@ function SubscriptionSection() {
         setPayment({ clientSecret: result.clientSecret });
       } else {
         setStatus({
-          text: "Подписка создана и ожидает оплаты первого инвойса; после оплаты статус обновится (webhook Stripe).",
+          text: tl("billingPage.subscriptionCreated", "Подписка создана и ожидает оплаты первого инвойса; после оплаты статус обновится (webhook Stripe)."),
           kind: "ok",
         });
       }
       await reload();
     } catch (err) {
-      setStatus({ text: billingErrorText(err, "Не удалось оформить подписку"), kind: "err" });
+      setStatus({ text: billingErrorText(err, tl("billingPage.subscribeFailed", "Не удалось оформить подписку")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -609,12 +607,12 @@ function SubscriptionSection() {
     try {
       await (resume ? resumeSubscription() : cancelSubscription());
       setStatus({
-        text: resume ? "Подписка возобновлена" : "Подписка будет отменена в конце периода",
+        text: resume ? tl("billingPage.subscriptionResumed", "Подписка возобновлена") : tl("billingPage.subscriptionWillCancel", "Подписка будет отменена в конце периода"),
         kind: "ok",
       });
       await reload();
     } catch (err) {
-      setStatus({ text: billingErrorText(err, "Не удалось изменить подписку"), kind: "err" });
+      setStatus({ text: billingErrorText(err, tl("billingPage.subscriptionChangeFailed", "Не удалось изменить подписку")), kind: "err" });
     } finally {
       setPending(false);
     }
@@ -626,9 +624,9 @@ function SubscriptionSection() {
 
   return (
     <section className="input-form" data-testid="billing-subscription">
-      <SectionTitle>Подписка</SectionTitle>
+      <SectionTitle>{tl("billingPage.subscription", "Подписка")}</SectionTitle>
       {overview === null ? (
-        <Hint text="Загрузка…" />
+        <Hint text={tl("common.loading", "Загрузка…")} />
       ) : sub && plan ? (
         <>
           <div className="stat-row">
@@ -637,7 +635,7 @@ function SubscriptionSection() {
                 {plan.displayName}
               </div>
               <div className="stat-label">
-                тариф · {fmtMoney(plan.priceUsd)} / {periodWord(plan.billingPeriod)}
+                {tl("billingPage.planLine", "тариф · {priceUsd} / {billingPeriod}", { priceUsd: fmtMoney(plan.priceUsd), billingPeriod: periodWord(plan.billingPeriod) })}
               </div>
             </div>
             <div>
@@ -645,24 +643,24 @@ function SubscriptionSection() {
                 {SUB_STATUS_LABELS[sub.status] ?? sub.status}
               </div>
               <div className="stat-label">
-                статус{sub.cancelAtPeriodEnd ? " · отмена в конце периода" : ""}
+                {tl("billingPage.status", "статус")}{sub.cancelAtPeriodEnd ? tl("billingPage.cancelAtPeriodEnd", " · отмена в конце периода") : ""}
               </div>
             </div>
             <div>
               <div className="stat-value" style={{ fontSize: 16 }}>
                 {fmtDateLong(sub.currentPeriodStart)} — {fmtDateLong(sub.currentPeriodEnd)}
               </div>
-              <div className="stat-label">период</div>
+              <div className="stat-label">{tl("billingPage.period", "период")}</div>
             </div>
           </div>
           <div className="data-table-wrap">
             <table className="data-table" data-testid="sub-quotas">
               <thead>
                 <tr>
-                  <th>Квота</th>
-                  <th className="num">Использовано</th>
-                  <th className="num">Лимит</th>
-                  <th className="num">Остаток</th>
+                  <th>{tl("billingPage.quota", "Квота")}</th>
+                  <th className="num">{tl("billingPage.used", "Использовано")}</th>
+                  <th className="num">{tl("billingPage.limit", "Лимит")}</th>
+                  <th className="num">{tl("billingPage.remaining", "Остаток")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -688,7 +686,7 @@ function SubscriptionSection() {
                 onClick={() => void handleCancelResume(false)}
                 data-testid="sub-cancel"
               >
-                Отменить подписку
+                {tl("billingPage.cancelSubscription", "Отменить подписку")}
               </button>
             )}
             {billable && sub.cancelAtPeriodEnd && (
@@ -699,7 +697,7 @@ function SubscriptionSection() {
                 onClick={() => void handleCancelResume(true)}
                 data-testid="sub-resume"
               >
-                Возобновить
+                {tl("billingPage.resume", "Возобновить")}
               </button>
             )}
             {!billable && (
@@ -710,7 +708,7 @@ function SubscriptionSection() {
                 onClick={() => void openPlans()}
                 data-testid="sub-choose"
               >
-                Выбрать тариф
+                {tl("billingPage.choosePlan", "Выбрать тариф")}
               </button>
             )}
             <button
@@ -720,19 +718,18 @@ function SubscriptionSection() {
               onClick={() => void reload()}
               data-testid="sub-refresh"
             >
-              Обновить
+              {tl("billingPage.refresh", "Обновить")}
             </button>
           </div>
         </>
       ) : (
         <div className="form-group full">
           <div className="masked-key" data-testid="sub-absent">
-            подписки нет
-            <span className="masked-key-status absent">не оформлена</span>
+            {tl("billingPage.noSubscription", "подписки нет")}
+            <span className="masked-key-status absent">{tl("billingPage.notSubscribed", "не оформлена")}</span>
           </div>
           <div className="form-sublabel">
-            Подписка даёт квоты на период (синтезы, перегенерации, режимы, обогащения);
-            при исчерпании квоты операции идут с баланса.
+            {tl("billingPage.subscriptionNote", "Подписка даёт квоты на период (синтезы, перегенерации, режимы, обогащения); при исчерпании квоты операции идут с баланса.")}
           </div>
           <div className="inline-edit-actions" style={{ borderTop: "none", paddingTop: 0 }}>
             <button
@@ -742,7 +739,7 @@ function SubscriptionSection() {
               onClick={() => void openPlans()}
               data-testid="sub-choose"
             >
-              Выбрать тариф
+              {tl("billingPage.choosePlan", "Выбрать тариф")}
             </button>
           </div>
         </div>
@@ -750,7 +747,7 @@ function SubscriptionSection() {
 
       {choosing && (
         <div className="form-group full" data-testid="sub-plans">
-          <div className="form-label">Тарифы</div>
+          <div className="form-label">{tl("billingPage.plans", "Тарифы")}</div>
           {/* 8.7: таблица тарифов вынесена в components/billing/PlansTable —
               та же разметка стоит на стартовой странице (цены без входа) */}
           <PlansTable
@@ -763,13 +760,13 @@ function SubscriptionSection() {
                 onClick={() => void handleSubscribe(p.id)}
                 data-testid={`sub-plan-${p.name}`}
               >
-                Оформить
+                {tl("billingPage.subscribe", "Оформить")}
               </button>
             )}
           />
           <div className="inline-edit-actions" style={{ borderTop: "none", paddingTop: 0 }}>
             <button type="button" className="action-btn" onClick={() => setChoosing(false)}>
-              Закрыть
+              {tl("common.close", "Закрыть")}
             </button>
           </div>
         </div>
@@ -777,14 +774,14 @@ function SubscriptionSection() {
 
       {payment && (
         <>
-          <div className="form-sublabel">Оплата первого инвойса подписки.</div>
+          <div className="form-sublabel">{tl("billingPage.firstInvoicePayment", "Оплата первого инвойса подписки.")}</div>
           <StripePaymentBox
             clientSecret={payment.clientSecret}
-            submitLabel="Оплатить подписку"
+            submitLabel={tl("billingPage.paySubscription", "Оплатить подписку")}
             onPaid={async () => {
               setPayment(null);
               setStatus({
-                text: "Оплата принята; статус подписки обновится после подтверждения Stripe.",
+                text: tl("billingPage.paymentAccepted", "Оплата принята; статус подписки обновится после подтверждения Stripe."),
                 kind: "ok",
               });
               await reload();
@@ -840,7 +837,7 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
         if (!cancelled) setHistory(h);
       })
       .catch((err) => {
-        if (!cancelled) setError(billingErrorText(err, "Не удалось загрузить историю"));
+        if (!cancelled) setError(billingErrorText(err, tl("billingPage.historyLoadFailed", "Не удалось загрузить историю")));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -861,7 +858,7 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
 
   return (
     <section className="input-form" data-testid="billing-usage">
-      <SectionTitle>История использования</SectionTitle>
+      <SectionTitle>{tl("billingPage.usageHistory", "История использования")}</SectionTitle>
       <div className="data-table-wrap">
         <div className="data-table-toolbar">
           <div style={{ ...rowStyle, gap: 8 }}>
@@ -870,10 +867,10 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
               style={{ width: 200 }}
               value={synthesisId}
               onChange={(e) => setSynthesisId(e.target.value)}
-              aria-label="Фильтр по синтезу"
+              aria-label={tl("billingPage.filterBySynthesis", "Фильтр по синтезу")}
               data-testid="usage-synthesis-filter"
             >
-              <option value="">Все синтезы</option>
+              <option value="">{tl("billingPage.allSyntheses", "Все синтезы")}</option>
               {syntheses.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.title}
@@ -885,13 +882,13 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
               style={{ width: 150 }}
               value={period}
               onChange={(e) => setPeriod(e.target.value as Period)}
-              aria-label="Период"
+              aria-label={tl("billingPage.periodFilter", "Период")}
               data-testid="usage-period-filter"
             >
-              <option value="7d">За неделю</option>
-              <option value="30d">За месяц</option>
-              <option value="all">За всё время</option>
-              <option value="custom">Свой период</option>
+              <option value="7d">{tl("billingPage.lastWeek", "За неделю")}</option>
+              <option value="30d">{tl("billingPage.lastMonth", "За месяц")}</option>
+              <option value="all">{tl("billingPage.allTime", "За всё время")}</option>
+              <option value="custom">{tl("billingPage.customPeriod", "Свой период")}</option>
             </select>
             {period === "custom" && (
               <>
@@ -901,7 +898,7 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
                   style={{ width: 150 }}
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
-                  aria-label="С даты"
+                  aria-label={tl("billingPage.fromDate", "С даты")}
                 />
                 <input
                   type="date"
@@ -909,26 +906,26 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
                   style={{ width: 150 }}
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
-                  aria-label="По дату"
+                  aria-label={tl("billingPage.toDate", "По дату")}
                 />
               </>
             )}
           </div>
           <span className="version-meta" data-testid="usage-count">
-            {loading ? "загрузка…" : `${fmtInt(entries.length)} записей`}
+            {loading ? tl("billingPage.loading", "загрузка…") : tl("billingPage.recordsCount", "{entriesCount} записей", { entriesCount: fmtInt(entries.length) })}
           </span>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="data-table" data-testid="usage-table">
             <thead>
               <tr>
-                <th>Дата</th>
-                <th>Синтез</th>
-                <th>Раздел</th>
-                <th className="num">Вход</th>
-                <th className="num">Выход</th>
-                <th className="num">Стоимость</th>
-                <th>Режим</th>
+                <th>{tl("billingPage.date", "Дата")}</th>
+                <th>{tl("common.synthesis", "Синтез")}</th>
+                <th>{tl("billingPage.section", "Раздел")}</th>
+                <th className="num">{tl("billingPage.input", "Вход")}</th>
+                <th className="num">{tl("billingPage.output", "Выход")}</th>
+                <th className="num">{tl("billingPage.cost", "Стоимость")}</th>
+                <th>{tl("billingPage.mode", "Режим")}</th>
               </tr>
             </thead>
             <tbody>
@@ -951,7 +948,7 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
             {history && entries.length > 0 && (
               <tfoot>
                 <tr data-testid="usage-totals">
-                  <td colSpan={3}>Итого ({fmtInt(history.totals.requests)} запросов)</td>
+                  <td colSpan={3}>{tl("billingPage.totalRequests", "Итого ({requests} запросов)", { requests: fmtInt(history.totals.requests) })}</td>
                   <td className="num">{fmtInt(history.totals.inputTokens)}</td>
                   <td className="num">{fmtInt(history.totals.outputTokens)}</td>
                   <td className="num">{fmtUsd(history.totals.costUsd)}</td>
@@ -962,22 +959,22 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
           </table>
         </div>
         {!loading && entries.length === 0 && !error && (
-          <div className="data-table-empty">записей нет</div>
+          <div className="data-table-empty">{tl("billingPage.noRecords", "записей нет")}</div>
         )}
         {error && <Status msg={{ text: error, kind: "err" }} />}
       </div>
       {history && entries.length > 0 && (
         <div className="form-sublabel" style={{ marginTop: 8 }} data-testid="usage-by-mode">
-          По режимам:{" "}
+          {tl("billingPage.byModes", "По режимам:")}
           {(Object.keys(MODE_LABELS) as BillingMode[])
             .filter((m) => history.byMode[m].requests > 0)
             .map(
               (m) =>
-                `${MODE_LABELS[m]} — ${fmtInt(history.byMode[m].requests)} запр., ${fmtUsd(history.byMode[m].costUsd)}`,
+                tl("billingPage.modeSummary", "{modeLabel} — {requests} запр., {costUsd}", { modeLabel: MODE_LABELS[m], requests: fmtInt(history.byMode[m].requests), costUsd: fmtUsd(history.byMode[m].costUsd) }),
             )
             .join(" · ")}
           {byoRequests > 0 &&
-            " · стоимость запросов со своим ключом — себестоимость, в итог не входит"}
+            tl("billingPage.ownKeyCostNote", " · стоимость запросов со своим ключом — себестоимость, в итог не входит")}
         </div>
       )}
     </section>
@@ -1006,7 +1003,7 @@ function TransactionsSection({ refreshToken }: { refreshToken: number }) {
         setTotal(h.total);
       })
       .catch((err) => {
-        if (!cancelled) setError(billingErrorText(err, "Не удалось загрузить транзакции"));
+        if (!cancelled) setError(billingErrorText(err, tl("billingPage.transactionsLoadFailed", "Не удалось загрузить транзакции")));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -1020,17 +1017,17 @@ function TransactionsSection({ refreshToken }: { refreshToken: number }) {
 
   return (
     <section className="input-form" data-testid="billing-transactions">
-      <SectionTitle>Транзакции</SectionTitle>
+      <SectionTitle>{tl("billingPage.transactions", "Транзакции")}</SectionTitle>
       <div className="data-table-wrap">
         <div style={{ overflowX: "auto" }}>
           <table className="data-table" data-testid="tx-table">
             <thead>
               <tr>
-                <th>Дата</th>
-                <th>Тип</th>
-                <th>Синтез / раздел</th>
-                <th className="num">Сумма</th>
-                <th className="num">Баланс после</th>
+                <th>{tl("billingPage.date", "Дата")}</th>
+                <th>{tl("common.type", "Тип")}</th>
+                <th>{tl("billingPage.synthesisSection", "Синтез / раздел")}</th>
+                <th className="num">{tl("billingPage.amount", "Сумма")}</th>
+                <th className="num">{tl("billingPage.balanceAfter", "Баланс после")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1059,7 +1056,7 @@ function TransactionsSection({ refreshToken }: { refreshToken: number }) {
           </table>
         </div>
         {!loading && items.length === 0 && !error && (
-          <div className="data-table-empty">транзакций нет</div>
+          <div className="data-table-empty">{tl("billingPage.noTransactions", "транзакций нет")}</div>
         )}
         {error && <Status msg={{ text: error, kind: "err" }} />}
         {total > TX_PAGE && (
@@ -1070,10 +1067,10 @@ function TransactionsSection({ refreshToken }: { refreshToken: number }) {
               disabled={page <= 1 || loading}
               onClick={() => setPage((p) => p - 1)}
             >
-              ← назад
+              {tl("billingPage.back", "← назад")}
             </button>
             <span>
-              стр. {page} / {pages}
+              {tl("billingPage.pageOf", "стр. {page} / {pages}", { page, pages })}
             </span>
             <button
               type="button"
@@ -1081,7 +1078,7 @@ function TransactionsSection({ refreshToken }: { refreshToken: number }) {
               disabled={page >= pages || loading}
               onClick={() => setPage((p) => p + 1)}
             >
-              вперёд →
+              {tl("billingPage.forward", "вперёд →")}
             </button>
           </div>
         )}

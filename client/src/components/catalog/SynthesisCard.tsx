@@ -47,13 +47,14 @@ import type {
 
 import { visibilityBadge } from "../../utils/visibility-text";
 import { VisibilityControl } from "./VisibilityControl";
+import { tl } from "@philosynth/shared/i18n/t";
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: "черновик",
-  generating: "генерируется…",
-  paused: "на паузе",
-  ready: "готов",
-  error: "ошибка",
+  draft: tl("catalog.synthesisCard.statusDraft", "черновик"),
+  generating: tl("catalog.synthesisCard.statusGenerating", "генерируется…"),
+  paused: tl("catalog.synthesisCard.statusPaused", "на паузе"),
+  ready: tl("catalog.synthesisCard.statusReady", "готов"),
+  error: tl("catalog.synthesisCard.statusError", "ошибка"),
 };
 
 /** Множественное число «потомок» (8.4, п.4) */
@@ -62,10 +63,10 @@ export function descendantsPhrase(n: number): string {
   const mod100 = n % 100;
   const word =
     mod10 === 1 && mod100 !== 11
-      ? "потомок"
+      ? tl("catalog.synthesisCard.descendantOne", "потомок")
       : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)
-        ? "потомка"
-        : "потомков";
+        ? tl("catalog.synthesisCard.descendantFew", "потомка")
+        : tl("catalog.synthesisCard.descendantMany", "потомков");
   return `${n} ${word}`;
 }
 
@@ -73,10 +74,10 @@ export function descendantsPhrase(n: number): string {
  *  descendantCount: null — не известно (сбой запроса) — без числа. */
 export function deleteWarningText(descendantCount: number | null): string {
   const base =
-    "Удаление необратимо: разделы, элементы, логи и родословная концепции будут стёрты.";
+    tl("catalog.synthesisCard.deleteIrreversible", "Удаление необратимо: разделы, элементы, логи и родословная концепции будут стёрты.");
   if (descendantCount === null) return base;
-  if (descendantCount === 0) return `${base} Потомков у концепции нет.`;
-  return `${base} У концепции ${descendantsPhrase(descendantCount)} — они останутся без родителя.`;
+  if (descendantCount === 0) return tl("catalog.synthesisCard.noDescendants", "{base} Потомков у концепции нет.", { base });
+  return tl("catalog.synthesisCard.descendantsOrphaned", "{base} У концепции {descendantCount} — они останутся без родителя.", { base, descendantCount: descendantsPhrase(descendantCount) });
 }
 
 /** Результат действия карточки: текст ошибки либо null (успех) */
@@ -134,7 +135,7 @@ export function SynthesisCard({
   const phil =
     synthesis.philosophers.length > 0
       ? synthesis.philosophers.join(", ")
-      : "свободный синтез";
+      : tl("common.freeSynthesisLower", "свободный синтез");
   const date = new Date(synthesis.createdAt).toLocaleDateString("ru-RU", {
     day: "2-digit",
     month: "long",
@@ -228,7 +229,7 @@ export function SynthesisCard({
           {/* Беседа 3.2 (п. 5): бейдж мета-синтеза (родители-концепции
               в генеалогии — SynthesisPreview.hasConceptParents) */}
           {synthesis.hasConceptParents && (
-            <span className="cert-badge gold">◈ мета-синтез</span>
+            <span className="cert-badge gold">{tl("catalog.synthesisCard.metaSynthesisBadge", "◈ мета-синтез")}</span>
           )}
           {/* Беседа 8.7: ступень публичности — у своих всегда, у чужих
               видна разница «витрина / публичная» (приватных чужих нет) */}
@@ -250,7 +251,7 @@ export function SynthesisCard({
       <div className="doc-content" style={{ marginTop: 6 }}>{phil}</div>
       {synthesis.authorName && (
         <div className="doc-meta-key" style={{ marginTop: 4 }} data-testid="card-author">
-          Автор: {synthesis.authorName}
+          {tl("catalog.synthesisCard.author", "Автор: {authorName}", { authorName: synthesis.authorName })}
         </div>
       )}
 
@@ -277,7 +278,7 @@ export function SynthesisCard({
           onClick={stop}
         >
           <label className="form-label" htmlFor={`rename-${synthesis.id}`}>
-            Название
+            {tl("common.title", "Название")}
           </label>
           <input
             id={`rename-${synthesis.id}`}
@@ -315,7 +316,7 @@ export function SynthesisCard({
               }}
               data-testid="card-rename-save"
             >
-              Сохранить
+              {tl("common.save", "Сохранить")}
             </button>
             <button
               type="button"
@@ -326,7 +327,7 @@ export function SynthesisCard({
                 setMode({ kind: "view" });
               }}
             >
-              Отмена
+              {tl("common.cancel", "Отмена")}
             </button>
           </div>
         </div>
@@ -339,7 +340,7 @@ export function SynthesisCard({
           data-testid="card-delete-warn"
           onClick={stop}
         >
-          {mode.loading ? "Считаю потомков…" : deleteWarningText(mode.descendants)}
+          {mode.loading ? tl("catalog.synthesisCard.countingDescendants", "Считаю потомков…") : deleteWarningText(mode.descendants)}
         </div>
       )}
 
@@ -365,7 +366,7 @@ export function SynthesisCard({
                   setMode({ kind: "visibility" });
                 }}
               >
-                Публичность
+                {tl("catalog.synthesisCard.visibility", "Публичность")}
               </button>
             )}
             {actions && mode.kind === "confirm-delete" ? (
@@ -380,7 +381,7 @@ export function SynthesisCard({
                   }}
                   data-testid="card-delete-confirm"
                 >
-                  Точно удалить?
+                  {tl("common.confirmDelete", "Точно удалить?")}
                 </button>
                 <button
                   type="button"
@@ -392,7 +393,7 @@ export function SynthesisCard({
                   }}
                   data-testid="card-delete-cancel"
                 >
-                  Отмена
+                  {tl("common.cancel", "Отмена")}
                 </button>
               </>
             ) : actions ? (
@@ -407,7 +408,7 @@ export function SynthesisCard({
                   }}
                   data-testid="card-rename"
                 >
-                  Переименовать
+                  {tl("catalog.synthesisCard.rename", "Переименовать")}
                 </button>
                 <button
                   type="button"
@@ -419,7 +420,7 @@ export function SynthesisCard({
                   }}
                   data-testid="card-duplicate"
                 >
-                  {duplicating ? "Дублирую…" : "Дублировать"}
+                  {duplicating ? tl("catalog.synthesisCard.duplicating", "Дублирую…") : tl("catalog.synthesisCard.duplicate", "Дублировать")}
                 </button>
                 <button
                   type="button"
@@ -431,7 +432,7 @@ export function SynthesisCard({
                   }}
                   data-testid="card-delete"
                 >
-                  Удалить
+                  {tl("common.delete", "Удалить")}
                 </button>
               </>
             ) : null}

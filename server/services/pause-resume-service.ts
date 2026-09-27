@@ -117,6 +117,7 @@ import {
   StreamError,
 } from "./streaming-manager.js";
 import { buildEffectiveDeps, resolveContextDeps } from "./synthesis-engine.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ══ Константы ════════════════════════════════════════════════════════ */
 
@@ -536,21 +537,21 @@ export async function resumeGeneration(
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
-  if (!row) throw new PauseResumeError("NOT_FOUND", "Синтез не найден");
+  if (!row) throw new PauseResumeError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
   if (row.userId !== userId) {
-    throw new PauseResumeError("FORBIDDEN", "Нет доступа к синтезу");
+    throw new PauseResumeError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
   }
   if (isGenerationActive(synthesisId)) {
     throw new PauseResumeError(
       "RESUME_INVALID",
-      "Генерация уже выполняется — повторное возобновление отклонено",
+      tl("server.pauseResumeService.alreadyRunning", "Генерация уже выполняется — повторное возобновление отклонено"),
     );
   }
   const ps = row.pausedState;
   if (row.status !== "paused" || !ps || ps.kind !== "gen") {
     throw new PauseResumeError(
       "RESUME_INVALID",
-      "Возобновление невозможно: синтез не находится в паузе генерации",
+      tl("server.pauseResumeService.notPausedGeneration", "Возобновление невозможно: синтез не находится в паузе генерации"),
     );
   }
   /* Runtime-guard: mode приходит из WS-сообщения — «чужой mode» обязан
@@ -558,7 +559,7 @@ export async function resumeGeneration(
   if (!["fill-missing-subs", "retry", "skip", "stop"].includes(mode)) {
     throw new PauseResumeError(
       "RESUME_INVALID",
-      `Неизвестный режим возобновления: ${String(mode)}`,
+      tl("server.pauseResumeService.unknownResumeMode", "Неизвестный режим возобновления: {mode}", { mode: String(mode) }),
     );
   }
 
@@ -664,7 +665,7 @@ async function resumeFillMissingSubs(
     // «параметры генерации утеряны» [25320]
     throw new PauseResumeError(
       "RESUME_INVALID",
-      "Невозможно возобновить: параметры генерации утеряны",
+      tl("server.pauseResumeService.paramsLost", "Невозможно возобновить: параметры генерации утеряны"),
     );
   }
   const { p, effectiveDeps, resolvedDeps } = infra;
@@ -918,21 +919,21 @@ export async function resumePlan(
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
-  if (!row) throw new PauseResumeError("NOT_FOUND", "Синтез не найден");
+  if (!row) throw new PauseResumeError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
   if (row.userId !== userId) {
-    throw new PauseResumeError("FORBIDDEN", "Нет доступа к синтезу");
+    throw new PauseResumeError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
   }
   const ps = row.pausedState;
   if (row.status !== "paused" || !ps || ps.kind !== "plan") {
     throw new PauseResumeError(
       "RESUME_INVALID",
-      "Возобновление невозможно: синтез не находится в паузе плана",
+      tl("server.pauseResumeService.notPausedPlan", "Возобновление невозможно: синтез не находится в паузе плана"),
     );
   }
   if (!["retry", "skip_step", "stop"].includes(mode)) {
     throw new PauseResumeError(
       "RESUME_INVALID",
-      `Неизвестный режим возобновления плана: ${String(mode)}`,
+      tl("server.pauseResumeService.unknownPlanResumeMode", "Неизвестный режим возобновления плана: {mode}", { mode: String(mode) }),
     );
   }
   const [plan] = await db
@@ -942,7 +943,7 @@ export async function resumePlan(
       and(eq(editPlans.id, planId), eq(editPlans.synthesisId, synthesisId)),
     )
     .limit(1);
-  if (!plan) throw new PauseResumeError("NOT_FOUND", "План не найден");
+  if (!plan) throw new PauseResumeError("NOT_FOUND", tl("common.planNotFound", "План не найден"));
 
   await logPauseEvent(synthesisId, "resume_marker", {
     kind: "plan",
@@ -981,7 +982,7 @@ export async function resumePlan(
   if (!planResumeExecutor) {
     throw new PauseResumeError(
       "RESUME_INVALID",
-      "Возобновление шагов плана требует plan-executor (беседа 2.2)",
+      tl("server.pauseResumeService.needsPlanExecutor", "Возобновление шагов плана требует plan-executor (беседа 2.2)"),
     );
   }
   sendToUser(userId, { type: "generation_resumed", synthesisId, mode });

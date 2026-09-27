@@ -30,6 +30,7 @@ import type { SectionSummary } from "@philosynth/shared/types/section";
 import type { SectionContextPreview } from "@philosynth/shared/types/section";
 
 import { getSectionContext } from "../../api/sections";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface EditSectionCardProps {
   synthesisId: string;
@@ -100,7 +101,7 @@ export function EditSectionCard({
           {isEdited ? "⟳ " : ""}§ {sectionNum} — {label}
           {score !== null && (
             <span
-              title={`Качество контекста генерации: ${score}%`}
+              title={tl("edit.editSectionCard.contextQuality", "Качество контекста генерации: {score}%", { score })}
               style={{
                 fontFamily: "var(--mono)",
                 fontSize: 9,
@@ -123,18 +124,17 @@ export function EditSectionCard({
         <div className="edit-dep-warn caution" style={{ marginTop: 6 }}>
           <span className="dep-icon">⚡</span>
           <span>
-            Сгенерирован с неполным контекстом ({score}%) — подробности в
-            «Контексте генерации» ниже.
+            {tl("edit.editSectionCard.incompleteContext", "Сгенерирован с неполным контекстом ({score}%) — подробности в «Контексте генерации» ниже.", { score })}
           </span>
         </div>
       )}
 
       <div className="edit-sec-ctx-row">
-        <div className="edit-sec-ctx-label">Дополнительный контекст раздела</div>
+        <div className="edit-sec-ctx-label">{tl("edit.editSectionCard.sectionExtraContext", "Дополнительный контекст раздела")}</div>
         <textarea
           className="edit-sec-ctx-field"
           value={secCtx}
-          placeholder="Особые требования, акценты, ограничения..."
+          placeholder={tl("edit.editSectionCard.requirementsPlaceholder", "Особые требования, акценты, ограничения...")}
           onChange={(e) => onSecCtxChange(e.target.value)}
           disabled={disabled}
         />
@@ -148,20 +148,17 @@ export function EditSectionCard({
           if ((e.target as HTMLDetailsElement).open) loadPreview();
         }}
       >
-        <summary>Контекст генерации</summary>
+        <summary>{tl("edit.editSectionCard.generationContext", "Контекст генерации")}</summary>
         <div className="disclosure-body">
-          {previewState === "loading" && "Загрузка…"}
-          {previewState === "error" && "Не удалось загрузить превью контекста."}
+          {previewState === "loading" && tl("common.loading", "Загрузка…")}
+          {previewState === "error" && tl("edit.editSectionCard.previewLoadFailed", "Не удалось загрузить превью контекста.")}
           {previewState === "ready" && preview && (
             <div style={{ fontFamily: "var(--mono)", fontSize: 10 }}>
               <div style={{ color: "var(--ink-mid)", marginBottom: 4 }}>
-                Обязательных: {preview.reqFound}/{preview.reqTotal} · опц.:{" "}
-                {preview.optIncluded}/{preview.optTotal} · бюджет:{" "}
-                {preview.totalUsed.toLocaleString("ru")}/
-                {preview.budget.toLocaleString("ru")} симв.
+                {tl("edit.editSectionCard.contextStats", "Обязательных: {reqFound}/{reqTotal} · опц.: {optIncluded}/{optTotal} · бюджет: {totalUsed}/{budget} симв.", { reqFound: preview.reqFound, reqTotal: preview.reqTotal, optIncluded: preview.optIncluded, optTotal: preview.optTotal, totalUsed: preview.totalUsed.toLocaleString("ru"), budget: preview.budget.toLocaleString("ru") })}
                 {preview.budgetMode === "shrink" &&
                   preview.parentOverhead > 0 &&
-                  ` (сжат родителями)`}
+                  tl("edit.editSectionCard.compressedByParents", " (сжат родителями)")}
               </div>
               {preview.contextText ? (
                 <pre
@@ -178,7 +175,7 @@ export function EditSectionCard({
                 </pre>
               ) : (
                 <span style={{ color: "var(--ink-dim)" }}>
-                  Межсекционный контекст для этого раздела пуст.
+                  {tl("edit.editSectionCard.noCrossContext", "Межсекционный контекст для этого раздела пуст.")}
                 </span>
               )}
             </div>
@@ -198,7 +195,7 @@ export function EditSectionCard({
               onChange={(e) => onToggleExtGraphMetrics(e.target.checked)}
               disabled={disabled}
             />
-            Расширенные характеристики
+            {tl("edit.editSectionCard.extendedCharacteristics", "Расширенные характеристики")}
           </label>
         </div>
       )}
@@ -211,7 +208,7 @@ export function EditSectionCard({
             disabled={disabled || removeChecked}
             onChange={(e) => onToggleRegen(e.target.checked)}
           />
-          Перегенерировать
+          {tl("common.regenerate", "Перегенерировать")}
         </label>
         <label className="edit-sec-check delete-check">
           <input
@@ -220,7 +217,7 @@ export function EditSectionCard({
             disabled={disabled || regenChecked}
             onChange={(e) => onToggleRemove(e.target.checked)}
           />
-          Удалить
+          {tl("common.delete", "Удалить")}
         </label>
       </div>
 
@@ -242,7 +239,7 @@ export function EditSectionCard({
               marginBottom: 6,
             }}
           >
-            ПОДРАЗДЕЛЫ (точечная перегенерация)
+            {tl("edit.editSectionCard.subsectionsHeading", "ПОДРАЗДЕЛЫ (точечная перегенерация)")}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
             {subsections.map((name) => (

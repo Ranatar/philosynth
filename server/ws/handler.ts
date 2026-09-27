@@ -76,6 +76,7 @@ import {
 } from "../services/pause-resume-service.js";
 import { connectionManager } from "./connection-manager.js";
 import { getStreamState } from "./stream-state.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Типы клиентских сообщений (валидация до диспетчеризации). */
 const CLIENT_MESSAGE_TYPES: ReadonlySet<WsClientMessage["type"]> = new Set([
@@ -145,7 +146,7 @@ async function handleSubscribeGeneration(
     connectionManager.send(ws, {
       type: "stream_error",
       synthesisId,
-      error: "Синтез не найден",
+      error: tl("common.synthesisNotFound", "Синтез не найден"),
       recoverable: false,
     });
     return;
@@ -160,7 +161,7 @@ async function handleSubscribeGeneration(
     connectionManager.send(ws, {
       type: "stream_error",
       synthesisId,
-      error: "Синтез не найден",
+      error: tl("common.synthesisNotFound", "Синтез не найден"),
       recoverable: false,
     });
     return;
@@ -169,7 +170,7 @@ async function handleSubscribeGeneration(
     connectionManager.send(ws, {
       type: "stream_error",
       synthesisId,
-      error: "Нет доступа к синтезу",
+      error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"),
       recoverable: false,
     });
     return;
@@ -450,17 +451,17 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
         enrichmentStreamKey(msg.elementType, msg.elementId),
         async () => {
           if (msg.elementType !== "category" && msg.elementType !== "edge")
-            throw new GenerationError("VALIDATION_ERROR", "elementType: ожидается category | edge");
+            throw new GenerationError("VALIDATION_ERROR", tl("server.ws.handler.elementTypeExpected", "elementType: ожидается category | edge"));
           if (!isUuid(msg.synthesisId) || !isUuid(msg.elementId))
-            throw new GenerationError("NOT_FOUND", "Синтез или элемент не найден");
+            throw new GenerationError("NOT_FOUND", tl("server.ws.handler.synthesisOrElementNotFound", "Синтез или элемент не найден"));
           const [row] = await db
             .select({ userId: syntheses.userId })
             .from(syntheses)
             .where(eq(syntheses.id, msg.synthesisId))
             .limit(1);
-          if (!row) throw new GenerationError("NOT_FOUND", "Синтез не найден");
+          if (!row) throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
           if (row.userId !== user.id)
-            throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
+            throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
           await startEnrichment(
             msg.synthesisId, user.id, msg.elementType, msg.elementId, msg.enrichmentType,
           );
@@ -477,17 +478,17 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
         isTransformDirection(msg.direction) ? transformStreamKey(msg.direction) : "transform:?",
         async () => {
           if (!isTransformDirection(msg.direction))
-            throw new GenerationError("VALIDATION_ERROR", "direction: ожидается graph_to_theses | theses_to_graph");
+            throw new GenerationError("VALIDATION_ERROR", tl("server.ws.handler.directionExpected", "direction: ожидается graph_to_theses | theses_to_graph"));
           if (!isUuid(msg.synthesisId))
-            throw new GenerationError("NOT_FOUND", "Синтез не найден");
+            throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
           const [row] = await db
             .select({ userId: syntheses.userId })
             .from(syntheses)
             .where(eq(syntheses.id, msg.synthesisId))
             .limit(1);
-          if (!row) throw new GenerationError("NOT_FOUND", "Синтез не найден");
+          if (!row) throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
           if (row.userId !== user.id)
-            throw new GenerationError("FORBIDDEN", "Нет доступа к синтезу");
+            throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
           await startTransform(msg.synthesisId, user.id, msg.direction);
         },
       );
@@ -581,7 +582,7 @@ export function registerWebSocket(app: Hono<AuthEnv>): {
     const result = token ? await validateSessionToken(token) : null;
     if (!result) {
       return c.json(
-        { error: "Требуется авторизация", code: "AUTH_REQUIRED" },
+        { error: tl("common.authRequired", "Требуется авторизация"), code: "AUTH_REQUIRED" },
         401,
       );
     }

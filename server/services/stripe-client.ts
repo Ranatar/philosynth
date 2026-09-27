@@ -23,6 +23,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { env } from "../env.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export class StripeError extends Error {
   code: "STRIPE_UNAVAILABLE" | "STRIPE_ERROR" | "WEBHOOK_SIGNATURE_INVALID";
@@ -185,7 +186,7 @@ async function request<T>(
   if (!isStripeConfigured()) {
     throw new StripeError(
       "STRIPE_UNAVAILABLE",
-      "Stripe не настроен (STRIPE_SECRET_KEY пуст)",
+      tl("server.stripeClient.stripeNotConfigured", "Stripe не настроен (STRIPE_SECRET_KEY пуст)"),
     );
   }
   const headers: Record<string, string> = {
@@ -207,7 +208,7 @@ async function request<T>(
   } catch (err) {
     throw new StripeError(
       "STRIPE_ERROR",
-      `Stripe недоступен: ${(err as Error).message}`,
+      tl("server.stripeClient.stripeUnavailable", "Stripe недоступен: {message}", { message: (err as Error).message }),
     );
   }
   const text = await resp.text();
@@ -411,12 +412,12 @@ export function constructWebhookEvent(
     if (env.isProd) {
       throw new StripeError(
         "WEBHOOK_SIGNATURE_INVALID",
-        "STRIPE_WEBHOOK_SECRET не задан",
+        tl("server.stripeClient.webhookSecretMissing", "STRIPE_WEBHOOK_SECRET не задан"),
       );
     }
   } else {
     if (!signatureHeader) {
-      throw new StripeError("WEBHOOK_SIGNATURE_INVALID", "Нет заголовка Stripe-Signature");
+      throw new StripeError("WEBHOOK_SIGNATURE_INVALID", tl("server.stripeClient.signatureHeaderMissing", "Нет заголовка Stripe-Signature"));
     }
     let ts = "";
     const v1s: string[] = [];
@@ -426,10 +427,10 @@ export function constructWebhookEvent(
       if (k === "v1" && v) v1s.push(v);
     }
     if (!ts || v1s.length === 0) {
-      throw new StripeError("WEBHOOK_SIGNATURE_INVALID", "Неполная подпись webhook");
+      throw new StripeError("WEBHOOK_SIGNATURE_INVALID", tl("server.stripeClient.signatureIncomplete", "Неполная подпись webhook"));
     }
     if (Math.abs(nowSec - Number(ts)) > WEBHOOK_TOLERANCE_SEC) {
-      throw new StripeError("WEBHOOK_SIGNATURE_INVALID", "Подпись webhook устарела");
+      throw new StripeError("WEBHOOK_SIGNATURE_INVALID", tl("server.stripeClient.signatureExpired", "Подпись webhook устарела"));
     }
     const expected = createHmac("sha256", secret)
       .update(`${ts}.${rawBody}`, "utf8")
@@ -440,17 +441,17 @@ export function constructWebhookEvent(
       return a.length === b.length && timingSafeEqual(a, b);
     });
     if (!ok) {
-      throw new StripeError("WEBHOOK_SIGNATURE_INVALID", "Подпись webhook не сходится");
+      throw new StripeError("WEBHOOK_SIGNATURE_INVALID", tl("server.stripeClient.signatureMismatch", "Подпись webhook не сходится"));
     }
   }
   let event: StripeEvent;
   try {
     event = JSON.parse(rawBody) as StripeEvent;
   } catch {
-    throw new StripeError("WEBHOOK_SIGNATURE_INVALID", "Тело webhook — не JSON");
+    throw new StripeError("WEBHOOK_SIGNATURE_INVALID", tl("server.stripeClient.bodyNotJson", "Тело webhook — не JSON"));
   }
   if (!event || typeof event.type !== "string" || !event.data?.object) {
-    throw new StripeError("WEBHOOK_SIGNATURE_INVALID", "Тело webhook — не событие Stripe");
+    throw new StripeError("WEBHOOK_SIGNATURE_INVALID", tl("server.stripeClient.bodyNotEvent", "Тело webhook — не событие Stripe"));
   }
   return event;
 }

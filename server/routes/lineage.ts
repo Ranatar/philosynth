@@ -56,6 +56,7 @@ import {
   notFoundJson,
   toPreview,
 } from "./syntheses.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** depth из query: невалидный/отсутствующий → дефолт (clamp — в сервисе). */
 function depthParam(raw: string | undefined, fallback: number): number {
@@ -154,7 +155,7 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
   if (!parentSynthesisId) details.parentSynthesisId = "обязательное поле";
   if (Object.keys(details).length > 0) {
     return c.json(
-      { error: "Невалидные параметры связи", code: "VALIDATION_ERROR", details },
+      { error: tl("server.routes.lineage.invalidLinkParams", "Невалидные параметры связи"), code: "VALIDATION_ERROR", details },
       400,
     );
   }
@@ -169,7 +170,7 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
   if (id === parentSynthesisId) {
     return c.json(
       {
-        error: "Концепция не может быть собственным родителем",
+        error: tl("server.routes.lineage.selfParent", "Концепция не может быть собственным родителем"),
         code: "LINEAGE_SELF",
       },
       400,
@@ -181,7 +182,7 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
   // родители не идут (07 8.5, «Чего не делать»), даже публичные.
   if (!isUuid(parentSynthesisId)) {
     return c.json(
-      { error: "Концепция-родитель не найдена", code: "NOT_FOUND" },
+      { error: tl("server.routes.lineage.parentNotFound", "Концепция-родитель не найдена"), code: "NOT_FOUND" },
       404,
     );
   }
@@ -192,14 +193,14 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
     .limit(1);
   if (!parent) {
     return c.json(
-      { error: "Концепция-родитель не найдена", code: "NOT_FOUND" },
+      { error: tl("server.routes.lineage.parentNotFound", "Концепция-родитель не найдена"), code: "NOT_FOUND" },
       404,
     );
   }
   if (parent.userId !== user.id) {
     return c.json(
       {
-        error: "Концепция-родитель принадлежит другому пользователю",
+        error: tl("server.routes.lineage.foreignParent", "Концепция-родитель принадлежит другому пользователю"),
         code: "FORBIDDEN",
       },
       403,
@@ -230,9 +231,9 @@ lineageSearchRoutes.get("/search", requireAuth, async (c) => {
   if (names.length === 0) {
     return c.json(
       {
-        error: "Укажите хотя бы одного философа",
+        error: tl("server.routes.lineage.philosopherRequired", "Укажите хотя бы одного философа"),
         code: "VALIDATION_ERROR",
-        details: { philosopher: "хотя бы один параметр philosopher" },
+        details: { philosopher: tl("server.routes.lineage.philosopherParamRequired", "хотя бы один параметр philosopher") },
       },
       400,
     );

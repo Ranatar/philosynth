@@ -13,9 +13,10 @@
 import type { SubscriptionPlan } from "@philosynth/shared/types/billing";
 
 import { fmtInt, fmtMoney } from "../../utils/format";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export function periodWord(p: SubscriptionPlan["billingPeriod"]): string {
-  return p === "year" ? "год" : "месяц";
+  return p === "year" ? tl("billing.plansTable.year", "год") : tl("billing.plansTable.month", "месяц");
 }
 
 export interface PlansTableProps {
@@ -29,12 +30,12 @@ export interface PlansTableProps {
 
 export function PlansTable({ plans, renderAction, testId }: PlansTableProps) {
   if (plans === null) {
-    return <div className="pool-status">Загрузка тарифов…</div>;
+    return <div className="pool-status">{tl("billing.plansTable.loadingPlans", "Загрузка тарифов…")}</div>;
   }
   if (plans.length === 0) {
     return (
       <div className="data-table-empty" data-testid={testId ? `${testId}-empty` : undefined}>
-        тарифов нет
+        {tl("billing.plansTable.noPlans", "тарифов нет")}
       </div>
     );
   }
@@ -43,12 +44,12 @@ export function PlansTable({ plans, renderAction, testId }: PlansTableProps) {
       <table className="data-table">
         <thead>
           <tr>
-            <th>Тариф</th>
-            <th className="num">Цена</th>
-            <th className="num">Синтезы</th>
-            <th className="num">Перегенерации</th>
-            <th className="num">Режимы</th>
-            <th className="num">Обогащения</th>
+            <th>{tl("billing.plansTable.plan", "Тариф")}</th>
+            <th className="num">{tl("billing.plansTable.price", "Цена")}</th>
+            <th className="num">{tl("billing.plansTable.syntheses", "Синтезы")}</th>
+            <th className="num">{tl("billing.plansTable.regenerations", "Перегенерации")}</th>
+            <th className="num">{tl("billing.plansTable.modes", "Режимы")}</th>
+            <th className="num">{tl("billing.plansTable.enrichments", "Обогащения")}</th>
             {renderAction && <th />}
           </tr>
         </thead>

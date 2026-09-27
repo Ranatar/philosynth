@@ -72,6 +72,7 @@ import {
   type ParentDepsParams,
 } from "./parent-context.js";
 import type { SectionDeps } from "../utils/deep-merge.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ══ Ошибки ═══════════════════════════════════════════════════════════ */
 
@@ -178,7 +179,7 @@ export async function loadConceptContext(
   if (!row) {
     throw new MetaSynthesisError(
       "NOT_FOUND",
-      `Концепция-участник ${synthesisId} не найдена`,
+      tl("server.metaSynthesisService.participantNotFound", "Концепция-участник {synthesisId} не найдена", { synthesisId }),
     );
   }
 
@@ -269,7 +270,7 @@ export async function validateConceptForMetaSynthesis(
   if (!row) {
     throw new MetaSynthesisError(
       "NOT_FOUND",
-      `Концепция-участник ${synthesisId} не найдена`,
+      tl("server.metaSynthesisService.participantNotFound", "Концепция-участник {synthesisId} не найдена", { synthesisId }),
     );
   }
 
@@ -412,9 +413,9 @@ export async function checkGenealogyOverlaps(
         warnings.push({
           level: "info",
           text:
-            "Концепции «" + a.name + "» и «" + b.name +
-            "» имеют общих предков: " + overlap.join(", ") +
-            ". Это может привести к доминированию их позиций.",
+            tl("server.metaSynthesisService.conceptsLead", "Концепции «") + a.name + tl("server.metaSynthesisService.andQuote", "» и «") + b.name +
+            tl("server.metaSynthesisService.haveCommonAncestors", "» имеют общих предков: ") + overlap.join(", ") +
+            tl("server.metaSynthesisService.mayDominate", ". Это может привести к доминированию их позиций."),
         });
       }
     }
@@ -435,9 +436,9 @@ export async function checkGenealogyOverlaps(
       warnings.push({
         level: "warn",
         text:
-          "Философ(ы) " + overlap.join(", ") +
-          " выбран(ы) для синтеза и одновременно присутствуют в генеалогии " +
-          "концепции «" + cs.name + "». Их влияние будет удвоено.",
+          tl("server.metaSynthesisService.philosophersLead", "Философ(ы) ") + overlap.join(", ") +
+          tl("server.metaSynthesisService.selectedAndInGenealogy", " выбран(ы) для синтеза и одновременно присутствуют в генеалогии ") +
+          tl("server.metaSynthesisService.ofConcept", "концепции «") + cs.name + tl("server.metaSynthesisService.influenceDoubled", "». Их влияние будет удвоено."),
       });
     }
   }

@@ -132,6 +132,7 @@ import type {
 import type { PromptParams } from "./prompt-builder.js";
 import type { SectionDefFull } from "./section-defs-builder.js";
 import type { CascadeWaveEntry } from "./cost-estimator.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Ошибки планировщика (коды 03 §4.3) ──────────────────────────────── */
 
@@ -444,7 +445,7 @@ async function normalizeActions(
   }
 
   if (Object.keys(details).length > 0)
-    throw new PlanError("VALIDATION_ERROR", "Невалидные действия плана", details);
+    throw new PlanError("VALIDATION_ERROR", tl("server.editPlanner.invalidPlanActions", "Невалидные действия плана"), details);
 
   const ctxMap = (v: unknown): Record<string, string> =>
     v && typeof v === "object" && !Array.isArray(v)
@@ -882,13 +883,13 @@ export async function createPlan(
 ): Promise<EditPlan> {
   const { row, philosophers } = await loadSynthesis(synthesisId);
   if (row.userId !== userId)
-    throw new PlanError("FORBIDDEN", "Нет доступа к синтезу");
+    throw new PlanError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
 
   const sectionOrder: readonly string[] = row.sectionOrder ?? [];
   const actions = await normalizeActions(synthesisId, sectionOrder, body, opts);
   if (!hasAnyAction(actions))
-    throw new PlanError("VALIDATION_ERROR", "План пуст", {
-      actions: "нужно хотя бы одно действие",
+    throw new PlanError("VALIDATION_ERROR", tl("server.editPlanner.planEmpty", "План пуст"), {
+      actions: tl("server.editPlanner.actionRequired", "нужно хотя бы одно действие"),
     });
 
   const impact = await analyzeImpact(synthesisId, {
@@ -945,9 +946,9 @@ export async function loadPlanRow(
     .from(editPlans)
     .where(and(eq(editPlans.id, planId), eq(editPlans.synthesisId, synthesisId)))
     .limit(1);
-  if (!row) throw new PlanError("NOT_FOUND", "План не найден");
+  if (!row) throw new PlanError("NOT_FOUND", tl("common.planNotFound", "План не найден"));
   if (row.userId !== userId)
-    throw new PlanError("FORBIDDEN", "Нет доступа к плану");
+    throw new PlanError("FORBIDDEN", tl("server.editPlanner.noPlanAccess", "Нет доступа к плану"));
   return row;
 }
 
@@ -1027,12 +1028,12 @@ export async function updatePlan(
   if (planRow.status !== "draft")
     throw new PlanError(
       "PLAN_CONFLICT",
-      "План уже исполняется или завершён — статусы шагов не изменить",
+      tl("server.editPlanner.planLocked", "План уже исполняется или завершён — статусы шагов не изменить"),
     );
 
   if (!Array.isArray(body.steps))
-    throw new PlanError("VALIDATION_ERROR", "Невалидное тело", {
-      steps: "массив { index, status }",
+    throw new PlanError("VALIDATION_ERROR", tl("server.editPlanner.invalidBody", "Невалидное тело"), {
+      steps: tl("server.editPlanner.arrayOfIndexStatus", "массив { index, status }"),
     });
 
   const steps: EditStep[] = planRow.steps.map((s) => ({ ...s }));
@@ -1045,16 +1046,16 @@ export async function updatePlan(
       idx < 0 ||
       idx >= steps.length
     )
-      throw new PlanError("VALIDATION_ERROR", "Невалидный индекс шага", {
+      throw new PlanError("VALIDATION_ERROR", tl("server.editPlanner.invalidStepIndex", "Невалидный индекс шага"), {
         steps: `index ${String(idx)}`,
       });
     if (st !== "confirmed" && st !== "skipped")
-      throw new PlanError("VALIDATION_ERROR", "Невалидный статус шага", {
+      throw new PlanError("VALIDATION_ERROR", tl("server.editPlanner.invalidStepStatus", "Невалидный статус шага"), {
         steps: "status ∈ confirmed | skipped",
       });
     const step = steps[idx] as EditStep;
     if (!["pending", "confirmed", "skipped"].includes(step.status))
-      throw new PlanError("VALIDATION_ERROR", "Шаг уже исполнен", {
+      throw new PlanError("VALIDATION_ERROR", tl("server.editPlanner.stepAlreadyExecuted", "Шаг уже исполнен"), {
         steps: `index ${idx}: status=${step.status}`,
       });
     step.status = st;
@@ -1137,7 +1138,7 @@ export async function updatePlan(
     .set({ steps: rebuilt, updatedAt: new Date() })
     .where(eq(editPlans.id, planId))
     .returning();
-  if (!updated) throw new PlanError("NOT_FOUND", "План не найден");
+  if (!updated) throw new PlanError("NOT_FOUND", tl("common.planNotFound", "План не найден"));
   // 10.2: снятый в панели шаг → рекомендация 'rejected'; индексы — заново
   await syncRecommendationSteps(synthesisId, planId, rebuilt);
 
@@ -1158,7 +1159,7 @@ export async function deletePlan(
 ): Promise<void> {
   const planRow = await loadPlanRow(synthesisId, planId, userId);
   if (planRow.status === "executing")
-    throw new PlanError("PLAN_CONFLICT", "План исполняется — сначала остановите");
+    throw new PlanError("PLAN_CONFLICT", tl("server.editPlanner.planExecutingStopFirst", "План исполняется — сначала остановите"));
   // 10.2: рекомендации плана — обратно в 'new' ДО удаления (FK обнулит plan_id)
   await releaseRecommendations(synthesisId, planId);
   await db.delete(editPlans).where(eq(editPlans.id, planId));

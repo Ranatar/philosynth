@@ -9,24 +9,22 @@
 `docs/09-lessons.md`. Здесь остались два правила, которые не стареют,
 и комплект следующей беседы.
 
-## Состояние на 2026-09-23 (Фаза 11 ОТКРЫТА; 11.1 ЗАКРЫТА, ближайшая — 11.2)
+## Состояние на 2026-09-27 (Фаза 11 ОТКРЫТА; 11.1, 11.2 ЗАКРЫТЫ, ближайшая — 11.3)
 
 ФАЗА 11 «Локализация интерфейса» ОТКРЫТА 2026-09-22. **11.1 ЗАКРЫТА
-2026-09-23** (защита машинных значений при нерусской генерации + страховка
-опознания подраздела по позиции; сервер). Далее — 11.2 (основа i18n и
-сервер + первое применение codemod'а с переделкой сторожей 4x/4y/4au), 11.3
-(клиент и переключатель), 11.4 (данные и переводы). Порядок ЖЁСТКИЙ. Патч
-`philosynth-i18n-v2` в составе проекта: `scripts/i18n/*`,
-`packages/shared/i18n/{t.ts,strings.json}`, codemod НЕ применён
-(`i18n:check` показывает 2307 литералов — это ожидаемо). Тексты — `07` §8,
-узлы — `07` §11, задачи — `06` §2.
+2026-09-23** (защита машинных значений при нерусской генерации; сервер).
+**11.2 ЗАКРЫТА 2026-09-27** (основа локализации и сервер: `shared/i18n/locales`,
+плюралы в `tl()`, каталоги `generated/*`, `users.ui_locale/gen_lang` + `PATCH
+/me`, язык запроса `server/i18n/locale.ts`, **codemod ПРИМЕНЁН** — 132 файла,
+2268 строк; Д-16 закрыт). Далее — 11.3 (клиент и переключатель), 11.4 (данные
+и переводы). Порядок ЖЁСТКИЙ. `i18n:check` теперь показывает ОДИН литерал с
+ключом (`PauseModal.keyInvalid`, JSX в подстановке — 11.3) и 33 литерала
+строк `data` (зеркала `MIRROR_EXCLUSIONS` — 11.4); это ожидаемо. Тексты — `07`
+§8, узлы — `07` §11, задачи — `06` §2.
 
-Реестр долгов 07 §12 перестроен ревизией 2026-09-23: 27 открытых долгов
-«Д-N» и ограничения «Огр-N»; закрытое — в 08 Часть IV. **11.2 берёт Д-16**
-(нерусская генерация теряет intra-контекст и адресацию молча — бывшие
-ограничения «По факту 11.1» п.6; п.9 текста 11.2), показ — 11.3 (п.8).
-Прочие долги — Фаза 12 после Фазы 11 (12.1 → 12.2 → 12.3), включая
-квирки исходника Д-9/Д-10 и утраты HTML-экспорта Д-29/Д-30.
+Реестр долгов 07 §12: Д-16 закрыт 11.2 (показ `parseWarnings` в интерфейсе —
+11.3, п.8 её текста); прочие долги — Фаза 12 после Фазы 11 (12.1 → 12.2 →
+12.3); закрытое — в 08 Часть IV.
 
 **Dotfile после выкладки.** Образец стенда — `env.local.example` (без
 точки), состояние стенда — `dev-billing-state/`; dotfile остались два:
@@ -34,11 +32,13 @@
 каждой выкладки на свежем клоне — `npm run check:dotfiles` (секунда, без
 БД), затем `check:integration`. `npm install` — В САМОМ КЛОНЕ: `node_modules`
 ссылкой на соседний клон разрешает `@philosynth/shared` в чужой пакет
-(«Cannot find module» при typecheck).
+(«Cannot find module» при typecheck). **Миграция 0010** (`users.ui_locale`,
+`gen_lang`) — `npm run db:migrate` на стенде обязателен, иначе GET /auth/me
+падает на неизвестной колонке.
 
 ## Универсальный минимум любой серверной беседы
 
-- `server/db/schema.ts` — 32 таблицы (с 9.1: + auth_tokens, mail_outbox; с 10.1: + recommendations; 11.1 миграций не добавляла — следующая 0010), единственный
+- `server/db/schema.ts` — 32 таблицы (с 9.1: + auth_tokens, mail_outbox; с 10.1: + recommendations; 11.2 — миграция 0010 `users.ui_locale/gen_lang`; следующая — 0011), единственный
   источник структуры БД
 - `server/db/index.ts` — db/sql/closeDb (нужен всем сервисам)
 - `server/env.ts` — типизированные env (нужен при касании конфигурации)
@@ -53,7 +53,7 @@
 - `server/integration-check.mts` (`npm run check:integration -w server`) —
   импорты/экспорты/async; расширять списком новых модулей беседы
   (8.4 — 2ab/4am; 8.5 — 2ac/4an/5ab; 8.6 — 2ad/4ao/5ac; 8.7 — 2ae/4ap;
-  9.1 — 2af/4aq/5ad; 9.2 — 2ag/4ar/5ae; 10.1 — 2ah/4as/5af; 10.2 — 2ai/4at/5ag; 10.3 — 2aj/4au/5ah; 11.1 — 2ak/4av/5ai; следующая серия — 2al/4aw/5aj). Секции 5xx с живой БД —
+  9.1 — 2af/4aq/5ad; 9.2 — 2ag/4ar/5ae; 10.1 — 2ah/4as/5af; 10.2 — 2ai/4at/5ag; 10.3 — 2aj/4au/5ah; 11.1 — 2ak/4av/5ai; 11.2 — 2al/4aw/5aj; следующая серия — 2am/4ax/5ak). Секции 5xx с живой БД —
   ДО closeDb: рядом с `await section5ad()`, а не в хвост файла (9.1). НОВЫЕ СЕКЦИИ — `async function sectionNN()` + `await`, не
   блоками на верхнем уровне: тело модуля упёрлось в TS2563 (09 §1, 8.5).
   Проверять на СВЕЖЕМ клоне. Требует посевов prompts/configs/taxonomy в
@@ -63,30 +63,72 @@
   снимать через `ps aux | grep -E … | awk | xargs kill -9`, не pkill по маске
   (09 §1, §4, §9 п.9).
 
-## Комплект ближайшей беседы — 11.2 (основа локализации и сервер + codemod)
+## Комплект ближайшей беседы — 11.3 (клиент: язык интерфейса и переключатель)
 
-Сверх универсального минимума (по тексту 11.2 в 07): `scripts/i18n/README.md`
-и все `scripts/i18n/*.mjs`, `packages/shared/i18n/t.ts`, `strings.json`,
-`scripts/i18n/names.json`; `server/middleware/auth.ts` (`requireAuth`,
-`optionalAuth`), `server/routes/auth.ts` (`PATCH /me`), `server/index.ts`;
-`server/db/schema.ts` + миграции 0000–0009 (новая — 0010, тег переименовать);
-`server/integration-check.mts` — секции **4x**, **4y**, **4au** (дрейф-контроли
-пар клиент ↔ сервер, которые краснеют после codemod'а; предмет переделки) и
-образец 11.1 — **2ak/4av/5ai**; `server/services/mode-service.ts`
-(`MODE_CONFIG`), `client/src/components/modes/*` (`MODE_UI`),
-`server/services/export/*` (подзаголовок), `DocumentHeader.tsx`;
-`packages/shared/utils/cardinality.ts` (словоформы — сверить с плюралами).
-Из 11.1: `server/config/lang-templates.ts` — правило связи языков делает
-нерусскую генерацию умолчанием, защита уже стоит; `system.lang_instruction`
-рендерится ТОЛЬКО при `lang ≠ Russian` (prompt-builder) — правило связи не
-должно этого ломать. Исходник и дизайн-набор не нужны.
-Долг Д-16 (п.9 текста 11.2): `server/services/context-builder.ts`
-(`extractRelevantIntraSectionContext`), `generation-service.ts`
-(`resolveSubsection`, `findSubsection`, `extractSubsectionContent`),
-`server/utils/html-parser.ts`, `recommendations.ts`,
-`recommendation-planner.ts`, `element-step.ts`, `import-service.ts`,
-`packages/shared/types/section.ts`; харнесс-образец — `test-111`
-(переведённые атрибуты при совпадающем числе подразделов).
+Сверх универсального минимума (по тексту 11.3 в 07): `03` §2.1 (с правками
+11.2: `GET/PATCH /auth/me` с `uiLocale`/`genLang`, блок «ЯЗЫК ОТВЕТОВ
+СЕРВЕРА»), `04`, `05`; UI-kit `docs/fragments-for-conversations/5-6-ui-kit.*`;
+`scripts/i18n/README.md` (порядок применения, «Что остаётся ручной работой»).
+Из 11.2 — **обязательно**: `packages/shared/i18n/locales.ts` (`UI_LOCALES`,
+`UI_TO_GEN`, `genLangForUi`, `LANG_OPTIONS` — теперь здесь, форма импортирует),
+`packages/shared/i18n/t.ts` (`setCatalogProvider({ locale, strings })` — клиент
+ставит провайдер из своего хранилища языка; плюралы уже в движке),
+`packages/shared/i18n/generated/en.json` (1850 строк) и `de.json` (0 — немецкого
+перевода нет; интерфейс на de покажет русский), `server/i18n/locale.ts`
+(cookie `UI_LOCALE_COOKIE = "ui_locale"` — её ставит клиент; сервер читает ДО
+сессии, вошедшему первее его `ui_locale`), `client/src/stores/auth-store.ts`
+(`AuthUser.uiLocale/genLang` уже есть; `PATCH /me { uiLocale }` меняет и
+`genLang` — форма создания синтеза обязана брать умолчание языка генерации из
+`user.genLang`, не из жёсткого «Russian»), `client/src/components/synthesis/
+SynthesisForm.tsx` (`LANG_OPTIONS` импортируется из shared), `PauseModal.tsx`
+(строка `synthesis.pauseModal.keyInvalid` — JSX в подстановке, переделать
+руками), отчёт `i18n:codemod` о **251 `static`-строке** (константы уровня
+модуля — `COST_KIND_LABEL`, `MODE_UI`-подобные словари, `DEFAULT_TITLE`… —
+вычисляются при импорте и при смене языка не обновятся: превратить в функции
+или переводить при отрисовке). Показ `parseWarnings` (`SectionFull.parseWarnings`
+из GET /sections/:key, 11.2 п.9d) — п.8 текста 11.3. Сторожа: 4x/4y/4au читают
+русский аргумент `tl()` через `unTl` в integration-check — новые сторожа на
+литералы клиента делать так же. Исходник и дизайн-набор — по тексту 11.3
+(исходник не нужен).
+
+## Что 11.2 оставила знать всем беседам
+
+- **Все надписи клиента и сообщения сервера — `tl(key, ru, params)`**;
+  новый текст пишется СРАЗУ через `tl()` с ключом `ns.leaf` (пространство —
+  `namespaceOf` файла: `server.routes.auth`, `synthesis.pauseModal`…), затем
+  `npm run i18n:export` (строка таблицы с пустыми переводами) →
+  `i18n:split` (каталоги). Литерал интерфейса без `tl()` — красный
+  `i18n:check` («без ключа»). Сообщения в `details.<поле>` опись codemod'а не
+  видит — их тем более писать через `tl()` руками.
+- **Зеркала с данными не переводятся в коде**: `MODE_CONFIG`/`MODE_UI`,
+  ветки подзаголовка, умолчания заголовка — `MIRROR_EXCLUSIONS` в
+  `scripts/i18n/i18n-core.mjs` (список один; codemod пропускает, `i18n:check`
+  считает их `data`, сторож 4aw требует, чтобы в областях не было `tl(`).
+  Перевод таких значений — по месту показа картой «значение → ключ» (11.4).
+- **Плюралы** — `{n, plural, one{} few{} many{} other{}}` в тексте `tl()`,
+  `#` — число; форма по `Intl.PluralRules` языка каталога (ru — четыре
+  формы, en/de — две); `i18n:import` отвергает формы не своего языка.
+  Словоформы промптов (`shared/utils/cardinality.ts`) — другой механизм.
+- **Язык запроса на сервере — контекст ALS** (`server/i18n/locale.ts`):
+  `currentLocale()` внутри любого обработчика; вне запроса (сиды, почта,
+  тесты) — ru. Тесты серверных сообщений на другом языке — `runWithLocale`.
+  Коды ошибок (`code`) языком не меняются — клиент ветвится по коду.
+- **Связь языков односторонняя**: `PATCH /me {uiLocale}` переписывает
+  `gen_lang = genLangForUi(uiLocale)`; `{genLang}` интерфейс не трогает.
+- **Подраздел ищется по месту везде**: `resolveSubsection` (ядро в
+  `html-parser`), порядок — `loadExpectedSubsectionOrder(synthesisId)`
+  (`services/subsection-order.ts`) либо `buildSubsectionMap`; ключи карт и
+  адреса рекомендаций — канонические, чтение — по `actualName`
+  (`DocumentIndex.actualNameOf`). Подраздельные догенерации пишут в генлог
+  `section_key = «graph:Таблица связей»` — отбор «по разделу» всегда ключ ИЛИ
+  префикс `key:` (09 §4).
+- **Байтовая сверка «до/после»** больших переписываний кода — `git worktree
+  add … HEAD` + `npm install` в дереве + один дамп-скрипт на оба дерева
+  (`test-112` R8: `buildSYS`, `formatCtxLog`).
+- **`pkill -f <слово>` убивает оболочку инструмента, если слово есть в её
+  командной строке** — правки того же вызова откатываются (09 §4).
+- Харнесс-образец беседы без браузера — `tests/test-112-requests2-9.mjs`
+  (живой сервер с логом в `/tmp/t112-server.log`, мок Claude :3921).
 
 ## Что 11.1 оставила знать всем беседам
 
@@ -113,8 +155,8 @@
   `{ el, actualName, byPosition, warning }`; порядок — `buildSubsectionMap`,
   второго списка нет. Читать/врезать — по `actualName`, промпт и карты — по
   каноническому имени. `findSubsection` — обёртка с прежней сигнатурой.
-  Граница: `extractRelevantIntraSectionContext`, `element-step`,
-  `recommendations` ищут по каноническим именам («По факту 11.1» п.6).
+  Граница 11.1 (`extractRelevantIntraSectionContext`, `element-step`,
+  `recommendations` искали по каноническим именам) снята 11.2 — Д-16 закрыт.
 - **Текст запроса против кода — четвёртая беседа подряд** (10.1–11.1): первый
   ход серверной беседы — `grep -rn 'имя('` по функциям, которые запрос велит
   править, и выписать расхождения ДО кода (09 §2).

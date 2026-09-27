@@ -20,6 +20,7 @@ import { Hono } from "hono";
 
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { ImportError, importHTML } from "../services/import-service.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export const importRoutes = new Hono<AuthEnv>();
 importRoutes.use("*", requireAuth);
@@ -36,7 +37,7 @@ importRoutes.post("/import", async (c) => {
   } catch {
     return c.json(
       {
-        error: "Не удалось прочитать multipart/form-data",
+        error: tl("server.routes.import.multipartReadFailed", "Не удалось прочитать multipart/form-data"),
         code: "VALIDATION_ERROR",
       },
       400,
@@ -47,9 +48,9 @@ importRoutes.post("/import", async (c) => {
   if (!(file instanceof File)) {
     return c.json(
       {
-        error: "Ожидается multipart/form-data с полем file (HTML-файл)",
+        error: tl("server.routes.import.multipartExpected", "Ожидается multipart/form-data с полем file (HTML-файл)"),
         code: "VALIDATION_ERROR",
-        details: { file: "обязательное поле" },
+        details: { file: tl("server.routes.import.requiredFieldLower", "обязательное поле") },
       },
       400,
     );
@@ -57,9 +58,9 @@ importRoutes.post("/import", async (c) => {
   if (file.size > MAX_IMPORT_BYTES) {
     return c.json(
       {
-        error: "Файл превышает предел 25 МБ",
+        error: tl("server.routes.import.fileTooLarge", "Файл превышает предел 25 МБ"),
         code: "VALIDATION_ERROR",
-        details: { file: "слишком большой" },
+        details: { file: tl("server.routes.import.tooLarge", "слишком большой") },
       },
       400,
     );

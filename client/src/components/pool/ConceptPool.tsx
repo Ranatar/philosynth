@@ -32,6 +32,7 @@ import {
   parseConceptFile,
 } from "../../utils/concept-file";
 import { PoolCard } from "./PoolCard";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export function ConceptPool() {
   const concepts = usePoolStore((s) => s.concepts);
@@ -79,7 +80,7 @@ export function ConceptPool() {
         }
         setCatalogItems(merged);
       } catch {
-        if (!cancelled) setCatalogError("Не удалось загрузить каталог.");
+        if (!cancelled) setCatalogError(tl("pool.conceptPool.catalogLoadFailed", "Не удалось загрузить каталог."));
       }
     })();
     return () => {
@@ -89,7 +90,7 @@ export function ConceptPool() {
 
   const handleAddFromCatalog = (s: SynthesisPreview) => {
     if (addToPool(catalogPreviewToPoolEntry(s))) {
-      setPoolStatus("✓ Из каталога: «" + s.title + "»", "ok");
+      setPoolStatus(tl("pool.conceptPool.fromCatalogPrefix", "✓ Из каталога: «") + s.title + "»", "ok");
     }
   };
 
@@ -120,14 +121,14 @@ export function ConceptPool() {
         // Итог после всех файлов
         if (loaded + errors === files.length && loaded > 0) {
           setPoolStatus(
-            "✓ Загружено: " + loaded + (errors ? ", ошибок: " + errors : ""),
+            tl("pool.conceptPool.loadedPrefix", "✓ Загружено: ") + loaded + (errors ? tl("pool.conceptPool.errorsPrefix", ", ошибок: ") + errors : ""),
             loaded ? "ok" : "err",
           );
         }
       };
       reader.onerror = () => {
         errors++;
-        setPoolStatus("⚠ Не удалось прочитать: " + file.name, "err");
+        setPoolStatus(tl("pool.conceptPool.readFailedPrefix", "⚠ Не удалось прочитать: ") + file.name, "err");
       };
       reader.readAsText(file);
     }
@@ -137,7 +138,7 @@ export function ConceptPool() {
   const handleUrlImport = async () => {
     const rawUrl = urlValue.trim();
     if (!rawUrl) {
-      setPoolStatus("⚠ Введите URL", "err");
+      setPoolStatus(tl("pool.conceptPool.enterUrl", "⚠ Введите URL"), "err");
       return;
     }
 
@@ -146,11 +147,11 @@ export function ConceptPool() {
       url = new URL(rawUrl);
       if (!["http:", "https:"].includes(url.protocol)) throw new Error();
     } catch {
-      setPoolStatus("⚠ Некорректный URL", "err");
+      setPoolStatus(tl("pool.conceptPool.invalidUrl", "⚠ Некорректный URL"), "err");
       return;
     }
 
-    setPoolStatus("Загрузка...", "");
+    setPoolStatus(tl("pool.conceptPool.loading", "Загрузка..."), "");
     setUrlBusy(true);
     const filename = url.pathname.split("/").pop() || "import.html";
 
@@ -159,10 +160,10 @@ export function ConceptPool() {
         setPoolStatus(t, ""),
       );
       if (!htmlString || !htmlString.includes("<"))
-        throw new Error("Ответ не содержит HTML.");
+        throw new Error(tl("pool.conceptPool.noHtml", "Ответ не содержит HTML."));
       const entry = parseConceptFile(htmlString, filename);
       addToPool(entry);
-      setPoolStatus("✓ Загружено: " + filename, "ok");
+      setPoolStatus(tl("pool.conceptPool.loadedPrefix", "✓ Загружено: ") + filename, "ok");
       setUrlValue("");
     } catch (err) {
       setPoolStatus(
@@ -179,7 +180,7 @@ export function ConceptPool() {
     const concept = concepts.find((c) => c.id === id);
     if (!concept) return;
     const raw = concept.realName || concept.name.replace(/^«|»$/g, "");
-    const newName = window.prompt("Новое название концепции:", raw);
+    const newName = window.prompt(tl("pool.conceptPool.newConceptName", "Новое название концепции:"), raw);
     if (newName?.trim() && newName.trim() !== raw) {
       renamePoolConcept(id, newName);
     }
@@ -207,15 +208,14 @@ export function ConceptPool() {
     <div className="form-group full">
       <div className="pool-block">
         <div className="pool-block-title">
-          Загруженные Концепции
+          {tl("pool.conceptPool.title", "Загруженные Концепции")}
           {/* Индикатор «◉ имя» (importIndicator исходника) */}
           {viewing && (
             <span className="import-indicator visible">◉ {viewing.name}</span>
           )}
         </div>
         <div className="pool-block-desc">
-          Единый пул: ☑ — участник мета-синтеза, ◉ — просмотр. Файлы —
-          сохранённые HTML-документы PhiloSynth.
+          {tl("pool.conceptPool.description", "Единый пул: ☑ — участник мета-синтеза, ◉ — просмотр. Файлы — сохранённые HTML-документы PhiloSynth.")}
         </div>
         <div className="pool-actions">
           <button
@@ -223,14 +223,14 @@ export function ConceptPool() {
             onClick={() => fileInputRef.current?.click()}
             className="action-btn"
           >
-            + Загрузить из файла
+            {tl("pool.conceptPool.loadFromFile", "+ Загрузить из файла")}
           </button>
           <button
             type="button"
             onClick={() => setUrlRowOpen((v) => !v)}
             className="action-btn"
           >
-            + Загрузить по URL
+            {tl("pool.conceptPool.loadFromUrl", "+ Загрузить по URL")}
           </button>
           {/* Беседа 3.2: каталожные концепции-участники */}
           <button
@@ -238,7 +238,7 @@ export function ConceptPool() {
             onClick={() => setCatalogOpen((v) => !v)}
             className="action-btn"
           >
-            + Из каталога
+            {tl("pool.conceptPool.fromCatalog", "+ Из каталога")}
           </button>
         </div>
 
@@ -257,7 +257,7 @@ export function ConceptPool() {
           <input
             value={urlValue}
             onChange={(e) => setUrlValue(e.target.value)}
-            placeholder="https://example.com/concept.html"
+            placeholder={tl("pool.conceptPool.urlPlaceholder", "https://example.com/concept.html")}
             className="import-url-input"
           />
           <button
@@ -266,7 +266,7 @@ export function ConceptPool() {
             onClick={() => void handleUrlImport()}
             className="import-url-btn"
           >
-            {urlBusy ? "…" : "↑ Загрузить"}
+            {urlBusy ? "…" : tl("pool.conceptPool.load", "↑ Загрузить")}
           </button>
         </div>
       )}
@@ -278,10 +278,10 @@ export function ConceptPool() {
             <div className="pool-status err">{catalogError}</div>
           )}
           {!catalogError && catalogItems === null && (
-            <div className="pool-status">Загрузка каталога…</div>
+            <div className="pool-status">{tl("pool.conceptPool.loadingCatalog", "Загрузка каталога…")}</div>
           )}
           {catalogItems !== null && catalogItems.length === 0 && (
-            <div className="pool-status">Готовых синтезов в каталоге нет.</div>
+            <div className="pool-status">{tl("pool.conceptPool.noReadySyntheses", "Готовых синтезов в каталоге нет.")}</div>
           )}
           {catalogItems?.map((s) => {
             const added = concepts.some((c) => c.synthesisId === s.id);
@@ -295,8 +295,8 @@ export function ConceptPool() {
                   <div className="pool-card-meta">
                     {s.philosophers.length > 0
                       ? s.philosophers.join(", ")
-                      : "свободный синтез"}
-                    {s.hasConceptParents ? " · мета-синтез" : ""}
+                      : tl("common.freeSynthesisLower", "свободный синтез")}
+                    {s.hasConceptParents ? tl("pool.conceptPool.metaSynthesisSuffix", " · мета-синтез") : ""}
                   </div>
                 </div>
                 <button
@@ -305,7 +305,7 @@ export function ConceptPool() {
                   onClick={() => handleAddFromCatalog(s)}
                   className="pool-card-btn"
                 >
-                  {added ? "в пуле" : "+ в пул"}
+                  {added ? tl("pool.conceptPool.inPool", "в пуле") : tl("pool.conceptPool.addToPool", "+ в пул")}
                 </button>
               </div>
             );
@@ -343,8 +343,8 @@ export function ConceptPool() {
       {/* Саммари (poolSummary) */}
       {concepts.length > 0 && (
         <div className="pool-summary">
-          {synthCount} из {concepts.length} для мета-синтеза
-          {viewing ? " · ◉ " + viewing.name + " — просмотр" : ""}
+          {tl("pool.conceptPool.selectedForMeta", "{synthCount} из {conceptsCount} для мета-синтеза", { synthCount, conceptsCount: concepts.length })}
+          {viewing ? " · ◉ " + viewing.name + tl("pool.conceptPool.previewSuffix", " — просмотр") : ""}
         </div>
       )}
 
@@ -356,7 +356,7 @@ export function ConceptPool() {
           onToggle={(e) => setPreviewOpen((e.target as HTMLDetailsElement).open)}
         >
           <summary>
-            Предпросмотр: {viewing.name} (read-only)
+            {tl("pool.conceptPool.previewTitle", "Предпросмотр: {name} (read-only)", { name: viewing.name })}
           </summary>
           {previewOpen && (
             <div

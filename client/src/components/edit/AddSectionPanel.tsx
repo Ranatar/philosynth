@@ -10,6 +10,7 @@
  * зависимостях добавляемых (C1/C3) рисует CascadePanel — панель
  * добавления их не дублирует (в исходнике они тоже жили в #cascadePanel).
  */
+import { tl } from "@philosynth/shared/i18n/t";
 export interface AddSectionPanelProps {
   /** Ключи, доступные к добавлению (нет в sectionOrder) */
   available: readonly string[];
@@ -33,7 +34,7 @@ export function AddSectionPanel({
   if (available.length === 0) return null;
   return (
     <div className="edit-add-panel">
-      <div className="edit-add-title">+ Добавить разделы</div>
+      <div className="edit-add-title">{tl("edit.addSectionPanel.addSections", "+ Добавить разделы")}</div>
       <div className="edit-add-checks">
         {available.map((k) => (
           <label key={k} className="edit-add-check">
@@ -51,10 +52,10 @@ export function AddSectionPanel({
         .filter((k) => checked.has(k))
         .map((k) => (
           <div key={k} className="edit-sec-ctx-row" style={{ marginTop: 8 }}>
-            <div className="edit-sec-ctx-label">Контекст для «{labels(k)}»</div>
+            <div className="edit-sec-ctx-label">{tl("edit.addSectionPanel.contextFor", "Контекст для «{labels}»", { labels: labels(k) })}</div>
             <textarea
               className="edit-sec-ctx-field"
-              placeholder="Особые требования..."
+              placeholder={tl("edit.addSectionPanel.specialRequirements", "Особые требования...")}
               value={addCtx[k] ?? ""}
               onChange={(e) => onCtxChange(k, e.target.value)}
               disabled={disabled}

@@ -35,6 +35,7 @@ import { useEffect, useState } from "react";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 
 import type { CompatEntryDto } from "../../api/syntheses";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** chipClassForRating [7325] — дословно */
 function chipCls(rating: string): string {
@@ -99,7 +100,7 @@ export function CompatAdvisor({
   const orderMismatch =
     !!oa && !!generationOrder && generationOrder !== oa.recommended;
   const orderLabel =
-    oa?.recommended === "genetic" ? "генетический" : "архитектурный";
+    oa?.recommended === "genetic" ? tl("synthesis.compatAdvisor.genetic", "генетический") : tl("synthesis.compatAdvisor.architectural", "архитектурный");
 
   return (
     <div
@@ -144,7 +145,7 @@ export function CompatAdvisor({
 
           {entry.advice && (
             <div className="compat-section-advice">
-              <span className="advice-label">Совет по разделам</span>
+              <span className="advice-label">{tl("synthesis.compatAdvisor.sectionAdvice", "Совет по разделам")}</span>
               <span>{entry.advice}</span>
             </div>
           )}
@@ -152,12 +153,12 @@ export function CompatAdvisor({
           {/* Рекомендация порядка генерации (orderAdvice [7454], 3.2) */}
           {oa && (
             <div className="compat-section-advice">
-              <span className="advice-label">Порядок генерации</span>
+              <span className="advice-label">{tl("synthesis.compatAdvisor.generationOrder", "Порядок генерации")}</span>
               {orderMismatch ? (
                 <span>
                   <span style={{ color: "var(--gold)" }}>
-                    {oa.strength === "recommended" ? "⚠ Рекомендуется" : "ℹ Может помочь"}{" "}
-                    <strong>{orderLabel}</strong> порядок.
+                    {oa.strength === "recommended" ? tl("synthesis.compatAdvisor.recommended", "⚠ Рекомендуется") : tl("synthesis.compatAdvisor.mayHelp", "ℹ Может помочь")}{" "}
+                    <strong>{orderLabel}</strong> {tl("synthesis.compatAdvisor.orderSuffix", "порядок.")}
                   </span>{" "}
                   {oa.text}
                   {onApplyReplacement && (
@@ -167,14 +168,13 @@ export function CompatAdvisor({
                       style={{ marginLeft: 8 }}
                       onClick={() => onApplyReplacement("order", oa.recommended)}
                     >
-                      Переключить на {orderLabel}
+                      {tl("synthesis.compatAdvisor.switchTo", "Переключить на {orderLabel}", { orderLabel })}
                     </button>
                   )}
                 </span>
               ) : (
                 <span>
-                  ✓ Текущий порядок ({orderLabel}) оптимален для этой
-                  комбинации. {oa.text}
+                  {tl("synthesis.compatAdvisor.orderOptimal", "✓ Текущий порядок ({orderLabel}) оптимален для этой комбинации. {text}", { orderLabel, text: oa.text })}
                 </span>
               )}
             </div>
@@ -184,12 +184,12 @@ export function CompatAdvisor({
           {hasReplacements && onApplyReplacement && (
             <div className="compat-replacements">
               <div className="compat-replacements-title">
-                Рекомендуемые замены
+                {tl("synthesis.compatAdvisor.recommendedReplacements", "Рекомендуемые замены")}
               </div>
               {repl?.keepLevel && repl.keepLevel.length > 0 && (
                 <>
                   <div className="compat-replacements-title">
-                    СОХРАНИТЬ УРОВЕНЬ → ЗАМЕНИТЬ МЕТОД:
+                    {tl("synthesis.compatAdvisor.keepLevelChangeMethod", "СОХРАНИТЬ УРОВЕНЬ → ЗАМЕНИТЬ МЕТОД:")}
                   </div>
                   <div>
                     {repl.keepLevel.map((r) => (
@@ -214,7 +214,7 @@ export function CompatAdvisor({
               {repl?.keepMethod && repl.keepMethod.length > 0 && (
                 <>
                   <div className="compat-replacements-title">
-                    СОХРАНИТЬ МЕТОД → ЗАМЕНИТЬ УРОВЕНЬ:
+                    {tl("synthesis.compatAdvisor.keepMethodChangeLevel", "СОХРАНИТЬ МЕТОД → ЗАМЕНИТЬ УРОВЕНЬ:")}
                   </div>
                   <div>
                     {repl.keepMethod.map((r) => (

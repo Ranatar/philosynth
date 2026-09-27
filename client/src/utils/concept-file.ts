@@ -43,6 +43,7 @@ import {
   restoreCapsulesFromHTML,
   type GenealogyNode,
 } from "./genealogy";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ─────────────────────────── Типы ─────────────────────────── */
 
@@ -263,8 +264,8 @@ export function extractGlossaryCompact(containerEl: Element): string | null {
     if (ths.length >= 2 && (ths[0] ?? "").includes("термин")) {
       const rows: string[] = [];
       const headEls = t.querySelectorAll("thead th");
-      const h0 = (headEls[0]?.textContent ?? "").trim() || "Термин";
-      const h1 = (headEls[1]?.textContent ?? "").trim() || "Определение";
+      const h0 = (headEls[0]?.textContent ?? "").trim() || tl("common.term", "Термин");
+      const h1 = (headEls[1]?.textContent ?? "").trim() || tl("common.definition", "Определение");
       rows.push(h0 + " | " + h1);
       rows.push("--- | ---");
       t.querySelectorAll("tbody tr").forEach((tr) => {
@@ -602,7 +603,7 @@ export function importConceptAsParticipant(
 
   // ── 1. Проверка: это PhiloSynth-документ ──
   const docOutput = doc.getElementById("docOutput");
-  if (!docOutput) throw new Error("Не найден #docOutput. Это не файл PhiloSynth.");
+  if (!docOutput) throw new Error(tl("utils.conceptFile.notPhiloSynthFile", "Не найден #docOutput. Это не файл PhiloSynth."));
 
   // ── 2. Извлечение метаданных и embedded state ──
   const meta = extractMetadata(doc);
@@ -619,7 +620,7 @@ export function importConceptAsParticipant(
   const hasGraph = sectionKeys.has("graph");
   const hasDialogue = sectionKeys.has("dialogue");
   if (!hasGraph && !hasDialogue) {
-    missing.push("graph или dialogue");
+    missing.push(tl("utils.conceptFile.graphOrDialogue", "graph или dialogue"));
   }
 
   const hasCapsule = !!(
@@ -631,31 +632,31 @@ export function importConceptAsParticipant(
 
   if (missing.length > 0) {
     throw new Error(
-      "Концепция не пригодна для мета-синтеза. Отсутствуют разделы: " +
+      tl("utils.conceptFile.unsuitableMissing", "Концепция не пригодна для мета-синтеза. Отсутствуют разделы: ") +
         missing
           .map(
             (k) =>
               "«" + ((KEY_LABELS as Record<string, string>)[k] || k) + "»",
           )
           .join(", ") +
-        ". Откройте документ, добавьте недостающие разделы и сохраните заново.",
+        tl("utils.conceptFile.addMissingSections", ". Откройте документ, добавьте недостающие разделы и сохраните заново."),
     );
   }
 
   // Мягкие предупреждения (не блокируют импорт)
   const warnings: string[] = [];
-  if (!hasGraph) warnings.push("нет графа категорий");
-  if (!hasDialogue) warnings.push("нет диалога");
+  if (!hasGraph) warnings.push(tl("utils.conceptFile.noCategoryGraph", "нет графа категорий"));
+  if (!hasDialogue) warnings.push(tl("utils.conceptFile.noDialogue", "нет диалога"));
 
   if (warnings.length > 0) {
     const ok = window.confirm(
-      "Концепция импортируется с неполным набором разделов:\n" +
+      tl("utils.conceptFile.incompleteImport", "Концепция импортируется с неполным набором разделов:\n") +
         "— " +
         warnings.join("\n— ") +
         "\n\n" +
-        "Для максимального качества мета-синтеза рекомендуется " +
-        "включить галочку «Пригодность к синтезу» и догенерировать " +
-        "недостающие разделы.\n\nИмпортировать как есть?",
+        tl("utils.conceptFile.incompleteAdviceLead", "Для максимального качества мета-синтеза рекомендуется ") +
+        tl("utils.conceptFile.incompleteAdviceMid", "включить галочку «Пригодность к синтезу» и догенерировать ") +
+        tl("utils.conceptFile.incompleteAdviceTail", "недостающие разделы.\n\nИмпортировать как есть?"),
     );
     if (!ok) return null;
   }
@@ -788,7 +789,7 @@ export function parseConceptFile(
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlString, "text/html");
   if (!doc.getElementById("docOutput"))
-    throw new Error("Не найден #docOutput. Это не файл PhiloSynth.");
+    throw new Error(tl("utils.conceptFile.notPhiloSynthFile", "Не найден #docOutput. Это не файл PhiloSynth."));
 
   const meta = extractMetadata(doc);
   extractSections(doc); // как в исходнике: результат не используется здесь
@@ -799,7 +800,7 @@ export function parseConceptFile(
   const realName = doc.getElementById("docTitle")?.textContent?.trim() ?? "";
   const isDefaultTitle =
     !realName || realName === "Синтез Философской Концепции";
-  const displayName = isDefaultTitle ? "Концепция" : "«" + realName + "»";
+  const displayName = isDefaultTitle ? tl("utils.conceptFile.conceptDefault", "Концепция") : "«" + realName + "»";
 
   const generationOrder: string =
     (embeddedState?.params?.generationOrder as string | undefined) ?? "";
@@ -810,7 +811,7 @@ export function parseConceptFile(
   try {
     const result = importConceptAsParticipant(htmlString, filename);
     if (result) participant = result;
-    else participantError = "Импорт для синтеза отменён";
+    else participantError = tl("utils.conceptFile.importCanceled", "Импорт для синтеза отменён");
   } catch (err) {
     participantError = err instanceof Error ? err.message : String(err);
   }
@@ -818,10 +819,10 @@ export function parseConceptFile(
   // Источники контекста для мета-строки карточки
   const sources: string[] = [];
   if (participant) {
-    if (participant.graphNodes) sources.push("граф");
-    if (participant.dialogueConcepts) sources.push("диалог");
-    if (participant.glossaryCompact) sources.push("глоссарий");
-    if (participant.thesesSummary) sources.push("тезисы");
+    if (participant.graphNodes) sources.push(tl("common.graphLower", "граф"));
+    if (participant.dialogueConcepts) sources.push(tl("utils.conceptFile.dialogueLower", "диалог"));
+    if (participant.glossaryCompact) sources.push(tl("utils.conceptFile.glossaryLower", "глоссарий"));
+    if (participant.thesesSummary) sources.push(tl("common.thesesLower", "тезисы"));
   }
 
   return {
@@ -891,7 +892,7 @@ export function catalogPreviewToPoolEntry(preview: {
     method: preview.method,
     synthLevel: preview.synthLevel,
     generationOrder: "",
-    sources: ["каталог"],
+    sources: [tl("utils.conceptFile.catalogLower", "каталог")],
     synthesisId: preview.id,
     participant,
     participantError: null,
@@ -915,7 +916,7 @@ export async function fetchWithFallback(
 ): Promise<string> {
   // ── 1. Прямой fetch ──
   try {
-    onStatus?.("Прямая загрузка...");
+    onStatus?.(tl("utils.conceptFile.directLoad", "Прямая загрузка..."));
     const resp = await fetch(url, {
       mode: "cors",
       headers: { Accept: "text/html" },
@@ -938,7 +939,7 @@ export async function fetchWithFallback(
     if (!proxy) continue;
     const proxyUrl = proxy(url);
     try {
-      onStatus?.(`Прокси ${i + 1}/${CORS_PROXIES.length}...`);
+      onStatus?.(tl("utils.conceptFile.proxyAttempt", "Прокси {attempt}/{total}...", { attempt: i + 1, total: CORS_PROXIES.length }));
       const resp = await fetch(proxyUrl);
       if (resp.ok) {
         const text = await resp.text();
@@ -954,7 +955,7 @@ export async function fetchWithFallback(
 
   // ── 3. Все попытки исчерпаны ──
   throw new Error(
-    "Не удалось загрузить: сервер блокирует кросс-доменные запросы. " +
-      "Скачайте файл вручную (Ctrl+S на странице) и загрузите через кнопку «↑ Файл».",
+    tl("utils.conceptFile.corsBlocked", "Не удалось загрузить: сервер блокирует кросс-доменные запросы. ") +
+      tl("utils.conceptFile.downloadManually", "Скачайте файл вручную (Ctrl+S на странице) и загрузите через кнопку «↑ Файл»."),
   );
 }

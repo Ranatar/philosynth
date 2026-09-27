@@ -47,6 +47,7 @@ import {
 import type { RefObject } from "react";
 import type { SimEdge } from "../../utils/graph-physics";
 import type { GEdge, PanelCallbacks, RoleLayer } from "./graph-utils";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Object3D с опциональными полями материала/света (дочерние узлов) */
 type Obj3D = THREE.Object3D & {
@@ -124,7 +125,7 @@ export function buildGraph3D(
   for (const n of ns) {
     const c = typeColor(n.type);
     const cert = n.cert ?? 0.5;
-    types.add(n.type || "другое");
+    types.add(n.type || tl("graph.graph3D.other", "другое"));
     const r = 1.5 + n.cen * 3;
 
     // Процессуальная роль → геометрия (ВСЕГДА)
@@ -636,7 +637,7 @@ export function buildGraph3D(
         clusterShells.push({ mesh: shell, clusterIdx: idx });
 
         // Спрайт-метка кластера (имя без римского префикса)
-        const rawLabel = labels[idx] || `Кластер ${idx + 1}`;
+        const rawLabel = labels[idx] || tl("graph.graph3D.cluster", "Кластер {idx}", { idx: idx + 1 });
         const labelText = rawLabel.replace(/^[IVXLCDM]+\s*[-–—]\s*/i, "").trim();
         const labelSpr = mkSprite(labelText);
         labelSpr.userData = { clusterLabelIdx: idx };

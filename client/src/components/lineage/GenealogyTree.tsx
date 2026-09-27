@@ -27,6 +27,7 @@ import { Link } from "react-router-dom";
 import { ML, SL } from "@philosynth/shared/constants/labels";
 
 import type { GenealogyNode } from "../../utils/genealogy";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface GenealogyTreeProps {
   node: GenealogyNode | null;
@@ -36,7 +37,7 @@ export interface GenealogyTreeProps {
 
 /** Подсказка у узлов дерева импортированного файла (снимок без связи). */
 const FROM_FILE_TITLE =
-  "Из импортированного файла: в базе этой концепции нет, узел — снимок без ссылки";
+  tl("lineage.genealogyTree.fromImportedFile", "Из импортированного файла: в базе этой концепции нет, узел — снимок без ссылки");
 
 function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) {
   // Философ → простой блок
@@ -60,7 +61,7 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
   const levelLabel =
     (SL as Record<string, string>)[n.synthLevel ?? ""] || n.synthLevel || "?";
   const orderLabel =
-    n.generationOrder === "genetic" ? " · генетич." : " · архитект.";
+    n.generationOrder === "genetic" ? tl("lineage.genealogyTree.geneticSuffix", " · генетич.") : tl("lineage.genealogyTree.architecturalSuffix", " · архитект.");
 
   let seedNode: React.ReactNode = null;
   if (n.seed) {
@@ -72,7 +73,7 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
     ) : (
       // Родительская концепция — раскрывающийся блок
       <details className="gen-card-seed-details">
-        <summary>Зерно</summary>
+        <summary>{tl("lineage.genealogyTree.seed", "Зерно")}</summary>
         <div className="gen-card-seed-details-body">«{n.seed}»</div>
       </details>
     );
@@ -81,7 +82,7 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
   const capsuleNode =
     n.capsule && !isRootNode ? (
       <details className="gen-card-capsule">
-        <summary>Капсула</summary>
+        <summary>{tl("common.capsule", "Капсула")}</summary>
         <div className="gen-card-capsule-body">{n.capsule}</div>
       </details>
     ) : null;

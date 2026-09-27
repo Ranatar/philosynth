@@ -11,6 +11,7 @@
 import { NavLink } from "react-router-dom";
 
 import { useAuthStore } from "../../stores/auth-store";
+import { tl } from "@philosynth/shared/i18n/t";
 
 interface SidebarProps {
   open: boolean;
@@ -24,11 +25,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/catalog", label: "Каталог" },
-  { to: "/synthesis/new", label: "Новый синтез" },
-  { to: "/import", label: "Импорт" },
-  { to: "/billing", label: "Биллинг" },
-  { to: "/admin/prompts", label: "Промпты", adminOnly: true },
+  { to: "/catalog", label: tl("layout.sidebar.catalog", "Каталог") },
+  { to: "/synthesis/new", label: tl("layout.sidebar.newSynthesis", "Новый синтез") },
+  { to: "/import", label: tl("layout.sidebar.import", "Импорт") },
+  { to: "/billing", label: tl("layout.sidebar.billing", "Биллинг") },
+  { to: "/admin/prompts", label: tl("layout.sidebar.prompts", "Промпты"), adminOnly: true },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {
@@ -39,7 +40,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
   const nav = (
     <nav>
-      <div className="app-nav-group">Разделы</div>
+      <div className="app-nav-group">{tl("layout.sidebar.sections", "Разделы")}</div>
       {items.map((item) => (
         <NavLink
           key={item.to}
@@ -74,12 +75,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         <div className="app-sidebar-head">
           <span className="app-nav-group" style={{ border: "none", padding: 0 }}>
-            Навигация
+            {tl("layout.sidebar.navigation", "Навигация")}
           </span>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Закрыть меню"
+            aria-label={tl("layout.sidebar.closeMenu", "Закрыть меню")}
             className="action-btn"
             style={{ padding: "2px 10px" }}
           >

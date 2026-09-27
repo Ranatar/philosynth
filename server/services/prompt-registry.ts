@@ -32,7 +32,8 @@ import type {
 
 import { db, schema } from "../db/index.js";
 import { redis } from "../redis.js";
-import { ADMIN_ACTIONS, writeAudit } from "./admin-audit.js"; // 8.1: след админ-действий
+import { ADMIN_ACTIONS, writeAudit } from "./admin-audit.js";
+import { tl } from "@philosynth/shared/i18n/t"; // 8.1: след админ-действий
 
 const { promptTemplates, synthesisConfigs } = schema;
 
@@ -161,7 +162,7 @@ export async function listVersions(key: string): Promise<PromptVersion[]> {
     .from(promptTemplates)
     .where(eq(promptTemplates.key, key))
     .orderBy(desc(promptTemplates.version));
-  if (rows.length === 0) throw new RegistryNotFoundError("template", key, "нет ни одной версии");
+  if (rows.length === 0) throw new RegistryNotFoundError("template", key, tl("server.promptRegistry.noVersions", "нет ни одной версии"));
   return rows.map((r) => ({
     id: r.id,
     key: r.key,
@@ -193,7 +194,7 @@ export async function activateVersion(
       ),
     });
     if (!target)
-      throw new RegistryNotFoundError("template", key, `версии ${version} нет`);
+      throw new RegistryNotFoundError("template", key, tl("server.promptRegistry.versionMissing", "версии {version} нет", { version }));
 
     const [prev] = await tx
       .select({ version: promptTemplates.version })
@@ -347,7 +348,7 @@ export async function listConfigVersions(
     .where(eq(synthesisConfigs.key, key))
     .orderBy(desc(synthesisConfigs.version));
   if (rows.length === 0)
-    throw new RegistryNotFoundError("config", key, "нет ни одной версии");
+    throw new RegistryNotFoundError("config", key, tl("server.promptRegistry.noVersions", "нет ни одной версии"));
   return rows.map((r) => ({
     id: r.id,
     key: r.key as SynthesisConfigKey,
@@ -415,7 +416,7 @@ export async function activateConfigVersion(
       where: and(eq(synthesisConfigs.key, key), eq(synthesisConfigs.version, version)),
     });
     if (!target)
-      throw new RegistryNotFoundError("config", key, `версии ${version} нет`);
+      throw new RegistryNotFoundError("config", key, tl("server.promptRegistry.versionMissing", "версии {version} нет", { version }));
     const [prev] = await tx
       .select({ version: synthesisConfigs.version })
       .from(synthesisConfigs)

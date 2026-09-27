@@ -53,6 +53,7 @@ import {
   getActiveSubstitutionMap,
   resolveContextDeps,
 } from "./synthesis-engine.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /* ── Типы матрицы совместимости ──────────────────────────────────────── */
 
@@ -263,14 +264,14 @@ export function iconForSeverity(sev: string): string {
 /** Заголовок для общего рейтинга */
 export function titleForSeverity(sev: string): string {
   const map: Record<string, string> = {
-    "synergy-max": "Структурный резонанс",
-    synergy: "Продуктивный парадокс",
-    stable: "Надёжное качество",
-    tension: "Управляемое напряжение",
-    conflict: "Умеренный конфликт",
-    "hard-conflict": "Жёсткий конфликт",
+    "synergy-max": tl("server.compatAdvisor.structuralResonance", "Структурный резонанс"),
+    synergy: tl("server.compatAdvisor.productiveParadox", "Продуктивный парадокс"),
+    stable: tl("server.compatAdvisor.reliableQuality", "Надёжное качество"),
+    tension: tl("server.compatAdvisor.manageableTension", "Управляемое напряжение"),
+    conflict: tl("server.compatAdvisor.moderateConflict", "Умеренный конфликт"),
+    "hard-conflict": tl("server.compatAdvisor.hardConflict", "Жёсткий конфликт"),
   };
-  return map[sev] ?? "Совместимость параметров";
+  return map[sev] ?? tl("server.compatAdvisor.parameterCompatibility", "Совместимость параметров");
 }
 
 /* ── Section Dependency Warnings ─────────────────────────────────────── */
@@ -381,17 +382,17 @@ export async function computeSectionAdvice(
     const missing = cfg.needs.filter((depId) => !isSelectedId(depId));
     if (missing.length > 0) {
       const missingNames = missing.map((id) => "«" + labelOf(id) + "»").join(", ");
-      const word = missing.length === 1 ? "раздела" : "разделов";
+      const word = missing.length === 1 ? tl("server.compatAdvisor.sectionGen", "раздела") : tl("common.sectionsGen", "разделов");
       warnings.push({
         icon: "⚠",
         text:
-          "Без " +
+          tl("server.compatAdvisor.withoutPrefix", "Без ") +
           word +
           " " +
           missingNames +
-          " раздел «" +
+          tl("server.compatAdvisor.sectionQuoteLead", " раздел «") +
           cfg.label +
-          "» будет ненадлежащего качества!",
+          tl("server.compatAdvisor.poorQuality", "» будет ненадлежащего качества!"),
       });
     }
   }
@@ -412,13 +413,13 @@ export async function computeSectionAdvice(
           icon: "✗✗",
           severity: "hard-conflict",
           text:
-            "Раздел «" +
+            tl("server.compatAdvisor.sectionLead", "Раздел «") +
             secLabel +
-            "» имеет жёсткий конфликт (✗✗) с текущей комбинацией " +
+            tl("server.compatAdvisor.hardConflictWith", "» имеет жёсткий конфликт (✗✗) с текущей комбинацией ") +
             SL[input.synthLevel] +
             " × " +
             ML[input.method] +
-            ". Результат будет содержать противоречивые директивы!",
+            tl("server.compatAdvisor.contradictoryDirectives", ". Результат будет содержать противоречивые директивы!"),
         });
       } else if (secRating === "✗") {
         const secLabel = labelOf(secId);
@@ -426,13 +427,13 @@ export async function computeSectionAdvice(
           icon: "✗",
           severity: "conflict",
           text:
-            "Раздел «" +
+            tl("server.compatAdvisor.sectionLead", "Раздел «") +
             secLabel +
-            "» имеет умеренный конфликт (✗) с текущей комбинацией " +
+            tl("server.compatAdvisor.moderateConflictWith", "» имеет умеренный конфликт (✗) с текущей комбинацией ") +
             SL[input.synthLevel] +
             " × " +
             ML[input.method] +
-            ". Рекомендуется исключить этот раздел или изменить параметры.",
+            tl("server.compatAdvisor.excludeOrChange", ". Рекомендуется исключить этот раздел или изменить параметры."),
         });
       }
     }
@@ -475,17 +476,17 @@ export async function computeSectionAdvice(
     for (const [srcSecId, consumers] of Object.entries(benefitMap)) {
       const srcLabel = labelOf(srcSecId);
       const consumerList = consumers.map((c) => "«" + c + "»").join(", ");
-      const word = consumers.length === 1 ? "раздела" : "разделов";
+      const word = consumers.length === 1 ? tl("server.compatAdvisor.sectionGen", "раздела") : tl("common.sectionsGen", "разделов");
       recommendations.push({
         icon: "💡",
         text:
-          "Включение «" +
+          tl("server.compatAdvisor.inclusionLead", "Включение «") +
           srcLabel +
-          "» может улучшить качество " +
+          tl("server.compatAdvisor.mayImprove", "» может улучшить качество ") +
           word +
           " " +
           consumerList +
-          " (дополнительный контекст).",
+          tl("server.compatAdvisor.extraContextParen", " (дополнительный контекст)."),
       });
     }
   }
@@ -532,10 +533,10 @@ export async function computeSectionAdvice(
         const q = getSubstituteQuality(ctxKey, subMap);
         const qLabel =
           q === 3
-            ? "равноценная замена"
+            ? tl("server.compatAdvisor.equivalentReplacement", "равноценная замена")
             : q === 2
-              ? "частичная замена"
-              : "слабая замена";
+              ? tl("server.compatAdvisor.partialReplacement", "частичная замена")
+              : tl("server.compatAdvisor.weakReplacement", "слабая замена");
         const secLabel =
           (SECTION_LABELS as Record<string, string>)[
             "sec" + sec.charAt(0).toUpperCase() + sec.slice(1)
@@ -543,8 +544,8 @@ export async function computeSectionAdvice(
         substitutions.push({
           icon: "⇄",
           text:
-            `«${secLabel}»: контекст «${(CTX_LABELS as Record<string, string>)[ctxKey] ?? ctxKey}» ` +
-            `используется как ${qLabel} для недостающего контекста.`,
+            tl("server.compatAdvisor.contextUsed", "«{secLabel}»: контекст «{ctxKey}» ", { secLabel, ctxKey: (CTX_LABELS as Record<string, string>)[ctxKey] ?? ctxKey }) +
+            tl("server.compatAdvisor.usedAsSubstitute", "используется как {qLabel} для недостающего контекста.", { qLabel }),
         });
       }
     }

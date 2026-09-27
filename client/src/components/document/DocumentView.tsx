@@ -25,6 +25,7 @@ import { DocumentFooter } from "./DocumentFooter";
 import { DocumentHeader } from "./DocumentHeader";
 import { SectionView, type EditableRowRef } from "./SectionView";
 import { TableOfContents } from "./TableOfContents";
+import { tl } from "@philosynth/shared/i18n/t";
 
 export interface DocumentViewProps {
   synthesis: SynthesisFull;
@@ -89,10 +90,8 @@ export function DocumentView({
       {afterHeader}
       {showcase ? (
         <div className="callout note app-showcase-notice" data-testid="showcase-notice">
-          <span className="callout-label">Витрина</span>
-          Автор открыл только витрину этой концепции: капсулу, метаданные и
-          состав участников. Тела разделов, граф категорий, тезисы и глоссарий
-          закрыты для всех, кроме автора.
+          <span className="callout-label">{tl("document.documentView.showcase", "Витрина")}</span>
+          {tl("document.documentView.showcaseNote", "Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора.")}
         </div>
       ) : (
         <div>

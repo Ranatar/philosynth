@@ -25,6 +25,7 @@ import {
 } from "./graph-utils";
 
 import type { LegendFilter, RoleLayer } from "./graph-utils";
+import { tl } from "@philosynth/shared/i18n/t";
 
 interface RoleRegistryEntry {
   key: string;
@@ -35,22 +36,22 @@ interface RoleRegistryEntry {
 
 // ── Полный реестр ролей ───────────────────────────────────────────────
 const ROLE_REGISTRY: RoleRegistryEntry[] = [
-  { key: "synthesis",         label: "Синтез",          sym2d: "⯃", name3d: "октаэдр" },
-  { key: "thesis",            label: "Тезис",           sym2d: "▲", name3d: "тетраэдр ▲" },
-  { key: "antithesis",        label: "Антитезис",       sym2d: "▽", name3d: "тетраэдр ▽" },
-  { key: "generative",        label: "Генеративная",    sym2d: "⬡", name3d: "икосаэдр" },
-  { key: "core",              label: "Ядро",            sym2d: "◆", name3d: "октаэдр (плоский)" },
-  { key: "bridge",            label: "Мост",            sym2d: "◼", name3d: "куб - - -" },
-  { key: "central",           label: "Центральная",     sym2d: "⬠", name3d: "додекаэдр" },
-  { key: "deconstructed",     label: "Деконструиров.",  sym2d: "✚", name3d: "каркас" },
-  { key: "reassembled",       label: "Пересобранная",   sym2d: "✡", name3d: "stella octangula" },
-  { key: "horizon-expansion", label: "Расш. горизонта", sym2d: "◇", name3d: "конус" },
-  { key: "pre-horizon",       label: "Предгоризонт",    sym2d: "⏣", name3d: "цилиндр" },
-  { key: "integrating",       label: "Интегрирующая",   sym2d: "⋈", name3d: "тор" },
-  { key: "foundation",        label: "Основание",       sym2d: "▬", name3d: "плоский куб" },
-  { key: "formalized",        label: "Формализованная", sym2d: "▭", name3d: "куб" },
-  { key: "verifying",         label: "Верифицирующая",  sym2d: "☆", name3d: "додекаэдр-каркас" },
-  { key: "peripheral",        label: "Периферийная",    sym2d: "●", name3d: "сфера" },
+  { key: "synthesis",         label: tl("common.synthesis", "Синтез"),          sym2d: "⯃", name3d: tl("graph.graphLegend.octahedron", "октаэдр") },
+  { key: "thesis",            label: tl("common.thesis", "Тезис"),           sym2d: "▲", name3d: tl("graph.graphLegend.tetrahedronUp", "тетраэдр ▲") },
+  { key: "antithesis",        label: tl("common.antithesis", "Антитезис"),       sym2d: "▽", name3d: tl("graph.graphLegend.tetrahedronDown", "тетраэдр ▽") },
+  { key: "generative",        label: tl("common.generative", "Генеративная"),    sym2d: "⬡", name3d: tl("graph.graphLegend.icosahedron", "икосаэдр") },
+  { key: "core",              label: tl("graph.graphLegend.core", "Ядро"),            sym2d: "◆", name3d: tl("graph.graphLegend.octahedronFlat", "октаэдр (плоский)") },
+  { key: "bridge",            label: tl("common.bridge", "Мост"),            sym2d: "◼", name3d: tl("graph.graphLegend.cubeDashed", "куб - - -") },
+  { key: "central",           label: tl("common.central", "Центральная"),     sym2d: "⬠", name3d: tl("graph.graphLegend.dodecahedron", "додекаэдр") },
+  { key: "deconstructed",     label: tl("graph.graphLegend.deconstructedShort", "Деконструиров."),  sym2d: "✚", name3d: tl("graph.graphLegend.wireframe", "каркас") },
+  { key: "reassembled",       label: tl("common.reassembled", "Пересобранная"),   sym2d: "✡", name3d: "stella octangula" },
+  { key: "horizon-expansion", label: tl("graph.graphLegend.horizonExpansionShort", "Расш. горизонта"), sym2d: "◇", name3d: tl("graph.graphLegend.cone", "конус") },
+  { key: "pre-horizon",       label: tl("common.prehorizon", "Предгоризонт"),    sym2d: "⏣", name3d: tl("graph.graphLegend.cylinder", "цилиндр") },
+  { key: "integrating",       label: tl("common.integrating", "Интегрирующая"),   sym2d: "⋈", name3d: tl("graph.graphLegend.torus", "тор") },
+  { key: "foundation",        label: tl("common.ground", "Основание"),       sym2d: "▬", name3d: tl("graph.graphLegend.flatCube", "плоский куб") },
+  { key: "formalized",        label: tl("common.formalized", "Формализованная"), sym2d: "▭", name3d: tl("graph.graphLegend.cube", "куб") },
+  { key: "verifying",         label: tl("common.verifying", "Верифицирующая"),  sym2d: "☆", name3d: tl("graph.graphLegend.dodecahedronWire", "додекаэдр-каркас") },
+  { key: "peripheral",        label: tl("common.peripheral", "Периферийная"),    sym2d: "●", name3d: tl("graph.graphLegend.sphere", "сфера") },
 ];
 
 const STRUCT_LEGEND: {
@@ -59,21 +60,21 @@ const STRUCT_LEGEND: {
   desc2d: string;
   desc3d: string;
 }[] = [
-  { key: "core",       label: "Ядро",
-    desc2d: "внутренний силуэт",
-    desc3d: "внутреннее тело (полупрозрачная оболочка)" },
-  { key: "generative", label: "Генеративная",
-    desc2d: "свечение (glow)",
-    desc3d: "PointLight + усиленное свечение" },
-  { key: "bridge",     label: "Мост",
-    desc2d: "пунктирная обводка",
-    desc3d: "wireframe-каркас поверх" },
-  { key: "central",    label: "Центральная",
-    desc2d: "жирная обводка",
-    desc3d: "увеличенный масштаб + яркость" },
-  { key: "peripheral", label: "Периферийная",
-    desc2d: "тонкая обводка",
-    desc3d: "уменьшенный масштаб + приглушённость" },
+  { key: "core",       label: tl("graph.graphLegend.core", "Ядро"),
+    desc2d: tl("graph.graphLegend.innerSilhouette", "внутренний силуэт"),
+    desc3d: tl("graph.graphLegend.innerBody", "внутреннее тело (полупрозрачная оболочка)") },
+  { key: "generative", label: tl("common.generative", "Генеративная"),
+    desc2d: tl("graph.graphLegend.glow", "свечение (glow)"),
+    desc3d: tl("graph.graphLegend.pointLightGlow", "PointLight + усиленное свечение") },
+  { key: "bridge",     label: tl("common.bridge", "Мост"),
+    desc2d: tl("graph.graphLegend.dashedOutline", "пунктирная обводка"),
+    desc3d: tl("graph.graphLegend.wireframeOverlay", "wireframe-каркас поверх") },
+  { key: "central",    label: tl("common.central", "Центральная"),
+    desc2d: tl("graph.graphLegend.boldOutline", "жирная обводка"),
+    desc3d: tl("graph.graphLegend.scaleUpBright", "увеличенный масштаб + яркость") },
+  { key: "peripheral", label: tl("common.peripheral", "Периферийная"),
+    desc2d: tl("graph.graphLegend.thinOutline", "тонкая обводка"),
+    desc3d: tl("graph.graphLegend.scaleDownDim", "уменьшенный масштаб + приглушённость") },
 ];
 
 /** SVG-иконки структурных ролей (2D- и 3D-варианты исходника) */
@@ -219,7 +220,7 @@ export default function GraphLegend({
   return (
     <div className="gm-legend">
       {/* ── Секция 1: типы узлов ── */}
-      <SecTitle text="ТИПЫ КАТЕГОРИЙ" />
+      <SecTitle text={tl("graph.graphLegend.categoryTypesHeading", "ТИПЫ КАТЕГОРИЙ")} />
       {[...nodeTypes].map((t) => (
         <div className="gm-legend-item" key={t}>
           <div
@@ -236,8 +237,8 @@ export default function GraphLegend({
           <SecTitle
             text={
               mode === "2d"
-                ? "ПРОЦЕССУАЛЬНЫЕ РОЛИ (ФОРМА)"
-                : "ПРОЦЕССУАЛЬНЫЕ РОЛИ (ГЕОМЕТРИЯ)"
+                ? tl("graph.graphLegend.proceduralRolesShape", "ПРОЦЕССУАЛЬНЫЕ РОЛИ (ФОРМА)")
+                : tl("graph.graphLegend.proceduralRolesGeometry", "ПРОЦЕССУАЛЬНЫЕ РОЛИ (ГЕОМЕТРИЯ)")
             }
             mt={10}
           />
@@ -293,7 +294,7 @@ export default function GraphLegend({
       {/* ── Секция 2b: Структурные роли (МАРКЕР) ── */}
       {visibleStruct.length ? (
         <>
-          <SecTitle text="СТРУКТУРНЫЕ РОЛИ (МАРКЕР)" mt={10} />
+          <SecTitle text={tl("graph.graphLegend.structuralRolesMarker", "СТРУКТУРНЫЕ РОЛИ (МАРКЕР)")} mt={10} />
           {visibleStruct.map((s) => {
             const f = {
               type: "role",
@@ -322,7 +323,7 @@ export default function GraphLegend({
       {/* ── Секция 3: типы рёбер ── */}
       {edgeTypes.size ? (
         <>
-          <SecTitle text="ТИПЫ СВЯЗЕЙ" mt={10} />
+          <SecTitle text={tl("graph.graphLegend.edgeTypesHeading", "ТИПЫ СВЯЗЕЙ")} mt={10} />
           {[...edgeTypes].map((t) => {
             const { color, dash } = edgeTypeStyle(t);
             return (
@@ -348,7 +349,7 @@ export default function GraphLegend({
       {/* ── Секция 4: кластеры ── */}
       {clusterLabels.length ? (
         <>
-          <SecTitle text="КЛАСТЕРЫ" mt={10} />
+          <SecTitle text={tl("graph.graphLegend.clustersHeading", "КЛАСТЕРЫ")} mt={10} />
           {clusterLabels.map((label, i) => {
             const c = CPAL[i % CPAL.length]!;
             const f = { type: "cluster", idx: i } as const;
@@ -381,10 +382,10 @@ export default function GraphLegend({
 
       {/* ── Подсказки ── */}
       <div className="gm-legend-hint" style={{ marginTop: 8 }}>
-        → однонаправл. · ↔ двунаправл. · ↺ рефлексив.
+        {tl("graph.graphLegend.directionLegend", "→ однонаправл. · ↔ двунаправл. · ↺ рефлексив.")}
       </div>
       <div className="gm-legend-hint">
-        ⌀ опр-ть = прозрач. заливки · ◼- - мост = пункт. обводка
+        {tl("graph.graphLegend.certaintyLegend", "⌀ опр-ть = прозрач. заливки · ◼- - мост = пункт. обводка")}
       </div>
     </div>
   );

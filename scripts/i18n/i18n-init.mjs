@@ -53,7 +53,7 @@ for (const f of files) {
       if (e.static) prev.static = true;
       continue;
     }
-    const pn = e.args ? paramNames(e.args) : [];
+    const pn = e.args ? paramNames(e.args, r.params) : [];
     const ru = toNamed(e.text, pn);
     rawText.set(r.key, e.text);
     const row = { ru };

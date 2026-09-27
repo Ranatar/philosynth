@@ -34,10 +34,11 @@ import {
 import type { CanvasRenderingContext2D } from "canvas";
 import type { GModel } from "./graph-model.js";
 import type { SimNode } from "./graph-physics.js";
+import { tl } from "@philosynth/shared/i18n/t";
 
 /** Ядро на готовой модели G — возвращает PNG-буфер. */
 export function buildPNG(G: GModel): Buffer {
-  if (!G.nodes.length) throw new ExportError("NO_GRAPH", "Нет графа.");
+  if (!G.nodes.length) throw new ExportError("NO_GRAPH", tl("common.noGraph", "Нет графа."));
   const style = createGraphStyle(G);
 
   const topo = G.topology || emptyTopology();
@@ -568,26 +569,26 @@ export function buildPNG(G: GModel): Buffer {
     draw: (x: number, y: number, r: number) => void;
   }
   const ROLE_REG_PNG: RoleReg[] = [
-    { key: "synthesis",         label: "Синтез",           draw: (x, y, r) => polygon(x, y, r, 8) },
-    { key: "thesis",            label: "Тезис",            draw: (x, y, r) => polygon(x, y, r, 3) },
-    { key: "antithesis",        label: "Антитезис",        draw: (x, y, r) => polygon(x, y, r, 3, Math.PI / 2) },
-    { key: "deconstructed",     label: "Деконструиров.",   draw: (x, y, r) => crossShape(x, y, r) },
-    { key: "reassembled",       label: "Пересобранная",    draw: (x, y, r) => hexStarShape(x, y, r) },
-    { key: "horizon-expansion", label: "Расш. горизонта",  draw: (x, y, r) => diamondShape(x, y, r) },
-    { key: "pre-horizon",       label: "Предгоризонт",     draw: (x, y, r) => polygon(x, y, r, 7) },
-    { key: "integrating",       label: "Интегрирующая",    draw: (x, y, r) => wyeShape(x, y, r) },
-    { key: "foundation",        label: "Основание",        draw: (x, y, r) => trapezoid(x, y, r) },
-    { key: "formalized",        label: "Формализованная",  draw: (x, y, r) => rectShape(x, y, r) },
-    { key: "verifying",         label: "Верифицирующая",   draw: (x, y, r) => starShape5(x, y, r) },
+    { key: "synthesis",         label: tl("common.synthesis", "Синтез"),           draw: (x, y, r) => polygon(x, y, r, 8) },
+    { key: "thesis",            label: tl("common.thesis", "Тезис"),            draw: (x, y, r) => polygon(x, y, r, 3) },
+    { key: "antithesis",        label: tl("common.antithesis", "Антитезис"),        draw: (x, y, r) => polygon(x, y, r, 3, Math.PI / 2) },
+    { key: "deconstructed",     label: tl("server.export.pngExporter.deconstructedShort", "Деконструиров."),   draw: (x, y, r) => crossShape(x, y, r) },
+    { key: "reassembled",       label: tl("common.reassembled", "Пересобранная"),    draw: (x, y, r) => hexStarShape(x, y, r) },
+    { key: "horizon-expansion", label: tl("server.export.pngExporter.horizonExpansionShort", "Расш. горизонта"),  draw: (x, y, r) => diamondShape(x, y, r) },
+    { key: "pre-horizon",       label: tl("common.prehorizon", "Предгоризонт"),     draw: (x, y, r) => polygon(x, y, r, 7) },
+    { key: "integrating",       label: tl("common.integrating", "Интегрирующая"),    draw: (x, y, r) => wyeShape(x, y, r) },
+    { key: "foundation",        label: tl("common.ground", "Основание"),        draw: (x, y, r) => trapezoid(x, y, r) },
+    { key: "formalized",        label: tl("common.formalized", "Формализованная"),  draw: (x, y, r) => rectShape(x, y, r) },
+    { key: "verifying",         label: tl("common.verifying", "Верифицирующая"),   draw: (x, y, r) => starShape5(x, y, r) },
   ];
   const activeProcRoles = ROLE_REG_PNG.filter((r) => procRolesActive.has(r.key));
 
   const STRUCT_REG_PNG = [
-    { key: "core",       label: "Ядро",          desc: "внутренний силуэт" },
-    { key: "generative", label: "Генеративная",  desc: "свечение (glow)" },
-    { key: "bridge",     label: "Мост",          desc: "пунктирная обводка" },
-    { key: "central",    label: "Центральная",   desc: "жирная обводка" },
-    { key: "peripheral", label: "Периферийная",  desc: "тонкая обводка" },
+    { key: "core",       label: tl("server.export.pngExporter.core", "Ядро"),          desc: "внутренний силуэт" },
+    { key: "generative", label: tl("common.generative", "Генеративная"),  desc: "свечение (glow)" },
+    { key: "bridge",     label: tl("common.bridge", "Мост"),          desc: "пунктирная обводка" },
+    { key: "central",    label: tl("common.central", "Центральная"),   desc: "жирная обводка" },
+    { key: "peripheral", label: tl("common.peripheral", "Периферийная"),  desc: "тонкая обводка" },
   ];
   const activeStructRoles = STRUCT_REG_PNG.filter((s) => structRolesActive.has(s.key));
 
