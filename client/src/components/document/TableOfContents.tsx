@@ -19,6 +19,7 @@
 import type { SectionSummary } from "@philosynth/shared/types/section";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export function subsectionSlugId(key: string, subName: string): string {
   return "subsec-" + key + "-" + subName.replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, "_");
@@ -50,10 +51,11 @@ export function TableOfContents({
         {visible.map((key) => {
           const summary = byKey.get(key);
           if (!summary) return null;
-          const label =
+          const label = tData(
             (KEY_LABELS as Record<string, string>)[key] ??
-            summary.title ??
-            key;
+              summary.title ??
+              key,
+          );
           return (
             <div key={key}>
               <p className="toc-section-link">

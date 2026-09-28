@@ -26,6 +26,7 @@ import {
 
 import type { LegendFilter, RoleLayer } from "./graph-utils";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tDataLoose } from "@philosynth/shared/i18n/data";
 
 interface RoleRegistryEntry {
   key: string;
@@ -227,7 +228,7 @@ export default function GraphLegend({
             className="gm-legend-dot"
             style={{ background: typeColorHex(t) }}
           />
-          <span>{t}</span>
+          <span>{tDataLoose(t)}</span>
         </div>
       ))}
 
@@ -339,7 +340,7 @@ export default function GraphLegend({
                     strokeDasharray={dash ?? undefined}
                   />
                 </svg>
-                <span>{t}</span>
+                <span>{tDataLoose(t)}</span>
               </div>
             );
           })}

@@ -48,6 +48,7 @@ import { useSynthesisStore } from "../../stores/synthesis-store";
 import { buildCapsuleHtml } from "../../utils/capsule-html";
 import { extractCapsuleText } from "../../utils/concept-file";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export interface DocumentHeaderProps {
   synthesis: SynthesisFull;
@@ -67,6 +68,23 @@ function subtitleFor(s: SynthesisFull): string {
     return "На основе: " + parts.join(" + ");
   }
   return `На основе: ${s.philosophers.join(", ")}`;
+}
+
+/**
+ * Показ подзаголовка на языке интерфейса (11.4): ветки subtitleFor остаются
+ * русскими литералами (зеркало экспорта, сторож 4y), перевод — по месту
+ * показа картой «значение → ключ»: префикс и свободный синтез — целиком,
+ * имена философов — поимённо (константы shared/philosophers), названия
+ * концепций-родителей — как есть (данные документа).
+ */
+function subtitleDisplay(s: SynthesisFull): string {
+  const raw = subtitleFor(s);
+  const BASED = "На основе: ";
+  if (!raw.startsWith(BASED)) return tData(raw);
+  const parts: string[] = [];
+  if (s.philosophers.length > 0) parts.push(s.philosophers.map((p) => tData(p)).join(", "));
+  if (s.parentSyntheses.length > 0) parts.push(s.parentSyntheses.map((p) => p.title).join(", "));
+  return tData(BASED) + parts.join(" + ");
 }
 
 /** Текст ошибки сохранения капсулы (8.4): коды 03 §4.3 + details.html */
@@ -177,7 +195,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
           </button>
         )}
       </div>
-      <div className="doc-subtitle">{subtitleFor(synthesis)}</div>
+      <div className="doc-subtitle">{subtitleDisplay(synthesis)}</div>
 
       {/* buildDocHeaderExtras + updateCapsuleInHeader */}
       <div
@@ -283,15 +301,15 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
         </div>
         <div className="doc-meta-item">
           <span className="doc-meta-key">{tl("document.documentHeader.synthesisMethod", "Метод синтеза")}</span>
-          <span className="doc-meta-val gold">{ML[synthesis.method]}</span>
+          <span className="doc-meta-val gold">{tData(ML[synthesis.method])}</span>
         </div>
         <div className="doc-meta-item">
           <span className="doc-meta-key">{tl("document.documentHeader.depth", "Глубина")}</span>
-          <span className="doc-meta-val gold">{DL[synthesis.depth]}</span>
+          <span className="doc-meta-val gold">{tData(DL[synthesis.depth])}</span>
         </div>
         <div className="doc-meta-item">
           <span className="doc-meta-key">{tl("document.documentHeader.synthesisLevel", "Уровень синтеза")}</span>
-          <span className="doc-meta-val gold">{SL[synthesis.synthLevel]}</span>
+          <span className="doc-meta-val gold">{tData(SL[synthesis.synthLevel])}</span>
         </div>
         {synthesis.authorName && (
           <div className="doc-meta-item" data-testid="doc-author">

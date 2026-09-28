@@ -47,6 +47,7 @@ import { useWebSocket } from "../../hooks/useWebSocket";
 import { ModeContent } from "./ModeContent";
 import { ModeTabBar } from "./ModeTabBar";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 /* ── Клиентская статика MODE_CONFIG [22578] (дословно) ─────────────── */
 
@@ -299,8 +300,8 @@ export function ModeModal({
   const footerInfo = doneInfo
     ? doneInfo
     : active
-      ? `${ui.desc} · ${active.paramValue} · ${new Date(active.createdAt).toLocaleString("ru-RU")}`
-      : ui.desc || "—";
+      ? `${tData(ui.desc)} · ${active.paramValue} · ${new Date(active.createdAt).toLocaleString("ru-RU")}`
+      : tData(ui.desc) || "—";
 
   const contentHtml = running
     ? liveHtml
@@ -319,7 +320,7 @@ export function ModeModal({
       <div className="mode-modal">
         <div className="mode-modal-header">
           <div className="mode-modal-title" id="modeTitle">
-            {ui.title}
+            {tData(ui.title)}
           </div>
           <button type="button" className="mode-modal-close" onClick={onClose}>
             {tl("common.closeWithIcon", "✕ Закрыть")}
@@ -330,14 +331,14 @@ export function ModeModal({
         <div className="mode-modal-params">
           <div className="form-group" id="modeParamsGroup">
             <div className="form-label">
-              {ui.paramLabel}
+              {tData(ui.paramLabel)}
             </div>
             <input
               ref={inputRef}
               id="modeParamInput"
               className="form-input"
               style={{ width: "100%" }}
-              placeholder={ui.paramPlaceholder}
+              placeholder={tData(ui.paramPlaceholder)}
               value={param}
               onChange={(e) => setParam(e.target.value)}
               onKeyDown={(e) => {
@@ -355,9 +356,9 @@ export function ModeModal({
                 type="button"
                 className="edit-sec-btn"
                 style={{ fontSize: 9, padding: "3px 8px" }}
-                onClick={() => setParam(s)}
+                onClick={() => setParam(tData(s))}
               >
-                {s}
+                {tData(s)}
               </button>
             ))}
           </div>

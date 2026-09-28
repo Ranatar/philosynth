@@ -74,6 +74,7 @@ import {
 } from "../utils/template-placeholders";
 import { diffLines, diffStats } from "../utils/text-diff";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 /* ── Общее ───────────────────────────────────────────────────────────── */
 
@@ -1076,8 +1077,8 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                   <td>
                     <code>{t.key}</code>
                   </td>
-                  <td>{t.nameRu}</td>
-                  <td>{t.description}</td>
+                  <td>{t.isSystem ? tData(t.nameRu) : t.nameRu}</td>
+                  <td>{t.isSystem ? tData(t.description) : t.description}</td>
                   {isRel && <td>{(() => { const d = directionOf(t); return d ? DIRECTION_LABELS()[d] : ""; })()}</td>}
                   <td>
                     <span className={originClass(t.isSystem)}>{t.isSystem ? tl("adminPromptsPage.system", "системный") : tl("adminPromptsPage.custom", "пользовательский")}</span>

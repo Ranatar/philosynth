@@ -80,9 +80,10 @@ import {
   type RetrofitReason,
 } from "../../utils/recommendations";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 const labelOf = (key: string): string =>
-  (KEY_LABELS as Record<string, string>)[key] ?? key;
+  tData((KEY_LABELS as Record<string, string>)[key] ?? key);
 
 const STATUS_LABEL = (): Record<Recommendation["status"], string> => ({
   new: tl("edit.recommendationsPanel.statusPending", "ждёт решения"),
@@ -398,7 +399,7 @@ export function RecommendationsPanel({
               {kindText && <span className="rec-element-kind" data-testid="rec-element-kind">{kindText}</span>}
             </span>
           )}
-          <span className="rec-op">{r.op}</span>
+          <span className="rec-op">{tData(r.op)}</span>
           <span className={costClass} data-testid="rec-cost" title={actionTextOf(r)}>
             {COST_KIND_LABEL()[kind]}
           </span>
@@ -487,7 +488,7 @@ export function RecommendationsPanel({
             <span className="rec-num">№ {item.num}</span>
           </label>
           <span className={"compat-chip " + severityChipOf(first.severity)} data-testid="rec-severity">
-            {first.severity || "—"}
+            {tData(first.severity) || "—"}
           </span>
           {first.status === "rejected" && <span className="cert-badge">{tl("edit.recommendationsPanel.wasRejected", "отклонялась")}</span>}
           {stale && <span className="cert-badge gold">{tl("edit.recommendationsPanel.statusTextChanged", "текст изменился")}</span>}
@@ -528,7 +529,7 @@ export function RecommendationsPanel({
         {r.addressSection ? `${labelOf(r.addressSection)} → ` : ""}«{r.addressSubsection}»
         {r.element ? ` · ${r.element}` : ""}
       </span>
-      <span className="rec-op">{r.op}</span>
+      <span className="rec-op">{tData(r.op)}</span>
       <span className="rec-status">{STATUS_LABEL()[r.status]}</span>
     </div>
   );
@@ -700,7 +701,7 @@ export function RecommendationsPanel({
                     <span className="rec-num">№ {r.num}</span>
                     <span className="rec-address">«{r.addressSubsection}»</span>
                     {r.element && <span className="rec-element">{r.element}</span>}
-                    <span className="rec-op">{r.op}</span>
+                    <span className="rec-op">{tData(r.op)}</span>
                   </div>
                   <div className="rec-invalid-reason" data-testid="rec-invalid-reason">
                     {r.invalidReason ?? tl("edit.recommendationsPanel.reasonUnnamed", "причина не названа")}

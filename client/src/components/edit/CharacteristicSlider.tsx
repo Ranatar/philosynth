@@ -44,6 +44,7 @@ import type { CharacteristicJustification } from "@philosynth/shared/types/eleme
 
 import { messageOfEnrichmentError, type EnrichmentStream } from "../../hooks/useEnrichmentStream";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 /** Шаг ползунка REAL-характеристик (как RangeField 5.2) */
 export const REAL_STEP = 0.05;
@@ -196,7 +197,7 @@ export function CharacteristicSlider({
       data-characteristic={spec.key}
     >
       <label className="char-slider-label" htmlFor={inputId}>
-        {capitalize(spec.labelRu)}
+        {capitalize(tData(spec.labelRu))}
       </label>
       <span className="char-slider-value">{formatCharacteristic(spec, value)}</span>
       {justify ? (
@@ -226,7 +227,7 @@ export function CharacteristicSlider({
         step={step}
         value={value}
         disabled={disabled}
-        aria-label={capitalize(spec.labelRu)}
+        aria-label={capitalize(tData(spec.labelRu))}
         onChange={(e) => onChange?.(Number(e.target.value))}
         onPointerUp={(e) => onCommit?.(Number((e.target as HTMLInputElement).value))}
         onKeyUp={(e) => {
@@ -299,7 +300,7 @@ function JustificationBlock({
       data-testid="char-justification"
     >
       <div className="char-justification-meta">
-        {tl("edit.characteristicSlider.justificationOf", "обоснование · {labelRu}", { labelRu: spec.labelRu })}
+        {tl("edit.characteristicSlider.justificationOf", "обоснование · {labelRu}", { labelRu: tData(spec.labelRu) })}
         {latest && !streaming
           ? ` = ${formatCharacteristic(spec, latest.value)} · ${fmtDate(latest.createdAt)} · $${latest.costUsd.toFixed(4)}`
           : streaming

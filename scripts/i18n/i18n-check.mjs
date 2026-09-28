@@ -14,7 +14,11 @@
  *     (codemod не применён) и без ключа (новая строка без имени в names.json);
  *     литералы строк data (зеркала с данными, MIRROR_EXCLUSIONS codemod'а) —
  *     отдельной справкой, не ошибкой: они переводятся по месту показа (11.4).
- * --strict: код возврата 1, если есть что-то кроме непереведённого и черновиков.
+ * --strict: код возврата 1, если есть что-то кроме черновиков. С 11.4 в
+ *   --strict красным считается и ОТСУТСТВИЕ перевода на любой язык (черновик
+ *   считается переводом; список ключей печатается): у каждого ключа обязаны
+ *   быть все языки — это условие check:integration (сторож 4ay).
+ *   Устаревшие переводы (from ≠ ru) — по-прежнему только отчёт.
  */
 
 import fs from "node:fs";
@@ -38,11 +42,12 @@ for (const [key, c] of calls) {
 }
 if (calls.size) for (const [key, row] of Object.entries(S)) if (!row.data && !calls.has(key)) notInCode.push(key);
 const perLang = Object.fromEntries(langs.map((l) => [l, { missing: 0, stale: 0, draft: 0 }]));
+const missingKeys = [];
 for (const [key, row] of Object.entries(S)) {
   if (row.obsolete) continue;
   for (const pr of pluralFormProblems(row.ru, "ru")) badPlurals.push(`${key} [ru]: ${pr}`);
   for (const l of langs) {
-    if (row[l] == null) perLang[l].missing++;
+    if (row[l] == null || row[l] === "") { perLang[l].missing++; missingKeys.push(`${key} [${l}]`); }
     else {
       if (isStale(row, l)) perLang[l].stale++;
       if (row.draft?.includes(l)) perLang[l].draft++;
@@ -88,7 +93,9 @@ const staticClient = staticAll.filter((x) => x.startsWith("client/"));
 show("static в клиенте — tl() на уровне модуля (при смене языка не обновится)", staticClient, 10);
 console.log(`· static вне клиента (сервер/скрипты, язык запроса — контекст ALS): ${staticAll.length - staticClient.length}`);
 for (const l of langs) console.log(`  ${l}: нет перевода ${perLang[l].missing}, устарел ${perLang[l].stale}, черновик ${perLang[l].draft}`);
+// 11.4: у каждого ключа — все языки (черновик считается); в --strict — красный с ключами
+show("ключи без перевода (черновик считается переводом)", missingKeys, 10);
 
 const fatal = problems.length + notInTable.length + ruMismatch.length + badPlaceholders.length + badPlurals.length + literalUnnamed.length +
-  staticClient.length + (calls.size ? literalKeyed.length + notInCode.length : 0);
+  staticClient.length + missingKeys.length + (calls.size ? literalKeyed.length + notInCode.length : 0);
 process.exit(argv.includes("--strict") && fatal ? 1 : 0);

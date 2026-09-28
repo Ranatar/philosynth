@@ -105,6 +105,7 @@ import {
   type GenealogyNode,
 } from "../utils/genealogy";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export function SynthesisPage() {
   const { id } = useParams<{ id: string }>();
@@ -738,7 +739,7 @@ export function SynthesisPage() {
                 {/* Эмодзи заголовка снимается по первому пробелу, не по длине:
                     «🔄» — суррогатная пара (2 единицы UTF-16), slice(2)
                     оставлял у «Переводчика» лишний пробел */}
-                ◈ {MODE_UI[mk].title.replace(/^\S+\s+/u, "")}
+                ◈ {tData(MODE_UI[mk].title).replace(/^\S+\s+/u, "")}
                 {(modeCounts[mk] ?? 0) > 0 ? ` (${modeCounts[mk]})` : ""}
               </button>
             ))}
@@ -753,7 +754,7 @@ export function SynthesisPage() {
                 data-mode-readonly=""
                 onClick={() => setModeOpen(mk)}
               >
-                ◈ {MODE_UI[mk].title.replace(/^\S+\s+/u, "")} ({modeCounts[mk]})
+                ◈ {tData(MODE_UI[mk].title).replace(/^\S+\s+/u, "")} ({modeCounts[mk]})
               </button>
             ))}
           {/* Беседа 4.2: экспорт (скачивание с сервера, 03 §2.11);

@@ -37,6 +37,7 @@ import {
   setUnauthorizedHandler,
 } from "../api/client";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 import { applyUserLocale } from "../i18n/i18n-store";
 
 /** Пользователь (ответ GET /auth/me; после login — до restore — role/balanceUsd могут отсутствовать) */
@@ -296,10 +297,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         "/auth/password-reset/request",
         { email },
       );
-      return { ok: true, message: res.message ?? PASSWORD_RESET_REQUESTED_MESSAGE };
+      return { ok: true, message: res.message ?? tData(PASSWORD_RESET_REQUESTED_MESSAGE) };
     } catch (err) {
       const f = toActionFailure(err, tl("stores.authStore.requestFailed", "Не удалось отправить запрос"));
-      return f.ok ? { ok: true, message: PASSWORD_RESET_REQUESTED_MESSAGE } : f;
+      return f.ok ? { ok: true, message: tData(PASSWORD_RESET_REQUESTED_MESSAGE) } : f;
     }
   },
 

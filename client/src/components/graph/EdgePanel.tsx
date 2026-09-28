@@ -36,6 +36,7 @@ import {
 
 import type { GEdge, GNode } from "./graph-utils";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tDataLoose } from "@philosynth/shared/i18n/data";
 
 function Metric({
   label,
@@ -99,7 +100,7 @@ function NodeBlock({
       </div>
       <div className="gm-panel-badges" style={{ marginBottom: 4 }}>
         <span className="gm-panel-badge" style={{ borderColor: color, color }}>
-          {n.type || "—"}
+          {tDataLoose(n.type) || "—"}
         </span>
         {clusters.map((ci) => {
           const label = clusterLabels[ci] || tl("graph.edgePanel.cluster", "Кластер {ci}", { ci: ci + 1 });
@@ -240,7 +241,7 @@ export default function EdgePanel({
           />
         </svg>
         <div className="gm-panel-name" style={{ fontSize: 11.5 }}>
-          {edgeData.type || tl("graph.edgePanel.edge", "Связь")}
+          {tDataLoose(edgeData.type) || tl("graph.edgePanel.edge", "Связь")}
         </div>
         <button
           className="gm-panel-close"

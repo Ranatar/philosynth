@@ -54,6 +54,7 @@ import {
   resolveContextDeps,
 } from "./synthesis-engine.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data"; // 11.4: метки-данные по месту показа (язык запроса)
 
 /* ── Типы матрицы совместимости ──────────────────────────────────────── */
 
@@ -367,7 +368,7 @@ export async function computeSectionAdvice(
     return key !== undefined && selected.has(key);
   };
   const labelOf = (secId: string): string =>
-    (SECTION_LABELS as Record<string, string>)[secId] ?? secId;
+    tData((SECTION_LABELS as Record<string, string>)[secId] ?? secId);
 
   const resolvedForWarnings = await resolveContextDeps({
     synthLevel: input.synthLevel,
@@ -416,9 +417,9 @@ export async function computeSectionAdvice(
             tl("server.compatAdvisor.sectionLead", "Раздел «") +
             secLabel +
             tl("server.compatAdvisor.hardConflictWith", "» имеет жёсткий конфликт (✗✗) с текущей комбинацией ") +
-            SL[input.synthLevel] +
+            tData(SL[input.synthLevel]) +
             " × " +
-            ML[input.method] +
+            tData(ML[input.method]) +
             tl("server.compatAdvisor.contradictoryDirectives", ". Результат будет содержать противоречивые директивы!"),
         });
       } else if (secRating === "✗") {
@@ -430,9 +431,9 @@ export async function computeSectionAdvice(
             tl("server.compatAdvisor.sectionLead", "Раздел «") +
             secLabel +
             tl("server.compatAdvisor.moderateConflictWith", "» имеет умеренный конфликт (✗) с текущей комбинацией ") +
-            SL[input.synthLevel] +
+            tData(SL[input.synthLevel]) +
             " × " +
-            ML[input.method] +
+            tData(ML[input.method]) +
             tl("server.compatAdvisor.excludeOrChange", ". Рекомендуется исключить этот раздел или изменить параметры."),
         });
       }
@@ -537,14 +538,15 @@ export async function computeSectionAdvice(
             : q === 2
               ? tl("server.compatAdvisor.partialReplacement", "частичная замена")
               : tl("server.compatAdvisor.weakReplacement", "слабая замена");
-        const secLabel =
+        const secLabel = tData(
           (SECTION_LABELS as Record<string, string>)[
             "sec" + sec.charAt(0).toUpperCase() + sec.slice(1)
-          ] ?? sec;
+          ] ?? sec,
+        );
         substitutions.push({
           icon: "⇄",
           text:
-            tl("server.compatAdvisor.contextUsed", "«{secLabel}»: контекст «{ctxKey}» ", { secLabel, ctxKey: (CTX_LABELS as Record<string, string>)[ctxKey] ?? ctxKey }) +
+            tl("server.compatAdvisor.contextUsed", "«{secLabel}»: контекст «{ctxKey}» ", { secLabel, ctxKey: tData((CTX_LABELS as Record<string, string>)[ctxKey] ?? ctxKey) }) +
             tl("server.compatAdvisor.usedAsSubstitute", "используется как {qLabel} для недостающего контекста.", { qLabel }),
         });
       }

@@ -44,6 +44,7 @@ import {
   type GenealogyNode,
 } from "./genealogy";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 /* ─────────────────────────── Типы ─────────────────────────── */
 
@@ -636,7 +637,7 @@ export function importConceptAsParticipant(
         missing
           .map(
             (k) =>
-              "«" + ((KEY_LABELS as Record<string, string>)[k] || k) + "»",
+              "«" + tData((KEY_LABELS as Record<string, string>)[k] || k) + "»",
           )
           .join(", ") +
         tl("utils.conceptFile.addMissingSections", ". Откройте документ, добавьте недостающие разделы и сохраните заново."),

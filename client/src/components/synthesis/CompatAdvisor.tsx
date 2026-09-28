@@ -36,6 +36,7 @@ import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 
 import type { CompatEntryDto } from "../../api/syntheses";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 /** chipClassForRating [7325] — дословно */
 function chipCls(rating: string): string {
@@ -83,7 +84,7 @@ export function CompatAdvisor({
   const chips = selectedSections
     .map((key) => ({
       key,
-      label: (KEY_LABELS as Record<string, string>)[key] ?? key,
+      label: tData((KEY_LABELS as Record<string, string>)[key] ?? key),
       rating: entry.sections[key] ?? "★",
     }))
     .filter((c) => c.key !== "sum");
@@ -127,7 +128,7 @@ export function CompatAdvisor({
 
       <div className="compat-body">
         <div className="compat-body-inner">
-          <div className="compat-desc">{entry.desc}</div>
+          <div className="compat-desc">{tData(entry.desc)}</div>
 
           {chips.length > 0 && (
             <div className="compat-section-chips">
@@ -146,7 +147,7 @@ export function CompatAdvisor({
           {entry.advice && (
             <div className="compat-section-advice">
               <span className="advice-label">{tl("synthesis.compatAdvisor.sectionAdvice", "Совет по разделам")}</span>
-              <span>{entry.advice}</span>
+              <span>{tData(entry.advice)}</span>
             </div>
           )}
 

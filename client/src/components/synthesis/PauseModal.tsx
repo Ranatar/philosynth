@@ -61,6 +61,7 @@ import { useState } from "react";
 import { storeApiKey } from "../../api/billing";
 import { ApiError } from "../../api/client";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 const LABELS = KEY_LABELS as Record<string, string>;
 
@@ -129,7 +130,7 @@ function CostSpan({ cost, prefix }: { cost: number | null | undefined; prefix?: 
 function completedListOf(ps: PausedStateGen): string {
   return (
     (ps.completedPasses ?? [])
-      .map((keys) => keys.map((k) => LABELS[k] ?? k).join(" + "))
+      .map((keys) => keys.map((k) => tData(LABELS[k] ?? k)).join(" + "))
       .join(", ") || "—"
   );
 }
@@ -313,7 +314,7 @@ function planOpLabel(op: PlanOp | null | undefined): string {
         ? tl("synthesis.pauseModal.stepDelete", "Удаление: ")
         : tl("synthesis.pauseModal.stepRegenerate", "Перегенерация: ");
   const key = op.key ?? "?";
-  return prefix + (LABELS[key] ?? key);
+  return prefix + tData(LABELS[key] ?? key);
 }
 
 function PlanContent({ ps }: { ps: PausedStatePlan }) {
@@ -324,7 +325,7 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
     .map(
       (o) =>
         (o.action === "add" ? "➕ " : o.action === "remove" ? "✕ " : "↻ ") +
-        (LABELS[o.key ?? ""] ?? o.key ?? "?"),
+        tData(LABELS[o.key ?? ""] ?? o.key ?? "?"),
     )
     .join(", ");
   const moreHint =

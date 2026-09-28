@@ -13,6 +13,8 @@
  * `resolveCharacteristic` принимает все три написания.
  */
 
+import { tData } from "../i18n/data.js";
+
 export type CharacteristicElementType = "category" | "edge";
 
 export interface CharacteristicSpec {
@@ -92,11 +94,18 @@ export function validateCharacteristicValue(
   spec: CharacteristicSpec,
   value: unknown,
 ): string | null {
+  // 11.4: текст — на языке запроса (tData по месту показа; вне контекста
+  // запроса и без каталога — русский, как прежде). Шаблоны ниже — русские
+  // строки-данные, источник строк таблицы shared.characteristics.*.
   if (typeof value !== "number" || !Number.isFinite(value))
-    return "Ожидается число";
+    return tData(VALUE_ERROR_NOT_NUMBER);
   if (spec.integer && !Number.isInteger(value))
-    return `Ожидается целое число от ${spec.min} до ${spec.max}`;
+    return tData(VALUE_ERROR_NOT_INTEGER, { min: spec.min, max: spec.max });
   if (value < spec.min || value > spec.max)
-    return `Значение вне диапазона [${spec.min}, ${spec.max}]`;
+    return tData(VALUE_ERROR_OUT_OF_RANGE, { min: spec.min, max: spec.max });
   return null;
 }
+
+export const VALUE_ERROR_NOT_NUMBER = "Ожидается число";
+export const VALUE_ERROR_NOT_INTEGER = "Ожидается целое число от {min} до {max}";
+export const VALUE_ERROR_OUT_OF_RANGE = "Значение вне диапазона [{min}, {max}]";

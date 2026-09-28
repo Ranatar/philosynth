@@ -87,6 +87,7 @@ import { CATEGORY_CHARACTERISTICS, EDGE_CHARACTERISTICS } from "@philosynth/shar
 import { ThesisEditor, thesisDiff, thesisToDraft, type ThesisDraft } from "./ThesisEditor";
 import { VersionHistory } from "./VersionHistory";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData, tDataLoose } from "@philosynth/shared/i18n/data";
 
 /* ── Общие мелочи для редакторов ─────────────────────────────────────── */
 
@@ -141,7 +142,10 @@ const HTML_SYNC_FIELD_LABELS = (): Record<string, string> => ({
 });
 
 const labelOf = (key: string): string =>
-  (KEY_LABELS as Record<string, string>)[key] ?? key;
+  tData((KEY_LABELS as Record<string, string>)[key] ?? key);
+
+/** Подпись характеристики с заглавной (перевод — tData по месту показа, 11.4). */
+const capitalizeLabel = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 export interface SaveOutcome extends Omit<ElementMutationMeta, "version"> {
   kind: EditableKind;
@@ -643,7 +647,7 @@ function ElementSummary({
           {CATEGORY_CHARACTERISTICS.map((s) => (
             <Row
               key={s.key}
-              label={s.labelRu.charAt(0).toUpperCase() + s.labelRu.slice(1)}
+              label={capitalizeLabel(tData(s.labelRu))}
               value={formatCharacteristic(s, (c as unknown as Record<string, number>)[s.dtoField] ?? s.min)}
             />
           ))}
@@ -656,13 +660,13 @@ function ElementSummary({
       return (
         <div className="element-summary">
           <Row label={tl("edit.elementEditor.edge", "Связь")} value={`${target.sourceName ?? "?"} → ${target.targetName ?? "?"}`} />
-          <Row label={tl("common.edgeType", "Тип связи")} value={e.edgeType} />
+          <Row label={tl("common.edgeType", "Тип связи")} value={tDataLoose(e.edgeType)} />
           <Row label={tl("common.direction", "Направление")} value={e.direction} />
           <Row label={tl("common.description", "Описание")} value={e.description} />
           {EDGE_CHARACTERISTICS.map((s) => (
             <Row
               key={s.key}
-              label={s.labelRu.charAt(0).toUpperCase() + s.labelRu.slice(1)}
+              label={capitalizeLabel(tData(s.labelRu))}
               value={formatCharacteristic(s, (e as unknown as Record<string, number>)[s.dtoField] ?? s.min)}
             />
           ))}

@@ -47,6 +47,7 @@ import {
 
 import type { PanelLink, PanelNodeData } from "./graph-utils";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tDataLoose } from "@philosynth/shared/i18n/data";
 
 const ROLE_LABELS = (): Record<string, string> => ({
   central: tl("common.central", "Центральная"),
@@ -122,7 +123,7 @@ function EdgeRow({ l, dir }: { l: PanelLink; dir: "out" | "in" | "ref" }) {
       <div>
         <div className="gm-panel-edge-name">{other}</div>
         <div className="gm-panel-edge-meta">
-          {l.type || "—"}
+          {tDataLoose(l.type) || "—"}
           {l.desc ? " · " + l.desc : ""}
         </div>
       </div>
@@ -244,7 +245,7 @@ export default function NodePanel({
           className="gm-panel-badge"
           style={{ borderColor: color, color }}
         >
-          {d.type || "—"}
+          {tDataLoose(d.type) || "—"}
         </span>
         {clusterIdx.map((idx) => {
           const label = clusterLabels[idx] || tl("graph.nodePanel.cluster", "Кластер {idx}", { idx: idx + 1 });

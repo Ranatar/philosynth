@@ -100,6 +100,7 @@ export function listScopeFiles(root) {
       const rel = path.relative(root, abs).split(path.sep).join("/");
       if (seen.has(rel) || !fs.existsSync(abs)) continue;
       if (s.skip?.includes(rel)) continue;
+      if (rel.startsWith("packages/shared/i18n/generated/")) continue; // генераты 11.2/11.4 — не опись
       seen.add(rel);
       res.push({ rel, group: s.group, mode: s.mode });
     }

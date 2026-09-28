@@ -18,6 +18,7 @@ import type { ModeResult } from "@philosynth/shared/types/modes";
 
 import { MODE_ORDER, MODE_UI } from "../modes/ModeModal";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export interface ModeResultsPanelProps {
   /** modeKey → результаты (порядок created_at ASC = индексы API) */
@@ -84,7 +85,7 @@ export function ModeResultsPanel({
                   className="edit-sec-title"
                   style={{ color: "var(--violet)" }}
                 >
-                  {MODE_UI[mk as keyof typeof MODE_UI]?.title ?? mk} ·{" "}
+                  {tData(MODE_UI[mk as keyof typeof MODE_UI]?.title) || mk} ·{" "}
                   {r.paramValue}
                 </div>
                 <div

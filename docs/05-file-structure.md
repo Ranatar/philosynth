@@ -72,9 +72,18 @@ philosynth-service/
 │       │   │                           # SynthesisForm 1.5) — один список
 │       │   ├── strings.json            # мастер-таблица переводов (ru/en/de, from, draft, params,
 │       │   │                           # where, отметки data/static/obsolete); правится инструментами
+│       │   ├── data.ts                 # 11.4: перевод ДАННЫХ по месту показа — displayKey(value),
+│       │   │                           # tData(value, params?), tDataLoose(value) (типы документа со
+│       │   │                           # строчной буквы); значение без ключа — как есть; единственный
+│       │   │                           # файл с нелитеральным tl() (исключён из сканов i18n-core)
 │       │   └── generated/              # каталоги рантайма — npm run i18n:split, руками не править;
-│       │       ├── en.json             # { locale, strings }; ru-каталога нет (ru — в коде)
-│       │       └── de.json
+│       │       ├── en.json             # { locale, strings }; ru-каталога нет (ru — в коде);
+│       │       │                       # с 11.4 несут и data-строки (иначе tData вернул бы русский)
+│       │       ├── de.json             # 11.4: машинный черновик (draft) — вычитка владельца
+│       │       └── data-keys.ts        # 11.4: генерат карты «русское значение → ключ» (405 записей:
+│       │                               # data-строки + значения файлов-данных с живым tl(), напр.
+│       │                               # «Диалектический» → common.dialectical); коллизии — shared →
+│       │                               # data → клиент → server; --check сверяет, сторож 4ay
 │       ├── types/
 │       │   ├── synthesis.ts            # SynthesisParams, SynthesisFull, SynthesisPreview
 │       │   ├── section.ts              # SectionDef, SectionFull, SectionSummary
@@ -777,6 +786,11 @@ philosynth-service/
     │                                   # smoke-111-request1 — чистые функции 11.1: надстройка поверх
     │                                   # генерата, strip, обороты «СТРОГО» покрыты правилом, направление/
     │                                   # роли (EN → предупреждения, RU → нет), resolveSubsection (без БД)
+    │                                   # smoke-114-request1 — чистые функции 11.4: карта DATA_KEYS ≡ таблице,
+    │                                   # tData/tDataLoose на каталогах en/de, константы русские, цикл
+    │                                   # переводчика export → import на копии таблицы (draft снимает только
+    │                                   # человек, --draft ставит, отказы few/подстановки), i18n:check --strict
+    │                                   # красный при удалённом переводе (без БД и браузера)
     │                                   # smoke-112-request1 — чистые функции 11.2: словарь языков и
     │                                   # genLangForUi, ICU-плюралы, каталоги ≡ нарезке, язык запроса по
     │                                   # cookie/Accept-Language, зеркала MIRROR_EXCLUSIONS нетронуты,

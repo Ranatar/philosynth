@@ -44,6 +44,7 @@ import type {
 
 import { useWebSocket, type WsStatus } from "./useWebSocket";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export type SectionStepStatus = "pending" | "streaming" | "done" | "error";
 
@@ -96,7 +97,7 @@ interface SectionState {
 }
 
 function labelFor(key: string): string {
-  return (KEY_LABELS as Record<string, string>)[key] ?? key;
+  return tData((KEY_LABELS as Record<string, string>)[key] ?? key);
 }
 
 function seedState(expected: readonly string[] | undefined): SectionState {

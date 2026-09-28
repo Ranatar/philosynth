@@ -27,6 +27,7 @@ import {
 } from "@philosynth/shared/constants/edit-steps";
 import type { EditPlan, EditStep, StepResult } from "@philosynth/shared/types/edit-plan";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export interface EditPlanPanelProps {
   plan: EditPlan;
@@ -96,9 +97,9 @@ function targetLabel(
     const name = elementNames?.[parsed.elementId];
     const field = step.field ?? defaultElementStepField(parsed.kind);
     return (
-      ELEMENT_STEP_KIND_LABELS[parsed.kind] +
+      tData(ELEMENT_STEP_KIND_LABELS[parsed.kind]) +
       (name ? ` «${name}»` : "") +
-      ` · ${ELEMENT_STEP_FIELD_LABELS[field] ?? field}`
+      ` · ${tData(ELEMENT_STEP_FIELD_LABELS[field] ?? field)}`
     );
   }
   const idx = step.target.indexOf(":");

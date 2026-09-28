@@ -77,9 +77,10 @@ import {
   EMAIL_RE,
   PASSWORD_MIN_LENGTH,
   PASSWORD_RESET_REQUESTED_MESSAGE,
-  PASSWORD_TOO_SHORT_MESSAGE,
+  PASSWORD_TOO_SHORT_TEMPLATE,
   TOKEN_INVALID_MESSAGE,
 } from "@philosynth/shared/constants/auth";
+import { tData } from "@philosynth/shared/i18n/data"; // 11.4: данные по месту показа
 import type { AdminUserRow, UserRole } from "@philosynth/shared/types/admin";
 import { UI_LOCALES, genLangForUi, isUiLocale } from "@philosynth/shared/i18n/locales"; // 11.2
 import { and, count, desc, eq, ilike, isNull, ne, notLike, or, sql } from "drizzle-orm";
@@ -159,7 +160,7 @@ function parseCredentials(
 
   if (!password) details.password = "Обязательное поле";
   else if (opts.validateStrength && password.length < PASSWORD_MIN_LENGTH) {
-    details.password = PASSWORD_TOO_SHORT_MESSAGE;
+    details.password = tData(PASSWORD_TOO_SHORT_TEMPLATE, { minLength: PASSWORD_MIN_LENGTH });
   }
 
   let displayName: string | undefined;
@@ -292,7 +293,7 @@ authRoutes.post("/password-change", requireAuth, async (c) => {
   if (!currentPassword) details.currentPassword = "Обязательное поле";
   if (!newPassword) details.newPassword = "Обязательное поле";
   else if (newPassword.length < PASSWORD_MIN_LENGTH) {
-    details.newPassword = PASSWORD_TOO_SHORT_MESSAGE;
+    details.newPassword = tData(PASSWORD_TOO_SHORT_TEMPLATE, { minLength: PASSWORD_MIN_LENGTH });
   }
   if (Object.keys(details).length > 0) {
     return c.json(
@@ -491,7 +492,7 @@ const mailLimiter = rateLimiter({
 const DELETED_EMAIL_SUFFIX = "@deleted.invalid";
 
 function tokenInvalid(c: { json: (body: unknown, status: 400) => Response }): Response {
-  return c.json({ error: TOKEN_INVALID_MESSAGE, code: "TOKEN_INVALID" }, 400);
+  return c.json({ error: tData(TOKEN_INVALID_MESSAGE), code: "TOKEN_INVALID" }, 400);
 }
 
 authRoutes.post("/email/verify/request", mailLimiter, requireAuth, async (c) => {
@@ -560,7 +561,7 @@ authRoutes.post("/password-reset/request", mailLimiter, async (c) => {
     if (rows[0]) await queuePasswordResetMail(db, rows[0]);
   }
   // ОДИН ответ на оба случая (анти-enumeration, как login 0.2)
-  return c.json({ ok: true, message: PASSWORD_RESET_REQUESTED_MESSAGE });
+  return c.json({ ok: true, message: tData(PASSWORD_RESET_REQUESTED_MESSAGE) });
 });
 
 authRoutes.post("/password-reset/confirm", async (c) => {
@@ -572,7 +573,7 @@ authRoutes.post("/password-reset/confirm", async (c) => {
   const details: Record<string, string> = {};
   if (!newPassword) details.newPassword = "Обязательное поле";
   else if (newPassword.length < PASSWORD_MIN_LENGTH) {
-    details.newPassword = PASSWORD_TOO_SHORT_MESSAGE;
+    details.newPassword = tData(PASSWORD_TOO_SHORT_TEMPLATE, { minLength: PASSWORD_MIN_LENGTH });
   }
   if (Object.keys(details).length > 0) {
     return c.json({ error: tl("common.invalidData", "Невалидные данные"), code: "VALIDATION_ERROR", details }, 400);

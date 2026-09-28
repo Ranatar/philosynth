@@ -21,7 +21,13 @@ export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Максимальная длина отображаемого имени (03-spec §2.1 PATCH /auth/me, 0.6). */
 export const DISPLAY_NAME_MAX_LENGTH = 100;
 
-/** Текст ошибки короткого пароля — один и тот же у роутов и скрипта. */
+/** Шаблон текста ошибки короткого пароля (11.4): показ на языке запроса —
+ *  tData(PASSWORD_TOO_SHORT_TEMPLATE, { minLength: PASSWORD_MIN_LENGTH })
+ *  (routes/auth); русский текст константы — источник строки таблицы. */
+export const PASSWORD_TOO_SHORT_TEMPLATE = "Минимальная длина пароля — {minLength} символов";
+
+/** Текст ошибки короткого пароля — один и тот же у роутов и скрипта
+ *  (bootstrap-admin печатает его в консоль по-русски). */
 export const PASSWORD_TOO_SHORT_MESSAGE = `Минимальная длина пароля — ${PASSWORD_MIN_LENGTH} символов`;
 
 /**

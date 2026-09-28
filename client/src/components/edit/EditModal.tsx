@@ -70,6 +70,7 @@ import { ModeResultsPanel } from "./ModeResultsPanel";
 import { TransformHistory } from "./TransformHistory";
 import { SubsectionRegenPanel } from "./SubsectionRegenPanel";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 /** ALL_SECTION_KEYS [20906] без «sum» — клиентская копия перечня
  *  (серверный getAvailableSectionsToAdd клиенту недоступен; источник
@@ -82,7 +83,7 @@ const ADDABLE_KEYS = Object.keys(KEY_LABELS).filter((k) => k !== "sum");
 const STRUCTURE_SUBSECTION = "Структура документа";
 
 const labelOf = (key: string): string =>
-  (KEY_LABELS as Record<string, string>)[key] ?? key;
+  tData((KEY_LABELS as Record<string, string>)[key] ?? key);
 
 export interface EditModalProps {
   open: boolean;

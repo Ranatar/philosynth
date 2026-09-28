@@ -44,6 +44,7 @@ import {
   type TaxonomyKind,
 } from "../../api/taxonomy";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export interface TaxonomyValue {
   type: string;
@@ -198,6 +199,7 @@ export function TaxonomySelector({
           !q ||
           fromCatalog ||
           t.nameRu.toLocaleLowerCase("ru").includes(q) ||
+          tData(t.nameRu).toLocaleLowerCase().includes(q) ||
           t.key.includes(q),
       )
       .map((t) => ({ key: t.key, nameRu: t.nameRu, id: t.id }));
@@ -309,7 +311,7 @@ export function TaxonomySelector({
           className={"type-origin " + (fromCatalog ? "catalog" : "free")}
           title={
             fromCatalog
-              ? tl("edit.taxonomySelector.catalogEntry", "Каталог: {nameRu} ({key})", { nameRu: catalogRow?.nameRu, key: catalogRow?.key })
+              ? tl("edit.taxonomySelector.catalogEntry", "Каталог: {nameRu} ({key})", { nameRu: tData(catalogRow?.nameRu), key: catalogRow?.key })
               : tl("edit.taxonomySelector.notInCatalog", "Тип не привязан к каталогу")
           }
           data-testid="type-origin"
@@ -339,7 +341,7 @@ export function TaxonomySelector({
             >
               <span>
                 {it.fuzzy ? "≈ " : ""}
-                {it.nameRu}
+                {tData(it.nameRu)}
               </span>
               <span className="combobox-item-code">
                 {it.key}

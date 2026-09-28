@@ -15,6 +15,7 @@
  */
 import { PHILOSOPHER_EPOCHS } from "@philosynth/shared/constants/philosophers";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export interface PhilosopherPickerProps {
   selected: readonly string[];
@@ -45,7 +46,7 @@ export function PhilosopherPicker({
       <div className="checkboxes-row">
         {PHILOSOPHER_EPOCHS.map((epoch) => (
           <div key={epoch.label} className="phil-col-group">
-            <div className="phil-group-label">{epoch.label}</div>
+            <div className="phil-group-label">{tData(epoch.label)}</div>
             {epoch.philosophers.map((name) => (
               <label
                 key={name}
@@ -54,14 +55,14 @@ export function PhilosopherPicker({
                     ? "checkbox-item _checked"
                     : "checkbox-item"
                 }
-                title={name}
+                title={tData(name)}
               >
                 <input
                   type="checkbox"
                   checked={selectedSet.has(name)}
                   onChange={() => toggle(name)}
                 />
-                {name}
+                {tData(name)}
               </label>
             ))}
           </div>

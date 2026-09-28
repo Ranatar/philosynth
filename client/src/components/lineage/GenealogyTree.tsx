@@ -28,6 +28,7 @@ import { ML, SL } from "@philosynth/shared/constants/labels";
 
 import type { GenealogyNode } from "../../utils/genealogy";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export interface GenealogyTreeProps {
   node: GenealogyNode | null;
@@ -47,7 +48,7 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
         data-from-file={n.fromFile ? "" : undefined}
         title={n.fromFile ? FROM_FILE_TITLE() : undefined}
       >
-        <div className="gen-phil-name">{n.name}</div>
+        <div className="gen-phil-name">{tData(n.name)}</div>
       </div>
     );
   }
@@ -56,9 +57,9 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
   // (адаптация 1: узлы из API их не несут)
   const hasMeta = !!(n.method || n.synthLevel);
   const methodLabel =
-    (ML as Record<string, string>)[n.method ?? ""] || n.method || "?";
+    tData((ML as Record<string, string>)[n.method ?? ""]) || n.method || "?";
   const levelLabel =
-    (SL as Record<string, string>)[n.synthLevel ?? ""] || n.synthLevel || "?";
+    tData((SL as Record<string, string>)[n.synthLevel ?? ""]) || n.synthLevel || "?";
   const orderLabel =
     n.generationOrder === "genetic" ? tl("lineage.genealogyTree.geneticSuffix", " · генетич.") : tl("lineage.genealogyTree.architecturalSuffix", " · архитект.");
 

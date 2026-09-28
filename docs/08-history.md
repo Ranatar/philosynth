@@ -597,6 +597,17 @@ check:integration += 2ak/4av/5ai; доки — scripts/patches/patch-docs-conv11
 Беседа 11.2 (основа локализации и сервер; бэкенд + codemod) ЗАКРЫТА 2026-09-27.
 Беседа 11.3 (клиент: язык интерфейса и переключатель) ЗАКРЫТА 2026-09-28;
 долг Д-31 (parseWarnings чужому — сервер) → 12.1; ближайшая — 11.4.
+Беседа 11.4 (данные и переводы; бэкенд + клиент + таблица) ЗАКРЫТА 2026-09-29
+— **ФАЗА 11 ЗАКРЫТА**: `shared/i18n/data.ts` (`tData`/`tDataLoose` по карте
+«русское значение → ключ», генерат `generated/data-keys.ts` из data-строк +
+описи файлов-данных), перевод данных ПО МЕСТУ ПОКАЗА в 21 файле (метки,
+разделы, философы, характеристики, режимы, таксономия и типы графа,
+подзаголовок, сообщения auth и советника), константы/сиды/БД/промпты русские;
+каталоги несут data-строки (правило 11.2 отменено); немецкий черновик 2269
+строк (`--draft`); `i18n:check --strict` — все языки у каждого ключа; сторож
+2an/4ay. Смоук 42 ✓ ×2, tests/test-114-requests2-5.mjs 50 ✓ ×2 (Chrome 131 на
+сборке клиента, два прогона check:integration внутри); доки —
+patch-docs-conv114.py. Долг Д-32 → 12.1; ближайшая — 12.1.
 `shared/i18n/locales.ts` (UI_LOCALES, UI_TO_GEN, genLangForUi; LANG_OPTIONS формы
 перенесён сюда — один список); `t.ts` — ICU-плюралы по Intl.PluralRules языка
 каталога, `setCatalogProvider({ locale, strings })`; `i18n:params` (32 говорящих
@@ -5148,6 +5159,93 @@ layout/lineage/pool/pages/utils), `utils/{capsule-html,recommendations}.ts`,
 (2am/4ax, 4ah/4ac/4ae/4af); тесты `smoke-113-request1.mjs`,
 `test-113-requests2-8.mjs`, правки smoke-54/55/62/87;
 `scripts/patches/patch-docs-conv113.py`.
+
+### Беседа 11.4 — Данные и переводы (бэкенд + клиент + таблица) [ЗАКРЫТА 2026-09-29 — Фаза 11 закрыта]
+
+**Вход:** HEAD fea74fc, `check:dotfiles` чист, `npm install` в самом клоне,
+Chrome 131 из `~/.cache/puppeteer`, `puppeteer-core` 23 из `~/.npm-global`
+(mermaid-cli). Последняя беседа Фазы 11. Условие закрытия — зелёный
+`check:integration` с новым сторожем и четыре тестовых запроса в браузере на
+сборке клиента.
+
+**Сделано (первый запрос, четыре пункта).** (1) `packages/shared/i18n/data.ts`:
+`displayKey(value)`, `tData(value, params?)` = `tl(displayKey(value), value,
+params)`, `tDataLoose(value)` (типы документа со строчной буквы — «онтологическая»
+при `name_ru` «Онтологическая»); значение без ключа — как есть. Карта
+`generated/data-keys.ts` — генерат `i18n:split` (`dataKeyMap(table, root)`): 410
+data-строк (397 уникальных значений, 13 коллизий с равными переводами; предпочтение
+`shared → data → клиент → server`) + 8 значений файлов-данных, чей ключ потерял
+`data` из-за живого `tl()` («Диалектический» → `common.dialectical`, «Основание»,
+«Кант», «Граф категорий», «определение») — из описи файлов-данных; `--check`
+сверяет карту. `splitCatalog` кладёт data-строки в каталоги (правило 11.2 «data —
+нет» отменено — без строки в каталоге `tl()` вернул бы русский); `SCAN_SKIP` в
+i18n-core (t.ts, data.ts — единственный нелитеральный `tl()`), генераты вне описи.
+Места показа — 21 файл: ML/SL/DL (SynthesisCard, DocumentHeader, PoolCard,
+GenealogyTree), KEY_LABELS (9), SECTION_LABELS (SectionPicker), характеристики
+(CharacteristicSlider, ElementEditor), операции/важность рекомендаций, шаги
+элементов (EditPlanPanel), философы и эпохи (PhilosopherPicker, карточка, древо),
+советник (desc/advice/label замен), MODE_UI (ModeModal, SynthesisPage,
+ModeResultsPanel; подсказки подставляются переведёнными — решение беседы),
+подзаголовок — `subtitleDisplay` рядом с нетронутой `subtitleFor` (4y цело);
+сервер — `routes/auth` (шаблон `PASSWORD_TOO_SHORT_TEMPLATE`, `TOKEN_INVALID`,
+ответ сброса), `compat-advisor` (метки в текстах советов),
+`validateCharacteristicValue` (шаблоны `VALUE_ERROR_*`, текст на языке запроса,
+вне ALS — русский). Константы, сиды, конфиг матрицы, промпты, `MODE_CONFIG` —
+русские; `LineageSearch` datalist — машинные значения, не переводится. (2)
+Таксономия: TaxonomySelector показывает и ищет по `tData(nameRu)`, в БД —
+русское значение; вкладка «Каталоги» переводит только `isSystem`;
+NodePanel/EdgePanel/GraphLegend — `tDataLoose(type)`, тип не из каталога — как
+есть. (3) `i18n:export --lang de` → файл переводчика; машинный черновик de на все
+2269 строк (написан в беседе, 13 пакетов) влит `i18n:import --draft` (0 отказов);
+вливание вычитанного описано в README («Немецкий черновик (11.4)»): export →
+правка `de` → снятие `de` из `draft` → import без `--draft` → split; отметку
+снимает только человек. (4) `i18n:check --strict`: отсутствие перевода любого
+языка — красный с ключами (черновик считается); секция **2an/4ay**
+`check:integration`: модули, `--strict` чист, карта/каталоги ≡ таблице, каждая
+data-строка в карте и в en/de, места показа зовут `tData`, файлы данных и модули
+промптов/разбора — нет, рантайм-проверки на каталогах en/de; 4aw-б перевёрнута
+(data-строка с переводом ОБЯЗАНА быть в каталоге), образец 4aq расширен на
+`PASSWORD_TOO_SHORT_TEMPLATE`. Смоук `tests/smoke-114-request1.mjs` 42 ✓ ×2 (карта,
+каталоги, tData на en/de, цикл переводчика на копии, `--strict` красный при
+удалённом переводе).
+
+**Тестовые запросы R2–R5** — `tests/test-114-requests2-5.mjs` (запуск через `tsx`;
+сервер :3000, сборка клиента под `vite preview` :5214, мок Claude :3894 с телами
+запросов, Chrome 131, фикстура test-92 + `saveGraphToDb(parseGraphFromHTML)`):
+**50 ✓ ×2**. R2 — en: шапка Dialectical/Deep/Transformative, «Based on: Hegel,
+Heraclitus», названия разделов русские, легенда «RELATION TYPES» с
+`dialectical`/`hierarchical` и `ontological`/`logical`, EdgePanel/NodePanel
+по-английски, TaxonomySelector — имена и поиск «Metaph» → Metaphysical, поле —
+русское значение документа; `category_edges.edge_type`/`categories.type` русские,
+промпт перегенерации тезисов несёт «диалектическая»/«онтологическая» без
+английских типов. R3 — Opponent/Translator/Time slice, «⚔ Opponent», параметр и
+placeholder, подсказка «Marx» в параметр, возврат на ru без переоткрытия,
+`MODE_CONFIG`/`MODE_UI` литералы, `check:integration` INTEGRATION OK. R4 — цикл
+переводчика на копии: 3 вычитаны, 2266 черновиков целы, split и `--strict` на
+копии. R5 — `common.save [de]` удалён → `--strict` красный с ключом →
+`check:integration` красный «4ay: … common.save [de]» и расхождение каталога;
+таблица возвращена побайтно.
+
+**Отступления и находки** — «По факту 11.4» (07 §8): числа (2257 → 2269),
+правило 11.2 против замысла 11.4, карта неполна без описи, шаблонные сообщения
+shared, `data.ts` вне сканов, `tDataLoose`, пять пробных пусков харнесса
+(предпосылки), `#modeTabsBar` внутри модалки, лимит вызова песочницы убивает
+PG/Redis, Д-32.
+
+**Файлы беседы:** `packages/shared/i18n/{data.ts,generated/data-keys.ts,
+generated/{en,de}.json,strings.json}`, `packages/shared/constants/{auth,
+characteristics}.ts`; клиент — `catalog/SynthesisCard`, `document/{DocumentHeader,
+TableOfContents}`, `edit/{CharacteristicSlider,EditModal,EditPlanPanel,
+ElementEditor,ModeResultsPanel,RecommendationsPanel,TaxonomySelector}`,
+`graph/{EdgePanel,GraphLegend,NodePanel}`, `lineage/GenealogyTree`,
+`modes/ModeModal`, `pool/PoolCard`, `synthesis/{CompatAdvisor,PauseModal,
+PhilosopherPicker,SectionPicker}`, `hooks/useStreamingGeneration`, `pages/
+{AdminPromptsPage,BillingPage,SynthesisPage}`, `stores/auth-store`,
+`utils/concept-file`; сервер — `routes/auth.ts`, `services/compat-advisor.ts`,
+`integration-check.mts` (2an/4ay, 4aw-б, 4aq); `scripts/i18n/{i18n-core,
+i18n-check,i18n-split,ui-strings-lib}.mjs`, `README.md`; тесты
+`smoke-114-request1.mjs`, `test-114-requests2-5.mjs`;
+`scripts/patches/patch-docs-conv114.py`.
 
 ### Беседа 11.2 — Основа локализации и сервер (бэкенд + codemod) [ЗАКРЫТА 2026-09-27]
 

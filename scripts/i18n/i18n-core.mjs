@@ -212,6 +212,11 @@ export const hashText = (s) => crypto.createHash("sha1").update(s).digest("hex")
 /* ───────────── Вызовы tl() в коде ───────────── */
 
 const CODE_DIRS = ["client/src", "server", "packages/shared", "scripts"];
+/** Файлы, где tl() законно зовётся с нелитеральными аргументами: сам t.ts и
+ *  перевод данных по месту показа (11.4) — карта «значение → ключ». Генераты
+ *  (каталоги, карта) тоже не сканируются. */
+export const SCAN_SKIP = new Set(["packages/shared/i18n/t.ts", "packages/shared/i18n/data.ts"]);
+export const GENERATED_PREFIX = "packages/shared/i18n/generated/";
 
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
@@ -248,7 +253,7 @@ export function scanStaticCalls(root) {
   for (const dir of CODE_DIRS) {
     for (const abs of walk(path.join(root, dir))) {
       const rel = path.relative(root, abs).split(path.sep).join("/");
-      if (rel === "packages/shared/i18n/t.ts") continue;
+      if (SCAN_SKIP.has(rel) || rel.startsWith(GENERATED_PREFIX)) continue;
       const src = fs.readFileSync(abs, "utf8");
       if (!src.includes(`${FN}(`)) continue;
       const sf = ts.createSourceFile(abs, src, ts.ScriptTarget.Latest, true,
@@ -271,7 +276,7 @@ export function scanCalls(root) {
   for (const dir of CODE_DIRS) {
     for (const abs of walk(path.join(root, dir))) {
       const rel = path.relative(root, abs).split(path.sep).join("/");
-      if (rel === "packages/shared/i18n/t.ts") continue;
+      if (SCAN_SKIP.has(rel) || rel.startsWith(GENERATED_PREFIX)) continue;
       const src = fs.readFileSync(abs, "utf8");
       if (!src.includes(`${FN}(`)) continue;
       const sf = ts.createSourceFile(abs, src, ts.ScriptTarget.Latest, true,

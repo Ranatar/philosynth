@@ -20,6 +20,7 @@ import { ML, SL } from "@philosynth/shared/constants/labels";
 
 import type { PoolConceptEntry } from "../../utils/concept-file";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 /** ORDER_LABELS [5023] — дословно */
 const ORDER_LABELS = (): Readonly<Record<string, string>> => ({
@@ -43,9 +44,9 @@ export function PoolCard({
   onRemove,
 }: PoolCardProps) {
   const methodLabel =
-    (ML as Record<string, string>)[c.method] || c.method || "?";
+    tData((ML as Record<string, string>)[c.method]) || c.method || "?";
   const levelLabel =
-    (SL as Record<string, string>)[c.synthLevel] || c.synthLevel || "?";
+    tData((SL as Record<string, string>)[c.synthLevel]) || c.synthLevel || "?";
   const orderLabel = ORDER_LABELS()[c.generationOrder] ?? "";
   const sourcesStr = c.sources.length ? c.sources.join(", ") : tl("pool.poolCard.capsuleOnly", "только капсула");
 

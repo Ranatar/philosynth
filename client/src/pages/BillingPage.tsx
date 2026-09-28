@@ -68,6 +68,7 @@ import {
   type StripeElements,
 } from "../utils/stripe";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 const LABELS = KEY_LABELS as Record<string, string>;
 
@@ -114,7 +115,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function sectionLabel(key: string | null): string {
   if (!key) return "—";
-  return LABELS[key] ?? key;
+  return tData(LABELS[key] ?? key);
 }
 
 const MODE_LABELS = (): Record<BillingMode, string> => ({

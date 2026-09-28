@@ -32,6 +32,7 @@ import {
   type SectionKey,
 } from "@philosynth/shared/constants/section-labels";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 export type PickableSectionKey = Exclude<SectionKey, "sum">;
 
@@ -129,7 +130,7 @@ export function SectionPicker({
                     checked={checked}
                     onChange={() => toggleSection(key)}
                   />
-                  {SECTION_LABELS[id]}
+                  {tData(SECTION_LABELS[id])}
                 </label>
                 <button
                   type="button"
@@ -165,7 +166,7 @@ export function SectionPicker({
               <textarea
                 value={ctxValue}
                 onChange={(e) => onSectionContextChange(key, e.target.value)}
-                placeholder={tl("synthesis.sectionPicker.requirementsFor", "Особые требования, акценты, ограничения для «{id}»...", { id: SECTION_LABELS[id] })}
+                placeholder={tl("synthesis.sectionPicker.requirementsFor", "Особые требования, акценты, ограничения для «{id}»...", { id: tData(SECTION_LABELS[id]) })}
                 className={ctxOpen ? "sec-ctx-field open" : "sec-ctx-field"}
               />
             </div>

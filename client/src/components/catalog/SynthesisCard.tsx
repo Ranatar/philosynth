@@ -48,6 +48,7 @@ import type {
 import { visibilityBadge } from "../../utils/visibility-text";
 import { VisibilityControl } from "./VisibilityControl";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data";
 
 const STATUS_LABELS = (): Record<string, string> => ({
   draft: tl("catalog.synthesisCard.statusDraft", "черновик"),
@@ -134,7 +135,7 @@ export function SynthesisCard({
 }: SynthesisCardProps) {
   const phil =
     synthesis.philosophers.length > 0
-      ? synthesis.philosophers.join(", ")
+      ? synthesis.philosophers.map((p) => tData(p)).join(", ")
       : tl("common.freeSynthesisLower", "свободный синтез");
   const date = new Date(synthesis.createdAt).toLocaleDateString("ru-RU", {
     day: "2-digit",
@@ -245,7 +246,7 @@ export function SynthesisCard({
       </div>
 
       <div className="doc-meta-val gold">
-        {ML[synthesis.method]} × {SL[synthesis.synthLevel]}
+        {tData(ML[synthesis.method])} × {tData(SL[synthesis.synthLevel])}
       </div>
 
       <div className="doc-content" style={{ marginTop: 6 }}>{phil}</div>
