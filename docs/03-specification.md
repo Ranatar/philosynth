@@ -219,6 +219,12 @@ GET    /auth/me                → { user: { id, email, displayName, role, balan
                                 // (значение syntheses.lang | null) — users.ui_locale /
                                 // gen_lang; null — не выбирал. AuthUser сервера и
                                 // клиента несут оба поля (сторож 4e).
+                                // 11.3 (клиент): uiLocale применяется к интерфейсу
+                                // при restore/login (auth-store → i18n-store,
+                                // client/src/i18n/); null — остаётся язык гостя
+                                // (cookie ui_locale → navigator.language → ru).
+                                // genLang — умолчание формы создания; пустой →
+                                // genLangForUi(язык интерфейса).
 
 PATCH  /auth/me                { displayName?, uiLocale?, genLang? }  — хотя бы одно
                                 → { user: { id, email, displayName, role, balanceUsd,
@@ -231,6 +237,13 @@ PATCH  /auth/me                { displayName?, uiLocale?, genLang? }  — хот
                                 // трогает. uiLocale вне UI_LOCALES → VALIDATION_ERROR
                                 // + details.uiLocale; genLang пустой → details.genLang;
                                 // ни одного поля → details.displayName «Обязательное поле».
+                                // 11.3 (клиент): {uiLocale} шлёт переключатель языка
+                                // (шапка и профиль, auth-store.setUiLocale) — интерфейс
+                                // переключается СРАЗУ (cookie ui_locale + каталог), ответ
+                                // подтверждает оба поля; {genLang} шлёт форма создания
+                                // при смене языка генерации (auth-store.setGenLang),
+                                // интерфейс не трогается. Гость язык не хранит на сервере:
+                                // только cookie ui_locale (её читает requestLocale).
                                 // Смена отображаемого имени (A3, беседа 0.6).
                                 // Требует сессии. trim; пустая строка → null;
                                 // длина > 100 → VALIDATION_ERROR +
@@ -842,7 +855,12 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
                                  // ПОСЛЕДНЕЙ полной (пере)генерации раздела
                                  // (source ≠ subsection_regen) и её подраздельных
                                  // догенераций, без повторов. Пустой массив — разбор
-                                 // без потерь. Несёт GET /sections/:key; показ — 11.3
+                                 // без потерь. Несёт GET /sections/:key; показ — 11.3:
+                                 // SectionView рисует «⚠ Разобран с потерями (N)» со
+                                 // списком ТОЛЬКО владельцу (DocumentView передаёт
+                                 // isOwner) — предупреждения из генлога, а логи под
+                                 // флагом автора. Сервер же отдаёт поле любому
+                                 // невладельцу на full без учёта show_logs — долг Д-31
 }
 ```
 

@@ -117,17 +117,17 @@ function sectionLabel(key: string | null): string {
   return LABELS[key] ?? key;
 }
 
-const MODE_LABELS: Record<BillingMode, string> = {
+const MODE_LABELS = (): Record<BillingMode, string> => ({
   byo: tl("billingPage.sourceOwnKey", "свой ключ"),
   subscription: tl("billingPage.sourceSubscription", "подписка"),
   balance: tl("billingPage.sourceBalance", "баланс"),
-};
+});
 
-const TX_LABELS: Record<TransactionType, string> = {
+const TX_LABELS = (): Record<TransactionType, string> => ({
   topup: tl("billingPage.txTopUp", "пополнение"),
   usage: tl("billingPage.txCharge", "списание"),
   refund: tl("billingPage.txRefund", "возврат"),
-};
+});
 
 /** Бейдж режима/типа: gold — баланс/пополнение (литералы вне className —
  *  css-parity-audit считает строки в выражении className классами) */
@@ -531,22 +531,22 @@ function BalanceSection({ onBalanceChanged }: { onBalanceChanged: () => void }) 
 
 /* ── Секция «Подписка» ───────────────────────────────────────────────── */
 
-const SUB_STATUS_LABELS: Record<string, string> = {
+const SUB_STATUS_LABELS = (): Record<string, string> => ({
   active: tl("billingPage.subActive", "активна"),
   trialing: tl("billingPage.subTrialing", "пробный период"),
   past_due: tl("billingPage.subPastDue", "просрочена оплата"),
   canceled: tl("billingPage.subCanceled", "отменена"),
   incomplete: tl("billingPage.subIncomplete", "ожидает оплаты"),
-};
+});
 
 type QuotaKey = keyof SubscriptionOverview["quotas"];
 
-const QUOTA_LABELS: Record<QuotaKey, string> = {
+const QUOTA_LABELS = (): Record<QuotaKey, string> => ({
   syntheses: tl("billingPage.quotaSyntheses", "синтезы"),
   regenerations: tl("billingPage.quotaRegenerations", "перегенерации"),
   modes: tl("billingPage.quotaModes", "режимы"),
   enrichments: tl("billingPage.quotaEnrichments", "обогащения"),
-};
+});
 
 function SubscriptionSection() {
   const [overview, setOverview] = useState<SubscriptionOverview | null>(null);
@@ -640,7 +640,7 @@ function SubscriptionSection() {
             </div>
             <div>
               <div className="stat-value" data-testid="sub-status">
-                {SUB_STATUS_LABELS[sub.status] ?? sub.status}
+                {SUB_STATUS_LABELS()[sub.status] ?? sub.status}
               </div>
               <div className="stat-label">
                 {tl("billingPage.status", "статус")}{sub.cancelAtPeriodEnd ? tl("billingPage.cancelAtPeriodEnd", " · отмена в конце периода") : ""}
@@ -664,9 +664,9 @@ function SubscriptionSection() {
                 </tr>
               </thead>
               <tbody>
-                {(Object.keys(QUOTA_LABELS) as QuotaKey[]).map((q) => (
+                {(Object.keys(QUOTA_LABELS()) as QuotaKey[]).map((q) => (
                   <tr key={q}>
-                    <td>{QUOTA_LABELS[q]}</td>
+                    <td>{QUOTA_LABELS()[q]}</td>
                     <td className="num">{fmtInt(overview.usage[q])}</td>
                     <td className="num">{fmtInt(overview.quotas[q])}</td>
                     <td className="num">
@@ -939,7 +939,7 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
                   <td className="num">{fmtUsd(u.costUsd)}</td>
                   <td>
                     <span className={modeBadgeClass(u.billingMode)}>
-                      {MODE_LABELS[u.billingMode] ?? u.billingMode}
+                      {MODE_LABELS()[u.billingMode] ?? u.billingMode}
                     </span>
                   </td>
                 </tr>
@@ -966,11 +966,11 @@ function UsageSection({ refreshToken }: { refreshToken: number }) {
       {history && entries.length > 0 && (
         <div className="form-sublabel" style={{ marginTop: 8 }} data-testid="usage-by-mode">
           {tl("billingPage.byModes", "По режимам:")}
-          {(Object.keys(MODE_LABELS) as BillingMode[])
+          {(Object.keys(MODE_LABELS()) as BillingMode[])
             .filter((m) => history.byMode[m].requests > 0)
             .map(
               (m) =>
-                tl("billingPage.modeSummary", "{modeLabel} — {requests} запр., {costUsd}", { modeLabel: MODE_LABELS[m], requests: fmtInt(history.byMode[m].requests), costUsd: fmtUsd(history.byMode[m].costUsd) }),
+                tl("billingPage.modeSummary", "{modeLabel} — {requests} запр., {costUsd}", { modeLabel: MODE_LABELS()[m], requests: fmtInt(history.byMode[m].requests), costUsd: fmtUsd(history.byMode[m].costUsd) }),
             )
             .join(" · ")}
           {byoRequests > 0 &&
@@ -1036,7 +1036,7 @@ function TransactionsSection({ refreshToken }: { refreshToken: number }) {
                   <td>{fmtDateShort(t.createdAt)}</td>
                   <td>
                     <span className={txBadgeClass(t.type)}>
-                      {TX_LABELS[t.type] ?? t.type}
+                      {TX_LABELS()[t.type] ?? t.type}
                     </span>
                   </td>
                   <td>

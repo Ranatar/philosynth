@@ -40,10 +40,10 @@ export interface CascadePanelProps {
   onMarkModeRegen: (modeKey: string, index: number) => void;
 }
 
-const QUALITY_LABEL: Record<number, string> = {
+const QUALITY_LABEL = (): Record<number, string> => ({
   3: tl("edit.cascadePanel.equivalentReplacement", "равноценная замена"),
   2: tl("edit.cascadePanel.partialReplacement", "частичная замена"),
-};
+});
 
 export function CascadePanel({
   impact,
@@ -211,7 +211,7 @@ export function CascadePanel({
             <span className="rec-icon">⇄</span>
             <span>
               {tl("edit.cascadePanel.contextUsedAs", "«{consumerLabel}»: контекст «{ctxLabel}» используется как", { consumerLabel: s.consumerLabel, ctxLabel: s.ctxLabel })}
-              {QUALITY_LABEL[s.quality] ?? tl("edit.cascadePanel.weakReplacement", "слабая замена")} {tl("edit.cascadePanel.forSection", "для «{replacedLabel}».", { replacedLabel: s.replacedLabel })}
+              {QUALITY_LABEL()[s.quality] ?? tl("edit.cascadePanel.weakReplacement", "слабая замена")} {tl("edit.cascadePanel.forSection", "для «{replacedLabel}».", { replacedLabel: s.replacedLabel })}
             </span>
           </div>
         ))}

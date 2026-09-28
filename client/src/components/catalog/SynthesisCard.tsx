@@ -49,13 +49,13 @@ import { visibilityBadge } from "../../utils/visibility-text";
 import { VisibilityControl } from "./VisibilityControl";
 import { tl } from "@philosynth/shared/i18n/t";
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS = (): Record<string, string> => ({
   draft: tl("catalog.synthesisCard.statusDraft", "черновик"),
   generating: tl("catalog.synthesisCard.statusGenerating", "генерируется…"),
   paused: tl("catalog.synthesisCard.statusPaused", "на паузе"),
   ready: tl("catalog.synthesisCard.statusReady", "готов"),
   error: tl("catalog.synthesisCard.statusError", "ошибка"),
-};
+});
 
 /** Множественное число «потомок» (8.4, п.4) */
 export function descendantsPhrase(n: number): string {
@@ -239,7 +239,7 @@ export function SynthesisCard({
             </span>
           )}
           <span className="cert-badge">
-            {STATUS_LABELS[synthesis.status] ?? synthesis.status}
+            {STATUS_LABELS()[synthesis.status] ?? synthesis.status}
           </span>
         </span>
       </div>

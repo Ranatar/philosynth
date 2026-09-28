@@ -5909,6 +5909,95 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 11.3 — язык интерфейса: переключатель и пометка разбора ════
+ * В исходнике нет ни второго языка интерфейса, ни разбора в таблицы БД:
+ * одностраничник русский, документ читается глазами. Здесь три элемента,
+ * все собраны из готового:
+ * (1) переключатель ru / en / de в тёмной .topbar — кнопки в идиоме
+ *     .app-topbar-btn (моно, капитель, прозрачный фон); active — сплошная
+ *     рамка и белый текст, как :hover, чтобы выбранный язык читался без
+ *     заливки на тёмном; группа плотная (без зазоров), как сегментный
+ *     переключатель; на узких экранах остаётся видимой — у гостя это
+ *     единственный способ сменить язык до входа;
+ * (2) тот же переключатель в профиле — .action-btn, active — заливка
+ *     --blue-corp (образец — .amount-choice .action-btn.active 6.2 и
+ *     ступени публичности 8.7);
+ * (3) пометка «⚠ Разобран с потерями» у раздела владельцу (Д-16) — на
+ *     .sec-disclosure/.disclosure-body исходника (свёрнутый блок под
+ *     разделом, как «Дополнительный контекст раздела»), рама золотая
+ *     (--gold = внимание), список — обычный текст документа.
+ * Новых hex нет: только переменные :root. Прямые углы, без теней.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* — (1) Переключатель в шапке — */
+  .app-lang-switch {
+    display: inline-flex;
+    align-items: stretch;
+  }
+
+  .app-lang-switch .app-lang-btn {
+    padding: 3px 8px;
+    margin-left: -1px;
+  }
+
+  .app-lang-switch .app-lang-btn:first-child {
+    margin-left: 0;
+  }
+
+  .app-lang-switch .app-lang-btn.active {
+    border-color: #fff;
+    color: #fff;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* — (2) Переключатель в профиле — */
+  .app-lang-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .app-lang-choice .app-lang-btn.active {
+    background: var(--blue-corp);
+    color: #fff;
+    border-color: var(--blue-corp);
+  }
+
+  /* — (3) Пометка разбора с потерями (Д-16) — */
+  /* составные селекторы: правила .sec-disclosure исходника лежат позже по
+     файлу и выше по специфичности, чем одиночный класс в этом слое */
+  .sec-disclosure.parse-warnings {
+    border-color: var(--gold);
+  }
+
+  .sec-disclosure.parse-warnings summary.parse-warnings-summary {
+    color: var(--gold);
+    background: var(--off);
+  }
+
+  .parse-warnings-lead {
+    margin: 0 0 8px;
+  }
+
+  .parse-warnings-list {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  .parse-warnings-list li {
+    margin: 2px 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .app-lang-switch .app-lang-btn {
+    padding: 3px 6px;
+    letter-spacing: 1px;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;

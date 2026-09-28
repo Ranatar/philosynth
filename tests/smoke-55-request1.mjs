@@ -138,8 +138,8 @@ check("превью потерь graph→theses", lossPreviewText("graph_to_thes
 check("превью потерь theses→graph", lossPreviewText("theses_to_graph", { theses: 5, categories: 10, edges: 12 }).includes("категории: 10 и связи: 12"));
 check("пустой источник: нет графа", sourceEmptyText("graph_to_theses", { theses: 5, categories: 0, edges: 0 }) !== null && sourceEmptyText("graph_to_theses", { theses: 0, categories: 3, edges: 0 }) === null);
 check("пустой источник: нет тезисов", sourceEmptyText("theses_to_graph", { theses: 0, categories: 3, edges: 1 }) !== null);
-check("заголовки разделов-целей", TARGET_SECTION_TITLES.graph_to_theses === "Корпус тезисов" && TARGET_SECTION_TITLES.theses_to_graph === "Граф категорий");
-check("подписи направлений и целей отката", DIRECTION_LABELS.graph_to_theses === "Граф → Тезисы" && ROLLBACK_TARGET_LABELS.graph_to_theses === "тезисы" && ROLLBACK_TARGET_LABELS.theses_to_graph === "граф");
+check("заголовки разделов-целей", TARGET_SECTION_TITLES().graph_to_theses === "Корпус тезисов" && TARGET_SECTION_TITLES().theses_to_graph === "Граф категорий");
+check("подписи направлений и целей отката", DIRECTION_LABELS().graph_to_theses === "Граф → Тезисы" && ROLLBACK_TARGET_LABELS().graph_to_theses === "тезисы" && ROLLBACK_TARGET_LABELS().theses_to_graph === "граф");
 check("summaryText: создано/удалено + sectionMissing", summaryText({ thesesCreated: 7, thesesRemoved: 5, sectionMissing: 1 }) === "тезисов: создано 7, удалено 5 · раздела нет в документе — заменены только таблицы");
 check("summaryText: граф с нормализацией", summaryText({ categoriesCreated: 9, categoriesRemoved: 8, edgesCreated: 12, edgesRemoved: 10, categoriesNormalized: 6, edgesNormalized: 4 }).includes("типов привязано к каталогу: 6 + 4"));
 

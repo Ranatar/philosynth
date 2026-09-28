@@ -40,7 +40,7 @@ export interface EditPlanPanelProps {
   onSkipStep: (index: number) => void;
 }
 
-const TYPE_LABEL: Record<EditStep["type"], string> = {
+const TYPE_LABEL = (): Record<EditStep["type"], string> => ({
   regen: tl("common.regenerate", "Перегенерировать"),
   delete: tl("common.delete", "Удалить"),
   add: tl("edit.editPlanPanel.add", "Добавить"),
@@ -50,7 +50,7 @@ const TYPE_LABEL: Record<EditStep["type"], string> = {
   // шагов элемента (поле, значение, рекомендация) — панель 10.3
   edit_element: tl("edit.editPlanPanel.applyReplacement", "Применить готовую замену"),
   refine_element: tl("edit.editPlanPanel.refineElement", "Уточнить элемент"),
-};
+});
 
 function stepIcon(step: EditStep, running: boolean): string {
   if (running) return "⟳";
@@ -172,7 +172,7 @@ export function EditPlanPanel({
             >
               <span className="step-icon">{stepIcon(step, running)}</span>
               <span>
-                {TYPE_LABEL[step.type]}: {targetLabel(step, labels, elementNames)}
+                {TYPE_LABEL()[step.type]}: {targetLabel(step, labels, elementNames)}
                 {recs.length > 0 && (
                   <span className="plan-step-rec" data-testid="plan-step-rec">
                     {tl("edit.editPlanPanel.recommendationRound", "рекомендация {nums} · раунд {round}", { nums: recs.map((r) => `№ ${r.num}`).join(", "), round: recs[0]?.round })}

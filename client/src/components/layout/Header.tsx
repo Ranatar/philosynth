@@ -20,12 +20,20 @@
  * только при СТРОГОМ emailVerified === false: до дотяжки GET /auth/me поле
  * undefined, и полоса не мигает у подтверждённых. Подтверждение ничего не
  * ограничивает — полоса напоминает, а не запрещает.
+ *
+ * Беседа 11.3 (п. 3): переключатель языка ru / en / de (LanguageSwitch
+ * variant="topbar") — в .topbar-right у ГОСТЯ и у ВОШЕДШЕГО, слева от
+ * имени/ссылок входа; рисуется и пока сессия проверяется (язык гостя
+ * известен из cookie/navigator до ответа сервера). Header зовёт useT():
+ * перерисовка при смене языка.
  */
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAuthStore } from "../../stores/auth-store";
-import { tl } from "@philosynth/shared/i18n/t";
+import { useT } from "../../i18n/useT";
+
+import { LanguageSwitch } from "./LanguageSwitch";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -36,6 +44,7 @@ interface HeaderProps {
 type ResendPhase = "idle" | "pending" | "sent";
 
 function UnverifiedEmailBanner({ email }: { email: string }) {
+  const tl = useT();
   const resendVerification = useAuthStore((s) => s.resendVerification);
   const [phase, setPhase] = useState<ResendPhase>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +99,7 @@ function UnverifiedEmailBanner({ email }: { email: string }) {
 }
 
 export function Header({ onToggleSidebar, showBurger = true }: HeaderProps) {
+  const tl = useT();
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
   const logout = useAuthStore((s) => s.logout);
@@ -122,6 +132,7 @@ export function Header({ onToggleSidebar, showBurger = true }: HeaderProps) {
           </span>
         </div>
         <div className="topbar-right app-topbar-right" data-testid="topbar-right">
+          <LanguageSwitch variant="topbar" />
           {user ? (
             <>
               <Link to="/profile" title={tl("layout.header.profile", "Профиль")} className="app-topbar-link">

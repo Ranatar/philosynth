@@ -29,6 +29,12 @@
  * /login и /register (те же экраны .auth-screen): «/reset-password» (форма
  * с адресом), «/reset-password/:token» (новый пароль), «/verify-email/:token»
  * (подтверждение адреса). «Отправить ещё раз» — под входом: полоса в Header.
+ *
+ * Беседа 11.3 (п. 1–2): App зовёт useT() — смена языка интерфейса
+ * (i18n-store.version) перерисовывает корень, а с ним всё дерево маршрутов:
+ * элементы <Route element={…}> создаются заново, и каждый компонент, звущий
+ * tl() при отрисовке, получает текст нового языка без перезагрузки страницы.
+ * Провайдер каталога для tl() ставит сам модуль i18n-store при импорте.
  */
 import { useEffect } from "react";
 import {
@@ -58,6 +64,7 @@ import { SynthesisPage } from "./pages/SynthesisPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { useAuthStore } from "./stores/auth-store";
 import { tl } from "@philosynth/shared/i18n/t";
+import { useT } from "./i18n/useT";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const status = useAuthStore((s) => s.status);
@@ -91,6 +98,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 }
 
 export function App() {
+  useT(); // 11.3: перерисовка всего дерева при смене языка интерфейса
   const restore = useAuthStore((s) => s.restore);
 
   // Восстановление сессии по cookie — один раз при загрузке приложения

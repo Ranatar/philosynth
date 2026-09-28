@@ -14236,5 +14236,71 @@
     "id": "server.logFormatter.parseWarningsHeader",
     "ru": "  ⚠ РАЗБОР С ПОТЕРЯМИ (",
     "en": "  ⚠ PARSED WITH LOSSES ("
+  },
+  {
+    "ns": "i18n.i18nStore",
+    "id": null,
+    "ru": "Русский",
+    "en": null
+  },
+  {
+    "ns": "layout.languageSwitch",
+    "id": "layout.languageSwitch.label",
+    "ru": "Язык интерфейса",
+    "en": "Interface language"
+  },
+  {
+    "ns": "profilePage",
+    "id": "profilePage.languageTitle",
+    "ru": "Язык",
+    "en": "Language"
+  },
+  {
+    "ns": "profilePage",
+    "id": "profilePage.uiLanguage",
+    "ru": "Язык интерфейса",
+    "en": "Interface language"
+  },
+  {
+    "ns": "profilePage",
+    "id": "profilePage.genLangNote",
+    "ru": "Язык генерации по умолчанию: {lang} — задаётся в форме создания синтеза; смена языка интерфейса переключает его на соответствующий.",
+    "en": "Default generation language: {lang} — set in the synthesis form; changing the interface language switches it to the matching one."
+  },
+  {
+    "ns": "stores.authStore",
+    "id": "stores.authStore.localeSaveFailed",
+    "ru": "Не удалось сохранить язык интерфейса",
+    "en": "Could not save the interface language"
+  },
+  {
+    "ns": "stores.authStore",
+    "id": "stores.authStore.genLangSaveFailed",
+    "ru": "Не удалось сохранить язык генерации",
+    "en": "Could not save the generation language"
+  },
+  {
+    "ns": "synthesis.synthesisForm",
+    "id": "synthesis.synthesisForm.otherLanguage",
+    "ru": "Другой…",
+    "en": "Other…"
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.keyInvalidLead",
+    "ru": "API-ключ Anthropic недействителен или истёк. Генерация остановлена",
+    "en": "The Anthropic API key is invalid or expired. Generation stopped"
+  },
+  {
+    "ns": "document.sectionView",
+    "id": "document.sectionView.parsedWithLosses",
+    "ru": "⚠ Разобран с потерями ({n, plural, one {# предупреждение} few {# предупреждения} many {# предупреждений} other {# предупреждения}})",
+    "en": "⚠ Parsed with losses ({n, plural, one {# warning} other {# warnings}})"
+  },
+  {
+    "ns": "document.sectionView",
+    "id": "document.sectionView.parseWarningsLead",
+    "ru": "Разбор ответа модели в таблицы прошёл с подстановками: часть значений опознана по месту или заменена умолчанием. Документ цел; сверьте таблицы графа и подразделы, названные ниже.",
+    "en": "Parsing the model's answer into tables involved substitutions: some values were recognised by position or replaced with defaults. The document is intact; check the graph tables and the subsections named below."
   }
 ]

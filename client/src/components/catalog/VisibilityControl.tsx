@@ -144,13 +144,13 @@ export function VisibilityControl({
               stop(e);
               setStep(v);
             }}
-            title={VISIBILITY_DESCRIPTIONS[v]}
+            title={VISIBILITY_DESCRIPTIONS()[v]}
           >
-            {VISIBILITY_LABELS[v]}
+            {VISIBILITY_LABELS()[v]}
           </button>
         ))}
       </div>
-      <div className="visibility-step-desc">{VISIBILITY_DESCRIPTIONS[shownStep]}</div>
+      <div className="visibility-step-desc">{VISIBILITY_DESCRIPTIONS()[shownStep]}</div>
 
       {loadError && (
         <div className="pool-status err" role="alert">
@@ -169,14 +169,14 @@ export function VisibilityControl({
                 disabled={busy}
                 onChange={() => toggleFlag(k)}
               />
-              <span>{FLAG_LABELS[k]}</span>
+              <span>{FLAG_LABELS()[k]}</span>
             </label>
           ))}
         </div>
       )}
       {draft && shownStep === "showcase" && (
         <div className="visibility-note" data-testid="visibility-showcase-note">
-          {SHOWCASE_FLAGS_NOTE}
+          {SHOWCASE_FLAGS_NOTE()}
         </div>
       )}
       {draft && shownStep === "full" && (

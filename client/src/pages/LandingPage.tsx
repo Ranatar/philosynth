@@ -37,7 +37,7 @@ import { tl } from "@philosynth/shared/i18n/t";
 export const LANDING_SHOWCASE_LIMIT = 4;
 
 /** Что такое PhiloSynth — четыре опоры, языком документа */
-export const LANDING_FEATURES: readonly { title: string; text: string }[] = [
+export const LANDING_FEATURES = (): readonly { title: string; text: string }[] => ([
   {
     title: tl("landingPage.featureSynthesis", "Синтез концепций"),
     text:
@@ -68,7 +68,7 @@ export const LANDING_FEATURES: readonly { title: string; text: string }[] = [
       tl("landingPage.featureModesText2", "изложение в терминах другой традиции; временной срез — концепция, ") +
       tl("landingPage.featureModesText3", "помещённая в иную эпоху. Каждый результат хранится рядом с документом."),
   },
-];
+]);
 
 export function LandingPage() {
   const status = useAuthStore((s) => s.status);
@@ -144,7 +144,7 @@ export function LandingPage() {
 
       <section className="input-form">
         <div className="app-landing-grid">
-          {LANDING_FEATURES.map((f) => (
+          {LANDING_FEATURES().map((f) => (
             <div key={f.title} className="app-landing-feature">
               <div className="form-label">{f.title}</div>
               <p className="app-landing-feature-text">{f.text}</p>

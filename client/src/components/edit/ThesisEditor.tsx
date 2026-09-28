@@ -20,12 +20,11 @@ import type {
 import { FieldError } from "./ElementEditor";
 import { tl } from "@philosynth/shared/i18n/t";
 
-export const THESIS_TYPE_OPTIONS: readonly { value: ThesisType; label: string }[] =
-  [
+export const THESIS_TYPE_OPTIONS = (): readonly { value: ThesisType; label: string }[] => ([
     { value: "ontological", label: tl("edit.thesisEditor.ontological", "онтологический") },
     { value: "epistemological", label: tl("edit.thesisEditor.epistemological", "эпистемологический") },
     { value: "ethical", label: tl("edit.thesisEditor.ethical", "этический") },
-  ];
+  ]);
 
 export type ThesisDraft = Required<
   Pick<
@@ -115,7 +114,7 @@ export function ThesisEditor({
             disabled={disabled}
             onChange={(e) => set("thesisType", e.target.value as ThesisType)}
           >
-            {THESIS_TYPE_OPTIONS.map((o) => (
+            {THESIS_TYPE_OPTIONS().map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>

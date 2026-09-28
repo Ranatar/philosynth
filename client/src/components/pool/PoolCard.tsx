@@ -22,10 +22,10 @@ import type { PoolConceptEntry } from "../../utils/concept-file";
 import { tl } from "@philosynth/shared/i18n/t";
 
 /** ORDER_LABELS [5023] — дословно */
-const ORDER_LABELS: Readonly<Record<string, string>> = {
+const ORDER_LABELS = (): Readonly<Record<string, string>> => ({
   genetic: tl("pool.poolCard.geneticShort", "генетич."),
   architectural: tl("pool.poolCard.architecturalShort", "архитект."),
-};
+});
 
 export interface PoolCardProps {
   concept: PoolConceptEntry;
@@ -46,7 +46,7 @@ export function PoolCard({
     (ML as Record<string, string>)[c.method] || c.method || "?";
   const levelLabel =
     (SL as Record<string, string>)[c.synthLevel] || c.synthLevel || "?";
-  const orderLabel = ORDER_LABELS[c.generationOrder] ?? "";
+  const orderLabel = ORDER_LABELS()[c.generationOrder] ?? "";
   const sourcesStr = c.sources.length ? c.sources.join(", ") : tl("pool.poolCard.capsuleOnly", "только капсула");
 
   const synthDisabled = !c.participant;

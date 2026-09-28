@@ -36,8 +36,7 @@ export interface GenealogyTreeProps {
 }
 
 /** Подсказка у узлов дерева импортированного файла (снимок без связи). */
-const FROM_FILE_TITLE =
-  tl("lineage.genealogyTree.fromImportedFile", "Из импортированного файла: в базе этой концепции нет, узел — снимок без ссылки");
+const FROM_FILE_TITLE = () => (tl("lineage.genealogyTree.fromImportedFile", "Из импортированного файла: в базе этой концепции нет, узел — снимок без ссылки"));
 
 function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) {
   // Философ → простой блок
@@ -46,7 +45,7 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
       <div
         className="gen-phil"
         data-from-file={n.fromFile ? "" : undefined}
-        title={n.fromFile ? FROM_FILE_TITLE : undefined}
+        title={n.fromFile ? FROM_FILE_TITLE() : undefined}
       >
         <div className="gen-phil-name">{n.name}</div>
       </div>
@@ -94,7 +93,7 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
       <div
         className="gen-card"
         data-from-file={n.fromFile ? "" : undefined}
-        title={n.fromFile ? FROM_FILE_TITLE : undefined}
+        title={n.fromFile ? FROM_FILE_TITLE() : undefined}
       >
         <div className="gen-card-name">
           {n.synthesisId ? (

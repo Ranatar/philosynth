@@ -55,8 +55,11 @@ export const numKey = (num: string): string => norm(num).replace(/\s+/g, "");
  *  не исполняется (долг §12 беседы 10.2: показывать как исполняемое вручную). */
 export type RecommendationCostKind = "free" | "paid" | "manual";
 
-const OP_DELETE = tl("utils.recommendations.opDelete", "удалить");
-const OP_REGENERATE = tl("utils.recommendations.opRegenerate", "перегенерировать");
+/* Операции контракта таблицы рекомендаций (shared/constants/recommendations,
+   10.1) — МАШИННЫЕ значения, сравниваются с row.op сервера; через tl() не
+   проходят (правило Фазы 11); MIRROR_EXCLUSIONS 11.3 */
+const OP_DELETE = "удалить";
+const OP_REGENERATE = "перегенерировать";
 
 export function costKindOf(row: Recommendation): RecommendationCostKind {
   if (norm(row.op) === OP_DELETE) return "manual";
@@ -77,11 +80,11 @@ export function actionTextOf(row: Recommendation): string {
   return tl("utils.recommendations.subsectionRegenerated", "подраздел будет перегенерирован");
 }
 
-export const COST_KIND_LABEL: Record<RecommendationCostKind, string> = {
+export const COST_KIND_LABEL = (): Record<RecommendationCostKind, string> => ({
   free: tl("utils.recommendations.editFree", "правка · бесплатно"),
   paid: tl("utils.recommendations.generation", "генерация"),
   manual: tl("utils.recommendations.manually", "вручную"),
-};
+});
 
 /** Выбирать можно только то, что план исполнит: годные строки вне работы. */
 export function isSelectableRow(row: Recommendation): boolean {

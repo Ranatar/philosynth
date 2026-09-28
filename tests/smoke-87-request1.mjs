@@ -61,7 +61,7 @@ const aFullOff = vt.audienceText({ visibility: "full", showAuthor: false, showLo
 check("audienceText публичной без флагов — закрыто, без имени", /без имени автора/.test(aFullOff) && /Логи генерации закрыты/.test(aFullOff) && /взять нельзя/.test(aFullOff));
 check("audienceText приватной — никто", /никто/.test(vt.audienceText({ visibility: "private", ...base })));
 check("visibilityBadge", vt.visibilityBadge("showcase") === "витрина" && vt.visibilityBadge("full") === "публичная");
-check("FLAG_LABELS — нет галочки за стоимость/токены", !Object.values(vt.FLAG_LABELS).some((l) => /стоимост|токен/i.test(l)));
+check("FLAG_LABELS — нет галочки за стоимость/токены", !Object.values(vt.FLAG_LABELS()).some((l) => /стоимост|токен/i.test(l)));
 
 // ── 2. synthesis-store ─────────────────────────────────────────────────
 console.log("\n2. stores/synthesis-store");
@@ -116,7 +116,7 @@ console.log("\n5. LandingPage / PlansTable");
 const land = rd("client/src/pages/LandingPage.tsx"), landC = strip(land);
 const landing = await import("../client/src/pages/LandingPage.tsx");
 check("LANDING_SHOWCASE_LIMIT ∈ [3,4]", landing.LANDING_SHOWCASE_LIMIT >= 3 && landing.LANDING_SHOWCASE_LIMIT <= 4);
-check("LANDING_FEATURES — синтез, граф, мета-синтез, режимы", landing.LANDING_FEATURES.map((f) => f.title).join("|") === "Синтез концепций|Граф категорий|Мета-синтез|Режимы");
+check("LANDING_FEATURES — синтез, граф, мета-синтез, режимы", landing.LANDING_FEATURES().map((f) => f.title).join("|") === "Синтез концепций|Граф категорий|Мета-синтез|Режимы");
 check("витрина живая — listPublicSyntheses с лимитом", /listPublicSyntheses\(\{ limit: LANDING_SHOWCASE_LIMIT \}\)/.test(landC));
 check("витрина — карточки SynthesisList без действий", /<SynthesisList\s+items=\{showcase\}\s+emptyText=/.test(landC) && !/actions=/.test(landC) && !/visibility=/.test(landC));
 check("цены — getPlans + PlansTable", /getPlans\(\)/.test(landC) && /<PlansTable plans=\{plans\}/.test(landC) && !/<table/.test(landC));

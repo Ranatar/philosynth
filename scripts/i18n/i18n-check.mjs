@@ -21,7 +21,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractProject, namespaceOf, isDataFile } from "./ui-strings-lib.mjs";
-import { LANGS, LANG_LOCALE, readTable, scanCalls, placeholderSet, isStale, loadNames, resolveName, pluralFormProblems, mirrorExclusionFor } from "./i18n-core.mjs";
+import { LANGS, LANG_LOCALE, readTable, scanCalls, scanStaticCalls, placeholderSet, isStale, loadNames, resolveName, pluralFormProblems, mirrorExclusionFor } from "./i18n-core.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argv = process.argv.slice(2);
@@ -80,8 +80,15 @@ show("формы плюрала не своего языка", badPlurals);
 show("литералы с ключом — codemod не применён", literalKeyed, 5);
 console.log(`· литералы строк data (зеркала с данными, по месту показа — 11.4): ${literalData.length}`);
 show("литералы без ключа — дополнить names.json", literalUnnamed);
+// 11.3: static — вызовы tl() вне функций (вычисляются при импорте). В клиенте
+// их быть не должно (переделаны в фабрики, сторож 4ax); на сервере строки
+// собираются в контексте запроса и статики там законны — только счёт.
+const staticAll = scanStaticCalls(ROOT);
+const staticClient = staticAll.filter((x) => x.startsWith("client/"));
+show("static в клиенте — tl() на уровне модуля (при смене языка не обновится)", staticClient, 10);
+console.log(`· static вне клиента (сервер/скрипты, язык запроса — контекст ALS): ${staticAll.length - staticClient.length}`);
 for (const l of langs) console.log(`  ${l}: нет перевода ${perLang[l].missing}, устарел ${perLang[l].stale}, черновик ${perLang[l].draft}`);
 
 const fatal = problems.length + notInTable.length + ruMismatch.length + badPlaceholders.length + badPlurals.length + literalUnnamed.length +
-  (calls.size ? literalKeyed.length + notInCode.length : 0);
+  staticClient.length + (calls.size ? literalKeyed.length + notInCode.length : 0);
 process.exit(argv.includes("--strict") && fatal ? 1 : 0);

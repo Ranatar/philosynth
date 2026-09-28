@@ -12,7 +12,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "../stores/auth-store";
 import { tl } from "@philosynth/shared/i18n/t";
 
-export const EMAIL_VERIFIED_NOTICE = tl("verifyEmailPage.verifiedLogin", "Адрес подтверждён. Войдите, чтобы продолжить.");
+export const EMAIL_VERIFIED_NOTICE = () => (tl("verifyEmailPage.verifiedLogin", "Адрес подтверждён. Войдите, чтобы продолжить."));
 const REDIRECT_DELAY_MS = 1500;
 
 type Phase = { kind: "pending" } | { kind: "done" } | { kind: "error"; text: string };
@@ -38,7 +38,7 @@ export function VerifyEmailPage() {
     if (phase.kind !== "done") return;
     const t = setTimeout(() => {
       if (useAuthStore.getState().status === "authenticated") navigate("/catalog", { replace: true });
-      else navigate("/login", { replace: true, state: { notice: EMAIL_VERIFIED_NOTICE, from: "/catalog" } });
+      else navigate("/login", { replace: true, state: { notice: EMAIL_VERIFIED_NOTICE(), from: "/catalog" } });
     }, REDIRECT_DELAY_MS);
     return () => clearTimeout(t);
   }, [phase, navigate]);

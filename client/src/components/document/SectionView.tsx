@@ -42,6 +42,13 @@
  * (состояние subsectionEdit), всякий раз передавая набранное в draft. Клики
  * и клавиши ловятся делегированием. У запертых подразделов (lockedSubsections
  * из GET /sections/:key) карандаша НЕТ вовсе — не рисовать неработающим (8.7).
+ *
+ * Беседа 11.3 (п. 8, долг Д-16): у раздела с непустыми parseWarnings
+ * (SectionFull 11.2 — предупреждения разбора из генлога) ВЛАДЕЛЬЦУ
+ * рисуется пометка «разобран с потерями (N)» с раскрытием списка
+ * (details .parse-warnings, блок 11.3 globals.css). Чужому и гостю — нет
+ * (проп showParseWarnings): предупреждения берутся из генлога, а логи —
+ * под флагом автора; у вложенных разделов гостя поля и так нет.
  */
 import {
   useMemo,
@@ -92,6 +99,8 @@ export interface SectionViewProps {
   onSubsectionEdit?: ((ref: SubsectionRef) => void) | undefined;
   onSubsectionSave?: ((html: string) => void) | undefined;
   onSubsectionCancel?: (() => void) | undefined;
+  /** 11.3 (Д-16): пометка «разобран с потерями» — только владельцу */
+  showParseWarnings?: boolean | undefined;
 }
 
 /** Таблица тезисов: подраздел «Сводная таблица тезисов» (locatorsFor
@@ -358,7 +367,9 @@ export function SectionView({
   onSubsectionEdit,
   onSubsectionSave,
   onSubsectionCancel,
+  showParseWarnings = false,
 }: SectionViewProps) {
+  const parseWarnings = showParseWarnings ? section.parseWarnings ?? [] : [];
   // Замки — из GET /sections/:key (вычисляемый заслон сервера). Нет поля
   // (вложенные разделы гостя) — карандашей нет вовсе: гадать клиент не вправе
   const locked = section.lockedSubsections;
@@ -465,6 +476,23 @@ export function SectionView({
         onInput={handleInput}
       />
       {inlineEditor}
+      {parseWarnings.length > 0 && (
+        <details className="sec-disclosure parse-warnings" data-testid={`parse-warnings-${section.key}`}>
+          <summary className="parse-warnings-summary">
+            {tl("document.sectionView.parsedWithLosses", "⚠ Разобран с потерями ({n, plural, one {# предупреждение} few {# предупреждения} many {# предупреждений} other {# предупреждения}})", { n: parseWarnings.length })}
+          </summary>
+          <div className="disclosure-body">
+            <p className="parse-warnings-lead">
+              {tl("document.sectionView.parseWarningsLead", "Разбор ответа модели в таблицы прошёл с подстановками: часть значений опознана по месту или заменена умолчанием. Документ цел; сверьте таблицы графа и подразделы, названные ниже.")}
+            </p>
+            <ul className="parse-warnings-list">
+              {parseWarnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      )}
       {/* Долг 1.6b → 2.3: порт makeSectionCtxDisclosure [11482] —
           свёрнутый показ дополнительного контекста раздела (sec_context
           уже в SectionFull; исходник вставлял details.sec-disclosure в

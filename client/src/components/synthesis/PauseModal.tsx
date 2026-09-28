@@ -486,8 +486,10 @@ function AuthContent({ ps, form }: { ps: PausedState; form: AuthKeyForm }) {
     );
   return (
     <div className="pause-content">
+      {/* 11.3 (п. 6): JSX-элемент в подстановке tl() невозможен — строка
+          разбита на две части вокруг элемента (<strong> внутри context) */}
       <p>
-        API-ключ Anthropic недействителен или истёк. Генерация остановлена{" "}
+        {tl("synthesis.pauseModal.keyInvalidLead", "API-ключ Anthropic недействителен или истёк. Генерация остановлена")}{" "}
         {context}.
       </p>
       <ReasonBox reason={ps.reason} />

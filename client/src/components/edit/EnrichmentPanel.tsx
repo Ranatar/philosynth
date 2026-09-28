@@ -35,33 +35,33 @@ import {
 import type { EnrichableElementKind } from "../../api/enrichment";
 import { tl } from "@philosynth/shared/i18n/t";
 
-export const CATEGORY_ENRICHMENT_OPTIONS: readonly {
+export const CATEGORY_ENRICHMENT_OPTIONS = (): readonly {
   type: CategoryEnrichmentType;
   label: string;
   hint: string;
-}[] = [
+}[] => ([
   { type: "description", label: tl("common.description", "Описание"), hint: tl("edit.enrichmentPanel.extendedDescription", "расширенное описание, трактовки, аналоги") },
   { type: "evolution", label: tl("edit.enrichmentPanel.evolution", "Эволюция"), hint: tl("edit.enrichmentPanel.evolutionHint", "как категория может измениться в свете современных тенденций") },
   { type: "justification", label: tl("common.justification", "Обоснование"), hint: tl("edit.enrichmentPanel.categoryGrounds", "философские основания категории и её места в графе") },
-];
+]);
 
-export const EDGE_ENRICHMENT_OPTIONS: readonly {
+export const EDGE_ENRICHMENT_OPTIONS = (): readonly {
   type: EdgeEnrichmentType;
   label: string;
   hint: string;
-}[] = [
+}[] => ([
   { type: "justification", label: tl("common.justification", "Обоснование"), hint: tl("edit.enrichmentPanel.edgeGrounds", "философское обоснование связи") },
   { type: "counterarguments", label: tl("edit.enrichmentPanel.counterarguments", "Контраргументы"), hint: tl("edit.enrichmentPanel.counterargumentsHint", "возражения против связи, аналоги в других системах") },
-];
+]);
 
 /** Подпись типа обогащения (в т.ч. 'characteristic' для общей истории) */
-export const ENRICHMENT_TYPE_LABELS: Record<string, string> = {
+export const ENRICHMENT_TYPE_LABELS = (): Record<string, string> => ({
   description: tl("common.description", "Описание"),
   evolution: tl("edit.enrichmentPanel.evolution", "Эволюция"),
   justification: tl("common.justification", "Обоснование"),
   counterarguments: tl("edit.enrichmentPanel.counterarguments", "Контраргументы"),
   characteristic: tl("edit.enrichmentPanel.characteristicJustification", "Обоснование характеристики"),
-};
+});
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
@@ -94,7 +94,7 @@ export function EnrichmentPanel({
   const [choosing, setChoosing] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const options = elementType === "category" ? CATEGORY_ENRICHMENT_OPTIONS : EDGE_ENRICHMENT_OPTIONS;
+  const options = elementType === "category" ? CATEGORY_ENRICHMENT_OPTIONS() : EDGE_ENRICHMENT_OPTIONS();
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -226,7 +226,7 @@ export function EnrichmentPanel({
         <div className="enrich-card streaming" data-testid="enrich-streaming">
           <div className="enrich-card-head">
             <span className="enrich-card-type">
-              {ENRICHMENT_TYPE_LABELS[streamingHere.enrichmentType] ?? streamingHere.enrichmentType}
+              {ENRICHMENT_TYPE_LABELS()[streamingHere.enrichmentType] ?? streamingHere.enrichmentType}
             </span>
             <span>{tl("edit.enrichmentPanel.generatingChars", "генерируется… · {liveChars} симв.", { liveChars: stream.liveChars.toLocaleString("ru") })}</span>
           </div>
@@ -259,7 +259,7 @@ export function EnrichmentPanel({
             >
               <span className="enrich-card-type">
                 {isOpen ? "▾ " : "▸ "}
-                {ENRICHMENT_TYPE_LABELS[e.enrichmentType] ?? e.enrichmentType}
+                {ENRICHMENT_TYPE_LABELS()[e.enrichmentType] ?? e.enrichmentType}
               </span>
               <span>
                 {tl("edit.enrichmentPanel.usageLine", "{createdAt} · {inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { createdAt: fmtDate(e.createdAt), inputTokens: e.inputTokens.toLocaleString("ru"), outputTokens: e.outputTokens.toLocaleString("ru"), costUsd: e.costUsd.toFixed(4) })}

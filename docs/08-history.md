@@ -595,6 +595,8 @@ data-section → предупреждение; синонимов на друг�
 check:integration += 2ak/4av/5ai; доки — scripts/patches/patch-docs-conv111.py.
 Долгов нет; ближайшая — 11.2.
 Беседа 11.2 (основа локализации и сервер; бэкенд + codemod) ЗАКРЫТА 2026-09-27.
+Беседа 11.3 (клиент: язык интерфейса и переключатель) ЗАКРЫТА 2026-09-28;
+долг Д-31 (parseWarnings чужому — сервер) → 12.1; ближайшая — 11.4.
 `shared/i18n/locales.ts` (UI_LOCALES, UI_TO_GEN, genLangForUi; LANG_OPTIONS формы
 перенесён сюда — один список); `t.ts` — ICU-плюралы по Intl.PluralRules языка
 каталога, `setCatalogProvider({ locale, strings })`; `i18n:params` (32 говорящих
@@ -5074,6 +5076,78 @@ Table" вместо "Таблица связей"»), иначе честный 
 любой беседе, читающей `generation_log.metadata`, — `parseWarnings`; любой
 беседе о подразделах — `resolveSubsection` (generation-service) и границы п.6
 «По факту 11.1».
+
+### Беседа 11.3 — Клиент: язык интерфейса и переключатель [ЗАКРЫТА 2026-09-28]
+
+**Вход:** HEAD e1da556, `check:dotfiles` чист, `npm install` в самом клоне,
+Chrome 131 + puppeteer-core 23 (`--no-save`). Третья беседа Фазы 11; сервер не
+правится. Условие закрытия — зелёный `check:integration` и R2–R8 в браузере на
+СБОРКЕ клиента (`vite build` + `vite preview`; dev-режим двоит эффекты).
+
+**Сделано (первый запрос, восемь пунктов).** (1) `client/src/i18n/i18n-store.ts` —
+zustand: `locale`/`catalog`/`version`; `setLocale` пишет cookie `ui_locale`
+(имя ≡ `UI_LOCALE_COOKIE` сервера), каталоги по требованию литеральным
+`import.meta.glob("…/generated/*.json")` (ru не грузится, один запрос на язык,
+повтор без запроса и без перерисовки), `applyUserLocale` для вошедшего;
+провайдер `setCatalogProvider` ставится при импорте; гость — cookie →
+`navigator.language` → ru. (2) `useT.ts`: `useT()` — подписка на `version`
+(возвращает тот же `tl`), `useLocale()`; `App` зовёт `useT()` — перерисовка
+всего дерева маршрутов без перезагрузки. (3) `LanguageSwitch.tsx` двух видов
+(`topbar` — идиома `.app-topbar-btn`; `form` — `.action-btn` с заливкой
+`--blue-corp`), самоназвания `UI_LOCALE_NAMES` не переводятся; в `.topbar-right`
+гостю и вошедшему и в секции «Язык» профиля (со строкой языка генерации по
+умолчанию); `auth-store.setUiLocale` (PATCH `{uiLocale}`, интерфейс сразу) /
+`setGenLang` (PATCH `{genLang}`, интерфейс не трогается); `restore`/`login`
+применяют `user.uiLocale`. (4) `SynthesisForm`: умолчание из `user.genLang`,
+при пустом — `genLangForUi(язык интерфейса)`; значение вне списка — ветка
+«Другой…»; смена → PATCH `{genLang}`; жёсткого «Russian» нет; «Другой…» через
+`tl()` по месту. (5) static: 41 константа уровня модуля (242 вызова `tl()`) →
+фабрики `(): T => ({…})` AST-скриптом; четыре машинных значения, обёрнутых
+codemod'ом 11.2 («Структура документа», «Капсула», «удалить»,
+«перегенерировать»), возвращены литералами + `MIRROR_EXCLUSIONS` + `data`;
+`scanStaticCalls` в i18n-core, `i18n:check` красит static в клиенте (`--strict`),
+`i18n:export` пересчитывает отметку. (6) `PauseModal.keyInvalid` → `keyInvalidLead`
++ элемент + «.». (7) сторож 2am/4ax в `integration-check` (модули, static = 0,
+машинные значения, cookie ≡ серверу, самоназвания вне `tl()`, литеральный glob,
+переключатель через `setUiLocale`/`setLocale`, `App` на `useT`, форма без
+«Russian» и без `setUiLocale`, PauseModal, пометка под `isOwner`, CSS-блок до
+утилит без новых hex, каталог en со строками 11.3); 4ah и 4ac/4ae/4af/4ah
+переведены на вызов фабрик. (8) Д-16 показ: `SectionView` — `details
+.sec-disclosure.parse-warnings` «⚠ Разобран с потерями (N)» с ICU-плюралом и
+списком, проп `showParseWarnings`, `DocumentView` передаёт `isOwner`. CSS-блок
+«Беседа 11.3» в части 3 `globals.css` (составные селекторы — правила
+исходника позже по файлу и выше по специфичности), css-parity A/B = 0. Новые
+ключи (11) с черновиками `en`, `names.json` += 11; `i18n:check --strict` чист.
+
+**Тестовые запросы R2–R8** — `tests/test-113-requests2-8.mjs` (сборка клиента
+под `vite preview` :5213 с прокси по `server.proxy`, сервер :3000, мок Claude
+:3893 пишет системные промпты, Chrome 131, персонажи в отдельных browser
+context'ах, `navigator.language` через CDP): **62 ✓ ×2**. R2 гость — язык без
+перезагрузки, cookie, перезагрузка, 401 по-английски; R3 связь языков — de →
+`ui_locale=de`/`gen_lang=German`, форма с German, French → интерфейс de,
+«Другой…»; R4 static — меню, статусы карточек, заголовок EditModal при
+открытой модалке; R5 — русский документ при интерфейсе en: системный промпт без
+языковой инструкции, `lang` не тронут; R6 — два запроса каталогов на шесть
+переключений; R7 — пометка владельцу (ru/en плюралы), чужому и гостю нет; R8 —
+css-parity 0/0. Смоук первого запроса — `tests/smoke-113-request1.mjs` 59 ✓.
+
+**Отступления и находки** — «По факту 11.3» (07 §8): числа static по коду,
+машинные значения codemod'а, фабрика вместо стора при зелёном `tsc`,
+косвенный `import.meta.glob`, Д-31 (сервер отдаёт `parseWarnings` чужому — 12.1),
+одно хранилище cookie на браузер.
+
+**Файлы беседы:** `client/src/i18n/{i18n-store,useT}.ts`,
+`client/src/components/layout/{LanguageSwitch,Header}.tsx`,
+`client/src/pages/ProfilePage.tsx`, `client/src/stores/auth-store.ts`,
+`client/src/App.tsx`, `main.tsx`, `SynthesisForm.tsx`, `PauseModal.tsx`,
+`document/{SectionView,DocumentView}.tsx`, 28 файлов фабрик (catalog/edit/graph/
+layout/lineage/pool/pages/utils), `utils/{capsule-html,recommendations}.ts`,
+`components/edit/EditModal.tsx`, `globals.css` (блок 11.3);
+`scripts/i18n/{i18n-core,i18n-check,i18n-export}.mjs`, `names.json`, `README.md`,
+`packages/shared/i18n/{strings.json,generated/*}`; `server/integration-check.mts`
+(2am/4ax, 4ah/4ac/4ae/4af); тесты `smoke-113-request1.mjs`,
+`test-113-requests2-8.mjs`, правки smoke-54/55/62/87;
+`scripts/patches/patch-docs-conv113.py`.
 
 ### Беседа 11.2 — Основа локализации и сервер (бэкенд + codemod) [ЗАКРЫТА 2026-09-27]
 

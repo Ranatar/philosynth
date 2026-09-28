@@ -22,8 +22,10 @@
  * возвращает тот же текст с точностью до схлопывания пробелов.
  */
 
-import { tl } from "@philosynth/shared/i18n/t";
-const CAPSULE_SECTION = tl("common.capsule", "Капсула");
+/* Имя data-section капсулы — МАШИННОЕ значение документа (по нему капсулу
+   находят экстракторы контекста и импорт); через tl() не проходит
+   (правило Фазы 11); MIRROR_EXCLUSIONS 11.3 */
+const CAPSULE_SECTION = "Капсула";
 
 function escapeHtml(s: string): string {
   return s

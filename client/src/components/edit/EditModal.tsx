@@ -76,7 +76,10 @@ import { tl } from "@philosynth/shared/i18n/t";
  *  истины один — ключи KEY_LABELS минус sum) */
 const ADDABLE_KEYS = Object.keys(KEY_LABELS).filter((k) => k !== "sum");
 
-const STRUCTURE_SUBSECTION = tl("edit.editModal.documentStructure", "Структура документа");
+/* Имя data-section подраздела «Структура документа» (structure-tracker) —
+   МАШИННОЕ значение, уходит на сервер (POST /regenerate-subsection); через
+   tl() не проходит (правило Фазы 11); MIRROR_EXCLUSIONS 11.3 */
+const STRUCTURE_SUBSECTION = "Структура документа";
 
 const labelOf = (key: string): string =>
   (KEY_LABELS as Record<string, string>)[key] ?? key;

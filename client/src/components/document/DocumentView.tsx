@@ -114,6 +114,7 @@ export function DocumentView({
                   : undefined
               }
               subsectionEditBusy={!!subsectionEdit}
+              showParseWarnings={synthesis.isOwner}
               onSubsectionEdit={onSubsectionEdit}
               onSubsectionSave={onSubsectionSave}
               onSubsectionCancel={onSubsectionCancel}

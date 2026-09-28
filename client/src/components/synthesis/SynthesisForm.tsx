@@ -1,6 +1,14 @@
 /**
  * Форма создания синтеза. Беседа 1.5 (запрос 1, п. 2).
  *
+ * Беседа 11.3 (п. 4): язык генерации открывается из user.genLang (GET
+ * /auth/me), не с жёсткого «Russian»; при пустом — genLangForUi(текущего
+ * языка интерфейса). Значение вне LANG_OPTIONS — ветка «Другой…» с ним в
+ * поле. Смена языка в форме вошедшим → PATCH /auth/me { genLang }
+ * (auth-store.setGenLang): интерфейс НЕ меняется — связь языков
+ * односторонняя (правило владельца). Подписи LANG_OPTIONS — самоназвания,
+ * не переводятся; «Другой…» — через tl() по месту показа.
+ *
  * Поля — по протоколу 07 (зерно, контекст, метод, уровень, глубина,
  * порядок) + язык генерации (initLangUI исходника; 01 §4.15 п.6,
  * syntheses.lang) + пикеры философов/разделов. Тексты опций select —
@@ -80,8 +88,16 @@ import {
   type PickableSectionKey,
 } from "./SectionPicker";
 import { SectionWarnings } from "./SectionWarnings";
-import { LANG_OPTIONS } from "@philosynth/shared/i18n/locales";
+import {
+  GEN_LANG_VALUES,
+  LANG_CUSTOM_VALUE,
+  LANG_OPTIONS,
+  genLangForUi,
+} from "@philosynth/shared/i18n/locales";
 import { tl } from "@philosynth/shared/i18n/t";
+
+import { useLocale, useT } from "../../i18n/useT";
+import { useAuthStore } from "../../stores/auth-store";
 
 /** Клиентская копия CONTEXT_BUDGET [7529] — ТОЛЬКО для превью бюджета.
  *  Канон живёт в Registry (config context_budget) и применяется сервером;
@@ -232,7 +248,10 @@ function FullBudgetPreview({
 }
 
 /* Опции — тексты дословно из селектов формы исходника */
-const METHOD_OPTIONS = [
+/* 11.3 (п. 5): словари опций — функции, зовутся при отрисовке: константа
+   уровня модуля вычислилась бы один раз при импорте и не обновилась бы при
+   смене языка интерфейса */
+const METHOD_OPTIONS = () => [
   ["dialectical", tl("synthesis.synthesisForm.methodDialectical", "Диалектический (тезис → антитезис → синтез)")],
   ["integrative", tl("synthesis.synthesisForm.methodIntegrative", "Интегративный (поиск общих оснований)")],
   ["deconstructive", tl("synthesis.synthesisForm.methodDeconstructive", "Деконструктивный (разбор и пересборка)")],
@@ -241,18 +260,18 @@ const METHOD_OPTIONS = [
   ["creative", tl("synthesis.synthesisForm.methodCreative", "Творческий (свободная комбинаторика)")],
 ] as const;
 
-const ORDER_OPTIONS = [
+const ORDER_OPTIONS = () => [
   ["architectural", tl("synthesis.synthesisForm.orderArchitectural", "Архитектурный (граф → определения → тезисы → диалог)")],
   ["genetic", tl("synthesis.synthesisForm.orderGenetic", "Генетический (диалог → тезисы → определения → граф)")],
 ] as const;
 
-const LEVEL_OPTIONS = [
+const LEVEL_OPTIONS = () => [
   ["comparative", tl("synthesis.synthesisForm.levelComparative", "Сравнительный (заимствование и переопределение)")],
   ["transformative", tl("synthesis.synthesisForm.levelTransformative", "Преобразующий (из напряжений между философами)")],
   ["generative", tl("synthesis.synthesisForm.levelGenerative", "Порождающий (от проблемы, не от философов)")],
 ] as const;
 
-const DEPTH_OPTIONS = [
+const DEPTH_OPTIONS = () => [
   ["overview", tl("synthesis.synthesisForm.depthOverview", "Обзорная (компактный документ)")],
   ["standard", tl("synthesis.synthesisForm.depthStandard", "Стандартная (развёрнутый анализ)")],
   ["deep", tl("synthesis.synthesisForm.depthDeep", "Глубокая (академический уровень)")],
@@ -295,8 +314,40 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
   const [generationOrder, setGenerationOrder] = useState("architectural");
   const [synthLevel, setSynthLevel] = useState("comparative");
   const [depth, setDepth] = useState("standard");
-  const [langChoice, setLangChoice] = useState("Russian");
-  const [customLang, setCustomLang] = useState("");
+  /* 11.3: язык генерации — из профиля (user.genLang), иначе по языку интерфейса */
+  useT(); // подписка на смену языка (tl() тот же — см. useT.ts)
+  const uiLocale = useLocale();
+  const userGenLang = useAuthStore((s) => s.user?.genLang);
+  const authenticated = useAuthStore((s) => s.status === "authenticated");
+  const setGenLang = useAuthStore((s) => s.setGenLang);
+  const initialGenLang = (userGenLang ?? "").trim() || genLangForUi(uiLocale);
+  const [langChoice, setLangChoice] = useState(
+    GEN_LANG_VALUES.includes(initialGenLang) ? initialGenLang : LANG_CUSTOM_VALUE,
+  );
+  const [customLang, setCustomLang] = useState(
+    GEN_LANG_VALUES.includes(initialGenLang) ? "" : initialGenLang,
+  );
+  /* Пользователь ещё не трогал язык в форме — умолчание следует за профилем
+     (PATCH { uiLocale } из шапки переписывает gen_lang — форма это увидит) */
+  const langTouchedRef = useRef(false);
+  useEffect(() => {
+    if (langTouchedRef.current) return;
+    const next = (userGenLang ?? "").trim() || genLangForUi(uiLocale);
+    if (GEN_LANG_VALUES.includes(next)) {
+      setLangChoice(next);
+      setCustomLang("");
+    } else {
+      setLangChoice(LANG_CUSTOM_VALUE);
+      setCustomLang(next);
+    }
+  }, [userGenLang, uiLocale]);
+  /** Смена языка генерации вошедшим — в профиль (интерфейс не трогается) */
+  const commitGenLang = (value: string) => {
+    const v = value.trim();
+    if (!v || !authenticated) return;
+    if (v === (userGenLang ?? "").trim()) return;
+    void setGenLang(v);
+  };
   const [extGraphMetrics, setExtGraphMetrics] = useState(false);
   const [keepFullBudget, setKeepFullBudget] = useState(false);
   const [synthReady, setSynthReady] = useState(false);
@@ -343,7 +394,9 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
   }, [hasSynthConcepts]);
 
   const lang =
-    langChoice === "__custom" ? customLang.trim() || "Russian" : langChoice;
+    langChoice === LANG_CUSTOM_VALUE
+      ? customLang.trim() || genLangForUi(uiLocale)
+      : langChoice;
 
   /* Advisor v2 + Section Warnings (беседа 1.5): пересчёт при смене
      метода/уровня/порядка/секций — аналог updateCompatAdvisor исходника,
@@ -578,7 +631,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
             onChange={(e) => setMethod(e.target.value)}
             className="form-select"
           >
-            {METHOD_OPTIONS.map(([v, l]) => (
+            {METHOD_OPTIONS().map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
               </option>
@@ -595,7 +648,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
             onChange={(e) => setGenerationOrder(e.target.value)}
             className="form-select"
           >
-            {ORDER_OPTIONS.map(([v, l]) => (
+            {ORDER_OPTIONS().map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
               </option>
@@ -612,7 +665,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
             onChange={(e) => setSynthLevel(e.target.value)}
             className="form-select"
           >
-            {LEVEL_OPTIONS.map(([v, l]) => (
+            {LEVEL_OPTIONS().map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
               </option>
@@ -629,7 +682,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
             onChange={(e) => setDepth(e.target.value)}
             className="form-select"
           >
-            {DEPTH_OPTIONS.map(([v, l]) => (
+            {DEPTH_OPTIONS().map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
               </option>
@@ -640,22 +693,32 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           <div className={labelCls}>{tl("synthesis.synthesisForm.generationLanguage", "Язык генерации")}</div>
           <select
             value={langChoice}
-            onChange={(e) => setLangChoice(e.target.value)}
+            onChange={(e) => {
+              langTouchedRef.current = true;
+              setLangChoice(e.target.value);
+              if (e.target.value !== LANG_CUSTOM_VALUE) commitGenLang(e.target.value);
+            }}
             className="form-select"
+            data-testid="gen-lang-select"
           >
             {LANG_OPTIONS.map(([v, l]) => (
               <option key={v} value={v}>
-                {l}
+                {v === LANG_CUSTOM_VALUE ? tl("synthesis.synthesisForm.otherLanguage", "Другой…") : l}
               </option>
             ))}
           </select>
         </div>
-        {langChoice === "__custom" && (
+        {langChoice === LANG_CUSTOM_VALUE && (
           <div className="form-group">
             <div className={labelCls}>{tl("synthesis.synthesisForm.customLanguage", "Укажите язык (по-английски)")}</div>
             <input
               value={customLang}
-              onChange={(e) => setCustomLang(e.target.value)}
+              onChange={(e) => {
+                langTouchedRef.current = true;
+                setCustomLang(e.target.value);
+              }}
+              onBlur={() => commitGenLang(customLang)}
+              data-testid="gen-lang-custom"
               placeholder={tl("synthesis.synthesisForm.customLanguagePlaceholder", "e.g. Korean, Ancient Greek, Hindi")}
               className="form-input"
             />

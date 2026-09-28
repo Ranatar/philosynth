@@ -9,11 +9,19 @@
  *     «Неверный текущий пароль» (auth-store), details — по полям;
  *     при успехе — уведомление «Пароль изменён; прочие сессии завершены».
  * Маршрут /profile; ссылка — имя/email пользователя в Header.
+ *
+ * Беседа 11.3 (п. 3): секция «Язык» — переключатель интерфейса
+ * (LanguageSwitch variant="form": PATCH /auth/me { uiLocale }, сервер сам
+ * ставит gen_lang) и строка о текущем языке генерации по умолчанию
+ * (user.genLang; сам язык генерации выбирается в форме создания — там же
+ * PATCH { genLang }, интерфейс от него не меняется).
  */
 import { useState } from "react";
 
+import { LanguageSwitch } from "../components/layout/LanguageSwitch";
+import { useLocale, useT } from "../i18n/useT";
 import { useAuthStore } from "../stores/auth-store";
-import { tl } from "@philosynth/shared/i18n/t";
+import { LANG_OPTIONS, genLangForUi } from "@philosynth/shared/i18n/locales";
 
 /** Ошибки по полям формы (ключ = имя поля; ключ "_" — общая) */
 type FieldErrors = Record<string, string>;
@@ -57,7 +65,15 @@ function Field({
   );
 }
 
+/** Подпись языка генерации: самоназвание из LANG_OPTIONS либо значение как есть */
+function genLangLabel(value: string): string {
+  const found = LANG_OPTIONS.find(([v]) => v === value);
+  return found ? found[1] : value;
+}
+
 export function ProfilePage() {
+  const tl = useT();
+  const locale = useLocale();
   const user = useAuthStore((s) => s.user);
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const changePassword = useAuthStore((s) => s.changePassword);
@@ -189,6 +205,20 @@ export function ProfilePage() {
           {profilePending ? tl("common.saving", "Сохранение…") : tl("common.save", "Сохранить")}
         </button>
       </form>
+
+      {/* ── Язык (11.3) ── */}
+      <div className="input-form" data-testid="profile-language">
+        <div className="form-section-title">{tl("profilePage.languageTitle", "Язык")}</div>
+        <div className="form-group">
+          <span className="form-label">{tl("profilePage.uiLanguage", "Язык интерфейса")}</span>
+          <LanguageSwitch variant="form" />
+        </div>
+        <div className="form-sublabel" data-testid="profile-gen-lang">
+          {tl("profilePage.genLangNote", "Язык генерации по умолчанию: {lang} — задаётся в форме создания синтеза; смена языка интерфейса переключает его на соответствующий.", {
+            lang: genLangLabel(user?.genLang || genLangForUi(locale)),
+          })}
+        </div>
+      </div>
 
       {/* ── Смена пароля ── */}
       <form

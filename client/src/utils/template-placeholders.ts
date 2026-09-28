@@ -31,7 +31,7 @@ export function extractPlaceholders(body: string): string[] {
   return out;
 }
 
-export const SAMPLE_VALUES: Record<string, string> = {
+export const SAMPLE_VALUES = (): Record<string, string> => ({
   participants: "Кант, Хайдеггер",
   philosophers: "Кант, Хайдеггер",
   participant_word: "философов",
@@ -122,7 +122,7 @@ export const SAMPLE_VALUES: Record<string, string> = {
   critique_novelty: "[подраздел новизны критики]",
   method_topology: "[фрагмент метода для топологии]",
   method_theses: "[фрагмент метода для тезисов]",
-};
+});
 
 export interface PreviewPart {
   kind: "text" | "filled" | "missing";
@@ -138,7 +138,7 @@ export interface PreviewPart {
  */
 export function previewParts(
   body: string,
-  values: Record<string, string> = SAMPLE_VALUES,
+  values: Record<string, string> = SAMPLE_VALUES(),
 ): PreviewPart[] {
   const parts: PreviewPart[] = [];
   let last = 0;
@@ -160,7 +160,7 @@ export function previewParts(
 /** Плейсхолдеры, для которых у предпросмотра нет значения. */
 export function missingPlaceholders(
   body: string,
-  values: Record<string, string> = SAMPLE_VALUES,
+  values: Record<string, string> = SAMPLE_VALUES(),
 ): string[] {
   return extractPlaceholders(body).filter(
     (n) => !Object.prototype.hasOwnProperty.call(values, n),

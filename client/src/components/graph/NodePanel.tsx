@@ -48,7 +48,7 @@ import {
 import type { PanelLink, PanelNodeData } from "./graph-utils";
 import { tl } from "@philosynth/shared/i18n/t";
 
-const ROLE_LABELS: Record<string, string> = {
+const ROLE_LABELS = (): Record<string, string> => ({
   central: tl("common.central", "Центральная"),
   peripheral: tl("common.peripheral", "Периферийная"),
   bridge: tl("common.bridge", "Мост"),
@@ -65,7 +65,7 @@ const ROLE_LABELS: Record<string, string> = {
   foundation: tl("common.ground", "Основание"),
   formalized: tl("common.formalized", "Формализованная"),
   verifying: tl("common.verifying", "Верифицирующая"),
-};
+});
 
 const endId = (v: PanelLink["source"]): number =>
   typeof v === "object" ? v.id : v;
@@ -86,7 +86,7 @@ function RoleGroup({
       <span className="gm-panel-role-group-label">{groupLabel}</span>
       {arr.map((r) => (
         <span key={r} className="gm-role-tag">
-          {ROLE_LABELS[r] || r}
+          {ROLE_LABELS()[r] || r}
         </span>
       ))}
     </div>

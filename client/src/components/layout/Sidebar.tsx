@@ -24,17 +24,17 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const NAV_ITEMS = (): NavItem[] => ([
   { to: "/catalog", label: tl("layout.sidebar.catalog", "Каталог") },
   { to: "/synthesis/new", label: tl("layout.sidebar.newSynthesis", "Новый синтез") },
   { to: "/import", label: tl("layout.sidebar.import", "Импорт") },
   { to: "/billing", label: tl("layout.sidebar.billing", "Биллинг") },
   { to: "/admin/prompts", label: tl("layout.sidebar.prompts", "Промпты"), adminOnly: true },
-];
+]);
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
-  const items = NAV_ITEMS.filter(
+  const items = NAV_ITEMS().filter(
     (item) => !item.adminOnly || user?.role === "admin",
   );
 

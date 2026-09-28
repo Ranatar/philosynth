@@ -60,9 +60,9 @@ for (const s of ["Диалектическая", "Кросс-дисциплин�
 }
 
 console.log("── EnrichmentPanel: канон типов ──");
-check("типы категории ≡ шаблонам 5.3", eq(CATEGORY_ENRICHMENT_OPTIONS.map((o) => `enrichment.category.${o.type}`).sort(), [...CATEGORY_TEMPLATE_KEYS].sort()));
-check("типы связи ≡ шаблонам 5.3", eq(EDGE_ENRICHMENT_OPTIONS.map((o) => `enrichment.edge.${o.type}`).sort(), [...EDGE_TEMPLATE_KEYS].sort()));
-check("подписи всех типов + characteristic", ["description", "evolution", "justification", "counterarguments", "characteristic"].every((t) => ENRICHMENT_TYPE_LABELS[t]));
+check("типы категории ≡ шаблонам 5.3", eq(CATEGORY_ENRICHMENT_OPTIONS().map((o) => `enrichment.category.${o.type}`).sort(), [...CATEGORY_TEMPLATE_KEYS].sort()));
+check("типы связи ≡ шаблонам 5.3", eq(EDGE_ENRICHMENT_OPTIONS().map((o) => `enrichment.edge.${o.type}`).sort(), [...EDGE_TEMPLATE_KEYS].sort()));
+check("подписи всех типов + characteristic", ["description", "evolution", "justification", "counterarguments", "characteristic"].every((t) => ENRICHMENT_TYPE_LABELS()[t]));
 
 console.log("── диффы редакторов ──");
 const cat = { id: "c1", synthesisId: "s", name: "Бытие", type: "онтологическая", definition: "d", centrality: 0.9, certainty: 0.5, historicalSignificance: 0.5, innovationDegree: 1, clarity: 0, breadth: 0, depthScore: 0, applicability: 0, typeCatalogId: null, origin: "o", clusterIndices: [], structuralRoles: [], proceduralRoles: [], hasReflexive: false, position: 0, source: "generated", createdAt: "", updatedAt: "" };

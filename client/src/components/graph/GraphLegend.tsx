@@ -35,7 +35,7 @@ interface RoleRegistryEntry {
 }
 
 // ── Полный реестр ролей ───────────────────────────────────────────────
-const ROLE_REGISTRY: RoleRegistryEntry[] = [
+const ROLE_REGISTRY = (): RoleRegistryEntry[] => ([
   { key: "synthesis",         label: tl("common.synthesis", "Синтез"),          sym2d: "⯃", name3d: tl("graph.graphLegend.octahedron", "октаэдр") },
   { key: "thesis",            label: tl("common.thesis", "Тезис"),           sym2d: "▲", name3d: tl("graph.graphLegend.tetrahedronUp", "тетраэдр ▲") },
   { key: "antithesis",        label: tl("common.antithesis", "Антитезис"),       sym2d: "▽", name3d: tl("graph.graphLegend.tetrahedronDown", "тетраэдр ▽") },
@@ -52,14 +52,14 @@ const ROLE_REGISTRY: RoleRegistryEntry[] = [
   { key: "formalized",        label: tl("common.formalized", "Формализованная"), sym2d: "▭", name3d: tl("graph.graphLegend.cube", "куб") },
   { key: "verifying",         label: tl("common.verifying", "Верифицирующая"),  sym2d: "☆", name3d: tl("graph.graphLegend.dodecahedronWire", "додекаэдр-каркас") },
   { key: "peripheral",        label: tl("common.peripheral", "Периферийная"),    sym2d: "●", name3d: tl("graph.graphLegend.sphere", "сфера") },
-];
+]);
 
-const STRUCT_LEGEND: {
+const STRUCT_LEGEND = (): {
   key: string;
   label: string;
   desc2d: string;
   desc3d: string;
-}[] = [
+}[] => ([
   { key: "core",       label: tl("graph.graphLegend.core", "Ядро"),
     desc2d: tl("graph.graphLegend.innerSilhouette", "внутренний силуэт"),
     desc3d: tl("graph.graphLegend.innerBody", "внутреннее тело (полупрозрачная оболочка)") },
@@ -75,7 +75,7 @@ const STRUCT_LEGEND: {
   { key: "peripheral", label: tl("common.peripheral", "Периферийная"),
     desc2d: tl("graph.graphLegend.thinOutline", "тонкая обводка"),
     desc3d: tl("graph.graphLegend.scaleDownDim", "уменьшенный масштаб + приглушённость") },
-];
+]);
 
 /** SVG-иконки структурных ролей (2D- и 3D-варианты исходника) */
 function StructIcon({ k, mode }: { k: string; mode: "2d" | "3d" }) {
@@ -209,11 +209,11 @@ export default function GraphLegend({
 
   // ── Какие роли реально присутствуют в текущем графе ──────────────────
   const procRolesActive = rolesOfLayer("procedural");
-  const visibleProcRoles = ROLE_REGISTRY.filter(
+  const visibleProcRoles = ROLE_REGISTRY().filter(
     (r) => procRolesActive.has(r.key) && PROCEDURAL_PRIORITY.includes(r.key),
   );
   const structRolesActive = rolesOfLayer("structural");
-  const visibleStruct = STRUCT_LEGEND.filter((s) =>
+  const visibleStruct = STRUCT_LEGEND().filter((s) =>
     structRolesActive.has(s.key),
   );
 

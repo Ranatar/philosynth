@@ -23,16 +23,16 @@ import { ApiError } from "../../api/client";
 import { getTransformHistory, rollbackTransform } from "../../api/transforms";
 import { tl } from "@philosynth/shared/i18n/t";
 
-export const DIRECTION_LABELS: Readonly<Record<TransformDirection, string>> = {
+export const DIRECTION_LABELS = (): Readonly<Record<TransformDirection, string>> => ({
   graph_to_theses: tl("edit.transformHistory.graphToTheses", "Граф → Тезисы"),
   theses_to_graph: tl("edit.transformHistory.thesesToGraph", "Тезисы → Граф"),
-};
+});
 
 /** Что восстановит откат записи данного направления. */
-export const ROLLBACK_TARGET_LABELS: Readonly<Record<TransformDirection, string>> = {
+export const ROLLBACK_TARGET_LABELS = (): Readonly<Record<TransformDirection, string>> => ({
   graph_to_theses: tl("common.thesesLower", "тезисы"),
   theses_to_graph: tl("common.graphLower", "граф"),
-};
+});
 
 export function fmtTransformDate(iso: string): string {
   const d = new Date(iso);
@@ -100,7 +100,7 @@ export function TransformHistory({
 
   const doRollback = useCallback(
     async (t: RepresentationTransform) => {
-      const what = ROLLBACK_TARGET_LABELS[t.direction];
+      const what = ROLLBACK_TARGET_LABELS()[t.direction];
       if (!window.confirm(tl("edit.transformHistory.confirmRestore", "Восстановить {what} на момент {createdAt}? Текущее состояние сохранится в истории и его тоже можно будет откатить.", { what, createdAt: fmtTransformDate(t.createdAt) })))
         return;
       setBusyId(t.id);
@@ -143,7 +143,7 @@ export function TransformHistory({
               <div key={t.id} className="version-item transform-item" data-transform-id={t.id}>
                 <div className="version-num">
                   {isRollback ? tl("edit.transformHistory.rollbackLabel", "↶ откат · ") : ""}
-                  {DIRECTION_LABELS[t.direction]}
+                  {DIRECTION_LABELS()[t.direction]}
                 </div>
                 <div className="version-preview">{summaryText(t.resultSummary as Record<string, number>)}</div>
                 <div className="version-meta">

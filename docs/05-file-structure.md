@@ -473,9 +473,18 @@ philosynth-service/
 │   │   │   ├── recommendations.ts      # 10.3: list / parse / extract / plan (+ withBusyRetry на 409 после done)
 │   │   │   └── export.ts
 │   │   │
+│   │   ├── i18n/                       # 11.3: язык интерфейса на клиенте
+│   │   │   ├── i18n-store.ts           # Zustand: locale/catalog/version; cookie ui_locale; каталоги по требованию
+│   │   │   │                           #  (import.meta.glob generated/*.json — литерально, иначе Vite не разрежет чанки);
+│   │   │   │                           #  applyUserLocale; провайдер tl() ставится при импорте; UI_LOCALE_NAMES
+│   │   │   └── useT.ts                 # useT() — подписка на смену языка (App + компоненты); useLocale()
+│   │   │
 │   │   ├── stores/
-│   │   │   ├── auth-store.ts           # Zustand: user, session (0.6: updateProfile/changePassword; 7.1: deleteAccount)
+│   │   │   ├── auth-store.ts           # Zustand: user, session (0.6: updateProfile/changePassword; 7.1: deleteAccount;
+│   │   │   │                           #  11.3: setUiLocale/setGenLang → PATCH /auth/me, applyUserLocale при restore/login)
 │   │   │   ├── synthesis-store.ts      # Zustand: текущий синтез, разделы, элементы
+│   │   │   │                           # (11.3: словари-надписи уровня модуля во ВСЁМ клиенте — фабрики
+│   │   │   │                           #  `const X = (): T => ({…})`, вызываемые при отрисовке; сторож 4ax: static = 0)
 │   │   │   ├── generation-store.ts     # Zustand: состояние генерации, стриминг
 │   │   │   ├── pool-store.ts           # Zustand: Unified Concept Pool (беседа 1.5b; 7.1: attachSynthesisId — файловая → каталожная после авто-импорта)
 │   │   │   └── ui-store.ts            # Zustand: модалки, sidebar, theme
@@ -510,12 +519,15 @@ philosynth-service/
 │   │   │   ├── ImportPage.tsx          # 4.3; 8.5: блок предложения родителя (LineageCandidateBlock:
 │   │   │   │                           #  .callout.note, «Связать» вторым шагом / «Пропустить»)
 │   │   │   ├── BillingPage.tsx         # 6.2 СДЕЛАНО: секции API-ключ / баланс (Stripe Elements или dev-режим) / подписка / история использования / транзакции
-│   │   │   ├── ProfilePage.tsx         # Профиль: displayName + смена пароля (A3, беседа 0.6); 7.1: + удаление аккаунта (DELETE /auth/me)
+│   │   │   ├── ProfilePage.tsx         # Профиль: displayName + смена пароля (A3, беседа 0.6); 7.1: + удаление аккаунта (DELETE /auth/me);
+│   │   │   │                           #  11.3: секция «Язык» — LanguageSwitch variant="form" + строка языка генерации по умолчанию
 │   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin; 7.1: + вкладка «Каталоги» (типы категорий/связей, правка и удаление пользовательских); 8.1: + вкладка «Доступ» (поиск пользователей, роль с подтверждением, последние 50 строк admin_audit)
 │   │   │
 │   │   ├── components/
 │   │   │   ├── layout/
-│   │   │   │   ├── Header.tsx              # 8.7: гостю «Войти · Регистрация», бренд → «/», выход → «/»
+│   │   │   │   ├── LanguageSwitch.tsx      # 11.3: переключатель ru/en/de (topbar | form); самоназвания; setUiLocale/setLocale
+│   │   │   │   ├── Header.tsx              # 8.7: гостю «Войти · Регистрация», бренд → «/», выход → «/»;
+│   │   │   │   │                           # 11.3: LanguageSwitch в .topbar-right гостю и вошедшему, useT()
 │   │   │   │   │                           # 9.1: полоса «Адрес не подтверждён» + «Отправить письмо ещё раз»
 │   │   │   │   │                           #  (классы полосы 8.7; только при emailVerified === false)
 │   │   │   │   ├── Sidebar.tsx

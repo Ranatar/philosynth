@@ -35,14 +35,14 @@ import {
 } from "../../api/elements";
 import { tl } from "@philosynth/shared/i18n/t";
 
-const SOURCE_LABELS: Record<ChangeSource, string> = {
+const SOURCE_LABELS = (): Record<ChangeSource, string> => ({
   manual: tl("edit.versionHistory.sourceManual", "правка вручную"),
   regenerated: tl("edit.versionHistory.sourceRegeneration", "перегенерация"),
   cascade: tl("edit.versionHistory.sourceCascade", "каскад"),
   auto_rename: tl("edit.versionHistory.sourceRename", "автозамена имени"),
   rollback: tl("edit.versionHistory.sourceRollback", "откат"),
   recommendation: tl("edit.versionHistory.sourceRecommendation", "по рекомендации критики"), // 10.2; «почему» (origin) — ниже, 10.3
-};
+});
 
 const HIDDEN_FIELDS = new Set([
   "id",
@@ -57,7 +57,7 @@ const HIDDEN_FIELDS = new Set([
   "type_catalog_id",
 ]);
 
-const FIELD_LABELS: Record<string, string> = {
+const FIELD_LABELS = (): Record<string, string> => ({
   name: tl("common.title", "Название"),
   type: tl("common.type", "Тип"),
   definition: tl("common.definition", "Определение"),
@@ -77,7 +77,7 @@ const FIELD_LABELS: Record<string, string> = {
   direction: tl("common.direction", "Направление"),
   strength: tl("edit.versionHistory.strength", "Сила"),
   htmlContent: tl("edit.versionHistory.sectionHtml", "HTML раздела"),
-};
+});
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
@@ -120,8 +120,8 @@ export function diffSnapshots(
   const keys = [...new Set([...Object.keys(older), ...Object.keys(newer)])]
     .filter((k) => !HIDDEN_FIELDS.has(k))
     .sort((a, b) => {
-      const ai = Object.keys(FIELD_LABELS).indexOf(a);
-      const bi = Object.keys(FIELD_LABELS).indexOf(b);
+      const ai = Object.keys(FIELD_LABELS()).indexOf(a);
+      const bi = Object.keys(FIELD_LABELS()).indexOf(b);
       return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
     });
   const out: DiffLine[] = [];
@@ -129,7 +129,7 @@ export function diffSnapshots(
   for (const k of keys) {
     const a = scalar(older[k]);
     const b = scalar(newer[k]);
-    const label = FIELD_LABELS[k] ?? k;
+    const label = FIELD_LABELS()[k] ?? k;
     if (a === b) {
       same++;
       continue;
@@ -254,7 +254,7 @@ export function VersionHistory({
               <span className="version-num">{tl("edit.versionHistory.versionLabel", "v{version}", { version: v.version })}</span>
               <span className="version-preview">{versionPreview(v.data)}</span>
               <span className="version-meta">
-                {fmtDate(v.createdAt)} · {SOURCE_LABELS[v.changeSource] ?? v.changeSource}
+                {fmtDate(v.createdAt)} · {SOURCE_LABELS()[v.changeSource] ?? v.changeSource}
               </span>
             </div>
             {/* 10.3: «почему изменилось» — снимок рекомендации, породившей правку

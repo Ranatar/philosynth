@@ -27,18 +27,18 @@ export const VISIBILITY_STEPS: readonly SynthesisVisibility[] = [
   "full",
 ];
 
-export const VISIBILITY_LABELS: Record<SynthesisVisibility, string> = {
+export const VISIBILITY_LABELS = (): Record<SynthesisVisibility, string> => ({
   private: tl("utils.visibilityText.private", "Приватная"),
   showcase: tl("utils.visibilityText.showcase", "Витрина"),
   full: tl("utils.visibilityText.public", "Публичная"),
-};
+});
 
 /** Короткое пояснение ступени под её кнопкой */
-export const VISIBILITY_DESCRIPTIONS: Record<SynthesisVisibility, string> = {
+export const VISIBILITY_DESCRIPTIONS = (): Record<SynthesisVisibility, string> => ({
   private: tl("utils.visibilityText.privateHint", "видите только вы"),
   showcase: tl("utils.visibilityText.showcaseHint", "капсула и метаданные — всем, содержание закрыто"),
   full: tl("utils.visibilityText.publicHint", "произведение целиком — всем, включая гостей"),
-};
+});
 
 /** Ключи флагов и порядок галочек в переключателе */
 export type VisibilityFlagKey = Exclude<keyof VisibilityFlags, "visibility">;
@@ -50,12 +50,12 @@ export const FLAG_ORDER: readonly VisibilityFlagKey[] = [
   "allowMeta",
 ];
 
-export const FLAG_LABELS: Record<VisibilityFlagKey, string> = {
+export const FLAG_LABELS = (): Record<VisibilityFlagKey, string> => ({
   showAuthor: tl("utils.visibilityText.showAuthorship", "показывать авторство"),
   showLogs: tl("utils.visibilityText.showLogs", "показывать логи генерации"),
   showPrompts: tl("utils.visibilityText.showPrompts", "показывать запросы к модели"),
   allowMeta: tl("utils.visibilityText.allowMeta", "разрешить брать в мета-синтез"),
-};
+});
 
 /** Какие галочки ПОКАЗЫВАТЬ на ступени (8.7 п.5b): на витрине — только
  *  авторство; три остальные там ПРЯЧУТСЯ (не рисуются неработающими), а
@@ -70,9 +70,8 @@ export function flagsShownFor(
 }
 
 /** Строка-пояснение под галочками витрины (8.7 п.5b) */
-export const SHOWCASE_FLAGS_NOTE =
-  tl("utils.visibilityText.showcaseFlagsLead", "Логи, запросы к модели и участие в мета-синтезе на витрине не применяются: ") +
-  tl("utils.visibilityText.showcaseFlagsTail", "содержание закрыто. Их значения сохранены и вернутся на публичной ступени.");
+export const SHOWCASE_FLAGS_NOTE = () => (tl("utils.visibilityText.showcaseFlagsLead", "Логи, запросы к модели и участие в мета-синтезе на витрине не применяются: ") +
+  tl("utils.visibilityText.showcaseFlagsTail", "содержание закрыто. Их значения сохранены и вернутся на публичной ступени."));
 
 /** Что увидит посторонний — подпись под переключателем (8.7 п.5d), словами.
  *  Считается через effectiveFlags: действенность, а не сырые значения. */

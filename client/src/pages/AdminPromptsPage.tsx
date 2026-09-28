@@ -867,11 +867,11 @@ function ConfigsTab() {
 /* ── Вкладка «Каталоги» (7.1) ────────────────────────────────────────── */
 
 const DIRECTIONS: RelationshipDirection[] = ["unidirectional", "bidirectional", "reflexive"];
-const DIRECTION_LABELS: Record<RelationshipDirection, string> = {
+const DIRECTION_LABELS = (): Record<RelationshipDirection, string> => ({
   unidirectional: tl("common.directionOneWay", "однонаправленная"),
   bidirectional: tl("common.directionTwoWay", "двунаправленная"),
   reflexive: tl("common.directionReflexive", "рефлексивная"),
-};
+});
 
 function directionOf(t: CatalogType): RelationshipDirection | null {
   const d = (t as { defaultDirection?: string }).defaultDirection;
@@ -1047,7 +1047,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                       >
                         {DIRECTIONS.map((d) => (
                           <option key={d} value={d}>
-                            {DIRECTION_LABELS[d]}
+                            {DIRECTION_LABELS()[d]}
                           </option>
                         ))}
                       </select>
@@ -1078,7 +1078,7 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                   </td>
                   <td>{t.nameRu}</td>
                   <td>{t.description}</td>
-                  {isRel && <td>{(() => { const d = directionOf(t); return d ? DIRECTION_LABELS[d] : ""; })()}</td>}
+                  {isRel && <td>{(() => { const d = directionOf(t); return d ? DIRECTION_LABELS()[d] : ""; })()}</td>}
                   <td>
                     <span className={originClass(t.isSystem)}>{t.isSystem ? tl("adminPromptsPage.system", "системный") : tl("adminPromptsPage.custom", "пользовательский")}</span>
                   </td>
@@ -1139,9 +1139,9 @@ function CatalogsTab() {
 const AUDIT_LIMIT = 50;
 const USERS_PAGE = 50;
 
-const ROLE_LABELS: Record<UserRole, string> = { user: tl("adminPromptsPage.roleUser", "пользователь"), admin: tl("adminPromptsPage.roleAdmin", "администратор") };
+const ROLE_LABELS = (): Record<UserRole, string> => ({ user: tl("adminPromptsPage.roleUser", "пользователь"), admin: tl("adminPromptsPage.roleAdmin", "администратор") });
 
-const ACTION_LABELS: Record<string, string> = {
+const ACTION_LABELS = (): Record<string, string> => ({
   "prompt.version.created": tl("adminPromptsPage.auditTemplateCreated", "версия шаблона создана"),
   "prompt.version.activated": tl("adminPromptsPage.auditTemplateActivated", "версия шаблона активирована"),
   "config.version.created": tl("adminPromptsPage.auditConfigCreated", "версия конфига создана"),
@@ -1151,7 +1151,7 @@ const ACTION_LABELS: Record<string, string> = {
   "user.role.changed": tl("adminPromptsPage.auditRoleChanged", "роль изменена"),
   "user.bootstrapped": tl("adminPromptsPage.auditFirstAdmin", "первый администратор заведён"),
   "account.deleted": tl("adminPromptsPage.auditAccountDeleted", "аккаунт удалён"),
-};
+});
 
 /** Класс бейджа роли (литералы вне JSX — css-parity-audit) */
 function roleClass(role: UserRole): string {
@@ -1229,8 +1229,8 @@ function AccessTab() {
       await Promise.all([loadUsers(search.trim()), loadAudit()]);
       setStatus({
         text: r.changed
-          ? tl("adminPromptsPage.roleNow", "{email}: роль теперь «{role}»", { email: r.user.email, role: ROLE_LABELS[r.user.role] })
-          : tl("adminPromptsPage.roleAlready", "{email}: роль уже была «{role}»", { email: r.user.email, role: ROLE_LABELS[r.user.role] }),
+          ? tl("adminPromptsPage.roleNow", "{email}: роль теперь «{role}»", { email: r.user.email, role: ROLE_LABELS()[r.user.role] })
+          : tl("adminPromptsPage.roleAlready", "{email}: роль уже была «{role}»", { email: r.user.email, role: ROLE_LABELS()[r.user.role] }),
         kind: "ok",
       });
     } catch (err) {
@@ -1298,7 +1298,7 @@ function AccessTab() {
                       </td>
                       <td>{u.displayName ?? ""}</td>
                       <td>
-                        <span className={roleClass(u.role)}>{ROLE_LABELS[u.role]}</span>
+                        <span className={roleClass(u.role)}>{ROLE_LABELS()[u.role]}</span>
                       </td>
                       <td>{fmtDateShort(u.createdAt)}</td>
                       <td className="num">
@@ -1349,7 +1349,7 @@ function AccessTab() {
                   <tr key={e.id} data-testid="access-audit-row" data-action={e.action}>
                     <td>{fmtDateShort(e.createdAt)}</td>
                     <td>{actorLabel(e)}</td>
-                    <td>{ACTION_LABELS[e.action] ?? e.action}</td>
+                    <td>{ACTION_LABELS()[e.action] ?? e.action}</td>
                     <td>
                       <code>
                         {e.targetType}

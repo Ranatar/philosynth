@@ -36,10 +36,10 @@ import { useTransformStream, type TransformDoneEvent } from "../../hooks/useTran
 import { DIRECTION_LABELS, TransformHistory, summaryText } from "./TransformHistory";
 import { tl } from "@philosynth/shared/i18n/t";
 
-export const TARGET_SECTION_TITLES: Readonly<Record<TransformDirection, string>> = {
+export const TARGET_SECTION_TITLES = (): Readonly<Record<TransformDirection, string>> => ({
   graph_to_theses: tl("edit.transformPanel.thesisCorpus", "Корпус тезисов"),
   theses_to_graph: tl("common.categoryGraph", "Граф категорий"),
-};
+});
 
 export interface TransformCounts {
   theses: number;
@@ -205,7 +205,7 @@ export function TransformPanel({
           </div>
 
           <div className="transform-warn" data-testid="transform-warn">
-            {tl("edit.transformPanel.willOverwrite", "Раздел «{direction}» будет перезаписан.", { direction: TARGET_SECTION_TITLES[direction] })}
+            {tl("edit.transformPanel.willOverwrite", "Раздел «{direction}» будет перезаписан.", { direction: TARGET_SECTION_TITLES()[direction] })}
             {counts ? lossPreviewText(direction, counts) : countsError ?? tl("edit.transformPanel.loadingCounters", "Загрузка счётчиков…")}{tl("edit.transformPanel.versionKept", "Текущая версия сохранится в истории и доступна для отката.")}
           </div>
 
@@ -231,7 +231,7 @@ export function TransformPanel({
               ) : (
                 <>
                   <span className="form-sublabel" style={{ alignSelf: "center" }}>
-                    {tl("edit.transformPanel.confirmTransform", "Подтвердите: {direction}, раздел будет заменён целиком.", { direction: DIRECTION_LABELS[direction] })}
+                    {tl("edit.transformPanel.confirmTransform", "Подтвердите: {direction}, раздел будет заменён целиком.", { direction: DIRECTION_LABELS()[direction] })}
                   </span>
                   <button
                     type="button"
@@ -255,8 +255,8 @@ export function TransformPanel({
               <span className="edit-regen-spinner" />
               <span>
                 {stream.started
-                  ? tl("edit.transformPanel.generatingChars", "{direction}: генерируется… {liveChars} симв.", { direction: DIRECTION_LABELS[direction], liveChars: stream.liveChars.toLocaleString("ru") })
-                  : tl("edit.transformPanel.starting", "{direction}: запуск…", { direction: DIRECTION_LABELS[direction] })}
+                  ? tl("edit.transformPanel.generatingChars", "{direction}: генерируется… {liveChars} симв.", { direction: DIRECTION_LABELS()[direction], liveChars: stream.liveChars.toLocaleString("ru") })
+                  : tl("edit.transformPanel.starting", "{direction}: запуск…", { direction: DIRECTION_LABELS()[direction] })}
               </span>
             </div>
           )}
@@ -270,7 +270,7 @@ export function TransformPanel({
 
           {done && !busy && (
             <div className="cascade-panel visible transform-summary" data-testid="transform-summary">
-              <div className="cascade-title">{tl("edit.transformPanel.completed", "✓ {direction} — выполнено", { direction: DIRECTION_LABELS[done.direction] })}</div>
+              <div className="cascade-title">{tl("edit.transformPanel.completed", "✓ {direction} — выполнено", { direction: DIRECTION_LABELS()[done.direction] })}</div>
               <div className="cascade-desc">{summaryText(done.summary)}</div>
               <div className="form-sublabel">
                 {tl("edit.transformPanel.usageLine", "{inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { inputTokens: done.usage.inputTokens.toLocaleString("ru"), outputTokens: done.usage.outputTokens.toLocaleString("ru"), costUsd: done.usage.costUsd.toFixed(4) })}

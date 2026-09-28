@@ -59,7 +59,7 @@ check("синтаксис ≡ prompt-registry ([\\w.-])", eq(extractPlaceholders
 check("missingPlaceholders", eq(missingPlaceholders(body), ["unknown_ph"]));
 const parts = previewParts(body);
 check("previewParts: filled/missing/text", eq(parts.map((p) => p.kind), ["text", "filled", "text", "filled", "text", "filled", "text", "missing", "text"]), parts);
-check("filled берёт SAMPLE_VALUES", parts[1].text === SAMPLE_VALUES.participants && parts[7].text === "{{unknown_ph}}");
+check("filled берёт SAMPLE_VALUES", parts[1].text === SAMPLE_VALUES().participants && parts[7].text === "{{unknown_ph}}");
 check("previewParts без плейсхолдеров — один text", eq(previewParts("plain").map((p) => p.kind), ["text"]));
 check("пустое тело → []", previewParts("").length === 0);
 // Инвентарь плейсхолдеров серверных шаблонов: у всех есть тестовое значение
@@ -70,7 +70,7 @@ for (const f of cfg) {
   try { text = read(f); } catch { continue; }
   for (const m of text.matchAll(/\{\{\s*([\w.-]+)\s*\}\}/g)) inventory.add(m[1]);
 }
-const noSample = [...inventory].filter((k) => !(k in SAMPLE_VALUES));
+const noSample = [...inventory].filter((k) => !(k in SAMPLE_VALUES()));
 check(`тестовые значения для плейсхолдеров enrichment/transform (${inventory.size})`, noSample.length === 0, noSample);
 
 console.log("── utils/format ──");

@@ -232,6 +232,39 @@ const strValue = (n) =>
  * → { calls: Map<key, {ru, where[], params[]}>, problems: [] }
  * Ключ и русский текст обязаны быть литералами; иначе — problem.
  */
+/** Вызов внутри какой-либо функции (стрелочной, обычной, метода)? */
+function inFunctionOf(n) {
+  for (let p = n.parent; p; p = p.parent) if (ts.isFunctionLike(p)) return true;
+  return false;
+}
+
+/**
+ * 11.3: вызовы tl() НА УРОВНЕ МОДУЛЯ (вне функций) — «static»: значение
+ * вычисляется при импорте и при смене языка не обновится. Возвращает
+ * строки «rel:line key»; отдельно по client/ и прочим каталогам.
+ */
+export function scanStaticCalls(root) {
+  const out = [];
+  for (const dir of CODE_DIRS) {
+    for (const abs of walk(path.join(root, dir))) {
+      const rel = path.relative(root, abs).split(path.sep).join("/");
+      if (rel === "packages/shared/i18n/t.ts") continue;
+      const src = fs.readFileSync(abs, "utf8");
+      if (!src.includes(`${FN}(`)) continue;
+      const sf = ts.createSourceFile(abs, src, ts.ScriptTarget.Latest, true,
+        abs.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+      (function v(n) {
+        if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === FN && !inFunctionOf(n)) {
+          const line = sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1;
+          out.push(`${rel}:${line} ${strValue(n.arguments[0]) ?? "?"}`);
+        }
+        ts.forEachChild(n, v);
+      })(sf);
+    }
+  }
+  return out;
+}
+
 export function scanCalls(root) {
   const calls = new Map();
   const problems = [];
@@ -258,8 +291,11 @@ export function scanCalls(root) {
             }
             const prev = calls.get(key);
             if (prev && prev.ru !== ru) problems.push(`${rel}:${line}: ключ ${key} уже встречался с другим русским текстом (${prev.where[0]})`);
-            if (prev) prev.where.push(`${rel}:${line}`);
-            else calls.set(key, { ru, where: [`${rel}:${line}`], params });
+            // 11.3: вызов вне функции — вычисляется при импорте модуля и при
+            // смене языка не обновится (static); сторож 4ax требует 0 в клиенте
+            const isStatic = !inFunctionOf(n);
+            if (prev) { prev.where.push(`${rel}:${line}`); if (isStatic) prev.static = true; }
+            else calls.set(key, { ru, where: [`${rel}:${line}`], params, ...(isStatic ? { static: true } : {}) });
           }
         }
         ts.forEachChild(n, v);
@@ -306,6 +342,33 @@ export const MIRROR_EXCLUSIONS = [
     file: "client/src/components/logs/ContextLogViewer.tsx",
     text: "Синтез Философской Концепции",
     reason: "DEFAULT_TITLE сравнивается с заголовком синтеза (умолчание БД) — значение, не надпись",
+  },
+  // 11.3: машинные значения, которые codemod 11.2 обернул в tl() по ошибке
+  // (сквозное правило Фазы 11: значения data-section через tl() не проходят)
+  {
+    file: "client/src/components/edit/EditModal.tsx",
+    text: "Структура документа",
+    reason: "STRUCTURE_SUBSECTION — имя data-section подраздела «Структура документа», уходит на сервер в POST /regenerate-subsection (structure-tracker); значение, не надпись",
+  },
+  {
+    file: "client/src/utils/capsule-html.ts",
+    text: "Капсула",
+    reason: "CAPSULE_SECTION — имя data-section капсулы, по нему её находят экстракторы контекста и импорт; значение, не надпись",
+  },
+  {
+    file: "client/src/utils/recommendations.ts",
+    text: "удалить",
+    reason: "OP_DELETE — операция контракта таблицы рекомендаций (shared/constants/recommendations), сравнивается с row.op сервера; сторож 4au читает литерал",
+  },
+  {
+    file: "client/src/i18n/i18n-store.ts",
+    text: "Русский",
+    reason: "UI_LOCALE_NAMES — самоназвание языка в переключателе (11.3, п.3): не переводится и в каталог не идёт",
+  },
+  {
+    file: "client/src/utils/recommendations.ts",
+    text: "перегенерировать",
+    reason: "OP_REGENERATE — операция контракта таблицы рекомендаций, сравнивается с row.op сервера",
   },
 ];
 

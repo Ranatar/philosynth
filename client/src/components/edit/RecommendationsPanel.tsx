@@ -84,14 +84,14 @@ import { tl } from "@philosynth/shared/i18n/t";
 const labelOf = (key: string): string =>
   (KEY_LABELS as Record<string, string>)[key] ?? key;
 
-const STATUS_LABEL: Record<Recommendation["status"], string> = {
+const STATUS_LABEL = (): Record<Recommendation["status"], string> => ({
   new: tl("edit.recommendationsPanel.statusPending", "ждёт решения"),
   planned: tl("edit.recommendationsPanel.statusPlanned", "в плане"),
   done: tl("edit.recommendationsPanel.statusDone", "исполнена"),
   rejected: tl("edit.recommendationsPanel.statusRejected", "отклонена"),
   invalid: tl("edit.recommendationsPanel.statusInvalid", "негодна"),
   stale: tl("edit.recommendationsPanel.statusTextChanged", "текст изменился"),
-};
+});
 
 export interface RecommendationsPanelProps {
   open: boolean;
@@ -400,7 +400,7 @@ export function RecommendationsPanel({
           )}
           <span className="rec-op">{r.op}</span>
           <span className={costClass} data-testid="rec-cost" title={actionTextOf(r)}>
-            {COST_KIND_LABEL[kind]}
+            {COST_KIND_LABEL()[kind]}
           </span>
         </div>
         {mismatch && (
@@ -529,7 +529,7 @@ export function RecommendationsPanel({
         {r.element ? ` · ${r.element}` : ""}
       </span>
       <span className="rec-op">{r.op}</span>
-      <span className="rec-status">{STATUS_LABEL[r.status]}</span>
+      <span className="rec-status">{STATUS_LABEL()[r.status]}</span>
     </div>
   );
 

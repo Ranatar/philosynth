@@ -56,9 +56,13 @@ if (calls.size) {
     if (row.ru !== c.ru) { sync.changed.push(`${key}: «${row.ru}» → «${c.ru}»`); row.ru = c.ru; }
     if (row.obsolete) { delete row.obsolete; sync.revived.push(key); }
     delete row.data;
+    // 11.3: отметка static пересчитывается по коду — есть ли у ключа вызов
+    // tl() вне функции (при импорте модуля; при смене языка не обновится)
+    if (c.static) row.static = true; else delete row.static;
     row.where = c.where;
   }
   for (const [key, row] of Object.entries(S)) {
+    if (row.data) delete row.static; // 11.3: литерал-данные не вычисляется tl() — отметка static к ним не относится
     if (row.data || calls.has(key)) continue;
     if (prune) { delete S[key]; sync.pruned.push(key); }
     else if (!row.obsolete) { row.obsolete = true; sync.obsolete.push(key); }

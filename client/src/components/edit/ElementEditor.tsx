@@ -126,19 +126,19 @@ export const HOST_SECTION: Record<EditableKind, string> = {
   glossary_term: "glossary",
 };
 
-const KIND_TITLE: Record<EditableKind, string> = {
+const KIND_TITLE = (): Record<EditableKind, string> => ({
   category: tl("edit.elementEditor.graphCategory", "Категория графа"),
   edge: tl("edit.elementEditor.graphEdge", "Связь графа"),
   thesis: tl("common.thesis", "Тезис"),
   glossary_term: tl("edit.elementEditor.glossaryTerm", "Термин глоссария"),
-};
+});
 
-const HTML_SYNC_FIELD_LABELS: Record<string, string> = {
+const HTML_SYNC_FIELD_LABELS = (): Record<string, string> => ({
   justification: tl("edit.elementEditor.thesisJustification", "обоснование тезиса"),
   termCategory: tl("edit.elementEditor.termCategory", "категория термина"),
   origin: tl("edit.elementEditor.originLower", "происхождение"),
   definition: tl("common.definitionLower", "определение"),
-};
+});
 
 const labelOf = (key: string): string =>
   (KEY_LABELS as Record<string, string>)[key] ?? key;
@@ -267,7 +267,7 @@ export function ElementEditor({
   }, [target]);
 
   const dirty = isDirty(draft);
-  const title = KIND_TITLE[target.kind];
+  const title = KIND_TITLE()[target.kind];
   const elementId = target.element.id;
 
   const currentData = useMemo(
@@ -704,15 +704,15 @@ function ElementSummary({
 
 /* ── Блок анализа влияния + htmlSync ─────────────────────────────────── */
 
-const SEVERITY_TEXT: Record<ImpactAnalysis["severity"], string> = {
+const SEVERITY_TEXT = (): Record<ImpactAnalysis["severity"], string> => ({
   none: tl("edit.elementEditor.noReferences", "Другие разделы на элемент не ссылаются — перегенерация не требуется."),
   low: tl("edit.elementEditor.structuralOnly", "Затронуты только структурные зависимости (контекст разделов ниже по порядку)."),
   high: tl("edit.elementEditor.nameMentioned", "Имя элемента упомянуто в других разделах или тезисах — они ссылаются на прежнее состояние."),
-};
+});
 
 function htmlSyncFieldLabel(f: string): string {
   const key = f.includes(".") ? f.slice(f.lastIndexOf(".") + 1) : f;
-  return HTML_SYNC_FIELD_LABELS[key] ?? key;
+  return HTML_SYNC_FIELD_LABELS()[key] ?? key;
 }
 
 function ImpactPanel({
@@ -739,7 +739,7 @@ function ImpactPanel({
   return (
     <div className="cascade-panel visible" data-element-impact style={{ marginTop: 12 }}>
       <div className="cascade-title">{tl("edit.elementEditor.impactAnalysis", "Анализ влияния")}</div>
-      <div className="cascade-desc">{SEVERITY_TEXT[impact.severity]}</div>
+      <div className="cascade-desc">{SEVERITY_TEXT()[impact.severity]}</div>
 
       {sync.rendered.length > 0 && (
         <div className="pool-status ok" style={{ marginBottom: 6 }}>

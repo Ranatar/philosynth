@@ -7,6 +7,8 @@
  *   POST /auth/logout                                     → { ok: true }
  *   GET  /auth/me → { user: {id,email,displayName,role,balanceUsd} }
  *   PATCH /auth/me { displayName } → { user: полный }        (беседа 0.6)
+ *   PATCH /auth/me { uiLocale } → gen_lang тоже (правило владельца, 11.2);
+ *   PATCH /auth/me { genLang }  → только gen_lang            (11.3: setUiLocale/setGenLang)
  *   POST /auth/password-change { currentPassword, newPassword } → { ok } (0.5/0.6)
  *   Почта (беседа 9.1):
  *   POST /auth/email/verify/request → { ok, alreadyVerified, sent }
@@ -35,6 +37,7 @@ import {
   setUnauthorizedHandler,
 } from "../api/client";
 import { tl } from "@philosynth/shared/i18n/t";
+import { applyUserLocale } from "../i18n/i18n-store";
 
 /** Пользователь (ответ GET /auth/me; после login — до restore — role/balanceUsd могут отсутствовать) */
 export interface AuthUser {
@@ -47,8 +50,9 @@ export interface AuthUser {
    *  в шапке рисуется только при строгом false) */
   emailVerified?: boolean;
   /** 11.2: язык интерфейса ('ru'|'en'|'de') и язык генерации по умолчанию;
-   *  null — не выбирал; до дотяжки GET /auth/me — undefined. Переключатель и
-   *  применение на клиенте — 11.3 */
+   *  null — не выбирал; до дотяжки GET /auth/me — undefined. 11.3: uiLocale
+   *  применяется к интерфейсу (applyUserLocale) при restore/login/PATCH;
+   *  genLang — умолчание формы создания (SynthesisForm) */
   uiLocale?: string | null;
   genLang?: string | null;
 }
@@ -90,6 +94,13 @@ interface AuthState {
   clearError(): void;
   /** PATCH /auth/me { displayName } (беседа 0.6); user в store обновляется */
   updateProfile(displayName: string): Promise<ProfileActionResult>;
+  /** 11.3: PATCH /auth/me { uiLocale } — язык интерфейса; сервер сам ставит
+   *  gen_lang (правило владельца). Интерфейс переключается сразу (i18n-store),
+   *  ответ сервера подтверждает оба поля в user */
+  setUiLocale(uiLocale: string): Promise<ProfileActionResult>;
+  /** 11.3: PATCH /auth/me { genLang } — язык генерации по умолчанию;
+   *  интерфейс НЕ меняется (связь односторонняя) */
+  setGenLang(genLang: string): Promise<ProfileActionResult>;
   /** POST /auth/password-change (беседа 0.6); сессия текущего окна живёт */
   changePassword(
     currentPassword: string,
@@ -148,6 +159,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         /* усечённого пользователя достаточно для входа */
       }
       set({ user: full, status: "authenticated", pending: false });
+      applyUserLocale(full.uiLocale);
       return true;
     } catch (err) {
       set({
@@ -198,6 +210,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const user = await fetchMe();
       set({ user, status: "authenticated" });
+      applyUserLocale(user.uiLocale);
     } catch {
       set({ user: null, status: "anonymous" });
     }
@@ -216,6 +229,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { ok: true };
     } catch (err) {
       return toActionFailure(err, tl("stores.authStore.profileSaveFailed", "Не удалось сохранить профиль"));
+    }
+  },
+
+  async setUiLocale(uiLocale) {
+    // Интерфейс — сразу, не дожидаясь сервера (cookie + каталог); сервер
+    // затем подтверждает ui_locale и переписывает gen_lang
+    applyUserLocale(uiLocale);
+    try {
+      const { user } = await apiPatch<{ user: AuthUser }>("/auth/me", { uiLocale });
+      set({ user });
+      applyUserLocale(user.uiLocale);
+      return { ok: true };
+    } catch (err) {
+      return toActionFailure(err, tl("stores.authStore.localeSaveFailed", "Не удалось сохранить язык интерфейса"));
+    }
+  },
+
+  async setGenLang(genLang) {
+    try {
+      const { user } = await apiPatch<{ user: AuthUser }>("/auth/me", { genLang });
+      set({ user }); // ui_locale в ответе прежний — интерфейс не трогаем
+      return { ok: true };
+    } catch (err) {
+      return toActionFailure(err, tl("stores.authStore.genLangSaveFailed", "Не удалось сохранить язык генерации"));
     }
   },
 

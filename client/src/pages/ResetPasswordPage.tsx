@@ -17,8 +17,7 @@ import { useAuthStore } from "../stores/auth-store";
 import { tl } from "@philosynth/shared/i18n/t";
 
 /** Пояснение на /login после сброса (LoginPage читает location.state.notice) */
-export const PASSWORD_RESET_DONE_NOTICE =
-  tl("resetPasswordPage.passwordChangedLogin", "Пароль изменён; все прежние сессии завершены. Войдите с новым паролем.");
+export const PASSWORD_RESET_DONE_NOTICE = () => (tl("resetPasswordPage.passwordChangedLogin", "Пароль изменён; все прежние сессии завершены. Войдите с новым паролем."));
 
 function AuthShell({ tagline, children }: { tagline: string; children: React.ReactNode }) {
   return (
@@ -132,7 +131,7 @@ export function ResetPasswordConfirmPage() {
     const result = await confirmPasswordReset(token, newPassword);
     setPending(false);
     if (result.ok) {
-      navigate("/login", { replace: true, state: { notice: PASSWORD_RESET_DONE_NOTICE } });
+      navigate("/login", { replace: true, state: { notice: PASSWORD_RESET_DONE_NOTICE() } });
     } else {
       setErrors(result.details ?? { _: result.error });
     }

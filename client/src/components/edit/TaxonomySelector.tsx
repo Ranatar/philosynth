@@ -91,11 +91,11 @@ interface ListItem {
   score?: number;
 }
 
-const DIRECTION_LABELS: Record<RelationshipDirection, string> = {
+const DIRECTION_LABELS = (): Record<RelationshipDirection, string> => ({
   unidirectional: tl("common.directionOneWay", "однонаправленная"),
   bidirectional: tl("common.directionTwoWay", "двунаправленная"),
   reflexive: tl("common.directionReflexive", "рефлексивная"),
-};
+});
 
 export function TaxonomySelector({
   kind,
@@ -479,8 +479,8 @@ function CreateTypeForm({
             disabled={saving}
             onChange={(e) => setDirection(e.target.value as RelationshipDirection)}
           >
-            {(Object.keys(DIRECTION_LABELS) as RelationshipDirection[]).map((d) => (
-              <option key={d} value={d}>{DIRECTION_LABELS[d]}</option>
+            {(Object.keys(DIRECTION_LABELS()) as RelationshipDirection[]).map((d) => (
+              <option key={d} value={d}>{DIRECTION_LABELS()[d]}</option>
             ))}
           </select>
           {errors.defaultDirection && <div className="pool-status err">{errors.defaultDirection}</div>}
