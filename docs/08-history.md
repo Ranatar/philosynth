@@ -608,6 +608,10 @@ check:integration += 2ak/4av/5ai; доки — scripts/patches/patch-docs-conv11
 2an/4ay. Смоук 42 ✓ ×2, tests/test-114-requests2-5.mjs 50 ✓ ×2 (Chrome 131 на
 сборке клиента, два прогона check:integration внутри); доки —
 patch-docs-conv114.py. Долг Д-32 → 12.1; ближайшая — 12.1.
+Постскриптум 11.4 (2026-09-29, поверх коммита 437493d): переводы en и de
+УТВЕРЖДЕНЫ (вычитка 2269 строк, 4 правки en, 2 — de; `i18n:import` без
+`--draft`, черновиков 0); Д-33 (сторож «значение данных без строки», `i18n:export
+--data`, `i18n:add-lang`) → 12.3; patch-docs-conv114-post.py.
 `shared/i18n/locales.ts` (UI_LOCALES, UI_TO_GEN, genLangForUi; LANG_OPTIONS формы
 перенесён сюда — один список); `t.ts` — ICU-плюралы по Intl.PluralRules языка
 каталога, `setCatalogProvider({ locale, strings })`; `i18n:params` (32 говорящих

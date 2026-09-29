@@ -56,7 +56,8 @@ const live = Object.entries(S).filter(([, r]) => !r.obsolete);
 ok("каталог en несёт ВСЕ живые ключи (включая data)", live.every(([k]) => k in enCat.strings) && Object.keys(enCat.strings).length === live.length);
 ok("каталог de несёт ВСЕ живые ключи (черновик 11.4)", deCat.locale === "de" && live.every(([k]) => k in deCat.strings));
 ok("splitCatalog не выбрасывает data", Object.keys(splitCatalog(table, "en").strings).length === live.length);
-ok("de — черновик у каждого ключа (снимает только человек)", live.every(([, r]) => r.draft?.includes("de")) && live.every(([, r]) => r.from?.de === r.ru));
+// 2026-09-29: en и de утверждены владельцем (import без --draft) — черновиков нет, from = ru
+ok("en и de утверждены: черновиков нет, from.en/de = ru у каждого ключа", live.every(([, r]) => !(r.draft ?? []).includes("de") && !(r.draft ?? []).includes("en") && r.from?.de === r.ru && r.from?.en === r.ru));
 
 /* ── 3. tData по месту показа ── */
 console.log("3. tData / tDataLoose");
@@ -99,8 +100,17 @@ console.log("5. цикл переводчика (копия репозитори
   ok("export --lang de пишет файл переводчика", r.status === 0 && fs.existsSync(req), r.stdout.slice(-200));
   const file = JSON.parse(fs.readFileSync(req, "utf8"));
   const keys = Object.keys(file.strings);
-  ok("файл несёт все черновики de", keys.length === live.length && keys.every((k) => file.strings[k].draft?.includes("de")));
+  ok("export --lang de без черновиков и пропусков — файл пуст (нечего переводить)", keys.length === 0, String(keys.length));
+  // цикл переводчика воспроизводится на копии: помечаем три строки черновиком de (как после i18n:import --draft)
+  const tp0 = path.join(tmp, "packages/shared/i18n/strings.json");
+  const t0 = JSON.parse(fs.readFileSync(tp0, "utf8"));
   const [k1, k2, k3] = ["common.save", "common.cancel", "shared.labels.methodAnalytical"];
+  for (const k of [k1, k2, k3]) t0.strings[k].draft = ["de"];
+  fs.writeFileSync(tp0, JSON.stringify(t0, null, 2) + "\n");
+  r = run(["scripts/i18n/i18n-export.mjs", "--lang", "de", "--dry", "--out", req]);
+  const file2 = JSON.parse(fs.readFileSync(req, "utf8"));
+  ok("export после --draft у трёх строк отдаёт ровно их", Object.keys(file2.strings).sort().join() === [k1, k2, k3].sort().join() && Object.values(file2.strings).every((s) => s.draft?.includes("de")));
+  Object.assign(file, file2);
   // k1: новый текст; k2: тот же текст, отметка de снята переводчиком; k3: не тронут
   const edited = { meta: file.meta, strings: {} };
   edited.strings[k1] = { ...file.strings[k1], de: "Speichern!", draft: file.strings[k1].draft };
@@ -111,10 +121,11 @@ console.log("5. цикл переводчика (копия репозитори
   const t2 = JSON.parse(fs.readFileSync(path.join(tmp, "packages/shared/i18n/strings.json"), "utf8")).strings;
   ok("import без --draft: новый текст записан, draft de снят", r.status === 0 && t2[k1].de === "Speichern!" && !(t2[k1].draft ?? []).includes("de") && t2[k1].from.de === t2[k1].ru, r.stdout.slice(-300));
   ok("тот же текст с убранной отметкой — вычитка подтверждена", !(t2[k2].draft ?? []).includes("de") && t2[k2].de === file.strings[k2].de);
-  ok("нетронутая строка осталась черновиком", (t2[k3].draft ?? []).includes("de") && (t2[k1].draft ?? []).includes("en"));
-  ok("остальные 2266 строк не тронуты", Object.keys(t2).filter((k) => ![k1, k2].includes(k)).every((k) => (t2[k].draft ?? []).includes("de")));
+  ok("нетронутая строка осталась черновиком", (t2[k3].draft ?? []).includes("de") && !(t2[k1].draft ?? []).includes("de"));
+  ok("остальные 2266 строк не тронуты (утверждены, без draft)", Object.keys(t2).filter((k) => ![k1, k2, k3].includes(k)).every((k) => !(t2[k].draft ?? []).length && t2[k].de === S[k].de));
   // отказы: плюрал не своего языка, подстановки
-  const bad = { meta: file.meta, strings: { "document.sectionView.parsedWithLosses": { ...file.strings["document.sectionView.parsedWithLosses"], de: "⚠ x ({n, plural, one {#} few {#} other {#}})" }, "adminPromptsPage.compare": { ...file.strings["adminPromptsPage.compare"], de: "Vergleich: {a} → {b}" } } };
+  const rowOf = (k) => ({ ru: t0.strings[k].ru, params: t0.strings[k].params });
+  const bad = { meta: file.meta, strings: { "document.sectionView.parsedWithLosses": { ...rowOf("document.sectionView.parsedWithLosses"), de: "⚠ x ({n, plural, one {#} few {#} other {#}})" }, "adminPromptsPage.compare": { ...rowOf("adminPromptsPage.compare"), de: "Vergleich: {a} → {b}" } } };
   fs.writeFileSync(req, JSON.stringify(bad));
   r = run(["scripts/i18n/i18n-import.mjs", req]);
   ok("import отвергает few в немецком и чужие подстановки", r.status === 1 && /few/.test(r.stdout) && /подстановки/.test(r.stdout));

@@ -289,28 +289,35 @@ async function main() {
     fs.symlinkSync(path.join(ROOT, "node_modules/typescript"), path.join(tmp, "node_modules/typescript"), "dir");
     const run = (args) => spawnSync(process.execPath, args, { cwd: tmp, encoding: "utf8" });
     const req = path.join(tmp, "i18n-request.de.json");
+    // 2026-09-29: en/de утверждены владельцем — на копии воспроизводим состояние «после i18n:import --draft»:
+    // все строки помечаются черновиком de, как было до вычитки
+    const tp0 = path.join(tmp, "packages/shared/i18n/strings.json");
+    const t0 = JSON.parse(fs.readFileSync(tp0, "utf8"));
+    const liveKeys = Object.keys(t0.strings).filter((k) => !t0.strings[k].obsolete);
+    for (const k of liveKeys) t0.strings[k].draft = [...new Set([...(t0.strings[k].draft ?? []), "de"])];
+    fs.writeFileSync(tp0, JSON.stringify(t0, null, 2) + "\n");
     let r = run(["scripts/i18n/i18n-export.mjs", "--lang", "de", "--dry", "--out", req]);
     const file = JSON.parse(fs.readFileSync(req, "utf8"));
     const total = Object.keys(file.strings).length;
-    ok(r.status === 0 && total === 2269 && Object.values(file.strings).every((s) => s.draft?.includes("de")), `export --lang de: файл переводчика на ${total} строк, все — черновики`, r.stdout.slice(-200));
-    const picked = ["common.save", "catalogPage.myCatalog", "shared.labels.methodDialectical" in file.strings ? "shared.labels.methodDialectical" : "shared.labels.methodAnalytical"];
+    ok(r.status === 0 && total === liveKeys.length && Object.values(file.strings).every((s) => s.draft?.includes("de")), `export --lang de: файл переводчика на ${total} строк, все — черновики`, r.stdout.slice(-200));
+    const picked = ["common.save", "catalogPage.myCatalog", "shared.labels.methodAnalytical"];
     const edited = { meta: file.meta, strings: {} };
     for (const k of picked) edited.strings[k] = { ...file.strings[k], de: file.strings[k].de + " ✓", draft: file.strings[k].draft };
     fs.writeFileSync(req, J(edited));
     r = run(["scripts/i18n/i18n-import.mjs", req]);
     const t2 = JSON.parse(fs.readFileSync(path.join(tmp, "packages/shared/i18n/strings.json"), "utf8")).strings;
     ok(r.status === 0 && /влито переводов 3/.test(r.stdout), "import без --draft: влито 3", r.stdout.slice(-300));
-    ok(picked.every((k) => t2[k].de.endsWith(" ✓") && !(t2[k].draft ?? []).includes("de") && (t2[k].draft ?? []).includes("en") && t2[k].from.de === t2[k].ru), "у трёх строк: текст новый, draft de снят, draft en цел, from.de = ru");
-    const others = Object.keys(t2).filter((k) => !picked.includes(k));
+    ok(picked.every((k) => t2[k].de.endsWith(" ✓") && !(t2[k].draft ?? []).includes("de") && t2[k].from.de === t2[k].ru), "у трёх строк: текст новый, draft de снят, from.de = ru");
+    const others = liveKeys.filter((k) => !picked.includes(k));
     ok(others.every((k) => (t2[k].draft ?? []).includes("de") && t2[k].de === file.strings[k]?.de), `у остальных ${others.length} строк draft de и текст не тронуты`);
     r = run(["scripts/i18n/i18n-split.mjs"]);
     const deTmp = JSON.parse(fs.readFileSync(path.join(tmp, "packages/shared/i18n/generated/de.json"), "utf8"));
     ok(r.status === 0 && picked.every((k) => deTmp.strings[k].endsWith(" ✓")), "split: каталог de несёт вычитанный текст");
     r = run(["scripts/i18n/i18n-check.mjs", "--strict"]);
-    ok(r.status === 0 && /de: нет перевода 0, устарел 0, черновик 2266/.test(r.stdout), "i18n:check --strict на копии: чист, черновиков de 2266", r.stdout.split("\n").filter((l) => /de:/.test(l)).join("; "));
+    ok(r.status === 0 && new RegExp(`de: нет перевода 0, устарел 0, черновик ${others.length}`).test(r.stdout), `i18n:check --strict на копии: чист, черновиков de ${others.length}`, r.stdout.split("\n").filter((l) => /de:/.test(l)).join("; "));
     fs.rmSync(tmp, { recursive: true, force: true });
   }
-  ok(JSON.parse(fs.readFileSync(TABLE, "utf8")).strings["common.save"].draft.includes("de"), "рабочая таблица не тронута (машинный текст без вычитки остался черновиком)");
+  ok(!(JSON.parse(fs.readFileSync(TABLE, "utf8")).strings["common.save"].draft ?? []).includes("de"), "рабочая таблица не тронута (утверждённая строка без draft)");
 
   /* ═══ R5 ═══ */
   console.log("\n■ R5: удалить перевод одного ключа → i18n:check --strict и check:integration (4ay) красные с ключом");
@@ -318,7 +325,7 @@ async function main() {
   try {
     const t = JSON.parse(backup);
     t.strings["common.save"].de = null;
-    t.strings["common.save"].draft = ["en"];
+    delete t.strings["common.save"].draft;
     fs.writeFileSync(TABLE, JSON.stringify(t, null, 2) + "\n");
     const chk = spawnSync(process.execPath, ["scripts/i18n/i18n-check.mjs", "--strict"], { cwd: ROOT, encoding: "utf8" });
     ok(chk.status === 1 && /ключи без перевода[^\n]*: 1/.test(chk.stdout) && /common\.save \[de\]/.test(chk.stdout), "i18n:check --strict красный: «ключи без перевода: 1 — common.save [de]»", chk.stdout.split("\n").filter((l) => /без перевода|common\.save/.test(l)).join(" | "));
