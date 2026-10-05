@@ -46,6 +46,9 @@ export type ParsedThesisType = "ontological" | "epistemological" | "ethical";
 
 export interface ParsedThesis {
   thesisNum: number;
+  /** 12.1 (Д-1): первая ячейка строки сводной таблицы, если она НЕ равна
+   *  номеру («О-1», «Э-2», «1.»); null — метка совпадает с номером */
+  label?: string | null | undefined;
   formulation: string;
   justification: string;
   thesisType: ParsedThesisType;
@@ -109,8 +112,10 @@ export function parseThesesFromHTML(html: string): ParsedThesis[] {
     fallbackNum += 1;
     const formulation = td[1] || "";
     if (!formulation) continue;
+    const thesisNum = parseInt(td[0] ?? "", 10) || fallbackNum;
     result.push({
-      thesisNum: parseInt(td[0] ?? "", 10) || fallbackNum,
+      thesisNum,
+      label: thesisLabelOf(td[0] ?? "", thesisNum),
       formulation,
       justification: justificationOf(formulation),
       thesisType: mapThesisType(td[2] || ""),
@@ -119,6 +124,60 @@ export function parseThesesFromHTML(html: string): ParsedThesis[] {
     });
   }
   return result;
+}
+
+/**
+ * Метка тезиса (12.1, Д-1): документ нумерует тезисы как хочет — «О-1»,
+ * «Э-2» (так пишет модель и в одностраничнике, и в службе), «1.»; parseInt
+ * даёт NaN → порядковый номер либо число без хвоста. Метка хранится, только
+ * когда она НЕ равна номеру: у документов с целой нумерацией колонка
+ * остаётся NULL, и рендерер рисует номер, как прежде.
+ */
+export function thesisLabelOf(rawCell: string, thesisNum: number): string | null {
+  const raw = rawCell.trim().replace(/\s+/g, " ");
+  if (!raw || raw === String(thesisNum)) return null;
+  return raw;
+}
+
+/** Абзац тезиса в прозе: «<strong>формулировка</strong> обоснование». */
+export interface ThesisParagraph {
+  /** Текст <strong>/<b> как в документе (пробелы схлопнуты) */
+  formulation: string;
+  /** Текст родительского блока за вычетом формулировки; "" — блок из одной формулировки */
+  justification: string;
+}
+
+/**
+ * Абзацы тезисов фрагмента в порядке документа (12.1, Д-3) — модель индекса
+ * обоснований 1.4, но строже: жирный фрагмент (≥ 8 знаков), С КОТОРОГО
+ * НАЧИНАЕТСЯ блок, — формулировка, остальной текст блока — обоснование; один
+ * блок — один абзац (выделение внутри обоснования формулировкой не считается);
+ * таблицы пропускаются — их рисует рендерер 5.1. Значение обоснования
+ * совпадает с тем, что для такого абзаца дал бы разбор 1.4
+ * (buildJustificationIndex) — сведение после ручной правки и повторный разбор
+ * не расходятся. Чистая функция.
+ */
+export function parseThesisParagraphs(html: string): ThesisParagraph[] {
+  const ct = parseFragment(html);
+  const out: ThesisParagraph[] = [];
+  const seenParents = new Set<unknown>();
+  for (const strong of ct.querySelectorAll("strong, b")) {
+    const formulation = (strong.textContent ?? "").trim().replace(/\s+/g, " ");
+    if (formulation.length < 8) continue;
+    const node = strong as unknown as {
+      parentElement?: HtmlElement;
+      closest(sel: string): unknown;
+    };
+    const parent = node.parentElement;
+    if (!parent || parent === ct) continue;
+    if (node.closest("table")) continue;
+    if (seenParents.has(parent)) continue;
+    const full = innerTextTrimmed(parent).replace(/\s+/g, " ");
+    if (!full.startsWith(formulation)) continue;
+    seenParents.add(parent);
+    out.push({ formulation, justification: full.slice(formulation.length).trim() });
+  }
+  return out;
 }
 
 /**
@@ -286,6 +345,7 @@ export async function saveElementsToDb(
             elements.theses.map((t) => ({
               synthesisId,
               thesisNum: t.thesisNum,
+              label: t.label ?? null,
               formulation: t.formulation,
               justification: t.justification,
               thesisType: t.thesisType,

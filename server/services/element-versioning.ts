@@ -29,6 +29,7 @@ import {
   elementVersions,
   glossaryTerms,
   sections,
+  syntheses,
   theses,
 } from "../db/schema.js";
 
@@ -172,7 +173,9 @@ const RESTORE_FIELDS: Record<VersionedElementType, readonly string[]> = {
     "contextDependency", "typeCatalogId", "position", "sourceOrigin",
   ],
   thesis: [
-    "thesisNum", "formulation", "justification", "thesisType",
+    // 12.1 (Д-1): метка восстанавливается из снимка; снимки до миграции 0011
+    // ключа label не несут — `f in data` ложно, и метка строки сохраняется
+    "thesisNum", "label", "formulation", "justification", "thesisType",
     "noveltyDegree", "relatedCategories", "source",
   ],
   glossary_term: [
@@ -238,7 +241,15 @@ export interface RollbackResult {
   version: ElementVersion;
   /** Версия, к которой откатились */
   restoredFrom: ElementVersion;
+  /** 12.1 (Д-14): откат версии КАПСУЛЫ записал и syntheses.capsule_html —
+   *  новое значение капсулы; undefined — версия не капсулы */
+  capsuleHtml?: string | undefined;
 }
+
+/** Ключ раздела-капсулы: её HTML живёт в ДВУХ местах — syntheses.capsule_html
+ *  (читают шапка, экспорт, контекст) и строка sections 'capsule' (есть после
+ *  генерации 1.4, нет после импорта 4.3). */
+const CAPSULE_KEY = "capsule";
 
 /**
  * rollbackToVersion(synthesisId, elementType, elementId, version):
@@ -266,6 +277,35 @@ export async function rollbackToVersion(
       .limit(1);
     if (!target) throw new VersioningError("NOT_FOUND", tl("server.elementVersioning.versionNotFound", "Версия не найдена"));
 
+    // 12.1 (Д-14): капсула БЕЗ строки sections (импорт 4.3). updateCapsule
+    // пишет такую версию на id синтеза со снимком { key:'capsule', htmlContent,
+    // title } — строки-элемента у неё нет, и общий путь отвечал «Элемент не
+    // найден»: откатить правку капсулы импортированной концепции было нельзя.
+    // Элемент такой версии — сама колонка syntheses.capsule_html.
+    if (elementType === "section" && elementId === synthesisId) {
+      const html = typeof target.data["htmlContent"] === "string" ? target.data["htmlContent"] : null;
+      if (target.data["key"] !== CAPSULE_KEY || html === null)
+        throw new VersioningError("NOT_FOUND", tl("common.elementNotFound", "Элемент не найден"));
+      const [synth] = await tx
+        .select({ capsule: syntheses.capsuleHtml })
+        .from(syntheses)
+        .where(eq(syntheses.id, synthesisId))
+        .limit(1);
+      if (!synth) throw new VersioningError("NOT_FOUND", tl("common.elementNotFound", "Элемент не найден"));
+      const snapshot = { key: CAPSULE_KEY, htmlContent: synth.capsule, title: target.data["title"] ?? null };
+      const created = await createVersion(synthesisId, elementId, elementType, snapshot, "rollback", tx);
+      await tx
+        .update(syntheses)
+        .set({ capsuleHtml: html, updatedAt: new Date() })
+        .where(eq(syntheses.id, synthesisId));
+      return {
+        element: { ...snapshot, htmlContent: html },
+        version: created,
+        restoredFrom: toDto(target),
+        capsuleHtml: html,
+      };
+    }
+
     const current = await loadElementRow(synthesisId, elementType, elementId, tx);
     if (!current) throw new VersioningError("NOT_FOUND", tl("common.elementNotFound", "Элемент не найден"));
 
@@ -284,6 +324,17 @@ export async function rollbackToVersion(
       target.data,
       tx,
     );
-    return { element, version: created, restoredFrom: toDto(target) };
+    // 12.1 (Д-14): строка sections 'capsule' восстановлена — та же транзакция
+    // обязана вернуть и syntheses.capsule_html, иначе шапка документа, экспорт
+    // и контекст capsule:full показывают капсулу, которую человек откатил
+    let capsuleHtml: string | undefined;
+    if (elementType === "section" && element["key"] === CAPSULE_KEY && typeof element["htmlContent"] === "string") {
+      capsuleHtml = element["htmlContent"];
+      await tx
+        .update(syntheses)
+        .set({ capsuleHtml, updatedAt: new Date() })
+        .where(eq(syntheses.id, synthesisId));
+    }
+    return { element, version: created, restoredFrom: toDto(target), capsuleHtml };
   });
 }

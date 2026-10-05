@@ -1807,6 +1807,7 @@ synthesesRoutes.post("/:id/duplicate", requireAuth, async (c) => {
         thesisRows.map((t) => ({
           synthesisId: copyId,
           thesisNum: t.thesisNum,
+          label: t.label, // 12.1 (Д-1): копия нумерует тезисы как оригинал
           formulation: t.formulation,
           justification: t.justification,
           thesisType: t.thesisType,

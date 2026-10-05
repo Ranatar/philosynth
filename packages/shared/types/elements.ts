@@ -13,6 +13,9 @@ export interface Thesis {
   id: string;
   synthesisId: string;
   thesisNum: number;
+  /** 12.1 (Д-1): метка тезиса, как её записал документ («О-1», «Э-2»);
+   *  null — метка совпадает с номером. Показ — label ?? thesisNum */
+  label: string | null;
   /** Текст тезиса (жирный) */
   formulation: string;
   /** Обоснование */

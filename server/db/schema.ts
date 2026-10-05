@@ -478,6 +478,11 @@ export const theses = pgTable(
       .notNull()
       .references(() => syntheses.id, { onDelete: "cascade" }),
     thesisNum: integer("thesis_num").notNull(),
+    /** 12.1 (Д-1, миграция 0011): метка тезиса так, как её записал документ
+     *  в первой ячейке сводной таблицы («О-1», «Э-2»). NULL — метка совпадает
+     *  с номером (документы службы с целой нумерацией). Рендерер 5.1 рисует
+     *  label ?? thesis_num, сторож рекомендаций 10.1 сводит метку по колонке. */
+    label: text("label"),
     /** Текст тезиса (жирный) */
     formulation: text("formulation").notNull(),
     /** Обоснование */

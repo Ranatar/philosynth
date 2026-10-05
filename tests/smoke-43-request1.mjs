@@ -210,8 +210,11 @@ const htmlB = `<!DOCTYPE html><html><body><div id="docOutput">
 console.log("── (B) экспорт сервиса 4.2 ──");
 const docB = parseDocument(htmlB);
 const metaB = extractMetadata(docB);
-check("phil из .doc-subtitle (нет footerPhil; КВИРК исходника: split по запятой не режет « + » мета-синтеза — при импорте перекрывается params.phil)",
-  metaB.phil.length === 1 && metaB.phil[0] === "Кант + Родительская концепция");
+// 12.1 (Д-8): квирк исходника «split по запятой не режет « + » мета-синтеза»
+// (подзаголовок давал ОДНОГО философа «Кант + Родительская концепция») исправлен:
+// философы и концепции шапки разделены (splitHeaderParticipants)
+check("phil из .doc-subtitle (нет footerPhil): философ отдельно, концепция — в concepts (Д-8, 12.1)",
+  metaB.phil.length === 1 && metaB.phil[0] === "Кант" && metaB.concepts.length === 1 && metaB.concepts[0] === "Родительская концепция");
 check("method из .doc-meta-grid", metaB.method === "dialectical");
 check("depth/synthLevel из meta-grid", metaB.depth === "standard" && metaB.synthLevel === "comparative");
 check("docNum из meta-grid", metaB.docNum === "PS-9999-ZZZZ");

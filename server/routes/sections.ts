@@ -53,7 +53,6 @@ import {
   buildEffectiveDeps,
   resolveContextDeps,
 } from "../services/synthesis-engine.js";
-import { SEC_NAMES } from "../services/section-defs-builder.js";
 import { isSectionKey } from "@philosynth/shared/constants/section-labels";
 import {
   SubsectionEditError,
@@ -62,6 +61,7 @@ import {
   updateSubsection,
 } from "../services/element-editor.js";
 import { ownerEditGate } from "./elements.js";
+import { logsAllowed } from "./logs.js";
 import {
   forbiddenJson,
   loadSynthesisForRead,
@@ -215,8 +215,13 @@ sectionsRoutes.get("/:id/sections/:key", requireAuth, async (c) => {
     subsections: listSubsections(row.htmlContent),
     // 9.2: вычисляемый заслон — клиент не рисует карандаш у запертых
     lockedSubsections: lockedSubsectionNames(row.key, row.htmlContent),
-    // 11.2 (Д-16): предупреждения разбора из генлога — показ в 11.3
-    parseWarnings: await loadSectionParseWarnings(res.row.id, row.key),
+    // 11.2 (Д-16): предупреждения разбора из генлога — показ в 11.3.
+    // 12.1 (Д-31): они из генлога, а логи — под флагом автора (8.6): поле
+    // отдаётся тем же гейтом, что /logs/* (владелец либо действенный
+    // show_logs — effectiveFlags внутри logsAllowed), иначе его в ответе нет
+    ...(logsAllowed(res, "logs")
+      ? { parseWarnings: await loadSectionParseWarnings(res.row.id, row.key) }
+      : {}),
   };
   return c.json({ section });
 });
@@ -284,6 +289,9 @@ sectionsRoutes.patch("/:id/sections/:key/subsections/:name", requireAuth, async 
       changed: r.changed,
       version: r.version,
       warnings: r.warnings,
+      // 12.1: Д-3 — тезисы, обновлённые по прозе; Д-4 — новое название
+      ...(r.thesesUpdated.length ? { thesesUpdated: r.thesesUpdated } : {}),
+      ...(r.titleUpdated !== undefined ? { titleUpdated: r.titleUpdated } : {}),
       section: {
         key: r.sectionKey,
         htmlContent: r.htmlContent,
@@ -309,8 +317,11 @@ sectionsRoutes.get("/:id/sections/:key/context", requireAuth, async (c) => {
   if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const row = res.row;
 
+  // 12.1 (Д-5): ключ — по isSectionKey, как у правки подраздела (9.2):
+  // SEC_NAMES — перечень ВЫБИРАЕМЫХ разделов, «sum» в нём нет, и резюме
+  // отвечало 404, хотя контекст у него есть (с 1.6)
   const key = c.req.param("key");
-  if (!(key in SEC_NAMES)) {
+  if (!isSectionKey(key)) {
     return c.json({ error: tl("server.routes.sections.unknownSection", "Неизвестный раздел"), code: "NOT_FOUND" }, 404);
   }
 

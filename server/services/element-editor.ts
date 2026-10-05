@@ -81,7 +81,8 @@ import {
   snapshotOf,
   type DbLike,
 } from "./element-versioning.js";
-import { buildEditInfra, loadSynthesis } from "./generation-service.js";
+import { parseThesisParagraphs, type ThesisParagraph } from "./element-parser.js";
+import { buildEditInfra, extractTitleFromNameHtml, loadSynthesis } from "./generation-service.js";
 import { buildSubsectionMap } from "./section-defs-builder.js";
 
 import type {
@@ -173,6 +174,7 @@ export function toThesisDto(r: ThesisRow): Thesis {
     id: r.id,
     synthesisId: r.synthesisId,
     thesisNum: r.thesisNum,
+    label: r.label ?? null,
     formulation: r.formulation,
     justification: r.justification,
     thesisType: r.thesisType,
@@ -1191,6 +1193,11 @@ export interface RollbackElementResult {
   version: ElementVersion;
   impact: ImpactAnalysis;
   htmlSync: HtmlSyncInfo;
+  /** 12.1 (Д-14): признак «капсула обновлена» — откат версии капсулы вернул и
+   *  syntheses.capsule_html (шапка документа); у прочих откатов false */
+  capsuleUpdated: boolean;
+  /** Новое значение капсулы — только при capsuleUpdated */
+  capsuleHtml?: string | undefined;
 }
 
 const TABLES_BY_TYPE: Partial<Record<VersionedElementType, RenderableTable[]>> = {
@@ -1205,7 +1212,9 @@ const TABLES_BY_TYPE: Partial<Record<VersionedElementType, RenderableTable[]>> =
  * восстанавливает данные и пишет версию 'rollback'; здесь — перерисовка
  * таблиц и impact. Для 'section' восстанавливается html_content целиком
  * (снимок auto_rename), таблиц не перерисовываем; 'dialogue_turn' в HTML
- * не отображается.
+ * не отображается. 12.1 (Д-14): откат версии КАПСУЛЫ (строка sections
+ * 'capsule' либо, после импорта, версия на id синтеза) возвращает и
+ * syntheses.capsule_html — ответ несёт capsuleUpdated и capsuleHtml.
  */
 export async function rollbackElement(
   synthesisId: string,
@@ -1249,7 +1258,14 @@ export async function rollbackElement(
           : elementType === "glossary_term"
             ? toGlossaryDto(res.element as GlossaryRow)
             : snapshotOf(res.element);
-  return { element, version: res.version, impact, htmlSync: sync };
+  return {
+    element,
+    version: res.version,
+    impact,
+    htmlSync: sync,
+    capsuleUpdated: res.capsuleHtml !== undefined,
+    ...(res.capsuleHtml !== undefined ? { capsuleHtml: res.capsuleHtml } : {}),
+  };
 }
 
 /* ── Капсула (п.14: PATCH /syntheses/:id/capsule) ────────────────────── */
@@ -1398,7 +1414,141 @@ export interface UpdateSubsectionResult {
   /** HTML раздела ПОСЛЕ правки */
   htmlContent: string;
   version: ElementVersion | null;
+  /** Что снято чисткой разметки + (12.1) что не сведено со списком тезисов
+   *  и почему название концепции не тронуто — всё, что человек обязан узнать */
   warnings: string[];
+  /** 12.1 (Д-3): тезисы, чьи formulation/justification обновлены по прозе */
+  thesesUpdated: ThesisProseUpdate[];
+  /** 12.1 (Д-4): новое название концепции — только если оно обновлено */
+  titleUpdated?: string | undefined;
+}
+
+/* ── Сведение прозы тезисов со списком (12.1, Д-3) ───────────────────── */
+
+export interface ThesisProseUpdate {
+  id: string;
+  /** Как тезис назван в документе: метка либо номер */
+  label: string;
+  fields: ("formulation" | "justification")[];
+}
+
+/** Строка тезиса в объёме, нужном сведению (чистое ядро не знает о БД). */
+export interface ThesisProseRow {
+  id: string;
+  thesisNum: number;
+  label: string | null;
+  formulation: string;
+  justification: string;
+}
+
+export interface ThesisProsePlan {
+  updates: { row: ThesisProseRow; formulation?: string; justification?: string }[];
+  warnings: string[];
+}
+
+const proseNorm = (s: string): string => s.toLowerCase().replace(/\s+/g, " ").trim();
+const proseQuote = (s: string): string => (s.length > 70 ? s.slice(0, 67).trimEnd() + "…" : s);
+const thesisNameOf = (r: { label: string | null; thesisNum: number }): string =>
+  r.label ?? "№" + String(r.thesisNum);
+
+/**
+ * Что из правки прозы подраздела переносится в строки theses (чистая функция).
+ *
+ * before / after — абзацы «<strong>формулировка</strong> обоснование» ОДНОГО
+ * подраздела до и после правки (parseThesisParagraphs). Правила:
+ *  - тезис «живёт» в абзаце before, чья формулировка совпала с theses.formulation
+ *    (сначала точно, затем включением в любую сторону — как индекс 1.4);
+ *  - абзац after сводится с абзацем before по неизменной формулировке, а если
+ *    формулировку правили — по месту (только при том же числе абзацев);
+ *  - переносится ТОЛЬКО изменённое этой правкой: абзац, который человек не
+ *    трогал, не сверяется с БД вовсе — иначе обоснование, изменённое редактором
+ *    5.2 и не отражённое в прозе (htmlSync.pending), затёрлось бы старой прозой
+ *    при правке соседнего абзаца (та же тихая потеря, зеркально);
+ *  - новая формулировка пишется, только если до правки абзац совпадал с тезисом
+ *    ТОЧНО; при нечётком совпадении — предупреждение, обоснование переносится;
+ *  - абзац без тезиса (новый либо изменённый, но не сведённый) и тезис, чей
+ *    абзац пропал, — предупреждение, строки theses не заводятся и не удаляются.
+ */
+export function planThesisProseSync(
+  rows: readonly ThesisProseRow[],
+  before: readonly ThesisParagraph[],
+  after: readonly ThesisParagraph[],
+): ThesisProsePlan {
+  const plan: ThesisProsePlan = { updates: [], warnings: [] };
+  // 1. Тезис → абзац «до»: точное совпадение формулировки, затем включение
+  const rowOfBefore = new Map<number, { row: ThesisProseRow; exact: boolean }>();
+  const taken = new Set<string>();
+  for (const exact of [true, false]) {
+    before.forEach((b, i) => {
+      if (rowOfBefore.has(i)) return;
+      const key = proseNorm(b.formulation);
+      const row = rows.find((r) => {
+        if (taken.has(r.id)) return false;
+        const f = proseNorm(r.formulation);
+        return exact ? f === key : f.length >= 8 && (f.includes(key) || key.includes(f));
+      });
+      if (!row) return;
+      taken.add(row.id);
+      rowOfBefore.set(i, { row, exact });
+    });
+  }
+  // 2. Абзац «до» → абзац «после»: по формулировке, затем по месту
+  const afterOfBefore = new Map<number, number>();
+  const claimed = new Set<number>();
+  before.forEach((b, i) => {
+    const key = proseNorm(b.formulation);
+    const j = after.findIndex((a, k) => !claimed.has(k) && proseNorm(a.formulation) === key);
+    if (j >= 0) {
+      claimed.add(j);
+      afterOfBefore.set(i, j);
+    }
+  });
+  if (after.length === before.length)
+    before.forEach((_b, i) => {
+      if (afterOfBefore.has(i) || claimed.has(i)) return;
+      claimed.add(i);
+      afterOfBefore.set(i, i);
+    });
+  // 3. Изменённые абзацы
+  before.forEach((b, i) => {
+    const hit = rowOfBefore.get(i);
+    const j = afterOfBefore.get(i);
+    if (j === undefined) {
+      if (hit)
+        plan.warnings.push(
+          tl("server.elementEditor.thesisParagraphLost", "Абзац тезиса {thesis} после правки не найден — тезис в списке тезисов не изменён и не удалён", { thesis: thesisNameOf(hit.row) }),
+        );
+      return;
+    }
+    const a = after[j]!;
+    const formulationChanged = proseNorm(a.formulation) !== proseNorm(b.formulation);
+    const justificationChanged = a.justification !== b.justification;
+    if (!formulationChanged && !justificationChanged) return;
+    if (!hit) {
+      plan.warnings.push(
+        tl("server.elementEditor.paragraphWithoutThesis", "Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён", { paragraph: proseQuote(a.formulation) }),
+      );
+      return;
+    }
+    const upd: ThesisProsePlan["updates"][number] = { row: hit.row };
+    if (justificationChanged && a.justification !== hit.row.justification) upd.justification = a.justification;
+    if (formulationChanged) {
+      if (hit.exact) upd.formulation = a.formulation;
+      else
+        plan.warnings.push(
+          tl("server.elementEditor.thesisFormulationFuzzy", "Формулировка тезиса {thesis} в прозе изменена, но с тезисом она сведена нечётко — формулировка в списке тезисов не обновлена (правьте её карандашом ✎ в строке сводной таблицы)", { thesis: thesisNameOf(hit.row) }),
+        );
+    }
+    if (upd.formulation !== undefined || upd.justification !== undefined) plan.updates.push(upd);
+  });
+  // 4. Новые абзацы «после»
+  after.forEach((a, j) => {
+    if (claimed.has(j)) return;
+    plan.warnings.push(
+      tl("server.elementEditor.newParagraphNotThesis", "Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)", { paragraph: proseQuote(a.formulation) }),
+    );
+  });
+  return plan;
 }
 
 function subsectionNotFound(sectionHtml: string, name: string): SubsectionEditError {
@@ -1468,7 +1618,7 @@ export async function updateSubsection(
       reason: "capsule",
       subsection: subsectionName,
     });
-  return db.transaction(async (tx) => {
+  const saved = await db.transaction(async (tx): Promise<UpdateSubsectionResult & { rerenderTheses: boolean }> => {
     const [row] = await tx
       .select()
       .from(sections)
@@ -1505,6 +1655,8 @@ export async function updateSubsection(
         htmlContent: row.htmlContent,
         version: null,
         warnings: [],
+        thesesUpdated: [],
+        rerenderTheses: false,
       };
     // Заслон после врезки: правка не должна ни сдвинуть замки, ни потерять
     // подраздел (страховка от собственной ошибки врезки, не от человека)
@@ -1526,9 +1678,81 @@ export async function updateSubsection(
       .update(sections)
       .set({ htmlContent: result.html, isEdited: true, updatedAt: new Date() })
       .where(eq(sections.id, row.id));
+    const warnings = [...result.warnings];
+
+    // 12.1 (Д-3): проза тезисов → строки theses, ТОЧЕЧНО. applySectionSideEffects
+    // по-прежнему не зовётся: он заменил бы строки (новые id — версии и
+    // обогащения тезисов осиротели бы, «По факту 9.2» п.10)
+    const thesesUpdated: ThesisProseUpdate[] = [];
+    let rerenderTheses = false;
+    if (sectionKey === "theses") {
+      const rows = await tx
+        .select()
+        .from(theses)
+        .where(eq(theses.synthesisId, synthesisId))
+        .orderBy(asc(theses.thesisNum));
+      const plan = planThesisProseSync(
+        rows,
+        parseThesisParagraphs(readSubsectionSource(row.htmlContent, subsectionName)?.html ?? ""),
+        parseThesisParagraphs(readSubsectionSource(result.html, subsectionName)?.html ?? ""),
+      );
+      for (const u of plan.updates) {
+        const cur = rows.find((r) => r.id === u.row.id);
+        if (!cur) continue;
+        await createVersion(synthesisId, cur.id, "thesis", snapshotOf(cur), "manual", tx);
+        await tx
+          .update(theses)
+          .set({
+            ...(u.formulation !== undefined ? { formulation: u.formulation } : {}),
+            ...(u.justification !== undefined ? { justification: u.justification } : {}),
+            source: "manual",
+            updatedAt: new Date(),
+          })
+          .where(eq(theses.id, cur.id));
+        thesesUpdated.push({
+          id: cur.id,
+          label: thesisNameOf(cur),
+          fields: [
+            ...(u.formulation !== undefined ? (["formulation"] as const) : []),
+            ...(u.justification !== undefined ? (["justification"] as const) : []),
+          ],
+        });
+        if (u.formulation !== undefined) rerenderTheses = true;
+      }
+      warnings.push(...plan.warnings);
+    }
+
+    // 12.1 (Д-4): название концепции из раздела name — только если владелец
+    // не переименовывал её отдельно (✎ 8.4): текущее название обязано
+    // совпадать с тем, что раздел давал ДО правки
+    let titleUpdated: string | undefined;
+    const synthPatch: { updatedAt: Date; title?: string } = { updatedAt: new Date() };
+    if (sectionKey === "name") {
+      const titleBefore = extractTitleFromNameHtml(row.htmlContent);
+      const titleAfter = extractTitleFromNameHtml(result.html);
+      if (titleAfter && titleAfter !== titleBefore) {
+        const [synth] = await tx
+          .select({ title: syntheses.title })
+          .from(syntheses)
+          .where(eq(syntheses.id, synthesisId))
+          .limit(1)
+          .for("update");
+        if (titleAfter.length > SYNTHESIS_TITLE_MAX)
+          warnings.push(
+            tl("server.elementEditor.titleTooLong", "Название в разделе длиннее {max} знаков — название концепции не обновлено", { max: SYNTHESIS_TITLE_MAX }),
+          );
+        else if (synth && titleBefore !== null && synth.title === titleBefore) {
+          synthPatch.title = titleAfter;
+          titleUpdated = titleAfter;
+        } else if (synth && synth.title !== titleAfter)
+          warnings.push(
+            tl("server.elementEditor.titleKeptRenamed", "Название в разделе теперь «{sectionTitle}», но концепция названа отдельно («{title}») — её название не тронуто", { sectionTitle: titleAfter, title: synth.title }),
+          );
+      }
+    }
     await tx
       .update(syntheses)
-      .set({ updatedAt: new Date() })
+      .set(synthPatch)
       .where(eq(syntheses.id, synthesisId));
     return {
       sectionKey,
@@ -1536,7 +1760,28 @@ export async function updateSubsection(
       changed: true,
       htmlContent: result.html,
       version,
-      warnings: result.warnings,
+      warnings,
+      thesesUpdated,
+      ...(titleUpdated !== undefined ? { titleUpdated } : {}),
+      rerenderTheses,
     };
   });
+  const { rerenderTheses, ...out } = saved;
+  if (rerenderTheses) {
+    // Формулировка стоит и в «Сводной таблице тезисов» — её рисует рендерер 5.1
+    // (вне транзакции: applyElementUpdateToHtml читает зафиксированные строки)
+    const res = await applyElementUpdateToHtml(synthesisId, "theses");
+    if (res.updated) {
+      const [fresh] = await db
+        .select({ html: sections.htmlContent })
+        .from(sections)
+        .where(and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)))
+        .limit(1);
+      if (fresh) out.htmlContent = fresh.html;
+    }
+  }
+  return out;
 }
+
+/** Предел длины названия концепции — тот же, что у PATCH /syntheses/:id (03 §2.2). */
+const SYNTHESIS_TITLE_MAX = 300;

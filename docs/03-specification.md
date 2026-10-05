@@ -712,6 +712,9 @@ GET    /syntheses/:id/sections/:key
                                 → { section: SectionFull }
 
 GET    /syntheses/:id/sections/:key/context
+                                // 12.1 (Д-5): ключ проверяется isSectionKey (не
+                                // SEC_NAMES — в нём нет sum). У sum записи в картах
+                                // зависимостей нет: ответ 200 с пустым превью
                                 // Реализация — беседа 1.6 (сервер),
                                 // вместе с остальным routes/sections.ts.
                                 // Потребитель — поле контекста в
@@ -858,6 +861,9 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
                                  // GET /sections/:key; во вложенных sections
                                  // гостя поля нет. Клиент у запертых карандаша
                                  // НЕ рисует вовсе
+                                 // 12.1 (Д-31): parseWarnings отдаётся ТЕМ ЖЕ гейтом, что
+                                 // /logs/* (logsAllowed: владелец либо действенный
+                                 // show_logs) — иначе поля в ответе НЕТ
   parseWarnings?: string[];      // 11.2 (Д-16, аддитивно): предупреждения разбора
                                  // раздела из генлога — metadata.parseWarnings строк
                                  // ПОСЛЕДНЕЙ полной (пере)генерации раздела
@@ -881,7 +887,17 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
 
 { changed: boolean;
   version: ElementVersion | null;   // null при changed=false
-  warnings: string[];               // что сервер снял из присланной разметки
+  warnings: string[];               // что сервер снял из присланной разметки; 12.1 — сюда же:
+                                    // абзац тезиса не сведён / пропал / новый (Д-3), название
+                                    // концепции не тронуто и почему (Д-4)
+  thesesUpdated?: { id, label, fields: ("formulation"|"justification")[] }[];
+                                    // 12.1 (Д-3): правка подраздела раздела theses переносит
+                                    // ИЗМЕНЁННЫЕ абзацы «<strong>формулировка</strong>
+                                    // обоснование» в строки theses точечно, версия 'manual' на
+                                    // каждый тезис; строки не заменяются и не удаляются
+  titleUpdated?: string;            // 12.1 (Д-4): правка раздела name обновила
+                                    // syntheses.title — только если название совпадало с
+                                    // извлечённым из раздела ДО правки
   section: { key, htmlContent, isEdited?, subsections, lockedSubsections } }
 ```
 
@@ -979,7 +995,14 @@ GET    /syntheses/:id/elements/:elementType/:elementId/versions
 POST   /syntheses/:id/elements/:elementType/:elementId/rollback
                                 { version: number }
                                 → { element: unknown, version: ElementVersion,
-                                    impact: ImpactAnalysis }
+                                    impact: ImpactAnalysis,
+                                    capsuleUpdated: boolean, capsuleHtml?: string }
+                                // 12.1 (Д-14): откат версии КАПСУЛЫ возвращает и
+                                // syntheses.capsule_html (capsuleUpdated = true,
+                                // capsuleHtml — новое значение). Версия капсулы
+                                // импортированной концепции живёт на elementId =
+                                // id синтеза (строки sections 'capsule' нет) —
+                                // откатывается так же. Откат тезиса сохраняет label
                                 // Восстанавливает данные версии, создаёт
                                 // НОВУЮ версию с changeSource='rollback',
                                 // перерисовывает таблицу в html_content

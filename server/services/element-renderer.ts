@@ -52,6 +52,7 @@ import {
   replaceDocTable,
   type DocTableLocator,
 } from "../utils/html-parser.js";
+import { parseThesesFromHTML } from "./element-parser.js";
 import { ROLE_MAP } from "./graph-parser.js";
 import { getTemplate } from "./prompt-registry.js";
 
@@ -333,7 +334,8 @@ export function renderThesesTable(
     .sort((a, b) => a.thesisNum - b.thesisNum)
     .map((t) =>
       tr([
-        String(t.thesisNum),
+        // 12.1 (Д-1): метка документа («О-1», «Э-2»), иначе номер
+        t.label ?? String(t.thesisNum),
         t.formulation,
         THESIS_TYPE_LABELS[t.thesisType] ?? t.thesisType,
         t.noveltyDegree,
@@ -522,11 +524,15 @@ export async function applyElementUpdateToHtml(
       break;
     }
     case "theses": {
-      const rows = await db
-        .select()
-        .from(theses)
-        .where(eq(theses.synthesisId, synthesisId))
-        .orderBy(asc(theses.thesisNum));
+      const rows = await backfillThesisLabels(
+        synthesisId,
+        sec.html,
+        await db
+          .select()
+          .from(theses)
+          .where(eq(theses.synthesisId, synthesisId))
+          .orderBy(asc(theses.thesisNum)),
+      );
       tableHtml = renderThesesTable(rows, { headers });
       break;
     }
@@ -549,6 +555,53 @@ export async function applyElementUpdateToHtml(
     .set({ htmlContent: res.html, isEdited: true, updatedAt: new Date() })
     .where(eq(sections.id, sec.id));
   return { updated: true, outcome: res.outcome };
+}
+
+/**
+ * Ленивая дозаливка меток тезисов (12.1, Д-1). У концепций, заведённых ДО
+ * миграции 0011, колонка label пуста, а буквенные метки живут только в
+ * сводной таблице HTML — первая же перерисовка стёрла бы их (тот самый
+ * дефект). Перед перерисовкой текущая таблица разбирается парсером 1.4; у
+ * строк БД без метки она берётся из строки таблицы с тем же thesis_num
+ * (номер парсер назначает детерминированно: число либо порядковый). Страховка:
+ * дозаливка идёт, только если число строк таблицы и БД совпало — иначе
+ * таблица и БД уже разошлись, и сводить их по номеру нельзя. Строки, у
+ * которых метка есть, не трогаются.
+ */
+export async function backfillThesisLabels(
+  synthesisId: string,
+  thesesSectionHtml: string,
+  rows: ThesisRow[],
+): Promise<ThesisRow[]> {
+  if (rows.length === 0 || rows.every((r) => r.label !== null)) return rows;
+  const fromHtml = thesisLabelsByNum(thesesSectionHtml, rows.length);
+  if (fromHtml.size === 0) return rows;
+  const out: ThesisRow[] = [];
+  for (const r of rows) {
+    const label = r.label ?? fromHtml.get(r.thesisNum) ?? null;
+    if (label !== null && r.label === null) {
+      await db
+        .update(theses)
+        .set({ label })
+        .where(and(eq(theses.id, r.id), eq(theses.synthesisId, synthesisId)));
+      out.push({ ...r, label });
+    } else out.push(r);
+  }
+  return out;
+}
+
+/** Чистое ядро дозаливки: thesis_num → метка из сводной таблицы HTML; пусто —
+ *  таблицы нет, меток нет либо число строк не совпало с ожидаемым. */
+export function thesisLabelsByNum(
+  thesesSectionHtml: string,
+  expectedCount: number,
+): Map<number, string> {
+  const out = new Map<number, string>();
+  if (!thesesSectionHtml) return out;
+  const parsed = parseThesesFromHTML(thesesSectionHtml);
+  if (parsed.length !== expectedCount) return out;
+  for (const t of parsed) if (t.label) out.set(t.thesisNum, t.label);
+  return out;
 }
 
 /** Прямая правка html_content раздела (auto-rename, абзац тезиса). */

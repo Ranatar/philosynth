@@ -98,6 +98,8 @@ export interface GlossaryRow {
 
 export interface ThesisRow {
   thesisNum: number;
+  /** 12.1 (Д-1): метка документа («О-1»); нет/null — номер */
+  label?: string | null | undefined;
   formulation: string;
   thesisType: string;
   noveltyDegree: string;
@@ -247,6 +249,7 @@ export function createDbContextSource(synthesisId: string): ContextSource {
     return db
       .select({
         thesisNum: theses.thesisNum,
+        label: theses.label,
         formulation: theses.formulation,
         thesisType: theses.thesisType,
         noveltyDegree: theses.noveltyDegree,
@@ -479,7 +482,9 @@ export async function extractThesesSummary(
     "Связанные категории",
   ];
   const body = rows.map((t) => [
-    String(t.thesisNum),
+    // 12.1 (Д-1): тезис в контексте зовётся так же, как в документе —
+    // иначе критика адресует рекомендации «тезису 2», а документ знает «Э-2»
+    t.label ?? String(t.thesisNum),
     cell(t.formulation),
     THESIS_TYPE_RU[t.thesisType] ?? cell(t.thesisType),
     cell(t.noveltyDegree),

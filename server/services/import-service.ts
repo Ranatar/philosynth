@@ -71,6 +71,16 @@
  *     [21793] для файлов version:2 обеих линий МЕРТВА (ни один saveHTML
  *     capsuleHTML в state не пишет) — порт сохранён на случай старых
  *     файлов.
+ * 10. 12.1 (Д-8) — ОТСТУПЛЕНИЕ ОТ ИСХОДНИКА в трёх местах: (а) критичность
+ *     «списка философов нет» — только когда нет ни философов, ни
+ *     участников-концепций, ни зерна (свободный синтез v11 и мета-синтез из
+ *     одних концепций легальны); (б) участники шапки делятся на философов и
+ *     концепции (splitHeaderParticipants: имя в ёлочках и всё правее « + » —
+ *     концепции; «свободный синтез» футера — признак, не имя); (в) имена
+ *     params.phil в ёлочках, совпавшие с концепциями genealogy, философами не
+ *     считаются (importParticipants). Запасная генеалогия (файл без
+ *     встроенного состояния) заводит концепции шапки узлами-концепциями —
+ *     дальше они идут путём родителя без UUID (предложение 8.5).
  *
  * Серверные копии клиентских утилит (карта 04 §2.6/§1.7: «серверная
  * копия — беседа 4.3»): TITLE_TO_KEY/titleToKey (client/utils/
@@ -362,11 +372,14 @@ export function reconstructGenealogy(
   // Если в embedded state уже есть genealogy — используем
   if (embeddedState?.genealogy) return embeddedState.genealogy as GenealogyNode;
 
-  // Иначе реконструируем из метаданных: участники — философы из meta.phil
-  const participants: GenealogyNode[] = (meta.phil || []).map((name) => ({
-    type: "philosopher",
-    name,
-  }));
+  // Иначе реконструируем из метаданных: участники — философы из meta.phil.
+  // 12.1 (Д-8): концепции шапки (ёлочки, часть после « + ») — узлы-концепции,
+  // а не философы: дальше они идут обычным путём родителя без UUID
+  // (сопоставление по имени предложением, 8.5)
+  const participants: GenealogyNode[] = [
+    ...(meta.phil || []).map((name): GenealogyNode => ({ type: "philosopher", name })),
+    ...(meta.concepts || []).map((name): GenealogyNode => ({ type: "concept", name })),
+  ];
 
   // Настоящее имя: docTitle → раздел «name» → явный плейсхолдер (защита
   // от транзитивного распространения дефолта через метасинтез)
@@ -408,7 +421,12 @@ export function reconstructGenealogy(
 /* ══ Метаданные шапки ═════════════════════════════════════════════════ */
 
 export interface ImportMeta {
+  /** ТОЛЬКО философы (12.1, Д-8): концепции в ёлочках сюда не попадают */
   phil: string[];
+  /** 12.1 (Д-8): участники-концепции, названные шапкой (без ёлочек) */
+  concepts: string[];
+  /** 12.1 (Д-8): шапка называет документ свободным синтезом */
+  freeSynthesis: boolean;
   method: SynthesisMethod;
   depth: Depth;
   synthLevel: SynthLevel;
@@ -417,6 +435,57 @@ export interface ImportMeta {
   docNum: string;
   capsuleText: string;
   _raw: { methodDisplay: string; depthDisplay: string; synthDisplay: string };
+}
+
+/** Подпись свободного синтеза в шапке и футере одностраничника [12126, 12142]:
+ *  «Свободный синтез (на основе зерна)» / «свободный синтез» — НЕ имя философа. */
+const FREE_SYNTHESIS_RE = /^свободный синтез/i;
+
+/** Разрез по разделителю вне ёлочек: «Бытие, время и ничто» — одно имя. */
+function splitOutsideGuillemets(raw: string, sep: "," | "+"): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let cur = "";
+  for (const ch of raw) {
+    if (ch === "«") depth++;
+    else if (ch === "»") depth = Math.max(0, depth - 1);
+    if (ch === sep && depth === 0) {
+      out.push(cur);
+      cur = "";
+    } else cur += ch;
+  }
+  out.push(cur);
+  return out.map((x) => x.trim()).filter(Boolean);
+}
+
+const GUILLEMETS_RE = /^«(.+)»$/s;
+
+/**
+ * Перечень участников из шапки или футера (12.1, Д-8) → философы и концепции.
+ * Формы, которые пишут обе линии файлов:
+ *  - одностраничник, футер [12142] и params.phil [12021]: «Юнг, «Грамматика
+ *    самоотрицания»» — концепция в ёлочках через запятую наравне с философами;
+ *  - подзаголовок мета-синтеза [12134] и экспорта службы (subtitleForExport):
+ *    «философы + концепции» — «Кант, Гегель + «А», «Б»» либо «Юнг + Грамматика
+ *    самоотрицания» (служба ёлочек не ставит).
+ * Правило: имя в ёлочках — концепция всегда; при « + » всё правее первого
+ * плюса — концепции. Прежний разбор резал только по запятой: подзаголовок
+ * «Кант + Концепция» становился ОДНИМ философом «Кант + Концепция», а
+ * концепция в ёлочках — философом.
+ */
+export function splitHeaderParticipants(raw: string): { phil: string[]; concepts: string[] } {
+  const phil: string[] = [];
+  const concepts: string[] = [];
+  const groups = splitOutsideGuillemets(raw, "+");
+  groups.forEach((group, gi) => {
+    for (const name of splitOutsideGuillemets(group, ",")) {
+      const m = name.match(GUILLEMETS_RE);
+      if (m?.[1]) concepts.push(m[1].trim());
+      else if (gi > 0) concepts.push(name);
+      else phil.push(name);
+    }
+  });
+  return { phil, concepts };
 }
 
 /**
@@ -437,19 +506,33 @@ export function extractMetadata(doc: HtmlDocument): ImportMeta {
     if (k) metaGrid[k] = v === "—" ? "" : v;
   }
 
-  // Философы: из footerPhil или из docSubtitle (fallback — .doc-subtitle)
+  // Участники: из footerPhil или из docSubtitle (fallback — .doc-subtitle).
+  // 12.1 (Д-8): философы ОТДЕЛЬНО от концепций (splitHeaderParticipants);
+  // подпись «свободный синтез» — признак, а не имя. Философов даёт футер, при
+  // его отсутствии — подзаголовок; концепции собираются из обоих (футер
+  // экспорта службы несёт только философов, концепции — в подзаголовке).
   let phil: string[] = [];
+  const concepts: string[] = [];
+  let freeSynthesis = false;
+  const addConcepts = (names: readonly string[]): void => {
+    for (const n of names) if (!concepts.includes(n)) concepts.push(n);
+  };
   const footerPhil = getText("footerPhil");
-  if (footerPhil && footerPhil !== "—") {
-    phil = footerPhil.split(/\s*,\s*/).filter(Boolean);
-  } else {
-    const subtitle =
-      getText("docSubtitle") ||
-      doc.querySelector(".doc-subtitle")?.textContent?.trim() ||
-      "";
-    const m = subtitle.match(/На основе:\s*(.+)/i);
-    if (m?.[1]) phil = m[1].split(/\s*,\s*/).filter(Boolean);
+  const subtitle =
+    getText("docSubtitle") ||
+    doc.querySelector(".doc-subtitle")?.textContent?.trim() ||
+    "";
+  const subtitleList = subtitle.match(/На основе:\s*(.+)/i)?.[1] ?? "";
+  const fromSubtitle = subtitleList ? splitHeaderParticipants(subtitleList) : null;
+  if (FREE_SYNTHESIS_RE.test(footerPhil) || FREE_SYNTHESIS_RE.test(subtitle)) freeSynthesis = true;
+  if (footerPhil && footerPhil !== "—" && !FREE_SYNTHESIS_RE.test(footerPhil)) {
+    const fromFooter = splitHeaderParticipants(footerPhil);
+    phil = fromFooter.phil;
+    addConcepts(fromFooter.concepts);
+  } else if (fromSubtitle) {
+    phil = fromSubtitle.phil;
   }
+  if (fromSubtitle) addConcepts(fromSubtitle.concepts);
 
   // Метод, глубина, уровень — обратный маппинг
   const methodDisplay = getText("docMethod") || metaGrid["Метод синтеза"] || "";
@@ -490,6 +573,8 @@ export function extractMetadata(doc: HtmlDocument): ImportMeta {
 
   return {
     phil,
+    concepts,
+    freeSynthesis,
     method,
     depth,
     synthLevel,
@@ -503,14 +588,75 @@ export function extractMetadata(doc: HtmlDocument): ImportMeta {
 
 /* ══ Валидация метаданных ═════════════════════════════════════════════ */
 
-/** Порт validateImportMeta [21416–21478] — тексты дословно. */
+/** Имя концепции для сравнения: без ёлочек и кавычек, пробелы схлопнуты, регистр. */
+const conceptKey = (name: string): string =>
+  name.replace(/[«»"„“”‟']/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+
+export interface ImportParticipants {
+  philosophers: string[];
+  concepts: string[];
+}
+
+/**
+ * Кто участвовал в синтезе (12.1, Д-8) — чистая функция от шапки и встроенного
+ * состояния. Концепции: genealogy.participants и participants встроенного
+ * состояния (type ≠ 'philosopher' — 'concept' исходника и 'synthesis' службы),
+ * params.participants и шапка (meta.concepts). Философы: params.phil (порт
+ * buildDocStateFromImport [21688]) либо meta.phil — БЕЗ имён в ёлочках,
+ * совпавших с концепциями: одностраничник пишет в params.phil «для обратной
+ * совместимости все имена» [12021], концепцию — в ёлочках, и она числилась
+ * философом.
+ */
+export function importParticipants(
+  meta: ImportMeta,
+  embeddedState: EmbeddedState | null,
+): ImportParticipants {
+  const concepts: string[] = [];
+  const seen = new Set<string>();
+  const addConcept = (name: unknown): void => {
+    if (typeof name !== "string") return;
+    const k = conceptKey(name);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    concepts.push(name.replace(GUILLEMETS_RE, "$1").trim());
+  };
+  const fromList = (list: unknown): void => {
+    if (!Array.isArray(list)) return;
+    for (const p of list) {
+      const node = (p ?? {}) as { type?: unknown; name?: unknown };
+      if (typeof node.type === "string" && node.type !== "philosopher") addConcept(node.name);
+    }
+  };
+  fromList((embeddedState?.genealogy as { participants?: unknown } | null | undefined)?.participants);
+  fromList(embeddedState?.participants);
+  fromList(embeddedState?.params?.["participants"]);
+  for (const c of meta.concepts ?? []) addConcept(c);
+
+  const names = strArray(embeddedState?.params?.["phil"]) ?? meta.phil ?? [];
+  const philosophers = names.filter((n) => {
+    if (FREE_SYNTHESIS_RE.test(n.trim())) return false;
+    return !(GUILLEMETS_RE.test(n.trim()) && seen.has(conceptKey(n)));
+  });
+  return { philosophers, concepts };
+}
+
+/**
+ * Порт validateImportMeta [21416–21478] — тексты дословно.
+ * ОТСТУПЛЕНИЕ 12.1 (Д-8): исходник считал «0 философов» критичным всегда —
+ * порт 1:1 давал ложную критичность на легальных документах v11. Критично,
+ * только когда нет НИ философов, НИ участников-концепций, НИ зерна: свободный
+ * синтез (участников нет, зерно есть — NO_PARTICIPANTS_SEED_REQUIRED, 03 §2.2)
+ * и мета-синтез из одних концепций перегенерируются как все прочие.
+ */
 export function validateImportMeta(
   meta: ImportMeta,
   embeddedState: EmbeddedState | null,
 ): ImportWarning[] {
   const warnings: ImportWarning[] = [];
 
-  if (!meta.phil || meta.phil.length === 0) {
+  const who = importParticipants(meta, embeddedState);
+  const seed = (str(embeddedState?.params?.["seed"]) ?? meta.seed ?? "").trim();
+  if (who.philosophers.length === 0 && who.concepts.length === 0 && !seed) {
     warnings.push({
       field: "phil",
       message:
@@ -951,7 +1097,6 @@ export async function importHTML(
 
   // ── Параметры (порт buildDocStateFromImport [21688–21712]) ──
   const embParams = embeddedState?.params ?? null;
-  const philosophers = strArray(embParams?.phil) ?? meta.phil;
   const methodRaw = str(embParams?.method) ?? meta.method;
   const method = (METHODS.has(methodRaw) ? methodRaw : meta.method) as SynthesisMethod;
   const depthRaw = str(embParams?.depth) ?? meta.depth;

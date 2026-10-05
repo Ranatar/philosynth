@@ -271,8 +271,10 @@ export interface DocumentIndex {
 const THESES_SUMMARY_TABLE = "Сводная таблица тезисов";
 
 /** Номера тезисов, как они записаны в документе: первая ячейка строки
- *  сводной таблицы → формулировка. В БД живёт только целое thesis_num, а
- *  документ нумерует «О-1», «Э-2» (parseInt даёт NaN → порядковый номер).
+ *  сводной таблицы → формулировка. Документ нумерует «О-1», «Э-2» (parseInt
+ *  даёт NaN → порядковый thesis_num). С 12.1 (Д-1) метка хранится в колонке
+ *  theses.label, и сторож сводит её по колонке; эта функция — ЗАПАСНОЙ
+ *  источник для строк без метки (концепции до миграции 0011).
  *  11.2 (Д-16): подраздел ищется resolveSubsection по каноническому имени со
  *  страховкой по месту (expectedOrder — карта theses); прежний нечёткий поиск
  *  «сводная таблица» остаётся запасным ходом. */
@@ -387,10 +389,14 @@ export async function loadDocumentIndex(synthesisId: string): Promise<DocumentIn
       value: canonicalJson([c.name, c.type, c.definition, c.origin]),
     })),
     theses: ths.map((t) => {
-      const label = labels.get(norm(t.formulation));
+      // 12.1 (Д-1): метка — из КОЛОНКИ theses.label (её пишут парсер 1.4 и
+      // импорт, рисует рендерер 5.1); сводная таблица HTML остаётся запасным
+      // источником для концепций, заведённых до миграции 0011, чью таблицу
+      // ещё не перерисовывали (после перерисовки метку дозаливает рендерер)
+      const fromTable = labels.get(norm(t.formulation));
       return {
         id: t.id,
-        labels: [...(label ? [label] : []), String(t.thesisNum)],
+        labels: [...new Set([...(t.label ? [t.label] : []), ...(fromTable ? [fromTable] : []), String(t.thesisNum)])],
         formulation: t.formulation,
         value: canonicalJson([t.formulation, t.justification]),
       };

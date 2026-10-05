@@ -76,8 +76,16 @@ export interface SubsectionUpdateResult {
   /** false — присланное совпало с текущим: версии нет, раздел не тронут */
   changed: boolean;
   version: import("./elements.js").ElementVersion | null;
-  /** Что сервер убрал из присланной разметки (теги вне набора документа) */
+  /** Что сервер убрал из присланной разметки (теги вне набора документа).
+   *  12.1: сюда же — что из прозы тезисов не сведено со списком тезисов (Д-3)
+   *  и почему название концепции не тронуто (Д-4) */
   warnings: string[];
+  /** 12.1 (Д-3, аддитивно): тезисы, чьи formulation/justification обновлены
+   *  по прозе подраздела раздела theses (версия 'manual' на каждый) */
+  thesesUpdated?: { id: string; label: string; fields: ("formulation" | "justification")[] }[] | undefined;
+  /** 12.1 (Д-4, аддитивно): новое название концепции после правки раздела
+   *  name — только если оно обновлено (не было переименовано отдельно) */
+  titleUpdated?: string | undefined;
   section: {
     key: string;
     htmlContent: string;

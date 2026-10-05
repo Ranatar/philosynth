@@ -377,6 +377,12 @@ CREATE TABLE theses (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   synthesis_id    UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
   thesis_num      INT NOT NULL,
+  label           TEXT,           -- 12.1 (Д-1, миграция 0011): метка тезиса так, как её записал
+                                  -- документ в первой ячейке сводной таблицы («О-1», «Э-2»);
+                                  -- NULL — метка равна номеру. Пишет разбор 1.4 (им же пользуется
+                                  -- импорт), рисует рендерер 5.1 (label ?? thesis_num), по ней
+                                  -- сводит сторож рекомендаций 10.1; у строк до миграции 0011
+                                  -- дозаливается из текущей таблицы перед перерисовкой
   formulation     TEXT NOT NULL,  -- текст тезиса (жирный)
   justification   TEXT NOT NULL DEFAULT '',  -- обоснование
   thesis_type     TEXT NOT NULL DEFAULT 'ontological',
