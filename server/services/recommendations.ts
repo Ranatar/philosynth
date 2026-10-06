@@ -31,6 +31,38 @@
  *     stream_error принял бы за обрыв генерации документа — клиента беседа
  *     не трогает. Дельты никому не шлются.
  *
+ * Беседа 12.3:
+ *  - Д-21: сторож сверяет столбец «Основание» с подразделами критики;
+ *    расхождение — ЗАМЕЧАНИЕ строки (колонка `warning`, миграция 0012), а не
+ *    'invalid': основание — довод человеку, исполнению не мешает;
+ *  - Д-20: оценка ретрофита до вызова (estimateExtractCost) — запрос к модели
+ *    собирается целиком и измеряется, модель не зовётся;
+ *  - Д-46: находки сторожа хранятся КОДАМИ (`issues`, миграция 0013), фраза
+ *    человеку собирается при чтении на языке запроса
+ *    (recommendation-issues.ts); `invalid_reason` и `warning` несут её
+ *    русский вид. Сторож фраз больше не сочиняет;
+ *  - Д-21, вторая половина: СВОЙ ПОВТОР пропущенной таблицы. Модель, не
+ *    написавшая «Таблицу рекомендаций» (либо написавшая её без таблицы или
+ *    без столбцов), до 12.3 не ловилась ничем: общий механизм недостающих
+ *    подразделов 1.4b работает только на ОБРЫВЕ стрима, а не на успешном
+ *    проходе. Теперь после каждой удачной генерации критики
+ *    (ensureRecommendationsTable — генерация, перегенерация, добавление
+ *    раздела) таблица составляется ОДНИМ повторным обращением по готовой
+ *    прозе, тем же запросом, что ретрофит; неудача повтора генерацию не
+ *    роняет — пометка в генлоге раздела;
+ *  - строка генлога ретрофита и повтора идёт ключом подраздела
+ *    («critique:Таблица рекомендаций»), а не раздела: ключ раздела делал её
+ *    «фактическим размером критики» в оценках (loadActualOutputChars), и
+ *    перегенерация критики после ретрофита оценивалась по размеру таблицы;
+ *  - Д-11 (ОГРАНИЧЕНИЕ, не исправлялось): ключ раунда сравнивается с
+ *    последним СОХРАНЁННЫМ раундом. Перегенерация, давшая прозу дословно
+ *    равной ему, раунда не откроет — в том числе когда промежуточная редакция
+ *    не была разобрана (разбор не звали либо он отклонён ROUND_IN_PROGRESS).
+ *    Возврат к редакции, после которой был состоявшийся разбор другой
+ *    редакции (A → B → A), новый раунд открывает. На живой модели дословное
+ *    совпадение прозы недостижимо; для ручной правки туда-обратно прежний
+ *    раунд — верный ответ (07 §12, Огр-12).
+ *
  * linkedom по-прежнему только в utils/html-parser (инвариант 1.3).
  */
 import { createHash } from "node:crypto";
@@ -50,7 +82,6 @@ import {
   type RecommendationField,
   type RecommendationStatus,
 } from "@philosynth/shared/constants/recommendations";
-import { KEY_LABELS, isSectionKey } from "@philosynth/shared/constants/section-labels";
 
 import {
   RECOMMENDATIONS_EXTRACT_TEMPLATE_KEY,
@@ -76,8 +107,19 @@ import {
   resolveSubsection,
   type HtmlElement,
 } from "../utils/html-parser.js";
-import { PRICE_IN, PRICE_OUT } from "./cost-estimator.js";
+import {
+  CHARS_PER_TOKEN,
+  PRICE_IN,
+  PRICE_OUT,
+  subsectionOutputChars,
+} from "./cost-estimator.js";
 import { createVersion, snapshotOf } from "./element-versioning.js";
+import {
+  issue,
+  issueTextFor,
+  issuesFromColumn,
+  renderIssuesRu,
+} from "./recommendation-issues.js";
 import {
   buildPromptSkeleton,
   bumpTotals,
@@ -85,6 +127,7 @@ import {
   loadSynthesis,
   streamWithRetries,
   withGenerationSlot,
+  type GenerationSlotHandle,
 } from "./generation-service.js";
 import { buildSYS } from "./prompt-builder.js";
 import { renderTemplate } from "./prompt-registry.js";
@@ -98,6 +141,8 @@ import { clearStreamState } from "../ws/stream-state.js";
 
 import type {
   Recommendation,
+  RecommendationIssue,
+  RecommendationsExtractEstimateResponse,
   RecommendationsExtractResponse,
   RecommendationsParseResponse,
   RecommendationsResponse,
@@ -433,7 +478,13 @@ export interface GuardedRow {
   rationale: string;
   severity: string;
   status: "new" | "invalid";
+  /** Русский вид находок уровня 'invalid' (колонка invalid_reason) */
   invalidReason: string | null;
+  /** 12.3 (Д-21): замечание сторожа, НЕ делающее строку негодной —
+   *  русский вид находок уровня 'warning' (колонка warning) */
+  warning: string | null;
+  /** 12.3 (Д-46): находки кодами, оба уровня (колонка issues) */
+  issues: RecommendationIssue[];
   sourceHash: string | null;
 }
 
@@ -447,7 +498,21 @@ export function cleanAddress(raw: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
-const sectionLabel = (k: string): string => (isSectionKey(k) ? KEY_LABELS[k] : k);
+/**
+ * 12.3 (Д-46): три колонки строки из одного списка находок — коды и русский
+ * вид каждого уровня. Писать их порознь нельзя: текст и коды разойдутся.
+ */
+export function withIssueTexts(issues: RecommendationIssue[]): {
+  issues: RecommendationIssue[];
+  invalidReason: string | null;
+  warning: string | null;
+} {
+  return {
+    issues,
+    invalidReason: renderIssuesRu(issues, "invalid"),
+    warning: renderIssuesRu(issues, "warning"),
+  };
+}
 
 /**
  * Хэш источника строки ПРОТИВ ТЕКУЩЕГО документа (решение 3 шапки): у строки
@@ -479,11 +544,84 @@ export function sourceHashFor(
 }
 
 /**
+ * 12.3 (Д-21): сверка столбца «Основание» с подразделами критики — чистая
+ * функция. Контракт требует ТОЧНОЕ название подраздела критического анализа,
+ * где проблема установлена. Возвращает находку уровня 'warning' (кодом —
+ * Д-46) либо null.
+ *
+ * Это ЗАМЕЧАНИЕ, а не отказ: основание — довод человеку («почему»), адрес и
+ * операция от него не зависят, исполнению строки оно не мешает. Поэтому
+ * строка остаётся 'new', а текст уходит в `warning`, не в `invalid_reason`.
+ *
+ * Сверка — нормализованная (кавычки, «§», регистр, «Раздел →» снимаются тем
+ * же cleanAddress, что у адреса). Модель нередко называет два подраздела
+ * («Слепые пятна; Итоговая оценка») — ячейка делится по «;», затем по «,»,
+ * затем по союзу «и»; каждый кусок сначала сверяется целиком, и деление,
+ * ничего не узнавшее, отбрасывается (разделитель был частью названия). Сами
+ * «Рекомендации по улучшению» и «Таблица рекомендаций» основанием не
+ * считаются: проблема устанавливается ДО них.
+ */
+export function rationaleIssue(
+  rationaleRaw: string,
+  critiqueSubsections: readonly string[],
+): RecommendationIssue | null {
+  const allowed = critiqueSubsections.filter(
+    (n) => n !== RECOMMENDATIONS_PROSE_SUBSECTION && n !== RECOMMENDATIONS_TABLE_SUBSECTION,
+  );
+  // вырожденный документ: в критике нет подразделов — сверять не с чем
+  if (allowed.length === 0) return null;
+  const known = new Set(allowed.map((n) => norm(n)));
+  const own = new Set(
+    [RECOMMENDATIONS_PROSE_SUBSECTION, RECOMMENDATIONS_TABLE_SUBSECTION].map((n) => norm(n)),
+  );
+
+  const whole = cleanAddress(rationaleRaw);
+  if (!whole) return issue("warning", "rationale_empty", { subsections: allowed });
+  if (known.has(norm(whole))) return null;
+
+  // Несколько подразделов в одной ячейке: «;», затем «,», затем союз «и» —
+  // по очереди, и каждый кусок сначала сверяется ЦЕЛИКОМ (запятая и «и»
+  // бывают в самом названии). Если деление по «,» / «и» ничего не узнало,
+  // разделитель был частью названия — чужим называется кусок целиком.
+  const SEPS = [/\s*;\s*/, /\s*,\s*/, /\s+и\s+/];
+  const unknownOf = (part: string, level: number): string[] => {
+    if (known.has(norm(part))) return [];
+    const sep = SEPS[level];
+    if (!sep) return [part];
+    const bits = part.split(sep).map((x) => x.trim()).filter(Boolean);
+    if (bits.length < 2) return unknownOf(part, level + 1);
+    const res = bits.map((b) => unknownOf(b, level + 1));
+    if (level > 0 && res.every((r, i) => r.length === 1 && r[0] === bits[i])) return [part];
+    return res.flat();
+  };
+  const unknown = unknownOf(whole, 0);
+  if (unknown.length === 0) return null;
+  const selfRef = unknown.filter((x) => own.has(norm(x)));
+  if (selfRef.length === unknown.length)
+    return issue("warning", "rationale_self", { names: selfRef, subsections: allowed });
+  return issue("warning", "rationale_unknown", { names: unknown, subsections: allowed });
+}
+
+/** Русская фраза замечания об «Основании» либо null (вид колонки warning). */
+export function rationaleWarning(
+  rationaleRaw: string,
+  critiqueSubsections: readonly string[],
+): string | null {
+  const it = rationaleIssue(rationaleRaw, critiqueSubsections);
+  return it ? renderIssuesRu([it], "warning") : null;
+}
+
+/**
  * Сторож адресов. Негодная строка НЕ роняет разбор: status 'invalid' и
  * invalid_reason — что именно не сошлось (все причины разом, через «; »).
  * Документ живой, модель ошибается, и разбор обязан это переживать.
+ * 12.3 (Д-21): столбец «Основание» сверяется с подразделами критики, но
+ * расхождение — замечание строки (`warning`), статуса оно не меняет.
+ * 12.3 (Д-46): сторож отдаёт находки КОДАМИ (`issues`); `invalidReason` и
+ * `warning` — их русский вид для колонок БД.
  */
 export function guardRows(raws: readonly RawRecommendationRow[], doc: DocumentIndex): GuardedRow[] {
+  const critiqueSubsections = doc.subsectionsBySection[RECOMMENDATIONS_SECTION_KEY] ?? [];
   // нормализованное имя подраздела → [{ раздел, имя как в документе }]
   const bySub = new Map<string, { sectionKey: string; name: string }[]>();
   for (const [sectionKey, names] of Object.entries(doc.subsectionsBySection))
@@ -496,16 +634,19 @@ export function guardRows(raws: readonly RawRecommendationRow[], doc: DocumentIn
   const seen = new Set<string>();
 
   return raws.map((raw): GuardedRow => {
-    const reasons: string[] = [];
+    // 12.3 (Д-46): причины — кодами; фраза собирается при чтении
+    const found: RecommendationIssue[] = [];
+    const bad = (code: RecommendationIssue["code"], params: RecommendationIssue["params"] = {}): void => {
+      found.push(issue("invalid", code, params));
+    };
     const num = raw.num.replace(/\s+/g, "").replace(/[.)]$/, "");
-    if (!RECOMMENDATION_NUM_RE.test(num))
-      reasons.push(`№ «${raw.num}» не номер рекомендации (ожидается «5», «5а», «5б»)`);
+    if (!RECOMMENDATION_NUM_RE.test(num)) bad("num_invalid", { num: raw.num });
 
     // ── Адрес
     const address = cleanAddress(raw.address);
     let addressSection: string | null = null;
     let addressName = address;
-    if (!address) reasons.push("адрес пуст: рекомендация обязана называть подраздел документа");
+    if (!address) bad("address_empty");
     else {
       const hits = (bySub.get(norm(address)) ?? []).filter(
         (h) => h.sectionKey !== "capsule",
@@ -517,18 +658,12 @@ export function guardRows(raws: readonly RawRecommendationRow[], doc: DocumentIn
           .flat()
           .filter((h) => h.sectionKey !== RECOMMENDATIONS_SECTION_KEY && h.sectionKey !== "capsule")
           .filter((h) => words.some((w) => norm(h.name).includes(w.slice(0, -1))))
-          .map((h) => `«${h.name}»`);
-        reasons.push(
-          `подраздела «${address}» в документе нет` +
-            (near.length ? ` (похожие: ${[...new Set(near)].slice(0, 5).join(", ")})` : ""),
-        );
-      } else if (outside.length === 0)
-        reasons.push(`«${address}» — подраздел самой критики: адресом рекомендации он быть не может`);
+          .map((h) => h.name);
+        bad("address_not_found", { address, near: [...new Set(near)].slice(0, 5) });
+      } else if (outside.length === 0) bad("address_in_critique", { address });
       else if (outside.length > 1)
-        reasons.push(
-          `адрес «${address}» неоднозначен: такой подраздел есть в разделах ` +
-            outside.map((h) => `«${sectionLabel(h.sectionKey)}»`).join(" и "),
-        );
+        // разделы — КЛЮЧАМИ: метка переводится при показе
+        bad("address_ambiguous", { address, sections: outside.map((h) => h.sectionKey) });
       else {
         addressSection = (outside[0] as { sectionKey: string }).sectionKey;
         addressName = (outside[0] as { name: string }).name;
@@ -566,8 +701,7 @@ export function guardRows(raws: readonly RawRecommendationRow[], doc: DocumentIn
         nb ? collect((a) => base(a) === nb) : [],
       ])
         for (const h of tier) if (!hits.some((x) => x.id === h.id)) hits.push(h);
-      if (hits.length === 0)
-        reasons.push(`элемент «${elementRaw}» не найден среди категорий, тезисов и терминов концепции`);
+      if (hits.length === 0) bad("element_not_found", { element: elementRaw });
       else {
         // Имя категории нередко совпадает с термином глоссария: решает раздел
         // адреса, иначе порядок категория → термин → тезис
@@ -585,21 +719,19 @@ export function guardRows(raws: readonly RawRecommendationRow[], doc: DocumentIn
     // ── Закрытые списки
     const opN = norm(raw.op);
     const op = RECOMMENDATION_OPS.find((o) => norm(o) === opN);
-    if (!op)
-      reasons.push(
-        `операция «${raw.op}» вне закрытого списка: ${RECOMMENDATION_OPS.join(" | ")}`,
-      );
+    if (!op) bad("op_not_allowed", { op: raw.op, allowed: [...RECOMMENDATION_OPS] });
     const sevN = norm(raw.severity);
     const severity = RECOMMENDATION_SEVERITIES.find((s) => norm(s) === sevN);
     if (!severity)
-      reasons.push(
-        `важность «${raw.severity}» вне закрытого списка: ${RECOMMENDATION_SEVERITIES.join(" | ")}`,
-      );
+      bad("severity_not_allowed", { severity: raw.severity, allowed: [...RECOMMENDATION_SEVERITIES] });
 
     // ── Полный повтор строки
     const dupKey = `${norm(num)}|${norm(addressName)}|${norm(elementRaw)}`;
-    if (seen.has(dupKey)) reasons.push("строка повторяет предыдущую (тот же №, адрес и элемент)");
+    if (seen.has(dupKey)) bad("row_duplicate");
     seen.add(dupKey);
+
+    // ── «Основание» (12.3, Д-21): замечание, статуса не меняет
+    const note = rationaleIssue(raw.rationale, critiqueSubsections);
 
     // ── Хэш источника (решение 3 шапки): элемент → его значение, иначе подраздел
     const sourceHash = elementRaw && !elementId
@@ -618,8 +750,8 @@ export function guardRows(raws: readonly RawRecommendationRow[], doc: DocumentIn
       replacement: raw.replacement || null,
       rationale: raw.rationale,
       severity: severity ?? raw.severity,
-      status: reasons.length ? "invalid" : "new",
-      invalidReason: reasons.length ? reasons.join("; ") : null,
+      status: found.length ? "invalid" : "new",
+      ...withIssueTexts([...found, ...(note ? [note] : [])]),
       sourceHash,
     };
   });
@@ -630,6 +762,7 @@ export function guardRows(raws: readonly RawRecommendationRow[], doc: DocumentIn
 type RecRow = typeof recommendations.$inferSelect;
 
 export function toRecommendationDto(r: RecRow): Recommendation {
+  const issues = issuesFromColumn(r.issues);
   return {
     id: r.id,
     synthesisId: r.synthesisId,
@@ -645,7 +778,11 @@ export function toRecommendationDto(r: RecRow): Recommendation {
     rationale: r.rationale,
     severity: r.severity,
     status: r.status,
-    invalidReason: r.invalidReason,
+    // 12.3 (Д-46): фраза — на языке запроса, из кодов; у строки без кодов
+    // (разобрана до 12.3) — сохранённый русский текст
+    invalidReason: issueTextFor(issues, "invalid", r.invalidReason),
+    warning: issueTextFor(issues, "warning", r.warning),
+    issues,
     planId: r.planId,
     stepIndex: r.stepIndex,
     createdAt: r.createdAt.toISOString(),
@@ -775,7 +912,10 @@ export async function parseAndStore(synthesisId: string): Promise<Recommendation
         // строка в работе остаётся в работе, даже если сторож теперь против:
         // её судьбу решает исполнение (10.2), а не перечитка
         status: old ? old.status : g.status,
-        invalidReason: old ? old.invalidReason : g.invalidReason,
+        // 12.3 (Д-21): замечание — всегда свежее: оно о текущем документе и
+        // статуса не касается (в отличие от причины отказа у строки в работе);
+        // 12.3 (Д-46): коды и оба текста — из одного списка находок
+        ...(old ? carriedIssues(old, g) : withIssueTexts(g.issues)),
         sourceHash: old ? old.sourceHash : g.sourceHash,
         planId: old?.planId ?? null,
         stepIndex: old?.stepIndex ?? null,
@@ -786,7 +926,7 @@ export async function parseAndStore(synthesisId: string): Promise<Recommendation
     for (const old of carry.values()) {
       if (!KEEP.includes(old.status)) continue;
       pos += 1;
-      values.push({ ...old, position: pos, roundHash });
+      values.push({ ...old, issues: issuesFromColumn(old.issues), position: pos, roundHash });
     }
     const inserted = await tx.insert(recommendations).values(values).returning();
     inserted.sort((a, b) => a.position - b.position);
@@ -798,6 +938,17 @@ export async function parseAndStore(synthesisId: string): Promise<Recommendation
       rows: inserted.map(toRecommendationDto),
     };
   });
+}
+
+/**
+ * Находки строки В РАБОТЕ при перечитке: уровень 'invalid' — прежний (её
+ * судьбу решает исполнение, а не перечитка), уровень 'warning' — свежий. У
+ * строки без кодов (разобрана до 12.3) прежний текст причины сохраняется.
+ */
+function carriedIssues(old: RecRow, fresh: GuardedRow): ReturnType<typeof withIssueTexts> {
+  const kept = issuesFromColumn(old.issues).filter((x) => x.level === "invalid");
+  const next = withIssueTexts([...kept, ...fresh.issues.filter((x) => x.level === "warning")]);
+  return { ...next, invalidReason: next.invalidReason ?? old.invalidReason };
 }
 
 /** Строки раунда (по умолчанию — последнего). Нет критики → NOT_FOUND. */
@@ -876,17 +1027,26 @@ export function innerHtmlFromModelAnswer(answer: string): string | null {
   return table.outerHTML;
 }
 
+/** Квота ретрофита — одна на оценку (12.3), предпроверку роута и слот. */
+export const EXTRACT_QUOTA = "regenerations" as const;
+
+/** Запрос ретрофита, собранный БЕЗ обращения к модели. */
+export interface ExtractRequest {
+  critique: { id: string; html: string };
+  prompt: string;
+  SYS: string;
+  depth: string;
+  /** Подразделы критики в документе (канонические имена) */
+  critiqueSubsections: string[];
+}
+
 /**
- * Ретрофит: ОДНО обращение к модели → подраздел «Таблица рекомендаций»
- * вписан ПОСЛЕ прозы (insertSubsectionAfter; уже есть — заменено содержимое)
- * → разбор. Квота — regenerations. Версия раздела 'section'/'regenerated'
- * со снимком ДО, is_edited = true; стоимость входит в итог документа.
- * Негодный ответ модели (нет таблицы, нет столбца) в документ НЕ пишется.
+ * Всё, что ретрофит отправит модели: SYS и промпт собираются из документа и
+ * шаблонов Registry целиком до вызова — поэтому и оценка стоимости (12.3,
+ * Д-20) считает вход ТОЧНО, а не моделью промпта перегенерации подраздела.
+ * Бросает NOT_FOUND: нет критики (no_critique) / нет прозы (no_prose).
  */
-export async function extractRecommendationsTable(
-  synthesisId: string,
-  userId: string,
-): Promise<RecommendationsExtractResponse> {
+export async function buildExtractRequest(synthesisId: string): Promise<ExtractRequest> {
   const critique = await loadCritiqueHtml(synthesisId);
   const container = parseFragment(critique.html);
   const prose = extractSubsectionContent(container, RECOMMENDATIONS_PROSE_SUBSECTION);
@@ -907,150 +1067,379 @@ export async function extractRecommendationsTable(
   const tableContract = await renderTemplate(RECOMMENDATIONS_TABLE_TEMPLATE_KEY, {
     document_subsections: formatDocumentSubsections(doc.subsectionsBySection, keys),
   });
+  const critiqueSubsections = doc.subsectionsBySection[RECOMMENDATIONS_SECTION_KEY] ?? [];
   const prompt = await renderTemplate(
     RECOMMENDATIONS_EXTRACT_TEMPLATE_KEY,
     buildExtractVars({
       prose,
-      critiqueSubsections: doc.subsectionsBySection[RECOMMENDATIONS_SECTION_KEY] ?? [],
+      critiqueSubsections,
       doc,
       tableContract,
     }),
   );
   const SYS = await buildSYS({ phil: philosophers, lang: row.lang }, { outputMode: "subsection" });
+  return { critique, prompt, SYS, depth: row.depth, critiqueSubsections: [...critiqueSubsections] };
+}
+
+/**
+ * Оценка ретрофита из готовых размеров — чистое ядро (смоук без БД).
+ * Вход: SYS + промпт, знаки → токены делителем оценщика 1.1. Выход: один
+ * подраздел критики — 1/N полного выхода раздела (subsectionOutputChars,
+ * формула estimateSubsectionCost 1.1); N — подразделы критики вместе с
+ * таблицей, которую предстоит составить.
+ */
+export function estimateExtractFromSizes(input: {
+  sysChars: number;
+  promptChars: number;
+  depth: string;
+  /** Подразделы критики, уже стоящие в документе */
+  critiqueSubsections: readonly string[];
+}): { inTokens: number; outTokens: number; cost: number } {
+  const subCount =
+    input.critiqueSubsections.length +
+    (input.critiqueSubsections.includes(RECOMMENDATIONS_TABLE_SUBSECTION) ? 0 : 1);
+  const inTokens = Math.ceil((input.sysChars + input.promptChars) / CHARS_PER_TOKEN);
+  const outTokens = Math.ceil(
+    subsectionOutputChars(RECOMMENDATIONS_SECTION_KEY, { depth: input.depth }, subCount) /
+      CHARS_PER_TOKEN,
+  );
+  return { inTokens, outTokens, cost: inTokens * PRICE_IN + outTokens * PRICE_OUT };
+}
+
+/**
+ * 12.3 (Д-20): оценка ретрофита ДО вызова — модель не зовётся, слот не
+ * берётся, квота не расходуется, в БД ничего не пишется. Панель 10.3 называла
+ * цену словами («одно обращение к модели»), сумму показывала только после.
+ * Отказы — те же, что у самого ретрофита: нет критики / нет прозы (404).
+ */
+export async function estimateExtractCost(
+  synthesisId: string,
+): Promise<RecommendationsExtractEstimateResponse> {
+  const req = await buildExtractRequest(synthesisId);
+  return {
+    estimate: estimateExtractFromSizes({
+      sysChars: req.SYS.length,
+      promptChars: req.prompt.length,
+      depth: req.depth,
+      critiqueSubsections: req.critiqueSubsections,
+    }),
+    // во что обойдётся подписчику: одна единица той же квоты, что у ретрофита
+    quota: { type: EXTRACT_QUOTA, units: 1 },
+  };
+}
+
+/** Ключ строки генлога: подраздел, а не раздел (см. шапку, 12.3). */
+export const RECOMMENDATIONS_TABLE_LOG_KEY = `${RECOMMENDATIONS_SECTION_KEY}:${RECOMMENDATIONS_TABLE_SUBSECTION}`;
+
+interface ComposeTableOptions {
+  /** Подпись строки генлога (хранимая диагностика владельца — по-русски) */
+  logLabel: string;
+  /** Снимок раздела ДО записи таблицы (версия 'section'/'regenerated') */
+  versioned: boolean;
+  /** Пометить раздел изменённым (is_edited) */
+  markEdited: boolean;
+}
+
+interface ComposeTableResult {
+  written: NonNullable<ReturnType<typeof insertSubsectionAfter>>;
+  usage: { inputTokens: number; outputTokens: number };
+  costUsd: number;
+}
+
+/**
+ * Ядро составления таблицы по готовой прозе — ПОД УЖЕ ЗАНЯТЫМ слотом: одно
+ * обращение к модели, строка генлога, итог документа, проверка ответа ДО
+ * записи, вставка подраздела под замком строки. Его зовут ретрофит (свой
+ * слот, POST …/extract) и свой повтор после генерации критики (слот
+ * генерации; 12.3, Д-21). Бросает StreamError (обрыв обращения) и
+ * RecommendationsError (негодный ответ) — документ при этом не меняется.
+ */
+async function composeTableUnderSlot(
+  handle: GenerationSlotHandle,
+  synthesisId: string,
+  req: ExtractRequest,
+  opts: ComposeTableOptions,
+): Promise<ComposeTableResult> {
+  const { critique, prompt, SYS } = req;
+  const [genEntry] = await db
+    .insert(generationLog)
+    .values({
+      synthesisId,
+      // 12.3: ключ ПОДРАЗДЕЛА. С ключом раздела эта короткая строка
+      // становилась «фактическим размером критики» в оценках стоимости
+      sectionKey: RECOMMENDATIONS_TABLE_LOG_KEY,
+      sectionLabel: opts.logLabel,
+      logType: "generation",
+      source: "subsection_regen",
+      status: "streaming",
+      priorChars: 0,
+      taskChars: prompt.length,
+      inputChars: SYS.length + prompt.length,
+      metadata: {
+        subsectionName: RECOMMENDATIONS_TABLE_SUBSECTION,
+        expectedSubsections: [RECOMMENDATIONS_TABLE_SUBSECTION],
+        subsections: [],
+        promptSkeleton: buildPromptSkeleton(prompt),
+        sys: SYS,
+      },
+    })
+    .returning({ id: generationLog.id });
+  const genEntryId = (genEntry as { id: string }).id;
+  let answer: string;
+  let usage: { inputTokens: number; outputTokens: number };
+  try {
+    const streamed = await streamWithRetries(
+      handle,
+      RECOMMENDATIONS_EXTRACT_STREAM_KEY,
+      prompt,
+      SYS,
+      handle.billing.apiKey,
+      () => undefined, // дельты никому не шлются (решение 5 шапки)
+    );
+    answer = streamed.html;
+    usage = streamed.usage;
+  } catch (rawErr) {
+    const e = rawErr instanceof StreamError ? rawErr : classifyStreamError(rawErr, false);
+    const eUsage = e.usage ?? { inputTokens: 0, outputTokens: 0 };
+    await db
+      .update(generationLog)
+      .set({
+        status: "error",
+        errorMessage: e.message,
+        inputTokens: eUsage.inputTokens,
+        outputTokens: eUsage.outputTokens,
+        costUsd: (eUsage.inputTokens * PRICE_IN + eUsage.outputTokens * PRICE_OUT).toFixed(6),
+      })
+      .where(eq(generationLog.id, genEntryId));
+    await bumpTotals(synthesisId, eUsage);
+    await clearStreamState(synthesisId, RECOMMENDATIONS_EXTRACT_STREAM_KEY);
+    throw e;
+  }
+  const costUsd = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
+  await db
+    .update(generationLog)
+    .set({
+      status: "done",
+      outputChars: answer.length,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      costUsd: costUsd.toFixed(6),
+    })
+    .where(eq(generationLog.id, genEntryId));
+  await bumpTotals(synthesisId, usage);
+  await clearStreamState(synthesisId, RECOMMENDATIONS_EXTRACT_STREAM_KEY);
+
+  const inner = innerHtmlFromModelAnswer(answer);
+  if (!inner)
+    throw new RecommendationsError(
+      "RECOMMENDATIONS_TABLE_INVALID",
+      tl("server.recommendations.noTableReturned", "Модель не вернула таблицу — документ не изменён. Повторите запрос."),
+      { problem: "model_no_table" },
+    );
+
+  // Перечитать раздел под замком: между чтением и записью шёл вызов модели
+  const written = await db.transaction(async (tx) => {
+    const [sec] = await tx
+      .select()
+      .from(sections)
+      .where(eq(sections.id, critique.id))
+      .limit(1)
+      .for("update");
+    if (!sec) throw new RecommendationsError("NOT_FOUND", tl("common.sectionNotFound", "Раздел не найден"), { reason: "no_critique" });
+    let ins;
+    try {
+      ins = insertSubsectionAfter(
+        sec.htmlContent,
+        RECOMMENDATIONS_PROSE_SUBSECTION,
+        RECOMMENDATIONS_TABLE_SUBSECTION,
+        inner,
+      );
+    } catch (err) {
+      if (err instanceof SubsectionHtmlError)
+        throw new RecommendationsError(
+          "RECOMMENDATIONS_TABLE_INVALID",
+          tl("server.recommendations.responseUnfit", "Ответ модели не годится в документ: {message}", { message: err.message }),
+          { problem: "model_html", detail: err.problem },
+        );
+      throw err;
+    }
+    if (!ins)
+      throw new RecommendationsError(
+        "NOT_FOUND",
+        tl("server.recommendations.noProseSubsectionShort", "В критике нет подраздела «{proseSubsection}»", { proseSubsection: RECOMMENDATIONS_PROSE_SUBSECTION }),
+        { reason: "no_prose" },
+      );
+    // Негодную таблицу в документ не пишем: проверка ДО записи
+    parseRecommendationsTable(ins.html);
+    if (opts.versioned)
+      await createVersion(synthesisId, sec.id, "section", snapshotOf(sec), "regenerated", tx);
+    await tx
+      .update(sections)
+      .set({
+        htmlContent: ins.html,
+        ...(opts.markEdited ? { isEdited: true } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(sections.id, sec.id));
+    return ins;
+  });
+  return { written, usage, costUsd };
+}
+
+/**
+ * Ретрофит: ОДНО обращение к модели → подраздел «Таблица рекомендаций»
+ * вписан ПОСЛЕ прозы (insertSubsectionAfter; уже есть — заменено содержимое)
+ * → разбор. Квота — regenerations. Версия раздела 'section'/'regenerated'
+ * со снимком ДО, is_edited = true; стоимость входит в итог документа.
+ * Негодный ответ модели (нет таблицы, нет столбца) в документ НЕ пишется.
+ */
+export async function extractRecommendationsTable(
+  synthesisId: string,
+  userId: string,
+): Promise<RecommendationsExtractResponse> {
+  const req = await buildExtractRequest(synthesisId);
 
   let result: RecommendationsExtractResponse | null = null;
   await withGenerationSlot(
     synthesisId,
     userId,
     async (handle) => {
-      const [genEntry] = await db
-        .insert(generationLog)
-        .values({
-          synthesisId,
-          sectionKey: RECOMMENDATIONS_SECTION_KEY,
-          sectionLabel: `Критический анализ → ${RECOMMENDATIONS_TABLE_SUBSECTION} [по готовой прозе]`,
-          logType: "generation",
-          source: "subsection_regen",
-          status: "streaming",
-          priorChars: 0,
-          taskChars: prompt.length,
-          inputChars: SYS.length + prompt.length,
-          metadata: {
-            subsectionName: RECOMMENDATIONS_TABLE_SUBSECTION,
-            expectedSubsections: [RECOMMENDATIONS_TABLE_SUBSECTION],
-            subsections: [],
-            promptSkeleton: buildPromptSkeleton(prompt),
-            sys: SYS,
-          },
-        })
-        .returning({ id: generationLog.id });
-      const genEntryId = (genEntry as { id: string }).id;
-      let answer: string;
-      let usage: { inputTokens: number; outputTokens: number };
-      try {
-        const streamed = await streamWithRetries(
-          handle,
-          RECOMMENDATIONS_EXTRACT_STREAM_KEY,
-          prompt,
-          SYS,
-          handle.billing.apiKey,
-          () => undefined, // дельты никому не шлются (решение 5 шапки)
-        );
-        answer = streamed.html;
-        usage = streamed.usage;
-      } catch (rawErr) {
-        const e = rawErr instanceof StreamError ? rawErr : classifyStreamError(rawErr, false);
-        const eUsage = e.usage ?? { inputTokens: 0, outputTokens: 0 };
-        await db
-          .update(generationLog)
-          .set({
-            status: "error",
-            errorMessage: e.message,
-            inputTokens: eUsage.inputTokens,
-            outputTokens: eUsage.outputTokens,
-            costUsd: (eUsage.inputTokens * PRICE_IN + eUsage.outputTokens * PRICE_OUT).toFixed(6),
-          })
-          .where(eq(generationLog.id, genEntryId));
-        await bumpTotals(synthesisId, eUsage);
-        await clearStreamState(synthesisId, RECOMMENDATIONS_EXTRACT_STREAM_KEY);
-        throw e;
-      }
-      const costUsd = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
-      await db
-        .update(generationLog)
-        .set({
-          status: "done",
-          outputChars: answer.length,
-          inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens,
-          costUsd: costUsd.toFixed(6),
-        })
-        .where(eq(generationLog.id, genEntryId));
-      await bumpTotals(synthesisId, usage);
-      await clearStreamState(synthesisId, RECOMMENDATIONS_EXTRACT_STREAM_KEY);
-
-      const inner = innerHtmlFromModelAnswer(answer);
-      if (!inner)
-        throw new RecommendationsError(
-          "RECOMMENDATIONS_TABLE_INVALID",
-          tl("server.recommendations.noTableReturned", "Модель не вернула таблицу — документ не изменён. Повторите запрос."),
-          { problem: "model_no_table" },
-        );
-
-      // Перечитать раздел под замком: между чтением и записью шёл вызов модели
-      const written = await db.transaction(async (tx) => {
-        const [sec] = await tx
-          .select()
-          .from(sections)
-          .where(eq(sections.id, critique.id))
-          .limit(1)
-          .for("update");
-        if (!sec) throw new RecommendationsError("NOT_FOUND", tl("common.sectionNotFound", "Раздел не найден"), { reason: "no_critique" });
-        let ins;
-        try {
-          ins = insertSubsectionAfter(
-            sec.htmlContent,
-            RECOMMENDATIONS_PROSE_SUBSECTION,
-            RECOMMENDATIONS_TABLE_SUBSECTION,
-            inner,
-          );
-        } catch (err) {
-          if (err instanceof SubsectionHtmlError)
-            throw new RecommendationsError(
-              "RECOMMENDATIONS_TABLE_INVALID",
-              tl("server.recommendations.responseUnfit", "Ответ модели не годится в документ: {message}", { message: err.message }),
-              { problem: "model_html", detail: err.problem },
-            );
-          throw err;
-        }
-        if (!ins)
-          throw new RecommendationsError(
-            "NOT_FOUND",
-            tl("server.recommendations.noProseSubsectionShort", "В критике нет подраздела «{proseSubsection}»", { proseSubsection: RECOMMENDATIONS_PROSE_SUBSECTION }),
-            { reason: "no_prose" },
-          );
-        // Негодную таблицу в документ не пишем: проверка ДО записи
-        parseRecommendationsTable(ins.html);
-        await createVersion(synthesisId, sec.id, "section", snapshotOf(sec), "regenerated", tx);
-        await tx
-          .update(sections)
-          .set({ htmlContent: ins.html, isEdited: true, updatedAt: new Date() })
-          .where(eq(sections.id, sec.id));
-        return ins;
+      const run = await composeTableUnderSlot(handle, synthesisId, req, {
+        logLabel: `Критический анализ → ${RECOMMENDATIONS_TABLE_SUBSECTION} [по готовой прозе]`,
+        versioned: true,
+        markEdited: true,
       });
-
       const parsed = await parseAndStore(synthesisId);
       result = {
         ...parsed,
-        outcome: written.outcome,
-        warnings: written.warnings,
-        usage: { ...usage, costUsd },
+        outcome: run.written.outcome,
+        warnings: run.written.warnings,
+        usage: { ...run.usage, costUsd: run.costUsd },
       };
     },
-    { quota: "regenerations" },
+    { quota: EXTRACT_QUOTA },
   );
   // withGenerationSlot возвращает void; result заполнен либо брошено исключение
   return result as unknown as RecommendationsExtractResponse;
+}
+
+/* ══ Свой повтор пропущенной таблицы (12.3, Д-21) ═════════════════════ */
+
+/** Чего не хватает критике, чтобы рекомендации можно было разобрать. */
+export type RecommendationsTableGap =
+  /** таблица на месте (в том числе пустая: это ответ модели, а не пропуск) */
+  | "none"
+  /** нет прозы рекомендаций — составлять не из чего */
+  | "no_prose"
+  /** подраздела «Таблица рекомендаций» нет */
+  | "missing"
+  /** подраздел есть, но в нём нет таблицы либо столбцов контракта */
+  | "broken";
+
+/** Состояние таблицы рекомендаций в HTML критики — чистая функция. */
+export function recommendationsTableGap(critiqueHtml: string): RecommendationsTableGap {
+  const root = parseFragment(critiqueHtml);
+  if (!findExact(root, RECOMMENDATIONS_PROSE_SUBSECTION)) return "no_prose";
+  try {
+    parseRecommendationsTable(critiqueHtml);
+    return "none";
+  } catch (err) {
+    if (!(err instanceof RecommendationsError)) throw err;
+    if (err.details?.["reason"] === "no_table") return "missing";
+    const problem = err.details?.["problem"];
+    return problem === "no_table_element" || problem === "missing_columns" ? "broken" : "none";
+  }
+}
+
+/** Итог токенов документа (то, что ведёт bumpTotals). */
+async function documentTotals(synthesisId: string): Promise<{ inputTokens: number; outputTokens: number }> {
+  const [row] = await db
+    .select({ inputTokens: syntheses.totalInputTokens, outputTokens: syntheses.totalOutputTokens })
+    .from(syntheses)
+    .where(eq(syntheses.id, synthesisId))
+    .limit(1);
+  return { inputTokens: row?.inputTokens ?? 0, outputTokens: row?.outputTokens ?? 0 };
+}
+
+export interface TableRetryResult {
+  /** present — таблица была; not_applicable — нет критики или прозы;
+   *  composed — составлена повтором; failed — повтор не удался */
+  outcome: "present" | "not_applicable" | "composed" | "failed";
+  /** HTML критики с таблицей (только у composed) */
+  html: string | null;
+  /** Расход повторного обращения (в итог документа он уже внесён); null —
+   *  обращения не было */
+  usage: { inputTokens: number; outputTokens: number } | null;
+  /** Что записать в предупреждения генлога раздела (владельцу) */
+  note: string | null;
+}
+
+/**
+ * СВОЙ ПОВТОР (12.3, Д-21): после УДАЧНОЙ генерации критики убедиться, что
+ * таблица рекомендаций в ней есть, и если модель её пропустила (либо
+ * написала подраздел без таблицы или без столбцов контракта) — составить
+ * одним повторным обращением по готовой прозе, тем же запросом, что
+ * ретрофит. Работает под слотом генерации: своей квоты не берёт, расход
+ * идёт в итог документа.
+ *
+ * Зовётся генерацией, перегенерацией и добавлением раздела ПОСЛЕ записи
+ * критики в БД (запрос собирается из сохранённого документа). Никогда не
+ * бросает: критика уже написана и годна, неудача повтора — не повод ронять
+ * генерацию; о случившемся говорит `note` (её пишут в предупреждения генлога
+ * раздела, рядом с предупреждениями разбора 11.1). Повтор один: негодный
+ * ответ во второй раз не переспрашивается — остаётся ручной ретрофит.
+ * Раунд рекомендаций здесь не разбирается — как и прежде, это делает панель.
+ */
+export async function ensureRecommendationsTable(
+  handle: GenerationSlotHandle,
+  synthesisId: string,
+): Promise<TableRetryResult> {
+  let gap: RecommendationsTableGap;
+  try {
+    gap = recommendationsTableGap((await loadCritiqueHtml(synthesisId)).html);
+  } catch {
+    return { outcome: "not_applicable", html: null, usage: null, note: null };
+  }
+  if (gap === "none") return { outcome: "present", html: null, usage: null, note: null };
+  if (gap === "no_prose") return { outcome: "not_applicable", html: null, usage: null, note: null };
+  const what =
+    gap === "missing"
+      ? `модель не написала подраздел «${RECOMMENDATIONS_TABLE_SUBSECTION}»`
+      : `подраздел «${RECOMMENDATIONS_TABLE_SUBSECTION}» написан без таблицы либо без столбцов контракта`;
+  // Расход повтора — разницей итога документа: ядро вносит его в итог и при
+  // удаче, и при обрыве, и при негодном ответе (обращение состоялось, токены
+  // потрачены) — а вызывающему он нужен во всех трёх случаях
+  const before = await documentTotals(synthesisId);
+  const spent = async (): Promise<TableRetryResult["usage"]> => {
+    const after = await documentTotals(synthesisId);
+    const usage = { inputTokens: after.inputTokens - before.inputTokens, outputTokens: after.outputTokens - before.outputTokens };
+    return usage.inputTokens > 0 || usage.outputTokens > 0 ? usage : null;
+  };
+  try {
+    const req = await buildExtractRequest(synthesisId);
+    const run = await composeTableUnderSlot(handle, synthesisId, req, {
+      logLabel: `Критический анализ → ${RECOMMENDATIONS_TABLE_SUBSECTION} [повтор: ${gap === "missing" ? "пропущена моделью" : "негодна"}]`,
+      versioned: false,
+      markEdited: false,
+    });
+    return {
+      outcome: "composed",
+      html: run.written.html,
+      usage: await spent(),
+      note: `таблица рекомендаций: ${what} — составлена повторным обращением по готовой прозе`,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[recommendations] повтор таблицы (${synthesisId}) не удался: ${message}`);
+    return {
+      outcome: "failed",
+      html: null,
+      usage: await spent().catch(() => null),
+      note:
+        `таблица рекомендаций: ${what}; повторное обращение не помогло (${message}) — ` +
+        "составьте её по готовой прозе из панели рекомендаций",
+    };
+  }
 }
 
 /** Для шапки подраздела в ответах и тестах. */

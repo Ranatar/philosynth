@@ -96,6 +96,41 @@ export const RECOMMENDATION_ELEMENT_KINDS = [
 export type RecommendationElementKind =
   (typeof RECOMMENDATION_ELEMENT_KINDS)[number];
 
+/**
+ * 12.3 (Д-46): что сторож нашёл у строки — КОДОМ, а не готовой фразой. Фраза
+ * собирается при чтении на языке запроса (server/services/
+ * recommendation-issues.ts); в БД лежат код и параметры
+ * (`recommendations.issues`). Уровень 'invalid' делает строку негодной,
+ * 'warning' — нет (строка исполнима, человеку есть что знать).
+ *
+ * Параметры — данные документа и машинные значения контракта (названия
+ * подразделов и элементов, операции, важность): они не переводятся. Ключи
+ * разделов (`sections`) хранятся ключами и переводятся при показе.
+ */
+export const RECOMMENDATION_ISSUE_CODES = [
+  // ── 'invalid': сторож адресов (10.1)
+  "num_invalid", // { num }
+  "address_empty", // {}
+  "address_not_found", // { address, near: string[] }
+  "address_in_critique", // { address }
+  "address_ambiguous", // { address, sections: ключи разделов }
+  "element_not_found", // { element }
+  "op_not_allowed", // { op, allowed: string[] }
+  "severity_not_allowed", // { severity, allowed: string[] }
+  "row_duplicate", // {}
+  // ── 'invalid': постановка плана (10.2) — адресат исчез после разбора
+  "target_element_gone", // { element }
+  "target_subsection_gone", // { subsection }
+  // ── 'warning': столбец «Основание» (12.3, Д-21)
+  "rationale_empty", // { subsections: string[] }
+  "rationale_self", // { names: string[], subsections: string[] }
+  "rationale_unknown", // { names: string[], subsections: string[] }
+] as const;
+export type RecommendationIssueCode = (typeof RECOMMENDATION_ISSUE_CODES)[number];
+
+export const RECOMMENDATION_ISSUE_LEVELS = ["invalid", "warning"] as const;
+export type RecommendationIssueLevel = (typeof RECOMMENDATION_ISSUE_LEVELS)[number];
+
 /** № рекомендации: «5», «5а», «5б» (кириллица либо латиница, без пробелов). */
 export const RECOMMENDATION_NUM_RE = /^\d{1,3}[a-zа-яё]?$/i;
 

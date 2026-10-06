@@ -3,6 +3,9 @@
  *
  *   GET  /syntheses/:id/recommendations          ?round=N → RecommendationsResponse
  *   POST /syntheses/:id/recommendations/parse    → RecommendationsParseResponse
+ *   GET  /syntheses/:id/recommendations/extract/estimate →
+ *        RecommendationsExtractEstimateResponse (12.3, Д-20: оценка ретрофита
+ *        без обращения к модели)
  *   POST /syntheses/:id/recommendations/extract  → RecommendationsExtractResponse
  *   POST /syntheses/:id/recommendations/plan     { nums, fields? } →
  *        RecommendationsPlanResponse (беседа 10.2; fields — 10.3)
@@ -10,7 +13,7 @@
  * Отдельный роутер, а не routes/sections.ts: там сторожа 4ao/4ar считают
  * читающие и пишущие маршруты разделов, и рекомендации — не раздел.
  *
- * Доступ — ТОЛЬКО ВЛАДЕЛЕЦ на всех четырёх путях, включая чтение: рекомендации
+ * Доступ — ТОЛЬКО ВЛАДЕЛЕЦ на всех пяти путях, включая чтение: рекомендации
  * касаются правки, а не чтения; чужому — 403 и на публичной концепции. Гейт
  * тот же, что у правки (ownerEditGate 5.1/9.2): не-UUID/нет → 404, чужой →
  * 403, активная операция → 409 — у POST; у GET гейта активной операции нет
@@ -34,6 +37,7 @@ import { GenerationError } from "../services/generation-service.js";
 import { buildPlanDraft } from "../services/recommendation-planner.js";
 import {
   RecommendationsError,
+  estimateExtractCost,
   extractRecommendationsTable,
   listRecommendations,
   parseAndStore,
@@ -144,6 +148,27 @@ recommendationsRoutes.post("/:id/recommendations/parse", requireAuth, async (c) 
   if (gate) return gate;
   try {
     return c.json(await parseAndStore(id));
+  } catch (err) {
+    return serviceError(c, err);
+  }
+});
+
+/* ── GET /:id/recommendations/extract/estimate (12.3, Д-20) ──────────── */
+/*
+ * Оценка ретрофита ДО вызова: запрос к модели собирается целиком (SYS +
+ * шаблон recommendations.extract с прозой, списками элементов и контрактом
+ * таблицы) и измеряется; модель не зовётся, слот не берётся, квота не
+ * расходуется, billingCheck не нужен. Читающий маршрут: гейт владельца БЕЗ
+ * проверки активной операции (как GET списка). Отказы — как у ретрофита:
+ * 404 no_critique / no_prose.
+ */
+recommendationsRoutes.get("/:id/recommendations/extract/estimate", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const gate = await ownerReadGate(c, id, user.id);
+  if (gate) return gate;
+  try {
+    return c.json(await estimateExtractCost(id));
   } catch (err) {
     return serviceError(c, err);
   }

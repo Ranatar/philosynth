@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 import { buildSYS, buildQualityReinforcement, getStopSignal } from "../server/services/prompt-builder.ts";
-import { buildSectionDefs, buildSubsectionMap, serializeParts } from "../server/services/section-defs-builder.ts";
+import { buildSectionDefs, buildSubsectionMap, serializeParts, critiqueHasInterlayer, CRITIQUE_INTERLAYER_SUBSECTION as INTERLAYER } from "../server/services/section-defs-builder.ts";
 // Беседа 10.1: служба НАМЕРЕННО отступила от исходника в одном месте — у критики
 // появился подраздел «Таблица рекомендаций» (после «Рекомендации по улучшению»),
 // а прозаическому шаблону рекомендаций дописано одно требование. Байтовая сверка
@@ -121,7 +121,25 @@ for (const { name, p } of CASES) {
   // ключей объекта — грабли 0.3; семантика от порядка не зависит)
   const gotMapRaw = await buildSubsectionMap(p);
   ok("buildSubsectionMap: отступление 10.1 — таблица сразу после прозы", gotMapRaw.critique[gotMapRaw.critique.indexOf(REC_PROSE) + 1] === REC_TABLE);
-  const gotMap = { ...gotMapRaw, critique: gotMapRaw.critique.filter((x) => x !== REC_TABLE) };
+  // 12.3 (Д-13) — второе ОТСТУПЛЕНИЕ ОТ ИСХОДНИКА: карта критики несёт
+  // адаптивный подраздел «Межслойная согласованность» ровно тогда, когда его
+  // несёт задание (диалог + формальный раздел), и на том же месте — вторым.
+  // В исходнике карта его не знала вовсе (квирк), поэтому перед поключевой
+  // сверкой он снимается, а инвариант «карта ≡ заданию» проверяется отдельно.
+  const critiqueDef = gotDefs.find((d) => d.key === "critique");
+  if (critiqueDef) {
+    const taskNames = critiqueDef.parts.subsections.map((x) => x.name).filter(Boolean);
+    ok("critique: карта подразделов ≡ подразделам задания (12.3, Д-13)",
+      JSON.stringify(gotMapRaw.critique) === JSON.stringify(taskNames),
+      `карта ${JSON.stringify(gotMapRaw.critique)}\n    задание ${JSON.stringify(taskNames)}`);
+    const wantInterlayer = critiqueHasInterlayer(p.sec);
+    ok(`critique: отступление 12.3 — «${INTERLAYER}» ${wantInterlayer ? "вторым пунктом, ровно один раз" : "отсутствует (нет диалога либо формального раздела)"}`,
+      wantInterlayer
+        ? gotMapRaw.critique[1] === INTERLAYER && gotMapRaw.critique.filter((x) => x === INTERLAYER).length === 1
+        : !gotMapRaw.critique.includes(INTERLAYER),
+      JSON.stringify(gotMapRaw.critique));
+  }
+  const gotMap = { ...gotMapRaw, critique: gotMapRaw.critique.filter((x) => x !== REC_TABLE && x !== INTERLAYER) };
   const expMap = orig.buildSubsectionMap(p);
   const mapKeysEq =
     JSON.stringify(Object.keys(gotMap).sort()) ===

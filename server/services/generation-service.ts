@@ -141,6 +141,10 @@ import {
   type ConceptParticipantFull,
 } from "./meta-synthesis-service.js";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
+import {
+  RECOMMENDATIONS_SECTION_KEY,
+  RECOMMENDATIONS_TABLE_SUBSECTION,
+} from "@philosynth/shared/constants/recommendations";
 import { CTX_LABELS } from "@philosynth/shared/constants/ctx-keys";
 import { PARENT_CONTEXT_SCHEMA_ID } from "../config/parent-deps.js";
 import { buildDynamicOrder } from "../utils/topo-sort.js";
@@ -257,6 +261,134 @@ export function cancelGeneration(synthesisId: string, userId: string): boolean {
   if (!run || run.userId !== userId) return false;
   run.abort.abort();
   return true;
+}
+
+/* ══ Свой повтор пропущенной таблицы рекомендаций (12.3, Д-21) ════════ */
+
+/**
+ * После УДАЧНОЙ генерации критики (проход генерации, перегенерация раздела,
+ * добавление раздела) — убедиться, что «Таблица рекомендаций» написана, и
+ * если модель её пропустила, составить одним повторным обращением
+ * (recommendations.ensureRecommendationsTable). Общий механизм недостающих
+ * подразделов 1.4b здесь не помощник: он работает на ОБРЫВЕ стрима, а
+ * успешный проход подразделы не пересчитывает.
+ *
+ * Возвращает HTML критики с таблицей, если она составлена повтором (иначе
+ * html: null — вызывающий шлёт клиенту прежний HTML), и расход повторного
+ * обращения: в итог документа ядро его уже внесло, но проход генерации ведёт
+ * итог ЛОКАЛЬНО и следующим проходом записал бы поверх — ему расход нужно
+ * прибавить к своим счётчикам. Никогда не бросает: критика уже записана. Что
+ * произошло — в предупреждениях генлога раздела.
+ *
+ * Связь с recommendations.ts — ТОЛЬКО ленивым import(): статический замкнул
+ * бы цикл (recommendations → generation-service; приём 4.1).
+ */
+interface CritiqueTableRetry {
+  html: string | null;
+  usage: { inputTokens: number; outputTokens: number } | null;
+  /** Повтор был и не помог — о таблице уже сказано его пометкой (Д-47). */
+  failed: boolean;
+}
+
+async function ensureCritiqueTable(
+  handle: GenerationSlotHandle,
+  sectionKeys: readonly string[],
+  genEntryId: string,
+): Promise<CritiqueTableRetry> {
+  if (!sectionKeys.includes(RECOMMENDATIONS_SECTION_KEY)) return { html: null, usage: null, failed: false };
+  try {
+    const { ensureRecommendationsTable } = await import("./recommendations.js");
+    const r = await ensureRecommendationsTable(handle, handle.synthesisId);
+    if (r.note) await appendParseWarnings(genEntryId, [r.note]);
+    return { html: r.outcome === "composed" ? r.html : null, usage: r.usage, failed: r.outcome === "failed" };
+  } catch (e) {
+    console.warn("[generation] повтор таблицы рекомендаций:", e);
+    return { html: null, usage: null, failed: false };
+  }
+}
+
+/* ══ Сверка подразделов после удачного ответа (12.3, Д-47) ════════════ */
+
+/**
+ * Подразделы из ожидаемого списка, которых в HTML раздела нет. Ищет тем же
+ * `resolveSubsection`, что все читатели документа (точное имя → нечёткое
+ * включение → по месту при совпавшем числе подразделов, 11.1): подраздел,
+ * который служба сумеет прочитать, пропавшим не считается — в том числе с
+ * переведённым моделью атрибутом data-section. `skip` — имена, о которых уже
+ * сказано отдельной пометкой.
+ */
+export function findMissingSubsections(
+  html: string,
+  expected: readonly string[],
+  skip: readonly string[] = [],
+): string[] {
+  if (!html || expected.length === 0) return [];
+  const container = parseFragment(html);
+  return expected.filter(
+    (name) => !skip.includes(name) && resolveSubsection(container, name, expected).el === null,
+  );
+}
+
+/**
+ * Пометка владельцу о пропущенных подразделах — либо null, если всё на
+ * месте. Текст русский: это диагностика генлога, не интерфейс (11.2).
+ * Два случая различаются счётом размеченных подразделов: меньше ожидаемого —
+ * подраздел не написан; не меньше — написан, но под названием, по которому
+ * служба его не узнаёт (и страховка по месту не сработала: число не сошлось).
+ */
+export function missingSubsectionsNote(
+  html: string,
+  expected: readonly string[],
+  skip: readonly string[] = [],
+): string | null {
+  const missing = findMissingSubsections(html, expected, skip);
+  if (missing.length === 0) return null;
+  const marked = (html.match(/data-section="/g) ?? []).length;
+  const one = missing.length === 1;
+  const names = missing.map((n) => `«${n}»`).join(", ");
+  const counts = `ожидалось подразделов: ${expected.length}, размечено: ${marked}`;
+  if (marked >= expected.length)
+    return (
+      `модель завершила ответ, но ${one ? "подраздел" : "подразделы"} ${names} по названию не ` +
+      `${one ? "найден" : "найдены"} (${counts}) — вероятно, названия изменены. Раздел сохранён как есть`
+    );
+  return (
+    `модель завершила ответ, не написав ${one ? "подраздел" : "подразделы"} ${names} (${counts}). ` +
+    `Раздел сохранён как есть — перегенерируйте его, если ${one ? "подраздел нужен" : "подразделы нужны"}`
+  );
+}
+
+/**
+ * ДО 12.3 успешный ответ с пропущенным подразделом не оставлял следа: пауза
+ * 1.4b сверяет написанное с ожидаемым только на ОБРЫВЕ стрима, а удачный
+ * проход писал раздел как есть (паритет с исходником [25668–25689]) — в
+ * генлоге лежали оба списка, но их никто не сравнивал. Теперь после удачной
+ * генерации раздела (проход, перегенерация, добавление) сверка пишет пометку
+ * в `metadata.parseWarnings` строки генлога — её показывают лог генерации и
+ * блок предупреждений раздела у владельца. Догенерации НЕТ: решение
+ * пользователя (2026-10-06) — дешёвый путь; повтор за счёт человека без его
+ * ведома не заводится. Исключение — «Таблица рекомендаций» (Д-21): у неё
+ * свой повтор, и при его неудаче о таблице уже сказано его пометкой
+ * (`tableRetryFailed` — второй раз не называть).
+ *
+ * Не бросает: раздел уже записан.
+ */
+async function noteMissingSubsections(
+  genEntryId: string,
+  html: string,
+  expected: readonly string[],
+  tableRetryFailed: boolean,
+): Promise<void> {
+  try {
+    const note = missingSubsectionsNote(
+      html,
+      expected,
+      tableRetryFailed ? [RECOMMENDATIONS_TABLE_SUBSECTION] : [],
+    );
+    if (note) await appendParseWarnings(genEntryId, [note]);
+  } catch (e) {
+    console.warn("[generation] сверка подразделов:", e);
+  }
 }
 
 /* ══ Порты вспомогательных функций исходника ══════════════════════════ */
@@ -1371,6 +1503,18 @@ export async function runGenerationPasses(
         }
       }
 
+      // 12.3 (Д-21): свой повтор пропущенной «Таблицы рекомендаций»
+      const tableRetry = await ensureCritiqueTable(run, pass.map((d) => d.key), genEntryId);
+      const finalHtml = tableRetry.html ?? html;
+      if (tableRetry.usage) {
+        // итог прохода ведётся локально и пишется в БД целиком на каждом
+        // проходе — без этого следующий проход стёр бы расход повтора
+        totalInputTokens += tableRetry.usage.inputTokens;
+        totalOutputTokens += tableRetry.usage.outputTokens;
+      }
+      // 12.3 (Д-47): пропущенные подразделы — пометкой в генлог раздела
+      await noteMissingSubsections(genEntryId, finalHtml, expectedSubs, tableRetry.failed);
+
       sendToUser(userId, {
         type: "section_done",
         synthesisId,
@@ -1380,7 +1524,7 @@ export async function runGenerationPasses(
           outputTokens: usage.outputTokens,
           costUsd: cost,
         },
-        html,
+        html: finalHtml,
       });
     } catch (outerErr) {
       /* ── Сбой ПОСТРОЕНИЯ контекста/промпта → пауза 'context-error'
@@ -2105,6 +2249,11 @@ export async function regenerateSection(
     );
 
     await clearStreamState(synthesisId, sectionKey);
+    // 12.3 (Д-21): свой повтор пропущенной «Таблицы рекомендаций»
+    const tableRetry = await ensureCritiqueTable(handle, [sectionKey], genEntryId);
+    const finalHtml = tableRetry.html ?? html;
+    // 12.3 (Д-47): пропущенные подразделы — пометкой в генлог раздела
+    await noteMissingSubsections(genEntryId, finalHtml, expectedSubs, tableRetry.failed);
     sendToUser(userId, {
       type: "section_done",
       synthesisId,
@@ -2114,7 +2263,7 @@ export async function regenerateSection(
         outputTokens: usage.outputTokens,
         costUsd: cost,
       },
-      html,
+      html: finalHtml,
     });
     return usage;
   } catch (rawErr) {
@@ -2960,6 +3109,11 @@ export async function addSection(
     );
 
     await clearStreamState(synthesisId, sectionKey);
+    // 12.3 (Д-21): свой повтор пропущенной «Таблицы рекомендаций»
+    const tableRetry = await ensureCritiqueTable(handle, [sectionKey], genEntryId);
+    const finalHtml = tableRetry.html ?? html;
+    // 12.3 (Д-47): пропущенные подразделы — пометкой в генлог раздела
+    await noteMissingSubsections(genEntryId, finalHtml, expectedSubs, tableRetry.failed);
     sendToUser(userId, {
       type: "section_done",
       synthesisId,
@@ -2969,7 +3123,7 @@ export async function addSection(
         outputTokens: usage.outputTokens,
         costUsd: cost,
       },
-      html,
+      html: finalHtml,
     });
     return usage;
   } catch (err) {

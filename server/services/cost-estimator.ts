@@ -93,6 +93,26 @@ export interface FullCostEstimate extends CostEstimate {
   passes: number;
 }
 
+/** Базовый бюджет межсекционного контекста, когда в конфиге нет глубины
+ *  (значение standard исходника [7529]). */
+export const DEFAULT_CONTEXT_BUDGET = 48000;
+
+/**
+ * 12.3 (Д-19): базовый бюджет межсекционного контекста раздела для глубины —
+ * из АКТИВНОГО конфига Registry `context_budget` (его правит админ, 6.2), с
+ * тем же запасным значением, что у оценщика. Это «сырой» бюджет: у critique
+ * сервер умножает его на 1.5, под давлением родительского контекста ужимает
+ * до пола 40% (applyBudgetPressure). Потребитель — POST /syntheses/estimate
+ * (поле contextBudget): форма создания показывает превью бюджета и до 12.3
+ * держала клиентскую копию чисел, расходившуюся с конфигом после первой же
+ * правки в админке.
+ */
+export async function contextBudgetForDepth(depth: string): Promise<number> {
+  const budgets = await getConfig<Record<string, number>>("context_budget");
+  const v = budgets[depth];
+  return typeof v === "number" && Number.isFinite(v) ? v : DEFAULT_CONTEXT_BUDGET;
+}
+
 /** Конфиги оценки из Registry */
 async function loadEstimatorConfigs(): Promise<{
   fragmentShare: Record<string, number>;
@@ -165,7 +185,7 @@ export async function estimateCost(
   const scaffoldChars = input.scaffoldChars ?? SCAFFOLD_CHARS;
   const parentOverheadFor = input.parentOverheadForSection ?? (() => 0);
 
-  const baseBudget0 = contextBudget[p.depth] ?? 48000;
+  const baseBudget0 = contextBudget[p.depth] ?? DEFAULT_CONTEXT_BUDGET;
   const keepFullBudget = p.keepFullBudget ?? false;
 
   // ── Оценка выхода каждого раздела ──
@@ -298,6 +318,25 @@ export interface EstimateSubsectionCostInput {
 }
 
 /**
+ * Ожидаемый выход ОДНОГО подраздела, симв.: 1/N полного выхода раздела
+ * (формула исходника [7807], вынесена 12.3 без изменения — её же берёт оценка
+ * ретрофита рекомендаций, Д-20: вход у него считается точно, выход — так же,
+ * как у любого подраздела).
+ */
+export function subsectionOutputChars(
+  sectionKey: string,
+  p: { depth?: Depth | string | undefined },
+  subCount: number,
+): number {
+  const sectionMult =
+    SECTION_OUTPUT_MULT[sectionKey] ?? SECTION_OUTPUT_MULT._default!;
+  const fullSectionOutput =
+    mw(p) * sectionMult * WORDS_TO_CHARS * HTML_OVERHEAD * OUTPUT_MULTIPLIER;
+  const subShare = 1 / Math.max(subCount, 1);
+  return Math.round(fullSectionOutput * subShare);
+}
+
+/**
  * Порт estimateSubsectionCost(sectionKey, subsectionName) [7807].
  * Возвращает null при отсутствии parts (как исходник при !def?.parts).
  */
@@ -354,7 +393,7 @@ export async function estimateSubsectionCost(
 
   // ── Prior контекст (из предыдущих разделов) ──
   // Тот же подход, что и estimateCost: FRAGMENT_SHARE + фактические размеры
-  let baseBudget = contextBudget[p.depth] ?? 48000;
+  let baseBudget = contextBudget[p.depth] ?? DEFAULT_CONTEXT_BUDGET;
   if (sectionKey === "critique") baseBudget = Math.floor(baseBudget * 1.5);
   const keepFull = p.keepFullBudget ?? false;
   const { effectiveBudget: budget } = applyBudgetPressure(
@@ -395,12 +434,7 @@ export async function estimateSubsectionCost(
     priorCtxEstimate;
 
   // ── Выход: подраздел ≈ 1/N от полного раздела ──
-  const sectionMult =
-    SECTION_OUTPUT_MULT[sectionKey] ?? SECTION_OUTPUT_MULT._default!;
-  const fullSectionOutput =
-    mw(p) * sectionMult * WORDS_TO_CHARS * HTML_OVERHEAD * OUTPUT_MULTIPLIER;
-  const subShare = 1 / subCount;
-  const totalOutChars = Math.round(fullSectionOutput * subShare);
+  const totalOutChars = subsectionOutputChars(sectionKey, p, subCount);
 
   const inTokens = Math.ceil(totalInChars / CHARS_PER_TOKEN);
   const outTokens = Math.ceil(totalOutChars / CHARS_PER_TOKEN);

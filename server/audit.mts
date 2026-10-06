@@ -63,7 +63,7 @@ const PAIRS: Pair[] = [
   { table: "dialogueTurns", file: "elements.ts", iface: "DialogueTurn" },
   { table: "elementVersions", file: "elements.ts", iface: "ElementVersion" },
   { table: "editPlans", file: "edit-plan.ts", iface: "EditPlan",
-    schemaOnly: ["userId", "updatedAt"], typeOnly: ["estimatedCost", "costBreakdown"] }, // costBreakdown (10.2) — вычисляемое, как estimatedCost
+    schemaOnly: ["userId", "updatedAt"], typeOnly: ["estimatedCost", "costBreakdown", "cascadePending"] }, // costBreakdown (10.2), cascadePending (12.3, Д-7) — вычисляемые, как estimatedCost
   { table: "modeResults", file: "modes.ts", iface: "ModeResult" },
   { table: "generationLog", file: "generation.ts", iface: "GenLogEntry" },
   { table: "contextLog", file: "generation.ts", iface: "CtxLogEntry" },

@@ -88,7 +88,7 @@ import {
   buildSYS,
   hasConceptParticipants,
 } from "../services/prompt-builder.js";
-import { estimateCost } from "../services/cost-estimator.js";
+import { contextBudgetForDepth, estimateCost } from "../services/cost-estimator.js";
 import {
   computeSectionAdvice,
   getCompatEntryByKey,
@@ -1198,6 +1198,11 @@ async function estimateSynthesisCost(
    buildSectionDefs → groupPasses → buildSYS/baseCtxStatic) и возвращает
    результат estimateCost. Потребитель — CostEstimate.tsx.
 
+   12.3 (Д-19): ответ аддитивно несёт contextBudget — базовый бюджет
+   межсекционного контекста из АКТИВНОГО конфига context_budget для глубины
+   запроса (contextBudgetForDepth). Форма показывает превью бюджета и до 12.3
+   считала его по клиентской копии чисел исходника.
+
    ДЫРА ДОКОВ (закрыть патчем в завершение беседы 1.5): эндпоинта нет в
    03-spec §2.2, хотя требование G3 (§1.3) предписывает серверную оценку;
    протокол 07 (беседа 1.5, п. 5) допускает «estimateCost на сервере». */
@@ -1292,7 +1297,10 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
       keepFullBudget: body.keepFullBudget === true,
       secCtx,
     });
-    return c.json({ estimate: est });
+    // 12.3 (Д-19): бюджет контекста АКТИВНОГО конфига для глубины запроса —
+    // аддитивно; клиентская копия CONTEXT_BUDGET_PREVIEW уходит в 12.4
+    const contextBudget = await contextBudgetForDepth(depth);
+    return c.json({ estimate: est, contextBudget });
   } catch (err) {
     // Оценка — вспомогательная: сбой Registry/конфигов не должен ронять форму
     console.warn("[syntheses] estimate failed:", err);

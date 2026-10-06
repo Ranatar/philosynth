@@ -28,7 +28,11 @@
  *  - 7.1: Stripe Customer ОДИН на пользователя — `ensureStripeCustomer`
  *    читает/заполняет users.stripe_customer_id (миграция 0003) и
  *    переиспользуется подпиской и пополнением (billing-service); до 7.1
- *    Customer создавался на каждую подписку.
+ *    Customer создавался на каждую подписку;
+ *  - 12.3 (Д-12): Customer, удалённый на стороне Stripe, переоткрывается
+ *    сам — `withStripeCustomer` ловит отказ «No such customer» у вызова,
+ *    несущего сохранённый id, обнуляет колонку условным UPDATE, заводит
+ *    Customer заново и повторяет вызов один раз.
  */
 import { and, desc, eq, gt, inArray, sql as dsql } from "drizzle-orm";
 import type {
@@ -46,6 +50,7 @@ import {
   type StripeEvent,
   type StripeInvoice,
   type StripeSubscription,
+  isNoSuchCustomerError,
 } from "./stripe-client.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
@@ -317,6 +322,54 @@ export async function ensureStripeCustomer(userId: string): Promise<string> {
 }
 
 /**
+ * 12.3 (Д-12): обнулить сохранённый Customer — условным UPDATE, тем же
+ * приёмом, что запись: `… WHERE stripe_customer_id = <негодный id>`. Если
+ * колонку успел переписать параллельный запрос (уже новым Customer), его
+ * значение не затирается. Возвращает true, если обнулена именно эта строка.
+ */
+export async function resetStripeCustomer(
+  userId: string,
+  staleCustomerId: string,
+): Promise<boolean> {
+  const rows = await db
+    .update(users)
+    .set({ stripeCustomerId: null, updatedAt: new Date() })
+    .where(and(eq(users.id, userId), eq(users.stripeCustomerId, staleCustomerId)))
+    .returning({ id: users.id });
+  return rows.length > 0;
+}
+
+/**
+ * 12.3 (Д-12): вызов Stripe под Customer пользователя с самовосстановлением.
+ *
+ * ensureStripeCustomer сам в Stripe с сохранённым id не ходит — он возвращает
+ * колонку; «No such customer» приходит ПОЗЖЕ, от вызова, который этот id
+ * несёт (PaymentIntent пополнения, Subscription). До 12.3 такой отказ
+ * уходил человеку 500-й, а колонку обнуляли руками («По факту 7.1» п.2).
+ * Теперь: отказ именно этого рода (isNoSuchCustomerError) → колонка
+ * обнуляется условным UPDATE → Customer создаётся заново тем же
+ * ensureStripeCustomer → вызов повторяется ОДИН раз. Любой другой отказ и
+ * повторный «No such customer» пробрасываются как есть.
+ */
+export async function withStripeCustomer<T>(
+  userId: string,
+  call: (customerId: string) => Promise<T>,
+): Promise<T> {
+  const customerId = await ensureStripeCustomer(userId);
+  try {
+    return await call(customerId);
+  } catch (err) {
+    if (!isNoSuchCustomerError(err)) throw err;
+    console.warn(
+      `[stripe] Customer ${customerId} пользователя ${userId} не найден в Stripe — создаётся заново`,
+    );
+    await resetStripeCustomer(userId, customerId);
+    const fresh = await ensureStripeCustomer(userId);
+    return await call(fresh);
+  }
+}
+
+/**
  * a. Stripe Customer пользователя (ensureStripeCustomer, 7.1) → Subscription
  *    (default_incomplete, expand latest_invoice.payment_intent);
  * b. строка user_subscriptions со статусом Stripe (обычно 'incomplete' —
@@ -343,12 +396,14 @@ export async function createSubscription(
     );
   }
 
-  const customerId = await ensureStripeCustomer(userId);
-  const sub = await stripe.createSubscription({
-    customerId,
-    priceId: plan.stripePriceId,
-    metadata: { userId, planId: plan.id, planName: plan.name },
-  });
+  // 12.3 (Д-12): Customer, удалённый в Stripe, переоткрывается сам
+  const sub = await withStripeCustomer(userId, (customerId) =>
+    stripe.createSubscription({
+      customerId,
+      priceId: plan.stripePriceId,
+      metadata: { userId, planId: plan.id, planName: plan.name },
+    }),
+  );
 
   const now = new Date();
   const [row] = await db

@@ -302,7 +302,10 @@ async function main() {
   await p.goto(UI + `/synthesis/${DOC}`, { waitUntil: "networkidle0" });
   await p.waitForSelector('[data-testid="parse-warnings-graph"]', { timeout: 15000 });
   ok((await txt(p, '[data-testid="parse-warnings-graph"] summary')).includes("Разобран с потерями (2 предупреждения)"), "владелец: пометка с русским плюралом «2 предупреждения»", await txt(p, '[data-testid="parse-warnings-graph"] summary'));
-  ok(!(await p.$('[data-testid="parse-warnings-sum"]')), "у раздела без предупреждений пометки нет");
+  // 12.3 (Д-47): «Резюме» выше перегенерировано моком, пишущим один подраздел из семи, —
+  // у него теперь законная пометка о пропущенных подразделах; раздел без генлога — глоссарий
+  ok(!(await p.$('[data-testid="parse-warnings-glossary"]')), "у раздела без предупреждений пометки нет");
+  ok(((await txt(p, '[data-testid="parse-warnings-sum"] summary')) ?? "").includes("Разобран с потерями (1 предупреждение)"), "12.3 (Д-47): у «Резюме», где мок пропустил подразделы, — пометка о пропуске", await txt(p, '[data-testid="parse-warnings-sum"] summary'));
   await p.$eval('[data-testid="parse-warnings-graph"]', (d) => (d.open = true));
   const items = await p.evaluate(() => [...document.querySelectorAll('[data-testid="parse-warnings-graph"] li')].map((li) => li.textContent));
   ok(items.length === 2 && items[0].includes("bidirektional") && items[1].includes("Kern"), "раскрытие показывает оба предупреждения", items);

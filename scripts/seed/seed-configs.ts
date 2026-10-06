@@ -70,6 +70,8 @@ import {
   withRecommendationsSubsectionMap,
 } from "../../server/config/recommendation-templates.js";
 
+import { resetRegistryCache } from "./cache-reset.js";
+
 const { synthesisConfigs } = schema;
 
 interface SeedConfig {
@@ -211,6 +213,10 @@ async function main(): Promise<void> {
   if (report.created.length) console.log(`  created: ${report.created.join(", ")}`);
   if (report.updated.length) console.log(`  updated: ${report.updated.join(", ")}`);
   for (const f of report.failed) console.error(`  FAIL ${f.key}: ${f.error}`);
+
+  // 12.3 (Д-18): сброс кэша реестра по изменённым ключам (см. seed-prompts)
+  const cache = await resetRegistryCache([...report.created, ...report.updated]);
+  console.log(cache.line);
 
   const total = await db.$count(synthesisConfigs);
   const active = await db.$count(

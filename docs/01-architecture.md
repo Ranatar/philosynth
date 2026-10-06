@@ -177,7 +177,7 @@ Deploy:      Docker Compose (dev) → VPS / managed PostgreSQL (prod)
 - Значение: JSON
 - Версионирование: аналогично шаблонам
 
-**Кэширование**: при старте сервера все active-шаблоны и конфиги загружаются в Redis. TTL — бесконечный, инвалидация — при обновлении через админ-API (`POST /api/prompts/{key}/activate`).
+**Кэширование**: при старте сервера все active-шаблоны и конфиги загружаются в Redis. TTL — бесконечный, инвалидация — при обновлении через админ-API (`POST /api/prompts/{key}/activate`). ФАКТ 12.3 (2026-10-06, Д-18): сиды (`seed:prompts`, `seed:configs`, `seed:taxonomy`) сами сбрасывают кэш по созданным и обновлённым ключам (`scripts/seed/cache-reset.ts`: явное подключение Redis, ответ `invalidateCache` читается); посев при работающем сервере виден без перезапуска. Redis недоступен — посев не падает и пишет «⚠ Кэш реестра НЕ сброшен»: только тогда нужен перезапуск сервера.
 
 **Источник исходника**: `buildSYS()` (buildSYS()), METHOD_SUM/GRAPH/TOPOLOGY/GLOSSARY/THESES/DIALOGUE (METHOD_SUM … METHOD_DIALOGUE), LEVEL_* (LEVEL_COMPARATIVE_* … LEVEL_GENERATIVE_*), CONTEXT_DEPS_* (CONTEXT_DEPS_BASE/GENETIC, CONTEXT_DEPS_LEVEL/_LEVEL_GENETIC/_METHOD — бывш. LEVEL/METHOD_DEPS_PATCH), PARENT_DEPS_* + PARENT_INTRA_DEPS + PARENT_FIELD_* (см. 4.13), MD_BY_CARD/SD_BY_CARD (см. 4.14), MODE_DEPS, SUBSTITUTION_MAP (SUBSTITUTION_MAP (оба варианта)), COMPAT_MATRIX_COMPACT (COMPAT_MATRIX_COMPACT), и все остальные конфиг-объекты.
 
@@ -312,6 +312,15 @@ interface EditStep {
 `execute` — условная. Рекомендации критики переводит в такой план
 `recommendation-planner.buildPlanDraft` — только поштучно названные; входа
 «исполнить все» нет намеренно.
+
+**Оценка и завершение плана (беседа 12.3; Д-7, Д-6).** Оценка плана — ДВА
+числа (`estimatePlanCostSplit`): `estimatedCost` и `costBreakdown` считают
+только ВЗЯТЫЕ шаги — всё, кроме `skipped` и `pending` (`isTakenStep`,
+shared `constants/edit-steps.ts`); шаги, ждущие решения человека, — поле
+`EditPlan.cascadePending { steps, costUsd }`: сколько их и во что обойдётся
+план СВЕРХ `estimatedCost`, если подтвердить все. Статус `done` и
+`plan_updated` пишет `finishPlanRun` ПОСЛЕ освобождения слота операции —
+запрос под гейтом правки сразу за `plan_updated` не получает 409.
 
 **Workflow:**
 1. Клиент отправляет `POST /api/plans` с набором действий (аналог `_editPlan`)
@@ -550,6 +559,21 @@ pausedState, вызывает штатные estimateCost/estimateSubsectionCost
 - Беседа 1.4 протокола (07): streaming-manager проектировать сразу вокруг
   _streamRespOnce-модели (одна попытка + классификация), а не вокруг
   монолитного streamResp.
+- ФАКТ 12.3 (2026-10-06, Д-13 — ОТСТУПЛЕНИЕ от исходника): ожидаемый список
+  подразделов критики (`buildSubsectionMap`) несёт адаптивный подраздел
+  «Межслойная согласованность» по тому же условию, что задание
+  (`critiqueHasInterlayer`: диалог и хотя бы один формальный раздел). В
+  исходнике карта его не знала: пауза не догенерировала бы пропавший
+  подраздел, а страховка по месту (11.1) отключалась для всей критики.
+- ФАКТ 12.3 (Д-47, Д-21): пауза сверяет написанное с ожидаемым только на
+  ОБРЫВЕ стрима. На успешном ответе служба сверяет тоже, но ничего не
+  догенерирует: пропущенные подразделы — пометкой в
+  `metadata.parseWarnings` строки генлога раздела (`noteMissingSubsections`;
+  видна в логе генерации и в блоке предупреждений раздела у владельца).
+  Единственный подраздел со своим повтором — «Таблица рекомендаций»
+  критики: одно обращение под слотом операции
+  (`ensureRecommendationsTable`), без своей единицы квоты, расход — в итог
+  документа; не помогло — пометка там же, ручной ретрофит остаётся.
 
 ### 4.13. Селективный родительский контекст + режим бюджета (v11) — полная спецификация
 
@@ -1076,6 +1100,8 @@ GET /syntheses/:id/sections; бейдж в EditSectionCard.tsx (беседа 2.3
 Приоритет middleware: BYO-Key → активная подписка с остатком квоты → положительный баланс → ошибка `BILLING_REQUIRED`.
 
 **ФАКТ 6.1 (2026-09-06):** решение принимает `resolveBilling` (billing-service) — дважды: middleware `billing-check` (предпроверка, квоту не трогает, 403 до создания строк) и `withGenerationSlot` (гейт и для WS; здесь квота потребляется атомарно ОДИН раз на операцию, ключ ложится в `handle.billing.apiKey`). Учёт каждого вызова Claude — в `streamSection` через разъём `setStreamUsageRecorder`: `api_usage` пишется во всех режимах (для 'byo' — себестоимость без списания), 'balance' списывает себестоимость × `BILLING_MARKUP`. «Положительный баланс» = баланс ≥ `BILLING_MIN_RESERVE_USD` (порог; точная оценка у middleware недоступна). `BILLING_ENFORCE=false` (дефолт вне production) — без источника оплаты операция идёт серверным ключом в режиме balance в долг. Stripe — тонкий fetch-клиент (`stripe-client.ts`, `STRIPE_API_BASE` для мока), без SDK.
+
+**ФАКТ 12.3 (2026-10-06, Д-12):** Stripe Customer, удалённый на стороне Stripe, переоткрывается сам. Вызовы, несущие сохранённый id (`createPaymentIntent`, `createSubscription`), идут через `withStripeCustomer`: отказ «No such customer» (`isNoSuchCustomerError`) → колонка обнуляется условным UPDATE (`resetStripeCustomer`) → Customer заводится заново → вызов повторяется ОДИН раз; иной отказ и повторный «No such customer» пробрасываются.
 
 **Авторизация ресурсов** (модель 8.6, миграция 0005):
 - Синтез принадлежит пользователю (`syntheses.userId`); владелец видит и

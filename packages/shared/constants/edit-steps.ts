@@ -10,6 +10,7 @@ import type {
   EditStep,
   EditStepType,
   ElementStepKind,
+  PlanCascadePending,
   PlanCostBreakdown,
 } from "../types/edit-plan.js";
 
@@ -89,7 +90,26 @@ export function parseElementStepTarget(
   return { kind: kind as ElementStepKind, elementId: target.slice(i + 1) };
 }
 
-/** Бесплатное ОТДЕЛЬНО от платного; снятые шаги не считаются. */
+/**
+ * 12.3 (Д-7): шаг ВЗЯТ в план — человек его подтвердил (либо он уже исполнен
+ * или исполняется). Не взяты: снятые ('skipped') и ждущие решения ('pending' —
+ * каскадные и структурный шаг; без подтверждения они не исполняются). В
+ * черновике взятые — ровно 'confirmed'; после прогона к ним относятся и
+ * 'running' / 'done' / 'failed': прогноз взятого исполнением не обнуляется.
+ */
+export function isTakenStep(step: Pick<EditStep, "status">): boolean {
+  return step.status !== "skipped" && step.status !== "pending";
+}
+
+/** Шаг ждёт решения человека: в оценку плана не входит (Д-7). */
+export function isPendingStep(step: Pick<EditStep, "status">): boolean {
+  return step.status === "pending";
+}
+
+/**
+ * Бесплатное ОТДЕЛЬНО от платного — по ВЗЯТЫМ шагам (12.3, Д-7): снятые и
+ * ждущие решения не считаются. `estimatedCost` — оценка взятых шагов.
+ */
 export function planCostBreakdown(
   steps: readonly EditStep[],
   estimatedCost: number,
@@ -97,9 +117,21 @@ export function planCostBreakdown(
   let free = 0;
   let paid = 0;
   for (const s of steps) {
-    if (s.status === "skipped") continue;
+    if (!isTakenStep(s)) continue;
     if (isFreeStepType(s.type)) free += 1;
     else paid += 1;
   }
   return { free: { steps: free, costUsd: 0 }, paid: { steps: paid, costUsd: estimatedCost } };
+}
+
+/**
+ * 12.3 (Д-7): шаги, ждущие решения, — отдельно от оценки плана. `steps` —
+ * сколько их, `costUsd` — во что обойдётся план СВЕРХ estimatedCost, если
+ * подтвердить их все.
+ */
+export function planCascadePending(
+  steps: readonly EditStep[],
+  pendingCost: number,
+): PlanCascadePending {
+  return { steps: steps.filter(isPendingStep).length, costUsd: pendingCost };
 }

@@ -10,9 +10,11 @@
  *
  * Кэширование: Redis, ключи prompt_cache:{key} / config_cache:{key}
  * (схема — 01-architecture §3 DATA LAYER). TTL бесконечный, инвалидация —
- * при активации новой версии через админ-API. Политика отказа Redis —
- * fail-open (как у rate-limiter, беседа 0.2): при недоступном Redis
- * читаем из БД и не кэшируем.
+ * при активации новой версии через админ-API и (12.3, Д-18) при посеве:
+ * seed-prompts / seed-configs сбрасывают ключи created/updated
+ * (scripts/seed/cache-reset.ts) — работающий сервер читает новую версию
+ * без перезапуска. Политика отказа Redis — fail-open (как у rate-limiter,
+ * беседа 0.2): при недоступном Redis читаем из БД и не кэшируем.
  *
  * Версионирование: каждая правка — новая строка (key, version),
  * is_active — только у одной версии ключа.
@@ -89,11 +91,13 @@ async function cacheSet(cacheKey: string, value: string): Promise<void> {
   }
 }
 
-async function cacheDel(...cacheKeys: string[]): Promise<void> {
+/** true — команда дошла до Redis; false — Redis недоступен (fail-open). */
+async function cacheDel(...cacheKeys: string[]): Promise<boolean> {
   try {
     await redis.del(...cacheKeys);
+    return true;
   } catch {
-    /* fail-open */
+    return false; /* fail-open */
   }
 }
 
@@ -457,9 +461,14 @@ function toConfigDto(r: typeof synthesisConfigs.$inferSelect): SynthesisConfig {
 
 /* ─────────────────────────── Кэш: сброс/прогрев ────────────────────── */
 
-/** Сброс кэша ключа (обе зоны — шаблонов и конфигов; лишний del безвреден). */
-export async function invalidateCache(key: string): Promise<void> {
-  await cacheDel(promptCacheKey(key), configCacheKey(key));
+/**
+ * Сброс кэша ключа (обе зоны — шаблонов и конфигов; лишний del безвреден).
+ * Fail-open: при недоступном Redis ничего не бросает. 12.3 (Д-18): отвечает,
+ * дошла ли команда до Redis, — сидам нужно сказать в отчёте, сброшен кэш или
+ * нет (роуты активации ответ не читают, как и прежде).
+ */
+export async function invalidateCache(key: string): Promise<boolean> {
+  return cacheDel(promptCacheKey(key), configCacheKey(key));
 }
 
 /**

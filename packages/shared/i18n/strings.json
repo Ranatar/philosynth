@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-10-05T09:07:13.479Z",
-    "imported": "2026-10-05T09:07:20.979Z"
+    "synced": "2026-10-06T17:24:08.509Z",
+    "imported": "2026-10-06T17:24:26.130Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -2329,7 +2329,7 @@
       "en": "Philosophical Concept Synthesis",
       "de": "Synthese eines philosophischen Konzepts",
       "from": {"en":"Синтез Философской Концепции","de":"Синтез Философской Концепции"},
-      "where": ["server/services/generation-service.ts:3085"]
+      "where": ["server/services/generation-service.ts:3143"]
     },
     "common.authRequired": {
       "ru": "Требуется авторизация",
@@ -2371,7 +2371,7 @@
       "en": "Capsule",
       "de": "Kapsel",
       "from": {"en":"Капсула","de":"Капсула"},
-      "where": ["client/src/components/lineage/GenealogyTree.tsx:85","server/services/element-editor.ts:1309"]
+      "where": ["client/src/components/lineage/GenealogyTree.tsx:85","server/services/element-editor.ts:1343"]
     },
     "common.categoryGraph": {
       "ru": "Граф категорий",
@@ -2568,7 +2568,7 @@
       "en": "Generation is already in progress",
       "de": "Die Generierung läuft bereits",
       "from": {"en":"Генерация уже идёт","de":"Генерация уже идёт"},
-      "where": ["server/routes/elements.ts:222","server/routes/enrichment.ts:78","server/routes/generation.ts:82","server/routes/modes.ts:113","server/routes/plans.ts:295","server/routes/transforms.ts:65","server/services/plan-executor.ts:711","server/services/plan-executor.ts:797"]
+      "where": ["server/routes/elements.ts:222","server/routes/enrichment.ts:78","server/routes/generation.ts:82","server/routes/modes.ts:113","server/routes/plans.ts:295","server/routes/transforms.ts:65","server/services/plan-executor.ts:715","server/services/plan-executor.ts:822"]
     },
     "common.generative": {
       "ru": "Генеративная",
@@ -2603,14 +2603,14 @@
       "en": "Invalid data",
       "de": "Ungültige Daten",
       "from": {"en":"Невалидные данные","de":"Невалидные данные"},
-      "where": ["server/routes/auth.ts:188","server/routes/auth.ts:240","server/routes/auth.ts:300","server/routes/auth.ts:353","server/routes/auth.ts:462","server/routes/auth.ts:542","server/routes/auth.ts:579","server/routes/auth.ts:686","server/routes/enrichment.ts:93","server/routes/modes.ts:197","server/routes/recommendations.ts:127","server/services/element-editor.ts:213","server/services/element-editor.ts:1611","server/services/element-editor.ts:1643","server/services/element-editor.ts:1666","server/services/element-enrichment.ts:663","server/services/element-enrichment.ts:719"]
+      "where": ["server/routes/auth.ts:188","server/routes/auth.ts:240","server/routes/auth.ts:300","server/routes/auth.ts:353","server/routes/auth.ts:462","server/routes/auth.ts:542","server/routes/auth.ts:579","server/routes/auth.ts:686","server/routes/enrichment.ts:93","server/routes/modes.ts:197","server/routes/recommendations.ts:131","server/services/element-editor.ts:216","server/services/element-editor.ts:1683","server/services/element-editor.ts:1715","server/services/element-editor.ts:1738","server/services/element-enrichment.ts:663","server/services/element-enrichment.ts:719"]
     },
     "common.invalidJson": {
       "ru": "Невалидный JSON",
       "en": "Invalid JSON",
       "de": "Ungültiges JSON",
       "from": {"en":"Невалидный JSON","de":"Невалидный JSON"},
-      "where": ["server/routes/generation.ts:136","server/routes/generation.ts:191","server/routes/plans.ts:97","server/routes/plans.ts:138","server/routes/plans.ts:191","server/routes/recommendations.ts:189","server/routes/syntheses.ts:665","server/routes/syntheses.ts:1008","server/routes/syntheses.ts:1211","server/routes/syntheses.ts:1502"]
+      "where": ["server/routes/generation.ts:136","server/routes/generation.ts:191","server/routes/plans.ts:97","server/routes/plans.ts:138","server/routes/plans.ts:191","server/routes/recommendations.ts:214","server/routes/syntheses.ts:665","server/routes/syntheses.ts:1008","server/routes/syntheses.ts:1216","server/routes/syntheses.ts:1510"]
     },
     "common.justification": {
       "ru": "Обоснование",
@@ -2653,7 +2653,7 @@
       "de": "Kein Zugriff auf die Synthese",
       "from": {"en":"Нет доступа к синтезу","de":"Нет доступа к синтезу"},
       "static": true,
-      "where": ["server/routes/generation.ts:79","server/routes/generation.ts:210","server/routes/plans.ts:213","server/routes/syntheses.ts:266","server/services/edit-planner.ts:886","server/services/generation-service.ts:731","server/services/generation-service.ts:770","server/services/pause-resume-service.ts:542","server/services/pause-resume-service.ts:924","server/ws/handler.ts:173","server/ws/handler.ts:464","server/ws/handler.ts:491"]
+      "where": ["server/routes/generation.ts:79","server/routes/generation.ts:210","server/routes/plans.ts:213","server/routes/syntheses.ts:266","server/services/edit-planner.ts:952","server/services/generation-service.ts:773","server/services/generation-service.ts:812","server/services/pause-resume-service.ts:542","server/services/pause-resume-service.ts:924","server/ws/handler.ts:173","server/ws/handler.ts:464","server/ws/handler.ts:491"]
     },
     "common.noveltyDegree": {
       "ru": "Степень новизны",
@@ -2681,7 +2681,7 @@
       "en": "Plan not found",
       "de": "Plan nicht gefunden",
       "from": {"en":"План не найден","de":"План не найден"},
-      "where": ["server/routes/plans.ts:115","server/routes/plans.ts:132","server/routes/plans.ts:156","server/routes/plans.ts:279","server/services/edit-planner.ts:949","server/services/edit-planner.ts:1141","server/services/pause-resume-service.ts:946","server/services/plan-executor.ts:785"]
+      "where": ["server/routes/plans.ts:115","server/routes/plans.ts:132","server/routes/plans.ts:156","server/routes/plans.ts:279","server/services/edit-planner.ts:1015","server/services/edit-planner.ts:1207","server/services/pause-resume-service.ts:946","server/services/plan-executor.ts:810"]
     },
     "common.prehorizon": {
       "ru": "Предгоризонт",
@@ -2730,7 +2730,7 @@
       "en": "Section not found",
       "de": "Abschnitt nicht gefunden",
       "from": {"en":"Раздел не найден","de":"Раздел не найден"},
-      "where": ["server/routes/sections.ts:205","server/services/element-editor.ts:1581","server/services/element-editor.ts:1628","server/services/recommendations.ts:1008"]
+      "where": ["server/routes/sections.ts:205","server/services/element-editor.ts:1653","server/services/element-editor.ts:1700","server/services/recommendations.ts:1248"]
     },
     "common.sectionsGen": {
       "ru": "разделов",
@@ -2752,7 +2752,7 @@
       "de": "Synthese nicht gefunden",
       "from": {"en":"Синтез не найден","de":"Синтез не найден"},
       "static": true,
-      "where": ["server/routes/generation.ts:70","server/routes/generation.ts:77","server/routes/generation.ts:185","server/routes/generation.ts:310","server/routes/plans.ts:79","server/routes/plans.ts:91","server/routes/plans.ts:185","server/routes/syntheses.ts:262","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1297","server/services/export/common.ts:50","server/services/generation-service.ts:521","server/services/generation-service.ts:3024","server/services/pause-resume-service.ts:540","server/services/pause-resume-service.ts:922","server/services/recommendation-planner.ts:430","server/ws/handler.ts:149","server/ws/handler.ts:164","server/ws/handler.ts:462","server/ws/handler.ts:483","server/ws/handler.ts:489"]
+      "where": ["server/routes/generation.ts:70","server/routes/generation.ts:77","server/routes/generation.ts:185","server/routes/generation.ts:310","server/routes/plans.ts:79","server/routes/plans.ts:91","server/routes/plans.ts:185","server/routes/syntheses.ts:262","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1331","server/services/export/common.ts:50","server/services/generation-service.ts:563","server/services/generation-service.ts:3082","server/services/pause-resume-service.ts:540","server/services/pause-resume-service.ts:922","server/services/recommendation-planner.ts:456","server/ws/handler.ts:149","server/ws/handler.ts:164","server/ws/handler.ts:462","server/ws/handler.ts:483","server/ws/handler.ts:489"]
     },
     "common.term": {
       "ru": "Термин",
@@ -2808,7 +2808,7 @@
       "en": "User not found",
       "de": "Benutzer nicht gefunden",
       "from": {"en":"Пользователь не найден","de":"Пользователь не найден"},
-      "where": ["server/routes/auth.ts:679","server/routes/auth.ts:745","server/services/account-deletion.ts:106","server/services/account-deletion.ts:139","server/services/billing-service.ts:132","server/services/billing-service.ts:240","server/services/billing-service.ts:288","server/services/subscription-service.ts:297"]
+      "where": ["server/routes/auth.ts:679","server/routes/auth.ts:745","server/services/account-deletion.ts:106","server/services/account-deletion.ts:139","server/services/billing-service.ts:132","server/services/billing-service.ts:242","server/services/billing-service.ts:290","server/services/subscription-service.ts:302"]
     },
     "common.verifying": {
       "ru": "Верифицирующая",
@@ -9227,7 +9227,7 @@
       "de": "Unzureichendes Guthaben: Guthaben ${balance}, erforderlich mindestens ${threshold}",
       "from": {"en":"Недостаточно средств: баланс ${balance}, требуется не менее ${threshold}","de":"Недостаточно средств: баланс ${balance}, требуется не менее ${threshold}"},
       "params": {"balance":"balance.toFixed(4)","threshold":"threshold.toFixed(4)"},
-      "where": ["server/services/billing-service.ts:559"]
+      "where": ["server/services/billing-service.ts:561"]
     },
     "server.billingService.invalidTopUpAmount": {
       "ru": "Неверная сумма пополнения",
@@ -9241,28 +9241,28 @@
       "en": "No payment source: add an Anthropic API key, subscribe or top up the balance",
       "de": "Keine Zahlungsquelle: fügen Sie einen Anthropic-API-Schlüssel hinzu, schließen Sie ein Abonnement ab oder laden Sie das Guthaben auf",
       "from": {"en":"Нет источника оплаты: добавьте API-ключ Anthropic, оформите подписку или пополните баланс","de":"Нет источника оплаты: добавьте API-ключ Anthropic, оформите подписку или пополните баланс"},
-      "where": ["server/services/billing-service.ts:565"]
+      "where": ["server/services/billing-service.ts:567"]
     },
     "server.billingService.paymentIntentMissing": {
       "ru": "paymentIntentId не задан",
       "en": "paymentIntentId is not set",
       "de": "paymentIntentId nicht gesetzt",
       "from": {"en":"paymentIntentId не задан","de":"paymentIntentId не задан"},
-      "where": ["server/services/billing-service.ts:190"]
+      "where": ["server/services/billing-service.ts:192"]
     },
     "server.billingService.paymentNotCompleted": {
       "ru": "Платёж ещё не завершён",
       "en": "The payment has not completed yet",
       "de": "Die Zahlung ist noch nicht abgeschlossen",
       "from": {"en":"Платёж ещё не завершён","de":"Платёж ещё не завершён"},
-      "where": ["server/services/billing-service.ts:225"]
+      "where": ["server/services/billing-service.ts:227"]
     },
     "server.billingService.paymentNotFound": {
       "ru": "Платёж не найден",
       "en": "Payment not found",
       "de": "Zahlung nicht gefunden",
       "from": {"en":"Платёж не найден","de":"Платёж не найден"},
-      "where": ["server/services/billing-service.ts:217","server/services/billing-service.ts:222"]
+      "where": ["server/services/billing-service.ts:219","server/services/billing-service.ts:224"]
     },
     "server.billingService.quotaExhausted": {
       "ru": "Квота подписки «{quotaType}» исчерпана ({used}/{quota}), баланса недостаточно",
@@ -9270,21 +9270,21 @@
       "de": "Das Abonnementkontingent „{quotaType}“ ist ausgeschöpft ({used}/{quota}), das Guthaben reicht nicht",
       "from": {"en":"Квота подписки «{quotaType}» исчерпана ({used}/{quota}), баланса недостаточно","de":"Квота подписки «{quotaType}» исчерпана ({used}/{quota}), баланса недостаточно"},
       "params": {"quotaType":"quotaExceeded.quotaType","used":"quotaExceeded.used","quota":"quotaExceeded.quota"},
-      "where": ["server/services/billing-service.ts:552"]
+      "where": ["server/services/billing-service.ts:554"]
     },
     "server.billingService.requiredFieldLower": {
       "ru": "обязательное поле",
       "en": "required field",
       "de": "Pflichtfeld",
       "from": {"en":"обязательное поле","de":"обязательное поле"},
-      "where": ["server/services/billing-service.ts:191"]
+      "where": ["server/services/billing-service.ts:193"]
     },
     "server.billingService.serverKeyMissing": {
       "ru": "API-ключ Anthropic не задан на сервере",
       "en": "The Anthropic API key is not set on the server",
       "de": "Der Anthropic-API-Schlüssel ist auf dem Server nicht gesetzt",
       "from": {"en":"API-ключ Anthropic не задан на сервере","de":"API-ключ Anthropic не задан на сервере"},
-      "where": ["server/services/billing-service.ts:490"]
+      "where": ["server/services/billing-service.ts:492"]
     },
     "server.cascadeAnalyzer.contextParen": {
       "ru": "» (контекст: ",
@@ -9489,119 +9489,119 @@
       "en": "at least one action is required",
       "de": "mindestens eine Aktion erforderlich",
       "from": {"en":"нужно хотя бы одно действие","de":"нужно хотя бы одно действие"},
-      "where": ["server/services/edit-planner.ts:892"]
+      "where": ["server/services/edit-planner.ts:958"]
     },
     "server.editPlanner.arrayOfIndexStatus": {
       "ru": "массив { index, status }",
       "en": "array of { index, status }",
       "de": "Array von { index, status }",
       "from": {"en":"массив { index, status }","de":"массив { index, status }"},
-      "where": ["server/services/edit-planner.ts:1036"]
+      "where": ["server/services/edit-planner.ts:1102"]
     },
     "server.editPlanner.invalidBody": {
       "ru": "Невалидное тело",
       "en": "Invalid body",
       "de": "Ungültiger Anfragekörper",
       "from": {"en":"Невалидное тело","de":"Невалидное тело"},
-      "where": ["server/services/edit-planner.ts:1035"]
+      "where": ["server/services/edit-planner.ts:1101"]
     },
     "server.editPlanner.invalidPlanActions": {
       "ru": "Невалидные действия плана",
       "en": "Invalid plan actions",
       "de": "Ungültige Planaktionen",
       "from": {"en":"Невалидные действия плана","de":"Невалидные действия плана"},
-      "where": ["server/services/edit-planner.ts:448"]
+      "where": ["server/services/edit-planner.ts:469"]
     },
     "server.editPlanner.invalidStepIndex": {
       "ru": "Невалидный индекс шага",
       "en": "Invalid step index",
       "de": "Ungültiger Schrittindex",
       "from": {"en":"Невалидный индекс шага","de":"Невалидный индекс шага"},
-      "where": ["server/services/edit-planner.ts:1049"]
+      "where": ["server/services/edit-planner.ts:1115"]
     },
     "server.editPlanner.invalidStepStatus": {
       "ru": "Невалидный статус шага",
       "en": "Invalid step status",
       "de": "Ungültiger Schrittstatus",
       "from": {"en":"Невалидный статус шага","de":"Невалидный статус шага"},
-      "where": ["server/services/edit-planner.ts:1053"]
+      "where": ["server/services/edit-planner.ts:1119"]
     },
     "server.editPlanner.noPlanAccess": {
       "ru": "Нет доступа к плану",
       "en": "No access to the plan",
       "de": "Kein Zugriff auf den Plan",
       "from": {"en":"Нет доступа к плану","de":"Нет доступа к плану"},
-      "where": ["server/services/edit-planner.ts:951"]
+      "where": ["server/services/edit-planner.ts:1017"]
     },
     "server.editPlanner.planEmpty": {
       "ru": "План пуст",
       "en": "The plan is empty",
       "de": "Der Plan ist leer",
       "from": {"en":"План пуст","de":"План пуст"},
-      "where": ["server/services/edit-planner.ts:891"]
+      "where": ["server/services/edit-planner.ts:957"]
     },
     "server.editPlanner.planExecutingStopFirst": {
       "ru": "План исполняется — сначала остановите",
       "en": "The plan is executing — stop it first",
       "de": "Der Plan wird ausgeführt — zuerst stoppen",
       "from": {"en":"План исполняется — сначала остановите","de":"План исполняется — сначала остановите"},
-      "where": ["server/services/edit-planner.ts:1162"]
+      "where": ["server/services/edit-planner.ts:1228"]
     },
     "server.editPlanner.planLocked": {
       "ru": "План уже исполняется или завершён — статусы шагов не изменить",
       "en": "The plan is already executing or completed — step statuses cannot be changed",
       "de": "Der Plan wird bereits ausgeführt oder ist abgeschlossen — Schrittstatus lassen sich nicht ändern",
       "from": {"en":"План уже исполняется или завершён — статусы шагов не изменить","de":"План уже исполняется или завершён — статусы шагов не изменить"},
-      "where": ["server/services/edit-planner.ts:1031"]
+      "where": ["server/services/edit-planner.ts:1097"]
     },
     "server.editPlanner.stepAlreadyExecuted": {
       "ru": "Шаг уже исполнен",
       "en": "The step has already been executed",
       "de": "Der Schritt ist bereits ausgeführt",
       "from": {"en":"Шаг уже исполнен","de":"Шаг уже исполнен"},
-      "where": ["server/services/edit-planner.ts:1058"]
+      "where": ["server/services/edit-planner.ts:1124"]
     },
     "server.elementEditor.categoryNotFound": {
       "ru": "Категория не найдена",
       "en": "Category not found",
       "de": "Kategorie nicht gefunden",
       "from": {"en":"Категория не найдена","de":"Категория не найдена"},
-      "where": ["server/services/element-editor.ts:311","server/services/element-editor.ts:614"]
+      "where": ["server/services/element-editor.ts:314","server/services/element-editor.ts:617"]
     },
     "server.elementEditor.edgeNotCreated": {
       "ru": "Связь не создана",
       "en": "The relation was not created",
       "de": "Beziehung nicht erstellt",
       "from": {"en":"Связь не создана","de":"Связь не создана"},
-      "where": ["server/services/element-editor.ts:836"]
+      "where": ["server/services/element-editor.ts:839"]
     },
     "server.elementEditor.edgeNotFound": {
       "ru": "Связь не найдена",
       "en": "Relation not found",
       "de": "Beziehung nicht gefunden",
       "from": {"en":"Связь не найдена","de":"Связь не найдена"},
-      "where": ["server/services/element-editor.ts:325","server/services/element-editor.ts:724"]
+      "where": ["server/services/element-editor.ts:328","server/services/element-editor.ts:727"]
     },
     "server.elementEditor.htmlStringExpected": {
       "ru": "ожидается непустая HTML-строка",
       "en": "a non-empty HTML string is expected",
       "de": "erwartet wird eine nichtleere HTML-Zeichenkette",
       "from": {"en":"ожидается непустая HTML-строка","de":"ожидается непустая HTML-строка"},
-      "where": ["server/services/element-editor.ts:1289"]
+      "where": ["server/services/element-editor.ts:1323"]
     },
     "server.elementEditor.markupStringExpected": {
       "ru": "ожидается строка с разметкой подраздела",
       "en": "a string with the subsection markup is expected",
       "de": "erwartet wird eine Zeichenkette mit dem Markup des Unterabschnitts",
       "from": {"en":"ожидается строка с разметкой подраздела","de":"ожидается строка с разметкой подраздела"},
-      "where": ["server/services/element-editor.ts:1612"]
+      "where": ["server/services/element-editor.ts:1684"]
     },
     "server.elementEditor.nameTooShort": {
       "ru": "слишком короткое имя",
       "en": "name too short",
       "de": "Name zu kurz",
       "from": {"en":"слишком короткое имя","de":"слишком короткое имя"},
-      "where": ["server/services/element-editor.ts:1068"]
+      "where": ["server/services/element-editor.ts:1102"]
     },
     "server.elementEditor.newParagraphNotThesis": {
       "ru": "Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)",
@@ -9609,21 +9609,21 @@
       "de": "Der Absatz „{paragraph}“ ist keiner These zugeordnet — er wurde nicht in die Thesenliste aufgenommen (eine neue These entsteht durch Neugenerierung des Abschnitts)",
       "from": {"en":"Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)","de":"Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)"},
       "params": {"paragraph":""},
-      "where": ["server/services/element-editor.ts:1548"]
+      "where": ["server/services/element-editor.ts:1620"]
     },
     "server.elementEditor.noFieldsToUpdate": {
       "ru": "нет ни одного поля для обновления",
       "en": "there are no fields to update",
       "de": "kein einziges Feld zum Aktualisieren",
       "from": {"en":"нет ни одного поля для обновления","de":"нет ни одного поля для обновления"},
-      "where": ["server/services/element-editor.ts:601","server/services/element-editor.ts:711","server/services/element-editor.ts:921","server/services/element-editor.ts:1011"]
+      "where": ["server/services/element-editor.ts:604","server/services/element-editor.ts:714","server/services/element-editor.ts:924","server/services/element-editor.ts:1045"]
     },
     "server.elementEditor.objectExpected": {
       "ru": "ожидается объект",
       "en": "an object is expected",
       "de": "erwartet wird ein Objekt",
       "from": {"en":"ожидается объект","de":"ожидается объект"},
-      "where": ["server/services/element-editor.ts:572","server/services/element-editor.ts:688","server/services/element-editor.ts:766","server/services/element-editor.ts:904","server/services/element-editor.ts:995"]
+      "where": ["server/services/element-editor.ts:575","server/services/element-editor.ts:691","server/services/element-editor.ts:769","server/services/element-editor.ts:907","server/services/element-editor.ts:1029"]
     },
     "server.elementEditor.paragraphWithoutThesis": {
       "ru": "Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён",
@@ -9631,14 +9631,14 @@
       "de": "Der Absatz „{paragraph}“ wurde geändert, ist aber keiner These der Liste zugeordnet — die Thesenliste wurde nicht aktualisiert",
       "from": {"en":"Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён","de":"Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён"},
       "params": {"paragraph":""},
-      "where": ["server/services/element-editor.ts:1529"]
+      "where": ["server/services/element-editor.ts:1601"]
     },
     "server.elementEditor.sameAsOldName": {
       "ru": "совпадает с oldName",
       "en": "matches oldName",
       "de": "stimmt mit oldName überein",
       "from": {"en":"совпадает с oldName","de":"совпадает с oldName"},
-      "where": ["server/services/element-editor.ts:1066"]
+      "where": ["server/services/element-editor.ts:1100"]
     },
     "server.elementEditor.subsectionNotFound": {
       "ru": "Подраздел «{name}» не найден",
@@ -9646,21 +9646,21 @@
       "de": "Unterabschnitt „{name}“ nicht gefunden",
       "from": {"en":"Подраздел «{name}» не найден","de":"Подраздел «{name}» не найден"},
       "params": {"name":"name"},
-      "where": ["server/services/element-editor.ts:1557"]
+      "where": ["server/services/element-editor.ts:1629"]
     },
     "server.elementEditor.subsectionsChanged": {
       "ru": "правка изменила состав подразделов раздела — не сохранено",
       "en": "the edit changed the set of the section's subsections — not saved",
       "de": "die Änderung hat die Zusammensetzung der Unterabschnitte des Abschnitts verändert — nicht gespeichert",
       "from": {"en":"правка изменила состав подразделов раздела — не сохранено","de":"правка изменила состав подразделов раздела — не сохранено"},
-      "where": ["server/services/element-editor.ts:1667"]
+      "where": ["server/services/element-editor.ts:1739"]
     },
     "server.elementEditor.termNotFound": {
       "ru": "Термин не найден",
       "en": "Term not found",
       "de": "Begriff nicht gefunden",
       "from": {"en":"Термин не найден","de":"Термин не найден"},
-      "where": ["server/services/element-editor.ts:353","server/services/element-editor.ts:1024"]
+      "where": ["server/services/element-editor.ts:356","server/services/element-editor.ts:1058"]
     },
     "server.elementEditor.thesisFormulationFuzzy": {
       "ru": "Формулировка тезиса {thesis} в прозе изменена, но с тезисом она сведена нечётко — формулировка в списке тезисов не обновлена (правьте её карандашом ✎ в строке сводной таблицы)",
@@ -9668,14 +9668,14 @@
       "de": "Die Formulierung der These {thesis} wurde im Fließtext geändert, ist der These aber nur unscharf zugeordnet — die Formulierung in der Thesenliste wurde nicht aktualisiert (bearbeiten Sie sie mit dem Stift ✎ in der Zeile der Übersichtstabelle)",
       "from": {"en":"Формулировка тезиса {thesis} в прозе изменена, но с тезисом она сведена нечётко — формулировка в списке тезисов не обновлена (правьте её карандашом ✎ в строке сводной таблицы)","de":"Формулировка тезиса {thesis} в прозе изменена, но с тезисом она сведена нечётко — формулировка в списке тезисов не обновлена (правьте её карандашом ✎ в строке сводной таблицы)"},
       "params": {"thesis":""},
-      "where": ["server/services/element-editor.ts:1539"]
+      "where": ["server/services/element-editor.ts:1611"]
     },
     "server.elementEditor.thesisNotFound": {
       "ru": "Тезис не найден",
       "en": "Thesis not found",
       "de": "These nicht gefunden",
       "from": {"en":"Тезис не найден","de":"Тезис не найден"},
-      "where": ["server/services/element-editor.ts:339","server/services/element-editor.ts:934"]
+      "where": ["server/services/element-editor.ts:342","server/services/element-editor.ts:937"]
     },
     "server.elementEditor.thesisParagraphLost": {
       "ru": "Абзац тезиса {thesis} после правки не найден — тезис в списке тезисов не изменён и не удалён",
@@ -9683,7 +9683,7 @@
       "de": "Der Absatz der These {thesis} wurde nach der Bearbeitung nicht gefunden — die These in der Thesenliste wurde weder geändert noch gelöscht",
       "from": {"en":"Абзац тезиса {thesis} после правки не найден — тезис в списке тезисов не изменён и не удалён","de":"Абзац тезиса {thesis} после правки не найден — тезис в списке тезисов не изменён и не удалён"},
       "params": {"thesis":""},
-      "where": ["server/services/element-editor.ts:1519"]
+      "where": ["server/services/element-editor.ts:1591"]
     },
     "server.elementEditor.titleKeptRenamed": {
       "ru": "Название в разделе теперь «{sectionTitle}», но концепция названа отдельно («{title}») — её название не тронуто",
@@ -9691,7 +9691,7 @@
       "de": "Der Titel im Abschnitt lautet jetzt „{sectionTitle}“, das Konzept wurde jedoch separat benannt („{title}“) — sein Titel wurde nicht geändert",
       "from": {"en":"Название в разделе теперь «{sectionTitle}», но концепция названа отдельно («{title}») — её название не тронуто","de":"Название в разделе теперь «{sectionTitle}», но концепция названа отдельно («{title}») — её название не тронуто"},
       "params": {"sectionTitle":"","title":""},
-      "where": ["server/services/element-editor.ts:1749"]
+      "where": ["server/services/element-editor.ts:1821"]
     },
     "server.elementEditor.titleTooLong": {
       "ru": "Название в разделе длиннее {max} знаков — название концепции не обновлено",
@@ -9699,7 +9699,7 @@
       "de": "Der Titel im Abschnitt ist länger als {max} Zeichen — der Titel des Konzepts wurde nicht aktualisiert",
       "from": {"en":"Название в разделе длиннее {max} знаков — название концепции не обновлено","de":"Название в разделе длиннее {max} знаков — название концепции не обновлено"},
       "params": {"max":""},
-      "where": ["server/services/element-editor.ts:1742"]
+      "where": ["server/services/element-editor.ts:1814"]
     },
     "server.elementEnrichment.categoryNotFound": {
       "ru": "Категория не найдена",
@@ -9812,14 +9812,14 @@
       "de": "Der Kategorietyp „{key}“ existiert bereits",
       "from": {"en":"Тип категории «{key}» уже существует","de":"Тип категории «{key}» уже существует"},
       "params": {"key":"key"},
-      "where": ["server/services/element-taxonomy.ts:375"]
+      "where": ["server/services/element-taxonomy.ts:381"]
     },
     "server.elementTaxonomy.categoryTypeNotFound": {
       "ru": "Тип категории не найден",
       "en": "Category type not found",
       "de": "Kategorietyp nicht gefunden",
       "from": {"en":"Тип категории не найден","de":"Тип категории не найден"},
-      "where": ["server/services/element-taxonomy.ts:450"]
+      "where": ["server/services/element-taxonomy.ts:456"]
     },
     "server.elementTaxonomy.edgeTypeExists": {
       "ru": "Тип связи «{key}» уже существует",
@@ -9827,35 +9827,35 @@
       "de": "Der Beziehungstyp „{key}“ existiert bereits",
       "from": {"en":"Тип связи «{key}» уже существует","de":"Тип связи «{key}» уже существует"},
       "params": {"key":"key"},
-      "where": ["server/services/element-taxonomy.ts:397"]
+      "where": ["server/services/element-taxonomy.ts:403"]
     },
     "server.elementTaxonomy.edgeTypeNotFound": {
       "ru": "Тип связи не найден",
       "en": "Relation type not found",
       "de": "Beziehungstyp nicht gefunden",
       "from": {"en":"Тип связи не найден","de":"Тип связи не найден"},
-      "where": ["server/services/element-taxonomy.ts:450"]
+      "where": ["server/services/element-taxonomy.ts:456"]
     },
     "server.elementTaxonomy.invalidTypeKey": {
       "ru": "Невалидный ключ типа: латиница в нижнем регистре, цифры и _, начинается с буквы, 2–64 символа",
       "en": "Invalid type key: lowercase Latin letters, digits and _, starting with a letter, 2–64 characters",
       "de": "Ungültiger Typschlüssel: lateinische Kleinbuchstaben, Ziffern und _, beginnt mit einem Buchstaben, 2–64 Zeichen",
       "from": {"en":"Невалидный ключ типа: латиница в нижнем регистре, цифры и _, начинается с буквы, 2–64 символа","de":"Невалидный ключ типа: латиница в нижнем регистре, цифры и _, начинается с буквы, 2–64 символа"},
-      "where": ["server/services/element-taxonomy.ts:360"]
+      "where": ["server/services/element-taxonomy.ts:366"]
     },
     "server.elementTaxonomy.russianNameRequired": {
       "ru": "Русское название типа обязательно",
       "en": "The Russian type name is required",
       "de": "Der russische Typname ist erforderlich",
       "from": {"en":"Русское название типа обязательно","de":"Русское название типа обязательно"},
-      "where": ["server/services/element-taxonomy.ts:365","server/services/element-taxonomy.ts:482"]
+      "where": ["server/services/element-taxonomy.ts:371","server/services/element-taxonomy.ts:488"]
     },
     "server.elementTaxonomy.systemTypeImmutable": {
       "ru": "Системный тип каталога изменять и удалять нельзя",
       "en": "A system catalog type cannot be changed or deleted",
       "de": "Systemtypen des Katalogs können nicht geändert oder gelöscht werden",
       "from": {"en":"Системный тип каталога изменять и удалять нельзя","de":"Системный тип каталога изменять и удалять нельзя"},
-      "where": ["server/services/element-taxonomy.ts:455"]
+      "where": ["server/services/element-taxonomy.ts:461"]
     },
     "server.elementVersioning.insertWithoutReturning": {
       "ru": "element-versioning: insert без returning",
@@ -9897,7 +9897,7 @@
       "en": "Generation is already running for this synthesis",
       "de": "Für diese Synthese läuft bereits eine Generierung",
       "from": {"en":"Генерация уже запущена для этого синтеза","de":"Генерация уже запущена для этого синтеза"},
-      "where": ["server/services/generation-service.ts:681"]
+      "where": ["server/services/generation-service.ts:723"]
     },
     "server.generationService.concurrencyLimit": {
       "ru": "Не более {concurrentGenerations} одновременных генераций",
@@ -9905,7 +9905,7 @@
       "de": "Höchstens {concurrentGenerations} gleichzeitige Generierungen",
       "from": {"en":"Не более {concurrentGenerations} одновременных генераций","de":"Не более {concurrentGenerations} одновременных генераций"},
       "params": {"concurrentGenerations":"env.rateLimit.concurrentGenerations"},
-      "where": ["server/services/generation-service.ts:596"]
+      "where": ["server/services/generation-service.ts:638"]
     },
     "server.generationService.noStructuredParts": {
       "ru": "Раздел «{sectionKey}» не имеет структурированных parts.",
@@ -9913,7 +9913,7 @@
       "de": "Der Abschnitt „{sectionKey}“ hat keine strukturierten parts.",
       "from": {"en":"Раздел «{sectionKey}» не имеет структурированных parts.","de":"Раздел «{sectionKey}» не имеет структурированных parts."},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2314"]
+      "where": ["server/services/generation-service.ts:2369"]
     },
     "server.generationService.sectionExists": {
       "ru": "Раздел «{sectionKey}» уже есть в документе",
@@ -9921,7 +9921,7 @@
       "de": "Der Abschnitt „{sectionKey}“ ist bereits im Dokument",
       "from": {"en":"Раздел «{sectionKey}» уже есть в документе","de":"Раздел «{sectionKey}» уже есть в документе"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2778"]
+      "where": ["server/services/generation-service.ts:2833"]
     },
     "server.generationService.sectionMissing": {
       "ru": "Раздел «{sectionKey}» отсутствует в документе",
@@ -9929,7 +9929,7 @@
       "de": "Der Abschnitt „{sectionKey}“ fehlt im Dokument",
       "from": {"en":"Раздел «{sectionKey}» отсутствует в документе","de":"Раздел «{sectionKey}» отсутствует в документе"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:1901"]
+      "where": ["server/services/generation-service.ts:1953"]
     },
     "server.generationService.sectionNotInDefs": {
       "ru": "Раздел «{sectionKey}» не найден в определениях.",
@@ -9937,7 +9937,7 @@
       "de": "Der Abschnitt „{sectionKey}“ wurde in den Definitionen nicht gefunden.",
       "from": {"en":"Раздел «{sectionKey}» не найден в определениях.","de":"Раздел «{sectionKey}» не найден в определениях."},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:1946","server/services/generation-service.ts:2583","server/services/generation-service.ts:2811"]
+      "where": ["server/services/generation-service.ts:1998","server/services/generation-service.ts:2638","server/services/generation-service.ts:2866"]
     },
     "server.generationService.sectionUndeletable": {
       "ru": "Раздел «{sectionKey}» нельзя удалить",
@@ -9945,14 +9945,14 @@
       "de": "Der Abschnitt „{sectionKey}“ kann nicht gelöscht werden",
       "from": {"en":"Раздел «{sectionKey}» нельзя удалить","de":"Раздел «{sectionKey}» нельзя удалить"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:3029"]
+      "where": ["server/services/generation-service.ts:3087"]
     },
     "server.generationService.unknownError": {
       "ru": "неизвестная ошибка",
       "en": "unknown error",
       "de": "unbekannter Fehler",
       "from": {"en":"неизвестная ошибка","de":"неизвестная ошибка"},
-      "where": ["server/services/generation-service.ts:1148","server/services/generation-service.ts:1736"]
+      "where": ["server/services/generation-service.ts:1190","server/services/generation-service.ts:1788"]
     },
     "server.generationService.unknownSection": {
       "ru": "Неизвестный раздел «{sectionKey}»",
@@ -9960,7 +9960,7 @@
       "de": "Unbekannter Abschnitt „{sectionKey}“",
       "from": {"en":"Неизвестный раздел «{sectionKey}»","de":"Неизвестный раздел «{sectionKey}»"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2784"]
+      "where": ["server/services/generation-service.ts:2839"]
     },
     "server.importService.depthUnrecognized": {
       "ru": "Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию.",
@@ -9968,14 +9968,14 @@
       "de": "Tiefe nicht erkannt (gefunden: „{depthDisplay}“). Standard „Standard“ eingesetzt.",
       "from": {"en":"Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию.","de":"Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию."},
       "params": {"depthDisplay":"depthDisplay || \"—\""},
-      "where": ["server/services/import-service.ts:683"]
+      "where": ["server/services/import-service.ts:696"]
     },
     "server.importService.docOutputMissing": {
       "ru": "Не найден элемент #docOutput. Это не файл PhiloSynth.",
       "en": "Element #docOutput not found. This is not a PhiloSynth file.",
       "de": "Element #docOutput nicht gefunden. Dies ist keine PhiloSynth-Datei.",
       "from": {"en":"Не найден элемент #docOutput. Это не файл PhiloSynth.","de":"Не найден элемент #docOutput. Это не файл PhiloSynth."},
-      "where": ["server/services/import-service.ts:1065"]
+      "where": ["server/services/import-service.ts:1090"]
     },
     "server.importService.duplicateSectionKey": {
       "ru": "Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр.",
@@ -9983,14 +9983,14 @@
       "de": "Der Abschnitt „{title}“ dupliziert den Schlüssel „{key}“ — das erste Exemplar wurde verwendet.",
       "from": {"en":"Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр.","de":"Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр."},
       "params": {"title":"sec.title","key":"sec.key"},
-      "where": ["server/services/import-service.ts:1090"]
+      "where": ["server/services/import-service.ts:1115"]
     },
     "server.importService.graphParseFailed": {
       "ru": "Не удалось распарсить граф — категории и связи не восстановлены.",
       "en": "Failed to parse the graph — categories and relations were not restored.",
       "de": "Der Graph konnte nicht ausgewertet werden — Kategorien und Beziehungen nicht wiederhergestellt.",
       "from": {"en":"Не удалось распарсить граф — категории и связи не восстановлены.","de":"Не удалось распарсить граф — категории и связи не восстановлены."},
-      "where": ["server/services/import-service.ts:1271"]
+      "where": ["server/services/import-service.ts:1296"]
     },
     "server.importService.levelUnrecognized": {
       "ru": "Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию.",
@@ -9998,21 +9998,21 @@
       "de": "Syntheseebene nicht erkannt (gefunden: „{synthDisplay}“). Standard „Vergleichend“ eingesetzt.",
       "from": {"en":"Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию.","de":"Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию."},
       "params": {"synthDisplay":"synthDisplay || \"—\""},
-      "where": ["server/services/import-service.ts:691"]
+      "where": ["server/services/import-service.ts:704"]
     },
     "server.importService.logMissing": {
       "ru": "Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. ",
       "en": "The context and generation log is missing. The history of cost and context dependencies is unavailable. ",
       "de": "Das Kontext- und Generierungsprotokoll fehlt. Der Verlauf der Kosten und Kontextabhängigkeiten ist nicht verfügbar. ",
       "from": {"en":"Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. ","de":"Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. "},
-      "where": ["server/services/import-service.ts:700"]
+      "where": ["server/services/import-service.ts:713"]
     },
     "server.importService.logWillAccumulate": {
       "ru": "Лог начнёт накапливаться заново при редактировании.",
       "en": "The log will start accumulating again on editing.",
       "de": "Das Protokoll beginnt beim Bearbeiten erneut zu wachsen.",
       "from": {"en":"Лог начнёт накапливаться заново при редактировании.","de":"Лог начнёт накапливаться заново при редактировании."},
-      "where": ["server/services/import-service.ts:701"]
+      "where": ["server/services/import-service.ts:714"]
     },
     "server.importService.methodUnrecognized": {
       "ru": "Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию.",
@@ -10020,14 +10020,14 @@
       "de": "Synthesemethode nicht erkannt (gefunden: „{methodDisplay}“). Standard „Dialektisch“ eingesetzt.",
       "from": {"en":"Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию.","de":"Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию."},
       "params": {"methodDisplay":"methodDisplay || \"—\""},
-      "where": ["server/services/import-service.ts:675"]
+      "where": ["server/services/import-service.ts:688"]
     },
     "server.importService.noSections": {
       "ru": "В файле не найдено ни одного раздела (.doc-section).",
       "en": "No sections (.doc-section) were found in the file.",
       "de": "In der Datei wurde kein einziger Abschnitt (.doc-section) gefunden.",
       "from": {"en":"В файле не найдено ни одного раздела (.doc-section).","de":"В файле не найдено ни одного раздела (.doc-section)."},
-      "where": ["server/services/import-service.ts:1075"]
+      "where": ["server/services/import-service.ts:1100"]
     },
     "server.importService.parentAmbiguous": {
       "ru": "Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).",
@@ -10035,7 +10035,7 @@
       "de": "Das Elternkonzept „{name}“ wurde nicht automatisch verknüpft: in der Datenbank gibt es {matchesCount} Namensübereinstimmungen — wählen Sie das Elternteil im Vorschlag unten (ein Name ist kein Bezeichner, die Verknüpfung wird nicht stillschweigend erstellt).",
       "from": {"en":"Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).","de":"Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча)."},
       "params": {"name":"p.name","matchesCount":"matches.length"},
-      "where": ["server/services/import-service.ts:1410"]
+      "where": ["server/services/import-service.ts:1435"]
     },
     "server.importService.parentMissing": {
       "ru": "Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.",
@@ -10043,14 +10043,14 @@
       "de": "Das Elternkonzept „{name}“ wurde in der Datenbank nicht gefunden — keine Genealogieverknüpfung erstellt. Sein Abstammungszweig wurde aus der Datei übernommen und wird im Stammbaum als Schnappschuss ohne Verweise angezeigt; eine echte Verknüpfung entsteht, wenn das Elternteil VOR diesem Konzept importiert wird.",
       "from": {"en":"Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.","de":"Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции."},
       "params": {"name":"p.name"},
-      "where": ["server/services/import-service.ts:1411"]
+      "where": ["server/services/import-service.ts:1436"]
     },
     "server.importService.philosophersNotFound": {
       "ru": "Список философов не найден. Перегенерация разделов невозможна без него.",
       "en": "The list of philosophers was not found. Sections cannot be regenerated without it.",
       "de": "Die Philosophenliste wurde nicht gefunden. Ohne sie ist eine Neugenerierung der Abschnitte unmöglich.",
       "from": {"en":"Список философов не найден. Перегенерация разделов невозможна без него.","de":"Список философов не найден. Перегенерация разделов невозможна без него."},
-      "where": ["server/services/import-service.ts:663"]
+      "where": ["server/services/import-service.ts:676"]
     },
     "server.importService.sectionKeyUnknown": {
       "ru": "Не удалось определить ключ для раздела «{titleText}» — раздел пропущен.",
@@ -10058,7 +10058,7 @@
       "de": "Der Schlüssel für den Abschnitt „{titleText}“ konnte nicht bestimmt werden — der Abschnitt wurde übersprungen.",
       "from": {"en":"Не удалось определить ключ для раздела «{titleText}» — раздел пропущен.","de":"Не удалось определить ключ для раздела «{titleText}» — раздел пропущен."},
       "params": {"titleText":"titleText"},
-      "where": ["server/services/import-service.ts:752"]
+      "where": ["server/services/import-service.ts:767"]
     },
     "server.importService.sectionNotInOrder": {
       "ru": "Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка.",
@@ -10066,21 +10066,21 @@
       "de": "Der Abschnitt „{sectionKey}“ fehlt in der eingebetteten sectionOrder — ans Ende der Reihenfolge angefügt.",
       "from": {"en":"Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка.","de":"Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка."},
       "params": {"sectionKey":"k"},
-      "where": ["server/services/import-service.ts:1144"]
+      "where": ["server/services/import-service.ts:1169"]
     },
     "server.importService.synthesisNotCreated": {
       "ru": "Импорт: запись syntheses не создана",
       "en": "Import: the syntheses record was not created",
       "de": "Import: syntheses-Eintrag nicht erstellt",
       "from": {"en":"Импорт: запись syntheses не создана","de":"Импорт: запись syntheses не создана"},
-      "where": ["server/services/import-service.ts:1226"]
+      "where": ["server/services/import-service.ts:1251"]
     },
     "server.importService.thesesParseFailed": {
       "ru": "Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены.",
       "en": "Failed to parse the theses/glossary — granular elements were not restored.",
       "de": "Thesen/Glossar konnten nicht ausgewertet werden — granulare Elemente nicht wiederhergestellt.",
       "from": {"en":"Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены.","de":"Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены."},
-      "where": ["server/services/import-service.ts:1293"]
+      "where": ["server/services/import-service.ts:1318"]
     },
     "server.lineageService.alreadyParent": {
       "ru": "Эта концепция уже указана родителем",
@@ -11264,7 +11264,7 @@
       "de": "Schrittbestätigung für einen Plan im Status „{status}“ nicht verfügbar",
       "from": {"en":"Подтверждение шага недоступно для плана в статусе «{status}»","de":"Подтверждение шага недоступно для плана в статусе «{status}»"},
       "params": {"status":"row.status"},
-      "where": ["server/services/plan-executor.ts:793"]
+      "where": ["server/services/plan-executor.ts:818"]
     },
     "server.planExecutor.modeResultNotFound": {
       "ru": "Результат режима {modeKey}[{index}] не найден",
@@ -11272,28 +11272,28 @@
       "de": "Modusergebnis {modeKey}[{index}] nicht gefunden",
       "from": {"en":"Результат режима {modeKey}[{index}] не найден","de":"Результат режима {modeKey}[{index}] не найден"},
       "params": {"modeKey":"modeKey","index":"index"},
-      "where": ["server/services/plan-executor.ts:209"]
+      "where": ["server/services/plan-executor.ts:213"]
     },
     "server.planExecutor.needsModeService": {
       "ru": "Перегенерация режимов требует mode-service (беседа 4.1)",
       "en": "Regenerating modes requires mode-service (conversation 4.1)",
       "de": "Die Neugenerierung von Modi erfordert den mode-service (Gespräch 4.1)",
       "from": {"en":"Перегенерация режимов требует mode-service (беседа 4.1)","de":"Перегенерация режимов требует mode-service (беседа 4.1)"},
-      "where": ["server/services/plan-executor.ts:435"]
+      "where": ["server/services/plan-executor.ts:439"]
     },
     "server.planExecutor.noConfirmedSteps": {
       "ru": "В плане нет подтверждённых шагов",
       "en": "The plan has no confirmed steps",
       "de": "Der Plan enthält keine bestätigten Schritte",
       "from": {"en":"В плане нет подтверждённых шагов","de":"В плане нет подтверждённых шагов"},
-      "where": ["server/services/plan-executor.ts:715"]
+      "where": ["server/services/plan-executor.ts:719"]
     },
     "server.planExecutor.noPlanAccess": {
       "ru": "Нет доступа к плану",
       "en": "No access to the plan",
       "de": "Kein Zugriff auf den Plan",
       "from": {"en":"Нет доступа к плану","de":"Нет доступа к плану"},
-      "where": ["server/services/plan-executor.ts:787"]
+      "where": ["server/services/plan-executor.ts:812"]
     },
     "server.planExecutor.planNotExecutable": {
       "ru": "План в статусе «{status}» нельзя исполнить",
@@ -11301,7 +11301,7 @@
       "de": "Ein Plan im Status „{status}“ kann nicht ausgeführt werden",
       "from": {"en":"План в статусе «{status}» нельзя исполнить","de":"План в статусе «{status}» нельзя исполнить"},
       "params": {"status":"row.status"},
-      "where": ["server/services/plan-executor.ts:707"]
+      "where": ["server/services/plan-executor.ts:711"]
     },
     "server.planExecutor.planNotResumable": {
       "ru": "План в статусе «{status}» нельзя возобновить",
@@ -11309,7 +11309,7 @@
       "de": "Ein Plan im Status „{status}“ kann nicht fortgesetzt werden",
       "from": {"en":"План в статусе «{status}» нельзя возобновить","de":"План в статусе «{status}» нельзя возобновить"},
       "params": {"status":"row.status"},
-      "where": ["server/services/plan-executor.ts:843"]
+      "where": ["server/services/plan-executor.ts:871"]
     },
     "server.planExecutor.stepNotAwaiting": {
       "ru": "Шаг {stepIndex} не ожидает подтверждения",
@@ -11317,7 +11317,7 @@
       "de": "Schritt {stepIndex} wartet nicht auf Bestätigung",
       "from": {"en":"Шаг {stepIndex} не ожидает подтверждения","de":"Шаг {stepIndex} не ожидает подтверждения"},
       "params": {"stepIndex":"stepIndex"},
-      "where": ["server/services/plan-executor.ts:804"]
+      "where": ["server/services/plan-executor.ts:829"]
     },
     "server.planExecutor.unknownStepType": {
       "ru": "Неизвестный тип шага: {type}",
@@ -11325,14 +11325,14 @@
       "de": "Unbekannter Schritttyp: {type}",
       "from": {"en":"Неизвестный тип шага: {type}","de":"Неизвестный тип шага: {type}"},
       "params": {"type":"String(step.type)"},
-      "where": ["server/services/plan-executor.ts:445"]
+      "where": ["server/services/plan-executor.ts:449"]
     },
     "server.promptRegistry.noVersions": {
       "ru": "нет ни одной версии",
       "en": "there are no versions",
       "de": "keine einzige Version",
       "from": {"en":"нет ни одной версии","de":"нет ни одной версии"},
-      "where": ["server/services/prompt-registry.ts:165","server/services/prompt-registry.ts:351"]
+      "where": ["server/services/prompt-registry.ts:169","server/services/prompt-registry.ts:355"]
     },
     "server.promptRegistry.versionMissing": {
       "ru": "версии {version} нет",
@@ -11340,28 +11340,177 @@
       "de": "Version {version} existiert nicht",
       "from": {"en":"версии {version} нет","de":"версии {version} нет"},
       "params": {"version":"version"},
-      "where": ["server/services/prompt-registry.ts:197","server/services/prompt-registry.ts:419"]
+      "where": ["server/services/prompt-registry.ts:201","server/services/prompt-registry.ts:423"]
+    },
+    "server.recommendationIssues.addressAmbiguous": {
+      "ru": "адрес «{address}» неоднозначен: такой подраздел есть в разделах {sections}",
+      "en": "the address “{address}” is ambiguous: such a subsection exists in the sections {sections}",
+      "de": "die Adresse „{address}“ ist mehrdeutig: einen solchen Unterabschnitt gibt es in den Abschnitten {sections}",
+      "from": {"en":"адрес «{address}» неоднозначен: такой подраздел есть в разделах {sections}","de":"адрес «{address}» неоднозначен: такой подраздел есть в разделах {sections}"},
+      "params": {"address":"","sections":""},
+      "where": ["server/services/recommendation-issues.ts:81"]
+    },
+    "server.recommendationIssues.addressEmpty": {
+      "ru": "адрес пуст: рекомендация обязана называть подраздел документа",
+      "en": "the address is empty: a recommendation must name a subsection of the document",
+      "de": "die Adresse ist leer: eine Empfehlung muss einen Unterabschnitt des Dokuments nennen",
+      "from": {"en":"адрес пуст: рекомендация обязана называть подраздел документа","de":"адрес пуст: рекомендация обязана называть подраздел документа"},
+      "where": ["server/services/recommendation-issues.ts:73"]
+    },
+    "server.recommendationIssues.addressInCritique": {
+      "ru": "«{address}» — подраздел самой критики: адресом рекомендации он быть не может",
+      "en": "“{address}” is a subsection of the critique itself: it cannot be the address of a recommendation",
+      "de": "„{address}“ ist ein Unterabschnitt der Kritik selbst: Adresse einer Empfehlung kann er nicht sein",
+      "from": {"en":"«{address}» — подраздел самой критики: адресом рекомендации он быть не может","de":"«{address}» — подраздел самой критики: адресом рекомендации он быть не может"},
+      "params": {"address":""},
+      "where": ["server/services/recommendation-issues.ts:79"]
+    },
+    "server.recommendationIssues.addressNotFound": {
+      "ru": "подраздела «{address}» в документе нет",
+      "en": "there is no subsection “{address}” in the document",
+      "de": "den Unterabschnitt „{address}“ gibt es im Dokument nicht",
+      "from": {"en":"подраздела «{address}» в документе нет","de":"подраздела «{address}» в документе нет"},
+      "params": {"address":""},
+      "where": ["server/services/recommendation-issues.ts:77"]
+    },
+    "server.recommendationIssues.addressNotFoundNear": {
+      "ru": "подраздела «{address}» в документе нет (похожие: {near})",
+      "en": "there is no subsection “{address}” in the document (similar: {near})",
+      "de": "den Unterabschnitt „{address}“ gibt es im Dokument nicht (ähnlich: {near})",
+      "from": {"en":"подраздела «{address}» в документе нет (похожие: {near})","de":"подраздела «{address}» в документе нет (похожие: {near})"},
+      "params": {"address":"","near":""},
+      "where": ["server/services/recommendation-issues.ts:76"]
+    },
+    "server.recommendationIssues.and": {
+      "ru": " и ",
+      "en": " and ",
+      "de": " und ",
+      "from": {"en":" и ","de":" и "},
+      "where": ["server/services/recommendation-issues.ts:86"]
+    },
+    "server.recommendationIssues.elementNotFound": {
+      "ru": "элемент «{element}» не найден среди категорий, тезисов и терминов концепции",
+      "en": "the element “{element}” was not found among the categories, theses and terms of the concept",
+      "de": "das Element „{element}“ wurde unter den Kategorien, Thesen und Begriffen des Konzepts nicht gefunden",
+      "from": {"en":"элемент «{element}» не найден среди категорий, тезисов и терминов концепции","de":"элемент «{element}» не найден среди категорий, тезисов и терминов концепции"},
+      "params": {"element":""},
+      "where": ["server/services/recommendation-issues.ts:89"]
+    },
+    "server.recommendationIssues.numInvalid": {
+      "ru": "№ «{num}» не номер рекомендации (ожидается «5», «5а», «5б»)",
+      "en": "No. “{num}” is not a recommendation number (“5”, “5a”, “5b” expected)",
+      "de": "Nr. „{num}“ ist keine Empfehlungsnummer (erwartet „5“, „5a“, „5b“)",
+      "from": {"en":"№ «{num}» не номер рекомендации (ожидается «5», «5а», «5б»)","de":"№ «{num}» не номер рекомендации (ожидается «5», «5а», «5б»)"},
+      "params": {"num":""},
+      "where": ["server/services/recommendation-issues.ts:71"]
+    },
+    "server.recommendationIssues.opNotAllowed": {
+      "ru": "операция «{op}» вне закрытого списка: {allowed}",
+      "en": "the operation “{op}” is outside the closed list: {allowed}",
+      "de": "die Operation „{op}“ liegt außerhalb der geschlossenen Liste: {allowed}",
+      "from": {"en":"операция «{op}» вне закрытого списка: {allowed}","de":"операция «{op}» вне закрытого списка: {allowed}"},
+      "params": {"op":"","allowed":""},
+      "where": ["server/services/recommendation-issues.ts:91"]
+    },
+    "server.recommendationIssues.quoted": {
+      "ru": "«{name}»",
+      "en": "“{name}”",
+      "de": "„{name}“",
+      "from": {"en":"«{name}»","de":"«{name}»"},
+      "params": {"name":""},
+      "where": ["server/services/recommendation-issues.ts:59"]
+    },
+    "server.recommendationIssues.rationaleEmpty": {
+      "ru": "основание не указано: контракт требует название подраздела критики, где проблема установлена ({subsections})",
+      "en": "the ground is not given: the contract requires the name of the critique subsection where the problem is identified ({subsections})",
+      "de": "die Begründung ist nicht angegeben: der Vertrag verlangt den Namen des Unterabschnitts der Kritik, in dem das Problem festgestellt wird ({subsections})",
+      "from": {"en":"основание не указано: контракт требует название подраздела критики, где проблема установлена ({subsections})","de":"основание не указано: контракт требует название подраздела критики, где проблема установлена ({subsections})"},
+      "params": {"subsections":""},
+      "where": ["server/services/recommendation-issues.ts:101"]
+    },
+    "server.recommendationIssues.rationaleSelf": {
+      "ru": "основанием названы сами рекомендации ({names}): проблема устанавливается в подразделах критики до них ({subsections})",
+      "en": "the recommendations themselves are named as the ground ({names}): a problem is identified in the critique subsections that precede them ({subsections})",
+      "de": "als Begründung sind die Empfehlungen selbst genannt ({names}): ein Problem wird in den Unterabschnitten der Kritik vor ihnen festgestellt ({subsections})",
+      "from": {"en":"основанием названы сами рекомендации ({names}): проблема устанавливается в подразделах критики до них ({subsections})","de":"основанием названы сами рекомендации ({names}): проблема устанавливается в подразделах критики до них ({subsections})"},
+      "params": {"names":"","subsections":""},
+      "where": ["server/services/recommendation-issues.ts:103"]
+    },
+    "server.recommendationIssues.rationaleUnknown": {
+      "ru": "основание {names} — не подраздел критики этого документа (есть: {subsections}). Исполнению строки это не мешает",
+      "en": "the ground {names} is not a subsection of this document's critique (available: {subsections}). This does not prevent the row from being executed",
+      "de": "die Begründung {names} ist kein Unterabschnitt der Kritik dieses Dokuments (vorhanden: {subsections}). Die Ausführung der Zeile verhindert das nicht",
+      "from": {"en":"основание {names} — не подраздел критики этого документа (есть: {subsections}). Исполнению строки это не мешает","de":"основание {names} — не подраздел критики этого документа (есть: {subsections}). Исполнению строки это не мешает"},
+      "params": {"names":"","subsections":""},
+      "where": ["server/services/recommendation-issues.ts:105"]
+    },
+    "server.recommendationIssues.rowDuplicate": {
+      "ru": "строка повторяет предыдущую (тот же №, адрес и элемент)",
+      "en": "the row repeats a previous one (same number, address and element)",
+      "de": "die Zeile wiederholt eine vorherige (dieselbe Nr., Adresse und dasselbe Element)",
+      "from": {"en":"строка повторяет предыдущую (тот же №, адрес и элемент)","de":"строка повторяет предыдущую (тот же №, адрес и элемент)"},
+      "where": ["server/services/recommendation-issues.ts:95"]
+    },
+    "server.recommendationIssues.severityNotAllowed": {
+      "ru": "важность «{severity}» вне закрытого списка: {allowed}",
+      "en": "the severity “{severity}” is outside the closed list: {allowed}",
+      "de": "die Wichtigkeit „{severity}“ liegt außerhalb der geschlossenen Liste: {allowed}",
+      "from": {"en":"важность «{severity}» вне закрытого списка: {allowed}","de":"важность «{severity}» вне закрытого списка: {allowed}"},
+      "params": {"severity":"","allowed":""},
+      "where": ["server/services/recommendation-issues.ts:93"]
+    },
+    "server.recommendationIssues.targetElementGone": {
+      "ru": "адресат не найден при постановке плана: элемент «{element}» удалён из концепции после разбора",
+      "en": "the target was not found when the plan was drafted: the element “{element}” was deleted from the concept after the analysis",
+      "de": "der Adressat wurde beim Aufstellen des Plans nicht gefunden: das Element „{element}“ wurde nach der Auswertung aus dem Konzept gelöscht",
+      "from": {"en":"адресат не найден при постановке плана: элемент «{element}» удалён из концепции после разбора","de":"адресат не найден при постановке плана: элемент «{element}» удалён из концепции после разбора"},
+      "params": {"element":""},
+      "where": ["server/services/recommendation-issues.ts:97"]
+    },
+    "server.recommendationIssues.targetSubsectionGone": {
+      "ru": "адресат не найден при постановке плана: подраздел «{subsection}» исчез из документа после разбора",
+      "en": "the target was not found when the plan was drafted: the subsection “{subsection}” disappeared from the document after the analysis",
+      "de": "der Adressat wurde beim Aufstellen des Plans nicht gefunden: der Unterabschnitt „{subsection}“ ist nach der Auswertung aus dem Dokument verschwunden",
+      "from": {"en":"адресат не найден при постановке плана: подраздел «{subsection}» исчез из документа после разбора","de":"адресат не найден при постановке плана: подраздел «{subsection}» исчез из документа после разбора"},
+      "params": {"subsection":""},
+      "where": ["server/services/recommendation-issues.ts:99"]
     },
     "server.recommendationPlanner.allAtOnceForbidden": {
       "ru": "Исполнить все разом нельзя намеренно.",
       "en": "Executing all of them at once is deliberately impossible.",
       "de": "Alle auf einmal auszuführen ist absichtlich nicht möglich.",
       "from": {"en":"Исполнить все разом нельзя намеренно.","de":"Исполнить все разом нельзя намеренно."},
-      "where": ["server/services/recommendation-planner.ts:122"]
+      "where": ["server/services/recommendation-planner.ts:125"]
     },
     "server.recommendationPlanner.alreadyDone": {
       "ru": "Рекомендация уже исполнена",
       "en": "The recommendation has already been executed",
       "de": "Die Empfehlung ist bereits ausgeführt",
       "from": {"en":"Рекомендация уже исполнена","de":"Рекомендация уже исполнена"},
-      "where": ["server/services/recommendation-planner.ts:465"]
+      "where": ["server/services/recommendation-planner.ts:491"]
     },
     "server.recommendationPlanner.alreadyInPlan": {
       "ru": "Рекомендация уже стоит в плане правок",
       "en": "The recommendation is already in the edit plan",
       "de": "Die Empfehlung steht bereits im Bearbeitungsplan",
       "from": {"en":"Рекомендация уже стоит в плане правок","de":"Рекомендация уже стоит в плане правок"},
-      "where": ["server/services/recommendation-planner.ts:461"]
+      "where": ["server/services/recommendation-planner.ts:487"]
+    },
+    "server.recommendationPlanner.deleteElementDeclined": {
+      "ru": "Удаление элемента планом не исполняется: у планов нет шага удаления {kind} (за ним тянутся связи, роли и ссылки), а пустая правка удалением не является. Перегенерируйте подраздел «{subsection}» с этим доводом либо удалите вручную.",
+      "en": "A plan does not execute the deletion of an element: plans have no step for deleting {kind} (relations, roles and references depend on it), and an empty edit is not a deletion. Regenerate the subsection “{subsection}” with this argument or delete it manually.",
+      "de": "Das Löschen eines Elements wird vom Plan nicht ausgeführt: Pläne haben keinen Schritt zum Löschen {kind} (daran hängen Beziehungen, Rollen und Verweise), und eine leere Änderung ist kein Löschen. Generieren Sie den Unterabschnitt „{subsection}“ mit dieser Begründung neu oder löschen Sie es manuell.",
+      "from": {"en":"Удаление элемента планом не исполняется: у планов нет шага удаления {kind} (за ним тянутся связи, роли и ссылки), а пустая правка удалением не является. Перегенерируйте подраздел «{subsection}» с этим доводом либо удалите вручную.","de":"Удаление элемента планом не исполняется: у планов нет шага удаления {kind} (за ним тянутся связи, роли и ссылки), а пустая правка удалением не является. Перегенерируйте подраздел «{subsection}» с этим доводом либо удалите вручную."},
+      "params": {"kind":"","subsection":""},
+      "where": ["server/services/recommendation-planner.ts:300"]
+    },
+    "server.recommendationPlanner.deleteSubsectionDeclined": {
+      "ru": "Удаление подраздела планом не исполняется. Поправьте «{subsection}» вручную либо перегенерируйте раздел.",
+      "en": "A plan does not execute the deletion of a subsection. Correct “{subsection}” manually or regenerate the section.",
+      "de": "Das Löschen eines Unterabschnitts wird vom Plan nicht ausgeführt. Korrigieren Sie „{subsection}“ manuell oder generieren Sie den Abschnitt neu.",
+      "from": {"en":"Удаление подраздела планом не исполняется. Поправьте «{subsection}» вручную либо перегенерируйте раздел.","de":"Удаление подраздела планом не исполняется. Поправьте «{subsection}» вручную либо перегенерируйте раздел."},
+      "params": {"subsection":""},
+      "where": ["server/services/recommendation-planner.ts:313"]
     },
     "server.recommendationPlanner.fieldNotAllowed": {
       "ru": "Поле «{field}» у рекомендации {num} недопустимо: ",
@@ -11369,14 +11518,14 @@
       "de": "Das Feld „{field}“ ist bei Empfehlung {num} unzulässig: ",
       "from": {"en":"Поле «{field}» у рекомендации {num} недопустимо: ","de":"Поле «{field}» у рекомендации {num} недопустимо: "},
       "params": {"field":"String(field)","num":"r.num"},
-      "where": ["server/services/recommendation-planner.ts:192"]
+      "where": ["server/services/recommendation-planner.ts:195"]
     },
     "server.recommendationPlanner.fieldsObject": {
       "ru": "fields — объект «id строки рекомендации → поле элемента»",
       "en": "fields is an object “recommendation row id → element field”",
       "de": "fields — Objekt „ID der Empfehlungszeile → Feld des Elements“",
       "from": {"en":"fields — объект «id строки рекомендации → поле элемента»","de":"fields — объект «id строки рекомендации → поле элемента»"},
-      "where": ["server/services/recommendation-planner.ts:181"]
+      "where": ["server/services/recommendation-planner.ts:184"]
     },
     "server.recommendationPlanner.forkExclusive": {
       "ru": "Рекомендация {base} — развилка, её варианты ({vs}) исключают друг друга: выберите один",
@@ -11384,7 +11533,7 @@
       "de": "Empfehlung {base} ist eine Verzweigung, ihre Varianten ({vs}) schließen einander aus: wählen Sie eine",
       "from": {"en":"Рекомендация {base} — развилка, её варианты ({vs}) исключают друг друга: выберите один","de":"Рекомендация {base} — развилка, её варианты ({vs}) исключают друг друга: выберите один"},
       "params": {"base":"base","vs":"vs.join(\", \")"},
-      "where": ["server/services/recommendation-planner.ts:158"]
+      "where": ["server/services/recommendation-planner.ts:161"]
     },
     "server.recommendationPlanner.forkNameVariant": {
       "ru": "Рекомендация {base} — развилка: назовите вариант ({forks}). ",
@@ -11392,21 +11541,65 @@
       "de": "Empfehlung {base} ist eine Verzweigung: nennen Sie die Variante ({forks}). ",
       "from": {"en":"Рекомендация {base} — развилка: назовите вариант ({forks}). ","de":"Рекомендация {base} — развилка: назовите вариант ({forks}). "},
       "params": {"base":"base","forks":"forks.join(\" или \")"},
-      "where": ["server/services/recommendation-planner.ts:142"]
+      "where": ["server/services/recommendation-planner.ts:145"]
+    },
+    "server.recommendationPlanner.hintInvalid": {
+      "ru": "У рекомендаций {nums} адресат не найден — исполнить их нельзя.",
+      "en": "The target of recommendations {nums} was not found — they cannot be executed.",
+      "de": "Bei den Empfehlungen {nums} wurde der Adressat nicht gefunden — sie können nicht ausgeführt werden.",
+      "from": {"en":"У рекомендаций {nums} адресат не найден — исполнить их нельзя.","de":"У рекомендаций {nums} адресат не найден — исполнить их нельзя."},
+      "params": {"nums":""},
+      "where": ["server/services/recommendation-planner.ts:554"]
+    },
+    "server.recommendationPlanner.hintStale": {
+      "ru": "Текст, к которому относились рекомендации {nums}, изменился после разбора — довод мог обессмыслиться. Перечитайте рекомендации (POST …/recommendations/parse) и решите заново.",
+      "en": "The text that recommendations {nums} referred to has changed since the analysis — the argument may have lost its sense. Re-read the recommendations (POST …/recommendations/parse) and decide again.",
+      "de": "Der Text, auf den sich die Empfehlungen {nums} bezogen, hat sich nach der Auswertung geändert — die Begründung könnte gegenstandslos geworden sein. Lesen Sie die Empfehlungen neu (POST …/recommendations/parse) und entscheiden Sie erneut.",
+      "from": {"en":"Текст, к которому относились рекомендации {nums}, изменился после разбора — довод мог обессмыслиться. Перечитайте рекомендации (POST …/recommendations/parse) и решите заново.","de":"Текст, к которому относились рекомендации {nums}, изменился после разбора — довод мог обессмыслиться. Перечитайте рекомендации (POST …/recommendations/parse) и решите заново."},
+      "params": {"nums":""},
+      "where": ["server/services/recommendation-planner.ts:546"]
     },
     "server.recommendationPlanner.humanChooses": {
       "ru": "Выбор между вариантами делает человек, не служба.",
       "en": "The choice between variants is made by a person, not by the service.",
       "de": "Die Wahl zwischen den Varianten trifft der Mensch, nicht der Dienst.",
       "from": {"en":"Выбор между вариантами делает человек, не служба.","de":"Выбор между вариантами делает человек, не служба."},
-      "where": ["server/services/recommendation-planner.ts:143"]
+      "where": ["server/services/recommendation-planner.ts:146"]
+    },
+    "server.recommendationPlanner.kindCategoryGenitive": {
+      "ru": "категории",
+      "en": "a category",
+      "de": "einer Kategorie",
+      "from": {"en":"категории","de":"категории"},
+      "where": ["server/services/recommendation-planner.ts:306"]
+    },
+    "server.recommendationPlanner.kindTermGenitive": {
+      "ru": "термина",
+      "en": "a term",
+      "de": "eines Begriffs",
+      "from": {"en":"термина","de":"термина"},
+      "where": ["server/services/recommendation-planner.ts:309"]
+    },
+    "server.recommendationPlanner.kindThesisGenitive": {
+      "ru": "тезиса",
+      "en": "a thesis",
+      "de": "einer These",
+      "from": {"en":"тезиса","de":"тезиса"},
+      "where": ["server/services/recommendation-planner.ts:308"]
     },
     "server.recommendationPlanner.nameOneByOne": {
       "ru": "Назовите рекомендации поштучно: nums — непустой список номеров («2», «5а»). ",
       "en": "Name the recommendations one by one: nums is a non-empty list of numbers (“2”, “5a”). ",
       "de": "Nennen Sie die Empfehlungen einzeln: nums — nichtleere Liste von Nummern („2“, „5а“). ",
       "from": {"en":"Назовите рекомендации поштучно: nums — непустой список номеров («2», «5а»). ","de":"Назовите рекомендации поштучно: nums — непустой список номеров («2», «5а»). "},
-      "where": ["server/services/recommendation-planner.ts:121"]
+      "where": ["server/services/recommendation-planner.ts:124"]
+    },
+    "server.recommendationPlanner.noAddressSection": {
+      "ru": "У строки нет раздела-адресата — перечитайте рекомендации",
+      "en": "The row has no target section — re-read the recommendations",
+      "de": "Die Zeile hat keinen Abschnitt als Adressaten — lesen Sie die Empfehlungen neu",
+      "from": {"en":"У строки нет раздела-адресата — перечитайте рекомендации","de":"У строки нет раздела-адресата — перечитайте рекомендации"},
+      "where": ["server/services/recommendation-planner.ts:322"]
     },
     "server.recommendationPlanner.noElementFound": {
       "ru": "У рекомендации {num} нет найденного элемента — поле выбирать не у чего",
@@ -11414,14 +11607,14 @@
       "de": "Empfehlung {num} hat kein gefundenes Element — es gibt kein Feld zu wählen",
       "from": {"en":"У рекомендации {num} нет найденного элемента — поле выбирать не у чего","de":"У рекомендации {num} нет найденного элемента — поле выбирать не у чего"},
       "params": {"num":"r.num"},
-      "where": ["server/services/recommendation-planner.ts:188"]
+      "where": ["server/services/recommendation-planner.ts:191"]
     },
     "server.recommendationPlanner.noneIncluded": {
       "ru": "Ни одна из названных рекомендаций в план не вошла",
       "en": "None of the named recommendations was included in the plan",
       "de": "Keine der genannten Empfehlungen ist in den Plan eingegangen",
       "from": {"en":"Ни одна из названных рекомендаций в план не вошла","de":"Ни одна из названных рекомендаций в план не вошла"},
-      "where": ["server/services/recommendation-planner.ts:523"]
+      "where": ["server/services/recommendation-planner.ts:565"]
     },
     "server.recommendationPlanner.notInRound": {
       "ru": "Рекомендации «{raw}» в текущем раунде нет",
@@ -11429,14 +11622,14 @@
       "de": "Die Empfehlung „{raw}“ gibt es in der aktuellen Runde nicht",
       "from": {"en":"Рекомендации «{raw}» в текущем раунде нет","de":"Рекомендации «{raw}» в текущем раунде нет"},
       "params": {"raw":"String(raw)"},
-      "where": ["server/services/recommendation-planner.ts:146"]
+      "where": ["server/services/recommendation-planner.ts:149"]
     },
     "server.recommendationPlanner.notParsed": {
       "ru": "Рекомендации ещё не разобраны — сначала POST …/recommendations/parse",
       "en": "The recommendations have not been parsed yet — first POST …/recommendations/parse",
       "de": "Die Empfehlungen sind noch nicht ausgewertet — zuerst POST …/recommendations/parse",
       "from": {"en":"Рекомендации ещё не разобраны — сначала POST …/recommendations/parse","de":"Рекомендации ещё не разобраны — сначала POST …/recommendations/parse"},
-      "where": ["server/services/recommendation-planner.ts:441"]
+      "where": ["server/services/recommendation-planner.ts:467"]
     },
     "server.recommendationPlanner.notRecommendationNumber": {
       "ru": "«{raw}» — не номер рекомендации (ожидается «2» или «5а»)",
@@ -11444,14 +11637,14 @@
       "de": "„{raw}“ ist keine Empfehlungsnummer (erwartet „2“ oder „5а“)",
       "from": {"en":"«{raw}» — не номер рекомендации (ожидается «2» или «5а»)","de":"«{raw}» — не номер рекомендации (ожидается «2» или «5а»)"},
       "params": {"raw":"String(raw)"},
-      "where": ["server/services/recommendation-planner.ts:135"]
+      "where": ["server/services/recommendation-planner.ts:138"]
     },
     "server.recommendationPlanner.or": {
       "ru": " или ",
       "en": " or ",
       "de": " oder ",
       "from": {"en":" или ","de":" или "},
-      "where": ["server/services/recommendation-planner.ts:142"]
+      "where": ["server/services/recommendation-planner.ts:145"]
     },
     "server.recommendationPlanner.rowNotSelected": {
       "ru": "Строки «{id}» нет среди выбранных рекомендаций",
@@ -11459,21 +11652,37 @@
       "de": "Die Zeile „{id}“ ist nicht unter den gewählten Empfehlungen",
       "from": {"en":"Строки «{id}» нет среди выбранных рекомендаций","de":"Строки «{id}» нет среди выбранных рекомендаций"},
       "params": {"id":"id"},
-      "where": ["server/services/recommendation-planner.ts:185"]
+      "where": ["server/services/recommendation-planner.ts:188"]
+    },
+    "server.recommendationPlanner.sameTarget": {
+      "ru": "Тот же элемент уже правит рекомендация {num} этого плана: вторая правка шла бы по устаревшему тексту. Исполните их по очереди.",
+      "en": "The same element is already edited by recommendation {num} of this plan: the second edit would work on outdated text. Execute them one after another.",
+      "de": "Dasselbe Element wird bereits von Empfehlung {num} dieses Plans geändert: die zweite Änderung liefe auf veraltetem Text. Führen Sie sie nacheinander aus.",
+      "from": {"en":"Тот же элемент уже правит рекомендация {num} этого плана: вторая правка шла бы по устаревшему тексту. Исполните их по очереди.","de":"Тот же элемент уже правит рекомендация {num} этого плана: вторая правка шла бы по устаревшему тексту. Исполните их по очереди."},
+      "params": {"num":""},
+      "where": ["server/services/recommendation-planner.ts:373"]
+    },
+    "server.recommendationPlanner.sectionRegenerated": {
+      "ru": "Раздел «{section}» этим же планом перегенерируется целиком — правка его элемента была бы стёрта. Исполните рекомендации по очереди.",
+      "en": "The section “{section}” is regenerated entirely by this same plan — an edit of its element would be erased. Execute the recommendations one after another.",
+      "de": "Der Abschnitt „{section}“ wird von demselben Plan vollständig neu generiert — die Änderung seines Elements würde überschrieben. Führen Sie die Empfehlungen nacheinander aus.",
+      "from": {"en":"Раздел «{section}» этим же планом перегенерируется целиком — правка его элемента была бы стёрта. Исполните рекомендации по очереди.","de":"Раздел «{section}» этим же планом перегенерируется целиком — правка его элемента была бы стёрта. Исполните рекомендации по очереди."},
+      "params": {"section":""},
+      "where": ["server/services/recommendation-planner.ts:359"]
     },
     "server.recommendations.addCritique": {
       "ru": "Добавьте раздел в документ (Изменить → добавить раздел), затем разберите рекомендации.",
       "en": "Add the section to the document (Edit → add section), then parse the recommendations.",
       "de": "Fügen Sie den Abschnitt zum Dokument hinzu (Bearbeiten → Abschnitt hinzufügen), dann werten Sie die Empfehlungen aus.",
       "from": {"en":"Добавьте раздел в документ (Изменить → добавить раздел), затем разберите рекомендации.","de":"Добавьте раздел в документ (Изменить → добавить раздел), затем разберите рекомендации."},
-      "where": ["server/services/recommendations.ts:673"]
+      "where": ["server/services/recommendations.ts:810"]
     },
     "server.recommendations.arePlural": {
       "ru": "й стоят",
       "en": "s are",
       "de": "en stehen",
       "from": {"en":"й стоят","de":"й стоят"},
-      "where": ["server/services/recommendations.ts:729"]
+      "where": ["server/services/recommendations.ts:866"]
     },
     "server.recommendations.columnMissing": {
       "ru": "В таблице рекомендаций не найден столбец: {missing}. ",
@@ -11481,21 +11690,21 @@
       "de": "In der Empfehlungstabelle fehlt die Spalte: {missing}. ",
       "from": {"en":"В таблице рекомендаций не найден столбец: {missing}. ","de":"В таблице рекомендаций не найден столбец: {missing}. "},
       "params": {"missing":"missing.map((m) => `«${m}»`).join(\", \")"},
-      "where": ["server/services/recommendations.ts:214"]
+      "where": ["server/services/recommendations.ts:259"]
     },
     "server.recommendations.critiqueNotGenerated": {
       "ru": "Раздел «Критический анализ» ещё не сгенерирован — рекомендаций у концепции нет. ",
       "en": "The “Critical analysis” section has not been generated yet — the concept has no recommendations. ",
       "de": "Der Abschnitt „Kritische Analyse“ ist noch nicht generiert — das Konzept hat keine Empfehlungen. ",
       "from": {"en":"Раздел «Критический анализ» ещё не сгенерирован — рекомендаций у концепции нет. ","de":"Раздел «Критический анализ» ещё не сгенерирован — рекомендаций у концепции нет. "},
-      "where": ["server/services/recommendations.ts:672"]
+      "where": ["server/services/recommendations.ts:809"]
     },
     "server.recommendations.executeOrDelete": {
       "ru": "Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд.",
       "en": "Execute this plan or delete it — after that a new analysis will open the next round.",
       "de": "Führen Sie diesen Plan aus oder löschen Sie ihn — danach eröffnet eine neue Auswertung die nächste Runde.",
       "from": {"en":"Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд.","de":"Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд."},
-      "where": ["server/services/recommendations.ts:730"]
+      "where": ["server/services/recommendations.ts:867"]
     },
     "server.recommendations.headersFound": {
       "ru": "Найдены заголовки: {foundCount}. ",
@@ -11503,21 +11712,21 @@
       "de": "Gefundene Überschriften: {foundCount}. ",
       "from": {"en":"Найдены заголовки: {foundCount}. ","de":"Найдены заголовки: {foundCount}. "},
       "params": {"foundCount":"found.length ? found.map((f) => `«${f}»`).join(\", \") : \"—\""},
-      "where": ["server/services/recommendations.ts:215"]
+      "where": ["server/services/recommendations.ts:260"]
     },
     "server.recommendations.isSingular": {
       "ru": "я стоит",
       "en": " is",
       "de": " steht",
       "from": {"en":"я стоит","de":"я стоит"},
-      "where": ["server/services/recommendations.ts:729"]
+      "where": ["server/services/recommendations.ts:866"]
     },
     "server.recommendations.legacyConcept": {
       "ru": "Концепция создана до контракта рекомендаций — составьте таблицу по готовой прозе: ",
       "en": "The concept was created before the recommendations contract — compile a table from the finished prose: ",
       "de": "Das Konzept wurde vor dem Empfehlungsvertrag erstellt — erstellen Sie die Tabelle aus dem vorhandenen Fließtext: ",
       "from": {"en":"Концепция создана до контракта рекомендаций — составьте таблицу по готовой прозе: ","de":"Концепция создана до контракта рекомендаций — составьте таблицу по готовой прозе: "},
-      "where": ["server/services/recommendations.ts:174"]
+      "where": ["server/services/recommendations.ts:219"]
     },
     "server.recommendations.noProseSubsection": {
       "ru": "В критике нет подраздела «{proseSubsection}» — составлять таблицу не по чему. ",
@@ -11525,7 +11734,7 @@
       "de": "In der Kritik fehlt der Unterabschnitt „{proseSubsection}“ — es gibt nichts, woraus die Tabelle erstellt werden könnte. ",
       "from": {"en":"В критике нет подраздела «{proseSubsection}» — составлять таблицу не по чему. ","de":"В критике нет подраздела «{proseSubsection}» — составлять таблицу не по чему. "},
       "params": {"proseSubsection":"RECOMMENDATIONS_PROSE_SUBSECTION"},
-      "where": ["server/services/recommendations.ts:896"]
+      "where": ["server/services/recommendations.ts:1056"]
     },
     "server.recommendations.noProseSubsectionShort": {
       "ru": "В критике нет подраздела «{proseSubsection}»",
@@ -11533,7 +11742,7 @@
       "de": "In der Kritik fehlt der Unterabschnitt „{proseSubsection}“",
       "from": {"en":"В критике нет подраздела «{proseSubsection}»","de":"В критике нет подраздела «{proseSubsection}»"},
       "params": {"proseSubsection":"RECOMMENDATIONS_PROSE_SUBSECTION"},
-      "where": ["server/services/recommendations.ts:1029"]
+      "where": ["server/services/recommendations.ts:1269"]
     },
     "server.recommendations.noTable": {
       "ru": "В подразделе «{tableSubsection}» нет таблицы (<table class=\"doc-table\">)",
@@ -11541,14 +11750,14 @@
       "de": "Im Unterabschnitt „{tableSubsection}“ gibt es keine Tabelle (<table class=\"doc-table\">)",
       "from": {"en":"В подразделе «{tableSubsection}» нет таблицы (<table class=\"doc-table\">)","de":"В подразделе «{tableSubsection}» нет таблицы (<table class=\"doc-table\">)"},
       "params": {"tableSubsection":"RECOMMENDATIONS_TABLE_SUBSECTION"},
-      "where": ["server/services/recommendations.ts:182"]
+      "where": ["server/services/recommendations.ts:227"]
     },
     "server.recommendations.noTableReturned": {
       "ru": "Модель не вернула таблицу — документ не изменён. Повторите запрос.",
       "en": "The model did not return a table — the document is unchanged. Retry the request.",
       "de": "Das Modell hat keine Tabelle zurückgegeben — das Dokument ist unverändert. Wiederholen Sie die Anfrage.",
       "from": {"en":"Модель не вернула таблицу — документ не изменён. Повторите запрос.","de":"Модель не вернула таблицу — документ не изменён. Повторите запрос."},
-      "where": ["server/services/recommendations.ts:996"]
+      "where": ["server/services/recommendations.ts:1236"]
     },
     "server.recommendations.noTableSubsection": {
       "ru": "В разделе «Критический анализ» нет подраздела «{tableSubsection}». ",
@@ -11556,21 +11765,21 @@
       "de": "Im Abschnitt „Kritische Analyse“ fehlt der Unterabschnitt „{tableSubsection}“. ",
       "from": {"en":"В разделе «Критический анализ» нет подраздела «{tableSubsection}». ","de":"В разделе «Критический анализ» нет подраздела «{tableSubsection}». "},
       "params": {"tableSubsection":"RECOMMENDATIONS_TABLE_SUBSECTION"},
-      "where": ["server/services/recommendations.ts:173"]
+      "where": ["server/services/recommendations.ts:218"]
     },
     "server.recommendations.orderIrrelevant": {
       "ru": "Порядок столбцов не важен, названия — важны.",
       "en": "The order of columns does not matter, the names do.",
       "de": "Die Reihenfolge der Spalten ist unwichtig, die Namen sind wichtig.",
       "from": {"en":"Порядок столбцов не важен, названия — важны.","de":"Порядок столбцов не важен, названия — важны."},
-      "where": ["server/services/recommendations.ts:216"]
+      "where": ["server/services/recommendations.ts:261"]
     },
     "server.recommendations.regenerateCritique": {
       "ru": "Перегенерируйте раздел «Критический анализ».",
       "en": "Regenerate the “Critical analysis” section.",
       "de": "Generieren Sie den Abschnitt „Kritische Analyse“ neu.",
       "from": {"en":"Перегенерируйте раздел «Критический анализ».","de":"Перегенерируйте раздел «Критический анализ»."},
-      "where": ["server/services/recommendations.ts:897"]
+      "where": ["server/services/recommendations.ts:1057"]
     },
     "server.recommendations.responseUnfit": {
       "ru": "Ответ модели не годится в документ: {message}",
@@ -11578,7 +11787,7 @@
       "de": "Die Modellantwort taugt nicht für das Dokument: {message}",
       "from": {"en":"Ответ модели не годится в документ: {message}","de":"Ответ модели не годится в документ: {message}"},
       "params": {"message":"err.message"},
-      "where": ["server/services/recommendations.ts:1021"]
+      "where": ["server/services/recommendations.ts:1261"]
     },
     "server.recommendations.roundInProgress": {
       "ru": "Раунд {round} ещё в работе: {heldCount} рекомендаци{heldWordEnding} в плане правок. ",
@@ -11586,7 +11795,7 @@
       "de": "Runde {round} ist noch in Arbeit: {heldCount} Empfehlung{heldWordEnding} im Bearbeitungsplan. ",
       "from": {"en":"Раунд {round} ещё в работе: {heldCount} рекомендаци{heldWordEnding} в плане правок. ","de":"Раунд {round} ещё в работе: {heldCount} рекомендаци{heldWordEnding} в плане правок. "},
       "params": {"round":"latest","heldCount":"held.length","heldWordEnding":"held.length === 1 ? \"я стоит\" : \"й стоят\""},
-      "where": ["server/services/recommendations.ts:729"]
+      "where": ["server/services/recommendations.ts:866"]
     },
     "server.recommendations.roundMissing": {
       "ru": "Раунда {round} у концепции нет (последний — {latestRound})",
@@ -11594,14 +11803,14 @@
       "de": "Runde {round} gibt es bei diesem Konzept nicht (letzte — {latestRound})",
       "from": {"en":"Раунда {round} у концепции нет (последний — {latestRound})","de":"Раунда {round} у концепции нет (последний — {latestRound})"},
       "params": {"round":"round","latestRound":"latestRound"},
-      "where": ["server/services/recommendations.ts:812"]
+      "where": ["server/services/recommendations.ts:963"]
     },
     "server.recommendations.tableEmpty": {
       "ru": "В таблице рекомендаций нет ни одной строки",
       "en": "The recommendations table has no rows",
       "de": "Die Empfehlungstabelle enthält keine einzige Zeile",
       "from": {"en":"В таблице рекомендаций нет ни одной строки","de":"В таблице рекомендаций нет ни одной строки"},
-      "where": ["server/services/recommendations.ts:241"]
+      "where": ["server/services/recommendations.ts:286"]
     },
     "server.representationTransformer.categoryTableMissing": {
       "ru": "В ответе не найдена «Таблица категорий» — граф не заменён",
@@ -12001,7 +12210,7 @@
       "en": "integer ≥ 1 expected",
       "de": "erwartet wird eine ganze Zahl ≥ 1",
       "from": {"en":"ожидается целое ≥ 1","de":"ожидается целое ≥ 1"},
-      "where": ["server/routes/recommendations.ts:127"]
+      "where": ["server/routes/recommendations.ts:131"]
     },
     "server.routes.sections.previewUnavailable": {
       "ru": "Превью контекста недоступно",
@@ -12039,7 +12248,7 @@
       "de": "{title} (Kopie)",
       "from": {"en":"{title} (копия)","de":"{title} (копия)"},
       "params": {"title":"row.title"},
-      "where": ["server/routes/syntheses.ts:1660"]
+      "where": ["server/routes/syntheses.ts:1668"]
     },
     "server.routes.syntheses.duplicateParticipants": {
       "ru": "участники-концепции не должны повторяться",
@@ -12053,28 +12262,28 @@
       "en": "Cost estimate unavailable",
       "de": "Kostenschätzung nicht verfügbar",
       "from": {"en":"Оценка стоимости недоступна","de":"Оценка стоимости недоступна"},
-      "where": ["server/routes/syntheses.ts:1300"]
+      "where": ["server/routes/syntheses.ts:1308"]
     },
     "server.routes.syntheses.fieldRequired": {
       "ru": "Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta",
       "en": "At least one of the fields title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta is required",
       "de": "Mindestens eines der Felder title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta ist erforderlich",
       "from": {"en":"Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta","de":"Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta"},
-      "where": ["server/routes/syntheses.ts:1550"]
+      "where": ["server/routes/syntheses.ts:1558"]
     },
     "server.routes.syntheses.invalidEstimateParams": {
       "ru": "Невалидные параметры оценки",
       "en": "Invalid estimate parameters",
       "de": "Ungültige Parameter der Schätzung",
       "from": {"en":"Невалидные параметры оценки","de":"Невалидные параметры оценки"},
-      "where": ["server/routes/syntheses.ts:1267"]
+      "where": ["server/routes/syntheses.ts:1272"]
     },
     "server.routes.syntheses.invalidParams": {
       "ru": "Невалидные параметры",
       "en": "Invalid parameters",
       "de": "Ungültige Parameter",
       "from": {"en":"Невалидные параметры","de":"Невалидные параметры"},
-      "where": ["server/routes/syntheses.ts:1028","server/routes/syntheses.ts:1351","server/routes/syntheses.ts:1364","server/routes/syntheses.ts:1542"]
+      "where": ["server/routes/syntheses.ts:1028","server/routes/syntheses.ts:1359","server/routes/syntheses.ts:1372","server/routes/syntheses.ts:1550"]
     },
     "server.routes.syntheses.invalidSynthesisParams": {
       "ru": "Невалидные параметры синтеза",
@@ -12118,21 +12327,21 @@
       "en": "The synthesis is still being generated — wait for it to finish",
       "de": "Die Synthese wird noch generiert — warten Sie auf den Abschluss",
       "from": {"en":"Синтез ещё генерируется — дождитесь завершения","de":"Синтез ещё генерируется — дождитесь завершения"},
-      "where": ["server/routes/syntheses.ts:1633"]
+      "where": ["server/routes/syntheses.ts:1641"]
     },
     "server.routes.syntheses.stopBeforeDelete": {
       "ru": "Генерация ещё идёт — остановите её перед удалением",
       "en": "Generation is still running — stop it before deleting",
       "de": "Die Generierung läuft noch — stoppen Sie sie vor dem Löschen",
       "from": {"en":"Генерация ещё идёт — остановите её перед удалением","de":"Генерация ещё идёт — остановите её перед удалением"},
-      "where": ["server/routes/syntheses.ts:1601"]
+      "where": ["server/routes/syntheses.ts:1609"]
     },
     "server.routes.syntheses.unknownMethod": {
       "ru": "неизвестный метод",
       "en": "unknown method",
       "de": "unbekannte Methode",
       "from": {"en":"неизвестный метод","de":"неизвестный метод"},
-      "where": ["server/routes/syntheses.ts:1366"]
+      "where": ["server/routes/syntheses.ts:1374"]
     },
     "server.routes.taxonomy.categoryTypeNotFound": {
       "ru": "Тип категории не найден",
@@ -12160,21 +12369,21 @@
       "en": "” not found in parts.",
       "de": "“ nicht in parts gefunden.",
       "from": {"en":"» не найден в parts.","de":"» не найден в parts."},
-      "where": ["server/services/section-defs-builder.ts:1161"]
+      "where": ["server/services/section-defs-builder.ts:1189"]
     },
     "server.sectionDefsBuilder.subsectionLead": {
       "ru": "Подраздел «",
       "en": "Subsection “",
       "de": "Unterabschnitt „",
       "from": {"en":"Подраздел «","de":"Подраздел «"},
-      "where": ["server/services/section-defs-builder.ts:1161"]
+      "where": ["server/services/section-defs-builder.ts:1189"]
     },
     "server.sectionDefsBuilder.subsectionMapEmpty": {
       "ru": "subsection_map: base.critique пуст или отсутствует",
       "en": "subsection_map: base.critique is empty or missing",
       "de": "subsection_map: base.critique ist leer oder fehlt",
       "from": {"en":"subsection_map: base.critique пуст или отсутствует","de":"subsection_map: base.critique пуст или отсутствует"},
-      "where": ["server/services/section-defs-builder.ts:159"]
+      "where": ["server/services/section-defs-builder.ts:186"]
     },
     "server.streamingManager.emptyResponseBody": {
       "ru": "Пустое тело ответа API",
@@ -12210,49 +12419,49 @@
       "en": "The webhook body is not a Stripe event",
       "de": "Der Webhook-Körper ist kein Stripe-Ereignis",
       "from": {"en":"Тело webhook — не событие Stripe","de":"Тело webhook — не событие Stripe"},
-      "where": ["server/services/stripe-client.ts:454"]
+      "where": ["server/services/stripe-client.ts:474"]
     },
     "server.stripeClient.bodyNotJson": {
       "ru": "Тело webhook — не JSON",
       "en": "The webhook body is not JSON",
       "de": "Der Webhook-Körper ist kein JSON",
       "from": {"en":"Тело webhook — не JSON","de":"Тело webhook — не JSON"},
-      "where": ["server/services/stripe-client.ts:451"]
+      "where": ["server/services/stripe-client.ts:471"]
     },
     "server.stripeClient.signatureExpired": {
       "ru": "Подпись webhook устарела",
       "en": "The webhook signature is outdated",
       "de": "Die Webhook-Signatur ist veraltet",
       "from": {"en":"Подпись webhook устарела","de":"Подпись webhook устарела"},
-      "where": ["server/services/stripe-client.ts:433"]
+      "where": ["server/services/stripe-client.ts:453"]
     },
     "server.stripeClient.signatureHeaderMissing": {
       "ru": "Нет заголовка Stripe-Signature",
       "en": "No Stripe-Signature header",
       "de": "Kein Header Stripe-Signature",
       "from": {"en":"Нет заголовка Stripe-Signature","de":"Нет заголовка Stripe-Signature"},
-      "where": ["server/services/stripe-client.ts:420"]
+      "where": ["server/services/stripe-client.ts:440"]
     },
     "server.stripeClient.signatureIncomplete": {
       "ru": "Неполная подпись webhook",
       "en": "Incomplete webhook signature",
       "de": "Unvollständige Webhook-Signatur",
       "from": {"en":"Неполная подпись webhook","de":"Неполная подпись webhook"},
-      "where": ["server/services/stripe-client.ts:430"]
+      "where": ["server/services/stripe-client.ts:450"]
     },
     "server.stripeClient.signatureMismatch": {
       "ru": "Подпись webhook не сходится",
       "en": "The webhook signature does not match",
       "de": "Die Webhook-Signatur stimmt nicht",
       "from": {"en":"Подпись webhook не сходится","de":"Подпись webhook не сходится"},
-      "where": ["server/services/stripe-client.ts:444"]
+      "where": ["server/services/stripe-client.ts:464"]
     },
     "server.stripeClient.stripeNotConfigured": {
       "ru": "Stripe не настроен (STRIPE_SECRET_KEY пуст)",
       "en": "Stripe is not configured (STRIPE_SECRET_KEY is empty)",
       "de": "Stripe ist nicht eingerichtet (STRIPE_SECRET_KEY leer)",
       "from": {"en":"Stripe не настроен (STRIPE_SECRET_KEY пуст)","de":"Stripe не настроен (STRIPE_SECRET_KEY пуст)"},
-      "where": ["server/services/stripe-client.ts:189"]
+      "where": ["server/services/stripe-client.ts:208"]
     },
     "server.stripeClient.stripeUnavailable": {
       "ru": "Stripe недоступен: {message}",
@@ -12260,42 +12469,42 @@
       "de": "Stripe nicht erreichbar: {message}",
       "from": {"en":"Stripe недоступен: {message}","de":"Stripe недоступен: {message}"},
       "params": {"message":"(err as Error).message"},
-      "where": ["server/services/stripe-client.ts:211"]
+      "where": ["server/services/stripe-client.ts:230"]
     },
     "server.stripeClient.webhookSecretMissing": {
       "ru": "STRIPE_WEBHOOK_SECRET не задан",
       "en": "STRIPE_WEBHOOK_SECRET is not set",
       "de": "STRIPE_WEBHOOK_SECRET nicht gesetzt",
       "from": {"en":"STRIPE_WEBHOOK_SECRET не задан","de":"STRIPE_WEBHOOK_SECRET не задан"},
-      "where": ["server/services/stripe-client.ts:415"]
+      "where": ["server/services/stripe-client.ts:435"]
     },
     "server.subscriptionService.alreadySubscribed": {
       "ru": "У пользователя уже есть активная подписка",
       "en": "The user already has an active subscription",
       "de": "Der Benutzer hat bereits ein aktives Abonnement",
       "from": {"en":"У пользователя уже есть активная подписка","de":"У пользователя уже есть активная подписка"},
-      "where": ["server/services/subscription-service.ts:341"]
+      "where": ["server/services/subscription-service.ts:394"]
     },
     "server.subscriptionService.noActiveSubscription": {
       "ru": "Активной подписки нет",
       "en": "There is no active subscription",
       "de": "Kein aktives Abonnement",
       "from": {"en":"Активной подписки нет","de":"Активной подписки нет"},
-      "where": ["server/services/subscription-service.ts:389"]
+      "where": ["server/services/subscription-service.ts:444"]
     },
     "server.subscriptionService.planNotFound": {
       "ru": "Тариф не найден",
       "en": "Plan not found",
       "de": "Tarif nicht gefunden",
       "from": {"en":"Тариф не найден","de":"Тариф не найден"},
-      "where": ["server/services/subscription-service.ts:335"]
+      "where": ["server/services/subscription-service.ts:388"]
     },
     "server.subscriptionService.subscriptionNotFound": {
       "ru": "Подписка не найдена",
       "en": "Subscription not found",
       "de": "Abonnement nicht gefunden",
       "from": {"en":"Подписка не найдена","de":"Подписка не найдена"},
-      "where": ["server/services/subscription-service.ts:434"]
+      "where": ["server/services/subscription-service.ts:489"]
     },
     "server.ws.handler.directionExpected": {
       "ru": "direction: ожидается graph_to_theses | theses_to_graph",
@@ -16002,63 +16211,63 @@
       "en": "” and “",
       "de": "“ und „",
       "from": {"en":"» и «","de":"» и «"},
-      "where": ["client/src/utils/genealogy.ts:313"]
+      "where": ["client/src/utils/genealogy.ts:317"]
     },
     "utils.genealogy.conceptsLead": {
       "ru": "Концепции «",
       "en": "Concepts “",
       "de": "Die Konzepte „",
       "from": {"en":"Концепции «","de":"Концепции «"},
-      "where": ["client/src/utils/genealogy.ts:311"]
+      "where": ["client/src/utils/genealogy.ts:315"]
     },
     "utils.genealogy.haveCommonAncestors": {
       "ru": "» имеют общих предков: ",
       "en": "” have common ancestors: ",
       "de": "“ haben gemeinsame Vorfahren: ",
       "from": {"en":"» имеют общих предков: ","de":"» имеют общих предков: "},
-      "where": ["client/src/utils/genealogy.ts:315"]
+      "where": ["client/src/utils/genealogy.ts:319"]
     },
     "utils.genealogy.influenceDoubled": {
       "ru": "». Их влияние будет удвоено.",
       "en": "”. Their influence will be doubled.",
       "de": "“. Ihr Einfluss wird verdoppelt.",
       "from": {"en":"». Их влияние будет удвоено.","de":"». Их влияние будет удвоено."},
-      "where": ["client/src/utils/genealogy.ts:338"]
+      "where": ["client/src/utils/genealogy.ts:342"]
     },
     "utils.genealogy.mayDominate": {
       "ru": ". Это может привести к доминированию их позиций.",
       "en": ". This may lead to their positions dominating.",
       "de": ". Das kann zur Dominanz ihrer Positionen führen.",
       "from": {"en":". Это может привести к доминированию их позиций.","de":". Это может привести к доминированию их позиций."},
-      "where": ["client/src/utils/genealogy.ts:317"]
+      "where": ["client/src/utils/genealogy.ts:321"]
     },
     "utils.genealogy.ofConcept": {
       "ru": "концепции «",
       "en": "of the concept “",
       "de": "des Konzepts „",
       "from": {"en":"концепции «","de":"концепции «"},
-      "where": ["client/src/utils/genealogy.ts:336"]
+      "where": ["client/src/utils/genealogy.ts:340"]
     },
     "utils.genealogy.philosophersLead": {
       "ru": "Философ(ы) ",
       "en": "Philosopher(s) ",
       "de": "Philosoph(en) ",
       "from": {"en":"Философ(ы) ","de":"Философ(ы) "},
-      "where": ["client/src/utils/genealogy.ts:333"]
+      "where": ["client/src/utils/genealogy.ts:337"]
     },
     "utils.genealogy.selectedAndInGenealogy": {
       "ru": " выбран(ы) для синтеза и одновременно присутствуют в генеалогии ",
       "en": " are selected for the synthesis and are also present in the genealogy ",
       "de": " für die Synthese gewählt und zugleich in der Genealogie vorhanden ",
       "from": {"en":" выбран(ы) для синтеза и одновременно присутствуют в генеалогии ","de":" выбран(ы) для синтеза и одновременно присутствуют в генеалогии "},
-      "where": ["client/src/utils/genealogy.ts:335"]
+      "where": ["client/src/utils/genealogy.ts:339"]
     },
     "utils.genealogy.unnamedConcept": {
       "ru": "[безымянная концепция]",
       "en": "[unnamed concept]",
       "de": "[unbenanntes Konzept]",
       "from": {"en":"[безымянная концепция]","de":"[безымянная концепция]"},
-      "where": ["client/src/utils/genealogy.ts:154","client/src/utils/genealogy.ts:235"]
+      "where": ["client/src/utils/genealogy.ts:158","client/src/utils/genealogy.ts:239"]
     },
     "utils.recommendations.addressMismatch": {
       "ru": "Адрес указывает на раздел «{addressSection}», а элемент найден как ",

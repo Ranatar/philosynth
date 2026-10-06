@@ -16,6 +16,11 @@
  *  - тело изменилось → новая версия max+1, активация, прежняя
  *    деактивируется (история сохраняется)                     [updated]
  *
+ * Кэш (12.3, Д-18): ключи created/updated сбрасываются в Redis
+ * (invalidateCache через scripts/seed/cache-reset.ts) — работающий сервер
+ * читает новую активную версию без перезапуска; Redis недоступен — посев
+ * не падает, в отчёте строка «кэш НЕ сброшен».
+ *
  * Запуск: npm run seed:prompts   (или: npx tsx scripts/seed-prompts.ts)
  */
 import { and, eq, max } from "drizzle-orm";
@@ -30,6 +35,7 @@ import {
   applyRecommendationTemplateOverrides,
 } from "../../server/config/recommendation-templates.js";
 import { applyLangTemplateOverrides } from "../../server/config/lang-templates.js";
+import { resetRegistryCache } from "./cache-reset.js";
 
 const { promptTemplates } = schema;
 
@@ -146,6 +152,12 @@ async function main(): Promise<void> {
   if (report.updated.length)
     console.log(`  updated: ${report.updated.join(", ")}`);
   for (const f of report.failed) console.error(`  FAIL ${f.key}: ${f.error}`);
+
+  // 12.3 (Д-18): кэш реестра бессрочный — сбрасываем ключи, которые посев
+  // изменил, иначе работающий сервер останется на прежних версиях до
+  // перезапуска. Отказ Redis посев не роняет (fail-open) — строкой отчёта.
+  const cache = await resetRegistryCache([...report.created, ...report.updated]);
+  console.log(cache.line);
 
   const total = await db.$count(promptTemplates);
   const active = await db.$count(promptTemplates, eq(promptTemplates.isActive, true));
