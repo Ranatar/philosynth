@@ -93,19 +93,34 @@ export interface EditPlan {
   status: EditPlanStatus;
   currentStep: number;
   steps: EditStep[];
-  /** Суммарная оценка стоимости плана, USD */
+  /** Оценка стоимости ВЗЯТЫХ шагов плана, USD. 12.3 (Д-7): шаги, ждущие
+   *  решения ('pending'), и снятые ('skipped') в неё не входят — без
+   *  подтверждения они не исполняются; их оценка — в cascadePending */
   estimatedCost: number;
   /** 10.2: бесплатное ОТДЕЛЬНО от платного — шаги, которым модель не нужна
-   *  (edit_element, delete), в общей сумме не прячутся */
+   *  (edit_element, delete), в общей сумме не прячутся. 12.3 (Д-7): считаются
+   *  только взятые шаги */
   costBreakdown: PlanCostBreakdown;
+  /** 12.3 (Д-7): шаги, ждущие решения человека (каскадные и структурный),
+   *  и оценка «если подтвердить все» — СВЕРХ estimatedCost */
+  cascadePending: PlanCascadePending;
   createdAt: string;
 }
 
 export interface PlanCostBreakdown {
-  /** Шаги без модели (не снятые): квота не расходуется, стоимость 0 */
+  /** Взятые шаги без модели: квота не расходуется, стоимость 0 */
   free: { steps: number; costUsd: 0 };
-  /** Шаги с обращением к модели (не снятые); costUsd ≡ estimatedCost */
+  /** Взятые шаги с обращением к модели; costUsd ≡ estimatedCost */
   paid: { steps: number; costUsd: number };
+}
+
+/** 12.3 (Д-7): шаги плана в статусе 'pending' — в оценку плана не входят. */
+export interface PlanCascadePending {
+  /** Сколько шагов ждёт решения */
+  steps: number;
+  /** Оценка этих шагов, USD: на столько вырастет estimatedCost, если
+   *  подтвердить все */
+  costUsd: number;
 }
 
 /** Перегенерация подраздела по выбору человека (10.2). */

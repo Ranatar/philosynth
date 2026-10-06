@@ -29,18 +29,37 @@ export class StripeError extends Error {
   code: "STRIPE_UNAVAILABLE" | "STRIPE_ERROR" | "WEBHOOK_SIGNATURE_INVALID";
   status?: number | undefined;
   stripeCode?: string | undefined;
+  /** 12.3 (Д-12): параметр запроса, на который указывает отказ Stripe
+   *  (`error.param`): код resource_missing один на все «No such …», и только
+   *  param говорит, какого именно объекта нет */
+  stripeParam?: string | undefined;
   constructor(
     code: StripeError["code"],
     message: string,
     status?: number,
     stripeCode?: string,
+    stripeParam?: string,
   ) {
     super(message);
     this.name = "StripeError";
     this.code = code;
     this.status = status;
     this.stripeCode = stripeCode;
+    this.stripeParam = stripeParam;
   }
+}
+
+/**
+ * 12.3 (Д-12): отказ Stripe «No such customer» — Customer с сохранённым id
+ * удалён на стороне Stripe (либо id от другого аккаунта/режима). Ответ Stripe:
+ * 400 { error: { type: "invalid_request_error", code: "resource_missing",
+ * param: "customer", message: "No such customer: 'cus_…'" } }. Сверяется и
+ * param, и текст: у вложенных параметров Stripe пишет param по-разному.
+ */
+export function isNoSuchCustomerError(err: unknown): boolean {
+  if (!(err instanceof StripeError) || err.code !== "STRIPE_ERROR") return false;
+  if (err.stripeCode !== "resource_missing") return false;
+  return err.stripeParam === "customer" || /no such customer/i.test(err.message);
 }
 
 /* ── Формат тела Stripe: вложенные объекты → a[b][c]=v ─────────────── */
@@ -219,13 +238,14 @@ async function request<T>(
     /* не JSON */
   }
   if (!resp.ok) {
-    const e = (json as { error?: { message?: string; code?: string } } | null)
+    const e = (json as { error?: { message?: string; code?: string; param?: string } } | null)
       ?.error;
     throw new StripeError(
       "STRIPE_ERROR",
       e?.message ?? `Stripe ${resp.status}`,
       resp.status,
       e?.code,
+      e?.param,
     );
   }
   return json as T;

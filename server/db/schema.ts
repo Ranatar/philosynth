@@ -56,6 +56,7 @@ import type {
 import type { EditStep } from "@philosynth/shared/types/edit-plan";
 import type { VersionOrigin } from "@philosynth/shared/types/elements";
 import type { FileGenealogyNode } from "@philosynth/shared/types/lineage";
+import type { RecommendationIssue } from "@philosynth/shared/types/recommendations";
 import type {
   ContextEntry as ContextLogEntry,
   ParentSpecLog,
@@ -1350,6 +1351,17 @@ export const recommendations = pgTable(
       .notNull()
       .default("new"),
     invalidReason: text("invalid_reason"),
+    /** 12.3 (Д-21, миграция 0012): что сторож ЗАМЕТИЛ, но отказом не счёл —
+     *  строка годна к исполнению (status не 'invalid'). Сейчас сюда пишется
+     *  одно: столбец «Основание» называет подраздел, которого в критике нет.
+     *  NULL — замечаний нет. Несколько замечаний — через «; » */
+    warning: text("warning"),
+    /** 12.3 (Д-46, миграция 0013): находки сторожа КОДАМИ —
+     *  [{ level: 'invalid' | 'warning', code, params }]. Фраза человеку
+     *  собирается при чтении на языке запроса; invalid_reason и warning
+     *  хранят её русский вид (для SQL-диагностики и строк до 12.3).
+     *  NULL — строка разобрана до 12.3: кодов нет, есть только текст */
+    issues: jsonb("issues").$type<RecommendationIssue[]>(),
     sourceHash: text("source_hash"),
     roundHash: text("round_hash").notNull(),
     planId: uuid("plan_id").references(() => editPlans.id, {

@@ -68,11 +68,13 @@ import { innerTextTrimmed, parseFragment, resolveSubsection, type HtmlElement } 
 import { loadExpectedSubsectionOrder } from "./subsection-order.js"; // 11.2, Д-16
 import { truncateText } from "../utils/text.js";
 import { PlanError, createPlan } from "./edit-planner.js";
+import { issue, issuesFromColumn } from "./recommendation-issues.js"; // 12.3, Д-46
 import {
   RecommendationsError,
   loadDocumentIndex,
   sourceHashFor,
   toRecommendationDto,
+  withIssueTexts,
 } from "./recommendations.js";
 
 import type {
@@ -86,6 +88,7 @@ import type {
   RecommendationDecline,
   RecommendationsPlanResponse,
 } from "@philosynth/shared/types/recommendations";
+import { tData } from "@philosynth/shared/i18n/data"; // 12.3, Д-32: метка раздела в отказе
 import { tl } from "@philosynth/shared/i18n/t";
 
 type RecRow = typeof recommendations.$inferSelect;
@@ -294,15 +297,29 @@ export function rowsToPlanActions(
         r,
         r.elementId ? "delete_element" : "delete_subsection",
         r.elementId
-          ? `Удаление элемента планом не исполняется: у планов нет шага удаления ${r.elementKind === "category" ? "категории" : r.elementKind === "thesis" ? "тезиса" : "термина"} ` +
-              "(за ним тянутся связи, роли и ссылки), а пустая правка удалением не является. " +
-              `Перегенерируйте подраздел «${r.addressSubsection}» с этим доводом либо удалите вручную.`
-          : `Удаление подраздела планом не исполняется. Поправьте «${r.addressSubsection}» вручную либо перегенерируйте раздел.`,
+          ? tl(
+              "server.recommendationPlanner.deleteElementDeclined",
+              "Удаление элемента планом не исполняется: у планов нет шага удаления {kind} (за ним тянутся связи, роли и ссылки), а пустая правка удалением не является. Перегенерируйте подраздел «{subsection}» с этим доводом либо удалите вручную.",
+              {
+                kind:
+                  r.elementKind === "category"
+                    ? tl("server.recommendationPlanner.kindCategoryGenitive", "категории")
+                    : r.elementKind === "thesis"
+                      ? tl("server.recommendationPlanner.kindThesisGenitive", "тезиса")
+                      : tl("server.recommendationPlanner.kindTermGenitive", "термина"),
+                subsection: r.addressSubsection,
+              },
+            )
+          : tl(
+              "server.recommendationPlanner.deleteSubsectionDeclined",
+              "Удаление подраздела планом не исполняется. Поправьте «{subsection}» вручную либо перегенерируйте раздел.",
+              { subsection: r.addressSubsection },
+            ),
       );
       continue;
     }
     if (!sec) {
-      decline(r, "no_address", "У строки нет раздела-адресата — перечитайте рекомендации");
+      decline(r, "no_address", tl("server.recommendationPlanner.noAddressSection", "У строки нет раздела-адресата — перечитайте рекомендации"));
       continue;
     }
     if (r.elementId && r.elementKind) {
@@ -333,11 +350,17 @@ export function rowsToPlanActions(
     const kind = r.elementKind as NonNullable<RecRow["elementKind"]>;
     const host = ELEMENT_STEP_HOST[kind];
     if (sectionRegen.has(host)) {
+      // 12.3 (Д-32): и оборот, и метка раздела — на языке запроса: метка —
+      // данные (KEY_LABELS остаётся русской константой), переводится по месту
+      // показа tData
       decline(
         r,
         "section_regenerated",
-        `Раздел «${isSectionKey(host) ? KEY_LABELS[host] : host}» этим же планом перегенерируется целиком — ` +
-          "правка его элемента была бы стёрта. Исполните рекомендации по очереди.",
+        tl(
+          "server.recommendationPlanner.sectionRegenerated",
+          "Раздел «{section}» этим же планом перегенерируется целиком — правка его элемента была бы стёрта. Исполните рекомендации по очереди.",
+          { section: isSectionKey(host) ? tData(KEY_LABELS[host]) : host },
+        ),
       );
       continue;
     }
@@ -347,8 +370,11 @@ export function rowsToPlanActions(
       decline(
         r,
         "same_target",
-        `Тот же элемент уже правит рекомендация ${holder} этого плана: вторая правка шла бы по устаревшему тексту. ` +
-          "Исполните их по очереди.",
+        tl(
+          "server.recommendationPlanner.sameTarget",
+          "Тот же элемент уже правит рекомендация {num} этого плана: вторая правка шла бы по устаревшему тексту. Исполните их по очереди.",
+          { num: holder },
+        ),
       );
       continue;
     }
@@ -467,12 +493,15 @@ export async function buildPlanDraft(
     }
     const now = sourceHashFor(doc, r);
     if (now === null) {
-      const what = r.elementId
-        ? `элемент «${r.element ?? ""}» удалён из концепции после разбора`
-        : `подраздел «${r.addressSubsection}» исчез из документа после разбора`;
+      // 12.3 (Д-46): причина — кодом; замечания строки (уровень 'warning')
+      // остаются при ней, прежние причины негодности заменяются этой
+      const gone = r.elementId
+        ? issue("invalid", "target_element_gone", { element: r.element ?? "" })
+        : issue("invalid", "target_subsection_gone", { subsection: r.addressSubsection });
+      const notes = issuesFromColumn(r.issues).filter((x) => x.level === "warning");
       const [upd] = await db
         .update(recommendations)
-        .set({ status: "invalid", invalidReason: `адресат не найден при постановке плана: ${what}` })
+        .set({ status: "invalid", ...withIssueTexts([gone, ...notes]) })
         .where(eq(recommendations.id, r.id))
         .returning();
       invalid.push(upd ?? r);
@@ -505,15 +534,28 @@ export async function buildPlanDraft(
   const draft = rowsToPlanActions(eligible, proseOf, synth.sectionOrder ?? [], fieldChoices);
   declined.push(...draft.declined);
 
+  // 12.3 (Д-32): части подсказки — сообщения человеку, через tl(). Вызов
+  // назван addHint, чтобы опись msg-режима (ui-strings-lib, MSG_CALLS) видела
+  // его довод сообщением, как довод decline()
   const hintParts: string[] = [];
+  const addHint = (text: string): void => {
+    hintParts.push(text);
+  };
   if (stale.length)
-    hintParts.push(
-      `Текст, к которому относились рекомендации ${[...new Set(stale.map((r) => r.num))].join(", ")}, изменился после разбора — ` +
-        "довод мог обессмыслиться. Перечитайте рекомендации (POST …/recommendations/parse) и решите заново.",
+    addHint(
+      tl(
+        "server.recommendationPlanner.hintStale",
+        "Текст, к которому относились рекомендации {nums}, изменился после разбора — довод мог обессмыслиться. Перечитайте рекомендации (POST …/recommendations/parse) и решите заново.",
+        { nums: [...new Set(stale.map((r) => r.num))].join(", ") },
+      ),
     );
   if (invalid.length)
-    hintParts.push(
-      `У рекомендаций ${[...new Set(invalid.map((r) => r.num))].join(", ")} адресат не найден — исполнить их нельзя.`,
+    addHint(
+      tl(
+        "server.recommendationPlanner.hintInvalid",
+        "У рекомендаций {nums} адресат не найден — исполнить их нельзя.",
+        { nums: [...new Set(invalid.map((r) => r.num))].join(", ") },
+      ),
     );
   const hint = hintParts.length ? hintParts.join(" ") : null;
 
@@ -523,7 +565,8 @@ export async function buildPlanDraft(
       hint ?? declined[0]?.reason ?? tl("server.recommendationPlanner.noneIncluded", "Ни одна из названных рекомендаций в план не вошла"),
       {
         stale: stale.map((r) => ({ id: r.id, num: r.num, position: r.position })),
-        invalid: invalid.map((r) => ({ id: r.id, num: r.num, position: r.position, reason: r.invalidReason })),
+        // 12.3 (Д-46): причина — фразой на языке запроса
+        invalid: invalid.map((r) => ({ id: r.id, num: r.num, position: r.position, reason: toRecommendationDto(r).invalidReason })),
         declined,
       },
     );

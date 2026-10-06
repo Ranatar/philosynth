@@ -239,7 +239,7 @@ try {
   const tot1 = Number((await sql`select total_cost_usd t from syntheses where id=${LIVE}`)[0].t);
   const [gl] = await sql`select source, status, section_key from generation_log where synthesis_id=${LIVE} order by created_at desc limit 1`;
   const [ver] = await sql`select count(*)::int n from element_versions where synthesis_id=${LIVE} and element_type='section' and change_source='regenerated'`;
-  ok(tot1 > tot0 && gl?.status === "done" && gl.section_key === "critique" && ver.n === 1, "учёт: стоимость в итоге документа, строка generation_log done, версия раздела со снимком ДО", [tot0, tot1, gl, ver]);
+  ok(tot1 > tot0 && gl?.status === "done" && gl.section_key === "critique:Таблица рекомендаций" && ver.n === 1, "учёт: стоимость в итоге документа, строка generation_log done, версия раздела со снимком ДО", [tot0, tot1, gl, ver]);
   const ex = await api("GET", `/syntheses/${LIVE}/export/html`, undefined, { raw: true });
   const re = await importFile(ex.text);
   ok(ex.status === 200 && re.status === 200, "экспорт 4.2 документа с таблицей собирается, импорт 4.3 его принимает");

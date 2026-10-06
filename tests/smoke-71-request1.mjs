@@ -50,9 +50,10 @@ check("schema: created_by set null ×3", (schemaSrc.match(/created_by"\)\.refere
 check("schema: type_catalog_id set null ×2", (schemaSrc.match(/type_catalog_id"\)\.references\(\s*\(\) => (categoryTypeCatalog|relationshipTypeCatalog)\.id,\s*\{ onDelete: "set null" \},/g) ?? []).length === 2);
 const subSrc = read("server/services/subscription-service.ts");
 check("ensureStripeCustomer экспортирован и пишет условным UPDATE", /export async function ensureStripeCustomer/.test(subSrc) && /IS NULL/.test(subSrc));
-check("createSubscription через ensureStripeCustomer", /const customerId = await ensureStripeCustomer\(userId\);\s*const sub = await stripe\.createSubscription\(\{\s*customerId,/.test(subSrc));
+// 12.3 (Д-12): вызовы идут через withStripeCustomer — обёртку над ensureStripeCustomer
+check("createSubscription через ensureStripeCustomer", /const sub = await withStripeCustomer\(userId, \(customerId\) =>\s*stripe\.createSubscription\(\{\s*customerId,/.test(subSrc) && /const customerId = await ensureStripeCustomer\(userId\);\s*try \{\s*return await call\(customerId\);/.test(subSrc));
 const billSrc = read("server/services/billing-service.ts");
-check("createTopup через ensureStripeCustomer + customerId в PaymentIntent", /ensureStripeCustomer\(userId\);\s*pi = await stripe\.createPaymentIntent\(\{[^}]*customerId,/.test(billSrc));
+check("createTopup через ensureStripeCustomer + customerId в PaymentIntent", /pi = await withStripeCustomer\(userId, \(customerId\) =>\s*stripe\.createPaymentIntent\(\{[^}]*customerId,/.test(billSrc));
 check("stripe-client: customer в payment_intents", /customerId \? \{ customer: params\.customerId \}/.test(read("server/services/stripe-client.ts")));
 
 console.log("── 2. Prompt Registry: тела в /versions ──");

@@ -466,7 +466,15 @@ POST   /syntheses              { seed, philosophers?: string[], sections: string
                                 // Генерация начинается, клиент подключается по WebSocket
 
 POST   /syntheses/estimate     тело = телу POST /syntheses (беседа 1.5)
-                                → { estimate: { inTokens, outTokens, cost, passes } }
+                                → { estimate: { inTokens, outTokens, cost, passes },
+                                    contextBudget: number }
+                                // 12.3 (Д-19): contextBudget — БАЗОВЫЙ бюджет
+                                // контекста активного конфига context_budget для
+                                // глубины запроса (contextBudgetForDepth; запасное
+                                // значение — DEFAULT_CONTEXT_BUDGET оценщика).
+                                // Множитель critique и сжатие под родительским
+                                // контекстом в него не входят. Клиентская копия
+                                // CONTEXT_BUDGET_PREVIEW уходит в 12.4.
                                 // Оценка БЕЗ создания записей: сервер зеркалит
                                 // конвейер генерации (resolveContextDeps →
                                 // buildEffectiveDeps → buildDynamicOrder →
@@ -881,7 +889,12 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
                                  // ПОСЛЕДНЕЙ полной (пере)генерации раздела
                                  // (source ≠ subsection_regen) и её подраздельных
                                  // догенераций, без повторов. Пустой массив — разбор
-                                 // без потерь. Несёт GET /sections/:key; показ — 11.3:
+                                 // без потерь. 12.3 (Д-47, Д-21): сюда же служба
+                                 // пишет пропуски успешного ответа — «модель
+                                 // завершила ответ, не написав подраздел …» и исход
+                                 // своего повтора «Таблицы рекомендаций»; документ
+                                 // при них сохранён как есть, догенерации нет.
+                                 // Несёт GET /sections/:key; показ — 11.3:
                                  // SectionView рисует «⚠ Разобран с потерями (N)» со
                                  // списком ТОЛЬКО владельцу (DocumentView передаёт
                                  // isOwner) — предупреждения из генлога, а логи под
@@ -1231,6 +1244,10 @@ PATCH  /syntheses/:id/plans/:planId
 POST   /syntheses/:id/plans/:planId/execute
                                 → { ok: true }
                                 // Исполнение через WebSocket
+                                // 12.3 (Д-6): статус 'done' и plan_updated пишутся
+                                // ПОСЛЕ освобождения слота операции — запрос под
+                                // гейтом правки сразу за plan_updated со статусом
+                                // done не получает 409 GENERATION_IN_PROGRESS.
 
 DELETE /syntheses/:id/plans/:planId
                                 → { ok: true }
@@ -1722,7 +1739,7 @@ POST   /syntheses/:id/transforms/:transformId/rollback
 закрытого списка `{{document_subsections}}` (метки контекста вида
 «Глоссарий → Определения» именами подразделов не являются).
 
-Все четыре маршрута (с 10.2 — и постановка плана) — ТОЛЬКО ВЛАДЕЛЬЦУ,
+Все пять маршрутов (с 10.2 — постановка плана, с 12.3 — оценка ретрофита) — ТОЛЬКО ВЛАДЕЛЬЦУ,
 включая чтение: рекомендации касаются правки. Чужому — 403 и на публичной концепции; гостю — 401.
 
 ```
@@ -1738,10 +1755,23 @@ POST /syntheses/:id/recommendations/parse
      (ключ раунда — проза, 02 §2.32). Столбцы ищутся ПО ЗАГОЛОВКАМ, не по
      позиции. Негодная строка разбор не роняет: status 'invalid' +
      invalidReason (все причины разом).
+     12.3: расхождение столбца «Основание» с подразделами критики — не
+     'invalid', а замечание строки (warning); фразы причин и замечаний
+     собираются при чтении на языке запроса (см. ниже).
      404: 'no_critique' | 'no_table' (текст подсказывает …/extract).
      422 RECOMMENDATIONS_TABLE_INVALID: details.problem
        'no_table_element' | 'missing_columns' (details.missing, .found) | 'no_rows'.
      409 GENERATION_IN_PROGRESS — активная операция (ownerEditGate, как правка 9.2).
+
+GET  /syntheses/:id/recommendations/extract/estimate     (12.3, Д-20)
+     → { estimate: { inTokens, outTokens, cost },
+         quota: { type: 'regenerations', units: 1 } }
+     Оценка ретрофита ДО вызова: запрос к модели собирается целиком (тот
+     же buildExtractRequest, что у самого ретрофита) и измеряется; выход —
+     один подраздел по формуле оценщика 1.1. Модель не зовётся, слот не
+     берётся, квота не расходуется, в БД ничего не пишется. Читающий
+     маршрут: владелец, без гейта активной операции и без billingCheck.
+     404: 'no_critique' | 'no_prose'.
 
 POST /syntheses/:id/recommendations/extract     (ретрофит)
      → RecommendationsExtractResponse (… + outcome 'inserted'|'replaced',
@@ -1752,7 +1782,15 @@ POST /syntheses/:id/recommendations/extract     (ретрофит)
      неё (`insertSubsectionAfter`; уже есть — заменяется содержимое), затем
      разбор. Квота — regenerations. Запрос СИНХРОНЕН: ждёт ответа модели, WS не
      участвует. Версия раздела 'section'/'regenerated' со снимком ДО,
-     is_edited = true, строка generation_log, стоимость входит в итог документа.
+     is_edited = true, строка generation_log (с 12.3 — ключом ПОДРАЗДЕЛА
+     `critique:Таблица рекомендаций`, не раздела), стоимость входит в итог
+     документа.
+     12.3 (Д-21): пропуск таблицы моделью при ГЕНЕРАЦИИ критики служба чинит
+     сама — одно повторное обращение тем же запросом сразу после удачной
+     генерации (проход, перегенерация раздела, добавление раздела): под
+     слотом операции, без своей единицы квоты, без версии раздела и
+     is_edited, раунд не разбирается. Не помогло — пометка в генлоге раздела
+     (parseWarnings), ретрофит остаётся ручным ходом.
      Негодный ответ модели в документ НЕ пишется:
      422 RECOMMENDATIONS_TABLE_INVALID ('model_no_table' | 'model_html' |
      'missing_columns'); обрыв обращения — 502 GENERATION_FAILED.
@@ -1812,7 +1850,10 @@ interface Recommendation {        // packages/shared/types/recommendations.ts
   elementId: string | null;
   op: string; replacement: string | null; rationale: string; severity: string;
   status: 'new' | 'planned' | 'done' | 'rejected' | 'invalid' | 'stale';
-  invalidReason: string | null;
+  invalidReason: string | null;   // фраза на языке запроса (12.3)
+  warning: string | null;         // 12.3 (Д-21): замечание о строке, статус не меняет
+  issues: RecommendationIssue[];  // 12.3 (Д-46): находки кодами —
+                                  // { level: 'invalid' | 'warning', code, params }
   planId: string | null; stepIndex: number | null;   // ставит постановка плана (10.2)
   createdAt: string;
 }
@@ -1824,7 +1865,18 @@ interface Recommendation {        // packages/shared/types/recommendations.ts
 формулировке) и терминов, в три СКЛАДЫВАЮЩИЕСЯ ступени: точно → нормализованно
 (пробелы, ёлочки, регистр) → без хвостовой скобки-пояснения; между одноимёнными
 категорией и термином выбирает раздел адреса; операция и важность — по
-закрытым спискам. Столбец «Основание» сторож не проверяет.
+закрытым спискам. Столбец «Основание» (12.3, Д-21) сверяется с подразделами
+критики этого документа: основание не названо, названо чужое либо ссылается
+на сами рекомендации — ЗАМЕЧАНИЕ строки (`warning`), не 'invalid':
+основание — довод человеку, исполнению не мешает.
+
+**Язык причин (12.3, Д-46, Д-32).** Находки сторожа и планировщика хранятся
+КОДАМИ (`recommendations.issues`, 02 §2.32); `invalidReason` и `warning`
+собираются при чтении под языком запроса (§2.1), названия подразделов и
+элементов и машинные значения контракта остаются как в документе. Строка,
+разобранная до 12.3, отдаёт сохранённый русский текст. Отказы постановки
+плана (`declined[].reason`) и подсказка `hint` — тоже на языке запроса,
+метка раздела — `tData(KEY_LABELS[…])`.
 
 ---
 
@@ -2093,11 +2145,16 @@ Endpoint: `wss://host/ws?token={sessionToken}`
       costUsd: number;
     };
   }>;
+  // 12.3 (Д-7): estimatedCost и costBreakdown считают только ВЗЯТЫЕ шаги —
+  // всё, кроме 'skipped' и 'pending'; шаги, ждущие решения, — cascadePending
   estimatedCost: number;
   // 10.2: бесплатное ОТДЕЛЬНО от платного (снятые шаги не считаются);
   // free — delete и edit_element; paid.costUsd ≡ estimatedCost
   costBreakdown: { free: { steps: number; costUsd: 0 };
                    paid: { steps: number; costUsd: number } };
+  // 12.3 (Д-7): сколько шагов ждёт решения и во что обойдётся план СВЕРХ
+  // estimatedCost, если подтвердить все
+  cascadePending: { steps: number; costUsd: number };
   createdAt: string;
 }
 ```

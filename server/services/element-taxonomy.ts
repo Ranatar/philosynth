@@ -83,20 +83,26 @@ async function cacheSet(cacheKey: string, value: string): Promise<void> {
   }
 }
 
-async function cacheDel(...cacheKeys: string[]): Promise<void> {
+/** true — команда дошла до Redis; false — Redis недоступен (fail-open). */
+async function cacheDel(...cacheKeys: string[]): Promise<boolean> {
   try {
     await redis.del(...cacheKeys);
+    return true;
   } catch {
-    /* fail-open */
+    return false; /* fail-open */
   }
 }
 
-/** Сброс кэша каталогов (после createCustomType / админ-правок). */
+/**
+ * Сброс кэша каталогов (после createCustomType / админ-правок; 12.3, Д-18 —
+ * и после посева seed-taxonomy). Fail-open; отвечает, дошла ли команда до
+ * Redis (нужно отчёту сида).
+ */
 export async function invalidateTaxonomyCache(
   kind?: TaxonomyKind,
-): Promise<void> {
-  if (kind) await cacheDel(CACHE_KEYS[kind]);
-  else await cacheDel(CACHE_KEYS.category, CACHE_KEYS.relationship);
+): Promise<boolean> {
+  if (kind) return cacheDel(CACHE_KEYS[kind]);
+  return cacheDel(CACHE_KEYS.category, CACHE_KEYS.relationship);
 }
 
 /* ─────────────────────────── Чтение каталогов ──────────────────────── */

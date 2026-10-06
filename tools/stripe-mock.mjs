@@ -22,6 +22,14 @@
  *                                       на стенде его шлёт tools/stripe-emit.mjs
  *   GET  /v1/subscriptions/:id
  *   POST /v1/subscriptions/:id       (cancel_at_period_end)
+ * Новое под 12.3 (Д-12, Customer, удалённый на стороне Stripe):
+ *   DELETE /v1/customers/:id         → { id, object: "customer", deleted: true }
+ *   GET    /v1/customers/:id         → Customer; удалённый — { …, deleted: true }
+ *   POST /v1/payment_intents и POST /v1/subscriptions с customer, удалённым
+ *   этим маршрутом, → 400 resource_missing, param "customer",
+ *   «No such customer: 'cus_…'» — как настоящий Stripe. Customer, которого
+ *   мок НЕ ЗНАЕТ (id из прежнего запуска — счётчики процесса начинаются с 1),
+ *   принимается по-прежнему: отказ получает только явно удалённый.
  * Новое под 8.3 (тарифы):
  *   POST /v1/products, GET /v1/products/:id, GET /v1/products
  *   POST /v1/prices  (product, unit_amount, currency, recurring[interval],
@@ -101,7 +109,12 @@ export function createStripeMock(options = {}) {
   const state = {
     pis: new Map(), subs: new Map(), customers: [], requests: [],
     products: new Map(), prices: new Map(),
+    /** 12.3 (Д-12): id клиентов, удалённых DELETE /v1/customers/:id */
+    deletedCustomers: new Set(),
   };
+  /** Ответ Stripe на вызов с удалённым Customer. */
+  const noSuchCustomer = (id) => ({ error: { type: "invalid_request_error", code: "resource_missing",
+    param: "customer", message: `No such customer: '${id}'` } });
 
   function handler(req, res) {
     let body = "";
@@ -123,6 +136,7 @@ export function createStripeMock(options = {}) {
       if (req.method === "GET" && p === "/__mock/health") {
         return send(200, { ok: true, port, paymentIntentStatus: piStatus, counts: {
           paymentIntents: state.pis.size, subscriptions: state.subs.size, customers: state.customers.length,
+          deletedCustomers: state.deletedCustomers.size,
           products: state.products.size, prices: state.prices.size, requests: state.requests.length,
         } });
       }
@@ -130,6 +144,7 @@ export function createStripeMock(options = {}) {
 
       /* ── PaymentIntents ─────────────────────────────────────────────── */
       if (req.method === "POST" && p === "/v1/payment_intents") {
+        if (form.customer && state.deletedCustomers.has(form.customer)) return send(400, noSuchCustomer(form.customer));
         const id = mkId("pi", state.pis.size + 1);
         const pi = { id, object: "payment_intent", amount: Number(form.amount), currency: form.currency,
           customer: form.customer ?? null, status: piStatus, client_secret: `${id}_secret`, metadata: form.metadata ?? {} };
@@ -146,9 +161,19 @@ export function createStripeMock(options = {}) {
         const c = { id: mkId("cus", state.customers.length + 1), object: "customer", email: form.email, metadata: form.metadata ?? {} };
         state.customers.push(c); return send(200, c);
       }
+      // 12.3 (Д-12): удаление клиента на стороне «Stripe». Запись остаётся в
+      // state.customers (счётчик id не откатывается — id не повторяются),
+      // id уходит в deletedCustomers
+      if ((m = p.match(/^\/v1\/customers\/([^/]+)$/)) && (req.method === "DELETE" || req.method === "GET")) {
+        const c = state.customers.find((x) => x.id === m[1]);
+        if (!c) return send(404, { error: { type: "invalid_request_error", code: "resource_missing", param: "id", message: `No such customer: '${m[1]}'` } });
+        if (req.method === "DELETE") state.deletedCustomers.add(c.id);
+        return send(200, state.deletedCustomers.has(c.id) ? { id: c.id, object: "customer", deleted: true } : c);
+      }
 
       /* ── Subscriptions ──────────────────────────────────────────────── */
       if (req.method === "POST" && p === "/v1/subscriptions") {
+        if (form.customer && state.deletedCustomers.has(form.customer)) return send(400, noSuchCustomer(form.customer));
         const id = mkId("sub", state.subs.size + 1);
         const s = { id, object: "subscription", customer: form.customer, status: "incomplete",
           current_period_start: nowSec(), current_period_end: nowSec() + 30 * 86400,

@@ -57,8 +57,8 @@ import { stripe, StripeError } from "./stripe-client.js";
 import {
   checkQuota,
   consumeQuota,
-  ensureStripeCustomer,
   findBillableSubscription,
+  withStripeCustomer,
   type QuotaType,
 } from "./subscription-service.js";
 import { tl } from "@philosynth/shared/i18n/t";
@@ -156,13 +156,15 @@ export async function createTopup(
   const amountCents = Math.round(amountUsd * 100);
   let pi;
   try {
-    // 7.1: PaymentIntent под Customer пользователя (users.stripe_customer_id)
-    const customerId = await ensureStripeCustomer(userId);
-    pi = await stripe.createPaymentIntent({
-      amountCents,
-      customerId,
-      metadata: { userId, purpose: "topup" },
-    });
+    // 7.1: PaymentIntent под Customer пользователя (users.stripe_customer_id);
+    // 12.3 (Д-12): Customer, удалённый в Stripe, переоткрывается сам
+    pi = await withStripeCustomer(userId, (customerId) =>
+      stripe.createPaymentIntent({
+        amountCents,
+        customerId,
+        metadata: { userId, purpose: "topup" },
+      }),
+    );
   } catch (err) {
     if (err instanceof StripeError && err.code === "STRIPE_UNAVAILABLE") {
       throw new BillingError("STRIPE_UNAVAILABLE", err.message);

@@ -16,9 +16,11 @@
  *        (b) синтез ["sum","graph"] → theses:summary ЗАМЕЩАЕТСЯ
  *            graph:nodes (SUBSTITUTION_MAP q=2) → жёсткой потери нет,
  *            вместо неё активная подстановка (C2).
- *   R4 — estimatePlanCost(план R2) === Σ estimateCost(isEdit) по
+ *   R4 — оценка плана R2: взятое + pending === Σ estimateCost(isEdit) по
  *        затронутым разделам + estimateModeCost по mode-шагам
- *        (референс собирается независимо, тем же конвейером).
+ *        (референс собирается независимо, тем же конвейером). С 12.3
+ *        (Д-7) estimatePlanCost — только взятые шаги; каскадные pending
+ *        — отдельной частью (estimatePlanCostSplit, plan.cascadePending).
  *   R5 — edge case: remove=["graph"]+add=["graph"] — валиден (паттерн
  *        «заменить»), каскадных шагов ДЛЯ graph нет (delete+add — оба
  *        пользовательские), каскад для theses/dialogue присутствует.
@@ -365,11 +367,28 @@ console.log("R4: estimatePlanCost = Σ estimateCost + Σ estimateModeCost");
     }
   }
 
-  const diff = Math.abs(planCost - ref);
+  // 12.3 (Д-7): оценка плана — только ВЗЯТЫЕ шаги; каскадные pending
+  // (здесь — regen_mode результата режима) считаются отдельно. Референс —
+  // сумма по всем неснятым шагам, поэтому сходится с taken + pending.
+  const split = await ep.estimatePlanCostSplit(synthA.id, row, phil, plan.steps);
+  const diff = Math.abs(split.taken + split.pending - ref);
   ok(
     diff < 1e-9,
-    `estimatePlanCost (${planCost.toFixed(6)}) === референс (${ref.toFixed(6)})`,
+    `взятое (${split.taken.toFixed(6)}) + pending (${split.pending.toFixed(6)}) === референс (${ref.toFixed(6)})`,
     `diff=${diff}`,
+  );
+  ok(planCost === split.taken, "estimatePlanCost — взятая часть (12.3, Д-7)");
+  ok(
+    split.pending > 0 && plan.steps.some((s) => s.status === "pending"),
+    "pending-шаг режима оценён отдельно и в estimatedCost не входит",
+    JSON.stringify(split),
+  );
+  ok(
+    Math.abs(plan.estimatedCost - split.taken) < 1e-9 &&
+      plan.cascadePending.steps === plan.steps.filter((s) => s.status === "pending").length &&
+      Math.abs(plan.cascadePending.costUsd - split.pending) < 1e-9,
+    "ответ API: estimatedCost — взятое, cascadePending — число и оценка pending",
+    JSON.stringify({ est: plan.estimatedCost, cp: plan.cascadePending }),
   );
   ok(planCost > 0, "оценка положительна");
   ok(
@@ -381,8 +400,21 @@ console.log("R4: estimatePlanCost = Σ estimateCost + Σ estimateModeCost");
   const stepsSkipped = plan.steps.map((s) =>
     s.target === "dialogue" ? { ...s, status: "skipped" } : s,
   );
-  const costSkipped = await ep.estimatePlanCost(synthA.id, row, phil, stepsSkipped);
-  ok(costSkipped < planCost, "skipped-шаг исключается из оценки");
+  // 12.3 (Д-7): dialogue в плане R2 — каскадный pending: его снятие убавляет
+  // pending-часть, а взятую не трогает; снятие взятого graph убавляет взятую
+  const splitSkipped = await ep.estimatePlanCostSplit(synthA.id, row, phil, stepsSkipped);
+  ok(
+    splitSkipped.pending < split.pending && Math.abs(splitSkipped.taken - split.taken) < 1e-9,
+    "skipped-шаг исключается из оценки (каскадный — из pending-части)",
+    JSON.stringify({ split, splitSkipped }),
+  );
+  const costSkipped = await ep.estimatePlanCost(
+    synthA.id,
+    row,
+    phil,
+    plan.steps.map((s) => (s.target === "graph" ? { ...s, status: "skipped" } : s)),
+  );
+  ok(costSkipped < planCost, "снятый взятый шаг исключается из estimatePlanCost");
 }
 
 /* ══ R5. Edge case: remove+add graph ══════════════════════════════════ */

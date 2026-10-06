@@ -3,9 +3,24 @@
  */
 import type {
   RecommendationElementKind,
+  RecommendationIssueCode,
+  RecommendationIssueLevel,
   RecommendationStatus,
 } from "../constants/recommendations.js";
 import type { EditPlan } from "./edit-plan.js";
+
+/**
+ * 12.3 (Д-46): находка сторожа кодом. Так она хранится
+ * (`recommendations.issues`) и так же отдаётся клиенту рядом с готовой
+ * фразой: клиент ветвится по `code`, а не по тексту.
+ */
+export interface RecommendationIssue {
+  /** 'invalid' — строка негодна; 'warning' — годна, но есть что знать */
+  level: RecommendationIssueLevel;
+  code: RecommendationIssueCode;
+  /** Данные документа и машинные значения — как есть; ключи разделов */
+  params: Record<string, string | string[]>;
+}
 
 /** Строка таблицы рекомендаций, разобранная и проверенная сторожем. */
 export interface Recommendation {
@@ -32,8 +47,18 @@ export interface Recommendation {
   rationale: string;
   severity: string;
   status: RecommendationStatus;
-  /** Что именно не сошлось у строки 'invalid' */
+  /** Что именно не сошлось у строки 'invalid' — готовой фразой на языке
+   *  запроса (12.3, Д-46: собирается при чтении из `issues`; у строк,
+   *  разобранных до 12.3, — сохранённый русский текст) */
   invalidReason: string | null;
+  /** 12.3 (Д-21): замечание сторожа, НЕ делающее строку негодной (столбец
+   *  «Основание» называет подраздел, которого в критике нет). null — замечаний
+   *  нет. Строка с замечанием исполняется как обычная. Фраза — на языке
+   *  запроса, как invalidReason */
+  warning: string | null;
+  /** 12.3 (Д-46): те же находки кодами — оба уровня; [] — находок нет либо
+   *  строка разобрана до 12.3 (тогда текст есть, кодов нет) */
+  issues: RecommendationIssue[];
   /** Заполняет 10.2 при постановке плана */
   planId: string | null;
   stepIndex: number | null;
@@ -64,6 +89,18 @@ export interface RecommendationsExtractResponse
   /** Что сервер снял из ответа модели при чистке разметки */
   warnings: string[];
   usage: { inputTokens: number; outputTokens: number; costUsd: number };
+}
+
+/**
+ * Ответ GET /recommendations/extract/estimate (12.3, Д-20): во что обойдётся
+ * ретрофит ДО вызова. Модель не зовётся, квота не расходуется.
+ */
+export interface RecommendationsExtractEstimateResponse {
+  /** Оценка одного обращения: вход — точный размер запроса, выход — как у
+   *  подраздела (оценщик 1.1); cost — себестоимость, USD */
+  estimate: { inTokens: number; outTokens: number; cost: number };
+  /** Что спишется у подписчика вместо денег */
+  quota: { type: "regenerations"; units: number };
 }
 
 /* ── Постановка плана (беседа 10.2) ──────────────────────────────────── */

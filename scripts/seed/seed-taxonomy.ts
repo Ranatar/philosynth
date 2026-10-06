@@ -23,6 +23,7 @@
 import { eq } from "drizzle-orm";
 
 import { closeDb, db, schema } from "../../server/db/index.js";
+import { resetTaxonomyCache } from "./cache-reset.js";
 
 const { categoryTypeCatalog, relationshipTypeCatalog } = schema;
 
@@ -233,6 +234,13 @@ async function main(): Promise<void> {
     }
   }
   printReport("relationship_type_catalog", relReport);
+
+  // 12.3 (Д-18): кэш каталогов типов бессрочный, как кэш реестра
+  const cache = await resetTaxonomyCache(
+    catReport.created.length + catReport.updated.length +
+      relReport.created.length + relReport.updated.length,
+  );
+  console.log(cache.line);
 
   const catTotal = await db.$count(categoryTypeCatalog);
   const relTotal = await db.$count(relationshipTypeCatalog);

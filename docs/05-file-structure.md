@@ -150,6 +150,9 @@ philosynth-service/
 │   │       ├── 0010_user_locale.sql    # 11.2: users.ui_locale, users.gen_lang (text, NULL);
 │   │       │                           #  генерат, тег переименован
 │   │       ├── 0011_thesis_label.sql   # 12.1 (Д-1): theses.label (text, NULL); генерат, тег переименован
+│   │       ├── 0012_recommendation_warning.sql  # 12.3 (Д-21): recommendations.warning (text, NULL)
+│   │       ├── 0013_recommendation_issues.sql   # 12.3 (Д-46): recommendations.issues (jsonb, NULL);
+│   │       │                           #  оба — генераты, теги переименованы
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -262,6 +265,8 @@ philosynth-service/
 │   │   │                               #  хэш источника, раунд, ретрофит; 10.2: ROUND_IN_PROGRESS
 │   │   ├── recommendation-planner.ts   # 10.2: buildPlanDraft — рекомендации (поштучно) →
 │   │   │                               #  черновик плана; развилка, свёртка, устаревание
+│   │   ├── recommendation-issues.ts    # 12.3 (Д-46): находки сторожа — кодом в БД, фразой при
+│   │   │                               #  чтении под языком запроса; русский вид для колонок
 │   │   ├── element-step.ts             # 10.2: шаги плана edit_element / refine_element
 │   │   │                               #  (запись функциями 5.1, версия 'recommendation' + origin)
 │   │   │                               # Адаптация executeEditPlan (executeEditPlan())
@@ -694,6 +699,8 @@ philosynth-service/
 │   │   ├── seed-prompts.ts             # prompt_templates из исходника
 │   │   ├── seed-configs.ts             # synthesis_configs из исходника
 │   │   ├── seed-taxonomy.ts            # каталоги типов (18 категорий + 29 связей)
+│   │   ├── cache-reset.ts              # 12.3 (Д-18): сиды сбрасывают кэш реестра и каталогов типов
+│   │   │                               # (явное подключение Redis; недоступен — строка отчёта)
 │   │   ├── seed-plans.ts               # 8.3: subscription_plans из config/plans.ts;
 │   │   │                               # stripe_price_id из STRIPE_PRICE_*, без них
 │   │   │                               # is_active=false + громкое предупреждение
@@ -810,6 +817,13 @@ philosynth-service/
     │                                   # T121_FILE — файл концепции
     │                                   # test-121-requests2-5 — 12.1: живой сервер :3121 + мок Claude, только
     │                                   # HTTP (правка → перегенерация критики → разбор на файле концепции)
+    │                                   # smoke-123-request1 — 12.3: оценка плана двумя числами, карта критики,
+    │                                   # сверка «Основания», находки кодами на ru/en/de, опись msg-режима,
+    │                                   # состояние таблицы, сверка подразделов; с БД — разбор, ключ раунда,
+    │                                   # Stripe-клиент (мок в процессе), сиды и кэш; модель не зовётся
+    │                                   # test-123-requests2-5 — 12.3: сервер :3123 + мок Claude :3924 + мок
+    │                                   # Stripe :3925, только HTTP и WS (R2–R8; часть L — файл концепции,
+    │                                   # T123_FILE по желанию); только через tsx
     │                                   # smoke-114-request1 — чистые функции 11.4: карта DATA_KEYS ≡ таблице,
     │                                   # tData/tDataLoose на каталогах en/de, константы русские, цикл
     │                                   # переводчика export → import на копии таблицы (draft снимает только

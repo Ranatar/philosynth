@@ -143,10 +143,37 @@ export interface SubsectionMapConfig {
 }
 
 /**
+ * Адаптивный подраздел критики (12.3, Д-13): задание раздела несёт его
+ * вторым пунктом, только когда в документе есть и диалог, и формальный
+ * раздел (граф, глоссарий или тезисы) — сверяется согласованность слоёв.
+ */
+export const CRITIQUE_INTERLAYER_SUBSECTION = "Межслойная согласованность";
+
+/** Условие адаптивного подраздела — ОДНО на задание и на карту подразделов. */
+export function critiqueHasInterlayer(sec: readonly string[] | null | undefined): boolean {
+  const has = (k: string): boolean => (sec ?? []).includes(k);
+  return has("dialogue") && (has("graph") || has("glossary") || has("theses"));
+}
+
+/**
  * Порт buildSubsectionMap(p) [9455]: полная карта секций для данных
  * параметров. Канонические карты — из Registry (конфиг subsection_map);
  * пункты 2–3 критики вставляются после пункта 1, портретный заголовок sum
  * резолвится по кардинальности.
+ *
+ * 12.3 (Д-13) — ОТСТУПЛЕНИЕ ОТ ИСХОДНИКА. Там карта критики адаптивного
+ * подраздела «Межслойная согласованность» не знает, хотя buildSectionDefs
+ * при диалоге и формальном разделе ставит его в задание вторым пунктом
+ * (в INTRA_DEPS и SUBSECTION_TO_CTX_KEYS он есть). Карта — это ожидаемый
+ * список подразделов, и по нему работают: пауза 1.4b (недостающие =
+ * ожидаемые − готовые — пропавший подраздел не догенерировался бы никогда),
+ * страховка 11.1 по позиции (число подразделов документа и карты не
+ * сходилось — опознание по месту отключалось для всей критики), прогресс
+ * подразделов в потоке. Теперь карта вставляет его на то же место, что и
+ * задание, по тому же условию (critiqueHasInterlayer). Генерат
+ * subsection-map.ts и конфиг subsection_map не меняются: условие зависит от
+ * состава разделов документа, в статической карте ему места нет.
+ * smoke-12 снимает отступление перед байтовой сверкой с исходником.
  */
 export async function buildSubsectionMap(
   p: PromptParams,
@@ -159,6 +186,8 @@ export async function buildSubsectionMap(
     throw new Error(tl("server.sectionDefsBuilder.subsectionMapEmpty", "subsection_map: base.critique пуст или отсутствует"));
   const critique = [
     critiqueBase[0] as string, // Внутренняя когерентность
+    // 12.3 (Д-13): адаптивный пункт — там же, где его ставит задание
+    ...(critiqueHasInterlayer(p?.sec) ? [CRITIQUE_INTERLAYER_SUBSECTION] : []),
     cfg.critiqueNovelty[level] || "Оценка новизны", // пункт 2
     cfg.critiqueCheck[level] || "Верность источникам", // пункт 3
     ...critiqueBase.slice(1), // Верность методу синтеза, Сохранение…, и т.д.
@@ -935,9 +964,8 @@ export async function buildSectionDefs(
   if (hasSec("critique")) {
     const subCfg = await getConfig<SubsectionMapConfig>("subsection_map");
     const hasDialogue = hasSec("dialogue");
-    const hasFormal =
-      hasSec("graph") || hasSec("glossary") || hasSec("theses");
-    const interlayer = hasDialogue && hasFormal;
+    // 12.3 (Д-13): условие общее с картой подразделов (buildSubsectionMap)
+    const interlayer = critiqueHasInterlayer(p.sec);
 
     const critiqueSubsections: SectionSubsectionPart[] = [
       {
@@ -949,7 +977,7 @@ export async function buildSectionDefs(
       ...(interlayer
         ? [
             {
-              name: "Межслойная согласованность",
+              name: CRITIQUE_INTERLAYER_SUBSECTION,
               body: await r("section.critique.sub.interlayer"),
               note_after: null,
             } satisfies SectionSubsectionPart,

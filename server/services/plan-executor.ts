@@ -52,6 +52,10 @@
  *    прежде план из одних delete стоил подписчику единицу квоты;
  *  - каскад после базовых шагов считается и от разделов-хозяев шагов мельче
  *    раздела (PlanActions.touched) — руками он не дополняется.
+ *
+ * Беседа 12.3 (Д-6): статус плана 'done' и plan_updated пишутся ПОСЛЕ выхода
+ * из generation-слота (finishPlanRun) — во всех трёх прогонах: execute,
+ * confirm_step, resume. Внутри слота остаются шаги и каскад.
  */
 import { and, asc, eq, inArray, sql as dsql } from "drizzle-orm";
 
@@ -75,7 +79,7 @@ import type { WsServerMessage } from "@philosynth/shared/types/ws-messages";
 
 import { analyzeImpact } from "./cascade-analyzer.js";
 import {
-  estimatePlanCost,
+  estimatePlanCostSplit,
   loadPlanRow,
   PlanError,
   toApiPlan,
@@ -718,6 +722,7 @@ export async function executePlan(
   await bumpVersionsForPlan(synthesisId, steps);
   await setPlanStatus(planId, "executing");
 
+  let completed = false;
   await withGenerationSlot(synthesisId, userId, async (handle) => {
     const regenCtx: Record<string, string> = {};
     const addCtx: Record<string, string> = {};
@@ -726,15 +731,35 @@ export async function executePlan(
       if (s.type === "regen") regenCtx[s.target] = s.context;
       if (s.type === "add") addCtx[s.target] = s.context;
     }
-    const completed = await runPlanSteps(
+    completed = await runPlanSteps(
       handle, planId, steps, 0, regenCtx, addCtx,
     );
     if (!completed) return; // пауза создана внутри
 
     await appendCascadeSteps(synthesisId, userId, planId, steps);
-    await setPlanStatus(planId, "done");
-    await sendPlanUpdated(synthesisId, planId, userId);
   }, slotBillingFor(steps, 0)); // 6.1: квота подписки; 10.2: без платных шагов — бесплатный слот
+  if (!completed) return;
+  await finishPlanRun(synthesisId, planId, userId, true);
+}
+
+/**
+ * 12.3 (Д-6): завершение прогона — ПОСЛЕ освобождения слота. Статус 'done' и
+ * plan_updated прежде писались внутри withGenerationSlot: клиент, получив
+ * plan_updated, слал следующий запрос под гейтом правки и ловил 409
+ * GENERATION_IN_PROGRESS — слот ещё был занят (с 2.2; «По факту 10.2» п.15).
+ * Теперь к моменту, когда человек видит «готово», слот свободен. Окно между
+ * освобождением слота и записью статуса план проводит в 'executing':
+ * повторный execute его не возьмёт (нужен 'draft'), confirm_step — возьмёт,
+ * как и прежде.
+ */
+async function finishPlanRun(
+  synthesisId: string,
+  planId: string,
+  userId: string,
+  markDone: boolean,
+): Promise<void> {
+  if (markDone) await setPlanStatus(planId, "done");
+  await sendPlanUpdated(synthesisId, planId, userId);
 }
 
 /** plan_updated с живой оценкой (форма getPlan). */
@@ -751,7 +776,7 @@ async function sendPlanUpdated(
       .limit(1);
     if (!row) return;
     const { row: synthRow, philosophers } = await loadSynthesis(synthesisId);
-    const cost = await estimatePlanCost(
+    const cost = await estimatePlanCostSplit(
       synthesisId, synthRow, philosophers, row.steps,
     );
     sendToUser(userId, {
@@ -806,19 +831,22 @@ export async function confirmStep(
   }
   step.status = "confirmed";
 
+  let completed = false;
   await withGenerationSlot(synthesisId, userId, async (handle) => {
     const regenCtx: Record<string, string> = {};
     const addCtx: Record<string, string> = {};
-    const completed = await runPlanSteps(
+    completed = await runPlanSteps(
       handle, planId, steps, stepIndex, regenCtx, addCtx,
     );
     if (!completed) return;
     await appendCascadeSteps(synthesisId, userId, planId, steps);
-    if (!steps.some((s) => s.status === "pending")) {
-      await setPlanStatus(planId, "done");
-    }
-    await sendPlanUpdated(synthesisId, planId, userId);
   }, slotBillingFor(steps, stepIndex)); // 6.1: квота подписки; 10.2: либо бесплатный слот
+  // 12.3 (Д-6): статус и plan_updated — после слота
+  if (completed)
+    await finishPlanRun(
+      synthesisId, planId, userId,
+      !steps.some((s) => s.status === "pending"),
+    );
   return synthesisId;
 }
 
@@ -879,15 +907,16 @@ async function resumePlanExecutor(
     .set({ steps, status: "executing", updatedAt: new Date() })
     .where(eq(editPlans.id, planId));
 
+  let completed = false;
   await withGenerationSlot(synthesisId, userId, async (handle) => {
-    const completed = await runPlanSteps(
+    completed = await runPlanSteps(
       handle, planId, steps, fromIndex, regenCtx, addCtx,
     );
     if (!completed) return;
     await appendCascadeSteps(synthesisId, userId, planId, steps);
-    await setPlanStatus(planId, "done");
-    await sendPlanUpdated(synthesisId, planId, userId);
   }, slotBillingFor(steps, fromIndex)); // 6.1: квота подписки; 10.2: либо бесплатный слот
+  // 12.3 (Д-6): статус и plan_updated — после слота
+  if (completed) await finishPlanRun(synthesisId, planId, userId, true);
 }
 
 /* ══ Регистрация разъёма (побочный эффект импорта; образец 1.4b) ══════ */

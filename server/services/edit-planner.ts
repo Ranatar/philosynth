@@ -34,6 +34,12 @@
  *    computePauseEstimates из 1.4b); regen_subsection-шаги (появятся у
  *    executor'а 2.2) — estimateSubsectionCost; regen_mode —
  *    estimateModeCost; delete — 0.
+ *  - 12.3 (Д-7): оценка — ДВА числа (estimatePlanCostSplit). estimatedCost и
+ *    costBreakdown считают только ВЗЯТЫЕ шаги (isTakenStep: всё, кроме
+ *    'skipped' и 'pending'); шаги, ждущие решения, — отдельным полем плана
+ *    cascadePending { steps, costUsd } («если подтвердить все»). Прежде
+ *    каскадные pending входили в сумму, хотя без подтверждения не
+ *    исполняются.
  *
  * Беседа 10.2 — действия МЕЛЬЧЕ РАЗДЕЛА. До неё тело плана знало только
  * разделы и режимы: regen ⊆ sectionOrder, адрес «sectionKey:подраздел» в
@@ -66,7 +72,10 @@ import {
   ELEMENT_STEP_KINDS,
   elementStepTarget,
   isElementStepType,
+  isPendingStep,
+  isTakenStep,
   parseElementStepTarget,
+  planCascadePending,
   planCostBreakdown,
 } from "@philosynth/shared/constants/edit-steps";
 
@@ -180,17 +189,29 @@ function paramsFromRow(
   };
 }
 
+/**
+ * 12.3 (Д-7): оценка плана двумя числами. `taken` — взятые шаги (всё, кроме
+ * снятых и ждущих решения) — это estimatedCost; `pending` — шаги, ждущие
+ * решения: во что обойдётся план сверх `taken`, если подтвердить их все.
+ */
+export interface PlanCostEstimate {
+  taken: number;
+  pending: number;
+}
+
 /** Строка edit_plans → API-представление (03 §4.2). */
-export function toApiPlan(row: PlanRow, estimatedCost: number): EditPlan {
+export function toApiPlan(row: PlanRow, cost: PlanCostEstimate): EditPlan {
   return {
     id: row.id,
     synthesisId: row.synthesisId,
     status: row.status,
     currentStep: row.currentStep,
     steps: row.steps,
-    estimatedCost,
+    // 12.3 (Д-7): только взятые шаги — pending без подтверждения не исполняются
+    estimatedCost: cost.taken,
     // 10.2: бесплатные шаги — отдельной строкой, не в общей сумме
-    costBreakdown: planCostBreakdown(row.steps, estimatedCost),
+    costBreakdown: planCostBreakdown(row.steps, cost.taken),
+    cascadePending: planCascadePending(row.steps, cost.pending),
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -654,47 +675,73 @@ export function estimateRefineCost(sysChars: number): number {
 
 /* ── estimatePlanCost ────────────────────────────────────────────────── */
 
+/** Что шаги группы стоят модели: разделы и подразделы, режимы, уточнения. */
+interface StepCostGroup {
+  sectionEntries: CascadeWaveEntry[];
+  modeTargets: string[];
+  refineCount: number;
+}
+
+function costGroupOf(steps: readonly EditStep[]): StepCostGroup {
+  const g: StepCostGroup = { sectionEntries: [], modeTargets: [], refineCount: 0 };
+  for (const s of steps) {
+    if (s.type === "regen" || s.type === "add") {
+      g.sectionEntries.push({ section: s.target });
+    } else if (s.type === "regen_subsection") {
+      const idx = s.target.indexOf(":");
+      if (idx > 0)
+        g.sectionEntries.push({
+          section: s.target.slice(0, idx),
+          subsection: s.target.slice(idx + 1),
+        });
+    } else if (s.type === "regen_mode") {
+      g.modeTargets.push(s.target);
+    } else if (s.type === "refine_element") {
+      // 10.2: edit_element — 0 (модель не зовётся); refine_element — малое
+      // обращение: SYS + узкий контекст → один абзац
+      g.refineCount += 1;
+    }
+    // delete — 0
+  }
+  return g;
+}
+
+const groupIsEmpty = (g: StepCostGroup): boolean =>
+  g.sectionEntries.length === 0 && g.modeTargets.length === 0 && g.refineCount === 0;
+
 /**
  * Оценка стоимости плана (07: «estimateCost для regen+add шагов +
- * estimateModeCost для mode-шагов»). Skipped-шаги не считаются.
- * Регены/добавления идут волной через estimateCascadeWaveCost —
- * поставщики строятся поверх БУДУЩЕГО состояния документа (после
- * delete/add), с isEdit:true и фактическими размерами из генлога
- * (по образцу computePauseEstimates 1.4b). Ошибки инфраструктуры —
+ * estimateModeCost для mode-шагов»). Регены/добавления идут волной через
+ * estimateCascadeWaveCost — поставщики строятся поверх БУДУЩЕГО состояния
+ * документа (после delete/add), с isEdit:true и фактическими размерами из
+ * генлога (по образцу computePauseEstimates 1.4b). Ошибки инфраструктуры —
  * fail-open 0 (оценка вспомогательная, как /estimate беседы 1.5).
+ *
+ * 12.3 (Д-7): ДВА числа. До беседы оценка складывала все неснятые шаги, в
+ * том числе каскадные 'pending', которые без подтверждения не исполняются, —
+ * API называл сумму за то, чего не будет («По факту 10.3» п.7: выбор «1
+ * бесплатно, 1 платно» давал «≈ $2.36» за десять шагов). Теперь `taken` —
+ * только взятые шаги, `pending` — отдельно, «если подтвердить все».
+ * Инфраструктура будущего состояния общая: её определяют delete/add, а они
+ * каскадными не бывают.
  */
-export async function estimatePlanCost(
+export async function estimatePlanCostSplit(
   synthesisId: string,
   row: SynthesisRow,
   philosophers: string[],
   steps: EditStep[],
-): Promise<number> {
+): Promise<PlanCostEstimate> {
   try {
     const active = steps.filter((s) => s.status !== "skipped");
-    const sectionEntries: CascadeWaveEntry[] = [];
-    const modeTargets: string[] = [];
+    const taken = costGroupOf(active.filter(isTakenStep));
+    const pending = costGroupOf(active.filter(isPendingStep));
+    if (groupIsEmpty(taken) && groupIsEmpty(pending)) return { taken: 0, pending: 0 };
+
     const removedSections = new Set<string>();
-    // 10.2: edit_element — 0 (модель не зовётся); refine_element — малое
-    // обращение: SYS + узкий контекст → один абзац
-    const refineCount = active.filter((s) => s.type === "refine_element").length;
     for (const s of active) {
-      if (s.type === "delete") {
-        if (s.target.includes(":")) continue; // удаление результата режима
-        removedSections.add(s.target);
-      } else if (s.type === "regen" || s.type === "add") {
-        sectionEntries.push({ section: s.target });
-      } else if (s.type === "regen_subsection") {
-        const idx = s.target.indexOf(":");
-        if (idx > 0)
-          sectionEntries.push({
-            section: s.target.slice(0, idx),
-            subsection: s.target.slice(idx + 1),
-          });
-      } else if (s.type === "regen_mode") {
-        modeTargets.push(s.target);
-      }
+      // удаление результата режима («modeKey:index») состава разделов не меняет
+      if (s.type === "delete" && !s.target.includes(":")) removedSections.add(s.target);
     }
-    if (sectionEntries.length === 0 && modeTargets.length === 0 && refineCount === 0) return 0;
 
     const p = paramsFromRow(row, philosophers);
     const sectionOrder: readonly string[] = row.sectionOrder ?? [];
@@ -742,9 +789,10 @@ export async function estimatePlanCost(
       : (await baseCtx(fp)).length;
     const actualOutputChars = await loadActualOutputChars(synthesisId);
     let subSysChars: number | null = null;
+    let modeSysChars: number | null = null;
 
-    const wave = await estimateCascadeWaveCost(sectionEntries, {
-      estimateSection: async (sectionKey) => {
+    const estimators = {
+      estimateSection: async (sectionKey: string) => {
         const def = defsMap.get(sectionKey);
         if (!def) return null;
         return estimateCost({
@@ -757,7 +805,7 @@ export async function estimatePlanCost(
           actualOutputChars,
         });
       },
-      estimateSubsection: async (sectionKey, subsectionName) => {
+      estimateSubsection: async (sectionKey: string, subsectionName: string) => {
         const def = defsMap.get(sectionKey);
         if (!def?.parts) return null;
         subSysChars ??= (await buildSYS(fp, { outputMode: "subsection" }))
@@ -774,42 +822,60 @@ export async function estimatePlanCost(
           actualOutputChars,
         });
       },
-    });
+    };
 
-    let total = wave?.cost ?? 0;
+    const costOf = async (g: StepCostGroup): Promise<number> => {
+      if (groupIsEmpty(g)) return 0;
+      const wave = await estimateCascadeWaveCost(g.sectionEntries, estimators);
+      let total = wave?.cost ?? 0;
 
-    if (modeTargets.length > 0) {
-      const modeSysChars = (await buildSYS(fp, { outputMode: "mode" })).length;
-      const seenModeKeys = new Map<string, number>();
-      for (const target of modeTargets) {
-        const mk = target.slice(0, target.indexOf(":"));
-        seenModeKeys.set(mk, (seenModeKeys.get(mk) ?? 0) + 1);
+      if (g.modeTargets.length > 0) {
+        modeSysChars ??= (await buildSYS(fp, { outputMode: "mode" })).length;
+        const seenModeKeys = new Map<string, number>();
+        for (const target of g.modeTargets) {
+          const mk = target.slice(0, target.indexOf(":"));
+          seenModeKeys.set(mk, (seenModeKeys.get(mk) ?? 0) + 1);
+        }
+        for (const [mk, count] of seenModeKeys) {
+          const deps = await getEffectiveModeDepsFromConfig(
+            mk,
+            fp.generationOrder,
+            ["sum", ...futureSections],
+          );
+          const est = await estimateModeCost({
+            deps,
+            params: { depth: fp.depth },
+            sysChars: modeSysChars,
+          });
+          total += est.cost * count;
+        }
       }
-      for (const [mk, count] of seenModeKeys) {
-        const deps = await getEffectiveModeDepsFromConfig(
-          mk,
-          fp.generationOrder,
-          ["sum", ...futureSections],
-        );
-        const est = await estimateModeCost({
-          deps,
-          params: { depth: fp.depth },
-          sysChars: modeSysChars,
-        });
-        total += est.cost * count;
+
+      if (g.refineCount > 0) {
+        modeSysChars ??= (await buildSYS(fp, { outputMode: "mode" })).length;
+        total += g.refineCount * estimateRefineCost(modeSysChars);
       }
-    }
+      return total;
+    };
 
-    if (refineCount > 0) {
-      const refineSys = (await buildSYS(fp, { outputMode: "mode" })).length;
-      total += refineCount * estimateRefineCost(refineSys);
-    }
-
-    return total;
+    return { taken: await costOf(taken), pending: await costOf(pending) };
   } catch (err) {
     console.warn("[edit-planner] estimatePlanCost failed:", err);
-    return 0;
+    return { taken: 0, pending: 0 };
   }
+}
+
+/**
+ * Оценка ВЗЯТЫХ шагов плана одним числом (estimatedCost). Шаги 'pending' и
+ * 'skipped' не считаются (12.3, Д-7); обе суммы — estimatePlanCostSplit.
+ */
+export async function estimatePlanCost(
+  synthesisId: string,
+  row: SynthesisRow,
+  philosophers: string[],
+  steps: EditStep[],
+): Promise<number> {
+  return (await estimatePlanCostSplit(synthesisId, row, philosophers, steps)).taken;
 }
 
 /* ── 10.2: рекомендации ↔ шаги плана ─────────────────────────────────── */
@@ -916,7 +982,7 @@ export async function createPlan(
     cascadeModes,
   );
 
-  const estimatedCost = await estimatePlanCost(
+  const cost = await estimatePlanCostSplit(
     synthesisId,
     row,
     philosophers,
@@ -930,7 +996,7 @@ export async function createPlan(
   if (!inserted) throw new Error("edit_plans insert returned no row");
   await syncRecommendationSteps(synthesisId, inserted.id, steps);
 
-  return toApiPlan(inserted, estimatedCost);
+  return toApiPlan(inserted, cost);
 }
 
 /* ── Чтение/обновление/удаление ──────────────────────────────────────── */
@@ -960,13 +1026,13 @@ export async function getPlan(
 ): Promise<EditPlan> {
   const planRow = await loadPlanRow(synthesisId, planId, userId);
   const { row, philosophers } = await loadSynthesis(synthesisId);
-  const estimatedCost = await estimatePlanCost(
+  const cost = await estimatePlanCostSplit(
     synthesisId,
     row,
     philosophers,
     planRow.steps,
   );
-  return toApiPlan(planRow, estimatedCost);
+  return toApiPlan(planRow, cost);
 }
 
 /* 10.2: обратное к сборке — базовые действия мельче раздела из шагов плана */
@@ -1142,13 +1208,13 @@ export async function updatePlan(
   // 10.2: снятый в панели шаг → рекомендация 'rejected'; индексы — заново
   await syncRecommendationSteps(synthesisId, planId, rebuilt);
 
-  const estimatedCost = await estimatePlanCost(
+  const cost = await estimatePlanCostSplit(
     synthesisId,
     row,
     philosophers,
     rebuilt,
   );
-  return toApiPlan(updated, estimatedCost);
+  return toApiPlan(updated, cost);
 }
 
 /** DELETE /plans/:planId — удаление плана (исполняемый — PLAN_CONFLICT). */

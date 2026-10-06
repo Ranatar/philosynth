@@ -73,7 +73,13 @@ const HIDDEN_ATTRS = new Set([
   "data-testid", "viewBox", "d", "fill", "stroke", "xmlns", "lang", "value",
 ]);
 const MSG_PROPS = /^(message|error|text|title|label|warning|reason|hint|description)$/;
-const MSG_CALLS = /(\.json|fail|badRequest|httpError|apiError)$/i;
+// 12.3 (Д-32): + decline и *hint — сообщения планировщика рекомендаций.
+// Отказ `decline(r, "код", "текст")` и часть подсказки `addHint("текст")` уходят
+// в ответ человеку, но ни throw, ни new *Error, ни свойство message их не
+// окружает: до 12.3 опись их не видела, и литерал без tl() проходил i18n:check
+// («По факту 11.4» п.14). Код отказа (второй довод decline) — латиница, в
+// опись не попадает: msg-режим берёт только кириллические литералы.
+const MSG_CALLS = /(\.json|fail|decline|hint|badRequest|httpError|apiError)$/i;
 const MATCHER_METHODS =
   /^(includes|startsWith|endsWith|indexOf|lastIndexOf|test|match|matchAll|search|split|replace|replaceAll|has|querySelector|querySelectorAll|closest)$/;
 
