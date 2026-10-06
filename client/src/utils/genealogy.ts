@@ -125,6 +125,10 @@ export function resolveConceptName(doc: Document): string | null {
     )
     .replace(/^[«""]|[»""]$/g, "")
     .split(/\s*[:：]\s*/)[0]!
+    .trim()
+    // 12.2 (Д-37): кавычки снимаются и ПОСЛЕ разреза — «X»: подзаголовок давал «X»»
+    // с закрывающей ёлочкой (порт исходника снимал их только до разреза)
+    .replace(/^[«""]|[»""]$/g, "")
     .trim();
   return nameText || null;
 }

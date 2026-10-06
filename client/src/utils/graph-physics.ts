@@ -61,7 +61,7 @@ export function tick(
       dy = t.y - s.y,
       dz = t.z - s.z;
     const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-    const f = (d - 30) * 0.05 * (e.str || 0.5) * alpha;
+    const f = (d - 30) * 0.05 * (e.str ?? 0.5) * alpha;
     s.vx += (dx / d) * f;
     s.vy += (dy / d) * f;
     s.vz += (dz / d) * f;

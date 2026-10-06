@@ -224,7 +224,7 @@ export default function EdgePanel({
       : tl("common.directionOneWay", "однонаправленная");
 
   // Сила
-  const strPct = Math.round((edgeData.str || 0.5) * 100);
+  const strPct = Math.round((edgeData.str ?? 0.5) * 100);
 
   return (
     <div ref={panelRef} className={"gm-info-panel" + (visible ? " visible" : "")}>
@@ -347,7 +347,7 @@ export default function EdgePanel({
           label={tl("graph.edgePanel.edgeStrength", "Сила связи")}
           pct={strPct}
           color={edgeColor}
-          value={(edgeData.str || 0.5).toFixed(2)}
+          value={(edgeData.str ?? 0.5).toFixed(2)}
         />
       </div>
       {edgeData._extended ? (

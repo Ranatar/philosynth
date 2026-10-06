@@ -379,6 +379,18 @@ export function parseTopology(
 /* ── parseGraph [12925] ──────────────────────────────────────────────── */
 
 /**
+ * Характеристика из ячейки таблицы (12.2, Д-9): НЕ ЧИСЛО (пусто, «—», текст)
+ * → 0.5, число — как есть, ВКЛЮЧАЯ 0. Отступление от исходника [12939]: там
+ * `parseFloat(ячейка) || 0.5` — ноль ложен, и законное 0 модели либо ползунка
+ * 5.4 при следующем разборе таблицы (перегенерация, трансформация, круг
+ * экспорт → импорт) становилось 0.5. Решение пользователя 2026-09-23.
+ */
+export function characteristicOf(cell: string | undefined): number {
+  const v = parseFloat(cell ?? "");
+  return Number.isFinite(v) ? v : 0.5;
+}
+
+/**
  * Порт parseGraph(ct): «Таблица категорий» → nodes (базовые столбцы 0–5,
  * расширенные 6–11 при extGraphMetrics), «Таблица связей» → edges
  * (базовые 0–5, расширенные 6–10), затем parseTopology.
@@ -409,8 +421,8 @@ export function parseGraphFromElement(ct: HtmlElement): ParsedGraph {
           name: normalizeName(td[0] as string),
           type: normalizeType(td[1] || "").toLowerCase(),
           def: td[2] || "",
-          cen: parseFloat(td[3] as string) || 0.5,
-          cert: parseFloat(td[4] ?? "") || 0.5,
+          cen: characteristicOf(td[3]),
+          cert: characteristicOf(td[4]),
           orig: td[5] || "",
         };
         // Расширенные характеристики (столбцы 6–11, если присутствуют)
@@ -450,7 +462,7 @@ export function parseGraphFromElement(ct: HtmlElement): ParsedGraph {
           tgt: normalizeName(td[2] as string),
           type: td[3] || "",
           dir: dirNorm.dir,
-          str: parseFloat(td[5] ?? "") || 0.5,
+          str: characteristicOf(td[5]),
         };
         if (!dirNorm.recognized) {
           edge.dirSubstituted = true;

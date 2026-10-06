@@ -229,6 +229,39 @@ export interface GraphStyle {
   getStructuralMarkers(name: string): StructuralMarker[];
 }
 
+/* ── 12.2 (Д-10): поиск по палитре — ОТСТУПЛЕНИЕ ОТ ИСХОДНИКА ───────────
+ * Исходник [13020, 13497, 13534] брал ПЕРВЫЙ ключ, для которого «тип содержит
+ * ключ ИЛИ ключ содержит тип»: «онтологическая», «эпистемологическая»,
+ * «феноменологическая» ⊃ «логическая» — стоило той попасть в палитру раньше,
+ * и все красились её цветом; базовый оттенок брался по первому вхождению сида
+ * («феноменологическая» получала 168 «логическ» вместо своих 275). Решение
+ * пользователя 2026-09-23: исправлять. Двойники — клиент (graph-utils),
+ * экспорт (graph-style) и просмотрщик экспортированного файла (надстройка
+ * export-viewer-overrides); тела двух функций ниже тождественны в обоих
+ * модулях (сторож 4ba). */
+
+/** Сид по САМОМУ ДЛИННОМУ совпавшему ключу, а не по первому. */
+function longestSeed<T>(stem: string, seeds: Record<string, T>): T | null {
+  let best: T | null = null;
+  let bestLen = 0;
+  for (const [k, v] of Object.entries(seeds)) {
+    if (k.length > bestLen && stem.includes(k)) {
+      best = v;
+      bestLen = k.length;
+    }
+  }
+  return best;
+}
+
+/** ТОЧНОЕ совпадение с ключом палитры первым (все типы графа в ней есть
+ *  дословно); нечёткое «содержит» — запасным ходом для строк вне палитры. */
+function lookupByType<T>(map: Map<string, T>, part: string): T | undefined {
+  const exact = map.get(part);
+  if (exact !== undefined) return exact;
+  for (const [k, v] of map) if (part.includes(k) || k.includes(part)) return v;
+  return undefined;
+}
+
 export function createGraphStyle(G: GModel): GraphStyle {
   /* ── _rebuildNodeColors [13020] (карта — локальная) ── */
   const _nodeColorMap = new Map<string, number>();
@@ -247,13 +280,7 @@ export function createGraphStyle(G: GModel): GraphStyle {
     // Сначала пытаемся использовать seed-hue (если есть)
     const usedHues: number[] = [];
     for (const stem of arr) {
-      let bestSeed: number | null = null;
-      for (const [k, h] of Object.entries(_TC_HUE_SEEDS)) {
-        if (stem.includes(k)) {
-          bestSeed = h;
-          break;
-        }
-      }
+      const bestSeed = longestSeed(stem, _TC_HUE_SEEDS);
       if (bestSeed != null) {
         // Немного смещаем, если hue уже занят
         let h = bestSeed;
@@ -299,13 +326,7 @@ export function createGraphStyle(G: GModel): GraphStyle {
     let freeHueIdx = 0; // счётчик золотого угла (только для типов без hue-сида)
     for (const stem of arr) {
       // ── Hue ──
-      let bestHue: number | null = null;
-      for (const [k, h] of Object.entries(_EC_HUE_SEEDS)) {
-        if (stem.includes(k)) {
-          bestHue = h;
-          break;
-        }
-      }
+      const bestHue = longestSeed(stem, _EC_HUE_SEEDS);
       let h: number;
       if (bestHue != null) {
         h = bestHue;
@@ -322,13 +343,7 @@ export function createGraphStyle(G: GModel): GraphStyle {
       const hex = _hslToHex({ h, s: 0.55, l: 0.48 });
 
       // ── Dash + приоритет ──
-      let dashInfo: { dash: string; pri: number } | null = null;
-      for (const [k, info] of Object.entries(_EC_DASH_SEEDS)) {
-        if (stem.includes(k)) {
-          dashInfo = info;
-          break;
-        }
-      }
+      const dashInfo = longestSeed(stem, _EC_DASH_SEEDS);
       const dash = dashInfo ? dashInfo.dash : null;
       const dashPri = dashInfo ? dashInfo.pri : 0;
 
@@ -349,10 +364,8 @@ export function createGraphStyle(G: GModel): GraphStyle {
       .filter(Boolean);
     const colors = parts.map((part) => {
       const lp = part.toLowerCase();
-      // Ищем по ключам _nodeColorMap (fuzzy: stem.includes)
-      for (const [k, v] of _nodeColorMap)
-        if (lp.includes(k) || k.includes(lp)) return v;
-      return null;
+      // 12.2 (Д-10): точное совпадение первым, нечёткое — запасным ходом
+      return lookupByType(_nodeColorMap, lp) ?? null;
     });
     return _blendHex(colors);
   }
@@ -371,11 +384,8 @@ export function createGraphStyle(G: GModel): GraphStyle {
     const matched: EdgeStyle[] = [];
     for (const part of parts) {
       const t = part.toLowerCase();
-      for (const [k, v] of _edgeStyleMap)
-        if (t.includes(k) || k.includes(t)) {
-          matched.push(v);
-          break;
-        }
+      const hit = lookupByType(_edgeStyleMap, t);
+      if (hit) matched.push(hit);
     }
     if (!matched.length) return { color: "#b39ddb", dash: "4,2" };
     if (matched.length === 1) return matched[0]!;

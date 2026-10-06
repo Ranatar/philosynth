@@ -298,7 +298,7 @@ export function buildGraph2D(ct: HTMLDivElement, panels: PanelCallbacks): void {
         .forceLink<Node2D, Link2D>(links)
         .id((d) => d.id)
         .distance(260)
-        .strength((d) => (d.str || 0.1) * 0.18),
+        .strength((d) => (d.str ?? 0.1) * 0.18),
     )
     .force("charge", d3.forceManyBody().strength(-650))
     .force("center", d3.forceCenter(W / 2, H / 2))
@@ -348,8 +348,8 @@ export function buildGraph2D(ct: HTMLDivElement, panels: PanelCallbacks): void {
       const finalDash = dash || (d.str < 0.3 ? "3,3" : null);
       d3.select(this)
         .attr("stroke", color)
-        .attr("stroke-opacity", 0.25 + (d.str || 0.5) * 0.55)
-        .attr("stroke-width", 1 + (d.str || 0.5) * 2.5)
+        .attr("stroke-opacity", 0.25 + (d.str ?? 0.5) * 0.55)
+        .attr("stroke-width", 1 + (d.str ?? 0.5) * 2.5)
         .attr("stroke-dasharray", finalDash)
         .attr(
           "marker-end",
@@ -773,7 +773,7 @@ export function buildGraph2D(ct: HTMLDivElement, panels: PanelCallbacks): void {
       link.attr("stroke-opacity", (l) => {
         const s = typeof l.source === "object" ? l.source.id : l.source;
         const t = typeof l.target === "object" ? l.target.id : l.target;
-        return s === d.id || t === d.id ? 1 : 0.25 + (l.str || 0.5) * 0.55;
+        return s === d.id || t === d.id ? 1 : 0.25 + (l.str ?? 0.5) * 0.55;
       });
       arc.attr("stroke-opacity", (l) => {
         const s = typeof l.source === "object" ? l.source.id : l.source;
@@ -788,7 +788,7 @@ export function buildGraph2D(ct: HTMLDivElement, panels: PanelCallbacks): void {
         d3.select(this).attr("filter", base || null);
       });
       // Восстанавливаем stroke-opacity явно по формуле
-      link.attr("stroke-opacity", (l) => 0.25 + (l.str || 0.5) * 0.55);
+      link.attr("stroke-opacity", (l) => 0.25 + (l.str ?? 0.5) * 0.55);
       arc.attr("stroke-opacity", 0.7);
       // Снимаем opacity-диммирование от клика (если было)
       link.attr("opacity", null);
@@ -825,7 +825,7 @@ export function buildGraph2D(ct: HTMLDivElement, panels: PanelCallbacks): void {
       const es = typeof e.source === "object" ? e.source.id : e.source;
       const et = typeof e.target === "object" ? e.target.id : e.target;
       if ((es === sId && et === tId) || (es === tId && et === sId)) return 1;
-      return 0.25 + (e.str || 0.5) * 0.55;
+      return 0.25 + (e.str ?? 0.5) * 0.55;
     });
     arc.attr("stroke-opacity", (e) => {
       const es = typeof e.source === "object" ? e.source.id : e.source;
@@ -840,7 +840,7 @@ export function buildGraph2D(ct: HTMLDivElement, panels: PanelCallbacks): void {
       d3.select(this).attr("filter", base || null);
     });
     // Восстановить opacity связей
-    link.attr("stroke-opacity", (l) => 0.25 + (l.str || 0.5) * 0.55);
+    link.attr("stroke-opacity", (l) => 0.25 + (l.str ?? 0.5) * 0.55);
     arc.attr("stroke-opacity", 0.7);
     link.attr("opacity", null);
     arc.attr("opacity", null);

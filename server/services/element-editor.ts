@@ -54,7 +54,10 @@ import {
   listSubsectionNames,
   readSubsectionSource,
   replaceSubsectionContent,
+  readThesisBlock,
+  replaceThesisBlock,
   replaceThesisParagraph,
+  thesisLabelIndex,
 } from "../utils/html-parser.js";
 import {
   analyzeImpact,
@@ -940,17 +943,29 @@ export async function updateThesis(
 
   // Поля вне таблицы: формулировка/обоснование в прозаическом абзаце
   if (("justification" in patch || "formulation" in patch) && !sync.sectionMissing) {
-    await patchThesisParagraph(synthesisId, before.formulation, row, sync);
+    await patchThesisParagraph(synthesisId, before, row, sync);
   }
 
   const impact = await computeElementImpact("thesis", row.id, synthesisId);
   return { thesis: toThesisDto(row), impact, version, htmlSync: sync };
 }
 
-/** Точечная правка абзаца тезиса в разделе theses; не найден → pending. */
+/**
+ * Точечная правка прозы тезиса в разделе theses; не найдено → pending.
+ *
+ * 12.2 (Д-36): сначала блок ВТОРОЙ модели по метке тезиса (<h5>Тезис О-1…,
+ * абзац формулировки, абзац «Обоснование.»). В нём пишется ТОЛЬКО поле,
+ * изменённое этой правкой: формулировка в прозе бывает переписана
+ * относительно сводной таблицы, и правка одного обоснования не должна
+ * затирать её табличной. Обоснование НЕ пишется (pending), если до правки в
+ * БД оно было пусто, а в прозе есть: у концепций, импортированных до 12.2,
+ * разбор абзац не читал — редактор показал человеку пустое поле, и запись
+ * стёрла бы текст, которого он не видел. Блока нет — первая модель
+ * («<strong>формулировка</strong> обоснование» одним абзацем), как прежде.
+ */
 async function patchThesisParagraph(
   synthesisId: string,
-  oldFormulation: string,
+  before: ThesisRow,
   row: ThesisRow,
   sync: HtmlSyncInfo,
 ): Promise<void> {
@@ -963,9 +978,28 @@ async function patchThesisParagraph(
     sync.sectionMissing = true;
     return;
   }
+  const label = row.label ?? String(row.thesisNum);
+  const block = readThesisBlock(sec.html, label);
+  if (block) {
+    const formulationChanged = row.formulation !== before.formulation;
+    const justificationChanged = row.justification !== before.justification;
+    const proseUnknownToDb = before.justification === "" && block.justification !== "";
+    const writeJustification = justificationChanged && !proseUnknownToDb;
+    if (justificationChanged && proseUnknownToDb) sync.pending.push("thesis.justification");
+    const patch = replaceThesisBlock(sec.html, label, {
+      formulation: formulationChanged ? row.formulation : undefined,
+      justification: writeJustification ? row.justification : undefined,
+    });
+    if (patch) {
+      if (patch.patched.length) await writeSectionHtml(sec.id, patch.html);
+      for (const f of patch.patched) sync.patched.push("thesis." + f);
+      for (const f of patch.missing) sync.pending.push("thesis." + f);
+    }
+    return;
+  }
   const patched = replaceThesisParagraph(
     sec.html,
-    oldFormulation,
+    before.formulation,
     row.formulation,
     row.justification,
   );
@@ -1456,6 +1490,11 @@ const thesisNameOf = (r: { label: string | null; thesisNum: number }): string =>
  *
  * before / after — абзацы «<strong>формулировка</strong> обоснование» ОДНОГО
  * подраздела до и после правки (parseThesisParagraphs). Правила:
+ *  - 12.2 (Д-36): абзац ВТОРОЙ модели (несёт `heading` — текст <h5> блока)
+ *    сводится с тезисом по МЕТКЕ в заголовке (theses.label либо номер), а не
+ *    по формулировке — в прозе она бывает переписана относительно таблицы;
+ *    «точным» такое сведение считается, только если формулировка абзаца
+ *    равна табличной; с абзацем after — по неизменному заголовку блока;
  *  - тезис «живёт» в абзаце before, чья формулировка совпала с theses.formulation
  *    (сначала точно, затем включением в любую сторону — как индекс 1.4);
  *  - абзац after сводится с абзацем before по неизменной формулировке, а если
@@ -1478,9 +1517,30 @@ export function planThesisProseSync(
   // 1. Тезис → абзац «до»: точное совпадение формулировки, затем включение
   const rowOfBefore = new Map<number, { row: ThesisProseRow; exact: boolean }>();
   const taken = new Set<string>();
+  // 0. Вторая модель: блок → тезис по метке в <h5> (метка раньше — тезис вернее)
+  before.forEach((b, i) => {
+    if (!b.heading) return;
+    let best: ThesisProseRow | null = null;
+    let bestIdx = Infinity;
+    for (const r of rows) {
+      if (taken.has(r.id)) continue;
+      const at = thesisLabelIndex(b.heading, r.label ?? String(r.thesisNum));
+      if (at >= 0 && at < bestIdx) {
+        best = r;
+        bestIdx = at;
+      }
+    }
+    if (!best) return;
+    taken.add(best.id);
+    rowOfBefore.set(i, {
+      row: best,
+      exact: proseNorm(b.formulation) === proseNorm(best.formulation),
+    });
+  });
   for (const exact of [true, false]) {
     before.forEach((b, i) => {
       if (rowOfBefore.has(i)) return;
+      if (b.heading && !b.formulation) return; // блок без абзаца формулировки — только по метке
       const key = proseNorm(b.formulation);
       const row = rows.find((r) => {
         if (taken.has(r.id)) return false;
@@ -1495,8 +1555,20 @@ export function planThesisProseSync(
   // 2. Абзац «до» → абзац «после»: по формулировке, затем по месту
   const afterOfBefore = new Map<number, number>();
   const claimed = new Set<number>();
+  // Вторая модель: по неизменному заголовку блока
   before.forEach((b, i) => {
+    if (!b.heading) return;
+    const key = proseNorm(b.heading);
+    const j = after.findIndex((a, k) => !claimed.has(k) && !!a.heading && proseNorm(a.heading) === key);
+    if (j >= 0) {
+      claimed.add(j);
+      afterOfBefore.set(i, j);
+    }
+  });
+  before.forEach((b, i) => {
+    if (afterOfBefore.has(i)) return;
     const key = proseNorm(b.formulation);
+    if (!key) return; // блок без абзаца формулировки сводится только по заголовку
     const j = after.findIndex((a, k) => !claimed.has(k) && proseNorm(a.formulation) === key);
     if (j >= 0) {
       claimed.add(j);
@@ -1526,7 +1598,7 @@ export function planThesisProseSync(
     if (!formulationChanged && !justificationChanged) return;
     if (!hit) {
       plan.warnings.push(
-        tl("server.elementEditor.paragraphWithoutThesis", "Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён", { paragraph: proseQuote(a.formulation) }),
+        tl("server.elementEditor.paragraphWithoutThesis", "Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён", { paragraph: proseQuote(a.formulation || a.heading || "") }),
       );
       return;
     }
@@ -1545,7 +1617,7 @@ export function planThesisProseSync(
   after.forEach((a, j) => {
     if (claimed.has(j)) return;
     plan.warnings.push(
-      tl("server.elementEditor.newParagraphNotThesis", "Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)", { paragraph: proseQuote(a.formulation) }),
+      tl("server.elementEditor.newParagraphNotThesis", "Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)", { paragraph: proseQuote(a.formulation || a.heading || "") }),
     );
   });
   return plan;

@@ -22,8 +22,13 @@
  *
  * Адаптации (задокументированные отступления):
  *  - theses.justification: в сводной таблице обоснований нет (они в
- *    текстовых подразделах); заполняется best-effort сопоставлением
- *    формулировки с <strong>-тезисами подразделов, иначе "";
+ *    текстовых подразделах); заполняется best-effort. ДВЕ модели абзаца:
+ *    первая — «<strong>формулировка</strong> обоснование» одним абзацем,
+ *    сопоставление по формулировке; вторая (12.2, Д-36 — так пишет живой
+ *    документ) — блок «<h5>Тезис О-1 (…)</h5>, абзац из одной жирной
+ *    формулировки, абзац «<strong>Обоснование.</strong> …»», сопоставление по
+ *    МЕТКЕ тезиса в <h5> (формулировка в прозе бывает переписана
+ *    относительно таблицы). Блок по метке ищется первым; иначе "";
  *  - glossary_terms.term_category: определяется best-effort по вхождению
  *    термина в категорийные подразделы после таблицы («Переопределённые
  *    термины» → 'redefined' и т.д.); не найден — '' (дефолт схемы);
@@ -35,9 +40,12 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { glossaryTerms, theses } from "../db/schema.js";
 import {
+  findThesisBlocks,
   innerTextTrimmed,
   parseFragment,
+  thesisLabelIndex,
   type HtmlElement,
+  type ThesisBlock,
 } from "../utils/html-parser.js";
 
 /* ── Типы черновиков (строки таблиц ещё без id/createdAt) ────────────── */
@@ -113,11 +121,12 @@ export function parseThesesFromHTML(html: string): ParsedThesis[] {
     const formulation = td[1] || "";
     if (!formulation) continue;
     const thesisNum = parseInt(td[0] ?? "", 10) || fallbackNum;
+    const label = thesisLabelOf(td[0] ?? "", thesisNum);
     result.push({
       thesisNum,
-      label: thesisLabelOf(td[0] ?? "", thesisNum),
+      label,
       formulation,
-      justification: justificationOf(formulation),
+      justification: justificationOf(formulation, label ?? String(thesisNum)),
       thesisType: mapThesisType(td[2] || ""),
       noveltyDegree: td[3] || "",
       relatedCategories: splitRelatedCategories(td[4] || ""),
@@ -139,12 +148,18 @@ export function thesisLabelOf(rawCell: string, thesisNum: number): string | null
   return raw;
 }
 
-/** Абзац тезиса в прозе: «<strong>формулировка</strong> обоснование». */
+/** Абзац тезиса в прозе. Первая модель: «<strong>формулировка</strong>
+ *  обоснование»; вторая (12.2, Д-36): блок под <h5> с меткой тезиса. */
 export interface ThesisParagraph {
-  /** Текст <strong>/<b> как в документе (пробелы схлопнуты) */
+  /** Текст <strong>/<b> как в документе (пробелы схлопнуты); у второй модели —
+   *  текст абзаца формулировки ("" — такого абзаца в блоке нет) */
   formulation: string;
-  /** Текст родительского блока за вычетом формулировки; "" — блок из одной формулировки */
+  /** Текст родительского блока за вычетом формулировки; "" — блок из одной
+   *  формулировки. У второй модели — абзац «Обоснование.» без жирного начала */
   justification: string;
+  /** ТОЛЬКО вторая модель: текст <h5> блока — несёт метку тезиса, по ней
+   *  абзац сводится с тезисом (thesisLabelIndex) */
+  heading?: string | undefined;
 }
 
 /**
@@ -156,12 +171,43 @@ export interface ThesisParagraph {
  * совпадает с тем, что для такого абзаца дал бы разбор 1.4
  * (buildJustificationIndex) — сведение после ручной правки и повторный разбор
  * не расходятся. Чистая функция.
+ *
+ * 12.2 (Д-36): блок ВТОРОЙ модели (под <h5>, с абзацем «Обоснование.») даёт
+ * ОДИН абзац с `heading`; прочие жирные начала того же блока («Ограничения…»,
+ * «Степень новизны:») абзацами тезиса не считаются — их правка ни с чем не
+ * сводится и предупреждений не даёт.
  */
 export function parseThesisParagraphs(html: string): ThesisParagraph[] {
   const ct = parseFragment(html);
   const out: ThesisParagraph[] = [];
   const seenParents = new Set<unknown>();
+  const blocks = findThesisBlocks(ct);
+  const emitted = new Set<ThesisBlock>();
+  /** Блок второй модели, которому принадлежит узел (по предкам до корня) */
+  const blockOf = (start: unknown): ThesisBlock | null => {
+    for (
+      let el = start as { parentElement?: unknown } | null | undefined;
+      el && el !== (ct as unknown);
+      el = el.parentElement as { parentElement?: unknown } | null | undefined
+    ) {
+      const hit = blocks.find((b) => b.members.has(el));
+      if (hit) return hit.block;
+    }
+    return null;
+  };
   for (const strong of ct.querySelectorAll("strong, b")) {
+    const block = blocks.length ? blockOf(strong) : null;
+    if (block) {
+      if (!emitted.has(block)) {
+        emitted.add(block);
+        out.push({
+          formulation: block.formulation,
+          justification: block.justification,
+          heading: block.heading,
+        });
+      }
+      continue;
+    }
     const formulation = (strong.textContent ?? "").trim().replace(/\s+/g, " ");
     if (formulation.length < 8) continue;
     const node = strong as unknown as {
@@ -184,11 +230,26 @@ export function parseThesisParagraphs(html: string): ThesisParagraph[] {
  * Индекс «формулировка → обоснование» по <strong> тезисных подразделов
  * (Онтологические/Эпистемологические/Этические тезисы). Сопоставление —
  * нечёткое (вхождение нормализованных строк в обе стороны), в духе
- * matchNodeName graph-parser'а.
+ * matchNodeName graph-parser'а. 12.2 (Д-36): ПЕРВЫМ — блок второй модели по
+ * метке тезиса; первая модель — как прежде, если блока с обоснованием нет.
  */
 function buildJustificationIndex(
   ct: HtmlElement,
-): (formulation: string) => string {
+): (formulation: string, label: string) => string {
+  // 12.2 (Д-36): блоки второй модели тезисных подразделов — по метке в <h5>
+  const blocks: ThesisBlock[] = findThesisBlocks(ct).map((b) => b.block);
+  const byLabel = (label: string): string => {
+    let best = "";
+    let bestIdx = Infinity;
+    for (const b of blocks) {
+      const i = thesisLabelIndex(b.heading, label);
+      if (i >= 0 && i < bestIdx && b.justification) {
+        best = b.justification;
+        bestIdx = i;
+      }
+    }
+    return best;
+  };
   const pairs: { key: string; text: string }[] = [];
   for (const strong of ct.querySelectorAll(
     '[data-section*="тезисы"] strong, [data-section*="Тезисы"] strong, ' +
@@ -204,7 +265,9 @@ function buildJustificationIndex(
     const text = full.startsWith(key) ? full.slice(key.length).trim() : full;
     if (text) pairs.push({ key: key.toLowerCase(), text });
   }
-  return (formulation: string): string => {
+  return (formulation: string, label: string): string => {
+    const fromBlock = byLabel(label);
+    if (fromBlock) return fromBlock;
     const norm = formulation.toLowerCase().replace(/\s+/g, " ");
     const hit = pairs.find(
       (p) => p.key.includes(norm) || norm.includes(p.key),

@@ -64,6 +64,9 @@ function critiqueAnswer() {
   const { document: d } = parseHTML(`<div id="r">${html}</div>`);
   for (const old of [...d.querySelectorAll("[data-section]")].filter((x) => x.getAttribute("data-section") === TABLE)) old.remove();
   const prose = [...d.querySelectorAll("[data-section]")].find((x) => x.getAttribute("data-section") === PROSE);
+  // 12.2: в файле без абзацев «Рекомендация N:» (рекомендации в прозе — таблицей) метка редакции
+  // ставится в первый абзац подраздела; иначе ответ мока равен прежнему разделу и раунд 2 не открыть
+  if (!html.includes("вторая редакция")) prose.querySelector("p")?.insertAdjacentHTML("afterbegin", "(вторая редакция) ");
   prose.insertAdjacentHTML("afterend", "\n\n" + wrapped(tableHtml(ROWS)) + "\n");
   return d.getElementById("r").innerHTML;
 }

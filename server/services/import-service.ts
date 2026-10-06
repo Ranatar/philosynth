@@ -88,6 +88,14 @@
  * \w→[а-яё])/normalizeGenealogyNames/restoreCapsulesFromHTML/
  * reconstructGenealogy (client/utils/genealogy.ts). Дрейф двойников —
  * кандидат в integration-check (блок завершения беседы).
+ *
+ * 12.2 (Д-29): extractSections снимает следы оглавления (stripTocTraces
+ * html-parser) — ⏫ из заголовков раздела и подразделов и пустые якоря
+ * <a id="subsec-…"> перед <h4>; блок оглавления #docTOC и блок шапки
+ * «Генеалогическое древо» (Д-30) лежат вне .doc-section и в разделы не
+ * попадают. Из блока древа импорт берёт ТОЛЬКО капсулы родителей
+ * (restoreCapsulesFromHTML: .gen-card-capsule-body по имени карточки) —
+ * структуру дерева даёт встроенное состояние.
  */
 import { eq } from "drizzle-orm";
 
@@ -107,6 +115,7 @@ import {
   parseDocument,
   type HtmlDocument,
   type HtmlElement,
+  stripTocTraces,
 } from "../utils/html-parser.js";
 import {
   parseGraphFromHTML,
@@ -299,6 +308,10 @@ export function resolveConceptName(doc: HtmlDocument): string | null {
     )
     .replace(/^[«""]|[»""]$/g, "")
     .split(/\s*[:：]\s*/)[0]!
+    .trim()
+    // 12.2 (Д-37): кавычки снимаются и ПОСЛЕ разреза — «X»: подзаголовок давал «X»»
+    // с закрывающей ёлочкой (порт исходника снимал их только до разреза)
+    .replace(/^[«""]|[»""]$/g, "")
     .trim();
   return nameText || null;
 }
@@ -735,8 +748,10 @@ export function extractSections(
 
   for (const secEl of docBodies.querySelectorAll(".doc-section")) {
     const numText = secEl.querySelector(".section-num")?.textContent?.trim() || "";
+    // 12.2 (Д-29): кнопка ⏫ оглавления сидит ВНУТРИ .section-title — в
+    // заголовок раздела её текст не идёт
     const titleText =
-      secEl.querySelector(".section-title")?.textContent?.trim() || "";
+      (secEl.querySelector(".section-title")?.textContent ?? "").replace(/⏫/g, "").trim();
     const numMatch = numText.match(/§\s*(\d+)/);
     const num = numMatch?.[1] ? parseInt(numMatch[1], 10) : 0;
 
@@ -765,7 +780,17 @@ export function extractSections(
       }
     }
 
-    result.push({ key, num, title: titleText, html: secEl.outerHTML, secCtx });
+    // 12.2 (Д-29): следы оглавления (⏫ в заголовках, якоря subsec-… перед
+    // <h4>) в html_content не идут — их пишут в файл и одностраничник
+    // (buildTableOfContents), и экспорт службы; страница и экспорт достраивают
+    // оглавление сами. Так чистым становится и живой файл («По факту 9.2» п.18)
+    result.push({
+      key,
+      num,
+      title: titleText,
+      html: stripTocTraces(secEl.outerHTML).html,
+      secCtx,
+    });
   }
 
   // Сортируем по номеру §

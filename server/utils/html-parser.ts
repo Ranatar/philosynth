@@ -551,13 +551,26 @@ export function replaceDocTable(
  * element-parser 1.4); его содержимое заменяется на
  * «<strong>формулировка</strong> обоснование». Не найден → null —
  * вызывающий обязан сообщить, что правка в HTML не отражена.
+ * Это ПЕРВАЯ модель абзаца; вторая (блок с <h5> и абзацем «Обоснование.»,
+ * 12.2 Д-36) — ниже, включается меткой тезиса.
  */
 export function replaceThesisParagraph(
   sectionHtml: string,
   oldFormulation: string,
   newFormulation: string,
   justification: string,
+  /** 12.2 (Д-36): метка тезиса — сначала ищется блок ВТОРОЙ модели
+   *  (replaceThesisBlock: обоснование — в абзац «Обоснование.», формулировка —
+   *  в абзац формулировки, и только если она менялась); блока нет — первая */
+  label?: string | null,
 ): string | null {
+  if (label) {
+    const block = replaceThesisBlock(sectionHtml, label, {
+      formulation: newFormulation !== oldFormulation ? newFormulation : undefined,
+      justification,
+    });
+    if (block) return block.patched.length ? block.html : null;
+  }
   const root = parseMutable(sectionHtml);
   const norm = (s: string): string =>
     s.toLowerCase().replace(/\s+/g, " ").trim();
@@ -579,6 +592,222 @@ export function replaceThesisParagraph(
     return root.innerHTML;
   }
   return null;
+}
+
+/* ── Вторая модель абзаца тезиса (беседа 12.2, Д-36) ─────────────────── */
+
+/**
+ * ПЕРВАЯ модель (разбор 1.4, правка 5.1): тезис — один абзац
+ * «<strong>формулировка</strong> обоснование».
+ *
+ * ВТОРАЯ модель — так пишет живой документ (задание раздела требует у
+ * каждого тезиса пять обязательных пунктов и раскладку не предписывает):
+ *
+ *   <h5>Тезис О-1 (Архетип как разломная матрица)</h5>
+ *   <p><strong>формулировка</strong></p>
+ *   <p><strong>Обоснование.</strong> текст обоснования…</p>
+ *   <p><strong>Ограничения, преодолеваемые тезисом.</strong></p><ul>…</ul>
+ *   <p><strong>Степень новизны:</strong> …</p> …
+ *
+ * Блок тезиса — от <h5> до следующего <h5>. Якорь — МЕТКА тезиса в <h5>
+ * (theses.label 12.1 либо номер): формулировка в прозе бывает переписана
+ * относительно сводной таблицы, по ней блок не найти. Блок считается второй
+ * моделью, только если в нём есть абзац, НАЧИНАЮЩИЙСЯ с жирного
+ * «Обоснование…»; абзац формулировки — первый абзац до него, состоящий из
+ * одного жирного фрагмента. Прочие абзацы блока («Ограничения…», списки,
+ * «Степень новизны») не читаются и не правятся.
+ */
+
+/** Минимум DOM-узла для обхода блока тезиса (linkedom реализует всё). */
+interface ThesisScanElement {
+  readonly tagName: string;
+  readonly nextElementSibling: ThesisScanElement | null;
+  readonly parentElement: ThesisScanElement | null;
+  textContent: string | null;
+  innerHTML: string;
+  querySelector(selector: string): ThesisScanElement | null;
+  querySelectorAll(selector: string): Iterable<ThesisScanElement>;
+  closest(selector: string): ThesisScanElement | null;
+}
+
+const collapseWs = (s: string | null | undefined): string =>
+  (s ?? "").replace(/\s+/g, " ").trim();
+
+const JUSTIFICATION_LEAD_RE = /^обоснование(?![а-яё])/i;
+/** Как у разбора 1.4: жирный фрагмент короче — не формулировка. */
+const THESIS_FORMULATION_MIN = 8;
+
+/**
+ * Место метки тезиса в заголовке блока: индекс вхождения целым словом либо −1.
+ * «О-1» не находится в «О-10», «1» — в «О-1» и в «11»; хвостовая пунктуация
+ * метки («2.») не учитывается. Из нескольких блоков (или тезисов) берут тот,
+ * где метка стоит раньше.
+ */
+export function thesisLabelIndex(heading: string, label: string): number {
+  const core = label.trim().replace(/[.:)\s]+$/, "");
+  if (!core) return -1;
+  const escaped = core.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const m = new RegExp(
+    `(?<![\\p{L}\\p{N}\\-–—])${escaped}(?![\\p{L}\\p{N}])`,
+    "iu",
+  ).exec(heading);
+  return m ? m.index : -1;
+}
+
+interface ScannedThesisBlock {
+  heading: string;
+  /** Все элементы блока после <h5> (до следующего <h5>) */
+  members: ThesisScanElement[];
+  formulationEl: ThesisScanElement | null;
+  justificationEl: ThesisScanElement;
+  /** Жирное начало абзаца обоснования как в документе («Обоснование.») */
+  justificationLead: string;
+}
+
+/** Жирное начало блока: текст первого <strong>/<b>, если блок с него начинается. */
+function boldLeadOf(el: ThesisScanElement): string | null {
+  const bold = el.querySelector("strong, b");
+  if (!bold) return null;
+  const lead = collapseWs(bold.textContent);
+  if (!lead || !collapseWs(el.textContent).startsWith(lead)) return null;
+  return lead;
+}
+
+function scanThesisBlocks(root: ThesisScanElement): ScannedThesisBlock[] {
+  const out: ScannedThesisBlock[] = [];
+  for (const h5 of root.querySelectorAll("h5")) {
+    if (h5.closest("table")) continue;
+    const members: ThesisScanElement[] = [];
+    for (let el = h5.nextElementSibling; el && el.tagName.toUpperCase() !== "H5"; el = el.nextElementSibling)
+      members.push(el);
+    let formulationEl: ThesisScanElement | null = null;
+    let justificationEl: ThesisScanElement | null = null;
+    let justificationLead = "";
+    for (const el of members) {
+      const tag = el.tagName.toUpperCase();
+      if (tag === "TABLE" || tag === "UL" || tag === "OL") continue;
+      const lead = boldLeadOf(el);
+      if (!lead) continue;
+      if (JUSTIFICATION_LEAD_RE.test(lead)) {
+        justificationEl = el;
+        justificationLead = lead;
+        break;
+      }
+      if (
+        !formulationEl &&
+        lead.length >= THESIS_FORMULATION_MIN &&
+        collapseWs(el.textContent) === lead
+      )
+        formulationEl = el;
+    }
+    if (!justificationEl) continue; // не вторая модель — блок читает первая
+    out.push({
+      heading: collapseWs(h5.textContent).replace(/⏫/g, "").trim(),
+      members,
+      formulationEl,
+      justificationEl,
+      justificationLead,
+    });
+  }
+  return out;
+}
+
+/** Блок тезиса второй модели, как он записан в документе. */
+export interface ThesisBlock {
+  /** Текст <h5> (пробелы схлопнуты) — несёт метку тезиса */
+  heading: string;
+  /** Текст абзаца формулировки; "" — такого абзаца в блоке нет */
+  formulation: string;
+  /** Текст абзаца «Обоснование.» без жирного начала */
+  justification: string;
+}
+
+function toThesisBlock(b: ScannedThesisBlock): ThesisBlock {
+  const full = collapseWs(b.justificationEl.textContent);
+  return {
+    heading: b.heading,
+    formulation: b.formulationEl ? collapseWs(b.formulationEl.textContent) : "",
+    justification: full.slice(b.justificationLead.length).trim(),
+  };
+}
+
+/**
+ * Блоки тезисов второй модели внутри элемента — в порядке документа, со
+ * списком элементов блока (разбору 1.4/12.1 — чтобы не читать их первой
+ * моделью). Элемент — из parseFragment (тот же DOM).
+ */
+export function findThesisBlocks(
+  root: HtmlElement,
+): { block: ThesisBlock; members: ReadonlySet<unknown> }[] {
+  return scanThesisBlocks(root as unknown as ThesisScanElement).map((b) => ({
+    block: toThesisBlock(b),
+    members: new Set<unknown>(b.members),
+  }));
+}
+
+/** Из блоков выбрать блок тезиса по метке (метка раньше — блок вернее). */
+function pickBlockByLabel<T extends { heading: string }>(blocks: readonly T[], label: string): T | null {
+  let best: T | null = null;
+  let bestIdx = Infinity;
+  for (const b of blocks) {
+    const i = thesisLabelIndex(b.heading, label);
+    if (i >= 0 && i < bestIdx) {
+      best = b;
+      bestIdx = i;
+    }
+  }
+  return best;
+}
+
+/** Блок тезиса с данной меткой в HTML раздела; null — второй модели с такой меткой нет. */
+export function readThesisBlock(sectionHtml: string, label: string): ThesisBlock | null {
+  const root = parseMutable(sectionHtml) as unknown as ThesisScanElement;
+  const hit = pickBlockByLabel(scanThesisBlocks(root), label);
+  return hit ? toThesisBlock(hit) : null;
+}
+
+export type ThesisProseField = "formulation" | "justification";
+
+export interface ThesisBlockPatch {
+  html: string;
+  /** Поля, записанные в свои абзацы */
+  patched: ThesisProseField[];
+  /** Поля, для которых абзаца в блоке нет (формулировка без своего абзаца) */
+  missing: ThesisProseField[];
+}
+
+/**
+ * Точечная правка блока тезиса ВТОРОЙ модели: обоснование — в абзац
+ * «Обоснование.» (жирное начало сохраняется как в документе), формулировка —
+ * в абзац формулировки. Пишутся только переданные поля; прочие абзацы блока
+ * не трогаются. null — блока с такой меткой нет (вызывающий пробует первую
+ * модель, replaceThesisParagraph).
+ */
+export function replaceThesisBlock(
+  sectionHtml: string,
+  label: string,
+  edit: { formulation?: string | undefined; justification?: string | undefined },
+): ThesisBlockPatch | null {
+  const root = parseMutable(sectionHtml);
+  const hit = pickBlockByLabel(scanThesisBlocks(root as unknown as ThesisScanElement), label);
+  if (!hit) return null;
+  const esc = (s: string): string =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const patched: ThesisProseField[] = [];
+  const missing: ThesisProseField[] = [];
+  if (edit.formulation !== undefined) {
+    if (hit.formulationEl) {
+      hit.formulationEl.innerHTML = `<strong>${esc(edit.formulation)}</strong>`;
+      patched.push("formulation");
+    } else missing.push("formulation");
+  }
+  if (edit.justification !== undefined) {
+    hit.justificationEl.innerHTML =
+      `<strong>${esc(hit.justificationLead)}</strong>` +
+      (edit.justification ? " " + esc(edit.justification) : "");
+    patched.push("justification");
+  }
+  return { html: patched.length ? root.innerHTML : sectionHtml, patched, missing };
 }
 
 /* ── Ручная правка подраздела (беседа 9.2) ───────────────────────────── */
@@ -992,7 +1221,7 @@ export interface InsertSubsectionResult {
 
 /** slug якоря оглавления — правило buildTableOfContents исходника [11661]
  *  (его же держит client TableOfContents.tsx). */
-function subsectionAnchorSlug(name: string): string {
+export function subsectionAnchorSlug(name: string): string {
   return name.replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, "_");
 }
 
@@ -1062,4 +1291,81 @@ export function insertSubsectionAfter(
   const r = replaceSubsectionContent(root.innerHTML, newName, innerHtml);
   if (!r) return null;
   return { html: r.html, outcome: "inserted", warnings: r.warnings };
+}
+
+/* ── Оглавление: якоря и ⏫ в разметке раздела (беседа 12.2, Д-29) ────── */
+
+/** id якоря подраздела — серверный двойник subsectionSlugId клиента
+ *  (TableOfContents 1.6b; порт [11662]). Дрейф слуга сторожит 4ba. */
+export function subsectionAnchorId(sectionKey: string, subsectionName: string): string {
+  return "subsec-" + sectionKey + "-" + subsectionAnchorSlug(subsectionName);
+}
+
+const TOC_BACK_BTN_HTML =
+  '<a href="#docTOC" class="toc-back-btn" title="К содержанию">⏫</a>';
+
+/**
+ * Якоря #subsec-… и кнопки ⏫ — в HTML-строку раздела: серверный двойник
+ * enrichSectionHtml (SectionView 1.6b), вторая половина buildTableOfContents
+ * исходника [11655–11710]. Нужен экспорту: исходник снимал docHTML уже с
+ * якорями и кнопками. Идемпотентно — документ, заведённый импортом
+ * одностраничника до 12.2, несёт их в html_content, второй раз не ставятся.
+ */
+export function addTocAnchors(
+  sectionHtml: string,
+  sectionKey: string,
+  subsections: readonly string[],
+): string {
+  const root = parseEditable(sectionHtml);
+  const appendBack = (host: EditElement): void => {
+    for (const _btn of host.querySelectorAll(".toc-back-btn")) return;
+    host.insertAdjacentHTML("beforeend", TOC_BACK_BTN_HTML);
+  };
+  for (const title of root.querySelectorAll(".section-title")) {
+    appendBack(title);
+    break;
+  }
+  const existingIds = new Set<string>();
+  for (const a of root.querySelectorAll("a[id]")) existingIds.add(a.getAttribute("id") ?? "");
+  for (const name of subsections) {
+    const sub = findExactSubsection(root, name);
+    if (!sub) continue;
+    const id = subsectionAnchorId(sectionKey, name);
+    if (!existingIds.has(id)) {
+      sub.insertAdjacentHTML("afterbegin", `<a id="${escAttr(id)}"></a>`);
+      existingIds.add(id);
+    }
+    for (const h4 of sub.querySelectorAll("h4")) {
+      appendBack(h4);
+      break;
+    }
+  }
+  return root.innerHTML;
+}
+
+/**
+ * Снятие следов оглавления из разметки раздела (импорт, 12.2 Д-29): кнопки ⏫
+ * (`a.toc-back-btn`) и пустые якоря `<a id="subsec-…">`. И одностраничник, и
+ * экспорт службы пишут их в файл; в html_content им делать нечего — документ
+ * хранится таким, каким его дала модель, оглавление достраивают страница
+ * (SectionView) и экспорт (addTocAnchors). Якорь с содержимым не трогается —
+ * это уже не след оглавления. removed — сколько узлов снято.
+ */
+export function stripTocTraces(sectionHtml: string): { html: string; removed: number } {
+  if (!sectionHtml.includes("toc-back-btn") && !sectionHtml.includes("subsec-"))
+    return { html: sectionHtml, removed: 0 };
+  const root = parseEditable(sectionHtml);
+  let removed = 0;
+  for (const btn of Array.from(root.querySelectorAll("a.toc-back-btn"))) {
+    btn.remove();
+    removed += 1;
+  }
+  for (const a of Array.from(root.querySelectorAll("a[id]"))) {
+    const id = a.getAttribute("id") ?? "";
+    if (!id.startsWith("subsec-")) continue;
+    if ((a.textContent ?? "").trim() !== "") continue;
+    a.remove();
+    removed += 1;
+  }
+  return removed ? { html: root.innerHTML, removed } : { html: sectionHtml, removed: 0 };
 }

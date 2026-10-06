@@ -85,7 +85,7 @@ export function buildPNG(G: GModel): Buffer {
   }
 
   function nodeR(n: { cen?: number }): number {
-    return 8 + (n.cen || 0.5) * 22;
+    return 8 + (n.cen ?? 0.5) * 22;
   }
 
   function getTopProc(name: string): string | null {
@@ -380,7 +380,7 @@ export function buildPNG(G: GModel): Buffer {
     const sn = laid[si]!,
       tn = laid[ti]!;
     const { color, dash } = style.edgeTypeStyle(e.type);
-    const str = e.str || 0.5;
+    const str = e.str ?? 0.5;
     const lw = 1 + str * 3;
     const isRefl = e.dir.includes("рефлексив") || si === ti;
     const isBi = e.dir.includes("двунаправлен");

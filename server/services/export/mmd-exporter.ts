@@ -209,7 +209,7 @@ export function buildMMD(G: GModel): string {
 
     // Стиль ребра: цвет по типу, толщина по силе
     const { color } = style.edgeTypeStyle(e.type);
-    const str = e.str || 0.5;
+    const str = e.str ?? 0.5;
     const sw = (1 + str * 4).toFixed(1);
     const dashPart = str < 0.3 ? ",stroke-dasharray:3" : "";
     edgeStyleLines.push(

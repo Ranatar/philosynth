@@ -16,7 +16,30 @@
  *    doc-type/doc-title/doc-subtitle/дисклоужеры/doc-meta-grid) + разделы
  *    sections.html_content в порядке sectionOrder (кроме capsule), каждый
  *    в обёртке .doc-body с якорем sec-{key} (разметка SectionView 1.6b);
- *    TOC не строится — исходник удалял docTOC/toc-back-btn перед экспортом;
+ *  - ОГЛАВЛЕНИЕ (12.2, Д-29). Прежняя редакция писала «TOC не строится —
+ *    исходник удалял docTOC/toc-back-btn перед экспортом» — это неверно:
+ *    saveHTML снимает docHTML с #docOutput [18047] РАНЬШЕ, чем удаляет
+ *    оглавление [18048–18050] (удаление на файл не влияет, затем
+ *    buildTableOfContents строит заново), и оглавление с ⏫ в файле
+ *    исходника ЕСТЬ. Восстановлено серверной разметкой по образцу
+ *    TableOfContents 1.6b (renderDocTOC: слуг, порог «< 2», пропуск капсулы)
+ *    и enrichSectionHtml (addTocAnchors html-parser: якоря subsec-… и ⏫);
+ *    слуг и порог ≡ клиенту — сторож 4ba; импорт следы оглавления снимает;
+ *  - ГЕНЕАЛОГИЧЕСКОЕ ДРЕВО (12.2, Д-30) — та же утрата переноса, что футер
+ *    (восстановлен 8.6): в исходнике древо — раскрывающийся блок шапки
+ *    внутри #docOutput (updateGenealogyInHeader [22415]) и уезжало в файл.
+ *    renderGenealogyDisclosure рисует его из ТОГО ЖЕ дерева getAncestors, что
+ *    genealogy встроенного состояния; разметка — renderGenealogyTree [22343]
+ *    в редакции GenealogyTree 3.2 (мета-строка — только при известных
+ *    параметрах). Капсула — у узлов, которые её несут (узлы дерева
+ *    импортированного файла): встроенное состояние капсул не пишет, а импорт
+ *    читает их именно из .gen-card-capsule-body (restoreCapsulesFromHTML) —
+ *    так капсула родителя переживает круг экспорт → импорт. Только у
+ *    мета-синтеза (есть концепции-родители); флаги видимости 8.6 на древо
+ *    не влияют — генеалогия есть метаданные (как parentSyntheses);
+ *  - ПРОСМОТРЩИК ГРАФА несёт отступления службы от исходника (12.2, Д-9 и
+ *    Д-10): fnBundle генерата проходит applyExportViewerOverrides
+ *    (server/config/export-viewer-overrides.ts); сам генерат не правится;
  *  - кнопка «▦ Граф категорий»: маркер id="db{graphBodyIdx}" вырожден
  *    (db-индексация снята 1.6) — вставка после открывающего тега обёртки
  *    .doc-body раздела graph;
@@ -37,6 +60,7 @@
 import { asc, eq } from "drizzle-orm";
 
 import { DL, ML, SL } from "@philosynth/shared/constants/labels";
+import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import { esc } from "@philosynth/shared/utils/escape";
 
 import {
@@ -46,6 +70,7 @@ import {
   EXPORT_MODE_OVERLAY_HTML,
   EXPORT_SOURCE_RAW_CSS,
 } from "../../config/export-assets.js";
+import { applyExportViewerOverrides } from "../../config/export-viewer-overrides.js";
 import { PARENT_CONTEXT_SCHEMA_ID, PARENT_CONTEXT_SCHEMA_VERSION } from "../../config/parent-deps.js";
 import { db } from "../../db/index.js";
 import {
@@ -55,7 +80,14 @@ import {
   sections,
 } from "../../db/schema.js";
 import { auditCSS } from "../../utils/css-audit.js";
-import { innerTextTrimmed, parseFragment } from "../../utils/html-parser.js";
+import {
+  addTocAnchors,
+  innerTextTrimmed,
+  listSubsectionNames,
+  parseFragment,
+  stripTocTraces,
+  subsectionAnchorId,
+} from "../../utils/html-parser.js";
 import { buildParams, loadSynthesis } from "../generation-service.js";
 import { formatCtxLogHTML } from "../log-formatter.js";
 import { getModeConfig } from "../mode-service.js";
@@ -64,6 +96,8 @@ import { loadConceptParticipants } from "../meta-synthesis-service.js";
 import { exportFilename, loadExportSynthesis } from "./common.js";
 import { loadGModel } from "./graph-model.js";
 import { docDateFor, subtitleForExport } from "./md-exporter.js";
+
+import type { LineageNode } from "@philosynth/shared/types/lineage";
 
 import type { ExportSynthesis } from "./common.js";
 
@@ -76,7 +110,147 @@ function disclosure(label: string, text: string): string {
   );
 }
 
-function renderDocHeader(s: ExportSynthesis): string {
+/* ══ Генеалогическое древо в шапке (12.2, Д-30) ═══════════════════════ */
+
+/** Узел древа выгрузки: форма GenealogyNode клиента (utils/genealogy). */
+export interface ExportGenealogyNode {
+  type: "philosopher" | "concept";
+  name: string;
+  method?: string | undefined;
+  synthLevel?: string | undefined;
+  generationOrder?: string | undefined;
+  seed?: string | undefined;
+  capsule?: string | undefined;
+  participants?: ExportGenealogyNode[] | undefined;
+}
+
+/** Дерево getAncestors → узлы древа; корню — параметры строки синтеза (как
+ *  rootMeta встроенного genealogy). Капсулу несут только узлы дерева файла. */
+export function lineageTreeToExportGenealogy(
+  node: LineageNode,
+  rootMeta: { name?: string; method?: string; synthLevel?: string; generationOrder?: string; seed?: string } = {},
+): ExportGenealogyNode {
+  const conv = (n: LineageNode): ExportGenealogyNode => {
+    if (n.type === "philosopher") return { type: "philosopher", name: n.name };
+    return {
+      type: "concept",
+      name: n.name,
+      method: n.method,
+      synthLevel: n.synthLevel,
+      generationOrder: n.generationOrder,
+      seed: n.seed,
+      capsule: n.capsule,
+      participants: n.children.map(conv),
+    };
+  };
+  const root = conv(node);
+  if (rootMeta.name) root.name = rootMeta.name;
+  if (rootMeta.method) root.method = rootMeta.method;
+  if (rootMeta.synthLevel) root.synthLevel = rootMeta.synthLevel;
+  if (rootMeta.generationOrder) root.generationOrder = rootMeta.generationOrder;
+  if (rootMeta.seed) root.seed = rootMeta.seed;
+  return root;
+}
+
+/**
+ * renderGenealogyTree [22343–22410] в редакции GenealogyTree 3.2 (тёмная
+ * схема шапки): философ — .gen-phil; концепция — .gen-card (имя ◈,
+ * мета-строка при известных параметрах, зерно: у корня усечённое, у
+ * родителя — <details>, капсула родителя — <details>); дети — <ul><li>,
+ * больше четырёх — .gen-vertical. Ссылок на страницы концепций нет —
+ * файл автономен.
+ */
+export function renderGenealogyTreeHtml(root: ExportGenealogyNode): string {
+  const node = (n: ExportGenealogyNode, isRootNode: boolean): string => {
+    if (n.type === "philosopher")
+      return `<div class="gen-phil"><div class="gen-phil-name">${esc(n.name)}</div></div>`;
+    const hasMeta = !!(n.method || n.synthLevel);
+    const methodLabel = (ML as Record<string, string>)[n.method ?? ""] || n.method || "?";
+    const levelLabel = (SL as Record<string, string>)[n.synthLevel ?? ""] || n.synthLevel || "?";
+    const orderLabel = n.generationOrder === "genetic" ? " · генетич." : " · архитект.";
+    let seedHTML = "";
+    if (n.seed)
+      seedHTML = isRootNode
+        ? `<div class="gen-card-seed">«${esc(n.seed.length > 80 ? n.seed.slice(0, 80) + "…" : n.seed)}»</div>`
+        : `<details class="gen-card-seed-details"><summary>Зерно</summary>` +
+          `<div class="gen-card-seed-details-body">«${esc(n.seed)}»</div></details>`;
+    const capsuleHTML =
+      n.capsule && !isRootNode
+        ? `<details class="gen-card-capsule"><summary>Капсула</summary>` +
+          `<div class="gen-card-capsule-body">${esc(n.capsule)}</div></details>`
+        : "";
+    let html =
+      `<div class="gen-card"><div class="gen-card-name">◈ ${esc(n.name)}</div>` +
+      (hasMeta
+        ? `<div class="gen-card-meta">${esc(methodLabel)} × ${esc(levelLabel)}${orderLabel}</div>`
+        : "") +
+      seedHTML +
+      capsuleHTML +
+      `</div>`;
+    const kids = n.participants ?? [];
+    if (kids.length > 0)
+      html +=
+        `<ul${kids.length > 4 ? ' class="gen-vertical"' : ""}>` +
+        kids.map((child) => `<li>${node(child, false)}</li>`).join("") +
+        `</ul>`;
+    return html;
+  };
+  return `<div class="gen-tree">${node(root, true)}</div>`;
+}
+
+/** Блок шапки «Генеалогическое древо» [22415]: только у мета-синтеза — среди
+ *  родителей есть концепция (у одних философов рекурсии нет — блока нет). */
+export function renderGenealogyDisclosure(root: ExportGenealogyNode | null): string {
+  if (!root) return "";
+  if (!(root.participants ?? []).some((p) => p.type === "concept")) return "";
+  return (
+    `<details class="header-disclosure header-disclosure-genealogy" open>` +
+    `<summary>Генеалогическое древо</summary>` +
+    `<div class="disclosure-body" style="padding: 16px; overflow-x: auto;">` +
+    renderGenealogyTreeHtml(root) +
+    `</div></details>`
+  );
+}
+
+/* ══ Оглавление (12.2, Д-29; зеркало TableOfContents 1.6b / [11620]) ══ */
+
+/** Порог оглавления: меньше двух видимых разделов — не строится
+ *  (исходник: order.length < 2; клиент: visible.length < 2). */
+export const TOC_MIN_SECTIONS = 2;
+
+export interface TocSection {
+  key: string;
+  sectionNum: number;
+  title: string;
+  /** Имена data-section раздела в порядке документа */
+  subsections: readonly string[];
+}
+
+/** <details open id="docTOC"> со ссылками на разделы и подразделы; "" — ниже
+ *  порога. Ключ capsule вызывающий не передаёт (капсула живёт в шапке). */
+export function renderDocTOC(tocSections: readonly TocSection[]): string {
+  if (tocSections.length < TOC_MIN_SECTIONS) return "";
+  const lines: string[] = [];
+  lines.push('<details open id="docTOC" class="doc-body">');
+  lines.push('<summary><span class="toc-arrow">▶</span> Содержание</summary>');
+  lines.push('<div class="toc-body">');
+  for (const sec of tocSections) {
+    const label = (KEY_LABELS as Record<string, string>)[sec.key] ?? sec.title ?? sec.key;
+    lines.push(
+      `<div><p class="toc-section-link"><a href="#sec-${esc(sec.key)}">§ ${sec.sectionNum} — ${esc(label)}</a></p>`,
+    );
+    for (const subName of sec.subsections)
+      lines.push(
+        `<p class="toc-sub-link"><a href="#${esc(subsectionAnchorId(sec.key, subName))}">${esc(subName)}</a></p>`,
+      );
+    lines.push("</div>");
+  }
+  lines.push("</div>");
+  lines.push("</details>");
+  return lines.join("\n");
+}
+
+function renderDocHeader(s: ExportSynthesis, genealogyRoot: ExportGenealogyNode | null): string {
   const row = s.row;
   // Текст капсулы — как extractCapsuleText клиента: текстовое содержимое
   // capsuleHtml (серверный DOM — только через html-parser)
@@ -93,6 +267,9 @@ function renderDocHeader(s: ExportSynthesis): string {
       `<details class="header-disclosure-capsule" open><summary>◈ Капсула концепции</summary>` +
         `<div class="disclosure-body">${esc(capsuleText)}</div></details>`,
     );
+  // Древо — последним блоком шапки, как container.appendChild исходника [22443]
+  const genealogyBlock = renderGenealogyDisclosure(genealogyRoot);
+  if (genealogyBlock) extras.push(genealogyBlock);
 
   const metaItem = (key: string, val: string, gold = false): string =>
     `<div class="doc-meta-item"><span class="doc-meta-key">${key}</span>` +
@@ -340,7 +517,7 @@ export function buildGraphExportSection(
     return ${JSON.stringify(filenameBase)} + (ext ? "." + ext : "");
   }
 
-  ${EXPORT_GRAPH_FN_BUNDLE}
+  ${applyExportViewerOverrides(EXPORT_GRAPH_FN_BUNDLE)}
 
   // Экспорт в глобальную область для onclick-атрибутов клонированного модала
   window.openGraph   = openGraph;
@@ -403,16 +580,44 @@ export async function exportHTML(
     `<button class="action-btn gold-btn" onclick="openGraph()">▦ Граф категорий</button>` +
     `</div>`;
 
-  let docHTML = renderDocHeader(s);
-  for (const key of orderedKeys) {
+  // Дерево предков — одно на шапку (Д-30) и на встроенное genealogy ниже
+  const ancestors = await getAncestors(synthesisId);
+  const genealogyRoot = lineageTreeToExportGenealogy(ancestors, {
+    name: row.title,
+    method: row.method,
+    synthLevel: row.synthLevel,
+    generationOrder: row.generationOrder,
+    seed: row.seed || "",
+  });
+
+  // Оглавление (Д-29): подразделы — фактические data-section разметки
+  const tocSections: TocSection[] = orderedKeys.map((key) => {
+    const sec = byKey.get(key)!;
+    return {
+      key,
+      sectionNum: sec.sectionNum,
+      title: sec.title,
+      subsections: listSubsectionNames(sec.htmlContent),
+    };
+  });
+  const tocHTML = renderDocTOC(tocSections);
+
+  let docHTML = renderDocHeader(s, genealogyRoot) + tocHTML;
+  for (const toc of tocSections) {
+    const key = toc.key;
     const sec = byKey.get(key)!;
     // Кнопки графа — в начало раздела графа (адаптация маркера db{N})
     const btns = hasGraph && key === "graph" ? graphBtnHTML : "";
+    // Якоря подразделов и ⏫ — только при оглавлении; без него следы прежнего
+    // оглавления (документ из одностраничника) снимаются: вести им некуда
+    const bodyHTML = tocHTML
+      ? addTocAnchors(sec.htmlContent, key, toc.subsections)
+      : stripTocTraces(sec.htmlContent).html;
     docHTML +=
       `<div class="doc-body">` +
       btns +
       `<a id="sec-${esc(key)}"></a>` +
-      sec.htmlContent +
+      bodyHTML +
       `</div>`;
   }
   // Футер — зеркало DocumentFooter (1.6b), утраченное 4.2 и восстановленное
@@ -513,7 +718,7 @@ export async function exportHTML(
   // родителей с именами «[безымянная концепция]» — глубина терялась при
   // каждом roundtrip экспорт → импорт.
   const genealogy = lineageTreeToFileGenealogy(
-    await getAncestors(synthesisId),
+    ancestors,
     { method: row.method, synthLevel: row.synthLevel, seed: row.seed || "" },
   );
   genealogy.name = row.title;

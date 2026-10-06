@@ -430,13 +430,13 @@ export function buildGraph3D(
     if (len < 0.001) return;
     const dir = ev.divideScalar(len);
     if (pointsToTi) {
-      const r = 1.5 + (t.cen || 0.5) * 3;
+      const r = 1.5 + (t.cen ?? 0.5) * 3;
       mesh.position.copy(
         new THREE.Vector3(t.x, t.y, t.z).sub(dir.clone().multiplyScalar(r + 1.5)),
       );
       mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     } else {
-      const r = 1.5 + (s.cen || 0.5) * 3;
+      const r = 1.5 + (s.cen ?? 0.5) * 3;
       const d2 = dir.clone().negate();
       mesh.position.copy(
         new THREE.Vector3(s.x, s.y, s.z).sub(d2.clone().multiplyScalar(r + 1.5)),
@@ -454,10 +454,10 @@ export function buildGraph3D(
     // A1: цвет и пунктир по типу
     const { color: colHex, dash } = edgeTypeStyle(e.type);
     const col = parseInt(colHex.replace("#", ""), 16);
-    const op = 0.3 + (e.str || 0.5) * 0.5;
+    const op = 0.3 + (e.str ?? 0.5) * 0.5;
 
     if (refl) {
-      const nodeR = 1.5 + (s.cen || 0.5) * 1.5;
+      const nodeR = 1.5 + (s.cen ?? 0.5) * 1.5;
       const loopR = nodeR * 1.8;
       const tubeR = Math.max(0.2, nodeR * 0.1);
       const SEGS = 48;
@@ -535,7 +535,7 @@ export function buildGraph3D(
 
       // Конус к ti
       const dir = new THREE.Vector3(t.x - s.x, t.y - s.y, t.z - s.z).normalize();
-      const tr = 1.5 + (ns[e.ti]!.cen || 0.5) * 3;
+      const tr = 1.5 + (ns[e.ti]!.cen ?? 0.5) * 3;
       const ap = new THREE.Vector3(t.x, t.y, t.z).sub(
         dir.clone().multiplyScalar(tr + 1.5),
       );
@@ -557,7 +557,7 @@ export function buildGraph3D(
 
       if (bi) {
         const d2 = dir.clone().negate();
-        const sr = 1.5 + (ns[e.si]!.cen || 0.5) * 3;
+        const sr = 1.5 + (ns[e.si]!.cen ?? 0.5) * 3;
         const ap2 = new THREE.Vector3(s.x, s.y, s.z).sub(
           d2.clone().multiplyScalar(sr + 1.5),
         );
@@ -662,7 +662,7 @@ export function buildGraph3D(
     scene.children.forEach((c) => {
       if (c.userData?.labelFor != null) {
         const n = ns[c.userData.labelFor as number]!;
-        const r = 1.5 + (n.cen || 0.5) * 3;
+        const r = 1.5 + (n.cen ?? 0.5) * 3;
         c.position.set(n.x, n.y + r + 2.5, n.z);
       }
     });
@@ -677,7 +677,7 @@ export function buildGraph3D(
     // Рефлексивные петли
     for (const { mesh, si } of reflMeshes) {
       const n = ns[si]!;
-      const nodeR = 1.5 + (n.cen || 0.5) * 1.5;
+      const nodeR = 1.5 + (n.cen ?? 0.5) * 1.5;
       const loopR = nodeR * 1.8;
       mesh.position.set(n.x, n.y + nodeR + loopR, n.z);
     }
@@ -689,7 +689,7 @@ export function buildGraph3D(
     for (const { mesh, si, ti } of edgeHitMeshes) {
       if (si === ti) {
         const n = ns[si]!;
-        const nodeR = 1.5 + (n.cen || 0.5) * 1.5;
+        const nodeR = 1.5 + (n.cen ?? 0.5) * 1.5;
         const loopR = nodeR * 1.8;
         mesh.position.set(n.x, n.y + nodeR + loopR, n.z);
       } else {
