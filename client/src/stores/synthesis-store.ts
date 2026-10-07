@@ -76,6 +76,7 @@ export function summariesFromSections(
   updatedAt: string,
 ): SectionSummary[] {
   return list.map((s) => ({
+    id: s.id,
     key: s.key,
     sectionNum: s.sectionNum,
     title: s.title,

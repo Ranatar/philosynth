@@ -474,7 +474,9 @@ POST   /syntheses/estimate     тело = телу POST /syntheses (беседа
                                 // значение — DEFAULT_CONTEXT_BUDGET оценщика).
                                 // Множитель critique и сжатие под родительским
                                 // контекстом в него не входят. Клиентская копия
-                                // CONTEXT_BUDGET_PREVIEW уходит в 12.4.
+                                // CONTEXT_BUDGET_PREVIEW снята 12.4 (Д-19):
+                                // FullBudgetPreview читает contextBudget
+                                // (estimateSynthesisFull), до ответа числа нет.
                                 // Оценка БЕЗ создания записей: сервер зеркалит
                                 // конвейер генерации (resolveContextDeps →
                                 // buildEffectiveDeps → buildDynamicOrder →
@@ -846,6 +848,10 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
 **SectionSummary** (элемент списка GET /syntheses/:id/sections):
 ```typescript
 {
+  id: string;                     // 12.4 (Д-14, решение пользователя): id строки sections —
+                                  // elementId версий раздела (GET …/elements/section/:id/
+                                  // versions, откат). У 'capsule' без строки (импорт 4.3)
+                                  // версии живут на id синтеза (12.1)
   key: string;
   sectionNum: number;
   title: string;
@@ -868,6 +874,7 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
 **SectionFull:**
 ```typescript
 {
+  id: string;                     // 12.4 (Д-14): id строки sections — см. SectionSummary
   key: string;
   sectionNum: number;
   title: string;
@@ -1024,7 +1031,10 @@ POST   /syntheses/:id/elements/:elementType/:elementId/rollback
                                     capsuleUpdated: boolean, capsuleHtml?: string }
                                 // 12.1 (Д-14): откат версии КАПСУЛЫ возвращает и
                                 // syntheses.capsule_html (capsuleUpdated = true,
-                                // capsuleHtml — новое значение). Версия капсулы
+                                // capsuleHtml — новое значение). Клиент 12.4:
+                                // вход в историю раздела — SectionHistory (в
+                                // документе, на карточке EditModal, у капсулы);
+                                // capsuleHtml ответа → applySynthesis. Версия капсулы
                                 // импортированной концепции живёт на elementId =
                                 // id синтеза (строки sections 'capsule' нет) —
                                 // откатывается так же. Откат тезиса сохраняет label

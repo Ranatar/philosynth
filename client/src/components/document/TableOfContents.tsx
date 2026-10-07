@@ -15,6 +15,13 @@
  * из HTML, транспорт 1.6), а не из buildSubsectionMap: серверная
  * карта тянет Registry+params, а якорям нужны фактические имена.
  * Кнопки ⏫ и id подразделов внутри HTML расставляет SectionView.
+ *
+ * Беседа 12.4 (Д-15): у изменённого раздела (SectionSummary.isEdited —
+ * перегенерация 2.2, врезка таблицы 5.1, ручная правка 9.2) строка
+ * оглавления несёт пометку «⟳» — та же, что на карточке EditModal 2.3.
+ * Нужна прежде всего «Резюме»: карточки sum в EditModal нет (паритет
+ * исходника), и пометка там была невидима. У самого раздела в документе
+ * пометку ставит SectionView (.section-edited-mark).
  */
 import type { SectionSummary } from "@philosynth/shared/types/section";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
@@ -60,6 +67,15 @@ export function TableOfContents({
             <div key={key}>
               <p className="toc-section-link">
                 <a href={`#sec-${key}`}>
+                  {summary.isEdited && (
+                    <span
+                      className="section-edited-mark"
+                      title={tl("document.tableOfContents.editedHint", "Раздел изменён после генерации")}
+                      data-testid={`toc-edited-${key}`}
+                    >
+                      ⟳{" "}
+                    </span>
+                  )}
                   § {summary.sectionNum} — {label}
                 </a>
               </p>

@@ -3,7 +3,8 @@
  *   - секция «Профиль»: email (read-only), displayName → PATCH /auth/me;
  *   - секция «Смена пароля»: POST /auth/password-change (беседа 0.5);
  *   - секция «Удаление аккаунта» (7.1): DELETE /auth/me { password } —
- *     confirm + пароль; после успеха store анонимен, RequireAuth уводит на
+ *     пароль + второй шаг кнопок «Точно удалить?» (12.4, Д-17; прежде —
+ *     window.confirm); после успеха store анонимен, RequireAuth уводит на
  *     /login;
  *     повтор нового пароля проверяется на клиенте; 401 сервера →
  *     «Неверный текущий пароль» (auth-store), details — по полям;
@@ -21,6 +22,7 @@ import { useState } from "react";
 import { LanguageSwitch } from "../components/layout/LanguageSwitch";
 import { useLocale, useT } from "../i18n/useT";
 import { useAuthStore } from "../stores/auth-store";
+import { useSecondStep } from "../hooks/useSecondStep";
 import { LANG_OPTIONS, genLangForUi } from "@philosynth/shared/i18n/locales";
 
 /** Ошибки по полям формы (ключ = имя поля; ключ "_" — общая) */
@@ -82,23 +84,31 @@ export function ProfilePage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletePending, setDeletePending] = useState(false);
 
-  async function handleDeleteSubmit(e: React.FormEvent) {
+  // 12.4 (Д-17): удаление аккаунта необратимо — подтверждение ВТОРЫМ ШАГОМ
+  // кнопок (правило 8.4), не window.confirm: сабмит формы взводит кнопку,
+  // «Точно удалить?» шлёт DELETE, «Отмена» и клик мимо формы возвращают
+  const deleteStep = useSecondStep(deletePending);
+  function handleDeleteSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (deletePending) return;
     if (!deletePassword) {
       setDeleteError(tl("profilePage.enterPasswordToConfirm", "Введите пароль для подтверждения"));
       return;
     }
-    if (
-      !window.confirm(
-        tl("profilePage.confirmDeleteLead", "Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, ") +
-          tl("profilePage.confirmDeleteTail", "подписка отменена. История платежей сохраняется обезличенной."),
-      )
-    )
+    if (deleteStep.armed === null) {
+      setDeleteError(null);
+      deleteStep.arm(true);
       return;
+    }
+    void confirmDelete();
+  }
+  async function confirmDelete() {
+    if (deletePending || !deletePassword) return;
     setDeletePending(true);
     setDeleteError(null);
     const result = await deleteAccount(deletePassword);
     setDeletePending(false);
+    deleteStep.disarm();
     if (!result.ok) setDeleteError(result.error);
   }
 
@@ -283,7 +293,14 @@ export function ProfilePage() {
       </form>
 
       {/* ── Удаление аккаунта (7.1) ── */}
-      <form onSubmit={handleDeleteSubmit} className="input-form" data-testid="delete-account-form">
+      <form
+        onSubmit={handleDeleteSubmit}
+        className="input-form"
+        data-testid="delete-account-form"
+        ref={(el) => {
+          deleteStep.ref.current = el;
+        }}
+      >
         <div className="form-section-title">{tl("profilePage.deleteAccountTitle", "Удаление аккаунта")}</div>
         <div className="form-sublabel">
           {tl("profilePage.deleteAccountNote", "Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история платежей и использования остаётся обезличенной. Действие необратимо.")}
@@ -304,15 +321,37 @@ export function ProfilePage() {
             {deleteError}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={deletePending}
-          className="action-btn"
-          style={{ alignSelf: "flex-start", marginTop: 4, color: "var(--red)", borderColor: "var(--red)" }}
-          data-testid="delete-account-btn"
-        >
-          {deletePending ? tl("profilePage.deleting", "Удаление…") : tl("profilePage.deleteAccount", "✕ Удалить аккаунт")}
-        </button>
+        {deleteStep.armed !== null && (
+          <div className="transform-warn" data-testid="delete-account-warn">
+            {tl("profilePage.confirmDeleteLead", "Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, ") +
+              tl("profilePage.confirmDeleteTail", "подписка отменена. История платежей сохраняется обезличенной.")}
+          </div>
+        )}
+        <div className="actions-bar-btns" style={{ marginTop: 4 }}>
+          <button
+            type="submit"
+            disabled={deletePending}
+            className="action-btn danger"
+            data-testid="delete-account-btn"
+          >
+            {deletePending
+              ? tl("profilePage.deleting", "Удаление…")
+              : deleteStep.armed !== null
+                ? tl("common.confirmDelete", "Точно удалить?")
+                : tl("profilePage.deleteAccount", "✕ Удалить аккаунт")}
+          </button>
+          {deleteStep.armed !== null && (
+            <button
+              type="button"
+              className="action-btn"
+              disabled={deletePending}
+              onClick={deleteStep.disarm}
+              data-testid="delete-account-cancel"
+            >
+              {tl("common.cancel", "Отмена")}
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

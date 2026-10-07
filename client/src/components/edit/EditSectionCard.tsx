@@ -22,15 +22,23 @@
  *  - подразделы для точечной перегенерации: кнопки «⟳ имя» (список —
  *    фактические SectionSummary.subsections вместо buildSubsectionMap
  *    исходника: карта на сервере, а фактические имена уже приходят) —
- *    панель SubsectionRegenPanel открывает родитель.
+ *    панель SubsectionRegenPanel открывает родитель;
+ *  - 12.4 (Д-14): кнопка «◷ История» — история версий раздела
+ *    (SectionHistory по SectionSummary.id) под карточкой; current —
+ *    SectionFull из стора (htmlContent для правой стороны diff) передаёт
+ *    родитель; откат → onSectionRolledBack родителя (перечитка разделов,
+ *    шапка при capsuleUpdated).
  */
 import { useCallback, useState } from "react";
 
-import type { SectionSummary } from "@philosynth/shared/types/section";
+import type { SectionFull, SectionSummary } from "@philosynth/shared/types/section";
 import type { SectionContextPreview } from "@philosynth/shared/types/section";
 
 import { getSectionContext } from "../../api/sections";
+import type { RollbackResponse } from "../../api/elements";
 import { tl } from "@philosynth/shared/i18n/t";
+
+import { SectionHistory } from "./SectionHistory";
 
 export interface EditSectionCardProps {
   synthesisId: string;
@@ -49,6 +57,10 @@ export interface EditSectionCardProps {
   onOpenSubRegen?: ((subsectionName: string) => void) | undefined;
   /** Идёт исполнение плана/перегенерация — чекбоксы заблокированы */
   disabled?: boolean | undefined;
+  /** 12.4 (Д-14): полный раздел (htmlContent) — для истории версий;
+   *  undefined — кнопки истории нет (раздел не загружен) */
+  full?: SectionFull | undefined;
+  onSectionRolledBack?: ((res: RollbackResponse) => void) | undefined;
 }
 
 function badgeColor(score: number): string {
@@ -71,9 +83,12 @@ export function EditSectionCard({
   onToggleExtGraphMetrics,
   onOpenSubRegen,
   disabled,
+  full,
+  onSectionRolledBack,
 }: EditSectionCardProps) {
   const { key, sectionNum, isEdited, contextQualityScore, subsections } =
     summary;
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Превью контекста генерации — лениво по первому открытию disclosure
   const [preview, setPreview] = useState<SectionContextPreview | null>(null);
@@ -219,7 +234,36 @@ export function EditSectionCard({
           />
           {tl("common.delete", "Удалить")}
         </label>
+        {/* 12.4 (Д-14): вход в историю версий раздела */}
+        {full && (
+          <button
+            type="button"
+            className={"edit-sec-btn" + (historyOpen ? " active" : "")}
+            style={{ marginLeft: "auto" }}
+            onClick={() => setHistoryOpen((v) => !v)}
+            data-testid={`edit-card-history-${key}`}
+          >
+            {tl("edit.editSectionCard.history", "◷ История")}
+          </button>
+        )}
       </div>
+      {full && historyOpen && (
+        <div style={{ marginTop: 8 }}>
+          <SectionHistory
+            synthesisId={synthesisId}
+            sectionId={full.id}
+            label={label}
+            current={{
+              title: full.title,
+              htmlContent: full.htmlContent,
+              secContext: full.secContext,
+              isEdited: full.isEdited,
+            }}
+            disabled={disabled}
+            onRolledBack={onSectionRolledBack}
+          />
+        </div>
+      )}
 
       {/* Подразделы для точечной перегенерации (>1 — паритет исходника) */}
       {onOpenSubRegen && subsections.length > 1 && (

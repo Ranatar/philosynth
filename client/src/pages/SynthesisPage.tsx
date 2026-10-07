@@ -66,6 +66,9 @@ import { DocumentView } from "../components/document/DocumentView";
 import { GenealogyTree } from "../components/lineage/GenealogyTree";
 import { EditModal } from "../components/edit/EditModal";
 import { RecommendationsPanel } from "../components/edit/RecommendationsPanel";
+import { SectionHistory } from "../components/edit/SectionHistory";
+import type { RollbackResponse } from "../api/elements";
+import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import { listRecommendations } from "../api/recommendations";
 import { pendingCount } from "../utils/recommendations";
 import {
@@ -92,6 +95,7 @@ import { useSynthesisStore } from "../stores/synthesis-store";
 import { visibilityBadge } from "../utils/visibility-text";
 import { getSubsectionSource, updateSubsection } from "../api/sections";
 import {
+  subsectionEditNotes,
   subsectionErrorText,
   type SubsectionEditState,
   type SubsectionRef,
@@ -106,6 +110,37 @@ import {
 } from "../utils/genealogy";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
+
+/** Метка тезиса, как её показывает документ (рендерер 5.1: label ?? номер) */
+export function thesisLabelOf(t: { label: string | null; thesisNum: number }): string {
+  return (t.label ?? String(t.thesisNum)).trim();
+}
+
+/**
+ * 12.4 (Д-35): тезис по первой ячейке строки сводной таблицы. Точно по
+ * метке (label ?? thesisNum, пробелы/регистр схлопнуты), затем по номеру —
+ * если ячейка число; индекс строки — ТОЛЬКО запасной ход и только когда
+ * метка ячейки ни с одной строкой БД не сошлась (документ без разобранных
+ * меток либо таблица правлена руками).
+ */
+export function findThesisByLabel<T extends { label: string | null; thesisNum: number }>(
+  theses: readonly T[],
+  cell: string,
+  rowIndex: number,
+): T | undefined {
+  const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+  const key = norm(cell);
+  if (key) {
+    const byLabel = theses.find((x) => norm(thesisLabelOf(x)) === key);
+    if (byLabel) return byLabel;
+    const num = Number.parseInt(cell, 10);
+    if (Number.isFinite(num) && String(num) === key) {
+      const byNum = theses.find((x) => x.thesisNum === num);
+      if (byNum) return byNum;
+    }
+  }
+  return theses[rowIndex];
+}
 
 export function SynthesisPage() {
   const { id } = useParams<{ id: string }>();
@@ -125,8 +160,15 @@ export function SynthesisPage() {
   const load = useSynthesisStore((s) => s.load);
   const reloadSections = useSynthesisStore((s) => s.reloadSections);
   const clear = useSynthesisStore((s) => s.clear);
+  // НЕРАЗРУШАЮЩЕЕ обновление синтеза (грабля R3 EditModal 2.3: store.load
+  // переключает loading → спиннер → открытые панели размонтируются) —
+  // точечный applySynthesis; потребители: трансформации 5.5, название и
+  // капсула 12.4 (Д-34)
+  const applySynthesis = useSynthesisStore((s) => s.applySynthesis);
 
   const [pauseModalOpen, setPauseModalOpen] = useState(false);
+  // 12.4 (Д-14): раздел, чья история версий открыта под HTML (см. ниже)
+  const [historyKey, setHistoryKey] = useState<string | null>(null);
   // Беседа 2.4: модалка лога контекста
   const [logOpen, setLogOpen] = useState(false);
   // Беседа 2.3: модалка редактирования. С 5.2 кнопка — только владельцу
@@ -199,13 +241,15 @@ export function SynthesisPage() {
     async (row: EditableRowRef) => {
       if (!id) return;
       setInlineEditError(null);
+      setHistoryKey(null); // 12.4: история и редактор строки — одно место под HTML
       try {
         if (row.kind === "thesis") {
           const theses = await getTheses(id);
-          const num = Number.parseInt(row.cells[0] ?? "", 10);
-          const t =
-            (Number.isFinite(num) ? theses.find((x) => x.thesisNum === num) : undefined) ??
-            theses[row.rowIndex];
+          // 12.4 (Д-35): строка сводной таблицы сопоставляется с тезисом ПО
+          // МЕТКЕ первой ячейки (Thesis.label, 12.1: «О-1», «Э-2»; у тезисов
+          // без метки — номер); запасной ход по индексу строки — только для
+          // документов, где ни у одной строки метка не разобрана
+          const t = findThesisByLabel(theses, row.cells[0] ?? "", row.rowIndex);
           if (!t) throw new Error(tl("synthesisPage.thesisRowNotFound", "Строка тезиса не найдена в данных синтеза"));
           setInlineEdit({
             sectionKey: row.sectionKey,
@@ -288,6 +332,26 @@ export function SynthesisPage() {
     void refreshGraphData();
   }, [reloadSections, refreshGraphData]);
 
+  /* ── Беседа 12.4 (Д-14): история версий РАЗДЕЛА. Кнопка «◷ История» в
+     строке действий раздела (владельцу, не при генерации) открывает
+     SectionHistory под HTML раздела (слот inlineEditorFor, как редактор
+     строки 5.2); та же панель — на карточке EditModal. elementId —
+     SectionFull.id (DTO 12.4). После отката разделы перечитываются; если
+     откатилась версия капсулы (capsuleUpdated, 12.1) — шапка берёт
+     capsuleHtml из ответа без перезагрузки (Д-34). ── */
+  const handleSectionRolledBack = useCallback(
+    (res: RollbackResponse) => {
+      void reloadSections();
+      if (res.capsuleUpdated && typeof res.capsuleHtml === "string") {
+        const cur = useSynthesisStore.getState().synthesis;
+        if (cur) applySynthesis({ ...cur, capsuleHtml: res.capsuleHtml });
+      }
+    },
+    [reloadSections, applySynthesis],
+  );
+  const sectionLabelOf = (key: string): string =>
+    tData((KEY_LABELS as Record<string, string>)[key] ?? key);
+
   /* ── Беседа 9.2: ручная правка подраздела. Карандаш у заголовка →
      исходник с сервера (GET …/subsections/:name: разметка содержимого без
      обёртки и <h4>) → поле на месте подраздела → PATCH { html } →
@@ -302,6 +366,7 @@ export function SynthesisPage() {
       if (!id || subEditBusyRef.current) return;
       subEditBusyRef.current = true;
       setInlineEdit(null);
+      setHistoryKey(null);
       const base: SubsectionEditState = {
         ...ref,
         phase: "loading",
@@ -342,9 +407,16 @@ export function SynthesisPage() {
       try {
         const res = await updateSubsection(id, cur.sectionKey, cur.name, html);
         await reloadSections(); // статус — после перечитки (09 §2, 6.2 п.4)
+        // 12.4 (Д-34): новое название из раздела name — в шапку и всюду, где
+        // стор отдаёт synthesis.title, без перезагрузки; тезисы — заметкой
+        if (res.titleUpdated) {
+          const curSynth = useSynthesisStore.getState().synthesis;
+          if (curSynth) applySynthesis({ ...curSynth, title: res.titleUpdated });
+        }
+        const notes = subsectionEditNotes(res);
         setSubEdit(
-          res.warnings.length
-            ? { ...cur, phase: "saved", draft: html, warnings: res.warnings }
+          res.warnings.length || notes.length
+            ? { ...cur, phase: "saved", draft: html, warnings: res.warnings, notes }
             : null,
         );
       } catch (err) {
@@ -353,7 +425,7 @@ export function SynthesisPage() {
         subEditBusyRef.current = false;
       }
     },
-    [id, subEdit, reloadSections],
+    [id, subEdit, reloadSections, applySynthesis],
   );
   // Фокус в поле, когда исходник приехал (поле — часть строки HTML раздела)
   const subEditReadyKey =
@@ -380,10 +452,7 @@ export function SynthesisPage() {
     setInlineEdit(null);
     setTransformDir(direction);
   }, []);
-  // НЕРАЗРУШАЮЩЕЕ обновление синтеза (грабля R3 EditModal 2.3: store.load
-  // переключает loading → спиннер → TransformPanel размонтируется и теряет
-  // summary) — reloadSections + точечный applySynthesis
-  const applySynthesis = useSynthesisStore((s) => s.applySynthesis);
+  // reloadSections + точечный applySynthesis (см. объявление выше)
   const handleTransformed = useCallback(() => {
     void reloadSections();
     void refreshGraphData();
@@ -583,31 +652,21 @@ export function SynthesisPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumedMode]);
 
+  // 12.4 (Д-2): вопрос о деградации при пропуске раздела задаёт ТОЛЬКО
+  // PauseModal (resumeGenConfirmed, точный список skipDegrades с сервера —
+  // 2.2); прежний второй вопрос страницы общим текстом (адаптация 1.5) снят.
+  // Пустой skipDegrades — пропуск без вопроса.
   const handleResumeGeneration = (
     mode: Parameters<typeof stream.resumeGeneration>[0],
   ) => {
-    if (mode === "skip") {
-      // Адаптация confirm деградации [25686] — как в 1.5 (точный список
-      // затронутых требует deps с сервера, расширение /advice — 2.1/2.2)
-      const label = pausedState?.kind === "gen" ? pausedState.sectionLabel : "?";
-      const ok = window.confirm(
-        tl("synthesisPage.skipDegradeLead", "Пропуск раздела «{label}» может привести к деградации ", { label }) +
-          tl("synthesisPage.skipDegradeMid", "качества следующих разделов, которые от него зависят ") +
-          tl("synthesisPage.skipDegradeTail", "(для части из них нет замены).\n\nВсё равно продолжить?"),
-      );
-      if (!ok) return;
-    }
     setPauseModalOpen(false);
     stream.resumeGeneration(mode);
   };
 
+  // 12.4 (Д-17): подтверждение остановки — второй шаг кнопок в
+  // GenerationProgress («Точно остановить?» + «Отмена», клик мимо
+  // сбрасывает), не window.confirm; сюда приходит уже подтверждённое
   const handleAbort = () => {
-    const ok = window.confirm(
-      tl("synthesisPage.confirmStop", "Остановить текущую генерацию?\n\n") +
-        tl("synthesisPage.partialKeptLead", "Успевший контент будет зафиксирован как финальное состояние ") +
-        tl("synthesisPage.partialKeptTail", "документа (без возможности возобновления)."),
-    );
-    if (!ok) return;
     stream.cancel();
   };
 
@@ -850,26 +909,44 @@ export function SynthesisPage() {
         onSubsectionSave={(html) => void saveSubsectionEdit(html)}
         onSubsectionCancel={cancelSubsectionEdit}
         sectionActionsFor={(key) =>
-          key === RECOMMENDATIONS_SECTION_KEY && isOwner && !live ? (
-            <button
-              type="button"
-              className="action-btn"
-              onClick={() => setRecOpen(true)}
-              title={tl("synthesisPage.recommendationsHint", "Рекомендации критики: что исполнять, решаете вы — поштучно")}
-              data-testid="recommendations-btn"
-            >
-              {tl("synthesisPage.recommendations", "◈ Рекомендации{recCount}", { recCount: recCount !== null ? ` · ${recCount}` : "" })}
-            </button>
-          ) : key === "theses" && isOwner && !live ? (
-            <button
-              type="button"
-              className="action-btn"
-              onClick={() => openTransform("theses_to_graph")}
-              title={tl("synthesisPage.toGraphHint", "Трансформировать тезисы в граф (Representation Transformer)")}
-              data-testid="theses-transform-btn"
-            >
-              {tl("synthesisPage.toGraph", "→ Граф")}
-            </button>
+          isOwner && !live ? (
+            <>
+              {key === RECOMMENDATIONS_SECTION_KEY && (
+                <button
+                  type="button"
+                  className="action-btn"
+                  onClick={() => setRecOpen(true)}
+                  title={tl("synthesisPage.recommendationsHint", "Рекомендации критики: что исполнять, решаете вы — поштучно")}
+                  data-testid="recommendations-btn"
+                >
+                  {tl("synthesisPage.recommendations", "◈ Рекомендации{recCount}", { recCount: recCount !== null ? ` · ${recCount}` : "" })}
+                </button>
+              )}
+              {key === "theses" && (
+                <button
+                  type="button"
+                  className="action-btn"
+                  onClick={() => openTransform("theses_to_graph")}
+                  title={tl("synthesisPage.toGraphHint", "Трансформировать тезисы в граф (Representation Transformer)")}
+                  data-testid="theses-transform-btn"
+                >
+                  {tl("synthesisPage.toGraph", "→ Граф")}
+                </button>
+              )}
+              {/* 12.4 (Д-14): вход в историю версий раздела */}
+              <button
+                type="button"
+                className={"action-btn" + (historyKey === key ? " active" : "")}
+                onClick={() => {
+                  setInlineEdit(null);
+                  setHistoryKey((cur) => (cur === key ? null : key));
+                }}
+                title={tl("synthesisPage.sectionHistoryHint", "Версии раздела до каждой правки и откат")}
+                data-testid={`section-history-btn-${key}`}
+              >
+                {tl("synthesisPage.sectionHistory", "◷ История")}
+              </button>
+            </>
           ) : undefined
         }
         inlineEditorFor={(key) =>
@@ -885,6 +962,27 @@ export function SynthesisPage() {
               onRegenerateAffected={handleRegenerateAffected}
               onClose={() => setInlineEdit(null)}
             />
+          ) : historyKey === key && isOwner && !live ? (
+            (() => {
+              const sec = sections.find((x) => x.key === key);
+              return sec ? (
+                <SectionHistory
+                  key={sec.id}
+                  synthesisId={synthesis.id}
+                  sectionId={sec.id}
+                  label={sectionLabelOf(key)}
+                  current={{
+                    title: sec.title,
+                    htmlContent: sec.htmlContent,
+                    secContext: sec.secContext,
+                    isEdited: sec.isEdited,
+                  }}
+                  disabled={live}
+                  onRolledBack={handleSectionRolledBack}
+                  onClose={() => setHistoryKey(null)}
+                />
+              ) : null;
+            })()
           ) : undefined
         }
         afterHeader={

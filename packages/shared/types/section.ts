@@ -14,6 +14,13 @@ export interface SectionDef {
 
 /** GET /syntheses/:id/sections — элемент списка */
 export interface SectionSummary {
+  /** 12.4 (Д-14): id строки sections — elementId версий раздела
+   *  (GET …/elements/section/:id/versions, откат). У раздела 'capsule' после
+   *  импорта строки нет (4.3): версии капсулы тогда живут на id синтеза
+   *  (12.1) — клиент берёт SynthesisFull.id, если строки 'capsule' в списке
+   *  нет. Единственная правка DTO разделов в 12.4 (решение пользователя
+   *  2026-10-06) */
+  id: string;
   key: string;
   sectionNum: number;
   title: string;
@@ -31,6 +38,8 @@ export interface SectionSummary {
 
 /** GET /syntheses/:id/sections/:key */
 export interface SectionFull {
+  /** 12.4 (Д-14): id строки sections — см. SectionSummary.id */
+  id: string;
   key: string;
   sectionNum: number;
   title: string;

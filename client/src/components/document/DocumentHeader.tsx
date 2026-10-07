@@ -39,6 +39,7 @@
 import { useMemo, useState } from "react";
 
 import { DL, ML, SL } from "@philosynth/shared/constants/labels";
+import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import type { SynthesisFull } from "@philosynth/shared/types/synthesis";
 
 import { ApiError } from "../../api/client";
@@ -47,6 +48,7 @@ import { updateSynthesis } from "../../api/syntheses";
 import { useSynthesisStore } from "../../stores/synthesis-store";
 import { buildCapsuleHtml } from "../../utils/capsule-html";
 import { extractCapsuleText } from "../../utils/concept-file";
+import { SectionHistory } from "../edit/SectionHistory";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
 
@@ -87,6 +89,24 @@ function subtitleDisplay(s: SynthesisFull): string {
   return tData(BASED) + parts.join(" + ");
 }
 
+/** 12.4 (Д-41): мета-синтез — среди участников есть концепция: связь
+ *  synthesis_lineage (parentSyntheses) либо неперекрытый узел дерева
+ *  импортированного файла (fileConceptParents, 02 §2.4) — тот же критерий,
+ *  что у секции «Генеалогическое древо» SynthesisPage */
+export function isMetaSynthesisOf(s: Pick<SynthesisFull, "parentSyntheses" | "fileConceptParents">): boolean {
+  return s.parentSyntheses.length > 0 || (s.fileConceptParents?.length ?? 0) > 0;
+}
+
+/** 12.4 (Д-41): подпись бейджа схемы — по исходнику updateSchemaBadgeInHeader;
+ *  неизвестное значение схемы показывается как есть */
+export function schemaBadgeText(schema: string): string {
+  if (schema === "selective-v1")
+    return tl("document.documentHeader.schemaSelective", "◈ родительский контекст: селективный v1");
+  if (schema === "monolithic")
+    return tl("document.documentHeader.schemaMonolithic", "◈ родительский контекст: монолитный (legacy)");
+  return tl("document.documentHeader.schemaOther", "◈ родительский контекст: {schema}", { schema });
+}
+
 /** Текст ошибки сохранения капсулы (8.4): коды 03 §4.3 + details.html */
 export function capsuleErrorText(err: unknown): string {
   if (!(err instanceof ApiError)) return tl("document.documentHeader.capsuleSaveFailed", "Не удалось сохранить капсулу.");
@@ -112,6 +132,16 @@ function Disclosure({ label, text }: { label: string; text: string }) {
 
 export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
   const applySynthesis = useSynthesisStore((s) => s.applySynthesis);
+  const summaries = useSynthesisStore((s) => s.summaries);
+  const reloadSections = useSynthesisStore((s) => s.reloadSections);
+
+  // 12.4 (Д-14): история версий КАПСУЛЫ — версии 'section' живут на id
+  // строки sections 'capsule' (после генерации 1.4) либо на id синтеза
+  // (после импорта 4.3 строки нет; 12.1). Откат возвращает capsuleHtml
+  // ответом — шапка применяет его без перезагрузки (Д-34).
+  const capsuleSectionId =
+    summaries.find((x) => x.key === "capsule")?.id ?? synthesis.id;
+  const [capsuleHistoryOpen, setCapsuleHistoryOpen] = useState(false);
 
   const capsuleText = useMemo(
     () => extractCapsuleText(synthesis.capsuleHtml),
@@ -196,6 +226,21 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
         )}
       </div>
       <div className="doc-subtitle">{subtitleDisplay(synthesis)}</div>
+      {/* 12.4 (Д-41): бейдж схемы родительского контекста — порт
+          updateSchemaBadgeInHeader (01 §4.13 п.10.3): ТОЛЬКО у мета-синтеза
+          (среди участников есть концепция — связь в БД либо узел дерева
+          файла), значение — SynthesisFull.parentContextSchema. Зеркало в
+          шапке HTML-выгрузки — renderDocHeader (русский текст, сторож 4bc) */}
+      {isMetaSynthesisOf(synthesis) && (
+        <div
+          className="header-schema-badge"
+          data-testid="schema-badge"
+          data-schema={synthesis.parentContextSchema}
+          title={tl("document.documentHeader.schemaBadgeHint", "Как контекст концепций-родителей попадает в промпты разделов")}
+        >
+          {schemaBadgeText(synthesis.parentContextSchema)}
+        </div>
+      )}
 
       {/* buildDocHeaderExtras + updateCapsuleInHeader */}
       <div
@@ -240,7 +285,50 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
                   ✎
                 </button>
               )}
+              {synthesis.isOwner && !capsuleEdit && (
+                <button
+                  type="button"
+                  className={"doc-title-edit-btn" + (capsuleHistoryOpen ? " active" : "")}
+                  title={tl("document.documentHeader.capsuleHistory", "История версий капсулы")}
+                  data-testid="capsule-history"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCapsuleHistoryOpen((v) => !v);
+                  }}
+                >
+                  ◷
+                </button>
+              )}
             </summary>
+            {capsuleHistoryOpen && !capsuleEdit && (
+              <div className="disclosure-body" data-testid="capsule-history-panel">
+                <SectionHistory
+                  synthesisId={synthesis.id}
+                  sectionId={capsuleSectionId}
+                  label={tl("document.documentHeader.capsuleLabel", "Капсула")}
+                  current={{
+                    // Заголовок — как в снимках сервера (строка sections либо
+                    // KEY_LABELS.capsule у капсулы без строки, 5.1/12.1)
+                    title:
+                      summaries.find((x) => x.key === "capsule")?.title ??
+                      (KEY_LABELS as Record<string, string>)["capsule"] ??
+                      "",
+                    htmlContent: synthesis.capsuleHtml,
+                    isEdited: summaries.find((x) => x.key === "capsule")?.isEdited ?? false,
+                  }}
+                  disabled={live}
+                  onClose={() => setCapsuleHistoryOpen(false)}
+                  onRolledBack={(res) => {
+                    if (res.capsuleUpdated && typeof res.capsuleHtml === "string") {
+                      const cur = useSynthesisStore.getState().synthesis ?? synthesis;
+                      applySynthesis({ ...cur, capsuleHtml: res.capsuleHtml });
+                    }
+                    void reloadSections();
+                  }}
+                />
+              </div>
+            )}
             {capsuleEdit ? (
               <div className="disclosure-body inline-edit-form" data-testid="capsule-form">
                 <textarea

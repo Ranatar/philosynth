@@ -34,6 +34,11 @@
  * рядом с адресом, расхождение с разделом адреса выделено.
  *
  * Заслон от повторного нажатия — ref, не состояние (09 §6, 9.1).
+ *
+ * Беседа 12.4 (Д-44): замечание строки (Recommendation.warning — сверка
+ * столбца «Основание» 12.3, Д-21) показывается под рекомендацией тоном
+ * предупреждения (.rec-warning): строка годна, выбирается и ставится в
+ * план; замечание от причины негодности отличается по issues[].level.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -378,6 +383,17 @@ export function RecommendationsPanel({
   const leftoverOf = (r: Recommendation): string | null =>
     leftovers?.declined.find((d) => d.id === r.id)?.reason ?? null;
 
+  /** 12.4 (Д-44): текст замечания строки — только при находках уровня
+   *  'warning' (коды 12.3); у строки, разобранной до миграции 0013 (issues
+   *  пуст), — сохранённый текст колонки warning, если он есть */
+  const rowWarningText = (r: Recommendation): string | null => {
+    const issues = r.issues ?? [];
+    const hasWarning = issues.some((i) => i.level === "warning");
+    if (hasWarning) return r.warning ?? null;
+    if (issues.length === 0 && r.warning) return r.warning;
+    return null;
+  };
+
   /* ── Строка рекомендации ── */
   const renderRow = (r: Recommendation, item: RecommendationItem | null): React.ReactNode => {
     const kind = costKindOf(r);
@@ -417,6 +433,16 @@ export function RecommendationsPanel({
         {declinedReason && (
           <div className="rec-mismatch" data-testid="rec-declined">
             <span className="dep-icon">✗</span> {declinedReason}
+          </div>
+        )}
+        {/* 12.4 (Д-44): замечание сторожа 12.3 (сверка столбца «Основание»,
+            Д-21) — строкой под рекомендацией тоном предупреждения, не отказа:
+            на выбор и постановку в план не влияет. Замечание от причины
+            негодности отличается по issues[].level, не по тексту; фраза
+            (r.warning) приходит уже на языке запроса */}
+        {rowWarningText(r) && (
+          <div className="rec-mismatch rec-warning" data-testid="rec-warning">
+            <span className="dep-icon">⚠</span> {rowWarningText(r)}
           </div>
         )}
         {item && expanded.has(item.key) && (

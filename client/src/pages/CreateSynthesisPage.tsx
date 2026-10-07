@@ -9,16 +9,15 @@
  *
  * Интеграция PauseModal/PauseBadge (TODO(1.5) из 1.4b — закрыт):
  * generation_paused открывает модалку; закрытие оставляет бейдж в шапке
- * прогресса (клик — открыть заново, как _showPauseBadge). Confirm
- * деградации зависимостей при skip [25686] — перед отправкой
- * resume_generation(skip); адаптация: без точного списка затронутых
- * разделов (расчёт требует resolvedDeps/substitution_map с сервера —
- * TODO(2.1): эндпоинт-кандидат — расширение /advice списком
- * затронутых при пропуске), текст обобщён по исходнику.
+ * прогресса (клик — открыть заново, как _showPauseBadge). Вопрос о
+ * деградации зависимостей при skip [25686] задаёт ТОЛЬКО PauseModal
+ * (resumeGenConfirmed с точным списком skipDegrades сервера, 2.2); прежний
+ * второй вопрос страницы общим текстом (адаптация 1.5) снят 12.4 (Д-2).
  *
  * cancel (§3.1): user-abort финализирует частичное по правилам stop БЕЗ
- * паузы — текст confirm скорректирован против исходника [24681], где
- * abort вёл в модалку паузы.
+ * паузы — текст предупреждения скорректирован против исходника [24681],
+ * где abort вёл в модалку паузы; подтверждение — второй шаг кнопок в
+ * GenerationProgress (12.4, Д-17), не window.confirm.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -139,33 +138,16 @@ export function CreateSynthesisPage() {
     }
   };
 
+  // 12.4 (Д-2): без второго вопроса — его задаёт PauseModal по skipDegrades
   const handleResumeGeneration = (
     mode: Parameters<typeof stream.resumeGeneration>[0],
   ) => {
-    if (mode === "skip") {
-      // Адаптация confirm деградации [25686]: без точного списка
-      // затронутых разделов (нужны deps/substitution_map с сервера)
-      const label = stream.pause?.pausedState.kind === "gen"
-        ? stream.pause.pausedState.sectionLabel
-        : "?";
-      const ok = window.confirm(
-        tl("createSynthesisPage.skipDegradeLead", "Пропуск раздела «{label}» может привести к деградации ", { label }) +
-          tl("createSynthesisPage.skipDegradeMid", "качества следующих разделов, которые от него зависят ") +
-          tl("createSynthesisPage.skipDegradeTail", "(для части из них нет замены).\n\nВсё равно продолжить?"),
-      );
-      if (!ok) return; // pausedState цел — модалка остаётся
-    }
     setPauseModalOpen(false);
     stream.resumeGeneration(mode);
   };
 
+  // 12.4 (Д-17): сюда приходит уже подтверждённое вторым шагом кнопок
   const handleAbort = () => {
-    const ok = window.confirm(
-      tl("createSynthesisPage.confirmStop", "Остановить текущую генерацию?\n\n") +
-        tl("createSynthesisPage.partialKeptLead", "Успевший контент будет зафиксирован как финальное состояние ") +
-        tl("createSynthesisPage.partialKeptTail", "документа (без возможности возобновления)."),
-    );
-    if (!ok) return;
     stream.cancel();
   };
 

@@ -19,7 +19,8 @@
  *  - getVersionHistory → GET /elements/:type/:elementId/versions →
  *      { versions } (version DESC);
  *  - rollbackToVersion → POST …/rollback { version } →
- *      { element, version, impact, htmlSync };
+ *      { element, version, impact, htmlSync, capsuleUpdated?, capsuleHtml? }
+ *      (12.1: у версий капсулы; 12.4 — потребитель SectionHistory);
  *  - autoRename → POST /elements/auto-rename { oldName, newName } →
  *      { affectedSections, affectedTheses };
  *  - updateCapsule → PATCH /capsule { html } → { capsuleHtml, version }.
@@ -106,6 +107,10 @@ export interface RollbackResponse extends ElementMutationMeta {
   /** DTO типа элемента (Category | CategoryEdge | Thesis | GlossaryTerm),
    *  для section/dialogue_turn — снимок строки */
   element: unknown;
+  /** 12.1 (Д-14): откат версии КАПСУЛЫ записал и syntheses.capsule_html —
+   *  клиент (12.4) применяет capsuleHtml к шапке без перезагрузки */
+  capsuleUpdated?: boolean | undefined;
+  capsuleHtml?: string | undefined;
 }
 export interface UpdateCapsuleResponse {
   capsuleHtml: string;

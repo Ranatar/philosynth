@@ -6,6 +6,8 @@
  *    клиент подключается по WebSocket — useStreamingGeneration);
  *  - estimateSynthesis → POST /syntheses/estimate (беседа 1.5; серверный
  *    estimateCost по конвейеру 1.1/1.2 — потребитель CostEstimate.tsx);
+ *    estimateSynthesisFull — тот же ответ целиком с contextBudget (12.3/12.4,
+ *    Д-19 — потребитель FullBudgetPreview);
  *  - getSynthesis → GET /syntheses/:id — роут реализован серверной
  *    беседой 1.6 (SynthesisFull с pausedState и pauseEstimates).
  */
@@ -65,13 +67,25 @@ export interface SynthesisEstimate {
   passes: number;
 }
 
+/** Полный ответ POST /syntheses/estimate (12.3, Д-19): оценка + БАЗОВЫЙ
+ *  бюджет контекста активного конфига context_budget для глубины запроса
+ *  (без множителя critique и сжатия под родителями) — его показывает
+ *  превью бюджета формы (12.4), клиентской копии CONTEXT_BUDGET больше нет */
+export interface SynthesisEstimateResponse {
+  estimate: SynthesisEstimate;
+  contextBudget: number;
+}
+
+export function estimateSynthesisFull(
+  input: CreateSynthesisInput,
+): Promise<SynthesisEstimateResponse> {
+  return apiPost<SynthesisEstimateResponse>("/syntheses/estimate", input);
+}
+
 export function estimateSynthesis(
   input: CreateSynthesisInput,
 ): Promise<SynthesisEstimate> {
-  return apiPost<{ estimate: SynthesisEstimate }>(
-    "/syntheses/estimate",
-    input,
-  ).then((r) => r.estimate);
+  return estimateSynthesisFull(input).then((r) => r.estimate);
 }
 
 /* ── POST /syntheses/advice (беседа 1.5): Advisor v2 + Section Dependency

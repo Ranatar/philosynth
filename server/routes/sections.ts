@@ -136,6 +136,7 @@ sectionsRoutes.get("/:id/sections", requireAuth, async (c) => {
   // Беседа 2.4: TODO(2.4) закрыт — качество контекста одной выборкой
   const quality = await getSectionContextQualityMap(res.row.id);
   const list: SectionSummary[] = ordered.map((s) => ({
+    id: s.id, // 12.4 (Д-14): elementId версий раздела
     key: s.key,
     sectionNum: s.sectionNum,
     title: s.title,
@@ -206,6 +207,7 @@ sectionsRoutes.get("/:id/sections/:key", requireAuth, async (c) => {
   }
 
   const section: SectionFull = {
+    id: row.id, // 12.4 (Д-14): elementId версий раздела
     key: row.key,
     sectionNum: row.sectionNum,
     title: row.title,

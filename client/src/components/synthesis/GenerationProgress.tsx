@@ -14,9 +14,17 @@
  * .progress-panel-header (.progress-title + .progress-panel-actions с
  * .progress-pause-badge и .progress-abort-btn) + .progress-steps >
  * .progress-step (.done/.active/.error) с .step-icon.
+ *
+ * Беседа 12.4 (Д-17): остановка без возобновления — необратима (user-abort
+ * финализирует частичное как итог документа, §3.1), поэтому подтверждение —
+ * ВТОРОЙ ШАГ КНОПОК (правило 8.4): «⏹ Остановить» → «Точно остановить?» +
+ * «Отмена» и строка-предупреждение под шапкой; клик мимо панели действий
+ * сбрасывает (useSecondStep). Прежний window.confirm страниц снят; onAbort
+ * зовётся уже подтверждённым.
  */
 import { PauseBadge } from "./PauseModal";
 import type { SectionProgress } from "../../hooks/useStreamingGeneration";
+import { useSecondStep } from "../../hooks/useSecondStep";
 import { tl } from "@philosynth/shared/i18n/t";
 
 const STEP_ICON: Record<SectionProgress["status"], string> = {
@@ -39,6 +47,7 @@ export interface GenerationProgressProps {
   complete: boolean;
   paused: boolean;
   onPauseBadgeClick: () => void;
+  /** Остановка, уже подтверждённая вторым шагом кнопок (12.4, Д-17) */
   onAbort: () => void;
   /** Кнопка «Остановить» видна пока генерация активна */
   showAbort: boolean;
@@ -52,6 +61,8 @@ export function GenerationProgress({
   onAbort,
   showAbort,
 }: GenerationProgressProps) {
+  const abortStep = useSecondStep();
+  const abortArmed = showAbort && abortStep.armed !== null;
   return (
     <div className="progress-panel visible">
       <div className="progress-panel-header">
@@ -60,20 +71,55 @@ export function GenerationProgress({
             ? tl("synthesis.generationProgress.completeTitle", "✓ Синтез Философской Концепции — Завершён")
             : tl("synthesis.generationProgress.inProgressTitle", "⚙ Синтез Философской Концепции — В Процессе")}
         </div>
-        <div className="progress-panel-actions">
+        <div
+          className="progress-panel-actions"
+          ref={(el) => {
+            abortStep.ref.current = el;
+          }}
+          data-testid="progress-actions"
+        >
           <PauseBadge visible={paused} onClick={onPauseBadgeClick} />
-          {showAbort && (
+          {showAbort && !abortArmed && (
             <button
               type="button"
-              onClick={onAbort}
+              onClick={() => abortStep.arm(true)}
               title={tl("synthesis.generationProgress.stopHint", "Остановить текущую генерацию")}
               className="progress-abort-btn visible"
+              data-testid="abort-btn"
             >
               {tl("synthesis.generationProgress.stop", "⏹ Остановить")}
             </button>
           )}
+          {abortArmed && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  abortStep.disarm();
+                  onAbort();
+                }}
+                className="progress-abort-btn visible"
+                data-testid="abort-confirm"
+              >
+                {tl("synthesis.generationProgress.stopConfirm", "Точно остановить?")}
+              </button>
+              <button
+                type="button"
+                onClick={abortStep.disarm}
+                className="progress-abort-btn visible progress-abort-cancel"
+                data-testid="abort-cancel"
+              >
+                {tl("common.cancel", "Отмена")}
+              </button>
+            </>
+          )}
         </div>
       </div>
+      {abortArmed && (
+        <div className="transform-warn progress-abort-warn" data-testid="abort-warn">
+          {tl("synthesis.generationProgress.stopWarn", "Успевший контент будет зафиксирован как финальное состояние документа — без возможности возобновления.")}
+        </div>
+      )}
 
       <div className="progress-steps">
         {sections.map((s) => (

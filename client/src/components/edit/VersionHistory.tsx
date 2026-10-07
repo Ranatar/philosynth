@@ -18,6 +18,15 @@
  * 5.1); после успеха хозяин перечитывает элемент и разделы (impact +
  * htmlSync приходят как у PATCH — ElementEditor показывает их тем же
  * блоком).
+ *
+ * Беседа 12.4 (Д-14): та же панель — у версий РАЗДЕЛА (elementType
+ * 'section': снимок строки sections ДО правки — ручная правка подраздела
+ * 9.2, правка капсулы 5.1, ретрофит 10.1, автозамена). Хозяин —
+ * SectionHistory (в документе и на карточке EditModal). Снимок раздела
+ * несёт htmlContent целиком — в diff он сравнивается ТЕКСТОМ (теги сняты,
+ * пробелы схлопнуты): побайтовый diff разметки человеку не читается;
+ * служебные key/sectionNum не показываются. Ответ отката у капсулы несёт
+ * capsuleUpdated/capsuleHtml (12.1) — применяет хозяин.
  */
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -55,6 +64,10 @@ const HIDDEN_FIELDS = new Set([
   "position",
   "typeCatalogId",
   "type_catalog_id",
+  // 12.4: снимок строки sections — ключ и номер раздела не меняются правкой
+  "key",
+  "sectionNum",
+  "section_num",
 ]);
 
 const FIELD_LABELS = (): Record<string, string> => ({
@@ -77,7 +90,16 @@ const FIELD_LABELS = (): Record<string, string> => ({
   direction: tl("common.direction", "Направление"),
   strength: tl("edit.versionHistory.strength", "Сила"),
   htmlContent: tl("edit.versionHistory.sectionHtml", "HTML раздела"),
+  // 12.4 (Д-14): остальные поля снимка раздела
+  title: tl("edit.versionHistory.sectionTitle", "Заголовок раздела"),
+  secContext: tl("edit.versionHistory.sectionContext", "Контекст раздела"),
+  isEdited: tl("edit.versionHistory.sectionEdited", "Пометка «изменён»"),
 });
+
+/** 12.4: разметка раздела в diff — текстом (теги сняты, пробелы схлопнуты) */
+function htmlAsText(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
@@ -127,8 +149,8 @@ export function diffSnapshots(
   const out: DiffLine[] = [];
   let same = 0;
   for (const k of keys) {
-    const a = scalar(older[k]);
-    const b = scalar(newer[k]);
+    const a = k === "htmlContent" ? htmlAsText(scalar(older[k])) : scalar(older[k]);
+    const b = k === "htmlContent" ? htmlAsText(scalar(newer[k])) : scalar(newer[k]);
     const label = FIELD_LABELS()[k] ?? k;
     if (a === b) {
       same++;

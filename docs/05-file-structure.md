@@ -512,6 +512,8 @@ philosynth-service/
 │   │   │
 │   │   ├── hooks/
 │   │   │   ├── useWebSocket.ts         # WebSocket с reconnect, типизированные сообщения
+│   │   │   ├── useSecondStep.ts        # 12.4 (Д-17): второй шаг кнопок на необратимом — взвод,
+│   │   │   │                           # «Точно …?» + «Отмена», сброс по mousedown мимо контейнера
 │   │   │   ├── useStreamingGeneration.ts  # Подписка на стриминг генерации
 │   │   │   ├── useEnrichmentStream.ts  # Канал обогащений/обоснований: свой WS,
 │   │   │   │                           # REST-запуск, enrichment_delta/done (5.4)
@@ -608,7 +610,11 @@ philosynth-service/
 │   │   │   │   ├── CategoryEditor.tsx      # Поля категории + предпросмотр строки (5.2)
 │   │   │   │   ├── ThesisEditor.tsx        # Поля тезиса (5.2)
 │   │   │   │   ├── GlossaryTermEditor.tsx  # Термин + столбцы по synth_level (5.2)
-│   │   │   │   ├── VersionHistory.tsx      # Версии элемента, diff, откат (5.2)
+│   │   │   │   ├── VersionHistory.tsx      # Версии элемента, diff, откат (5.2); 12.4: снимки раздела —
+│   │   │   │   │                           # htmlContent в diff текстом, key/sectionNum спрятаны
+│   │   │   │   ├── SectionHistory.tsx      # 12.4 (Д-14): вход в историю версий РАЗДЕЛА (elementType
+│   │   │   │   │                           # 'section', elementId = SectionSummary.id; капсула без строки —
+│   │   │   │   │                           # id синтеза) — в документе, на карточке EditModal, у капсулы
 │   │   │   │   ├── TransformHistory.tsx    # История трансформаций + откат (5.5)
 │   │   │   │   ├── EdgeEditor.tsx          # Поля связи: тип (TaxonomySelector), направление,
 │   │   │   │   │                           # шесть слайдеров; kind='edge' ElementEditor (5.4)
@@ -824,6 +830,10 @@ philosynth-service/
     │                                   # test-123-requests2-5 — 12.3: сервер :3123 + мок Claude :3924 + мок
     │                                   # Stripe :3925, только HTTP и WS (R2–R8; часть L — файл концепции,
     │                                   # T123_FILE по желанию); только через tsx
+    │                                   # smoke-124-request1 — 12.4: чистые функции клиента (тезис по метке,
+    │                                   # заметки правки, бейдж схемы клиент ≡ выгрузка, diff снимка раздела,
+    │                                   # /estimate одной точкой, второй шаг кнопок, текстовые контракты);
+    │                                   # без БД и браузера, только через tsx
     │                                   # smoke-114-request1 — чистые функции 11.4: карта DATA_KEYS ≡ таблице,
     │                                   # tData/tDataLoose на каталогах en/de, константы русские, цикл
     │                                   # переводчика export → import на копии таблицы (draft снимает только

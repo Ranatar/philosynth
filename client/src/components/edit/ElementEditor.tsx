@@ -136,6 +136,10 @@ const KIND_TITLE = (): Record<EditableKind, string> => ({
 
 const HTML_SYNC_FIELD_LABELS = (): Record<string, string> => ({
   justification: tl("edit.elementEditor.thesisJustification", "обоснование тезиса"),
+  // 12.4 (Д-42): вторая раскладка абзаца тезиса (12.2, Д-36) — сервер
+  // отражает точечной правкой и формулировку (htmlSync.patched =
+  // ["thesis.formulation"]); без подписи в блоке стоял сырой ключ
+  formulation: tl("edit.elementEditor.thesisFormulation", "формулировка тезиса"),
   termCategory: tl("edit.elementEditor.termCategory", "категория термина"),
   origin: tl("edit.elementEditor.originLower", "происхождение"),
   definition: tl("common.definitionLower", "определение"),
@@ -457,7 +461,8 @@ export function ElementEditor({
         <div className="element-editor-head">
           <span className="form-section-title element-editor-title">
             {title}
-            {target.kind === "thesis" ? ` №${target.element.thesisNum}` : ""}
+            {/* 12.4 (Д-35): метка тезиса, как в документе (label ?? номер) */}
+            {target.kind === "thesis" ? ` ${target.element.label ?? `№${target.element.thesisNum}`}` : ""}
           </span>
           {onClose && (
             <button

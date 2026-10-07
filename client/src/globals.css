@@ -5998,6 +5998,143 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 12.4 — долги интерфейса ═══════════════════════════════════
+ * Семь мелких элементов; все — из идиомы кита (микро-подписи моно
+ * капителью с разрядкой, рамки --rule, цвета только из :root, прямые углы,
+ * без теней). Почему в исходнике нет:
+ * (1) .gm-hint (Д-22) — подсказка управления графом стоит в разметке
+ *     исходника [4254] БЕЗ правила: внутри .gm-body (overflow: hidden)
+ *     после холста на всю высоту она не видна. Здесь — микро-подпись в
+ *     тёмном контексте графовой модалки (как .gm-legend-hint), поверх
+ *     холста снизу по центру, события мыши не перехватывает; на узких
+ *     экранах скрыта — там нет ни мыши, ни колёсика;
+ * (2) .section-edited-mark (Д-15) — пометка «⟳ изменён» у раздела в
+ *     документе и в оглавлении; в исходнике пометка была только на
+ *     карточках EditModal, где нет «Резюме». Золотая капитель, как
+ *     бейдж;
+ * (3) .header-schema-badge (Д-41) — бейдж схемы родительского контекста;
+ *     в исходнике он стилизован inline (updateSchemaBadgeInHeader), правила
+ *     в <style> нет; здесь — в идиоме .cert-badge (приглушённая капитель
+ *     с рамкой). В HTML-выгрузке стиль остаётся inline — CSS файла
+ *     байтово равен <style> исходника;
+ * (4) .rec-warning (Д-44) — замечание строки рекомендаций: на
+ *     .rec-mismatch 10.3, но цветом --ink-mid, а не золотом — замечание
+ *     не меняет судьбу строки и не должно спорить с пометками выбора;
+ * (5) .progress-abort-* (Д-17) — второй шаг остановки в панели прогресса
+ *     исходника: «Отмена» нейтральна (рамка --rule-strong), предупреждение
+ *     — .transform-warn 5.5 под шапкой панели;
+ * (6) .section-history (Д-14) — панель истории версий раздела под HTML
+ *     раздела, на .inline-edit-form 5.2 (как редактор строки) с заметкой
+ *     о том, что откатывается;
+ * (7) .subsection-edit-notes (Д-34) — заметки о следствиях правки
+ *     подраздела (название, тезисы) рядом со списком снятой разметки 9.2.
+ * Новых hex нет. Правила — в @layer components, составные селекторы там,
+ * где спорят с правилами исходника (как в 11.3).
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* — (1) Подсказка управления графом (Д-22) — */
+  .gm-body .gm-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* — (2) Пометка «изменён» (Д-15) — */
+  .section-edited-mark {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    white-space: nowrap;
+  }
+
+  .section-actions .section-edited-mark {
+    margin-right: auto;
+    align-self: center;
+  }
+
+  .toc-section-link .section-edited-mark {
+    font-size: inherit;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* — (3) Бейдж схемы родительского контекста (Д-41) — */
+  .header-schema-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 8px;
+    border: 1px solid var(--rule-strong);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    cursor: help;
+  }
+
+  /* — (4) Замечание строки рекомендаций (Д-44) — */
+  .rec-mismatch.rec-warning {
+    color: var(--ink-mid);
+  }
+
+  /* — (5) Второй шаг остановки генерации (Д-17) — */
+  .progress-abort-btn.progress-abort-cancel {
+    border-color: var(--rule-strong);
+    color: var(--ink-mid);
+  }
+
+  .progress-abort-btn.progress-abort-cancel:hover {
+    background: var(--off);
+    color: var(--ink);
+  }
+
+  .progress-panel .progress-abort-warn {
+    margin: 8px 0 4px;
+  }
+
+  /* — (6) История версий раздела (Д-14) — */
+  .section-history .section-history-note {
+    margin: 0 0 10px;
+    line-height: 1.55;
+  }
+
+  .doc-title-edit-btn.active {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* — (7) Заметки о следствиях правки подраздела (Д-34) — */
+  .subsection-edit-notes {
+    margin: 4px 0 6px 18px;
+    font-size: 12px;
+    color: var(--ink);
+  }
+}
+
+@media (max-width: 600px) {
+  .gm-body .gm-hint {
+    display: none;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;

@@ -280,6 +280,7 @@ function renderDocHeader(s: ExportSynthesis, genealogyRoot: ExportGenealogyNode 
     `<div class="doc-type">PhiloSynth Pro™ · Синтез Философской Концепции</div>` +
     `<div class="doc-title">${esc(row.title)}</div>` +
     `<div class="doc-subtitle">${esc(subtitleForExport(s))}</div>` +
+    renderSchemaBadge(row.parentContextSchema, genealogyRoot) +
     (extras.length
       ? `<div style="margin-top:14px;display:flex;flex-direction:column;gap:6px">${extras.join("")}</div>`
       : "") +
@@ -290,6 +291,32 @@ function renderDocHeader(s: ExportSynthesis, genealogyRoot: ExportGenealogyNode 
     metaItem("Глубина", (DL as Record<string, string>)[row.depth] ?? row.depth, true) +
     metaItem("Уровень синтеза", (SL as Record<string, string>)[row.synthLevel] ?? row.synthLevel, true) +
     `</div></div>`
+  );
+}
+
+/** 12.4 (Д-41): бейдж схемы родительского контекста — зеркало
+ *  updateSchemaBadgeInHeader исходника [10421] и DocumentHeader клиента
+ *  (schemaBadgeText; русский текст — сторож 4bc сверяет оба). Только у
+ *  мета-синтеза — среди участников дерева есть концепция (тот же критерий,
+ *  что у блока «Генеалогическое древо», renderGenealogyDisclosure).
+ *  Правила класса в CSS исходника нет (бейдж там стилизован inline) —
+ *  стиль тот же inline, как в исходнике: CSS выгрузки — байтовая копия
+ *  блока <style> (css-parity раздел D). Значение — колонка
+ *  syntheses.parent_context_schema (встроенное состояние по-прежнему пишет
+ *  константу PARENT_CONTEXT_SCHEMA_ID — импорт бейдж не читает). */
+export function schemaBadgeTextRu(schema: string): string {
+  if (schema === "selective-v1") return "◈ родительский контекст: селективный v1";
+  if (schema === "monolithic") return "◈ родительский контекст: монолитный (legacy)";
+  return `◈ родительский контекст: ${schema}`;
+}
+
+export function renderSchemaBadge(schema: string, genealogyRoot: ExportGenealogyNode | null): string {
+  if (!genealogyRoot || !(genealogyRoot.participants ?? []).some((p) => p.type === "concept")) return "";
+  return (
+    `<span class="header-schema-badge" style="display:inline-block; margin:4px 8px; padding:2px 8px; ` +
+    `font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-dim, #8a8278); ` +
+    `border:1px solid var(--ink-line, #d8d4cc); border-radius:2px; background:rgba(0,0,0,0.02);">` +
+    `${esc(schemaBadgeTextRu(schema))}</span>`
   );
 }
 

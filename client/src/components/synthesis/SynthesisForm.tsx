@@ -65,7 +65,7 @@ import type { ParticipantInput } from "@philosynth/shared/types/lineage";
 
 import type { CreateSynthesisInput } from "../../api/syntheses";
 import {
-  estimateSynthesis,
+  estimateSynthesisFull,
   fetchSynthesisAdvice,
   type SynthesisAdvice,
   type SynthesisEstimate,
@@ -99,16 +99,11 @@ import { tl } from "@philosynth/shared/i18n/t";
 import { useLocale, useT } from "../../i18n/useT";
 import { useAuthStore } from "../../stores/auth-store";
 
-/** Клиентская копия CONTEXT_BUDGET [7529] — ТОЛЬКО для превью бюджета.
- *  Канон живёт в Registry (config context_budget) и применяется сервером;
- *  дрейф-риск задокументирован (план 1.5b, п. 6). Точная разница оценок
- *  full vs shrink требует серверной поддержки концепций — TODO(3.1). */
-const CONTEXT_BUDGET_PREVIEW: Readonly<Record<string, number>> = {
-  overview: 24000,
-  standard: 48000,
-  deep: 72000,
-  exhaustive: 100000,
-};
+/* 12.4 (Д-19): клиентской копии CONTEXT_BUDGET [7529] больше нет — она
+   расходилась с сервером, как только админ правил конфиг context_budget
+   (6.2). Базовый бюджет глубины приходит из POST /syntheses/estimate
+   ({ estimate, contextBudget }, 12.3); до первого ответа превью числа
+   бюджета не показывает. */
 
 /** computeConceptOverhead [10133–10140] — дословно (клиентская копия для
  *  превью; серверный канон — context-builder.ts) */
@@ -149,7 +144,14 @@ function computeConceptOverheadPreview(
  *  Символьный расчёт исходника сохранён для файловых концепций (у
  *  каталожных контент живёт на сервере — клиентские поля пусты, их
  *  вес виден только через estimate-diff). Дебаунс 600 мс — как у
- *  CostEstimate (1.5); сбой оценки превью не блокирует. */
+ *  CostEstimate (1.5); сбой оценки превью не блокирует.
+ *
+ *  Беседа 12.4 (Д-19): базовый бюджет глубины — contextBudget ответа
+ *  /estimate (12.3), не клиентская копия. Вызов БЕЗ участников-концепций
+ *  идёт всегда, когда в пуле есть концепции (и у файловых, у которых
+ *  серверных участников нет): из него берётся contextBudget; второй
+ *  вызов — с участниками — только для estimate-diff. До первого ответа
+ *  строки бюджета нет (числа не из чего взять), при сбое — тоже. */
 function FullBudgetPreview({
   depth,
   estimateParams,
@@ -164,6 +166,8 @@ function FullBudgetPreview({
     withParents: SynthesisEstimate;
     without: SynthesisEstimate;
   } | null>(null);
+  // 12.4 (Д-19): базовый бюджет глубины из ответа сервера; null — ещё нет
+  const [contextBudget, setContextBudget] = useState<number | null>(null);
   const diffSeqRef = useRef(0);
 
   const hasServerParticipants = !!(
@@ -172,35 +176,40 @@ function FullBudgetPreview({
 
   useEffect(() => {
     const seq = ++diffSeqRef.current;
-    if (!estimateParams || !hasServerParticipants) {
+    if (!estimateParams || N === 0) {
       setDiff(null);
+      setContextBudget(null);
       return;
     }
     const timer = setTimeout(() => {
       const { participants: _p, keepFullBudget: _k, ...rest } = estimateParams;
       Promise.all([
-        estimateSynthesis(estimateParams),
-        estimateSynthesis(rest), // без участников-концепций
+        hasServerParticipants ? estimateSynthesisFull(estimateParams) : null,
+        estimateSynthesisFull(rest), // без участников-концепций: отсюда contextBudget
       ])
         .then(([withParents, without]) => {
-          if (diffSeqRef.current === seq) setDiff({ withParents, without });
+          if (diffSeqRef.current !== seq) return;
+          setContextBudget(without.contextBudget);
+          setDiff(withParents ? { withParents: withParents.estimate, without: without.estimate } : null);
         })
         .catch(() => {
-          if (diffSeqRef.current === seq) setDiff(null);
+          if (diffSeqRef.current !== seq) return;
+          setDiff(null);
+          setContextBudget(null);
         });
     }, 600);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(estimateParams), hasServerParticipants]);
+  }, [JSON.stringify(estimateParams), hasServerParticipants, N, depth]);
 
   if (N === 0) return null;
 
   const conceptChars = computeConceptOverheadPreview(conceptParticipants);
-  const rawBudget = CONTEXT_BUDGET_PREVIEW[depth] ?? 48000;
-  const shrunkBudget = Math.max(
-    rawBudget - conceptChars,
-    Math.floor(rawBudget * 0.4),
-  );
+  const rawBudget = contextBudget;
+  const shrunkBudget =
+    rawBudget === null
+      ? null
+      : Math.max(rawBudget - conceptChars, Math.floor(rawBudget * 0.4));
 
   const fmtUsd = (v: number) => "$" + v.toFixed(4);
   const diffCost = diff ? diff.withParents.cost - diff.without.cost : 0;
@@ -223,15 +232,18 @@ function FullBudgetPreview({
         conceptChars.toLocaleString("ru") +
         tl("synthesis.synthesisForm.charsParen", " симв. (") +
         N +
-        ")\n" +
-        tl("synthesis.synthesisForm.whenCompressed", "При ужимании:       бюджет секций ") +
-        shrunkBudget.toLocaleString("ru") +
-        " / " +
-        rawBudget.toLocaleString("ru") +
-        tl("synthesis.synthesisForm.charsNewline", " симв.\n") +
-        tl("synthesis.synthesisForm.withoutCompression", "Без ужимания:       бюджет секций ") +
-        rawBudget.toLocaleString("ru") +
-        tl("synthesis.synthesisForm.chars", " симв.") +
+        ")" +
+        (rawBudget !== null && shrunkBudget !== null
+          ? "\n" +
+            tl("synthesis.synthesisForm.whenCompressed", "При ужимании:       бюджет секций ") +
+            shrunkBudget.toLocaleString("ru") +
+            " / " +
+            rawBudget.toLocaleString("ru") +
+            tl("synthesis.synthesisForm.charsNewline", " симв.\n") +
+            tl("synthesis.synthesisForm.withoutCompression", "Без ужимания:       бюджет секций ") +
+            rawBudget.toLocaleString("ru") +
+            tl("synthesis.synthesisForm.chars", " симв.")
+          : "\n" + tl("synthesis.synthesisForm.budgetPending", "Бюджет секций: ждём оценку сервера…")) +
         (diff
           ? tl("synthesis.synthesisForm.estimateWithParents", "\nОценка с родителями: ") +
             fmtUsd(diff.withParents.cost) +

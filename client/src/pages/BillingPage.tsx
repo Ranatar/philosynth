@@ -60,6 +60,7 @@ import {
 import { listSyntheses } from "../api/syntheses";
 import { PlansTable, periodWord } from "../components/billing/PlansTable";
 import { useAuthStore } from "../stores/auth-store";
+import { useSecondStep } from "../hooks/useSecondStep";
 import { fmtDateLong, fmtDateShort, fmtInt, fmtMoney, fmtUsd, toIsoDate } from "../utils/format";
 import {
   getStripe,
@@ -291,20 +292,23 @@ function ApiKeySection() {
     }
   }
 
+  // 12.4 (Д-17): удаление ключа необратимо (сервер хранит только шифртекст,
+  // показать ключ заново нельзя) — второй шаг кнопок, не window.confirm
+  const deleteStep = useSecondStep(pending);
   async function handleDelete(): Promise<void> {
     if (!active) return;
-    if (
-      !window.confirm(
-        tl("billingPage.confirmDeleteKey", "Удалить активный API-ключ? Генерация пойдёт с подписки или баланса сервиса."),
-      )
-    )
+    if (deleteStep.armed === null) {
+      setStatus(null);
+      deleteStep.arm(true);
       return;
+    }
     setPending(true);
     setStatus(null);
     try {
       await deleteApiKey(active.id);
       setStatus({ text: tl("billingPage.keyDeleted", "Ключ удалён"), kind: "ok" });
       await reload();
+      deleteStep.disarm();
     } catch (err) {
       setStatus({ text: billingErrorText(err, tl("billingPage.keyDeleteFailed", "Не удалось удалить ключ")), kind: "err" });
     } finally {
@@ -319,21 +323,55 @@ function ApiKeySection() {
         {keys === null ? (
           <Hint text={tl("common.loading", "Загрузка…")} />
         ) : active ? (
-          <div style={rowStyle}>
-            <span className="masked-key" data-testid="api-key-masked">
-              {maskApiKey(active.prefix)}
-              <span className="masked-key-status active">{tl("billingPage.active", "активен")}</span>
-            </span>
-            <span className="version-meta">{tl("billingPage.since", "с {createdAt}", { createdAt: fmtDateShort(active.createdAt) })}</span>
-            <button
-              type="button"
-              className="action-btn"
-              disabled={pending}
-              onClick={() => void handleDelete()}
-              data-testid="api-key-delete"
-            >
-              {tl("common.delete", "Удалить")}
-            </button>
+          <div
+            ref={(el) => {
+              deleteStep.ref.current = el;
+            }}
+          >
+            <div style={rowStyle}>
+              <span className="masked-key" data-testid="api-key-masked">
+                {maskApiKey(active.prefix)}
+                <span className="masked-key-status active">{tl("billingPage.active", "активен")}</span>
+              </span>
+              <span className="version-meta">{tl("billingPage.since", "с {createdAt}", { createdAt: fmtDateShort(active.createdAt) })}</span>
+              {deleteStep.armed === null ? (
+                <button
+                  type="button"
+                  className="action-btn"
+                  disabled={pending}
+                  onClick={() => void handleDelete()}
+                  data-testid="api-key-delete"
+                >
+                  {tl("common.delete", "Удалить")}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="action-btn danger"
+                    disabled={pending}
+                    onClick={() => void handleDelete()}
+                    data-testid="api-key-delete-confirm"
+                  >
+                    {tl("common.confirmDelete", "Точно удалить?")}
+                  </button>
+                  <button
+                    type="button"
+                    className="action-btn"
+                    disabled={pending}
+                    onClick={deleteStep.disarm}
+                    data-testid="api-key-delete-cancel"
+                  >
+                    {tl("common.cancel", "Отмена")}
+                  </button>
+                </>
+              )}
+            </div>
+            {deleteStep.armed !== null && (
+              <div className="transform-warn" style={{ marginTop: 8 }} data-testid="api-key-delete-warn">
+                {tl("billingPage.confirmDeleteKey", "Удалить активный API-ключ? Генерация пойдёт с подписки или баланса сервиса.")}
+              </div>
+            )}
           </div>
         ) : (
           <div className="masked-key" data-testid="api-key-absent">

@@ -489,6 +489,7 @@ async function loadSectionsFull(row: SynthesisRow): Promise<SectionFull[]> {
     .filter((r) => r.key !== "capsule")
     .sort((a, b) => idx(a.key) - idx(b.key) || a.sectionNum - b.sectionNum)
     .map((r) => ({
+      id: r.id, // 12.4 (Д-14)
       key: r.key,
       sectionNum: r.sectionNum,
       title: r.title,

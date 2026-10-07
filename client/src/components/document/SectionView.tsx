@@ -49,6 +49,13 @@
  * (details .parse-warnings, блок 11.3 globals.css). Чужому и гостю — нет
  * (проп showParseWarnings): предупреждения берутся из генлога, а логи —
  * под флагом автора; у вложенных разделов гостя поля и так нет.
+ *
+ * Беседа 12.4 (Д-48): с 12.3 в том же списке стоят не только подстановки
+ * разбора, но и ПРОПУСКИ — «модель завершила ответ, не написав подраздел …»
+ * (Д-47) и неудачный повтор «Таблицы рекомендаций» (Д-21): документ при них
+ * НЕ цел. Заголовок и вводная переписаны нейтрально — замечания службы к
+ * последней генерации раздела; сами пометки — русская диагностика генлога,
+ * не переводятся. Д-15: пометка «⟳ изменён» у раздела (.section-edited-mark).
  */
 import {
   useMemo,
@@ -226,10 +233,23 @@ export function renderSubsectionEditor(
   form.setAttribute("data-subsection-editor", edit.name);
 
   if (edit.phase === "saved") {
-    form.appendChild(el("div", "subsection-edit-note", tl("document.sectionView.savedServerFixedMarkup", "Сохранено. Сервер поправил разметку:")));
-    const ul = el("ul", "subsection-edit-warnings");
-    for (const w of edit.warnings) ul.appendChild(el("li", "", w));
-    form.appendChild(ul);
+    // 12.4 (Д-34): заметки о следствиях правки (название, тезисы) — перед
+    // предупреждениями о снятой разметке; заголовок — по тому, что есть
+    const notes = edit.notes ?? [];
+    if (notes.length) {
+      form.appendChild(el("div", "subsection-edit-note", tl("document.sectionView.savedWithNotes", "Сохранено.")));
+      const nl = el("ul", "subsection-edit-notes");
+      for (const n of notes) nl.appendChild(el("li", "", n));
+      form.appendChild(nl);
+    }
+    if (edit.warnings.length) {
+      form.appendChild(el("div", "subsection-edit-note", notes.length
+        ? tl("document.sectionView.serverFixedMarkup", "Сервер поправил разметку:")
+        : tl("document.sectionView.savedServerFixedMarkup", "Сохранено. Сервер поправил разметку:")));
+      const ul = el("ul", "subsection-edit-warnings");
+      for (const w of edit.warnings) ul.appendChild(el("li", "", w));
+      form.appendChild(ul);
+    }
     const actions = el("div", "inline-edit-actions");
     const ok = el("button", "action-btn", tl("document.sectionView.gotIt", "Понятно"));
     ok.setAttribute("type", "button");
@@ -468,7 +488,21 @@ export function SectionView({
   return (
     <div className="doc-body">
       <a id={`sec-${section.key}`} />
-      {actions && <div className="section-actions">{actions}</div>}
+      {(actions || section.isEdited) && (
+        <div className="section-actions">
+          {/* 12.4 (Д-15): пометка «изменён» у раздела — там, где он виден */}
+          {section.isEdited && (
+            <span
+              className="section-edited-mark"
+              title={tl("document.sectionView.editedHint", "Раздел изменён после генерации: перегенерация, правка таблицы или подраздела")}
+              data-testid={`section-edited-${section.key}`}
+            >
+              {tl("document.sectionView.edited", "⟳ изменён")}
+            </span>
+          )}
+          {actions}
+        </div>
+      )}
       <div
         dangerouslySetInnerHTML={innerHtmlProp}
         onClick={handleClick}
@@ -479,11 +513,11 @@ export function SectionView({
       {parseWarnings.length > 0 && (
         <details className="sec-disclosure parse-warnings" data-testid={`parse-warnings-${section.key}`}>
           <summary className="parse-warnings-summary">
-            {tl("document.sectionView.parsedWithLosses", "⚠ Разобран с потерями ({n, plural, one {# предупреждение} few {# предупреждения} many {# предупреждений} other {# предупреждения}})", { n: parseWarnings.length })}
+            {tl("document.sectionView.parsedWithLosses", "⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})", { n: parseWarnings.length })}
           </summary>
           <div className="disclosure-body">
             <p className="parse-warnings-lead">
-              {tl("document.sectionView.parseWarningsLead", "Разбор ответа модели в таблицы прошёл с подстановками: часть значений опознана по месту или заменена умолчанием. Документ цел; сверьте таблицы графа и подразделы, названные ниже.")}
+              {tl("document.sectionView.parseWarningsLead", "Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте.")}
             </p>
             <ul className="parse-warnings-list">
               {parseWarnings.map((w, i) => (

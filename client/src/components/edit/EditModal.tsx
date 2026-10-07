@@ -48,14 +48,20 @@
  * «Отменить план» удаляет черновик (сервер возвращает рекомендации в 'new').
  * elementNames — имена элементов для шагов edit_element / refine_element
  * (шаг несёт только «kind:id»).
+ *
+ * Беседа 12.4 (Д-7): футер плана — серверные числа 12.3 (estimatedCost и
+ * costBreakdown по ВЗЯТЫМ шагам, cascadePending — ждущие решения отдельной
+ * суммой «если подтвердить все»); собственный подсчёт 10.3 и подпись
+ * «(оценка — с ними)» сняты. Д-14: кнопка «◷ История» на карточке раздела
+ * → SectionHistory (откат → reloadSections, капсула → applySynthesis).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
-import { isFreeStepType } from "@philosynth/shared/constants/edit-steps";
 import type { CascadeImpactDto, EditPlan } from "@philosynth/shared/types/edit-plan";
 import type { ModeResult } from "@philosynth/shared/types/modes";
 
+import type { RollbackResponse } from "../../api/elements";
 import { getPlanImpact, regenerateSubsection } from "../../api/plans";
 import { getSynthesis, updateSynthesis } from "../../api/syntheses";
 import { useEditPlan, type SectionEvent } from "../../hooks/useEditPlan";
@@ -142,6 +148,20 @@ export function EditModal({
   // НЕРАЗРУШАЮЩЕЕ обновление: store.load() переключает loading и
   // SynthesisPage рендерит спиннер — модалка размонтируется (грабля R3);
   // здесь — reloadSections + точечный applySynthesis
+  /* 12.4 (Д-14): откат версии раздела с карточки — разделы перечитать
+     НЕРАЗРУШАЮЩЕ (reloadSections, не load: грабля R3 2.3), при откате
+     капсулы (capsuleUpdated, 12.1) — применить capsuleHtml к шапке */
+  const handleSectionRolledBack = useCallback(
+    (res: RollbackResponse) => {
+      void reloadSections();
+      if (res.capsuleUpdated && typeof res.capsuleHtml === "string") {
+        const cur = useSynthesisStore.getState().synthesis;
+        if (cur) applySynthesis({ ...cur, capsuleHtml: res.capsuleHtml });
+      }
+    },
+    [reloadSections, applySynthesis],
+  );
+
   const onPlanFinished = useCallback(() => {
     if (!synthesisId) return;
     void reloadSections();
@@ -390,41 +410,40 @@ export function EditModal({
   const modeCount = modeRegenPairs.length + modeRemovePairs.length;
   if (modeCount) footerInfoParts.push(modeCount + tl("edit.editModal.countMode", " режим."));
 
-  const footerCost =
-    plan && plan.estimatedCost > 0
-      ? plan.estimatedCost
-      : estimatedCost > 0
-        ? estimatedCost
-        : null;
-  const costText =
-    footerCost !== null
-      ? `≈ $${footerCost.toFixed(4)} (${(footerCost * 100).toFixed(2)}¢)`
-      : plan && plan.costBreakdown.paid.steps === 0 && plan.costBreakdown.free.steps > 0
+  // 12.4 (Д-7): у плана — ТОЛЬКО серверные числа (12.3): estimatedCost и
+  // costBreakdown считают взятые шаги (всё, кроме skipped и pending),
+  // cascadePending — сколько шагов ждёт решения и во что обойдётся план
+  // СВЕРХ estimatedCost, если подтвердить все. Собственный подсчёт 10.3 снят;
+  // estimatedCost плана 0 — законно (правка элемента + каскад): превью
+  // чекбоксов его не подменяет
+  const fmtCost = (v: number) => `≈ $${v.toFixed(4)} (${(v * 100).toFixed(2)}¢)`;
+  const costText = plan
+    ? plan.estimatedCost > 0
+      ? fmtCost(plan.estimatedCost)
+      : plan.costBreakdown.paid.steps === 0 && plan.costBreakdown.free.steps > 0
         ? tl("edit.editModal.planFree", "План бесплатен: модель не зовётся")
-        : removeArr.length > 0 && regenArr.length + addArr.length === 0
-          ? tl("edit.editModal.deletionFree", "Удаление бесплатно")
-          : "";
+        : plan.cascadePending.steps > 0
+          ? tl("edit.editModal.takenNothingPaid", "Взятые шаги — без обращений к модели")
+          : ""
+    : estimatedCost > 0
+      ? fmtCost(estimatedCost)
+      : removeArr.length > 0 && regenArr.length + addArr.length === 0
+        ? tl("edit.editModal.deletionFree", "Удаление бесплатно")
+        : "";
 
-  // 10.3: у плана бесплатное показано ОТДЕЛЬНО от платного, а каскадные шаги,
-  // ждущие решения, — отдельно от взятых: pending-шаг без подтверждения не
-  // исполняется, и считать его «платным» наравне с выбранным значило бы пугать
-  // человека чужой суммой (costBreakdown сервера считает все неснятые шаги)
-  const planInfo = (() => {
-    if (!plan) return "";
-    let free = 0;
-    let paid = 0;
-    let pending = 0;
-    for (const st of plan.steps) {
-      if (st.status === "skipped") continue;
-      if (st.status === "pending") pending += 1;
-      else if (isFreeStepType(st.type)) free += 1;
-      else paid += 1;
-    }
-    return (
-      tl("edit.editModal.planCostSplit", "План: {free} бесплатно · {paid} платно", { free, paid }) +
-      (pending ? tl("edit.editModal.cascadePending", " · {pending} каскадных ждут решения (оценка — с ними)", { pending }) : "")
-    );
-  })();
+  const planInfo = plan
+    ? tl("edit.editModal.planCostSplit", "План: {free} бесплатно · {paid} платно", {
+        free: plan.costBreakdown.free.steps,
+        paid: plan.costBreakdown.paid.steps,
+      }) +
+      (plan.cascadePending.steps > 0
+        ? tl(
+            "edit.editModal.cascadePending",
+            " · {pending} каскадных ждут решения — если подтвердить все, ещё ≈ ${pendingCost}",
+            { pending: plan.cascadePending.steps, pendingCost: plan.cascadePending.costUsd.toFixed(4) },
+          )
+        : "")
+    : "";
 
   const runLabel = !plan
     ? tl("edit.editModal.makePlan", "▶ Составить план")
@@ -578,6 +597,8 @@ export function EditModal({
                     setSubRegen({ sectionKey: key, subsectionName: sub })
                   }
                   disabled={controlsDisabled}
+                  full={sections.find((s) => s.key === key)}
+                  onSectionRolledBack={handleSectionRolledBack}
                 />
                 {subRegen?.sectionKey === key && (
                   <SubsectionRegenPanel

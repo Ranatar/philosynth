@@ -25,7 +25,8 @@
  *    typeCatalogId у элементов, текст типа остаётся — unlinked в ответе).
  *
  *  - «Доступ» (8.1): поиск пользователей по email/имени (GET /auth/users),
- *    список с ролью, переключение роли с window.confirm (POST
+ *    список с ролью, переключение роли вторым шагом кнопок в строке
+ *    (12.4, Д-17; прежде window.confirm; POST
  *    /auth/users/:id/role; свою роль менять нельзя — 409 SELF_ROLE_CHANGE,
  *    кнопка у себя не рисуется), последние 50 строк admin_audit (GET
  *    /auth/audit). Статус успеха ставится ПОСЛЕ перечитывания списка и
@@ -42,7 +43,7 @@
  */
 import type { AdminAuditEntry, AdminUserRow, UserRole } from "@philosynth/shared/types/admin";
 import type { PromptTemplate, SynthesisConfig } from "@philosynth/shared/types/prompts";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { getAuditLog, listUsers, setUserRole } from "../api/admin";
 import { ApiError } from "../api/client";
@@ -66,6 +67,7 @@ import {
   updateConfig,
 } from "../api/prompts";
 import { useAuthStore } from "../stores/auth-store";
+import { useSecondStep } from "../hooks/useSecondStep";
 import { fmtDateShort } from "../utils/format";
 import {
   extractPlaceholders,
@@ -948,18 +950,24 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
     }
   }
 
+  // 12.4 (Д-17): удаление типа необратимо (привязка элементов к каталогу
+  // теряется) — второй шаг кнопок в строке таблицы, не window.confirm
+  const removeStep = useSecondStep<string>(pending);
+  const removeWarnText = (t: CatalogType): string =>
+    tl("adminPromptsPage.confirmDeleteType", "Удалить тип «{key}» ({nameRu})? Ссылающиеся {isRel} сохранят текст типа, но потеряют привязку к каталогу.", { key: t.key, nameRu: t.nameRu, isRel: isRel ? tl("adminPromptsPage.edgesWord", "связи") : tl("adminPromptsPage.categoriesWord", "категории") });
+
   async function remove(t: CatalogType): Promise<void> {
-    if (
-      !window.confirm(
-        tl("adminPromptsPage.confirmDeleteType", "Удалить тип «{key}» ({nameRu})? Ссылающиеся {isRel} сохранят текст типа, но потеряют привязку к каталогу.", { key: t.key, nameRu: t.nameRu, isRel: isRel ? tl("adminPromptsPage.edgesWord", "связи") : tl("adminPromptsPage.categoriesWord", "категории") }),
-      )
-    )
+    if (removeStep.armed !== t.id) {
+      setStatus(null);
+      removeStep.arm(t.id);
       return;
+    }
     setPending(true);
     setStatus(null);
     try {
       const r = await deleteCustomType(kind, t.id);
       await load();
+      removeStep.disarm();
       if (edit?.id === t.id) setEdit(null);
       setStatus({
         text: tl("adminPromptsPage.typeDeleted", "Тип «{key}» удалён; отвязано {isRel}: {unlinked}", { key: t.key, isRel: isRel ? tl("adminPromptsPage.edgesGen", "связей") : tl("adminPromptsPage.categoriesGen", "категорий"), unlinked: r.unlinked }),
@@ -975,7 +983,13 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
   const testId = isRel ? "catalog-relationship" : "catalog-category";
 
   return (
-    <div className="data-table-wrap" data-testid={testId}>
+    <div
+      className="data-table-wrap"
+      data-testid={testId}
+      ref={(el) => {
+        removeStep.ref.current = el;
+      }}
+    >
       <div className="data-table-toolbar">
         <input
           className="form-input"
@@ -1073,7 +1087,8 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                   </td>
                 </tr>
               ) : (
-                <tr key={t.id} data-testid={`${testId}-row-${t.key}`}>
+                <Fragment key={t.id}>
+                <tr data-testid={`${testId}-row-${t.key}`}>
                   <td>
                     <code>{t.key}</code>
                   </td>
@@ -1084,7 +1099,28 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                     <span className={originClass(t.isSystem)}>{t.isSystem ? tl("adminPromptsPage.system", "системный") : tl("adminPromptsPage.custom", "пользовательский")}</span>
                   </td>
                   <td className="num">
-                    {!t.isSystem && (
+                    {!t.isSystem && removeStep.armed === t.id ? (
+                      <>
+                        <button
+                          type="button"
+                          className="action-btn danger"
+                          disabled={pending}
+                          onClick={() => void remove(t)}
+                          data-testid={`${testId}-delete-confirm-${t.key}`}
+                        >
+                          {tl("common.confirmDelete", "Точно удалить?")}
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="action-btn"
+                          disabled={pending}
+                          onClick={removeStep.disarm}
+                          data-testid={`${testId}-delete-cancel-${t.key}`}
+                        >
+                          {tl("common.cancel", "Отмена")}
+                        </button>
+                      </>
+                    ) : !t.isSystem ? (
                       <>
                         <button
                           type="button"
@@ -1105,9 +1141,17 @@ function CatalogTable({ kind }: { kind: TaxonomyKind }) {
                           {tl("adminPromptsPage.deleteIcon", "✕ Удалить")}
                         </button>
                       </>
-                    )}
+                    ) : null}
                   </td>
                 </tr>
+                {!t.isSystem && removeStep.armed === t.id && (
+                  <tr data-testid={`${testId}-delete-warn-${t.key}`}>
+                    <td colSpan={isRel ? 6 : 5}>
+                      <div className="transform-warn">{removeWarnText(t)}</div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ),
             )}
           </tbody>
@@ -1209,25 +1253,33 @@ function AccessTab() {
     );
   }, [loadAudit]);
 
-  async function toggleRole(u: AdminUserRow): Promise<void> {
+  // 12.4 (Д-17): смена роли — второй шаг кнопок в строке пользователя
+  // (правило 8.4), не window.confirm; текст предупреждения прежний
+  const roleStep = useSecondStep<string>(pending !== null);
+  const roleWarnText = (u: AdminUserRow): string => {
     const to: UserRole = u.role === "admin" ? "user" : "admin";
     const verb = to === "admin" ? tl("adminPromptsPage.makeAdmin", "Назначить администратором") : tl("adminPromptsPage.revokeAdminFrom", "Снять права администратора у");
-    if (
-      !window.confirm(
-        `${verb} ${u.email}? ${
-          to === "admin"
-            ? tl("adminPromptsPage.adminNote", "Администратор правит шаблоны промптов — активированная версия меняет генерацию у всех.")
-            : tl("adminPromptsPage.revokeNote", "Пользователь потеряет доступ к админке; синтезы и баланс не затрагиваются.")
-        }`,
-      )
-    )
+    return `${verb} ${u.email}? ${
+      to === "admin"
+        ? tl("adminPromptsPage.adminNote", "Администратор правит шаблоны промптов — активированная версия меняет генерацию у всех.")
+        : tl("adminPromptsPage.revokeNote", "Пользователь потеряет доступ к админке; синтезы и баланс не затрагиваются.")
+    }`;
+  };
+
+  async function toggleRole(u: AdminUserRow): Promise<void> {
+    const to: UserRole = u.role === "admin" ? "user" : "admin";
+    if (roleStep.armed !== u.id) {
+      setStatus(null);
+      roleStep.arm(u.id);
       return;
+    }
     setPending(u.id);
     setStatus(null);
     try {
       const r = await setUserRole(u.id, to);
       // Статус — ПОСЛЕ перечитывания (грабля 6.2 п.7)
       await Promise.all([loadUsers(search.trim()), loadAudit()]);
+      roleStep.disarm();
       setStatus({
         text: r.changed
           ? tl("adminPromptsPage.roleNow", "{email}: роль теперь «{role}»", { email: r.user.email, role: ROLE_LABELS()[r.user.role] })
@@ -1250,7 +1302,13 @@ function AccessTab() {
         <div className="form-sublabel">
           {tl("adminPromptsPage.rolesNote", "Ролей две: пользователь и администратор. Свою роль изменить нельзя — единственный администратор не может понизить сам себя; последнего администратора не понизит никто. Первый администратор заводится только скриптом")} <code>{tl("adminPromptsPage.seedAdminCommand", "npm run seed:admin")}</code>.
         </div>
-        <div className="data-table-wrap" data-testid="access-users">
+        <div
+          className="data-table-wrap"
+          data-testid="access-users"
+          ref={(el) => {
+            roleStep.ref.current = el;
+          }}
+        >
           <div className="data-table-toolbar">
             <input
               className="form-input"
@@ -1292,7 +1350,8 @@ function AccessTab() {
                 {users.map((u) => {
                   const isMe = me?.id === u.id;
                   return (
-                    <tr key={u.id} data-testid={`access-row-${u.email}`} data-role={u.role}>
+                    <Fragment key={u.id}>
+                    <tr data-testid={`access-row-${u.email}`} data-role={u.role}>
                       <td>
                         <code>{u.email}</code>
                         {isMe && <span className="form-sublabel"> {tl("adminPromptsPage.you", "(вы)")}</span>}
@@ -1303,7 +1362,30 @@ function AccessTab() {
                       </td>
                       <td>{fmtDateShort(u.createdAt)}</td>
                       <td className="num">
-                        {!isMe && (
+                        {!isMe && roleStep.armed === u.id ? (
+                          <>
+                            <button
+                              type="button"
+                              className="action-btn danger"
+                              disabled={pending !== null}
+                              onClick={() => void toggleRole(u)}
+                              data-testid={`access-toggle-confirm-${u.email}`}
+                            >
+                              {u.role === "admin"
+                                ? tl("adminPromptsPage.revokeConfirm", "Точно снять права?")
+                                : tl("adminPromptsPage.makeAdminConfirm", "Точно назначить?")}
+                            </button>{" "}
+                            <button
+                              type="button"
+                              className="action-btn"
+                              disabled={pending !== null}
+                              onClick={roleStep.disarm}
+                              data-testid={`access-toggle-cancel-${u.email}`}
+                            >
+                              {tl("common.cancel", "Отмена")}
+                            </button>
+                          </>
+                        ) : !isMe ? (
                           <button
                             type="button"
                             className="action-btn"
@@ -1313,9 +1395,17 @@ function AccessTab() {
                           >
                             {u.role === "admin" ? tl("adminPromptsPage.revoke", "↓ Снять права") : tl("adminPromptsPage.makeAdminIcon", "↑ Назначить администратором")}
                           </button>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
+                    {!isMe && roleStep.armed === u.id && (
+                      <tr data-testid={`access-toggle-warn-${u.email}`}>
+                        <td colSpan={5}>
+                          <div className="transform-warn">{roleWarnText(u)}</div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>

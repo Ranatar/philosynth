@@ -7,6 +7,11 @@
  * (server/utils/html-parser.ts, replaceSubsectionContent). Поэтому клиент
  * НИЧЕГО не собирает: исходник приходит с сервера (GET …/subsections/:name),
  * присланное сервер сам чистит по белому списку тегов документа.
+ *
+ * 12.4 (Д-34): ответ правки несёт titleUpdated / thesesUpdated (12.1) —
+ * страница применяет новое название к шапке (applySynthesis) и говорит о
+ * сведённых тезисах заметкой (subsectionEditNotes), перечитывая только
+ * разделы.
  */
 import { ApiError } from "../api/client";
 import { tl } from "@philosynth/shared/i18n/t";
@@ -24,6 +29,11 @@ export interface SubsectionEditState {
   nested: string[];
   error: string | null;
   warnings: string[];
+  /** 12.4 (Д-34): что сервер сделал заодно с правкой — название концепции
+   *  обновлено из раздела name (titleUpdated), строки тезисов сведены с
+   *  прозой (thesesUpdated, 12.1); показываются в фазе saved рядом с
+   *  warnings, тоном сообщения, не предупреждения */
+  notes?: string[] | undefined;
 }
 
 export interface SubsectionRef {
@@ -53,4 +63,25 @@ export function subsectionErrorText(err: unknown): string {
   if (err.code === "NOT_FOUND")
     return tl("utils.subsectionEdit.subsectionGone", "Подраздел не найден — документ изменился. Закройте правку и откройте её заново.");
   return err.message || tl("utils.subsectionEdit.saveFailed", "Не удалось сохранить подраздел.");
+}
+
+/** 12.4 (Д-34): заметки о побочных следствиях правки (ответ 12.1) */
+export function subsectionEditNotes(res: {
+  titleUpdated?: string | undefined;
+  thesesUpdated?: { label: string; fields: ("formulation" | "justification")[] }[] | undefined;
+}): string[] {
+  const notes: string[] = [];
+  if (res.titleUpdated)
+    notes.push(tl("utils.subsectionEdit.titleUpdated", "Название концепции обновлено: «{title}».", { title: res.titleUpdated }));
+  if (res.thesesUpdated && res.thesesUpdated.length > 0) {
+    const fieldLabel = (f: "formulation" | "justification"): string =>
+      f === "formulation"
+        ? tl("utils.subsectionEdit.fieldFormulation", "формулировка")
+        : tl("utils.subsectionEdit.fieldJustification", "обоснование");
+    const list = res.thesesUpdated
+      .map((t) => `${t.label} (${t.fields.map(fieldLabel).join(", ")})`)
+      .join("; ");
+    notes.push(tl("utils.subsectionEdit.thesesUpdated", "Сведено со списком тезисов: {list}.", { list }));
+  }
+  return notes;
 }
