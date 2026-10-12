@@ -304,6 +304,13 @@ const setValue = (page, sel, value) => page.$eval(sel, (el, v) => {
   Object.getOwnPropertyDescriptor(proto, "value").set.call(el, v);
   el.dispatchEvent(new Event("input", { bubbles: true }));
 }, value);
+/** Открыть форму правки подраздела и дождаться ЗАГРУЖЕННОГО исходника: поле есть уже в фазе loading
+ *  («Загрузка…»), фаза ready переписывает его (React 19 — грабля 1.6b); набранное до того теряется. */
+async function openSubEditor(page, name) {
+  await click(page, `button[data-edit-subsection="${name}"]`);
+  await page.waitForFunction(() => { const a = document.querySelector("textarea[data-subsection-source]"); return !!a && !a.disabled && a.value !== "" && !/^Загрузка/.test(a.value); }, { timeout: 15000 });
+  await sleep(100);
+}
 /** Правка подраздела сохранена: без предупреждений и заметок форма закрывается сама (9.2), с ними — фаза saved и «Понятно» */
 async function waitSubSaved(page) {
   try {
@@ -506,8 +513,7 @@ try {
     const before = await secHtml(D, "sum");
     ok(await exists(page, T("section-history-btn-sum")), "кнопка «◷ История» в строке действий раздела");
     // ручная правка подраздела «Цели и метод»
-    await click(page, 'button[data-edit-subsection="Цели и метод"]');
-    await waitSel(page, "textarea[data-subsection-source]");
+    await openSubEditor(page, "Цели и метод");
     await setValue(page, "textarea[data-subsection-source]", "<p>Цели переписаны рукой.</p>");
     await click(page, 'button[data-subsection-action="save"]');
     // без предупреждений и заметок форма закрывается сама (9.2); с ними — фаза saved и «Понятно»
@@ -579,8 +585,7 @@ try {
     const page = await newPage(A);
     await openDoc(page, D);
     ok(!(await exists(page, T("toc-edited-sum"))) && !(await exists(page, T("section-edited-sum"))), "до правки пометки ⟳ нет");
-    await click(page, 'button[data-edit-subsection="Новизна и ценность"]');
-    await waitSel(page, "textarea[data-subsection-source]");
+    await openSubEditor(page, "Новизна и ценность");
     await setValue(page, "textarea[data-subsection-source]", "<p>Новизна переписана рукой.</p>");
     await click(page, 'button[data-subsection-action="save"]');
     await waitSel(page, T("section-edited-sum"));
@@ -652,8 +657,7 @@ try {
     const title0 = (await text(page, ".doc-title")).trim();
     ok(title0.includes(`Мета-синтез ${TAG}`), "шапка: исходное название", title0);
     // Д-34
-    await click(page, 'button[data-edit-subsection="Итоговая рекомендация"]');
-    await waitSel(page, "textarea[data-subsection-source]");
+    await openSubEditor(page, "Итоговая рекомендация");
     await setValue(page, "textarea[data-subsection-source]", `<p><strong>«Онтология меры ${TAG}»: новое</strong></p><p>Довод.</p>`);
     await click(page, 'button[data-subsection-action="save"]');
     await page.waitForFunction((t) => (document.querySelector(".doc-title")?.textContent ?? "").includes(t), { timeout: 15000 }, `Онтология меры ${TAG}`);
