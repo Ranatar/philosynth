@@ -74,8 +74,9 @@ export interface ParsedGlossaryTerm {
 
 /* ── Тезисы ──────────────────────────────────────────────────────────── */
 
-/** «Тип (онтол./эпистем./этич.)» свободного текста → enum схемы. */
-function mapThesisType(raw: string): ParsedThesisType {
+/** «Тип (онтол./эпистем./этич.)» свободного текста → enum схемы.
+ *  Экспорт 12.5 (Д-43): рендерер сверяет им прежний текст ячейки «Тип». */
+export function mapThesisType(raw: string): ParsedThesisType {
   const s = raw.toLowerCase();
   if (s.includes("эпист") || s.includes("гносеол")) return "epistemological";
   if (s.includes("этич") || s.includes("аксиол")) return "ethical";

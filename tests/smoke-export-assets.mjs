@@ -3,12 +3,11 @@
  * генерат из исходника плюс надстройка службы (Д-9, Д-10).
  *
  *  1. ГЕНЕРАТ ≡ ИСХОДНИКУ ПОБАЙТНО. Генератор scripts/extract/
- *     extract-export-assets.mjs со своего места не запускается (после
- *     перекладки scripts/ 2026-09-15 он ищет scripts/source/… — долг §12,
- *     адресат 12.5), а править его запрещено. Поэтому он исполняется КОПИЕЙ во
- *     временном дереве прежней раскладки (scripts/ рядом с source/) и его
- *     вывод сверяется с server/config/export-assets.ts байт в байт: генерат
- *     рукой не тронут и соответствует текущему source/philosynth.html.
+ *     extract-export-assets.mjs исполняется со своего места (12.5, Д-39:
+ *     ROOT на два уровня вверх) и его вывод сверяется с
+ *     server/config/export-assets.ts байт в байт: генерат рукой не тронут и
+ *     соответствует текущему source/philosynth.html; при расхождении прежний
+ *     файл возвращается на место.
  *  2. НАДСТРОЙКА СНИМАЕТСЯ ПОБАЙТНО: strip(apply(fnBundle)) === fnBundle;
  *     каждая замена встречается ровно столько раз, сколько записано; в
  *     наложенном тексте не осталось `|| 0.5` / `|| 0.1` у характеристик и
@@ -18,8 +17,7 @@
  * им работает extract-by-name.py)
  */
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,33 +30,27 @@ const ov = await import("../server/config/export-viewer-overrides.ts");
 const assetsPath = path.join(ROOT, "server/config/export-assets.ts");
 const source = readFileSync(path.join(ROOT, "source/philosynth.html"), "utf8");
 
-console.log("1. генерат ≡ исходнику (генератор — копией во временном дереве)");
+console.log("1. генерат ≡ исходнику (генератор — со своего места, scripts/extract/)");
 {
-  const tmp = mkdtempSync(path.join(tmpdir(), "assets-smoke-"));
+  // 12.5 (Д-39): ROOT генератора исправлен («..», «..»), extract-by-name.py — в scripts/extract/;
+  // генератор гоняется САМ: вывод обязан быть побайтно равен зафиксированному генерату.
+  // Расхождение — красный и возврат прежнего файла (смоук не правит репозиторий)
+  const before = readFileSync(assetsPath, "utf8");
+  let ran = false;
   try {
-    mkdirSync(path.join(tmp, "scripts"));
-    mkdirSync(path.join(tmp, "source"));
-    mkdirSync(path.join(tmp, "server/config"), { recursive: true });
-    cpSync(path.join(ROOT, "scripts/extract/extract-export-assets.mjs"), path.join(tmp, "scripts/extract-export-assets.mjs"));
-    cpSync(path.join(ROOT, "scripts/extract/extract-by-name.py"), path.join(tmp, "scripts/extract-by-name.py"));
-    cpSync(path.join(ROOT, "source/philosynth.html"), path.join(tmp, "source/philosynth.html"));
-    let ran = false;
-    try {
-      execFileSync(process.execPath, [path.join(tmp, "scripts/extract-export-assets.mjs")], { stdio: "pipe" });
-      ran = true;
-    } catch (e) {
-      t("генератор исполнился во временном дереве", false, String(e?.stderr ?? e?.message ?? e).slice(0, 300));
-    }
-    if (ran) {
-      const regenerated = readFileSync(path.join(tmp, "server/config/export-assets.ts"), "utf8");
-      const current = readFileSync(assetsPath, "utf8");
-      t("server/config/export-assets.ts побайтно равен свежему выводу генератора", regenerated === current, `длины ${regenerated.length} / ${current.length}`);
-    }
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    execFileSync(process.execPath, [path.join(ROOT, "scripts/extract/extract-export-assets.mjs")], { stdio: "pipe", cwd: ROOT });
+    ran = true;
+  } catch (e) {
+    t("генератор исполнился со своего места", false, String(e?.stderr ?? e?.message ?? e).slice(0, 300));
   }
-  t("генератор со СВОЕГО места по-прежнему не правлен (ROOT = «..»: долг 12.5, не эта беседа)",
-    /const ROOT = path\.resolve\(path\.dirname\(fileURLToPath\(import\.meta\.url\)\), "\.\."\);/.test(readFileSync(path.join(ROOT, "scripts/extract/extract-export-assets.mjs"), "utf8")));
+  if (ran) {
+    const regenerated = readFileSync(assetsPath, "utf8");
+    t("server/config/export-assets.ts побайтно равен свежему выводу генератора", regenerated === before, `длины ${regenerated.length} / ${before.length}`);
+    if (regenerated !== before) writeFileSync(assetsPath, before, "utf8");
+  }
+  const genSrc = readFileSync(path.join(ROOT, "scripts/extract/extract-export-assets.mjs"), "utf8");
+  t("ROOT генератора — два уровня вверх, extract-by-name.py — scripts/extract/ (Д-39)",
+    /const ROOT = path\.resolve\(path\.dirname\(fileURLToPath\(import\.meta\.url\)\), "\.\.", "\.\."\);/.test(genSrc) && /"scripts", "extract", "extract-by-name\.py"/.test(genSrc));
   t("CSS-ассет ≡ содержимому <style> исходника", assets.EXPORT_SOURCE_RAW_CSS === source.slice(source.indexOf("<style>") + 7, source.indexOf("</style>")));
 }
 

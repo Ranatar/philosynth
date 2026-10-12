@@ -144,10 +144,14 @@ const steps = [
 ];
 check("delete/skipped/pending не считаются", countBillableSteps(steps) === 2);
 check("с шага 3 → 1", countBillableSteps(steps, 3) === 1);
-check("минимум 1", countBillableSteps([{ type: "delete", status: "confirmed" }]) === 1);
+// 12.5 (Д-45): с 10.2 ноль — законный ответ (план из одних delete/edit_element идёт под
+// бесплатным слотом); прежнее «минимум 1» отменено замыслом 10.2
+check("план без платных шагов стоит 0 (10.2: бесплатный слот)", countBillableSteps([{ type: "delete", status: "confirmed" }]) === 0);
 
 console.log("── роуты ──");
-const paths = (app) => app.routes.filter((r) => r.method !== "ALL").map((r) => `${r.method} ${r.path}`).sort();
+// 12.5 (Д-45): hono перечисляет по записи на КАЖДЫЙ обработчик пути (GET /plans с optionalAuth
+// 8.6 даёт две) — считаем уникальные пути
+const paths = (app) => [...new Set(app.routes.filter((r) => r.method !== "ALL").map((r) => `${r.method} ${r.path}`))].sort();
 check("billing: 13 путей §2.10", eq(paths(billingRoutes), [
   "DELETE /api-key/:id", "GET /api-key", "GET /plans", "GET /subscription", "GET /transactions", "GET /usage",
   "POST /api-key", "POST /subscribe", "POST /subscription/cancel", "POST /subscription/resume",
@@ -161,7 +165,9 @@ const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const wrapped = {
   "server/routes/syntheses.ts": ['synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" })'],
   "server/routes/generation.ts": ['billingCheck({ quota: "regenerations" })'],
-  "server/routes/plans.ts": ['/execute", requireAuth, billingCheck({ quota: "regenerations" })'],
+  // 12.5 (Д-45): с 10.2 предпроверка плана УСЛОВНАЯ — billingCheck зовётся из обработчика
+  // после чтения плана (план без платных шагов ключа/подписки не требует)
+  "server/routes/plans.ts": ['const executeBillingCheck = billingCheck({ quota: "regenerations" })', 'await executeBillingCheck(c, async () => undefined)'],
   "server/routes/modes.ts": ['/run", requireAuth, billingCheck({ quota: "modes" })'],
   "server/routes/enrichment.ts": ['billingCheck({ quota: "enrichments" })'],
   "server/routes/transforms.ts": ['billingCheck({ quota: "regenerations" })'],

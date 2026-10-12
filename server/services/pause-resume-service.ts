@@ -877,6 +877,7 @@ async function resumeFillMissingSubs(
         partialSubsections: newPs.partialSubsections,
         expectedSubsections: newPs.expectedSubsections,
         skipDegrades: newPs.skipDegrades ?? [],
+        sectionKeys: newPs.sectionKeys, // 12.5 (Д-50)
         estimates: await computePauseEstimates(synthesisId, newPs),
       });
     }

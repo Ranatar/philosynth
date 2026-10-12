@@ -166,7 +166,9 @@ export const LANG_LOCALE = { ru: "ru", en: "en", de: "de" };
 
 /* ───────────── Мастер-таблица ───────────── */
 
-const FIELD_ORDER = ["ru", ...LANGS.filter((l) => l !== "ru"), "from", "draft", "params", "note", "data", "static", "obsolete", "where"];
+/** Порядок полей записи; языки — по meta.languages таблицы (12.5: i18n:add-lang
+ *  дописывает колонку в том же процессе, где LANGS ещё прежний), иначе LANGS. */
+const fieldOrder = (langs = LANGS) => ["ru", ...langs.filter((l) => l !== "ru"), "from", "draft", "params", "note", "data", "static", "obsolete", "where"];
 
 export function readTable(root, p = TABLE_PATH) {
   const abs = path.isAbsolute(p) ? p : path.join(root, p);
@@ -174,9 +176,9 @@ export function readTable(root, p = TABLE_PATH) {
   return JSON.parse(fs.readFileSync(abs, "utf8"));
 }
 
-function orderEntry(e) {
+function orderEntry(e, langs) {
   const o = {};
-  for (const k of FIELD_ORDER) if (e[k] !== undefined) o[k] = e[k];
+  for (const k of fieldOrder(langs)) if (e[k] !== undefined) o[k] = e[k];
   for (const k of Object.keys(e)) if (!(k in o)) o[k] = e[k];
   return o;
 }
@@ -189,8 +191,9 @@ function orderEntry(e) {
 export function writeTable(abs, table) {
   const keys = Object.keys(table.strings).sort();
   const lines = ["{", `  "meta": ${JSON.stringify(table.meta, null, 2).replace(/\n/g, "\n  ")},`, `  "strings": {`];
+  const langs = Array.isArray(table.meta?.languages) && table.meta.languages.length ? table.meta.languages : LANGS;
   keys.forEach((k, i) => {
-    const e = orderEntry(table.strings[k]);
+    const e = orderEntry(table.strings[k], langs);
     const fields = Object.keys(e);
     lines.push(`    ${JSON.stringify(k)}: {`);
     fields.forEach((f, j) => {

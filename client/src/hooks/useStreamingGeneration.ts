@@ -60,6 +60,10 @@ export interface SectionProgress {
 export interface StreamingPause {
   pausedState: PausedState;
   estimates: PauseEstimates;
+  /** 12.5 (Д-50): повтор паузы при подписке (ws/handler), не живая пауза
+   *  этого прогона — страница модалку не открывает и pausedState берёт из
+   *  снапшота GET /:id (он полнее: completedPasses, maxTokensUsed, genParams) */
+  replay: boolean;
 }
 
 export interface UseStreamingGenerationOptions {
@@ -178,7 +182,10 @@ export function useStreamingGeneration(
     (msg: Extract<WsServerMessage, { type: "generation_paused" }>): PausedState => {
       const st = stateRef.current;
       const doneKeys = st.order.filter((k) => st.byKey[k]?.status === "done");
+      // 12.5 (Д-50): разделы прерванного прохода приходят в сообщении
+      // (sectionKeys); угадывание по локальному прогрессу — запасной ход
       const cur =
+        msg.sectionKeys?.[0] ??
         currentRef.current ??
         st.order.find((k) => st.byKey[k]?.status === "streaming") ??
         st.order.find((k) => st.byKey[k]?.status === "pending") ??
@@ -209,8 +216,8 @@ export function useStreamingGeneration(
       const gen: PausedStateGen = {
         kind: "gen",
         passIdx: doneKeys.length,
-        sectionKeys: cur ? [cur] : [],
-        sectionLabel: cur ? labelFor(cur) : "",
+        sectionKeys: msg.sectionKeys ?? (cur ? [cur] : []),
+        sectionLabel: (msg.sectionKeys ?? (cur ? [cur] : [])).map(labelFor).join(", "),
         isPartial: msg.isPartial,
         reason: msg.reason,
         reasonKind: msg.reasonKind,
@@ -282,11 +289,14 @@ export function useStreamingGeneration(
           onCompleteRef.current?.(msg.totalUsage);
           break;
         case "generation_paused": {
+          // 12.5 (Д-50): повтор при подписке — не живой обрыв: раздел в
+          // прогрессе не красится, пауза помечается replay
           const cur = currentRef.current;
-          if (cur) patchSection(cur, { status: "error" });
+          if (cur && !msg.replay) patchSection(cur, { status: "error" });
           setPause({
             pausedState: buildPausedState(msg),
             estimates: msg.estimates ?? {},
+            replay: msg.replay === true,
           });
           break;
         }

@@ -93,7 +93,10 @@ console.log("A. чистые функции");
   const blob = JSON.stringify(everything.body);
   t("critique среди действий плана НЕ появляется (каскад — не рука)", !/"critique/.test(blob) && !everything.body.regen.includes("critique"));
   const src = readFileSync(new URL("../server/services/recommendation-planner.ts", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
-  t("в коде планировщика critique — только чтение прозы", (src.match(/RECOMMENDATIONS_SECTION_KEY/g) ?? []).length === 2 && !/regen\.push\((?!sec\))/.test(src));
+  // 12.5 (Д-45): с 12.3 ключ критики читается ещё и в карте порядка подразделов — счёт «ровно 2»
+  // заменён правилом: каждое употребление вне import — чтение (eq(sections.key, …) либо индекс карты)
+  const keyUses = [...src.matchAll(/.{0,30}RECOMMENDATIONS_SECTION_KEY.{0,3}/g)].map((m) => m[0]).filter((u) => !/^\s*RECOMMENDATIONS_SECTION_KEY,$/.test(u.trim()));
+  t("в коде планировщика critique — только чтение прозы", keyUses.length >= 2 && keyUses.every((u) => /eq\(sections\.key, RECOMMENDATIONS_SECTION_KEY\)|\[RECOMMENDATIONS_SECTION_KEY\]/.test(u)) && !/regen\.push\((?!sec\))/.test(src), JSON.stringify(keyUses));
   t("в роутах нет пути «исполнить все»", !/execute-all|executeAll|\/all["'`]/.test(readFileSync(new URL("../server/routes/recommendations.ts", import.meta.url), "utf8") + readFileSync(new URL("../server/routes/plans.ts", import.meta.url), "utf8")));
 
   const c = estep.cleanModelFieldValue;

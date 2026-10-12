@@ -41,11 +41,12 @@ import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { createStripeMock } from "../tools/stripe-mock.mjs";
-import { mkdtempSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import puppeteer from "puppeteer-core";
+import { homedir } from "node:os";
 import postgres from "postgres";
 
 const SERVER_PORT = 3000;
@@ -58,7 +59,17 @@ const DB_URL = "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
 const ENC_SECRET = "test-encryption-secret-71";
 const WH_SECRET = "whsec_test_71";
 const SERVER_KEY = "sk-ant-server-key-71";
-const CHROME = process.env.CHROME_PATH ?? "/opt/google/chrome/chrome";
+// 12.5: браузер харнессов — Chrome 131 (09 §1, 12.2 п.5; CHROME_PATH — иной путь).
+// Системного /opt/google/chrome/chrome в песочнице больше нет.
+const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+if (!CHROME) { console.error("Chrome 131 не найден — задайте CHROME_PATH"); process.exit(2); }
+/** 12.5: клиент с 11.3 открывается на языке браузера (headless — en-US), а
+ *  харнесс ищет русские подписи: язык страницы — CDP (09 §4, 11.3/12.2). */
+async function ruPage(page) {
+  const cdp = await page.createCDPSession();
+  await cdp.send("Network.setUserAgentOverride", { userAgent: await page.browser().userAgent(), acceptLanguage: "ru-RU,ru" });
+  return page;
+}
 const ROOT = new URL("../", import.meta.url).pathname;
 
 process.env.DATABASE_URL ??= DB_URL;
@@ -507,7 +518,7 @@ try {
   /* ── Браузер ───────────────────────────────────────────────────── */
   console.log("\n── Браузер: каталоги, EdgeCreateForm, авто-импорт, профиль ──");
   browser = await puppeteer.launch({ executablePath: CHROME, headless: "shell", args: ["--no-sandbox", "--disable-dev-shm-usage"] });
-  const page = await browser.newPage();
+  const page = await ruPage(await browser.newPage());
   await page.setViewport({ width: 1280, height: 900 });
   const pageErrors = [];
   page.on("pageerror", (e) => pageErrors.push(String(e)));
@@ -559,10 +570,13 @@ try {
   ok(relDb.nameRu === "пробная связь UI" && relDb.defaultDirection === "reflexive", "правка по месту дошла до БД (nameRu + направление)", J(relDb));
   const rowTxt = await text(page, relRow);
   ok(/пробная связь UI/.test(rowTxt) && /рефлексивная/.test(rowTxt), "строка таблицы перерисована");
+  // 12.5 (Д-45): с 12.4 (Д-17) удаление типа — второй шаг кнопок в строке таблицы, не window.confirm
   dialogs.length = 0;
   await clickDom(page, T("catalog-relationship-delete-t71_rel"));
+  await waitSel(page, T("catalog-relationship-delete-confirm-t71_rel"));
+  ok(/точно удалить\?/i.test(await text(page, T("catalog-relationship-delete-confirm-t71_rel"))) && dialogs.length === 0, "второй шаг «Точно удалить?» в строке таблицы, без confirm");
+  await clickDom(page, T("catalog-relationship-delete-confirm-t71_rel"));
   await page.waitForFunction((s) => /удалён/i.test(document.querySelector(s)?.innerText ?? ""), { timeout: 15000 }, T("catalog-relationship-status"));
-  ok(dialogs.length === 1 && /Удалить тип «t71_rel»/.test(dialogs[0]), "confirm перед удалением");
   ok((await db.select().from(relationshipTypeCatalog).where(eq(relationshipTypeCatalog.id, customRel.id))).length === 0, "тип связи удалён из БД");
   const statusTxt = await text(page, T("catalog-relationship-status"));
   ok(/отвязано связей: 1/.test(statusTxt), "статус несёт unlinked (связь SA ссылалась на тип)", statusTxt);
@@ -694,16 +708,23 @@ try {
   // через браузер: ProfilePage
   await page.goto(`${UI}/profile`, { waitUntil: "domcontentloaded" });
   await waitSel(page, T("delete-account-form"));
+  // 12.5 (Д-45): с 12.4 (Д-17) удаление аккаунта — второй шаг кнопки: первый сабмит взводит
+  // «Точно удалить?», второй шлёт DELETE; window.confirm нет
   dialogs.length = 0;
   await fill(page, `${T("delete-account-form")} input[type=password]`, "wrong-password");
   await clickDom(page, T("delete-account-btn"));
+  await page.waitForFunction((s) => /точно удалить\?/i.test(document.querySelector(s)?.innerText ?? ""), { timeout: 15000 }, T("delete-account-btn"));
+  ok(dialogs.length === 0, "второй шаг «Точно удалить?» вместо confirm (браузер)");
+  await clickDom(page, T("delete-account-btn"));
   await page.waitForFunction((s) => /Неверный пароль/.test(document.querySelector(s)?.innerText ?? ""), { timeout: 15000 }, T("delete-account-form"));
-  ok(dialogs.length === 1 && /Удалить аккаунт\?/.test(dialogs[0]), "confirm перед удалением (браузер)");
   ok(await page.evaluate(() => location.pathname === "/profile"), "неверный пароль не разлогинил (skipUnauthorizedHandler)");
   await fill(page, `${T("delete-account-form")} input[type=password]`, A.password);
   await clickDom(page, T("delete-account-btn"));
-  await page.waitForFunction(() => location.pathname === "/login", { timeout: 20000 });
-  ok(true, "после удаления — /login (store anonymous, RequireAuth)");
+  await page.waitForFunction((s) => /точно удалить\?/i.test(document.querySelector(s)?.innerText ?? ""), { timeout: 15000 }, T("delete-account-btn"));
+  await clickDom(page, T("delete-account-btn"));
+  // 8.7: гостя встречает стартовая страница «/», не /login
+  await page.waitForFunction(() => location.pathname === "/", { timeout: 20000 });
+  ok(true, "после удаления — «/» (store anonymous, RequireAuth → витрина 8.7)");
   const aRow = await userRow(A.id);
   ok(aRow && aRow.email === `deleted-${A.id}@deleted.invalid` && aRow.displayName === null && aRow.stripeCustomerId === null && aRow.role === "user", "users анонимизирован: email/displayName/stripe_customer_id/role", J({ e: aRow?.email, d: aRow?.displayName, c: aRow?.stripeCustomerId, r: aRow?.role }));
   ok((await db.select().from(sessions).where(eq(sessions.userId, A.id))).length === 0, "сессии удалены");

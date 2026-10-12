@@ -235,7 +235,8 @@ try {
     const g0 = await api("POST", "/auth/login", bad);
     ok(g0.status === 400 && g0.json.error === "Невалидные данные", "гость без заголовков — русское", g0.json);
     const gDe = await api("POST", "/auth/login", bad, { "Accept-Language": "de-DE,de;q=0.9" });
-    ok(gDe.status === 400 && gDe.json.error === "Невалидные данные", "гость с Accept-Language: de — русское (немецкого перевода нет)", gDe.json);
+    // 12.5 (Д-45): с 11.4 каталог de влит — гость с Accept-Language: de получает немецкое
+    ok(gDe.status === 400 && gDe.json.error === "Ungültige Daten", "гость с Accept-Language: de — немецкое (каталог de, 11.4)", gDe.json);
     const gEn = await api("POST", "/auth/login", bad, { "Accept-Language": "fr, en;q=0.8" });
     ok(gEn.status === 400 && gEn.json.error === "Invalid data", "гость с Accept-Language: fr, en;q=0.8 — английское", gEn.json);
     const gCk = await api("POST", "/auth/login", bad, { "Accept-Language": "ru", Cookie: "ui_locale=en" });
@@ -352,7 +353,8 @@ try {
   {
     stopServer(); await sleep(500);
     const ic = spawnSync("npm", ["run", "check:integration", "-w", "server"], { cwd: ROOT, encoding: "utf8", timeout: 400000, env: { ...process.env, RATE_LIMIT_HTTP_PER_MINUTE: "100000" } });
-    ok(ic.status === 0 && /INTEGRATION OK \(11\.2: 2al\/4aw\/5aj\)/.test(ic.stdout), "check:integration зелёный (2al/4aw/5aj)", (ic.stdout + ic.stderr).split("ПРОБЛЕМЫ")[1]?.slice(0, 600));
+    // 12.5 (Д-45): серии в заголовке растут с каждой беседой — проверяем зелёность и наличие серии 11.2
+    ok(ic.status === 0 && /INTEGRATION OK \(.*11\.2: 2al\/4aw\/5aj/.test(ic.stdout), "check:integration зелёный (несёт 2al/4aw/5aj)", (ic.stdout + ic.stderr).split("ПРОБЛЕМЫ")[1]?.slice(0, 600));
     const tc = spawnSync("npm", ["run", "typecheck"], { cwd: ROOT, encoding: "utf8", timeout: 400000 });
     ok(tc.status === 0, "typecheck — 0 ошибок", (tc.stdout ?? "").slice(-400));
     const au = spawnSync("npm", ["run", "audit", "-w", "server"], { cwd: ROOT, encoding: "utf8", timeout: 120000 });
@@ -367,7 +369,8 @@ try {
     const mc = ms.slice(ms.indexOf("export const MODE_CONFIG"), ms.indexOf("export const MODE_KEYS"));
     ok(/title:\s*"⚔ Оппонент"/.test(mc) && !/\btl\(/.test(mc), "MODE_CONFIG сервера остался литералами (зеркало найдено сверх текста запроса)");
     const chk = spawnSync("node", ["scripts/i18n/i18n-check.mjs"], { cwd: ROOT, encoding: "utf8" });
-    ok(/литералы с ключом — codemod не применён: 1\n\s+client\/src\/components\/synthesis\/PauseModal\.tsx/.test(chk.stdout) && /литералы без ключа — дополнить names\.json: 0/.test(chk.stdout), "i18n:check: единственный литерал с ключом — PauseModal (JSX в подстановке, 11.3), без ключа — 0", chk.stdout.slice(-600));
+    // 12.5 (Д-45): с 11.3 литералов с ключом не осталось (PauseModal переведён) — счёт 0/0
+    ok(/литералы с ключом — codemod не применён: 0\b/.test(chk.stdout) && /литералы без ключа — дополнить names\.json: 0/.test(chk.stdout), "i18n:check: литералов с ключом и без ключа — 0 (11.3)", chk.stdout.slice(-600));
     const split = spawnSync("node", ["scripts/i18n/i18n-split.mjs", "--check"], { cwd: ROOT, encoding: "utf8" });
     ok(split.status === 0, "generated/* ≡ нарезке strings.json", split.stdout);
   }

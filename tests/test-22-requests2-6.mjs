@@ -650,7 +650,13 @@ try {
     ORDER BY created_at DESC LIMIT 1`;
   ok(gen5?.status === "done" && gen5.metadata.hasUserNote === true,
     "(b) genLog source='subsection_regen' + userNote");
-  const verPost5 = await synthRow(S1);
+  // 12.5 (Д-45): гонка — section_done уходит клиенту раньше, чем служба дописывает версию;
+  // ждём ЗНАЧЕНИЯ version_sub, а не читаем один раз
+  let verPost5 = await synthRow(S1);
+  for (let i = 0; i < 40 && verPost5.version_sub !== verPre5.version_sub + 1; i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    verPost5 = await synthRow(S1);
+  }
   ok(verPost5.version_sub === verPre5.version_sub + 1,
     "(b) version_sub +1 [18811]",
     `${verPre5.version_sub} → ${verPost5.version_sub}`);

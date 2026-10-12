@@ -24,6 +24,23 @@ import { RECOMMENDATIONS_PROSE_ADDENDUM } from "../server/config/recommendation-
 // Байтовая сверка buildSYS сохраняется: добавка СНИМАЕТСЯ перед сравнением и
 // отдельно проверяется, что она стоит ровно один раз на своём месте.
 import { stripLangInstructionAddendum } from "../server/config/lang-templates.ts";
+// Беседа 12.5 (Д-40): третье намеренное отступление — section.theses.shared
+// несёт раскладку блока тезиса (надстройка thesis-layout-templates). Байтовая
+// сверка сохраняется: добавка СНИМАЕТСЯ с shared-блока перед сравнением и
+// отдельно проверяется, что она стоит ровно один раз и в конце.
+import { stripThesisLayoutAddendum } from "../server/config/thesis-layout-templates.ts";
+function withoutDeparture125(def) {
+  if (def.key !== "theses") return { def, departed: null };
+  let departed = false;
+  const subs = def.parts.subsections.map((x) => {
+    if (x.type !== "shared") return x;
+    const r = stripThesisLayoutAddendum(x.body);
+    departed = r.departed;
+    return { ...x, body: r.text };
+  });
+  const parts = { ...def.parts, subsections: subs };
+  return { def: { ...def, parts, prompt: serializeParts(parts) }, departed };
+}
 function withoutDeparture101(def) {
   if (def.key !== "critique") return { def, departed: null };
   const subs = def.parts.subsections;
@@ -101,11 +118,14 @@ for (const { name, p } of CASES) {
   ok(`число разделов ${expDefs.length}`, gotDefs.length === expDefs.length,
     `got ${gotDefs.length}`);
   for (let i = 0; i < Math.min(gotDefs.length, expDefs.length); i++) {
-    const { def: g, departed } = withoutDeparture101(gotDefs[i]);
+    const { def: g1, departed } = withoutDeparture101(gotDefs[i]);
+    const { def: g, departed: departed125 } = withoutDeparture125(g1);
     const e = expDefs[i];
     if (departed !== null)
       ok("critique: отступление 10.1 ровно одно — таблица последним подразделом после прозы + требование в прозе", departed,
         gotDefs[i].parts.subsections.map((x) => x.name).join("|"));
+    if (departed125 !== null)
+      ok("theses: отступление 12.5 (Д-40) ровно одно — раскладка блока тезиса в конце shared-блока", departed125);
     const meta = g.key === e.key && g.num === e.num && g.title === e.title;
     const d = firstDiff(g.prompt, e.prompt);
     ok(`${e.key}: key/num/title + prompt байт-в-байт`, meta && g.prompt === e.prompt,

@@ -631,35 +631,43 @@ export function SynthesisPage() {
   }, [doneCount, reloadSections]);
 
   // Пауза: живая (WS, текущий прогон) перекрывает снапшот из GET /:id.
-  // 12.4 (Д-2, тестовые запросы): при заходе на страницу в паузе replay
-  // подписки (ws/handler) шлёт generation_paused БЕЗ skipDegrades и
-  // sectionKeys — собранное из него состояние беднее снапшота БД, и вопрос
-  // о деградации при пропуске молча терялся. Та же пауза (kind, reasonKind,
-  // reason совпали) берётся из снапшота — он и есть источник pausedState при
-  // заходе (1.6b); новая живая пауза (снапшота нет — load после resume его
-  // обнулил, либо причина иная) — из потока. Сам replay — Д-50 (§12).
-  const livePausedState = stream.pause?.pausedState ?? null;
+  // 12.5 (Д-50): повтор паузы при подписке (replay: true) — не живая пауза:
+  // источник pausedState при заходе — снапшот GET /:id (1.6b; он полнее —
+  // completedPasses, maxTokensUsed, genParams), повтор даёт лишь estimates.
+  // Прежний обход samePause (12.4, Д-2: сличение kind/reasonKind/reason)
+  // снят — повтор теперь помечен сервером.
+  const livePausedState =
+    stream.pause && !stream.pause.replay ? stream.pause.pausedState : null;
   const snapshotPausedState = synthesis?.pausedState ?? null;
-  const samePause =
-    livePausedState !== null &&
-    snapshotPausedState !== null &&
-    livePausedState.kind === snapshotPausedState.kind &&
-    livePausedState.reasonKind === snapshotPausedState.reasonKind &&
-    livePausedState.reason === snapshotPausedState.reason;
-  const pausedState = samePause
-    ? snapshotPausedState
-    : (livePausedState ?? snapshotPausedState);
+  const pausedState = livePausedState ?? snapshotPausedState;
   const pauseEstimates =
     stream.pause?.estimates ?? synthesis?.pauseEstimates ?? {};
   const paused = !!pausedState;
 
   // Новая живая пауза → модалка открывается сама (showPauseModal);
-  // снапшот из БД (status='paused' при заходе) модалку не навязывает —
-  // доступна по бейджу в GenerationProgress
-  const pauseKey = stream.pause?.pausedState.timestamp ?? null;
+  // снапшот из БД (status='paused' при заходе) и повтор паузы при подписке
+  // (replay, Д-50) модалку не навязывают — доступна по бейджу в
+  // GenerationProgress
+  const pauseKey =
+    stream.pause && !stream.pause.replay
+      ? stream.pause.pausedState.timestamp
+      : null;
   useEffect(() => {
     if (pauseKey !== null) setPauseModalOpen(true);
   }, [pauseKey]);
+
+  // 12.5 (Д-50): повтор паузы при подписке, а снапшот ещё без паузы (GET /:id
+  // прочитан, пока генерация шла, обрыв случился до подписки) → перечитать
+  // снапшот: источник pausedState — он, повтор его не подменяет
+  const replayKey =
+    stream.pause && stream.pause.replay
+      ? stream.pause.pausedState.timestamp
+      : null;
+  const snapshotStatus = synthesis?.status ?? null;
+  useEffect(() => {
+    if (replayKey !== null && id && snapshotStatus !== "paused") void load(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replayKey]);
 
   // Возобновление принято → статус в БД изменился, перечитываем
   const resumedMode = stream.resumedMode;

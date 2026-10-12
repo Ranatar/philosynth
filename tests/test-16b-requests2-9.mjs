@@ -29,6 +29,8 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 import postgres from "postgres";
 import puppeteer from "puppeteer-core";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 
 const SERVER_PORT = 3000; // vite proxy → :3000
 const VITE_PORT = 5199;
@@ -36,7 +38,17 @@ const MOCK_PORT = 3993;
 const API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
 const UI = `http://127.0.0.1:${VITE_PORT}`;
 const DB_URL = "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
-const CHROME = "/opt/google/chrome/chrome";
+// 12.5: браузер харнессов — Chrome 131 (09 §1, 12.2 п.5; CHROME_PATH — иной путь).
+// Системного /opt/google/chrome/chrome в песочнице больше нет.
+const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+if (!CHROME) { console.error("Chrome 131 не найден — задайте CHROME_PATH"); process.exit(2); }
+/** 12.5: клиент с 11.3 открывается на языке браузера (headless — en-US), а
+ *  харнесс ищет русские подписи: язык страницы — CDP (09 §4, 11.3/12.2). */
+async function ruPage(page) {
+  const cdp = await page.createCDPSession();
+  await cdp.send("Network.setUserAgentOverride", { userAgent: await page.browser().userAgent(), acceptLanguage: "ru-RU,ru" });
+  return page;
+}
 
 let passed = 0;
 let failed = 0;
@@ -208,7 +220,7 @@ async function insertSynthesis(sql, userId, over = {}) {
     status: "ready",
     seed: "",
     context: "",
-    isPublic: false,
+    visibility: "private", // 12.5 (Д-25): ступень 8.6 вместо is_public
     docNum: "",
     sectionOrder: ["sum"],
     capsuleHtml: "",
@@ -218,12 +230,12 @@ async function insertSynthesis(sql, userId, over = {}) {
     ...over,
   };
   const [row] = await sql`
-    INSERT INTO syntheses (user_id, title, status, seed, context, is_public,
+    INSERT INTO syntheses (user_id, title, status, seed, context, visibility,
       doc_num, method, synth_level, depth, generation_order, lang,
       section_order, structure_sections, capsule_html,
       total_input_tokens, total_output_tokens, total_cost_usd)
     VALUES (${userId}, ${o.title}, ${o.status}, ${o.seed}, ${o.context},
-      ${o.isPublic}, ${o.docNum}, 'dialectical', 'transformative', 'standard',
+      ${o.visibility}, ${o.docNum}, 'dialectical', 'transformative', 'standard',
       'architectural', 'Russian', ${sql.json(o.sectionOrder)},
       ${sql.json(o.sectionOrder)}, ${o.capsuleHtml},
       ${o.inTok}, ${o.outTok}, ${o.cost})
@@ -326,7 +338,7 @@ async function main() {
     title: "Чужой приватный T16B", docNum: "PS-4444-T16B",
   });
   const SPUBB = await insertSynthesis(sql, bRow.id, {
-    title: "Чужой публичный T16B", docNum: "PS-5555-T16B", isPublic: true,
+    title: "Чужой публичный T16B", docNum: "PS-5555-T16B", visibility: "full",
   });
   await insertSection(sql, SPUBB, "sum", 1, "Резюме синтеза", SUM_HTML);
 
@@ -338,7 +350,7 @@ async function main() {
     headless: "shell",
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
-  const page = await browser.newPage();
+  const page = await ruPage(await browser.newPage());
   await page.setViewport({ width: 1280, height: 900 });
   const consoleErrors = [];
   page.on("pageerror", (e) => consoleErrors.push(String(e)));
@@ -546,7 +558,7 @@ async function main() {
     ok(footerText.includes("Кант, Гегель"), "философы в футере");
 
     /* ══ R6: CatalogPage ══ */
-    console.log("R6: CatalogPage (вкладки, публикация, серверный поиск)");
+    console.log("R6: CatalogPage (вкладки, публичность по ступени 8.6, серверный поиск)");
     await page.goto(`${UI}/catalog`, { waitUntil: "domcontentloaded" });
     await waitText(page, "Синтез критической диалектики");
     let tCat = norm(await pageText(page));
@@ -558,22 +570,17 @@ async function main() {
     );
     ok(!tCat.includes("Чужой публичный T16B"), "чужих синтезов во вкладке «Мои» нет");
 
-    // Публикация S2 через UI
-    const patchWait = page.waitForResponse(
-      (r) => r.url().includes(`/api/v1/syntheses/${S2}`) && r.request().method() === "PATCH",
-      { timeout: 8000 },
-    );
-    await page.evaluate(() => {
-      const btn = [...document.querySelectorAll("a button")].find(
-        (b) => b.textContent.trim() === "Опубликовать" &&
-               b.closest("a").textContent.includes("Герменевтика опосредования"),
-      );
-      btn.click();
-    });
-    const patchResp = await patchWait;
-    ok(patchResp.ok(), "PATCH /syntheses/:id { isPublic: true } ушёл и успешен");
-    const [s2row] = await sql`SELECT is_public FROM syntheses WHERE id = ${S2}`;
-    ok(s2row.is_public === true, "публикация видна в БД");
+    // 12.5 (Д-25): проверки «кнопка «Опубликовать» → PATCH { isPublic: true } →
+    // is_public в БД» УДАЛЕНЫ — предмет исчез: с 8.6 ступень visibility вместо
+    // булева is_public, с 8.7 кнопки «Опубликовать» нет (переключатель
+    // ступени VisibilityControl, один PATCH { visibility, флаги }), а тело
+    // PATCH с isPublic → 400. Управление публичностью из UI покрыто
+    // test-86 (API) и test-87 (витрина, браузер). Здесь S2 переводится на
+    // ступень 'full' прямо в БД, чтобы проверки вкладки «Публичные» ниже
+    // шли по тому же сценарию (свой опубликованный + чужой публичный).
+    await sql`UPDATE syntheses SET visibility = 'full' WHERE id = ${S2}`;
+    const [s2row] = await sql`SELECT visibility FROM syntheses WHERE id = ${S2}`;
+    ok(s2row.visibility === "full", "S2 переведён на ступень full (8.6) для проверки вкладки «Публичные»");
 
     // Вкладка «Публичные»: свой опубликованный + чужой публичный
     await page.evaluate(() => {

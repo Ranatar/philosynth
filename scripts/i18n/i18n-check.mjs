@@ -13,7 +13,12 @@
  *   · строки интерфейса, всё ещё стоящие в коде литералами: с ключом в таблице
  *     (codemod не применён) и без ключа (новая строка без имени в names.json);
  *     литералы строк data (зеркала с данными, MIRROR_EXCLUSIONS codemod'а) —
- *     отдельной справкой, не ошибкой: они переводятся по месту показа (11.4).
+ *     отдельной справкой, не ошибкой: они переводятся по месту показа (11.4);
+ *   · 12.5 (Д-33): значения ФАЙЛОВ-ДАННЫХ (packages/shared/*, compat-matrix,
+ *     seed-taxonomy) против таблицы — значение без строки таблицы (tData
+ *     вернул бы русский) и значение, чей текст разошёлся с ru строки; заводит
+ *     строки `i18n:export --data`. Исключения — id: null в names.json и
+ *     тексты MIRROR_EXCLUSIONS (машинные значения).
  * --strict: код возврата 1, если есть что-то кроме черновиков. С 11.4 в
  *   --strict красным считается и ОТСУТСТВИЕ перевода на любой язык (черновик
  *   считается переводом; список ключей печатается): у каждого ключа обязаны
@@ -25,6 +30,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractProject, namespaceOf, isDataFile } from "./ui-strings-lib.mjs";
+import { scanDataValues } from "./i18n-data.mjs";
 import { LANGS, LANG_LOCALE, readTable, scanCalls, scanStaticCalls, placeholderSet, isStale, loadNames, resolveName, pluralFormProblems, mirrorExclusionFor } from "./i18n-core.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -59,8 +65,9 @@ for (const [key, row] of Object.entries(S)) {
 
 // строки, оставшиеся литералами
 const names = loadNames(ROOT);
+const project = extractProject(ROOT, { withWarnings: false });
 const literalKeyed = [], literalUnnamed = [], literalData = [];
-for (const f of extractProject(ROOT, { withWarnings: false }).files) {
+for (const f of project.files) {
   if (isDataFile(f.rel)) continue;
   const ns = namespaceOf(f.rel);
   for (const e of f.entries) {
@@ -85,6 +92,14 @@ show("формы плюрала не своего языка", badPlurals);
 show("литералы с ключом — codemod не применён", literalKeyed, 5);
 console.log(`· литералы строк data (зеркала с данными, по месту показа — 11.4): ${literalData.length}`);
 show("литералы без ключа — дополнить names.json", literalUnnamed);
+// 12.5 (Д-33): значения файлов-данных против таблицы — без строки tData
+// молча вернёт русский; отметка data и перевод заводятся только в таблице
+const dataScan = scanDataValues(ROOT, table, names, { project });
+const dataMissing = dataScan.missing.map((m) => `${m.where} ${m.key ?? "(нет имени в names.json)"} «${m.text}»`);
+const dataMismatch = dataScan.mismatch.map((m) => `${m.where} ${m.key}: файл «${m.text}» ≠ таблица «${m.ru}»`);
+show("значения файлов-данных без строки таблицы (нужен i18n:export --data)", dataMissing);
+show("значения файлов-данных, разошедшиеся с ru таблицы (нужен i18n:export --data)", dataMismatch);
+console.log(`· значений файлов-данных в таблице: ${dataScan.present.length}; исключено (id: null, MIRROR_EXCLUSIONS): ${dataScan.excluded.length}`);
 // 11.3: static — вызовы tl() вне функций (вычисляются при импорте). В клиенте
 // их быть не должно (переделаны в фабрики, сторож 4ax); на сервере строки
 // собираются в контексте запроса и статики там законны — только счёт.
@@ -97,5 +112,5 @@ for (const l of langs) console.log(`  ${l}: нет перевода ${perLang[l]
 show("ключи без перевода (черновик считается переводом)", missingKeys, 10);
 
 const fatal = problems.length + notInTable.length + ruMismatch.length + badPlaceholders.length + badPlurals.length + literalUnnamed.length +
-  staticClient.length + missingKeys.length + (calls.size ? literalKeyed.length + notInCode.length : 0);
+  staticClient.length + missingKeys.length + dataMissing.length + dataMismatch.length + (calls.size ? literalKeyed.length + notInCode.length : 0);
 process.exit(argv.includes("--strict") && fatal ? 1 : 0);

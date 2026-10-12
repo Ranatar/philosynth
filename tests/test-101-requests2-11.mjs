@@ -169,6 +169,12 @@ try {
     void SUBSECTION_MAP_GLOSSARY; void SUBSECTION_MAP_CRITIQUE_NOVELTY; void SUBSECTION_MAP_CRITIQUE_CHECK; void SUBSECTION_SUM_PORTRAIT;
     await sql`delete from prompt_templates where key in (${T_KEY}, ${X_KEY}, ${P_KEY})`;
     await sql`insert into prompt_templates (key, version, body, is_active, description) values (${P_KEY}, 1, ${oldProse.body}, true, ${oldProse.description})`;
+    // 12.5 (Д-40): вторая надстройка над генератом — section.theses.shared (раскладка блока
+    // тезиса); состояние «до» и для неё — голый генерат v1, иначе счёт updated зависел бы от БД
+    const { THESES_SHARED_TEMPLATE_KEY } = await import("../server/config/thesis-layout-templates.ts");
+    const oldShared = gen.SEED_SECTION_TEMPLATES.find((t) => t.key === THESES_SHARED_TEMPLATE_KEY);
+    await sql`delete from prompt_templates where key = ${THESES_SHARED_TEMPLATE_KEY}`;
+    await sql`insert into prompt_templates (key, version, body, is_active, description) values (${THESES_SHARED_TEMPLATE_KEY}, 1, ${oldShared.body}, true, ${oldShared.description})`;
     for (const [key, value] of [["subsection_map", oldMap], ["intra_deps", INTRA_DEPS], ["subsection_ctx_keys", SUBSECTION_TO_CTX_KEYS]]) {
       await sql`delete from synthesis_configs where key=${key}`;
       await sql`insert into synthesis_configs (key, version, value, is_active, description) values (${key}, 1, ${sql.json(value)}, true, 'до 10.1')`;
@@ -177,7 +183,7 @@ try {
     ok(!pre.c.includes(TABLE), "исходное состояние: в subsection_map таблицы рекомендаций нет");
 
     const sp = seed("seed:prompts");
-    ok(sp.created === 2 && sp.updated === 1 && sp.fail === 0, "seed:prompts: два новых шаблона заведены, прозаический обновлён", sp);
+    ok(sp.created === 2 && sp.updated === 2 && sp.fail === 0, "seed:prompts: два новых шаблона заведены, прозаический и shared тезисов (Д-40) обновлены", sp);
     const sc = seed("seed:configs");
     ok(sc.created === 0 && sc.updated === 3 && sc.fail === 0, "seed:configs: три конфига обновлены, остальные не тронуты", sc);
     const pv = await sql`select version, is_active, body from prompt_templates where key=${P_KEY} order by version`;
@@ -230,7 +236,10 @@ try {
   ok(liveRows[6].elementKind === "glossary_term", "термин, записанный в глоссарии с пояснением в скобках, найден без него");
   const c1 = await critiqueOf(LIVE);
   ok(c1.subsections[c1.subsections.indexOf(PROSE) + 1] === TABLE && c1.subsections.length === c0.subsections.length + 1 && J(c1.subsections.filter((x) => x !== TABLE)) === J(c0.subsections), "в документе: подраздел сразу после прозы, прежние подразделы и их порядок целы");
-  ok(c1.htmlContent.includes('<a id="subsec-critique-Таблица_рекомендаций"></a>') && /<h4>Таблица рекомендаций<a [^>]*toc-back-btn/.test(c1.htmlContent), "обёртка по образцу соседей: якорь оглавления и ⏫");
+  // 12.5 (Д-45): с 12.2 (Д-29) якоря оглавления и ⏫ живут только в выгрузке (addTocAnchors при
+  // экспорте), в БД их нет ни у соседей, ни у нового подраздела — обёртка по образцу соседей: голая
+  const neighbourAnchored = /<a id="subsec-critique-/.test(c1.htmlContent.slice(0, c1.htmlContent.indexOf('data-section="Таблица рекомендаций"')));
+  ok(/<div data-section="Таблица рекомендаций">\s*(<a id="subsec-critique-Таблица_рекомендаций"><\/a>\s*)?<h4>Таблица рекомендаций(<a [^>]*toc-back-btn[^>]*>[^<]*<\/a>)?<\/h4>/.test(c1.htmlContent) && /<a id="subsec-critique-Таблица_рекомендаций">/.test(c1.htmlContent) === neighbourAnchored, `обёртка по образцу соседей: якорь оглавления и ⏫ ${neighbourAnchored ? "есть, как у соседей" : "отсутствуют, как у соседей (Д-29: они — в выгрузке)"}`);
   ok(c1.isEdited === true && !c1.lockedSubsections.includes(TABLE), "раздел помечен правленым; замок 9.2 подраздел не запирает");
   const p = mock.lastExtractPrompt;
   ok(p.includes("Рекомендация 7") && p.includes("Столбцы СТРОГО: " + HEAD.join(" | ")) && !/\{\{/.test(p), "модели ушли проза и контракт, дыр в промпте нет");

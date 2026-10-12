@@ -46,6 +46,8 @@ import { resolveSubsection as reexported } from "../server/services/generation-s
 import { indexSectionSubsections, thesisLabelsFromHtml } from "../server/services/recommendations.ts";
 import { recommendationProseOf } from "../server/services/recommendation-planner.ts";
 import {
+  LANGS,
+  LANG_LOCALE,
   MIRROR_EXCLUSIONS,
   exclusionSpan,
   mirrorExclusionFor,
@@ -65,7 +67,10 @@ const ok = (name, cond, detail = "") => {
 
 /* ── 1. Словарь языков и правило владельца ── */
 console.log("═══ 1. locales: UI_LOCALES, UI_TO_GEN, genLangForUi ═══");
-ok("UI_LOCALES = ru, en, de", UI_LOCALES.join() === "ru,en,de" && DEFAULT_UI_LOCALE === "ru");
+// 12.5 (Д-33): языки не перечисляются поимённо — список один (UI_LOCALES); ru первым, en и de обязательны
+ok("UI_LOCALES: ru первым, en и de есть, без повторов", UI_LOCALES[0] === "ru" && UI_LOCALES.includes("en") && UI_LOCALES.includes("de") && new Set(UI_LOCALES).size === UI_LOCALES.length && DEFAULT_UI_LOCALE === "ru");
+ok("LANGS инструментов ≡ UI_LOCALES, LANG_LOCALE покрывает каждый язык", LANGS.join() === UI_LOCALES.join() && UI_LOCALES.every((l) => typeof LANG_LOCALE[l] === "string"), `${LANGS.join()} / ${UI_LOCALES.join()}`);
+ok("UI_TO_GEN задан каждому языку UI_LOCALES", UI_LOCALES.every((l) => l in UI_TO_GEN));
 ok("UI_TO_GEN ⊆ LANG_OPTIONS (один список)", Object.values(UI_TO_GEN).every((g) => GEN_LANG_VALUES.includes(g)));
 ok("GEN_FALLBACK = English и есть в LANG_OPTIONS", GEN_FALLBACK === "English" && GEN_LANG_VALUES.includes(GEN_FALLBACK));
 ok("LANG_OPTIONS — 9 пар, «__custom» последним", LANG_OPTIONS.length === 9 && LANG_OPTIONS.at(-1)[0] === "__custom" && !GEN_LANG_VALUES.includes("__custom"));
@@ -115,8 +120,13 @@ const cmp = compareCatalogs(ROOT);
 ok("generated/en.json и de.json ≡ нарезке", cmp.every((r) => r.actual === r.expected), cmp.filter((r) => r.actual !== r.expected).map((r) => r.rel).join());
 const en = splitCatalog(table, "en");
 ok("каталог несёт locale и ≥1500 строк", en.locale === "en" && Object.keys(en.strings).length >= 1500);
-ok("строки data и obsolete не попадают", Object.entries(table.strings).every(([k, r]) => !(r.data || r.obsolete) || !(k in en.strings)));
-ok("черновики попадают", Object.entries(table.strings).some(([k, r]) => r.draft?.includes("en") && k in en.strings));
+// 12.5 (Д-38): правило 11.2 «data не в каталоге» отменено замыслом 11.4 — строки data ВХОДЯТ
+// в каталог (tData → tl() по карте «значение → ключ»); obsolete — по-прежнему нет
+ok("строки data попадают в каталог (11.4), obsolete — нет", Object.entries(table.strings).every(([k, r]) => (r.obsolete ? !(k in en.strings) : !r.data || k in en.strings)));
+// 12.5 (Д-38): «черновики попадают» требовала наличия черновика en в таблице; с 2026-09-29 en и de
+// утверждены (черновиков нет) — предмет исчез. Правило «черновик попадает в каталог» проверяется
+// на копии таблицы (import --draft → split) в smoke-114 п.5; здесь — что split не отсеивает draft
+ok("splitCatalog не отсеивает черновики", (() => { const t = { ...table, strings: { ...table.strings, "x.draft": { ru: "а", en: "a", de: "a", draft: ["en"], from: { en: "а", de: "а" } } } }; return "x.draft" in splitCatalog(t, "en").strings; })());
 ok("неговорящих имён подстановок нет", !Object.values(table.strings).some((r) => Object.keys(r.params ?? {}).some((p) => p === "value" || /\d$/.test(p))));
 ok("говорящие имена из names.json params: jsonErrorAt", Object.keys(table.strings["adminPromptsPage.jsonErrorAt"].params).join() === "message,line,column");
 ok("русского каталога нет", !fs.existsSync(path.join(ROOT, "packages/shared/i18n/generated/ru.json")));

@@ -44,6 +44,8 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 import postgres from "postgres";
 import puppeteer from "puppeteer-core";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import * as THREE from "three";
 
 // R3: клиентские модули напрямую (tsx транспилирует TS на лету)
@@ -62,7 +64,17 @@ const VITE_PORT = 5199;
 const API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
 const UI = `http://127.0.0.1:${VITE_PORT}`;
 const DB_URL = "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
-const CHROME = "/opt/google/chrome/chrome";
+// 12.5: браузер харнессов — Chrome 131 (09 §1, 12.2 п.5; CHROME_PATH — иной путь).
+// Системного /opt/google/chrome/chrome в песочнице больше нет.
+const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+if (!CHROME) { console.error("Chrome 131 не найден — задайте CHROME_PATH"); process.exit(2); }
+/** 12.5: клиент с 11.3 открывается на языке браузера (headless — en-US), а
+ *  харнесс ищет русские подписи: язык страницы — CDP (09 §4, 11.3/12.2). */
+async function ruPage(page) {
+  const cdp = await page.createCDPSession();
+  await cdp.send("Network.setUserAgentOverride", { userAgent: await page.browser().userAgent(), acceptLanguage: "ru-RU,ru" });
+  return page;
+}
 
 let passed = 0;
 let failed = 0;
@@ -175,18 +187,18 @@ async function insertSynthesis(sql, userId, over = {}) {
   const o = {
     title: "Синтез",
     status: "ready",
-    isPublic: false,
+    visibility: "private", // 12.5 (Д-25): ступень 8.6 вместо is_public
     docNum: "",
     sectionOrder: ["sum"],
     extGraph: false,
     ...over,
   };
   const [row] = await sql`
-    INSERT INTO syntheses (user_id, title, status, seed, context, is_public,
+    INSERT INTO syntheses (user_id, title, status, seed, context, visibility,
       doc_num, method, synth_level, depth, generation_order, lang,
       section_order, structure_sections, capsule_html, ext_graph_metrics,
       total_input_tokens, total_output_tokens, total_cost_usd)
-    VALUES (${userId}, ${o.title}, ${o.status}, '', '', ${o.isPublic},
+    VALUES (${userId}, ${o.title}, ${o.status}, '', '', ${o.visibility},
       ${o.docNum}, 'dialectical', 'transformative', 'standard',
       'architectural', 'Russian', ${sql.json(o.sectionOrder)},
       ${sql.json(o.sectionOrder)}, '', ${o.extGraph}, 0, 0, 0)
@@ -324,23 +336,33 @@ async function huntNode3d(page, names = null, center = null) {
   const cy = center ? center.y : rect.y + rect.h / 2;
   // Относительные шаги: раскладка-«кольцо» уводит узлы к краям канваса
   const fr = [0, -0.08, 0.08, -0.16, 0.16, -0.24, 0.24, -0.32, 0.32, -0.4, 0.4];
-  const steps = { x: fr.map((f) => f * rect.w), y: fr.map((f) => f * rect.h) };
-  for (const dy of steps.y) {
-    for (const dx of steps.x) {
-      await page.mouse.move(cx + dx, cy + dy);
-      await sleep(70);
-      const tip = await page.evaluate(() => {
-        const t = [...document.querySelectorAll(".gm-overlay > div")].find(
-          (d) => d.style.pointerEvents === "none",
-        );
-        if (!t || t.style.display === "none") return null;
-        return t.textContent;
-      });
-      if (tip && (!names || names.some((n) => tip.includes(n))))
-        return { x: cx + dx, y: cy + dy, text: tip };
+  const readTip = () => page.evaluate(() => {
+    const t = [...document.querySelectorAll(".gm-overlay > div")].find(
+      (d) => d.style.pointerEvents === "none",
+    );
+    if (!t || t.style.display === "none") return null;
+    return t.textContent;
+  });
+  const scan = async (xs, ys, pause) => {
+    for (const dy of ys) {
+      for (const dx of xs) {
+        if (cx + dx < rect.x + 2 || cx + dx > rect.x + rect.w - 2 || cy + dy < rect.y + 2 || cy + dy > rect.y + rect.h - 2) continue;
+        await page.mouse.move(cx + dx, cy + dy);
+        await sleep(pause);
+        const tip = await readTip();
+        if (tip && (!names || names.some((n) => tip.includes(n))))
+          return { x: cx + dx, y: cy + dy, text: tip };
+      }
     }
-  }
-  return null;
+    return null;
+  };
+  const coarse = await scan(fr.map((f) => f * rect.w), fr.map((f) => f * rect.h), 70);
+  if (coarse) return coarse;
+  // 12.5 (Д-25): после орбиты/зума/пинча узлы уходят с крупной сетки — вторая,
+  // плотная охота по всему холсту (шаг 4% стороны; узел 3D заметно крупнее шага)
+  const fine = [];
+  for (let f = -0.46; f <= 0.46001; f += 0.04) fine.push(f);
+  return scan(fine.map((f) => f * rect.w), fine.map((f) => f * rect.h), 25);
 }
 
 
@@ -547,9 +569,12 @@ function moduleTestsR3() {
     },
     false,
   );
+  // 12.2 (Д-10, решение пользователя 2026-09-23): квирк ИСПРАВЛЕН — точное
+  // совпадение с ключом палитры первым (lookupByType), сид по самому длинному
+  // ключу (longestSeed); проверка перевёрнута, как сторож 4q (09 §2, 12.2 п.1)
   ok(
-    typeColor("логическая") === typeColor("онтологическая"),
-    "квирк исходника: «логическая» ⊂ «онтологическая» → один цвет (fuzzy-поиск)",
+    typeColor("логическая") !== typeColor("онтологическая"),
+    "Д-10 (12.2): «логическая» и «онтологическая» — разные цвета (точное совпадение первым)",
   );
 }
 
@@ -641,7 +666,7 @@ async function main() {
 
   /* ── Чужие: публичный с графом и приватный ── */
   const S_PUBB = await insertSynthesis(sql, bRow.id, {
-    title: "Чужой публичный граф T17", docNum: "PS-1704-T17", isPublic: true,
+    title: "Чужой публичный граф T17", docNum: "PS-1704-T17", visibility: "full",
     sectionOrder: ["sum", "graph"],
   });
   await insertSection(sql, S_PUBB, "sum", 1, "Резюме синтеза", SUM_HTML);
@@ -672,7 +697,7 @@ async function main() {
       "--disable-renderer-backgrounding",
     ],
   });
-  const page = await browser.newPage();
+  const page = await ruPage(await browser.newPage());
   await page.setViewport({ width: 1280, height: 900 });
   const consoleErrors = [];
   page.on("pageerror", (e) => consoleErrors.push(String(e)));
@@ -697,8 +722,10 @@ async function main() {
     await page.waitForSelector(".gm-view canvas", { timeout: 8000 });
     const cvSize = await page.$eval(".gm-view canvas", (cv) => ({ w: cv.width, h: cv.height }));
     ok(cvSize.w > 100 && cvSize.h > 100, `WebGL-канвас создан и не нулевой (${cvSize.w}×${cvSize.h})`);
+    // 12.4 (Д-22): .gm-hint набрана капителью (text-transform) — innerText
+    // отдаёт «ВРАЩЕНИЕ: МЫШЬ»; сверка без учёта регистра (09 §4)
     ok(
-      (await pageText(page)).includes("Вращение: мышь"),
+      (await pageText(page)).toLowerCase().includes("вращение: мышь"),
       "подсказка 3D-режима видна",
     );
 
@@ -1107,7 +1134,7 @@ async function main() {
     /* ══ R9: мобильный touch через CDP ══ */
     console.log("R9: мобильный touch (CDP Input.dispatchTouchEvent)");
     let touchSupported = true;
-    const mpage = await browser.newPage();
+    const mpage = await ruPage(await browser.newPage());
     try {
       await mpage.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
       mpage.on("pageerror", (e) => consoleErrors.push("mobile: " + e));
@@ -1224,6 +1251,33 @@ async function main() {
         prevM = cur;
       }
 
+      // 12.5: tap-select — ДО пинча и орбиты: после них узлы уезжают за
+      // сетку охоты (±0.4 холста), и «УЗЕЛ НЕ НАЙДЕН» не говорил ничего о
+      // жесте (на Chrome 131 — красный при зелёных pinch/orbit). Панель
+      // закрывается tap'ом в пустое место, так что пинч ниже идёт по
+      // прежней сцене.
+      // ── Tap-select: охоту ведём мышью (поиск), сам жест — честный tap ──
+      let panelOpened = false;
+      const mNames = defs.map((d) => d.name);
+      const found = await huntNode3d(mpage, mNames, freeC);
+      if (found) {
+        await touch("touchStart", [{ x: found.x, y: found.y }]);
+        await sleep(40);
+        await touch("touchEnd", []);
+        await sleep(500);
+        panelOpened = (await mpage.$(".gm-info-panel")) !== null;
+      }
+      ok(panelOpened, `tap по узлу открывает NodePanel (охота: ${found ? "узел найден" : "УЗЕЛ НЕ НАЙДЕН"}; события: ${await tlog()})`);
+      if (panelOpened) {
+        // Tap в ЗАВЕДОМО пустое место — сброс (freePts могла лечь на узел)
+        const resetPt = await emptyPoint3d(mpage);
+        await touch("touchStart", [{ x: resetPt.x, y: resetPt.y }]);
+        await sleep(30);
+        await touch("touchEnd", []);
+        await sleep(400);
+        ok((await mpage.$(".gm-info-panel")) === null, "tap в пустое место закрывает панель");
+      }
+
       // ── Pinch-zoom: две точки сходятся ──
       const beforePinch = await mShot();
       const pA = pinchPair ? pinchPair[0] : { x: mcx - 60, y: mcy };
@@ -1263,27 +1317,6 @@ async function main() {
         `single-touch orbit вращает сцену (события: ${await tlog()}; PNG ${beforeOrbitM.length}→${afterOrbitM.length})`,
       );
 
-      // ── Tap-select: охоту ведём мышью (поиск), сам жест — честный tap ──
-      let panelOpened = false;
-      const mNames = defs.map((d) => d.name);
-      const found = await huntNode3d(mpage, mNames, freeC);
-      if (found) {
-        await touch("touchStart", [{ x: found.x, y: found.y }]);
-        await sleep(40);
-        await touch("touchEnd", []);
-        await sleep(500);
-        panelOpened = (await mpage.$(".gm-info-panel")) !== null;
-      }
-      ok(panelOpened, `tap по узлу открывает NodePanel (охота: ${found ? "узел найден" : "УЗЕЛ НЕ НАЙДЕН"}; события: ${await tlog()})`);
-      if (panelOpened) {
-        // Tap в ЗАВЕДОМО пустое место — сброс (freePts могла лечь на узел)
-        const resetPt = await emptyPoint3d(mpage);
-        await touch("touchStart", [{ x: resetPt.x, y: resetPt.y }]);
-        await sleep(30);
-        await touch("touchEnd", []);
-        await sleep(400);
-        ok((await mpage.$(".gm-info-panel")) === null, "tap в пустое место закрывает панель");
-      }
     } catch (e) {
       touchSupported = false;
       console.log("  ! CDP touch недоступен: " + String(e).slice(0, 160));

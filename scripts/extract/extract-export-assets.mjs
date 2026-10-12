@@ -9,7 +9,7 @@
  * с импортами, их текст в автономном файле неисполним. Поэтому встроенный
  * просмотрщик графа/режимов экспортируемого файла берётся ИЗ САМОГО
  * ИСХОДНИКА: функции — те же, что исходник сериализовал бы (fnBundle
- * [17691–17738] дословно, извлечение scripts/extract-by-name.py), разметка
+ * [17691–17738] дословно, извлечение scripts/extract/extract-by-name.py), разметка
  * модалок — статическая разметка #gmOverlay [4224] / #modeOverlay [4330]
  * (в статике она уже «чистая» — клон-очистки исходника вырождены; из
  * modeOverlay, как и в исходнике, удаляется .mode-modal-params),
@@ -26,7 +26,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// 12.5 (Д-39): генератор лежит в scripts/extract/ — корень репо на два уровня выше (как extract-seed-data)
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const EXTRACT_BY_NAME = path.join(ROOT, "scripts", "extract", "extract-by-name.py");
 const SOURCE = path.join(ROOT, "source", "philosynth.html");
 const OUT = path.join(ROOT, "server", "config", "export-assets.ts");
 
@@ -170,7 +172,7 @@ try {
   );
   execFileSync(
     "python3",
-    [path.join(ROOT, "scripts", "extract-by-name.py"), specPath, "-o", outFns],
+    [EXTRACT_BY_NAME, specPath, "-o", outFns],
     { stdio: "inherit" },
   );
   fnBundle = readFileSync(outFns, "utf8");
@@ -185,7 +187,7 @@ try {
   execFileSync(
     "python3",
     [
-      path.join(ROOT, "scripts", "extract-by-name.py"),
+      EXTRACT_BY_NAME,
       specPath,
       "-o",
       outConsts,

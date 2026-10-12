@@ -121,16 +121,20 @@ globalThis.fetch = async (url, init) => {
   calls.push({ url: String(url), method: init?.method ?? "GET", body: init?.body ? JSON.parse(init.body) : undefined });
   return new Response(JSON.stringify({ ok: true, transforms: [], transform: { id: "x" }, summary: {} }), { status: 200, headers: { "Content-Type": "application/json" } });
 };
-await transformsApi.transformGraphToTheses("S1");
-await transformsApi.transformThesesToGraph("S1");
+// 12.5 (Д-24): обёртки transformGraphToTheses/transformThesesToGraph сняты
+// уборкой 8.4 — единственный вход один, startTransformRequest(id, direction);
+// проверяется диспетчеризация обоих направлений через него.
+check("api/transforms экспортирует ровно три функции (8.4: обёртки по направлениям сняты)",
+  eq(Object.keys(transformsApi).sort(), ["getTransformHistory", "rollbackTransform", "startTransformRequest"]), Object.keys(transformsApi));
+await transformsApi.startTransformRequest("S1", "graph_to_theses");
 await transformsApi.startTransformRequest("S1", "theses_to_graph");
 await transformsApi.getTransformHistory("S1");
 await transformsApi.rollbackTransform("S1", "T1");
 check("POST /transform/graph-to-theses", calls[0].method === "POST" && calls[0].url === "/api/v1/syntheses/S1/transform/graph-to-theses");
 check("POST /transform/theses-to-graph", calls[1].method === "POST" && calls[1].url === "/api/v1/syntheses/S1/transform/theses-to-graph");
-check("startTransformRequest диспетчеризует по направлению", calls[2].url === calls[1].url);
-check("GET /transforms", calls[3].method === "GET" && calls[3].url === "/api/v1/syntheses/S1/transforms");
-check("POST /transforms/:id/rollback", calls[4].method === "POST" && calls[4].url === "/api/v1/syntheses/S1/transforms/T1/rollback");
+check("startTransformRequest диспетчеризует по направлению (пути различны)", calls[0].url !== calls[1].url);
+check("GET /transforms", calls[2].method === "GET" && calls[2].url === "/api/v1/syntheses/S1/transforms");
+check("POST /transforms/:id/rollback", calls[3].method === "POST" && calls[3].url === "/api/v1/syntheses/S1/transforms/T1/rollback");
 check("префикс стрима клиента ≡ серверному", TRANSFORM_STREAM_PREFIX + "graph_to_theses" === transformStreamKey("graph_to_theses"));
 
 console.log("── клиент: тексты панели и истории ──");
@@ -149,7 +153,10 @@ check("guard transform: в useStreamingGeneration", /startsWith\("transform:"\)/
 const gm = readFileSync("client/src/components/graph/GraphModal.tsx", "utf8");
 check("GraphModal: onTransform + кнопка «→ Тезисы»", /onTransform\?: \(\(direction: "graph_to_theses"\) => void\)/.test(gm) && gm.includes("→ Тезисы"));
 const sp = readFileSync("client/src/pages/SynthesisPage.tsx", "utf8");
-check("SynthesisPage: TransformPanel и «→ Граф» у theses", sp.includes("<TransformPanel") && /key === "theses" && isOwner && !live/.test(sp) && sp.includes("→ Граф"));
+// 12.4 вынесла гейт владельца/генерации на весь слот действий раздела
+// (sectionActionsFor: `isOwner && !live ? (…)`), кнопка внутри — по key.
+check("SynthesisPage: TransformPanel и «→ Граф» у theses (гейт слота 12.4)",
+  sp.includes("<TransformPanel") && /sectionActionsFor=\{\(key\) =>\s*isOwner && !live \?/.test(sp) && /key === "theses" && \(/.test(sp) && sp.includes("→ Граф"));
 const em = readFileSync("client/src/components/edit/EditModal.tsx", "utf8");
 check("EditModal: секция «Трансформации» с TransformHistory", em.includes("<TransformHistory") && em.includes("Трансформации"));
 const css = readFileSync("client/src/globals.css", "utf8");

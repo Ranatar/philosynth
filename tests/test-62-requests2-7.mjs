@@ -5,7 +5,7 @@
  * REST (харнесс test-61; без VITE_STRIPE_PUBLISHABLE_KEY страница
  * биллинга работает в dev-режиме подтверждения платежа сервером):
  *  R2  BYO-Key UI: «не задан» → невалидный ключ → ошибка → валидный →
- *      маска prefix+•••, «активен» → удалить (confirm) → «не задан».
+ *      маска prefix+•••, «активен» → удалить (второй шаг кнопки, 12.4) → «не задан».
  *  R3  Пополнение: $5 → «Пополнить» → «Подтвердить платёж» (мок PI
  *      succeeded) → баланс $5.00 → транзакция «пополнение» в таблице →
  *      GET /auth/me тот же баланс.
@@ -37,6 +37,8 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { createStripeMock } from "../tools/stripe-mock.mjs";
 
 import puppeteer from "puppeteer-core";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 
 const SERVER_PORT = 3000;
 const VITE_PORT = 5199;
@@ -48,7 +50,17 @@ const DB_URL = "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
 const ENC_SECRET = "test-encryption-secret-62";
 const WH_SECRET = "whsec_test_62";
 const SERVER_KEY = "sk-ant-server-key-62";
-const CHROME = process.env.CHROME_PATH ?? "/opt/google/chrome/chrome";
+// 12.5: браузер харнессов — Chrome 131 (09 §1, 12.2 п.5; CHROME_PATH — иной путь).
+// Системного /opt/google/chrome/chrome в песочнице больше нет.
+const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+if (!CHROME) { console.error("Chrome 131 не найден — задайте CHROME_PATH"); process.exit(2); }
+/** 12.5: клиент с 11.3 открывается на языке браузера (headless — en-US), а
+ *  харнесс ищет русские подписи: язык страницы — CDP (09 §4, 11.3/12.2). */
+async function ruPage(page) {
+  const cdp = await page.createCDPSession();
+  await cdp.send("Network.setUserAgentOverride", { userAgent: await page.browser().userAgent(), acceptLanguage: "ru-RU,ru" });
+  return page;
+}
 const BAD_USER_KEY = "sk-ant-api03-BAD-" + "b".repeat(60);
 const GOOD_USER_KEY = "sk-ant-api03-GOOD-" + "g".repeat(60);
 
@@ -303,7 +315,7 @@ try {
   const S2 = await makeSynthesis(A.id, "Синтез Два");
 
   browser = await puppeteer.launch({ executablePath: CHROME, headless: "shell", args: ["--no-sandbox", "--disable-dev-shm-usage"] });
-  const page = await browser.newPage();
+  const page = await ruPage(await browser.newPage());
   await page.setViewport({ width: 1280, height: 900 });
   page.on("pageerror", (e) => pageErrors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push("console: " + m.text()); });
@@ -347,10 +359,13 @@ try {
   ok((await page.$eval("#billing-new-key", (el) => el.type)) === "password", "input type=password");
   const keysApi = await api(A, "GET", "/billing/api-key");
   ok(keysApi.json.keys.length === 1 && keysApi.json.keys[0].isActive, "GET /api-key: одна активная запись");
+  // 12.5 (Д-45): с 12.4 (Д-17) удаление ключа — второй шаг кнопок (useSecondStep), не window.confirm
   dialogs = [];
   await page.click(T("api-key-delete"));
+  await page.waitForSelector(T("api-key-delete-confirm"), { timeout: 15000 });
+  ok(/точно удалить\?/i.test(await text(page, T("api-key-delete-confirm"))) && dialogs.length === 0, "удаление — второй шаг «Точно удалить?», без confirm");
+  await page.click(T("api-key-delete-confirm"));
   await page.waitForSelector(T("api-key-absent"), { timeout: 15000 });
-  ok(dialogs.length === 1 && /удалить/i.test(dialogs[0]), "удаление — через confirm");
   ok(/не задан/i.test(await text(page, T("api-key-absent"))), "после удаления — «не задан»");
   ok((await api(A, "GET", "/billing/api-key")).json.keys.every((k) => !k.isActive), "GET /api-key: активных нет");
 
@@ -590,7 +605,10 @@ try {
   ok(cr.status === 200 || cr.status === 201, "POST /syntheses с плохим BYO-ключом принят", J(cr.json));
   const pid = cr.json?.id;
   await page.goto(`${UI}/synthesis/${pid}`, { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => /паузе|pause/i.test(document.body.innerText) || document.querySelector(".pause-overlay"), { timeout: 60000 });
+  // 12.5 (Д-50): пауза, случившаяся ДО подписки, приходит повтором (replay) — модалка сама не
+  // открывается (снапшот не навязывает, 1.6b), страница показывает бейдж «⏸ Приостановлено»;
+  // живая пауза (обрыв после подписки) по-прежнему открывает модалку — харнесс ждёт любое из двух
+  await page.waitForFunction(() => /приостановлен|паузе|pause/i.test(document.body.innerText) || document.querySelector(".pause-overlay") || document.querySelector(".progress-pause-badge.visible"), { timeout: 60000 });
   if (!(await exists(page, ".pause-overlay.visible"))) { await page.waitForSelector(".progress-pause-badge.visible", { timeout: 20000 }); await page.click(".progress-pause-badge.visible"); }
   await page.waitForSelector(".pause-overlay.visible", { timeout: 20000 });
   ok(/API-ключ недействителен/i.test(await text(page, ".pause-modal-title")), "модалка паузы auth открыта");

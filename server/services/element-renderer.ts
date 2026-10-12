@@ -52,7 +52,7 @@ import {
   replaceDocTable,
   type DocTableLocator,
 } from "../utils/html-parser.js";
-import { parseThesesFromHTML } from "./element-parser.js";
+import { mapThesisType, parseThesesFromHTML } from "./element-parser.js";
 import { ROLE_MAP } from "./graph-parser.js";
 import { getTemplate } from "./prompt-registry.js";
 
@@ -320,6 +320,18 @@ export function renderTopologyTable(
 
 export interface ThesesTableOptions {
   headers?: readonly string[] | undefined;
+  /** 12.5 (Д-43): прежние строки таблицы документа (ячейки tbody) — у строки
+   *  с той же меткой прежний текст ячейки «Тип» сохраняется, если
+   *  mapThesisType(прежний) равен типу в БД; иначе каноническая метка
+   *  (образец — сохранение заголовков, opts.headers) */
+  priorRows?: readonly (readonly string[])[] | undefined;
+}
+
+/** Индекс столбца «Тип» в заголовках таблицы тезисов (по умолчанию третий). */
+const THESES_TYPE_COL = 2;
+function thesisTypeColumn(headers: readonly string[]): number {
+  const i = headers.findIndex((h) => /^тип\b/i.test(h));
+  return i >= 0 ? i : THESES_TYPE_COL;
 }
 
 export function renderThesesTable(
@@ -330,18 +342,32 @@ export function renderThesesTable(
     opts.headers && opts.headers.length === THESES_HEADERS.length
       ? opts.headers
       : THESES_HEADERS;
+  // 12.5 (Д-43): прежний текст «Тип» по метке строки (первая ячейка)
+  const typeCol = thesisTypeColumn(headers);
+  const priorType = new Map<string, string>();
+  for (const r of opts.priorRows ?? []) {
+    const label = r[0]?.trim();
+    const cell = r[typeCol]?.trim();
+    if (label && cell && !priorType.has(label)) priorType.set(label, cell);
+  }
+  const typeCell = (t: ThesisRow, label: string): string => {
+    const canonical = THESIS_TYPE_LABELS[t.thesisType] ?? t.thesisType;
+    const prior = priorType.get(label);
+    return prior && mapThesisType(prior) === t.thesisType ? prior : canonical;
+  };
   const body = [...rows]
     .sort((a, b) => a.thesisNum - b.thesisNum)
-    .map((t) =>
-      tr([
-        // 12.1 (Д-1): метка документа («О-1», «Э-2»), иначе номер
-        t.label ?? String(t.thesisNum),
+    .map((t) => {
+      // 12.1 (Д-1): метка документа («О-1», «Э-2»), иначе номер
+      const label = t.label ?? String(t.thesisNum);
+      return tr([
+        label,
         t.formulation,
-        THESIS_TYPE_LABELS[t.thesisType] ?? t.thesisType,
+        typeCell(t, label),
         t.noveltyDegree,
         t.relatedCategories.join(", "),
-      ]),
-    );
+      ]);
+    });
   return table(headers, body);
 }
 
@@ -533,7 +559,7 @@ export async function applyElementUpdateToHtml(
           .where(eq(theses.synthesisId, synthesisId))
           .orderBy(asc(theses.thesisNum)),
       );
-      tableHtml = renderThesesTable(rows, { headers });
+      tableHtml = renderThesesTable(rows, { headers, priorRows: located?.rows });
       break;
     }
     case "glossary": {

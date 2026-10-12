@@ -199,6 +199,14 @@ export interface WsGenerationPaused {
   /** kind='gen': разделы, теряющие контекст пропускаемых при skip
    *  (confirm деградации [25686], беседа 2.2) */
   skipDegrades?: string[];
+  /** kind='gen' (12.5, Д-50): разделы прерванного прохода
+   *  (pausedState.sectionKeys) — клиент не угадывает текущий раздел */
+  sectionKeys?: string[];
+  /** 12.5 (Д-50): true — повтор паузы при подписке (ws/handler, status=
+   *  'paused'), не живая пауза этого прогона: клиент модалку не открывает
+   *  (снапшот GET /:id её не навязывает — 1.6b), pausedState берёт из
+   *  снапшота; поле несут только replay-сообщения */
+  replay?: true;
   estimates: PauseEstimates;
 }
 

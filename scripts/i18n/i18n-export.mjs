@@ -3,7 +3,7 @@
  * i18n:export — сверить вызовы tl() в коде с мастер-таблицей и выгрузить
  * файл для переводчика.
  *
- *   node scripts/i18n/i18n-export.mjs [--lang en,de] [--out <файл>] [--no-drafts] [--dry] [--prune]
+ *   node scripts/i18n/i18n-export.mjs [--lang en,de] [--out <файл>] [--no-drafts] [--dry] [--prune] [--data]
  *
  * 1. Сверка (пишет таблицу, если не --dry):
  *    новый ключ в коде          → строка в таблице с колонкой ru, переводы пусты;
@@ -13,6 +13,12 @@
  *    строки data не сверяются: их вызовов tl() в коде нет по устройству.
  *    Если в коде нет ни одного вызова tl() (codemod ещё не применён),
  *    сверка пропускается целиком — иначе вся таблица стала бы obsolete.
+ * 1а. --data (12.5, Д-33): значения ФАЙЛОВ-ДАННЫХ (packages/shared/*,
+ *    compat-matrix, seed-taxonomy) — у которых нет строки таблицы — заводятся
+ *    строками с `data: true` и пустыми переводами (имя ключа — из names.json;
+ *    без имени — в отчёт: дополнить names.json); у строк, чей ru разошёлся
+ *    с файлом, ru обновляется (переводы устаревают, как у tl()). Без --data
+ *    такие значения только перечисляются (их красит i18n:check --strict).
  * 2. Файл для переводчика — подмножество таблицы того же формата: строки,
  *    где у языка нет перевода, перевод устарел или (без --no-drafts) черновой.
  *    У устаревших — prev: русский текст и перевод, с которых он делался.
@@ -22,7 +28,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { LANGS, TABLE_PATH, readTable, writeTable, scanCalls, isStale } from "./i18n-core.mjs";
+import { LANGS, TABLE_PATH, readTable, writeTable, scanCalls, isStale, loadNames, toNamed, paramNames } from "./i18n-core.mjs";
+import { scanDataValues } from "./i18n-data.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argv = process.argv.slice(2);
@@ -32,6 +39,7 @@ for (const l of langs) if (!LANGS.includes(l) || l === "ru") { console.error(`н
 const withDrafts = !argv.includes("--no-drafts");
 const dry = argv.includes("--dry");
 const prune = argv.includes("--prune");
+const withData = argv.includes("--data");
 const outPath = path.resolve(opt("--out", `i18n-request.${langs.join("-")}.json`));
 
 const tablePath = path.join(ROOT, TABLE_PATH);
@@ -67,10 +75,32 @@ if (calls.size) {
     if (prune) { delete S[key]; sync.pruned.push(key); }
     else if (!row.obsolete) { row.obsolete = true; sync.obsolete.push(key); }
   }
-  if (!dry) {
-    table.meta.synced = new Date().toISOString();
-    writeTable(tablePath, table);
-  }
+}
+
+/* 1а. значения файлов-данных (12.5, Д-33) */
+const dataScan = scanDataValues(ROOT, table, loadNames(ROOT));
+const dataSync = { added: [], changed: [], unnamed: [] };
+for (const m of dataScan.missing) {
+  if (!m.key) { dataSync.unnamed.push(`${m.where} «${m.text}»`); continue; }
+  if (!withData) continue;
+  const pn = m.args ? paramNames(m.args, m.params) : [];
+  const fresh = { ru: toNamed(m.text, pn) };
+  for (const l of LANGS) if (l !== "ru") fresh[l] = null;
+  if (pn.length) fresh.params = Object.fromEntries(pn.map((n, i) => [n, m.args[i]]));
+  fresh.data = true;
+  fresh.where = [m.where];
+  S[m.key] = fresh;
+  dataSync.added.push(`${m.key} «${fresh.ru}»`);
+}
+if (withData) for (const m of dataScan.mismatch) {
+  const row = S[m.key];
+  dataSync.changed.push(`${m.key}: «${row.ru}» → «${m.text}»`);
+  row.ru = m.text;
+}
+const tableTouched = (calls.size && !dry) || (withData && (dataSync.added.length || dataSync.changed.length));
+if (tableTouched && !dry) {
+  table.meta.synced = new Date().toISOString();
+  writeTable(tablePath, table);
 }
 
 /* 2. файл для переводчика */
@@ -124,5 +154,15 @@ show("ошибки вызовов tl()", problems);
 show("новые ключи", sync.added);
 show("изменён русский текст", sync.changed);
 show("исчезли из кода (obsolete)", sync.obsolete);
+const dataMissingNamed = dataScan.missing.filter((m) => m.key).map((m) => `${m.where} ${m.key} «${m.text}»`);
+if (withData) {
+  console.log(`\nфайлы-данных (--data): заведено строк data ${dataSync.added.length}, обновлён русский текст ${dataSync.changed.length}, без имени в names.json ${dataSync.unnamed.length}`);
+  show("заведены строки data", dataSync.added);
+  show("обновлён ru строк data", dataSync.changed);
+} else if (dataMissingNamed.length || dataScan.mismatch.length) {
+  show("значения файлов-данных без строки таблицы — заведёт --data", dataMissingNamed);
+  show("значения файлов-данных, разошедшиеся с ru таблицы — обновит --data", dataScan.mismatch.map((m) => `${m.where} ${m.key}: «${m.ru}» → «${m.text}»`));
+}
+show("значения файлов-данных без имени в names.json — дополнить names.json", dataSync.unnamed);
 console.log(`\nфайл для переводчика: ${outPath}`);
 console.log(`строк ${Object.keys(req).length}; ${langs.map((l) => `${l}: нет перевода ${counts[l].missing}, устарел ${counts[l].stale}, черновик ${withDrafts ? counts[l].draft : "не выгружен"}`).join("; ")}`);

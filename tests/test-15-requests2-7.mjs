@@ -29,8 +29,20 @@
 import http from "node:http";
 import { spawn } from "node:child_process";
 import puppeteer from "puppeteer-core";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 
-const CHROME = "/opt/google/chrome/chrome";
+// 12.5: браузер харнессов — Chrome 131 (09 §1, 12.2 п.5; CHROME_PATH — иной путь).
+// Системного /opt/google/chrome/chrome в песочнице больше нет.
+const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+if (!CHROME) { console.error("Chrome 131 не найден — задайте CHROME_PATH"); process.exit(2); }
+/** 12.5: клиент с 11.3 открывается на языке браузера (headless — en-US), а
+ *  харнесс ищет русские подписи: язык страницы — CDP (09 §4, 11.3/12.2). */
+async function ruPage(page) {
+  const cdp = await page.createCDPSession();
+  await cdp.send("Network.setUserAgentOverride", { userAgent: await page.browser().userAgent(), acceptLanguage: "ru-RU,ru" });
+  return page;
+}
 const MOCK_PORT = 3987;
 const SERVER_PORT = 3000; // vite proxy → :3000
 const VITE_PORT = 5199;
@@ -70,6 +82,14 @@ const NODE_NAMES = [
   "Синтетическое априори", "Опосредование", "Автономия воли", "Тотальность",
 ];
 
+/** 12.5 (Д-27): каркас раздела формата системного промпта — как в моках
+ *  42/43/103: .section-num/.section-title/.doc-content, подразделы —
+ *  <div data-section><h4>; без каркаса sec2md даёт пустой MD (09 §4, 4.2). */
+function wrapSection(num, title, inner) {
+  return `<div class="doc-section"><div class="section-num">§ ${num}</div>` +
+    `<div class="section-title">${title}</div><div class="doc-content">${inner}</div></div>`;
+}
+
 function graphHtml() {
   const nodeRows = NODE_NAMES.map((n, i) =>
     `<tr><td>${n}</td><td>${i % 2 ? "Эпистемологическая" : "Онтологическая"}</td>` +
@@ -84,31 +104,43 @@ function graphHtml() {
   const topo = NODE_NAMES.map((n, i) =>
     `<tr><td>${n}</td><td>${i < 5 ? "I — Основания" : "II — Развёртывание"}</td>` +
     `<td>${i === 0 ? "центральная" : "периферийная"}</td><td>${i % 2 ? "антитезис" : "тезис"}</td></tr>`).join("");
-  return `<div class="doc-section" data-section="Методология построения графа"><p>Граф построен.</p></div>` +
-    `<div class="doc-section" data-section="Таблица категорий"><table class="doc-table"><thead><tr><th>Категория</th><th>Тип</th><th>Определение</th><th>Центральность</th><th>Определённость</th><th>Происхождение</th></tr></thead><tbody>${nodeRows}</tbody></table></div>` +
-    `<div class="doc-section" data-section="Таблица связей"><table class="doc-table"><thead><tr><th>Источник</th><th>Описание</th><th>Цель</th><th>Тип</th><th>Направленность</th><th>Сила</th></tr></thead><tbody>${edges.join("")}</tbody></table></div>` +
-    `<div class="doc-section" data-section="Топология графа"><div data-section="Топологическая таблица"><table class="doc-table"><thead><tr><th>Категория</th><th>Кластер</th><th>Структурные роли</th><th>Процессуальные роли</th></tr></thead><tbody>${topo}</tbody></table></div></div>`;
+  return wrapSection(2, "Граф категорий",
+    `<div data-section="Методология построения графа"><h4>Методология построения графа</h4><p>Граф построен.</p></div>` +
+    `<div data-section="Таблица категорий"><h4>Таблица категорий</h4><table class="doc-table"><thead><tr><th>Категория</th><th>Тип</th><th>Определение</th><th>Центральность</th><th>Определённость</th><th>Происхождение</th></tr></thead><tbody>${nodeRows}</tbody></table></div>` +
+    `<div data-section="Таблица связей"><h4>Таблица связей</h4><table class="doc-table"><thead><tr><th>Источник</th><th>Описание</th><th>Цель</th><th>Тип</th><th>Направленность</th><th>Сила</th></tr></thead><tbody>${edges.join("")}</tbody></table></div>` +
+    `<div data-section="Топология графа"><h4>Топология графа</h4><div data-section="Топологическая таблица"><table class="doc-table"><thead><tr><th>Категория</th><th>Кластер</th><th>Структурные роли</th><th>Процессуальные роли</th></tr></thead><tbody>${topo}</tbody></table></div></div>`);
 }
 
 function glossaryHtml() {
   const terms = NODE_NAMES.map((n, i) =>
     `<tr><td>${n}</td><td>Определение «${n}».</td><td>Трансформация №${i + 1}.</td></tr>`).join("");
-  return `<div class="doc-section" data-section="Таблица определений"><table class="doc-table"><thead><tr><th>Термин</th><th>Принятое определение в данной концепции</th><th>Трансформация значения в синтезе</th></tr></thead><tbody>${terms}</tbody></table></div>`;
+  return wrapSection(3, "Глоссарий терминов",
+    `<div data-section="Таблица определений"><h4>Таблица определений</h4><table class="doc-table"><thead><tr><th>Термин</th><th>Принятое определение в данной концепции</th><th>Трансформация значения в синтезе</th></tr></thead><tbody>${terms}</tbody></table></div>`);
 }
 
 function thesesHtml() {
   const rows = NODE_NAMES.slice(0, 6).map((n, i) =>
     `<tr><td>${i + 1}</td><td>Тезис о том, что ${n.toLowerCase()} образует ядро.</td>` +
     `<td>${["онтол.", "эпистем.", "этич."][i % 3]}</td><td>высокая</td><td>${n}</td></tr>`).join("");
-  return `<div class="doc-section" data-section="Сводная таблица тезисов"><table class="doc-table"><thead><tr><th>№</th><th>Формулировка тезиса</th><th>Тип</th><th>Степень новизны</th><th>Связанные категории</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return wrapSection(4, "Корпус тезисов",
+    `<div data-section="Сводная таблица тезисов"><h4>Сводная таблица тезисов</h4><table class="doc-table"><thead><tr><th>№</th><th>Формулировка тезиса</th><th>Тип</th><th>Степень новизны</th><th>Связанные категории</th></tr></thead><tbody>${rows}</tbody></table></div>`);
 }
 
 function sumHtml() {
   // Средний объём — чтобы стрим шёл несколько секунд (живой счётчик R5)
-  const pad = `<div class="doc-section" data-section="Развёрнутое изложение">${
+  const pad = `<div data-section="Развёрнутое изложение"><h4>Развёрнутое изложение</h4>${
     `<p>${"Развёртывание синтетической позиции продолжается. ".repeat(10)}</p>`.repeat(6)}</div>`;
-  return `<div class="doc-section" data-section="Цели и задачи"><p>Цель синтеза — соединить традиции.</p></div>` +
-    `<div class="doc-section" data-section="Точки напряжения"><p>Напряжение между рассудком и духом.</p></div>` + pad;
+  return wrapSection(1, "Исполнительное резюме",
+    `<div data-section="Цели и задачи"><h4>Цели и задачи</h4><p>Цель синтеза — соединить традиции.</p></div>` +
+    `<div data-section="Точки напряжения"><h4>Точки напряжения</h4><p>Напряжение между рассудком и духом.</p></div>` + pad);
+}
+
+function critiqueHtml() {
+  const rows = NODE_NAMES.slice(0, 4).map((n, i) =>
+    `<tr><td>${n}</td><td>Уязвимость №${i + 1}</td><td>${i % 2 ? "высокая" : "средняя"}</td></tr>`).join("");
+  return wrapSection(5, "Критический анализ",
+    `<div data-section="Имманентная критика"><h4>Имманентная критика</h4><p>Внутренние напряжения синтеза.</p></div>` +
+    `<div data-section="Итоговая оценка"><h4>Итоговая оценка</h4><table class="doc-table"><thead><tr><th>Категория</th><th>Уязвимость</th><th>Серьёзность</th></tr></thead><tbody>${rows}</tbody></table></div>`);
 }
 
 function pickHtml(prompt) {
@@ -118,10 +150,19 @@ function pickHtml(prompt) {
   // includes по всему промпту — grabla этого теста
   const i = prompt.lastIndexOf("ЗАДАНИЕ");
   const task = i >= 0 ? prompt.slice(i) : prompt;
+  // 12.5 (Д-26/Д-27): порядок веток — по исправному образцу 42/43/103.
+  // 10.1: задание критики несёт закрытый список адресов — имена подразделов
+  // ВСЕХ разделов («Таблица категорий», «Таблица определений»…), поэтому
+  // критика узнаётся ПЕРВОЙ, по собственному подразделу; специфичные
+  // маркеры — ПЕРЕД общим корнем «критическ»; sum — по своему маркеру
+  // («Точки напряжения»): задание sum перечисляет структуру документа.
+  if (task.includes("Таблица рекомендаций")) return critiqueHtml();
   if (task.includes("Таблица категорий")) return graphHtml();
   if (task.includes("Таблица определений") || task.includes("Термин | Принятое определение"))
     return glossaryHtml();
+  if (task.includes("Точки напряжения")) return sumHtml();
   if (task.includes("Сводная таблица") && /тезис/i.test(task)) return thesesHtml();
+  if (/критическ/i.test(task)) return critiqueHtml();
   return sumHtml();
 }
 
@@ -267,7 +308,7 @@ async function main() {
     headless: "shell",
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
-  const page = await browser.newPage();
+  const page = await ruPage(await browser.newPage());
   await page.setViewport({ width: 1280, height: 900 });
 
   try {
@@ -611,6 +652,8 @@ async function main() {
     console.log("--- server log tail ---\n" + serverLog.slice(-1500));
     process.exit(1);
   }
+  // 12.5 (Д-25): явный выход — открытые дескрипторы (PG, мок) иначе держали процесс
+  process.exit(0);
 }
 
 main().catch((e) => {

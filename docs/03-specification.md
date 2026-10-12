@@ -2013,6 +2013,12 @@ Endpoint: `wss://host/ws?token={sessionToken}`
   expectedSubsections?: string[],
   skipDegrades?: string[],   // kind='gen': разделы, теряющие контекст
                              // пропускаемых при skip (confirm [25686], 2.2)
+  sectionKeys?: string[],    // kind='gen' (12.5, Д-50): разделы прерванного
+                             // прохода (pausedState.sectionKeys)
+  replay?: true,             // 12.5 (Д-50): повтор паузы при подписке
+                             // (status='paused'), не живая пауза: клиент
+                             // модалку не открывает, pausedState берёт из
+                             // GET /syntheses/:id; живые сообщения поля не несут
   estimates: { fillMissingSubs?: number, wholeSection?: number,
                skipRemaining?: number } }  // серверный аналог _computeGenPauseEstimates
 // kind='plan' (2.2): plan-полей сообщение не несёт — stepIdx/totalSteps/

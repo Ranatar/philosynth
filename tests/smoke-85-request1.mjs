@@ -7,8 +7,9 @@
  *  - linkParent/isDescendantOf: связь → position в конец, повтор →
  *    LINEAGE_EXISTS без второй строки, self → LINEAGE_SELF, потомок в
  *    родители → LINEAGE_CYCLE, дерево getAncestors видит связь;
- *  - importHTML живого файла одностраничника (tests/fixtures или путь из
- *    SMOKE85_FILE): 0 UUID → lineageCandidates с parentName и пустыми
+ *  - importHTML живого файла одностраничника (путь ТОЛЬКО из SMOKE85_FILE /
+ *    T85_FILE; 12.5: экспорт службы распознаётся по роду файла и блок
+ *    пропускается с причиной): 0 UUID → lineageCandidates с parentName и пустыми
  *    matches, предупреждение «импортировать родителя ДО», lineage — только philosopher;
  *    после появления у владельца синтеза «Грамматика  самоотрицания» (двойной
  *    пробел + ёлочки в файле) повторный импорт → 1 совпадение, связь при
@@ -57,7 +58,7 @@ try {
   const a1 = await mk(uA.id, `Грамматика  самоотрицания ${TAG}`);   // двойной пробел
   const a2 = await mk(uA.id, `«Грамматика самоотрицания ${TAG}»`);  // вторая версия в ёлочках
   const a3 = await mk(uA.id, `Другое имя ${TAG}`);
-  const b1 = await mk(uB.id, `Грамматика самоотрицания ${TAG}`, { isPublic: true }); // чужая публичная
+  const b1 = await mk(uB.id, `Грамматика самоотрицания ${TAG}`, { visibility: "full" }); // чужая публичная (8.6: visibility вместо is_public)
   const child = await mk(uA.id, `Вмещающий разлом ${TAG}`);
 
   const m = await ls.findSameOwnerSynthesesByTitle(uA.id, `«Грамматика самоотрицания ${TAG}»`, child);
@@ -92,13 +93,22 @@ try {
   check("getAncestors ребёнка видит философа и концепцию", tree.children.length === 2 && tree.children.some((c) => c.type === "synthesis" && c.synthesisId === a1), tree.children.map((c) => c.type));
 
   console.log("── импорт живого файла одностраничника ──");
-  const filePath = process.env.SMOKE85_FILE ?? "/mnt/user-data/uploads/PS-6933-6RIK-vmeschayuschiy-razlom-rgG2.html";
-  if (!existsSync(filePath)) {
+  // 12.5 (Д-38): файл задаётся ЯВНО (SMOKE85_FILE или T85_FILE) — приложенный к беседе файл чаще
+  // всего экспорт СЛУЖБЫ (09 §2: род файла), а блок ниже ждёт сырой файл одностраничника:
+  // без synthesisId и UUID, с родословной только по именам. Род файла различается до проверок:
+  // экспорт службы (вшитое состояние/UUID) — блок пропускается с причиной, а не красится
+  const filePath = process.env.SMOKE85_FILE ?? process.env.T85_FILE;
+  const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  const fileKind = (html) => (/synthesisId/.test(html) || UUID_RE.test(html) ? "service-export" : "raw-single-page");
+  if (!filePath) {
+    console.log("  ~ SMOKE85_FILE/T85_FILE не задан — блок импорта одностраничника пропущен (нужен сырой файл одностраничника, не экспорт службы)");
+  } else if (!existsSync(filePath)) {
     console.log("  ~ файл не найден, блок пропущен:", filePath);
+  } else if (fileKind(readFileSync(filePath, "utf8")) !== "raw-single-page") {
+    console.log("  ~ файл — экспорт службы (вшитое состояние / UUID), блок одностраничника пропущен:", filePath);
   } else {
     const html = readFileSync(filePath, "utf8");
-    check("файл: 0 synthesisId", !/synthesisId/.test(html));
-    check("файл: 0 UUID", !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(html));
+    check("файл: род — сырой одностраничник (0 synthesisId, 0 UUID)", fileKind(html) === "raw-single-page");
     const [uC] = await db.insert(schema.users).values({ email: `c-${TAG}@t85.local`, passwordHash: "x" }).returning({ id: schema.users.id });
     const t1 = Date.now();
     const r1 = await imp.importHTML(html, uC.id, "PS-6933-6RIK.html");

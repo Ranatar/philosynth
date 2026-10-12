@@ -446,6 +446,10 @@ export interface LocatedDocTable {
   subsection: string | null;
   /** Заголовки thead (trim), как их отрендерил Claude */
   headers: string[];
+  /** 12.5 (Д-43): ячейки строк tbody (trim) — рендерер сохраняет прежний
+   *  текст ячеек закрытых списков («Тип» тезиса), если он читается в то же
+   *  значение, что и в БД */
+  rows: string[][];
 }
 
 function tableHeaders(table: MutableElement): string[] {
@@ -453,6 +457,14 @@ function tableHeaders(table: MutableElement): string[] {
     (th.textContent ?? "")
       .trim()
       .replace(/\s+/g, " "),
+  );
+}
+
+function tableBodyRows(table: MutableElement): string[][] {
+  return Array.from(table.querySelectorAll("tbody tr")).map((tr) =>
+    Array.from(tr.querySelectorAll("td")).map((td) =>
+      (td.textContent ?? "").trim().replace(/\s+/g, " "),
+    ),
   );
 }
 
@@ -500,7 +512,7 @@ export function locateDocTable(
   const root = parseMutable(sectionHtml);
   const { table, hostName } = locateMutableTable(root, locators);
   if (!table) return null;
-  return { subsection: hostName, headers: tableHeaders(table) };
+  return { subsection: hostName, headers: tableHeaders(table), rows: tableBodyRows(table) };
 }
 
 export interface ReplaceDocTableResult {

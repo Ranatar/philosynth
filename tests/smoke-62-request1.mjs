@@ -121,12 +121,14 @@ for (const [fn, path] of [
 ]) check(`subscription.ts: ${fn} → ${path}`, apiSub.includes(`export function ${fn}`) && apiSub.includes(path));
 const apiPrompts = read("client/src/api/prompts.ts");
 for (const [fn, path] of [
-  ["listPrompts", "\"/prompts\""], ["getVersions", "/prompts/${k(key)}/versions"], ["createVersion", "`/prompts/${k(key)}`"],
+  // 12.5 (Д-45): с 8.4 внутренние обёртки getVersions/getConfigVersions убраны — /versions
+  // зовут напрямую getTemplateVersions/getConfigVersionsFull (7.1: тела и value в ответе)
+  ["listPrompts", "\"/prompts\""], ["getTemplateVersions", "/prompts/${k(key)}/versions"], ["createVersion", "`/prompts/${k(key)}`"],
   ["activateVersion", "/prompts/${k(key)}/activate"], ["listConfigs", "\"/configs\""], ["updateConfig", "/configs/${k(key)}`"],
-  ["getConfigVersions", "/configs/${k(key)}/versions"], ["activateConfigVersion", "/configs/${k(key)}/activate"],
+  ["getConfigVersionsFull", "/configs/${k(key)}/versions"], ["activateConfigVersion", "/configs/${k(key)}/activate"],
 ]) check(`prompts.ts: ${fn} → ${path}`, new RegExp(`export (async )?function ${fn}\\b`).test(apiPrompts) && apiPrompts.includes(path));
 check("prompts.ts: PUT для конфига", /method: "PUT"/.test(apiPrompts));
-check("prompts.ts: обход дыры /versions без тел — getTemplateVersions/getConfigVersionsFull", /getTemplateVersions/.test(apiPrompts) && /getConfigVersionsFull/.test(apiPrompts));
+check("prompts.ts: /versions зовутся напрямую, обёрток getVersions/getConfigVersions нет (8.4)", !/export (async )?function getVersions\b/.test(apiPrompts) && !/export (async )?function getConfigVersions\b/.test(apiPrompts));
 
 console.log("── App / PauseModal / Sidebar / CSS ──");
 const app = read("client/src/App.tsx");

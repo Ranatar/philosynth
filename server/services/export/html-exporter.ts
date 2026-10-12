@@ -71,7 +71,7 @@ import {
   EXPORT_SOURCE_RAW_CSS,
 } from "../../config/export-assets.js";
 import { applyExportViewerOverrides } from "../../config/export-viewer-overrides.js";
-import { PARENT_CONTEXT_SCHEMA_ID, PARENT_CONTEXT_SCHEMA_VERSION } from "../../config/parent-deps.js";
+import { PARENT_CONTEXT_SCHEMA_VERSION } from "../../config/parent-deps.js";
 import { db } from "../../db/index.js";
 import {
   contextLog,
@@ -302,8 +302,8 @@ function renderDocHeader(s: ExportSynthesis, genealogyRoot: ExportGenealogyNode 
  *  Правила класса в CSS исходника нет (бейдж там стилизован inline) —
  *  стиль тот же inline, как в исходнике: CSS выгрузки — байтовая копия
  *  блока <style> (css-parity раздел D). Значение — колонка
- *  syntheses.parent_context_schema (встроенное состояние по-прежнему пишет
- *  константу PARENT_CONTEXT_SCHEMA_ID — импорт бейдж не читает). */
+ *  syntheses.parent_context_schema (с 12.5, Д-49, встроенное состояние
+ *  пишет ту же колонку — импорт бейдж не читает, а состояние читает). */
 export function schemaBadgeTextRu(schema: string): string {
   if (schema === "selective-v1") return "◈ родительский контекст: селективный v1";
   if (schema === "monolithic") return "◈ родительский контекст: монолитный (legacy)";
@@ -754,7 +754,11 @@ export async function exportHTML(
 
   const stateData = {
     version: 2,
-    parentContextSchema: PARENT_CONTEXT_SCHEMA_ID,
+    // 12.5 (Д-49): схема родительского контекста — КОЛОНКА syntheses.parent_context_schema,
+    // не константа службы: концепция 'monolithic' (legacy-импорт) после круга экспорт → импорт
+    // оставалась бы monolithic, а не становилась selective-v1 без маркера миграции.
+    // Импорт 4.3 читает поле из состояния (02 §4 п.9); версия схемы — константа (одна на службу)
+    parentContextSchema: row.parentContextSchema,
     parentContextSchemaVersion: PARENT_CONTEXT_SCHEMA_VERSION,
     genLog: genLogClean,
     ctxLog: ctxLogClean,

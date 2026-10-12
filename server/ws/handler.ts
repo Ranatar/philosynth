@@ -220,7 +220,8 @@ async function handleSubscribeGeneration(
  *    charsSoFar }, дальше живые дельты идут штатно (по userId);
  *  - буфера нет, генерация завершилась пока клиент был отключён →
  *    финальные данные: status='ready' → generation_complete,
- *    status='paused' → generation_paused из pausedState.
+ *    status='paused' → generation_paused из pausedState (с replay: true,
+ *    skipDegrades и sectionKeys — 12.5, Д-50).
  */
 async function handleResume(
   ws: WSContext,
@@ -274,6 +275,8 @@ async function handleResume(
   if (row.status === "paused" && row.pausedState) {
     const ps = row.pausedState;
     if (ps.kind === "gen" && ps.reasonKind !== "user-abort") {
+      // 12.5 (Д-50): повтор паузы неотличим от живой не должен быть — несёт те же
+      // skipDegrades и sectionKeys, что и живая пауза, и признак replay: true
       connectionManager.send(ws, {
         type: "generation_paused",
         synthesisId,
@@ -283,6 +286,9 @@ async function handleResume(
         isPartial: ps.isPartial,
         partialSubsections: ps.partialSubsections,
         expectedSubsections: ps.expectedSubsections,
+        skipDegrades: ps.skipDegrades ?? [],
+        sectionKeys: ps.sectionKeys,
+        replay: true,
         estimates: await computePauseEstimates(synthesisId, ps),
       });
     }

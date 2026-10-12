@@ -64,7 +64,8 @@ check("shared: PromptVersion = PromptTemplate, ConfigVersion = SynthesisConfig",
 const apiP = read("client/src/api/prompts.ts");
 const apiPCode = apiP.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 check("client/api/prompts: обход ?prefix= снят (в коде, не в комментариях)", !/prefix: key, activeOnly: false/.test(apiPCode) && !/listConfigs\(false\)/.test(apiPCode));
-check("getTemplateVersions/getConfigVersionsFull делегируют /versions", /return getVersions\(key\);/.test(apiP) && /return getConfigVersions\(key\);/.test(apiP));
+// 12.5 (Д-45): с 8.4 делегирования нет — getTemplateVersions/getConfigVersionsFull зовут /versions сами
+check("getTemplateVersions/getConfigVersionsFull зовут /versions напрямую (8.4)", /function getTemplateVersions[\s\S]*?\/versions`/.test(apiP) && /function getConfigVersionsFull[\s\S]*?\/versions`/.test(apiP) && !/return getVersions\(key\);/.test(apiP));
 
 console.log("── 3. Каталоги типов ──");
 const taxSvc = read("server/services/element-taxonomy.ts");
@@ -79,7 +80,9 @@ const apiT = read("client/src/api/taxonomy.ts");
 check("client/api/taxonomy: updateCustomType + deleteCustomType (PATCH/DELETE)", /export function updateCustomType[\s\S]*?method: "PATCH"/.test(apiT) && /export function deleteCustomType[\s\S]*?method: "DELETE"/.test(apiT));
 const adminSrc = read("client/src/pages/AdminPromptsPage.tsx");
 check("AdminPromptsPage: вкладка «Каталоги» + CatalogTable ×2", /data-testid="tab-catalogs"/.test(adminSrc) && /<CatalogTable kind="category" \/>/.test(adminSrc) && /<CatalogTable kind="relationship" \/>/.test(adminSrc));
-check("системные типы без кнопок правки", /\{!t\.isSystem && \(/.test(adminSrc));
+// 12.5 (Д-45): с 12.4 (Д-17) удаление типа идёт вторым шагом кнопки (useSecondStep) — гейт
+// isSystem остался, но вместе с removeStep.armed
+check("системные типы без кнопок правки", /\{!t\.isSystem && removeStep\.armed === t\.id/.test(adminSrc));
 check("литералы классов вне JSX (originClass/tabClass)", /function originClass\(system: boolean\): string/.test(adminSrc));
 
 console.log("── 4. Связи: POST /edges ──");
@@ -108,7 +111,8 @@ const formSrc = read("client/src/components/synthesis/SynthesisForm.tsx");
 check("гейт «Файловые концепции пока не поддержаны» снят", !/Файловые концепции пока не поддержаны/.test(formSrc));
 check("importFile + attachSynthesisId при сабмите", /importFile\(file\)/.test(formSrc) && /attachSynthesisId\(entry\.id, res\.id\)/.test(formSrc));
 check("buildInput читает свежий стор", /usePoolStore\s*\.getState\(\)\s*\.conceptParticipants\.filter\(\(p\) => p\.synthesisId\)/.test(formSrc));
-check("ошибка импорта останавливает сабмит", /Импорт файловой концепции «" \+ entry\.name \+ "» не удался/.test(formSrc));
+// 12.5 (Д-45): текст с 11.2 идёт через tl() — ключи fileImportLead/importFailed вокруг entry.name
+check("ошибка импорта останавливает сабмит", /tl\("synthesis\.synthesisForm\.fileImportLead", "Импорт файловой концепции «"\) \+ entry\.name \+ tl\("synthesis\.synthesisForm\.importFailed", "» не удался: "\)/.test(formSrc));
 check("pool-store.attachSynthesisId", /attachSynthesisId: \(id, synthesisId\) =>/.test(read("client/src/stores/pool-store.ts")));
 
 console.log("── 6. Биллинг: точный гейт и удаление аккаунта ──");
@@ -124,10 +128,12 @@ check("account-deletion: анонимизация, не DELETE users", /update\(
 check("удаляет синтезы/ключи/сессии, подписки → canceled", /delete\(syntheses\)/.test(accSrc) && /delete\(apiKeys\)/.test(accSrc) && /delete\(sessions\)/.test(accSrc) && /status: "canceled"/.test(accSrc));
 check("активная генерация → GENERATION_IN_PROGRESS", /hasActiveGenerationForUser\(userId\)[\s\S]*?"GENERATION_IN_PROGRESS"/.test(accSrc));
 const authRoutes = read("server/routes/auth.ts");
-check("DELETE /auth/me: пароль → 401 единым ответом, clearSessionCookie", /authRoutes\.delete\("\/me", requireAuth[\s\S]*?"AUTH_REQUIRED" \}, 401\)[\s\S]*?deleteAccount\(user\.id\);\s*clearSessionCookie\(c\);/.test(authRoutes));
-check("409 при GENERATION_IN_PROGRESS", /err\.code === "GENERATION_IN_PROGRESS" \? 409 : 404/.test(authRoutes));
+// 12.5 (Д-45): deleteAccount с 8.x принимает { ip } (журнал), 409 делит с LAST_ADMIN
+check("DELETE /auth/me: пароль → 401 единым ответом, clearSessionCookie", /authRoutes\.delete\("\/me", requireAuth[\s\S]*?"AUTH_REQUIRED" \}, 401\)[\s\S]*?deleteAccount\(user\.id, \{ ip: clientIpOf\(c\) \}\);\s*clearSessionCookie\(c\);/.test(authRoutes));
+check("409 при GENERATION_IN_PROGRESS (и LAST_ADMIN)", /err\.code === "GENERATION_IN_PROGRESS" \|\| err\.code === "LAST_ADMIN" \? 409 : 404/.test(authRoutes));
 check("auth-store.deleteAccount (DELETE, skipUnauthorizedHandler)", /async deleteAccount\(password\)[\s\S]*?method: "DELETE"[\s\S]*?skipUnauthorizedHandler: true/.test(read("client/src/stores/auth-store.ts")));
-check("ProfilePage: секция удаления с confirm", /data-testid="delete-account-form"/.test(read("client/src/pages/ProfilePage.tsx")) && /window\.confirm\(/.test(read("client/src/pages/ProfilePage.tsx")));
+// 12.5 (Д-45): с 12.4 (Д-17) подтверждение — второй шаг кнопки (useSecondStep, «Точно удалить?»), не window.confirm
+check("ProfilePage: секция удаления со вторым шагом кнопки", /data-testid="delete-account-form"/.test(read("client/src/pages/ProfilePage.tsx")) && /useSecondStep\(/.test(read("client/src/pages/ProfilePage.tsx")) && !/window\.confirm\(/.test(read("client/src/pages/ProfilePage.tsx")));
 
 console.log("── 7. Инструменты ──");
 const pkg = JSON.parse(read("package.json"));

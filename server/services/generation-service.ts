@@ -1420,6 +1420,7 @@ export async function runGenerationPasses(
           partialSubsections: doneSubs.map((s) => s.name),
           expectedSubsections: [...expectedSubs],
           skipDegrades: pausedState.skipDegrades ?? [],
+          sectionKeys: pausedState.sectionKeys, // 12.5 (Д-50)
           estimates: await pauseEstimatesFor(synthesisId, pausedState),
         });
         return; // прерываем цикл
@@ -1592,6 +1593,7 @@ export async function runGenerationPasses(
         reason,
         isPartial: false,
         skipDegrades: pausedState.skipDegrades ?? [],
+        sectionKeys: pausedState.sectionKeys, // 12.5 (Д-50)
         estimates: await pauseEstimatesFor(synthesisId, pausedState),
       });
       return;

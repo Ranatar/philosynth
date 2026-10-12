@@ -152,6 +152,10 @@ async function withTable(user, rows = ROWS) {
 let browser;
 async function pageAs(ctx, user) {
   const page = await ctx.newPage(); await page.setViewport({ width: 1280, height: 900 });
+  // 12.5 (Д-45): клиент с 11.3 открывается на языке браузера (headless — en-US), а тест ищет
+  // русские подписи: Accept-Language ru переопределяется CDP в КАЖДОМ контексте (09 §4, 12.2 п.6)
+  const cdp = await page.createCDPSession();
+  await cdp.send("Network.setUserAgentOverride", { userAgent: await browser.userAgent(), acceptLanguage: "ru-RU,ru" });
   page.errors = []; page.on("pageerror", (e) => page.errors.push(String(e)));
   if (user) { const [cn, cv] = user.cookie.split("="); await page.setCookie({ name: cn, value: cv, url: UI }); }
   return page;
@@ -450,18 +454,18 @@ try {
     await page.waitForSelector(T("rec-past-round"), { timeout: 20000 });
     const pastSummary = await text(page, `${T("rec-past-round")} summary`);
     ok((await page.$eval(T("rec-past-round"), (el) => el.getAttribute("data-rec-round"))) === "1" && /раунд 1 · исполнено: 2/i.test(pastSummary), "прошлый раунд свёрнут: «Раунд 1 · исполнено: 2»", pastSummary);
-    // НАХОДКА (сервер, 5.1 ↔ 10.1; здесь не чинится — «По факту 10.3»): правка
-    // тезиса перерисовывает сводную таблицу тезисов из БД, где thesis_num —
-    // целое; буквенные метки живого файла («Э-3») в таблице пропадают, сторож
-    // 10.1 берёт метки из неё — рекомендация к «Э-3» в новом раунде негодна.
+    // НАХОДКА 10.3 (сервер, 5.1 ↔ 10.1) ЗАКРЫТА 12.1 (Д-1): рендерер хранит метку
+    // документа (theses.label — «О-1», «Э-3»), правка тезиса метки сводной таблицы
+    // не теряет, сторож 10.1 находит «Э-3» — рекомендация к нему в новом раунде
+    // годна. Проверки перевёрнуты 12.5 (Д-45) под закрытую находку.
     const [thHtml] = await sql`select html_content from sections where synthesis_id=${id} and key='theses'`;
     const labels = (thHtml.html_content.match(/<td>\s*([ОЭ]-?\d+|\d+)\s*<\/td>/g) ?? []).slice(0, 3);
-    ok(labels.every((l) => /<td>\s*\d+\s*<\/td>/.test(l)), "НАХОДКА: после правки тезиса метки сводной таблицы — целые (буквенные метки живого файла потеряны рендерером 5.1)", labels);
+    ok(labels.length === 3 && labels.every((l) => /<td>\s*[ОЭ]-\d+\s*<\/td>/.test(l)), "после правки тезиса метки сводной таблицы — буквенные метки живого файла (Д-1, 12.1)", labels);
     const r2rows = await sql`select num, status, invalid_reason from recommendations where synthesis_id=${id} and round=2 order by position`;
-    ok(r2rows.find((r) => r.num === "4")?.status === "invalid" && /Э-3/.test(r2rows.find((r) => r.num === "4")?.invalid_reason ?? ""), "…и рекомендация к «Э-3» в раунде 2 негодна — сторож не нашёл элемент (следствие находки)");
+    ok(r2rows.find((r) => r.num === "4")?.status === "new", "…и рекомендация к «Э-3» в раунде 2 годна — сторож нашёл тезис по метке", r2rows.find((r) => r.num === "4"));
     const r2items = await page.$$eval(T("rec-item"), (els) => els.map((e) => e.getAttribute("data-rec-num") + ":" + (e.querySelector('[data-testid="rec-pick"]')?.disabled ? "x" : "o")));
-    ok(r2items.length === 7 && r2items.filter((x) => x.endsWith(":o")).length === 6 && r2rows.filter((r) => r.status === "new").length === 7, "новый раунд — прочие строки снова ждут решения (статусы не наследуются)", r2items);
-    ok((await page.$$(T("rec-invalid-row"))).length === 2, "негодных в раунде 2 две: № 8 (адрес) и № 4 (находка)");
+    ok(r2items.length === 8 && r2items.filter((x) => x.endsWith(":o")).length === 7 && r2rows.filter((r) => r.status === "new").length === 8, "новый раунд — прочие строки снова ждут решения (статусы не наследуются; № 4 годна после Д-1)", r2items);
+    ok((await page.$$(T("rec-invalid-row"))).length === 1, "негодных в раунде 2 одна: № 8 (адрес)");
     ok((await page.$(T("rec-done"))) === null, "исполненных в раунде 2 нет — они в прошлом раунде");
     ok(page.errors.length === 0, "ошибок страницы нет", page.errors);
     await click(page, ".edit-modal .raw-close");
@@ -480,7 +484,8 @@ try {
     ok(!/\brec-|plan-step-|version-origin/.test(noRules), "классов беседы 10.3 без правил нет", noRules.trim().split("\n").slice(0, 4));
     ok(/совпадает с блоком <style> исходника/.test(out), "раздел D — CSS экспорта побайтно прежний");
     const css = readFileSync(ROOT + "client/src/globals.css", "utf8");
-    const block = css.split("Беседа 10.3")[1]?.split("Утилиты Tailwind")[0] ?? "";
+    // 12.5 (Д-45): после 10.3 появились блоки 11.3 и 12.4 — блок 10.3 кончается следующим заголовком беседы
+    const block = (css.split("Беседа 10.3")[1] ?? "").split(/\/\* ═══ Беседа /)[0].split("Утилиты Tailwind")[0];
     const hexes = [...new Set((block.match(/#[0-9a-f]{3,6}\b/gi) ?? []).map((h) => h.toLowerCase()))];
     ok(block.length > 1000 && hexes.every((h) => ["#f0fff4", "#fffbee", "#fff5f5"].includes(h)), "блок 10.3 отдельный, новых hex нет (только фоны исходника)", hexes);
     ok(!/border-radius|box-shadow/.test(block), "скруглений и теней нет");

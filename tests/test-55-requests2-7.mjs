@@ -28,6 +28,8 @@
  * Запуск: node_modules/.bin/tsx tests/test-55-requests2-7.mjs
  */
 import http from "node:http";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
@@ -40,7 +42,11 @@ const MOCK_PORT = 3855;
 const API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
 const UI = `http://127.0.0.1:${VITE_PORT}`;
 const DB_URL = "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
-const CHROME = process.env.CHROME_PATH ?? "/opt/google/chrome/chrome";
+// 12.5 (Д-25): системного /opt/google/chrome/chrome в песочнице нет — Chrome 131 из кэша puppeteer
+const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+if (!CHROME) { console.error("Chrome 131 не найден — задайте CHROME_PATH"); process.exit(2); }
+// клиент с 11.3 открывается на языке браузера (en-US в headless) — Accept-Language ru через CDP
+async function ruPage(page) { const cdp = await page.createCDPSession(); await cdp.send("Network.setUserAgentOverride", { userAgent: await page.browser().userAgent(), acceptLanguage: "ru-RU,ru" }); return page; }
 
 process.env.DATABASE_URL ??= DB_URL;
 process.env.REDIS_URL ??= "redis://localhost:6379";
@@ -107,10 +113,11 @@ const BASE_THESES = [
 ];
 
 async function makeSynthesis(userId, title, opts = {}) {
-  const { withGraph = true, withTheses = true, isPublic = false } = opts;
+  // 12.5 (Д-25): с 8.6 вместо is_public — visibility ('private' | 'showcase' | 'full')
+  const { withGraph = true, withTheses = true, visibility = "private" } = opts;
   const order = ["sum", ...(withGraph ? ["graph"] : []), ...(withTheses ? ["theses"] : [])];
   const [s] = await db.insert(syntheses).values({
-    userId, seed: "тестовое зерно 5.5", sectionOrder: order, status: "ready", title, isPublic,
+    userId, seed: "тестовое зерно 5.5", sectionOrder: order, status: "ready", title, visibility,
     capsuleHtml: "<p>Капсула.</p>", synthLevel: "comparative", extGraphMetrics: false,
   }).returning();
   await db.insert(synthesisLineage).values([{ synthesisId: s.id, parentType: "philosopher", parentName: "Парменид", position: 0 }]);
@@ -432,7 +439,7 @@ try {
   ok(r.status === 403, "чужой синтез → 403");
   r = await api(B, "GET", `/syntheses/${sid}/transforms`);
   ok(r.status === 403, "GET истории чужого приватного → 403");
-  await db.update(syntheses).set({ isPublic: true }).where(eq(syntheses.id, sid));
+  await db.update(syntheses).set({ visibility: "full" }).where(eq(syntheses.id, sid)); // 12.5 (Д-25): 8.6 — visibility
   r = await api(B, "GET", `/syntheses/${sid}/transforms`);
   ok(r.status === 200 && r.json.transforms.length === 5, "GET истории публичного — доступен не-владельцу (5 записей)");
   r = await api(B, "POST", `/syntheses/${sid}/transforms/${hist2[0].id}/rollback`);
@@ -490,7 +497,7 @@ try {
   const U = await makeSynthesis(A.id, "Синтез 5.5 (UI)");
   const uid = U.id;
   browser = await puppeteer.launch({ executablePath: CHROME, headless: "shell", args: ["--no-sandbox", "--disable-dev-shm-usage"] });
-  const page = await browser.newPage();
+  const page = await ruPage(await browser.newPage());
   await page.setViewport({ width: 1280, height: 900 });
   page.on("pageerror", (e) => pageErrors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push("console: " + m.text()); });

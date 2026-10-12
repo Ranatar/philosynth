@@ -24,6 +24,7 @@ import { PASSWORD_TOO_SHORT_TEMPLATE, PASSWORD_TOO_SHORT_MESSAGE, PASSWORD_MIN_L
 import { MODE_UI } from "../client/src/components/modes/ModeModal.tsx";
 import { readTable, scanCalls, MIRROR_EXCLUSIONS, SCAN_SKIP } from "../scripts/i18n/i18n-core.mjs";
 import { splitCatalog, dataKeyMap, compareCatalogs } from "../scripts/i18n/i18n-split.mjs";
+import { UI_LOCALES } from "../packages/shared/i18n/locales.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const rd = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -47,7 +48,7 @@ ok("карта ведёт на живые ключи с тем же ru", Object.
 ok("значения файлов-данных без отметки data — в карте (Диалектический → common.dialectical)", DATA_KEYS["Диалектический"] === "common.dialectical" && DATA_KEYS["Основание"] === "common.ground");
 ok("коллизии одного текста решаются предпочтением shared → data", DATA_KEYS["Аналитический"] === "shared.labels.methodAnalytical" && DATA_KEYS["⚔ Оппонент"] === "modes.modeModal.opponent");
 ok("dataKeyMap(таблица, root) ≡ генерату", JSON.stringify(dataKeyMap(table, ROOT)) === JSON.stringify(DATA_KEYS));
-ok("compareCatalogs: en, de и карта свежие", compareCatalogs(ROOT).every((r) => r.actual === r.expected));
+ok("compareCatalogs: каталоги всех языков и карта свежие", compareCatalogs(ROOT).every((r) => r.actual === r.expected));
 ok("displayKey/isDataValue", displayKey(ML.dialectical) === "common.dialectical" && isDataValue("Онтологическая") && displayKey("нет такого") === null && !isDataValue("нет такого"));
 
 /* ── 2. Каталоги несут data-строки, de заполнен ── */
@@ -58,6 +59,16 @@ ok("каталог de несёт ВСЕ живые ключи (черновик 
 ok("splitCatalog не выбрасывает data", Object.keys(splitCatalog(table, "en").strings).length === live.length);
 // 2026-09-29: en и de утверждены владельцем (import без --draft) — черновиков нет, from = ru
 ok("en и de утверждены: черновиков нет, from.en/de = ru у каждого ключа", live.every(([, r]) => !(r.draft ?? []).includes("de") && !(r.draft ?? []).includes("en") && r.from?.de === r.ru && r.from?.en === r.ru));
+// 12.5 (Д-33): прочие языки — по UI_LOCALES: каталог с locale и всеми живыми ключами; у каждой
+// строки есть колонка; утверждённый перевод (не draft) несёт from = ru (черновик беседы L — допустим)
+ok("meta.languages таблицы ≡ UI_LOCALES", (table.meta.languages ?? []).join() === UI_LOCALES.join(), `${(table.meta.languages ?? []).join()} / ${UI_LOCALES.join()}`);
+for (const l of UI_LOCALES) {
+  if (l === "ru") continue;
+  const catPath = path.join(ROOT, `packages/shared/i18n/generated/${l}.json`);
+  const cat = fs.existsSync(catPath) ? JSON.parse(fs.readFileSync(catPath, "utf8")) : null;
+  ok(`${l}: каталог с locale и всеми живыми ключами`, cat?.locale === l && live.every(([k]) => k in cat.strings) && Object.keys(cat.strings).length === live.length, cat ? String(Object.keys(cat.strings).length) : "нет файла");
+  ok(`${l}: колонка у каждой строки; утверждённые (не draft) несут from.${l} = ru`, Object.values(S).every((r) => l in r) && live.every(([, r]) => (r.draft ?? []).includes(l) || r[l] === null || r.from?.[l] === r.ru));
+}
 
 /* ── 3. tData по месту показа ── */
 console.log("3. tData / tDataLoose");

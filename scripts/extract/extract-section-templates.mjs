@@ -34,7 +34,7 @@
  * заголовка по кардинальности на рендере»; отложено из 0.3 намеренно).
  *
  * Запуск (из корня репозитория):
- *   node scripts/extract-section-templates.mjs
+ *   node scripts/extract/extract-section-templates.mjs
  * При обновлении source/philosynth.html — перегенерировать fragments
  * (extract-fragments.py), затем перезапустить и просмотреть diff.
  */
@@ -44,7 +44,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// 12.5 (Д-39): генератор лежит в scripts/extract/ — корень репо на два уровня выше (как extract-seed-data)
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FRAGMENT = join(
   ROOT,
   "docs/fragments-for-conversations/1.2-prompt-builder.js",

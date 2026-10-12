@@ -27,13 +27,25 @@ import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import puppeteer from "puppeteer-core";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 
 const SERVER_PORT = 3000;
 const VITE_PORT = 5199;
 const API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
 const UI = `http://127.0.0.1:${VITE_PORT}`;
 const DB_URL = "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
-const CHROME = process.env.CHROME_PATH ?? "/opt/google/chrome/chrome";
+// 12.5: браузер харнессов — Chrome 131 (09 §1, 12.2 п.5; CHROME_PATH — иной путь).
+// Системного /opt/google/chrome/chrome в песочнице больше нет.
+const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+if (!CHROME) { console.error("Chrome 131 не найден — задайте CHROME_PATH"); process.exit(2); }
+/** 12.5: клиент с 11.3 открывается на языке браузера (headless — en-US), а
+ *  харнесс ищет русские подписи: язык страницы — CDP (09 §4, 11.3/12.2). */
+async function ruPage(page) {
+  const cdp = await page.createCDPSession();
+  await cdp.send("Network.setUserAgentOverride", { userAgent: await page.browser().userAgent(), acceptLanguage: "ru-RU,ru" });
+  return page;
+}
 
 process.env.DATABASE_URL ??= DB_URL;
 process.env.REDIS_URL ??= "redis://localhost:6379";
@@ -239,13 +251,15 @@ try {
   ok(!("userId" in (fullA.json.synthesis ?? {})), "SynthesisFull не раскрывает userId");
   const fullB0 = await api(B, "GET", `/syntheses/${sid}`);
   ok(fullB0.status === 403, "чужой приватный → 403");
-  await api(A, "PATCH", `/syntheses/${sid}`, { isPublic: true });
+  // 12.5 (Д-25): PATCH { isPublic } снят 8.7 (→ 400); публичность — ступень visibility (8.6)
+  const pubResp = await api(A, "PATCH", `/syntheses/${sid}`, { visibility: "full" });
+  ok(pubResp.status === 200 && pubResp.json.synthesis.visibility === "full", "PATCH { visibility: full } → 200", J(pubResp.json));
   const fullB = await api(B, "GET", `/syntheses/${sid}`);
   ok(fullB.status === 200 && fullB.json.synthesis.isOwner === false, "чужой на публичном: isOwner=false", J(fullB.json?.synthesis?.isOwner));
 
   /* ══ Браузер ══ */
   browser = await puppeteer.launch({ executablePath: CHROME, headless: "shell", args: ["--no-sandbox", "--disable-dev-shm-usage"] });
-  const page = await browser.newPage();
+  const page = await ruPage(await browser.newPage());
   await page.setViewport({ width: 1280, height: 900 });
   page.on("pageerror", (e) => consoleErrors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push("console: " + m.text()); });
@@ -384,7 +398,9 @@ try {
   const thHtml = await secHtml(sid, "theses");
   ok(thHtml.includes("<td>Бытие есть чистое становление</td>"), "html_content: сводная таблица перерисована");
   ok(thHtml.includes("<strong>Бытие есть чистое становление</strong> Потому что так учил Гераклит."), "html_content: абзац тезиса переписан (formulation в <strong>)");
-  await waitText(page, "#sec-theses ~ div", "Бытие есть чистое становление");
+  // 12.5 (Д-25): после правки у раздела появляется .section-actions с пометкой «⟳ изменён»
+  // (12.4, Д-15) — первым div-соседом якоря становится она, а не тело; тело — div без класса
+  await waitText(page, "#sec-theses ~ div:not([class])", "Бытие есть чистое становление");
   ok(true, "страница перечитала раздел (reloadSections)");
   const imp3 = await textOf(page, "#sec-theses ~ .inline-edit-form [data-element-impact]");
   ok(has(imp3, "Перерисовано") && has(imp3, "Сводная таблица"), "htmlSync.rendered — сводная таблица", imp3.slice(0, 200));
@@ -437,7 +453,10 @@ try {
   await login(B);
   await openSynth();
   const barB = await textOf(page, ".actions-bar");
-  ok(!has(barB, "Изменить") && !has(barB, "Оппонент"), "у чужого нет «✎ Изменить» и режимов (isOwner=false)", barB);
+  // 12.5 (Д-25): с 8.6 вошедший чужой при объёме 'full' ВИДИТ результаты режимов только для чтения
+  // (SynthesisPage.modesReadOnly — тот же круг, кому доступны разделы и экспорт); правки — нет
+  ok(!has(barB, "Изменить"), "у чужого нет «✎ Изменить» (isOwner=false)", barB);
+  ok(has(barB, "Оппонент"), "у чужого на 'full' режимы видны для чтения (8.6: modesReadOnly)", barB);
   ok(has(barB, "Граф") && has(barB, "Экспорт"), "чтение и экспорт доступны");
   const editBtnsB = await page.$$eval("button[data-edit-kind]", (els) => els.length);
   ok(editBtnsB === 0, "кнопок ✎ в таблицах нет");

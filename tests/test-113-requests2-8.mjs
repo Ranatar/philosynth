@@ -29,6 +29,11 @@ import { homedir } from "node:os";
 import postgres from "postgres";
 
 import { CAPSULE, SECTIONS, SECTION_ORDER } from "./test-92-fixture.mjs";
+import { UI_LOCALES } from "../packages/shared/i18n/locales.ts";
+
+// 12.5 (Д-33): языки каталогов — из UI_LOCALES (новый язык беседы L не правит тест руками)
+const CATALOG_LOCALES = UI_LOCALES.filter((l) => l !== "ru");
+const CATALOG_CHUNK = new RegExp(`\\/assets\\/((?:${CATALOG_LOCALES.join("|")})-[^/]+\\.js)$`);
 
 const ROOT = new URL("../", import.meta.url).pathname;
 const PORT = 3000, UI_PORT = 5213, MOCK_PORT = 3893;
@@ -125,7 +130,7 @@ async function newPage(browser, who) {
   const page = await ctx.newPage();
   await page.setViewport({ width: 1280, height: 900 });
   page.catalogRequests = [];
-  page.on("request", (r) => { const m = /\/assets\/((?:en|de)-[^/]+\.js)$/.exec(r.url()); if (m) page.catalogRequests.push(m[1]); });
+  page.on("request", (r) => { const m = CATALOG_CHUNK.exec(r.url()); if (m) page.catalogRequests.push(m[1]); });
   page.errors = [];
   page.on("pageerror", (e) => page.errors.push(String(e)));
   // Язык браузера ru-RU: headless shell не читает --lang, navigator.language
@@ -202,7 +207,8 @@ async function main() {
   const rowDe = await userRow(A.id);
   ok(rowDe.ui_locale === "de" && rowDe.gen_lang === "German", "PATCH /auth/me { uiLocale: de } → ui_locale=de, gen_lang=German (правило владельца)", J(rowDe));
   ok((await lang(p)) === "de" && p.catalogRequests.filter((x) => x.startsWith("de-")).length === 1, "интерфейс de, каталог de загружен один раз", p.catalogRequests);
-  ok((await txt(p, ".brand-tagline")).startsWith("Система Синтеза"), "каталог de пуст → текст русский (штатно)");
+  // 12.5 (Д-45): с 11.4 каталог de влит — слоган немецкий
+  ok(/^System/.test(await txt(p, ".brand-tagline")), "каталог de влит (11.4) → слоган немецкий", await txt(p, ".brand-tagline"));
   await p.goto(UI + "/synthesis/new", { waitUntil: "networkidle0" });
   await p.waitForSelector('[data-testid="gen-lang-select"]');
   ok((await p.$eval('[data-testid="gen-lang-select"]', (s) => s.value)) === "German", "форма создания открывается с German (из user.gen_lang)");
@@ -289,6 +295,12 @@ async function main() {
   ok(q.catalogRequests.filter((x) => x.startsWith("de-")).length === 1, "de — один запрос", q.catalogRequests);
   await clickLang(q, "en"); await clickLang(q, "de"); await sleep(300);
   ok(q.catalogRequests.length === 2, "итого за сеанс: ровно два запроса (en, de) при шести переключениях", q.catalogRequests);
+  // 12.5 (Д-33): прочие языки UI_LOCALES (если заведены) — по одному запросу каждый
+  for (const l of CATALOG_LOCALES.filter((x) => x !== "en" && x !== "de")) {
+    await clickLang(q, l); await sleep(500);
+    ok(q.catalogRequests.filter((x) => x.startsWith(`${l}-`)).length === 1, `${l} — один запрос`, q.catalogRequests);
+  }
+  ok(q.catalogRequests.length === CATALOG_LOCALES.length, "каждому языку UI_LOCALES (кроме ru) — ровно один запрос каталога", q.catalogRequests);
   ok(q.errors.length === 0, "ошибок страницы нет", q.errors);
 
   /* ═══ R7 ═══ */
@@ -301,16 +313,17 @@ async function main() {
   await clickLang(p, "ru"); await waitText(p, ".brand-tagline", "Система");
   await p.goto(UI + `/synthesis/${DOC}`, { waitUntil: "networkidle0" });
   await p.waitForSelector('[data-testid="parse-warnings-graph"]', { timeout: 15000 });
-  ok((await txt(p, '[data-testid="parse-warnings-graph"] summary')).includes("Разобран с потерями (2 предупреждения)"), "владелец: пометка с русским плюралом «2 предупреждения»", await txt(p, '[data-testid="parse-warnings-graph"] summary'));
+  // 12.5 (Д-45): с 12.4 (Д-48) заголовок блока — «Замечания к последней генерации (N замечаний)»
+  ok((await txt(p, '[data-testid="parse-warnings-graph"] summary')).includes("Замечания к последней генерации (2 замечания)"), "владелец: пометка с русским плюралом «2 замечания»", await txt(p, '[data-testid="parse-warnings-graph"] summary'));
   // 12.3 (Д-47): «Резюме» выше перегенерировано моком, пишущим один подраздел из семи, —
   // у него теперь законная пометка о пропущенных подразделах; раздел без генлога — глоссарий
   ok(!(await p.$('[data-testid="parse-warnings-glossary"]')), "у раздела без предупреждений пометки нет");
-  ok(((await txt(p, '[data-testid="parse-warnings-sum"] summary')) ?? "").includes("Разобран с потерями (1 предупреждение)"), "12.3 (Д-47): у «Резюме», где мок пропустил подразделы, — пометка о пропуске", await txt(p, '[data-testid="parse-warnings-sum"] summary'));
+  ok(((await txt(p, '[data-testid="parse-warnings-sum"] summary')) ?? "").includes("Замечания к последней генерации (1 замечание)"), "12.3 (Д-47): у «Резюме», где мок пропустил подразделы, — пометка о пропуске", await txt(p, '[data-testid="parse-warnings-sum"] summary'));
   await p.$eval('[data-testid="parse-warnings-graph"]', (d) => (d.open = true));
   const items = await p.evaluate(() => [...document.querySelectorAll('[data-testid="parse-warnings-graph"] li')].map((li) => li.textContent));
   ok(items.length === 2 && items[0].includes("bidirektional") && items[1].includes("Kern"), "раскрытие показывает оба предупреждения", items);
   await clickLang(p, "en"); await waitText(p, ".brand-tagline", "Philosophical");
-  ok((await txt(p, '[data-testid="parse-warnings-graph"] summary')).includes("Parsed with losses (2 warnings)"), "пометка по-английски с английским плюралом", await txt(p, '[data-testid="parse-warnings-graph"] summary'));
+  ok((await txt(p, '[data-testid="parse-warnings-graph"] summary')).includes("Notes on the last generation (2 notes)"), "пометка по-английски с английским плюралом", await txt(p, '[data-testid="parse-warnings-graph"] summary'));
   const other = await newPage(browser, B);
   await other.goto(UI + `/synthesis/${DOC}`, { waitUntil: "networkidle0" });
   await other.waitForSelector(".doc-section", { timeout: 15000 });
