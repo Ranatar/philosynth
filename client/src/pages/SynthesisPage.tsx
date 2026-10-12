@@ -630,9 +630,25 @@ export function SynthesisPage() {
     prevDoneRef.current = doneCount;
   }, [doneCount, reloadSections]);
 
-  // Пауза: живая (WS, текущий прогон) перекрывает снапшот из GET /:id
-  const pausedState =
-    stream.pause?.pausedState ?? synthesis?.pausedState ?? null;
+  // Пауза: живая (WS, текущий прогон) перекрывает снапшот из GET /:id.
+  // 12.4 (Д-2, тестовые запросы): при заходе на страницу в паузе replay
+  // подписки (ws/handler) шлёт generation_paused БЕЗ skipDegrades и
+  // sectionKeys — собранное из него состояние беднее снапшота БД, и вопрос
+  // о деградации при пропуске молча терялся. Та же пауза (kind, reasonKind,
+  // reason совпали) берётся из снапшота — он и есть источник pausedState при
+  // заходе (1.6b); новая живая пауза (снапшота нет — load после resume его
+  // обнулил, либо причина иная) — из потока. Сам replay — Д-50 (§12).
+  const livePausedState = stream.pause?.pausedState ?? null;
+  const snapshotPausedState = synthesis?.pausedState ?? null;
+  const samePause =
+    livePausedState !== null &&
+    snapshotPausedState !== null &&
+    livePausedState.kind === snapshotPausedState.kind &&
+    livePausedState.reasonKind === snapshotPausedState.reasonKind &&
+    livePausedState.reason === snapshotPausedState.reason;
+  const pausedState = samePause
+    ? snapshotPausedState
+    : (livePausedState ?? snapshotPausedState);
   const pauseEstimates =
     stream.pause?.estimates ?? synthesis?.pauseEstimates ?? {};
   const paused = !!pausedState;

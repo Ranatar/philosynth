@@ -2273,7 +2273,7 @@
     "utils.stripe.stripeLoadFailed": "Failed to load Stripe.js (js.stripe.com is unavailable)",
     "utils.stripe.stripeMissing": "Stripe.js is loaded, but window.Stripe is missing",
     "utils.subsectionEdit.fieldFormulation": "formulation",
-    "utils.subsectionEdit.fieldJustification": "ground",
+    "utils.subsectionEdit.fieldJustification": "justification",
     "utils.subsectionEdit.lockedGenerating": "Generation is still running — subsection editing is locked.",
     "utils.subsectionEdit.markupRejected": "Markup rejected: {reason}",
     "utils.subsectionEdit.notEditable": "This subsection is not edited manually.",

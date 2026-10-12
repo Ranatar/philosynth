@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-10-06T19:21:46.937Z",
-    "imported": "2026-10-06T19:22:32.551Z"
+    "synced": "2026-10-12T05:38:18.677Z",
+    "imported": "2026-10-12T05:39:23.642Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -476,7 +476,6 @@
       "en": "Really make admin?",
       "de": "Wirklich ernennen?",
       "from": {"en":"Точно назначить?","de":"Точно назначить?"},
-      "draft": ["en","de"],
       "where": ["client/src/pages/AdminPromptsPage.tsx:1376"]
     },
     "adminPromptsPage.makeAdminIcon": {
@@ -598,7 +597,6 @@
       "en": "Really revoke rights?",
       "de": "Rechte wirklich entziehen?",
       "from": {"en":"Точно снять права?","de":"Точно снять права?"},
-      "draft": ["en","de"],
       "where": ["client/src/pages/AdminPromptsPage.tsx:1375"]
     },
     "adminPromptsPage.revokeNote": {
@@ -2443,7 +2441,7 @@
       "en": "Create account",
       "de": "Konto erstellen",
       "from": {"en":"Создать аккаунт","de":"Создать аккаунт"},
-      "where": ["client/src/pages/CatalogPage.tsx:342","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:96","client/src/pages/SynthesisPage.tsx:744"]
+      "where": ["client/src/pages/CatalogPage.tsx:342","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:96","client/src/pages/SynthesisPage.tsx:760"]
     },
     "common.creating": {
       "ru": "Создание…",
@@ -2549,7 +2547,7 @@
       "en": "Error",
       "de": "Fehler",
       "from": {"en":"Ошибка","de":"Ошибка"},
-      "where": ["client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:420","client/src/pages/SynthesisPage.tsx:725"]
+      "where": ["client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:420","client/src/pages/SynthesisPage.tsx:741"]
     },
     "common.fillParameter": {
       "ru": "Заполните параметр.",
@@ -2647,7 +2645,7 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:276","client/src/components/edit/EditSectionCard.tsx:168","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:446","client/src/pages/AdminPromptsPage.tsx:769","client/src/pages/AdminPromptsPage.tsx:1012","client/src/pages/AdminPromptsPage.tsx:1335","client/src/pages/AdminPromptsPage.tsx:1424","client/src/pages/BillingPage.tsx:324","client/src/pages/BillingPage.tsx:668","client/src/pages/SynthesisPage.tsx:775"]
+      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:276","client/src/components/edit/EditSectionCard.tsx:168","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:446","client/src/pages/AdminPromptsPage.tsx:769","client/src/pages/AdminPromptsPage.tsx:1012","client/src/pages/AdminPromptsPage.tsx:1335","client/src/pages/AdminPromptsPage.tsx:1424","client/src/pages/BillingPage.tsx:324","client/src/pages/BillingPage.tsx:668","client/src/pages/SynthesisPage.tsx:791"]
     },
     "common.logIn": {
       "ru": "Войти",
@@ -4119,7 +4117,6 @@
       "en": "Capsule version history",
       "de": "Versionsverlauf der Kapsel",
       "from": {"en":"История версий капсулы","de":"История версий капсулы"},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/DocumentHeader.tsx:292"]
     },
     "document.documentHeader.capsuleLabel": {
@@ -4127,7 +4124,6 @@
       "en": "Capsule",
       "de": "Kapsel",
       "from": {"en":"Капсула","de":"Капсула"},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/DocumentHeader.tsx:309"]
     },
     "document.documentHeader.capsuleLockedGenerating": {
@@ -4235,7 +4231,6 @@
       "en": "How the context of parent concepts enters the section prompts",
       "de": "Wie der Kontext der Eltern-Konzepte in die Abschnittsprompts gelangt",
       "from": {"en":"Как контекст концепций-родителей попадает в промпты разделов","de":"Как контекст концепций-родителей попадает в промпты разделов"},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/DocumentHeader.tsx:239"]
     },
     "document.documentHeader.schemaMonolithic": {
@@ -4243,7 +4238,6 @@
       "en": "◈ parent context: monolithic (legacy)",
       "de": "◈ Elternkontext: monolithisch (legacy)",
       "from": {"en":"◈ родительский контекст: монолитный (legacy)","de":"◈ родительский контекст: монолитный (legacy)"},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/DocumentHeader.tsx:106"]
     },
     "document.documentHeader.schemaOther": {
@@ -4251,7 +4245,6 @@
       "en": "◈ parent context: {schema}",
       "de": "◈ Elternkontext: {schema}",
       "from": {"en":"◈ родительский контекст: {schema}","de":"◈ родительский контекст: {schema}"},
-      "draft": ["en","de"],
       "params": {"schema":""},
       "where": ["client/src/components/document/DocumentHeader.tsx:107"]
     },
@@ -4260,7 +4253,6 @@
       "en": "◈ parent context: selective v1",
       "de": "◈ Elternkontext: selektiv v1",
       "from": {"en":"◈ родительский контекст: селективный v1","de":"◈ родительский контекст: селективный v1"},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/DocumentHeader.tsx:104"]
     },
     "document.documentHeader.synthesisLevel": {
@@ -4338,7 +4330,6 @@
       "en": "⟳ edited",
       "de": "⟳ geändert",
       "from": {"en":"⟳ изменён","de":"⟳ изменён"},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/SectionView.tsx:500"]
     },
     "document.sectionView.editedHint": {
@@ -4346,7 +4337,6 @@
       "en": "Section changed after generation: regeneration, a table edit or a subsection edit",
       "de": "Abschnitt nach der Generierung geändert: Neugenerierung, Tabellen- oder Unterabschnittsänderung",
       "from": {"en":"Раздел изменён после генерации: перегенерация, правка таблицы или подраздела","de":"Раздел изменён после генерации: перегенерация, правка таблицы или подраздела"},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/SectionView.tsx:497"]
     },
     "document.sectionView.gotIt": {
@@ -4389,7 +4379,6 @@
       "en": "What the service noticed while accepting the model's answer: substitutions during analysis into tables (a value recognised by position or replaced with a default) and omissions — subsections missing from the answer. The section is kept as is; check what is named below and regenerate if needed.",
       "de": "Was der Dienst beim Annehmen der Modellantwort bemerkt hat: Ersetzungen bei der Auswertung in Tabellen (ein Wert nach Position erkannt oder durch einen Standardwert ersetzt) und Auslassungen — Unterabschnitte, die in der Antwort fehlten. Der Abschnitt bleibt, wie er ist; prüfen Sie das unten Genannte und generieren Sie bei Bedarf neu.",
       "from": {"en":"Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте.","de":"Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте."},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/SectionView.tsx:520"]
     },
     "document.sectionView.parsedWithLosses": {
@@ -4397,7 +4386,6 @@
       "en": "⚠ Notes on the last generation ({n, plural, one {# note} other {# notes}})",
       "de": "⚠ Anmerkungen zur letzten Generierung ({n, plural, one {# Anmerkung} other {# Anmerkungen}})",
       "from": {"en":"⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})","de":"⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})"},
-      "draft": ["en","de"],
       "params": {"n":""},
       "where": ["client/src/components/document/SectionView.tsx:516"]
     },
@@ -4413,7 +4401,6 @@
       "en": "Saved.",
       "de": "Gespeichert.",
       "from": {"en":"Сохранено.","de":"Сохранено."},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/SectionView.tsx:240"]
     },
     "document.sectionView.sectionExtraContext": {
@@ -4428,7 +4415,6 @@
       "en": "The server adjusted the markup:",
       "de": "Der Server hat das Markup angepasst:",
       "from": {"en":"Сервер поправил разметку:","de":"Сервер поправил разметку:"},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/SectionView.tsx:247"]
     },
     "document.sectionView.subsectionMarkup": {
@@ -4457,7 +4443,6 @@
       "en": "Section changed after generation",
       "de": "Abschnitt nach der Generierung geändert",
       "from": {"en":"Раздел изменён после генерации","de":"Раздел изменён после генерации"},
-      "draft": ["en","de"],
       "where": ["client/src/components/document/TableOfContents.tsx:73"]
     },
     "edit.addSectionPanel.addSections": {
@@ -4823,7 +4808,6 @@
       "en": " · {pending} cascading steps await a decision — if all are confirmed, another ≈ ${pendingCost}",
       "de": " · {pending} Kaskadenschritte warten auf Entscheidung — werden alle bestätigt, noch ≈ ${pendingCost}",
       "from": {"en":" · {pending} каскадных ждут решения — если подтвердить все, ещё ≈ ${pendingCost}","de":" · {pending} каскадных ждут решения — если подтвердить все, ещё ≈ ${pendingCost}"},
-      "draft": ["en","de"],
       "params": {"pending":"pending"},
       "where": ["client/src/components/edit/EditModal.tsx:440"]
     },
@@ -4967,7 +4951,6 @@
       "en": "Taken steps — no model calls",
       "de": "Übernommene Schritte — ohne Modellaufrufe",
       "from": {"en":"Взятые шаги — без обращений к модели","de":"Взятые шаги — без обращений к модели"},
-      "draft": ["en","de"],
       "where": ["client/src/components/edit/EditModal.tsx:426"]
     },
     "edit.editModal.transformations": {
@@ -5120,7 +5103,6 @@
       "en": "◷ History",
       "de": "◷ Verlauf",
       "from": {"en":"◷ История","de":"◷ История"},
-      "draft": ["en","de"],
       "where": ["client/src/components/edit/EditSectionCard.tsx:246"]
     },
     "edit.editSectionCard.incompleteContext": {
@@ -5432,7 +5414,6 @@
       "en": "thesis formulation",
       "de": "Formulierung der These",
       "from": {"en":"формулировка тезиса","de":"формулировка тезиса"},
-      "draft": ["en","de"],
       "where": ["client/src/components/edit/ElementEditor.tsx:142"]
     },
     "edit.elementEditor.thesisJustification": {
@@ -6019,7 +6000,6 @@
       "en": "Versions are snapshots of the section before each edit: a manual subsection edit, a capsule edit, the recommendations table retrofit, name auto-replacement. Rollback restores the section markup from the snapshot; tables the service renders from the database are left untouched.",
       "de": "Versionen sind Momentaufnahmen des Abschnitts vor jeder Änderung: manuelle Unterabschnittsänderung, Kapseländerung, Nachrüstung der Empfehlungstabelle, automatische Namensersetzung. Der Rollback stellt das Abschnitts-Markup aus der Momentaufnahme wieder her; Tabellen, die der Dienst aus der Datenbank zeichnet, bleiben unberührt.",
       "from": {"en":"Версии — снимки раздела до каждой правки: ручной правки подраздела, правки капсулы, ретрофита таблицы рекомендаций, автозамены имён. Откат возвращает разметку раздела из снимка; таблицы, которые служба рисует из БД, он не трогает.","de":"Версии — снимки раздела до каждой правки: ручной правки подраздела, правки капсулы, ретрофита таблицы рекомендаций, автозамены имён. Откат возвращает разметку раздела из снимка; таблицы, которые служба рисует из БД, он не трогает."},
-      "draft": ["en","de"],
       "where": ["client/src/components/edit/SectionHistory.tsx:72"]
     },
     "edit.sectionHistory.title": {
@@ -6027,7 +6007,6 @@
       "en": "◷ Section version history · {label}",
       "de": "◷ Versionsverlauf des Abschnitts · {label}",
       "from": {"en":"◷ История версий раздела · {label}","de":"◷ История версий раздела · {label}"},
-      "draft": ["en","de"],
       "params": {"label":""},
       "where": ["client/src/components/edit/SectionHistory.tsx:63"]
     },
@@ -6653,7 +6632,7 @@
       "de": "Vergleich: v{selected} →",
       "from": {"en":"Сравнение: v{selected} →","de":"Сравнение: v{selected} →"},
       "params": {"selected":"selected"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:308"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:322"]
     },
     "edit.versionHistory.confirmRollbackLead": {
       "ru": "Откатить элемент к версии v{selected}? Текущее состояние сохранится ",
@@ -6661,28 +6640,28 @@
       "de": "Element auf Version v{selected} zurücksetzen? Der aktuelle Zustand bleibt ",
       "from": {"en":"Откатить элемент к версии v{selected}? Текущее состояние сохранится ","de":"Откатить элемент к версии v{selected}? Текущее состояние сохранится "},
       "params": {"selected":"selected"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:229"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:243"]
     },
     "edit.versionHistory.confirmRollbackTail": {
       "ru": "новой версией (источник «откат»).",
       "en": "as a new version (source “rollback”).",
       "de": "als neue Version erhalten (Quelle „Rücksetzung“).",
       "from": {"en":"новой версией (источник «откат»).","de":"новой версией (источник «откат»)."},
-      "where": ["client/src/components/edit/VersionHistory.tsx:230"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:244"]
     },
     "edit.versionHistory.currentState": {
       "ru": "Текущее состояние элемента",
       "en": "Current state of the element",
       "de": "Aktueller Zustand des Elements",
       "from": {"en":"Текущее состояние элемента","de":"Текущее состояние элемента"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:255"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:269"]
     },
     "edit.versionHistory.currentStateLower": {
       "ru": "текущее состояние",
       "en": "current state",
       "de": "aktueller Zustand",
       "from": {"en":"текущее состояние","de":"текущее состояние"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:260","client/src/components/edit/VersionHistory.tsx:310"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:274","client/src/components/edit/VersionHistory.tsx:324"]
     },
     "edit.versionHistory.edgeDescription": {
       "ru": "Описание связи",
@@ -6696,7 +6675,7 @@
       "en": "Failed to load the history",
       "de": "Verlauf konnte nicht geladen werden",
       "from": {"en":"Не удалось загрузить историю","de":"Не удалось загрузить историю"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:208"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:222"]
     },
     "edit.versionHistory.levelColumns": {
       "ru": "Столбцы уровня",
@@ -6710,21 +6689,21 @@
       "en": "loading…",
       "de": "wird geladen…",
       "from": {"en":"загрузка…","de":"загрузка…"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:251"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:265"]
     },
     "edit.versionHistory.noEditsYet": {
       "ru": "правок ещё не было",
       "en": "no edits yet",
       "de": "noch keine Änderungen",
       "from": {"en":"правок ещё не было","de":"правок ещё не было"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:299"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:313"]
     },
     "edit.versionHistory.noFieldDiffs": {
       "ru": "Различий по полям нет",
       "en": "No differences by fields",
       "de": "Keine Unterschiede in den Feldern",
       "from": {"en":"Различий по полям нет","de":"Различий по полям нет"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:163"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:177"]
     },
     "edit.versionHistory.problemIn": {
       "ru": "; проблема установлена в «{rationale}»",
@@ -6732,7 +6711,7 @@
       "de": "; Problem festgestellt in „{rationale}“",
       "from": {"en":"; проблема установлена в «{rationale}»","de":"; проблема установлена в «{rationale}»"},
       "params": {"rationale":"v.origin.rationale"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:288"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:302"]
     },
     "edit.versionHistory.relatedCategories": {
       "ru": "Связанные категории",
@@ -6746,14 +6725,14 @@
       "en": "ready replacement inserted",
       "de": "fertiger Ersatz eingetragen",
       "from": {"en":"вписана готовая замена","de":"вписана готовая замена"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:291"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:305"]
     },
     "edit.versionHistory.rollbackFailed": {
       "ru": "Откат не выполнен",
       "en": "Rollback failed",
       "de": "Zurücksetzen nicht ausgeführt",
       "from": {"en":"Откат не выполнен","de":"Откат не выполнен"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:240"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:254"]
     },
     "edit.versionHistory.rollbackTo": {
       "ru": "Откатить к v{selected}",
@@ -6761,21 +6740,20 @@
       "de": "Auf v{selected} zurücksetzen",
       "from": {"en":"Откатить к v{selected}","de":"Откатить к v{selected}"},
       "params": {"selected":"selected"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:327"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:341"]
     },
     "edit.versionHistory.rollingBack": {
       "ru": "Откат…",
       "en": "Rolling back…",
       "de": "Zurücksetzen…",
       "from": {"en":"Откат…","de":"Откат…"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:327"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:341"]
     },
     "edit.versionHistory.sectionContext": {
       "ru": "Контекст раздела",
       "en": "Section context",
       "de": "Abschnittskontext",
       "from": {"en":"Контекст раздела","de":"Контекст раздела"},
-      "draft": ["en","de"],
       "where": ["client/src/components/edit/VersionHistory.tsx:95"]
     },
     "edit.versionHistory.sectionEdited": {
@@ -6783,7 +6761,6 @@
       "en": "“Edited” mark",
       "de": "Markierung „geändert“",
       "from": {"en":"Пометка «изменён»","de":"Пометка «изменён»"},
-      "draft": ["en","de"],
       "where": ["client/src/components/edit/VersionHistory.tsx:96"]
     },
     "edit.versionHistory.sectionHtml": {
@@ -6798,7 +6775,6 @@
       "en": "Section title",
       "de": "Abschnittstitel",
       "from": {"en":"Заголовок раздела","de":"Заголовок раздела"},
-      "draft": ["en","de"],
       "where": ["client/src/components/edit/VersionHistory.tsx:94"]
     },
     "edit.versionHistory.sourceCascade": {
@@ -6862,7 +6838,7 @@
       "en": "Version history",
       "de": "Versionsverlauf",
       "from": {"en":"История версий","de":"История версий"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:248"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:262"]
     },
     "edit.versionHistory.unchangedFields": {
       "ru": "(без изменений: {same} полей)",
@@ -6870,14 +6846,14 @@
       "de": "(unverändert: {same} Felder)",
       "from": {"en":"(без изменений: {same} полей)","de":"(без изменений: {same} полей)"},
       "params": {"same":"same"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:164"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:178"]
     },
     "edit.versionHistory.valueByModel": {
       "ru": "значение написано моделью",
       "en": "value written by the model",
       "de": "Wert vom Modell geschrieben",
       "from": {"en":"значение написано моделью","de":"значение написано моделью"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:292"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:306"]
     },
     "edit.versionHistory.versionLabel": {
       "ru": "v{version}",
@@ -6885,7 +6861,7 @@
       "de": "v{version}",
       "from": {"en":"v{version}","de":"v{version}"},
       "params": {"version":"(versions[0]?.version ?? 0) + 1"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:257","client/src/components/edit/VersionHistory.tsx:276"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:271","client/src/components/edit/VersionHistory.tsx:290"]
     },
     "edit.versionHistory.whyRecommendation": {
       "ru": "Почему: рекомендация № {num} критики (раунд {origin}) — {op}",
@@ -6893,7 +6869,7 @@
       "de": "Warum: Empfehlung Nr. {num} der Kritik (Runde {origin}) — {op}",
       "from": {"en":"Почему: рекомендация № {num} критики (раунд {origin}) — {op}","de":"Почему: рекомендация № {num} критики (раунд {origin}) — {op}"},
       "params": {"num":"v.origin.num","origin":"v.origin.round","op":"v.origin.op"},
-      "where": ["client/src/components/edit/VersionHistory.tsx:287"]
+      "where": ["client/src/components/edit/VersionHistory.tsx:301"]
     },
     "graph.edgePanel.cluster": {
       "ru": "Кластер {ci}",
@@ -14830,7 +14806,6 @@
       "en": "Really stop?",
       "de": "Wirklich stoppen?",
       "from": {"en":"Точно остановить?","de":"Точно остановить?"},
-      "draft": ["en","de"],
       "where": ["client/src/components/synthesis/GenerationProgress.tsx:104"]
     },
     "synthesis.generationProgress.stopHint": {
@@ -14845,7 +14820,6 @@
       "en": "The content produced so far will be fixed as the final state of the document — with no way to resume.",
       "de": "Der bisher erzeugte Inhalt wird als Endzustand des Dokuments festgehalten — ohne Möglichkeit, fortzusetzen.",
       "from": {"en":"Успевший контент будет зафиксирован как финальное состояние документа — без возможности возобновления.","de":"Успевший контент будет зафиксирован как финальное состояние документа — без возможности возобновления."},
-      "draft": ["en","de"],
       "where": ["client/src/components/synthesis/GenerationProgress.tsx:120"]
     },
     "synthesis.generationProgress.subsectionsCount": {
@@ -15526,7 +15500,6 @@
       "en": "Section budget: waiting for the server estimate…",
       "de": "Abschnittsbudget: Schätzung des Servers wird erwartet…",
       "from": {"en":"Бюджет секций: ждём оценку сервера…","de":"Бюджет секций: ждём оценку сервера…"},
-      "draft": ["en","de"],
       "where": ["client/src/components/synthesis/SynthesisForm.tsx:246"]
     },
     "synthesis.synthesisForm.chars": {
@@ -15969,28 +15942,28 @@
       "de": " · Autor: {authorName}",
       "from": {"en":" · автор: {authorName}","de":" · автор: {authorName}"},
       "params": {"authorName":"synthesis.authorName"},
-      "where": ["client/src/pages/SynthesisPage.tsx:740"]
+      "where": ["client/src/pages/SynthesisPage.tsx:756"]
     },
     "synthesisPage.descendantsInCatalog": {
       "ru": "◈ Потомки этой концепции в каталоге",
       "en": "◈ Descendants of this concept in the catalog",
       "de": "◈ Nachkommen dieses Konzepts im Katalog",
       "from": {"en":"◈ Потомки этой концепции в каталоге","de":"◈ Потомки этой концепции в каталоге"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1024"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1040"]
     },
     "synthesisPage.editIcon": {
       "ru": "✎ Изменить",
       "en": "✎ Edit",
       "de": "✎ Bearbeiten",
       "from": {"en":"✎ Изменить","de":"✎ Изменить"},
-      "where": ["client/src/pages/SynthesisPage.tsx:785"]
+      "where": ["client/src/pages/SynthesisPage.tsx:801"]
     },
     "synthesisPage.editor": {
       "ru": "Редактор",
       "en": "Editor",
       "de": "Editor",
       "from": {"en":"Редактор","de":"Редактор"},
-      "where": ["client/src/pages/SynthesisPage.tsx:894"]
+      "where": ["client/src/pages/SynthesisPage.tsx:910"]
     },
     "synthesisPage.editorOpenFailed": {
       "ru": "Не удалось открыть редактор",
@@ -16004,35 +15977,35 @@
       "en": "⤓ Export",
       "de": "⤓ Export",
       "from": {"en":"⤓ Экспорт","de":"⤓ Экспорт"},
-      "where": ["client/src/pages/SynthesisPage.tsx:829"]
+      "where": ["client/src/pages/SynthesisPage.tsx:845"]
     },
     "synthesisPage.genealogyTree": {
       "ru": "Генеалогическое древо",
       "en": "Genealogical tree",
       "de": "Genealogischer Stammbaum",
       "from": {"en":"Генеалогическое древо","de":"Генеалогическое древо"},
-      "where": ["client/src/pages/SynthesisPage.tsx:996"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1012"]
     },
     "synthesisPage.generatedBadge": {
       "ru": "ДОКУМЕНТ СГЕНЕРИРОВАН",
       "en": "DOCUMENT GENERATED",
       "de": "DOKUMENT GENERIERT",
       "from": {"en":"ДОКУМЕНТ СГЕНЕРИРОВАН","de":"ДОКУМЕНТ СГЕНЕРИРОВАН"},
-      "where": ["client/src/pages/SynthesisPage.tsx:764"]
+      "where": ["client/src/pages/SynthesisPage.tsx:780"]
     },
     "synthesisPage.generatingBadge": {
       "ru": "ГЕНЕРАЦИЯ ДОКУМЕНТА",
       "en": "DOCUMENT GENERATION",
       "de": "DOKUMENT WIRD GENERIERT",
       "from": {"en":"ГЕНЕРАЦИЯ ДОКУМЕНТА","de":"ГЕНЕРАЦИЯ ДОКУМЕНТА"},
-      "where": ["client/src/pages/SynthesisPage.tsx:763"]
+      "where": ["client/src/pages/SynthesisPage.tsx:779"]
     },
     "synthesisPage.generationError": {
       "ru": "Ошибка генерации",
       "en": "Generation error",
       "de": "Generierungsfehler",
       "from": {"en":"Ошибка генерации","de":"Ошибка генерации"},
-      "where": ["client/src/pages/SynthesisPage.tsx:885"]
+      "where": ["client/src/pages/SynthesisPage.tsx:901"]
     },
     "synthesisPage.glossaryRowNotFound": {
       "ru": "Строка глоссария не найдена в данных синтеза",
@@ -16046,84 +16019,84 @@
       "en": "◈ Graph",
       "de": "◈ Graph",
       "from": {"en":"◈ Граф","de":"◈ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:775"]
+      "where": ["client/src/pages/SynthesisPage.tsx:791"]
     },
     "synthesisPage.ifYoursLead": {
       "ru": "Если это ваша концепция —",
       "en": "If this is your concept —",
       "de": "Wenn dies Ihr Konzept ist —",
       "from": {"en":"Если это ваша концепция —","de":"Если это ваша концепция —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:710"]
+      "where": ["client/src/pages/SynthesisPage.tsx:726"]
     },
     "synthesisPage.loadFailed": {
       "ru": "Не удалось загрузить синтез.",
       "en": "Failed to load the synthesis.",
       "de": "Synthese konnte nicht geladen werden.",
       "from": {"en":"Не удалось загрузить синтез.","de":"Не удалось загрузить синтез."},
-      "where": ["client/src/pages/SynthesisPage.tsx:725"]
+      "where": ["client/src/pages/SynthesisPage.tsx:741"]
     },
     "synthesisPage.loading": {
       "ru": "загрузка синтеза…",
       "en": "loading synthesis…",
       "de": "Synthese wird geladen…",
       "from": {"en":"загрузка синтеза…","de":"загрузка синтеза…"},
-      "where": ["client/src/pages/SynthesisPage.tsx:729"]
+      "where": ["client/src/pages/SynthesisPage.tsx:745"]
     },
     "synthesisPage.logInLower": {
       "ru": "войдите",
       "en": "log in",
       "de": "melden Sie sich an",
       "from": {"en":"войдите","de":"войдите"},
-      "where": ["client/src/pages/SynthesisPage.tsx:716"]
+      "where": ["client/src/pages/SynthesisPage.tsx:732"]
     },
     "synthesisPage.notFoundOrDeleted": {
       "ru": "Синтез не найден или был удалён.",
       "en": "The synthesis was not found or has been deleted.",
       "de": "Die Synthese wurde nicht gefunden oder gelöscht.",
       "from": {"en":"Синтез не найден или был удалён.","de":"Синтез не найден или был удалён."},
-      "where": ["client/src/pages/SynthesisPage.tsx:691"]
+      "where": ["client/src/pages/SynthesisPage.tsx:707"]
     },
     "synthesisPage.otherwise": {
       "ru": ". Иначе —",
       "en": ". Otherwise —",
       "de": ". Andernfalls —",
       "from": {"en":". Иначе —","de":". Иначе —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:718"]
+      "where": ["client/src/pages/SynthesisPage.tsx:734"]
     },
     "synthesisPage.parentConcepts": {
       "ru": "Родительские концепции:",
       "en": "Parent concepts:",
       "de": "Elternkonzepte:",
       "from": {"en":"Родительские концепции:","de":"Родительские концепции:"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1005"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1021"]
     },
     "synthesisPage.print": {
       "ru": "Распечатать",
       "en": "Print",
       "de": "Drucken",
       "from": {"en":"Распечатать","de":"Распечатать"},
-      "where": ["client/src/pages/SynthesisPage.tsx:868"]
+      "where": ["client/src/pages/SynthesisPage.tsx:884"]
     },
     "synthesisPage.privateConcept": {
       "ru": "Эта концепция приватна: автор не открыл её посторонним.",
       "en": "This concept is private: the author has not opened it to others.",
       "de": "Dieses Konzept ist privat: der Autor hat es Außenstehenden nicht geöffnet.",
       "from": {"en":"Эта концепция приватна: автор не открыл её посторонним.","de":"Эта концепция приватна: автор не открыл её посторонним."},
-      "where": ["client/src/pages/SynthesisPage.tsx:703"]
+      "where": ["client/src/pages/SynthesisPage.tsx:719"]
     },
     "synthesisPage.privateSynthesis": {
       "ru": "Этот синтез приватный: доступен только владельцу.",
       "en": "This synthesis is private: available only to the owner.",
       "de": "Diese Synthese ist privat: nur dem Eigentümer zugänglich.",
       "from": {"en":"Этот синтез приватный: доступен только владельцу.","de":"Этот синтез приватный: доступен только владельцу."},
-      "where": ["client/src/pages/SynthesisPage.tsx:704"]
+      "where": ["client/src/pages/SynthesisPage.tsx:720"]
     },
     "synthesisPage.publicCatalogLower": {
       "ru": "публичный каталог",
       "en": "the public catalog",
       "de": "öffentlicher Katalog",
       "from": {"en":"публичный каталог","de":"публичный каталог"},
-      "where": ["client/src/pages/SynthesisPage.tsx:718"]
+      "where": ["client/src/pages/SynthesisPage.tsx:734"]
     },
     "synthesisPage.recommendations": {
       "ru": "◈ Рекомендации{recCount}",
@@ -16131,37 +16104,35 @@
       "de": "◈ Empfehlungen{recCount}",
       "from": {"en":"◈ Рекомендации{recCount}","de":"◈ Рекомендации{recCount}"},
       "params": {"recCount":"recCount !== null ? ` · ${recCount}` : \"\""},
-      "where": ["client/src/pages/SynthesisPage.tsx:922"]
+      "where": ["client/src/pages/SynthesisPage.tsx:938"]
     },
     "synthesisPage.recommendationsHint": {
       "ru": "Рекомендации критики: что исполнять, решаете вы — поштучно",
       "en": "Critique recommendations: you decide what to execute — one by one",
       "de": "Empfehlungen der Kritik: was ausgeführt wird, entscheiden Sie — einzeln",
       "from": {"en":"Рекомендации критики: что исполнять, решаете вы — поштучно","de":"Рекомендации критики: что исполнять, решаете вы — поштучно"},
-      "where": ["client/src/pages/SynthesisPage.tsx:919"]
+      "where": ["client/src/pages/SynthesisPage.tsx:935"]
     },
     "synthesisPage.sectionHistory": {
       "ru": "◷ История",
       "en": "◷ History",
       "de": "◷ Verlauf",
       "from": {"en":"◷ История","de":"◷ История"},
-      "draft": ["en","de"],
-      "where": ["client/src/pages/SynthesisPage.tsx:947"]
+      "where": ["client/src/pages/SynthesisPage.tsx:963"]
     },
     "synthesisPage.sectionHistoryHint": {
       "ru": "Версии раздела до каждой правки и откат",
       "en": "Section versions before each edit, and rollback",
       "de": "Abschnittsversionen vor jeder Änderung und Rollback",
       "from": {"en":"Версии раздела до каждой правки и откат","de":"Версии раздела до каждой правки и откат"},
-      "draft": ["en","de"],
-      "where": ["client/src/pages/SynthesisPage.tsx:944"]
+      "where": ["client/src/pages/SynthesisPage.tsx:960"]
     },
     "synthesisPage.showcaseParen": {
       "ru": " (витрина)",
       "en": " (showcase)",
       "de": " (Schaufenster)",
       "from": {"en":" (витрина)","de":" (витрина)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:739"]
+      "where": ["client/src/pages/SynthesisPage.tsx:755"]
     },
     "synthesisPage.thesisRowNotFound": {
       "ru": "Строка тезиса не найдена в данных синтеза",
@@ -16175,14 +16146,14 @@
       "en": "→ Graph",
       "de": "→ Graph",
       "from": {"en":"→ Граф","de":"→ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:933"]
+      "where": ["client/src/pages/SynthesisPage.tsx:949"]
     },
     "synthesisPage.toGraphHint": {
       "ru": "Трансформировать тезисы в граф (Representation Transformer)",
       "en": "Transform the theses into a graph (Representation Transformer)",
       "de": "Thesen in einen Graphen transformieren (Representation Transformer)",
       "from": {"en":"Трансформировать тезисы в граф (Representation Transformer)","de":"Трансформировать тезисы в граф (Representation Transformer)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:930"]
+      "where": ["client/src/pages/SynthesisPage.tsx:946"]
     },
     "synthesisPage.viewModeBadge": {
       "ru": "РЕЖИМ ПРОСМОТРА · {visibility}",
@@ -16190,14 +16161,14 @@
       "de": "ANSICHTSMODUS · {visibility}",
       "from": {"en":"РЕЖИМ ПРОСМОТРА · {visibility}","de":"РЕЖИМ ПРОСМОТРА · {visibility}"},
       "params": {"visibility":"visibilityBadge(synthesis.visibility).toUpperCase()"},
-      "where": ["client/src/pages/SynthesisPage.tsx:765"]
+      "where": ["client/src/pages/SynthesisPage.tsx:781"]
     },
     "synthesisPage.viewingPublic": {
       "ru": "Вы смотрите публичную концепцию",
       "en": "You are viewing a public concept",
       "de": "Sie betrachten ein öffentliches Konzept",
       "from": {"en":"Вы смотрите публичную концепцию","de":"Вы смотрите публичную концепцию"},
-      "where": ["client/src/pages/SynthesisPage.tsx:738"]
+      "where": ["client/src/pages/SynthesisPage.tsx:754"]
     },
     "utils.conceptFile.addMissingSections": {
       "ru": ". Откройте документ, добавьте недостающие разделы и сохраните заново.",
@@ -16639,15 +16610,13 @@
       "en": "formulation",
       "de": "Formulierung",
       "from": {"en":"формулировка","de":"формулировка"},
-      "draft": ["en","de"],
       "where": ["client/src/utils/subsection-edit.ts:79"]
     },
     "utils.subsectionEdit.fieldJustification": {
       "ru": "обоснование",
-      "en": "ground",
+      "en": "justification",
       "de": "Begründung",
       "from": {"en":"обоснование","de":"обоснование"},
-      "draft": ["en","de"],
       "where": ["client/src/utils/subsection-edit.ts:80"]
     },
     "utils.subsectionEdit.lockedGenerating": {
@@ -16698,7 +16667,6 @@
       "en": "Synced with the thesis list: {list}.",
       "de": "Mit der Thesenliste abgeglichen: {list}.",
       "from": {"en":"Сведено со списком тезисов: {list}.","de":"Сведено со списком тезисов: {list}."},
-      "draft": ["en","de"],
       "params": {"list":""},
       "where": ["client/src/utils/subsection-edit.ts:84"]
     },
@@ -16707,7 +16675,6 @@
       "en": "Concept title updated: “{title}”.",
       "de": "Konzepttitel aktualisiert: „{title}“.",
       "from": {"en":"Название концепции обновлено: «{title}».","de":"Название концепции обновлено: «{title}»."},
-      "draft": ["en","de"],
       "params": {"title":""},
       "where": ["client/src/utils/subsection-edit.ts:75"]
     },

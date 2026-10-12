@@ -7939,7 +7939,13 @@ async function section4bc(): Promise<void> {
   for (const k of ["synthesis.generationProgress.stopConfirm", "edit.sectionHistory.title", "document.documentHeader.schemaSelective", "edit.elementEditor.thesisFormulation", "synthesis.synthesisForm.budgetPending", "utils.subsectionEdit.titleUpdated"]) if (!(k in enCat.strings)) errs.push(`4bc: в каталоге en нет строки 12.4 «${k}» (i18n:export → import --draft → split)`);
   for (const k of ["synthesisPage.skipDegradeLead", "createSynthesisPage.confirmStop", "profilePage.confirmDeleteLead"]) if (k === "profilePage.confirmDeleteLead" ? !(k in enCat.strings) : (k in enCat.strings)) errs.push(`4bc: каталог en — ключ «${k}» ${k === "profilePage.confirmDeleteLead" ? "обязан остаться (текст второго шага)" : "устарел с 12.4 и обязан быть снят (i18n:export --prune)"}`);
 
-  for (const f of ["../tests/smoke-124-request1.mjs", "../scripts/patches/patch-docs-conv124.py", "../client/src/hooks/useSecondStep.ts", "../client/src/components/edit/SectionHistory.tsx"]) {
+  // 4bc-о (тестовые запросы 12.4): replay подписки шлёт generation_paused без skipDegrades (Д-50) —
+  // SynthesisPage берёт ту же паузу из снапшота GET /:id; превью снимков раскрывает сущности
+  const sp124 = await rd("../client/src/pages/SynthesisPage.tsx");
+  if (!/const samePause =/.test(sp124) || !/livePausedState\.reason === snapshotPausedState\.reason/.test(sp124) || !/samePause\s*\?\s*snapshotPausedState/.test(sp124)) errs.push("4bc: SynthesisPage не берёт ту же паузу из снапшота GET /:id (replay без skipDegrades — Д-50; вопрос о деградации терялся)");
+  if (!/&\(#x\[0-9a-f\]\+\|#\\d\+\|\[a-z\]\+\);/.test(vh)) errs.push("4bc: htmlAsText (VersionHistory) не раскрывает сущности — превью/diff снимка капсулы читались бы разметкой");
+
+  for (const f of ["../tests/smoke-124-request1.mjs", "../tests/test-124-requests2-8.mjs", "../scripts/patches/patch-docs-conv124.py", "../client/src/hooks/useSecondStep.ts", "../client/src/components/edit/SectionHistory.tsx"]) {
     try { await fsm.access(new URL(f, import.meta.url)); } catch { errs.push(`4bc: нет файла ${f}`); }
   }
 }

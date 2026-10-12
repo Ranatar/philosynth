@@ -98,7 +98,21 @@ const FIELD_LABELS = (): Record<string, string> => ({
 
 /** 12.4: разметка раздела в diff — текстом (теги сняты, пробелы схлопнуты) */
 function htmlAsText(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  // 12.4 (тестовые запросы): сущности раскрываются — текст, набранный в
+  // капсулу ✎ (8.4) и сохранённый экранированным (&lt;…&gt;), иначе читался
+  // бы в превью и diff как сырая разметка
+  const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " ", laquo: "«", raquo: "»", mdash: "—", ndash: "–" };
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, code: string) => {
+      if (code.startsWith("#")) {
+        const n = /^#x/i.test(code) ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+        return Number.isFinite(n) ? String.fromCodePoint(n) : m;
+      }
+      return ENT[code.toLowerCase()] ?? m;
+    })
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function fmtDate(iso: string): string {
