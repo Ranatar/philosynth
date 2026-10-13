@@ -133,7 +133,8 @@ console.log("5. цикл переводчика (копия репозитори
   ok("import без --draft: новый текст записан, draft de снят", r.status === 0 && t2[k1].de === "Speichern!" && !(t2[k1].draft ?? []).includes("de") && t2[k1].from.de === t2[k1].ru, r.stdout.slice(-300));
   ok("тот же текст с убранной отметкой — вычитка подтверждена", !(t2[k2].draft ?? []).includes("de") && t2[k2].de === file.strings[k2].de);
   ok("нетронутая строка осталась черновиком", (t2[k3].draft ?? []).includes("de") && !(t2[k1].draft ?? []).includes("de"));
-  ok("остальные 2266 строк не тронуты (утверждены, без draft)", Object.keys(t2).filter((k) => ![k1, k2, k3].includes(k)).every((k) => !(t2[k].draft ?? []).length && t2[k].de === S[k].de));
+  // 12.5 (тестовые запросы): речь о de — черновик другого языка (беседа L) строки не «трогает»
+  ok("остальные 2266 строк не тронуты (de утверждён, без draft de)", Object.keys(t2).filter((k) => ![k1, k2, k3].includes(k)).every((k) => !(t2[k].draft ?? []).includes("de") && t2[k].de === S[k].de));
   // отказы: плюрал не своего языка, подстановки
   const rowOf = (k) => ({ ru: t0.strings[k].ru, params: t0.strings[k].params });
   const bad = { meta: file.meta, strings: { "document.sectionView.parsedWithLosses": { ...rowOf("document.sectionView.parsedWithLosses"), de: "⚠ x ({n, plural, one {#} few {#} other {#}})" }, "adminPromptsPage.compare": { ...rowOf("adminPromptsPage.compare"), de: "Vergleich: {a} → {b}" } } };

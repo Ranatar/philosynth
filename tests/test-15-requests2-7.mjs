@@ -143,7 +143,7 @@ function critiqueHtml() {
     `<div data-section="Итоговая оценка"><h4>Итоговая оценка</h4><table class="doc-table"><thead><tr><th>Категория</th><th>Уязвимость</th><th>Серьёзность</th></tr></thead><tbody>${rows}</tbody></table></div>`);
 }
 
-function pickHtml(prompt) {
+function pickRoute(prompt) {
   // Сниффинг по ХВОСТУ промпта (зона «ЗАДАНИЕ: …»): контекст из
   // предыдущих разделов выше по промпту содержит те же маркеры
   // («Таблица категорий» в контексте глоссария) и ломает наивный
@@ -156,14 +156,28 @@ function pickHtml(prompt) {
   // критика узнаётся ПЕРВОЙ, по собственному подразделу; специфичные
   // маркеры — ПЕРЕД общим корнем «критическ»; sum — по своему маркеру
   // («Точки напряжения»): задание sum перечисляет структуру документа.
-  if (task.includes("Таблица рекомендаций")) return critiqueHtml();
-  if (task.includes("Таблица категорий")) return graphHtml();
+  if (task.includes("Таблица рекомендаций")) return ["critique-table", critiqueHtml()];
+  if (task.includes("Таблица категорий")) return ["graph", graphHtml()];
   if (task.includes("Таблица определений") || task.includes("Термин | Принятое определение"))
-    return glossaryHtml();
-  if (task.includes("Точки напряжения")) return sumHtml();
-  if (task.includes("Сводная таблица") && /тезис/i.test(task)) return thesesHtml();
-  if (/критическ/i.test(task)) return critiqueHtml();
-  return sumHtml();
+    return ["glossary", glossaryHtml()];
+  if (task.includes("Точки напряжения")) return ["sum", sumHtml()];
+  if (task.includes("Сводная таблица") && /тезис/i.test(task)) return ["theses", thesesHtml()];
+  if (/критическ/i.test(task)) return ["critique-regex", critiqueHtml()];
+  return ["default", sumHtml()];
+}
+
+// 12.5 (тестовые запросы, Д-26/Д-27): счётчик маршрутов мока по веткам — критика обязана узнаваться
+// ПЕРВОЙ (по «Таблица рекомендаций»), запасные ветки (общий корень «критическ», умолчание sum) — не срабатывать
+const routeCounts = {};
+const routeSamples = [];
+function pickHtml(prompt) {
+  const [route, html] = pickRoute(prompt);
+  routeCounts[route] = (routeCounts[route] ?? 0) + 1;
+  if (route === "default" || route === "critique-regex") {
+    const i = prompt.lastIndexOf("ЗАДАНИЕ");
+    routeSamples.push(route + ": " + prompt.slice(i >= 0 ? i : 0, (i >= 0 ? i : 0) + 160).replace(/\s+/g, " "));
+  }
+  return html;
 }
 
 function startMock() {
@@ -646,7 +660,10 @@ async function main() {
     mock.close();
   }
 
-  console.log(`\nИтого: ${passed} ✓, ${failed} ✗`);
+  console.log("  · маршруты мока:", JSON.stringify(routeCounts));
+  for (const x of routeSamples) console.log("    [маршрут] " + x);
+check("мок: маршруты по веткам — критика узнана первой («Таблица рекомендаций»), ветка «критическ» не срабатывала (умолчание sum — для разделов без своего мока)", !routeCounts["critique-regex"]);
+console.log(`\nИтого: ${passed} ✓, ${failed} ✗`);
   if (failed > 0) {
     console.log("Провалы:", fails.join(" | "));
     console.log("--- server log tail ---\n" + serverLog.slice(-1500));

@@ -184,22 +184,22 @@ function modeHtml(kind, param) {
     `<h4>Подлинная новизна</h4><p>Категориальная тотальность вне горизонта эпохи.</p></div>`;
 }
 
-function pickHtml(prompt) {
+function pickRoute(prompt) {
   // Режимы — ПЕРВЫМИ: их промпт несёт КОНТЕКСТ с текстом других разделов
   if (prompt.includes("философ-оппонент")) {
     const m = prompt.match(/позицию:\s*([^.\n]+)\./);
-    return modeHtml("adversarial", m ? m[1].trim() : "?");
+    return ["mode:adversarial", modeHtml("adversarial", m ? m[1].trim() : "?")];
   }
   if (prompt.includes("Переведи данную концепцию")) {
     const m = prompt.match(/специалист по \(([^)]+)\)/);
-    return modeHtml("translator", m ? m[1].trim() : "?");
+    return ["mode:translator", modeHtml("translator", m ? m[1].trim() : "?")];
   }
   if (prompt.includes("историк философии")) {
     const m = prompt.match(/периоде:\s*([^.\n]+)\./);
-    return modeHtml("timeslice", m ? m[1].trim() : "?");
+    return ["mode:timeslice", modeHtml("timeslice", m ? m[1].trim() : "?")];
   }
   const task = prompt.slice(Math.max(0, prompt.lastIndexOf("ЗАДАНИЕ")));
-  if (/ТОЛЬКО секцию/.test(prompt)) return sumHtml();
+  if (/ТОЛЬКО секцию/.test(prompt)) return ["subsection", sumHtml()];
   // 12.5 (Д-26/Д-27): порядок веток — по исправному образцу 42/43/103:
   // критика ПЕРВОЙ (10.1: её задание несёт имена подразделов всех разделов),
   // специфичные маркеры — ПЕРЕД общим корнем «критическ», sum — по своему
@@ -207,13 +207,27 @@ function pickHtml(prompt) {
   // Капсула — по имени секции в ёлочках («Капсула»): её задание содержит
   // «из критического анализа, если доступен» — корень «критическ»
   // перехватил бы её. В задании critique строки «Капсула» в ёлочках нет.
-  if (task.includes("Таблица рекомендаций")) return critiqueHtml41();
-  if (task.includes("Таблица категорий")) return graphHtml();
-  if (task.includes("Точки напряжения")) return sumHtml();
-  if (task.includes("Сводная таблица") && /тезис/i.test(task)) return thesesHtml();
-  if (task.includes("«Капсула»")) return capsuleHtml41();
-  if (/критическ/i.test(task)) return critiqueHtml41();
-  return sumHtml();
+  if (task.includes("Таблица рекомендаций")) return ["critique-table", critiqueHtml41()];
+  if (task.includes("Таблица категорий")) return ["graph", graphHtml()];
+  if (task.includes("Точки напряжения")) return ["sum", sumHtml()];
+  if (task.includes("Сводная таблица") && /тезис/i.test(task)) return ["theses", thesesHtml()];
+  if (task.includes("«Капсула»")) return ["capsule", capsuleHtml41()];
+  if (/критическ/i.test(task)) return ["critique-regex", critiqueHtml41()];
+  return ["default", sumHtml()];
+}
+
+// 12.5 (тестовые запросы, Д-26/Д-27): счётчик маршрутов мока по веткам — критика обязана узнаваться
+// ПЕРВОЙ (по «Таблица рекомендаций»), запасные ветки (общий корень «критическ», умолчание sum) — не срабатывать
+const routeCounts = {};
+const routeSamples = [];
+function pickHtml(prompt) {
+  const [route, html] = pickRoute(prompt);
+  routeCounts[route] = (routeCounts[route] ?? 0) + 1;
+  if (route === "default" || route === "critique-regex") {
+    const i = prompt.lastIndexOf("ЗАДАНИЕ");
+    routeSamples.push(route + ": " + prompt.slice(i >= 0 ? i : 0, (i >= 0 ? i : 0) + 160).replace(/\s+/g, " "));
+  }
+  return html;
 }
 
 function startMock() {
@@ -963,6 +977,9 @@ try {
   await sql.end({ timeout: 2 });
 }
 
+console.log("  · маршруты мока:", JSON.stringify(routeCounts));
+  for (const x of routeSamples) console.log("    [маршрут] " + x);
+ok(!routeCounts["critique-regex"] && (routeCounts["critique-table"] ?? 0) >= 1, "мок: маршруты по веткам — критика узнана первой («Таблица рекомендаций»), ветка «критическ» не срабатывала (умолчание sum — для разделов без своего мока)", JSON.stringify(routeCounts));
 console.log(`\n══ ИТОГ: ${passed} ✓, ${failed} ✗`);
 if (fails.length) {
   console.log("Провалы:\n - " + fails.join("\n - "));

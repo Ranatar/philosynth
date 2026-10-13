@@ -158,6 +158,14 @@ function sumHtml() {
 /** 12.5 (Д-26): критика — у мока свой ответ; узнаётся ПЕРВОЙ по подразделу
  *  «Таблица рекомендаций» (10.1: задание критики несёт имена подразделов всех
  *  разделов, и ветки графа/тезисов перехватили бы её). */
+// 12.5 (тестовые запросы): задание капсулы (§ 9) несёт корень «критическ» — без своей ветки
+// мок отдавал капсуле КРИТИКУ (счётчик маршрутов это и показал); ветка — как в test-41
+function capsuleHtml() {
+  const nonce = mockStats.totalCalls;
+  return wrapSection(9, "Капсула концепции",
+    `<div data-section="Капсула концепции"><h4>Капсула концепции</h4><p>Капсула: синтез бытия и становления (v${nonce}). Концепция соединяет онтологию с диалектикой.</p></div>`);
+}
+
 function critiqueHtml() {
   const nonce = mockStats.totalCalls;
   const rows = NODE_NAMES.slice(0, 4).map((n, i) =>
@@ -167,20 +175,35 @@ function critiqueHtml() {
     `<div data-section="Итоговая оценка"><h4>Итоговая оценка</h4><table class="doc-table"><thead><tr><th>Категория</th><th>Уязвимость</th><th>Серьёзность</th></tr></thead><tbody>${rows}</tbody></table></div>`);
 }
 
-function pickHtml(prompt) {
+function pickRoute(prompt) {
   const task = prompt.slice(Math.max(0, prompt.lastIndexOf("ЗАДАНИЕ")));
   // 12.5 (Д-26/Д-27): порядок веток — по исправному образцу 42/43/103:
   // критика ПЕРВОЙ (10.1: её задание несёт имена подразделов всех разделов),
   // специфичные маркеры — ПЕРЕД общим корнем «критическ», sum — по своему
   // маркеру «Точки напряжения» (задание sum перечисляет структуру документа).
-  if (task.includes("Таблица рекомендаций")) return critiqueHtml();
-  if (task.includes("Таблица категорий")) return graphHtml();
+  if (task.includes("Таблица рекомендаций")) return ["critique-table", critiqueHtml()];
+  if (task.includes("Таблица категорий")) return ["graph", graphHtml()];
   if (task.includes("Таблица определений") || task.includes("Термин | Принятое определение"))
-    return glossaryHtml();
-  if (task.includes("Точки напряжения")) return sumHtml();
-  if (task.includes("Сводная таблица") && /тезис/i.test(task)) return thesesHtml();
-  if (/критическ/i.test(task)) return critiqueHtml();
-  return sumHtml();
+    return ["glossary", glossaryHtml()];
+  if (task.includes("Точки напряжения")) return ["sum", sumHtml()];
+  if (task.includes("Сводная таблица") && /тезис/i.test(task)) return ["theses", thesesHtml()];
+  if (task.includes("«Капсула»")) return ["capsule", capsuleHtml()];
+  if (/критическ/i.test(task)) return ["critique-regex", critiqueHtml()];
+  return ["default", sumHtml()];
+}
+
+// 12.5 (тестовые запросы, Д-26/Д-27): счётчик маршрутов мока по веткам — критика обязана узнаваться
+// ПЕРВОЙ (по «Таблица рекомендаций»), запасные ветки (общий корень «критическ», умолчание sum) — не срабатывать
+const routeCounts = {};
+const routeSamples = [];
+function pickHtml(prompt) {
+  const [route, html] = pickRoute(prompt);
+  routeCounts[route] = (routeCounts[route] ?? 0) + 1;
+  if (route === "default" || route === "critique-regex") {
+    const i = prompt.lastIndexOf("ЗАДАНИЕ");
+    routeSamples.push(route + ": " + prompt.slice(i >= 0 ? i : 0, (i >= 0 ? i : 0) + 160).replace(/\s+/g, " "));
+  }
+  return html;
 }
 
 function startMock() {
@@ -790,6 +813,9 @@ try {
   await sql.end();
 }
 
+console.log("  · маршруты мока:", JSON.stringify(routeCounts));
+  for (const x of routeSamples) console.log("    [маршрут] " + x);
+ok(!routeCounts["critique-regex"] && (routeCounts["critique-table"] ?? 0) >= 1, "мок: маршруты по веткам — критика узнана первой («Таблица рекомендаций»), ветка «критическ» не срабатывала (умолчание sum — для разделов без своего мока)", JSON.stringify(routeCounts));
 console.log(`\n══ Итог: ${passed} ✓ / ${failed} ✗`);
 if (fails.length) {
   console.log("Провалы:\n  - " + fails.join("\n  - "));

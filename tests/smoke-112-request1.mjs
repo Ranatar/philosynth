@@ -75,7 +75,9 @@ ok("UI_TO_GEN ⊆ LANG_OPTIONS (один список)", Object.values(UI_TO_GEN
 ok("GEN_FALLBACK = English и есть в LANG_OPTIONS", GEN_FALLBACK === "English" && GEN_LANG_VALUES.includes(GEN_FALLBACK));
 ok("LANG_OPTIONS — 9 пар, «__custom» последним", LANG_OPTIONS.length === 9 && LANG_OPTIONS.at(-1)[0] === "__custom" && !GEN_LANG_VALUES.includes("__custom"));
 ok("genLangForUi: ru→Russian, en→English, de→German", genLangForUi("ru") === "Russian" && genLangForUi("en") === "English" && genLangForUi("de") === "German");
-ok("genLangForUi: неизвестное → English", genLangForUi("fr") === "English" && genLangForUi("") === "English");
+// 12.5 (тестовые запросы): «чужой» язык — первый из списка, которого нет в UI_LOCALES (fr может стать языком беседы L)
+const FOREIGN = ["fr", "it", "es", "pt", "eo", "tlh"].find((l) => !UI_LOCALES.includes(l));
+ok("genLangForUi: неизвестное → English", genLangForUi(FOREIGN) === "English" && genLangForUi("") === "English");
 ok("isUiLocale строг", isUiLocale("de") && !isUiLocale("DE") && !isUiLocale(null) && !isUiLocale("ru-RU"));
 
 /* ── 2. Плюралы ── */
@@ -134,7 +136,7 @@ ok("русского каталога нет", !fs.existsSync(path.join(ROOT, "p
 /* ── 5. Язык запроса на сервере ── */
 console.log("═══ 5. server/i18n/locale ═══");
 ok("вне запроса — ru/default", currentLocale() === "ru" && currentLocaleSource() === "default");
-ok("Accept-Language: по q, en-GB → en, чужое → null", localeFromAcceptLanguage("fr;q=0.9, de;q=0.8, en-GB;q=0.7") === "de" && localeFromAcceptLanguage("en-GB") === "en" && localeFromAcceptLanguage("fr,it") === null && localeFromAcceptLanguage("") === null);
+ok("Accept-Language: по q, en-GB → en, чужое → null", localeFromAcceptLanguage(`${FOREIGN};q=0.9, de;q=0.8, en-GB;q=0.7`) === "de" && localeFromAcceptLanguage("en-GB") === "en" && localeFromAcceptLanguage(`${FOREIGN},tlh`) === null && localeFromAcceptLanguage("") === null);
 ok("cookie первее заголовка", resolveGuestLocale("en", "de").locale === "en" && resolveGuestLocale("en", "de").source === "cookie");
 ok("негодная cookie → заголовок", resolveGuestLocale("xx", "de").locale === "de" && resolveGuestLocale("xx", "de").source === "accept-language");
 ok("ничего → ru", resolveGuestLocale(undefined, undefined).locale === "ru");

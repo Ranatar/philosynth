@@ -3866,7 +3866,9 @@ async function section4aw(): Promise<void> {
   if (iLoc < 0 || iLoc > iRl || iLoc > iRoutes) errs.push("4aw: requestLocale обязан монтироваться ДО rate-limiter и роутов");
   if (!/installServerCatalogProvider\(\)/.test(idx)) errs.push("4aw: index.ts не ставит провайдер каталога");
   const lfa = SL.localeFromAcceptLanguage as (h: string | null) => string | null;
-  if (lfa("de-DE,de;q=0.9,en;q=0.8") !== "de" || lfa("fr,en-GB;q=0.5") !== "en" || lfa("fr") !== null || lfa(null) !== null) errs.push("4aw: localeFromAcceptLanguage");
+  // 12.5 (тестовые запросы): «чужой» язык — первый код не из UI_LOCALES (fr может стать языком беседы L — проверено на копии с fr)
+  const foreign = ["fr", "it", "es", "pt", "eo", "tlh"].find((l) => !uiLocales.includes(l))!;
+  if (lfa("de-DE,de;q=0.9,en;q=0.8") !== "de" || lfa(`${foreign},en-GB;q=0.5`) !== "en" || lfa(foreign) !== null || lfa(null) !== null) errs.push("4aw: localeFromAcceptLanguage");
   const rgl = SL.resolveGuestLocale as (c: string | undefined, a: string | null) => { locale: string; source: string };
   if (rgl("de", "en").locale !== "de" || rgl("xx", "en").source !== "accept-language" || rgl(undefined, null).locale !== "ru") errs.push("4aw: resolveGuestLocale — порядок cookie → Accept-Language → ru");
 
