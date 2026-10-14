@@ -9797,7 +9797,7 @@ integration-check.mts, живой файл.
 - «Скомпилируй проект (`npm run typecheck`, `vite build`) — покажи и исправь все type errors, не меняя логику»
 - «Проверь интеграцию: `check:integration` INTEGRATION OK на свежем клоне, `check:dotfiles`, `i18n:check --strict`, css-parity»
 - «Ревью: перечисли оставшиеся TODO и заглушки»
-- Закрытые строки §12 — в 08 Часть IV с датой и итогом (07 §10); Фаза 13 закрыта, строка в README
+- Закрытые строки §12 — в 08 Часть IV с датой и итогом (07 §10); строка в README
 
 ---
 
