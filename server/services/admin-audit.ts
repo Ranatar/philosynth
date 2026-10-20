@@ -20,7 +20,6 @@
  * Чтение — listAudit(limit): последние строки, новые первыми (вкладка
  * «Доступ» AdminPromptsPage, GET /auth/audit).
  */
-import { getConnInfo } from "@hono/node-server/conninfo";
 import { desc, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import type {
@@ -30,6 +29,7 @@ import type {
 } from "@philosynth/shared/types/admin";
 
 import { db, schema } from "../db/index.js";
+import { clientAddressOf } from "../utils/client-address.js"; // 13.2 (Д-67)
 
 const { adminAudit, users } = schema;
 
@@ -123,19 +123,12 @@ export function toAuditDto(r: typeof adminAudit.$inferSelect): AdminAuditEntry {
 }
 
 /**
- * IP запроса для журнала: X-Forwarded-For (первый адрес) → X-Real-IP →
- * адрес сокета (getConnInfo, как в rate-limiter 0.2) → null.
+ * IP запроса для журнала. 13.2 (Д-67): заголовки прокси (X-Forwarded-For →
+ * X-Real-IP) читаются ТОЛЬКО под TRUST_PROXY, иначе — адрес соединения;
+ * правило одно на журнал и лимитер — utils/client-address.
  */
 export function clientIpOf(c: Context): string | null {
-  const fwd = c.req.header("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim() || null;
-  const real = c.req.header("x-real-ip");
-  if (real?.trim()) return real.trim();
-  try {
-    return getConnInfo(c).remote.address ?? null;
-  } catch {
-    return null;
-  }
+  return clientAddressOf(c);
 }
 
 /**

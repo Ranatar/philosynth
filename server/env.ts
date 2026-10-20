@@ -23,6 +23,16 @@ function num(name: string, fallback: number): number {
 
 const isProd = process.env.NODE_ENV === "production";
 
+/** Булева переменная: 'true' → true; пусто/иное → fallback (пустая строка
+ *  из .env.example — «не задано», 09 §5, 9.1). */
+function bool(name: string, fallback: boolean): boolean {
+  const raw = (process.env[name] ?? "").trim().toLowerCase();
+  if (raw === "") return fallback;
+  if (raw === "true" || raw === "1") return true;
+  if (raw === "false" || raw === "0") return false;
+  throw new Error(`Переменная ${name} должна быть true или false, получено: ${raw}`);
+}
+
 /**
  * Почта (беседа 9.1). MAIL_TRANSPORT: 'smtp' — отправка через nodemailer;
  * 'console' — письмо печатается в вывод вместо отправки (стенд и разработка
@@ -72,6 +82,18 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   isProd,
   port: num("PORT", 3000),
+  /** Адрес, на котором слушает HTTP-сервер (беседа 13.2, Д-67). Пусто —
+   *  все интерфейсы (как до 13.2: dev-стенд, Termux). За доверенным прокси
+   *  (TRUST_PROXY=true) — 127.0.0.1: иначе порт сервера доступен мимо прокси,
+   *  и X-Forwarded-For можно подделать прямым обращением
+   *  (deploy/philosynth-hosting.md: reverse_proxy 127.0.0.1:3000). */
+  host: (process.env.HOST ?? "").trim() || undefined,
+  /** Доверять заголовкам прокси X-Forwarded-For / X-Real-IP (беседа 13.2,
+   *  Д-67). По умолчанию ВЫКЛЮЧЕНО: адрес клиента — адрес соединения.
+   *  Включать только за собственным прокси (Caddy публичного размещения),
+   *  иначе ключ лимитера и строка журнала admin_audit подделываются
+   *  заголовком. Единственный читатель заголовков — utils/client-address. */
+  trustProxy: bool("TRUST_PROXY", false),
   clientOrigin: req("CLIENT_ORIGIN", "http://localhost:5173"),
 
   databaseUrl: req(

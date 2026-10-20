@@ -14,6 +14,9 @@
  *    выгрузка HTML идёт БЕЗ лога (embedded genLog/ctxLog пусты, блока
  *    «◈ Лог» нет; формат файла тот же), стоимость в шапке/футере остаётся —
  *    она не под флагом. Остальные форматы (md/mmd/png/json) лога не несут.
+ *    13.2 (Д-65): выгрузка НЕвладельца идёт без pausedState во встроенном
+ *    состоянии и без содержимого родительских концепций в params
+ *    (exportHTML(id, { ownerView: false })); выгрузка владельца — как прежде.
  *  - Content-Disposition: attachment с именем getDocFilename (кириллица
  *    в названиях мета-синтезов → RFC 5987 filename*=UTF-8''…; в filename=
  *    без звёздочки — транслит-безопасная часть уже латиницей).
@@ -78,13 +81,14 @@ async function handleExport(
   if (access.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const includeLogs =
     access.viewer === "owner" || effectiveFlags(access.row).showLogs;
+  const ownerView = access.viewer === "owner"; // 13.2 (Д-65)
 
   try {
     const s = await loadExportSynthesis(id);
     let body: string | Buffer;
     switch (fmt) {
       case "html":
-        body = await exportHTML(id, { includeLogs });
+        body = await exportHTML(id, { includeLogs, ownerView });
         break;
       case "md":
         body = await exportMD(id);

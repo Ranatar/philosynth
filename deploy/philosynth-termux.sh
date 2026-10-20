@@ -310,6 +310,17 @@ step_repo() {
       делает уже сохранённые ключи нечитаемыми — не трогать без нужды)"
   fi
 
+  # 13.2 (Д-67): .env, созданный до 13.2, переменных TRUST_PROXY/HOST не несёт.
+  # Локальная сборка без прокси перед сервером: заголовкам X-Forwarded-For не
+  # верим (false — умолчание кода; строка в .env — чтобы было что включить за
+  # своим прокси), слушаем как прежде (HOST пуст — все интерфейсы).
+  if grep -q '^TRUST_PROXY=' .env; then
+    skip "TRUST_PROXY задан"
+  else
+    printf '\n# 13.2: доверие заголовкам прокси — только за своим Caddy (deploy/philosynth-hosting.md)\nTRUST_PROXY=false\nHOST=\n' >> .env
+    ok "в .env дописаны TRUST_PROXY=false и HOST= (локальная сборка без прокси)"
+  fi
+
   grep -q '^ANTHROPIC_API_KEY=..*' .env \
     || warn "ANTHROPIC_API_KEY пуст — серверная генерация недоступна.
       Либо вписать ключ в .env, либо ввести свой в интерфейсе (BYO-Key)."

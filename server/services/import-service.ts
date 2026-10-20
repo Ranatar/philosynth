@@ -55,7 +55,18 @@
  *     владельца (normalizeConceptTitle) и отдаётся ПРЕДЛОЖЕНИЕМ в
  *     ImportResult.lineageCandidates; связь при импорте не создаётся даже
  *     при единственном совпадении — имя не идентификатор. Ветка UUID
- *     сохранена без изменений (файлы экспорта 4.2 UUID несут).
+ *     сохранена (файлы экспорта 4.2 UUID несут).
+ *     13.2 (Д-66): ветка UUID идёт ПО ПРАВИЛУ POST /syntheses —
+ *     metaParentAllowed (shared/utils/visibility: своя — всегда; чужая —
+ *     только при действенном allow_meta; витрина и приватная — никогда)
+ *     плюс проверка цикла isDescendantOf (у только что созданной строки
+ *     потомков нет — заслон структурный, та же дорога, что у
+ *     POST /lineage/link). До 13.2 проверялось лишь существование строки,
+ *     и файл с вписанным UUID связывал с любым чужим синтезом (название в
+ *     parentSyntheses, капсула/граф/тезисы — в промптах). Не прошла —
+ *     та же дорога, что у родителя без UUID: кандидат по имени среди своих,
+ *     связь не пишется, предупреждение lineage. Записанное до 13.2 —
+ *     отчётом scripts/maintenance/lineage-parent-access-report.ts.
  *  6. Разделы-дубликаты по key: UNIQUE(synthesis_id, key) — первый
  *     побеждает, повтор уходит в warnings (исходник складывал все в
  *     DOM, dbIdx перетирался последним).
@@ -125,8 +136,10 @@ import {
 } from "./graph-parser.js";
 import {
   findSameOwnerSynthesesByTitle,
+  isDescendantOf,
   sanitizeFileGenealogy,
 } from "./lineage-service.js";
+import { metaParentAllowed } from "@philosynth/shared/utils/visibility"; // 13.2 (Д-66)
 import {
   parseGlossaryFromHTML,
   parseThesesFromHTML,
@@ -1415,21 +1428,41 @@ export async function importHTML(
         continue;
       }
       // Концепция-родитель: только при существующем в БД synthesisId (АДАПТАЦИЯ 5)
+      // 13.2 (Д-66): …и только по правилу мета-синтеза — metaParentAllowed
+      // (своя — всегда; чужая — при действенном allow_meta; витрина и
+      // приватная — никогда) плюс заслон цикла isDescendantOf, как у
+      // POST /lineage/link. Файл с вписанным UUID чужой концепции до 13.2
+      // связывал с ней молча, минуя гейт POST /syntheses.
       const sid = typeof p.synthesisId === "string" ? p.synthesisId : null;
+      let uuidRejected = false;
       if (sid && UUID_RE.test(sid) && sid !== synthesisId) {
-        const [exists] = await db
-          .select({ id: syntheses.id })
+        const [parent] = await db
+          .select({
+            id: syntheses.id,
+            userId: syntheses.userId,
+            visibility: syntheses.visibility,
+            showAuthor: syntheses.showAuthor,
+            showLogs: syntheses.showLogs,
+            showPrompts: syntheses.showPrompts,
+            allowMeta: syntheses.allowMeta,
+          })
           .from(syntheses)
           .where(eq(syntheses.id, sid))
           .limit(1);
-        if (exists) {
-          lineageRows.push({
-            synthesisId,
-            parentType: "synthesis",
-            parentSynthesisId: sid,
-            position: position++,
-          });
-          continue;
+        if (parent) {
+          const allowed =
+            metaParentAllowed(parent, userId) &&
+            !(await isDescendantOf(synthesisId, sid));
+          if (allowed) {
+            lineageRows.push({
+              synthesisId,
+              parentType: "synthesis",
+              parentSynthesisId: sid,
+              position: position++,
+            });
+            continue;
+          }
+          uuidRejected = true;
         }
       }
       // 8.5: ветка UUID не сработала — сопоставление ПО ИМЕНИ среди синтезов
@@ -1443,8 +1476,12 @@ export async function importHTML(
       lineageCandidates.push({ parentName: p.name, position: position++, matches });
       warnings.push({
         field: "lineage",
-        message:
-          matches.length > 0
+        message: uuidRejected
+          ? // 13.2 (Д-66): причина одна на все случаи (приватная, витрина,
+            // allow_meta снят, цикл) — различать их значило бы выдавать
+            // состояние чужой концепции по идентификатору из файла
+            tl("server.importService.parentNotAllowed", "Концепция-родитель «{name}» найдена по идентификатору из файла, но в мета-синтез не годится по правилу доступа (автор не разрешил использование, концепция приватна или открыта витриной) — связь генеалогии не создана. Её ветка сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок.", { name: p.name })
+          : matches.length > 0
             ? tl("server.importService.parentAmbiguous", "Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).", { name: p.name, matchesCount: matches.length })
             : tl("server.importService.parentMissing", "Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.", { name: p.name }),
         critical: false,

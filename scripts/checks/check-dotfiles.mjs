@@ -7,6 +7,9 @@
  * check:integration (4ak/4al/4ao). Этот скрипт делает то же за секунду и без
  * БД — годен как первый шаг после `git clone` и в любой CI.
  * 9.1: + восемь переменных почты в .env.example и MAIL_TRANSPORT стенда.
+ * 13.2 (Д-67): + TRUST_PROXY и HOST в .env.example, TRUST_PROXY стенда —
+ * доверие заголовкам прокси по умолчанию выключено, и потеря строки при
+ * выкладке молча оставила бы установщик без переменной.
  * Запуск из корня: node scripts/checks/check-dotfiles.mjs
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -22,6 +25,11 @@ for (const v of ["STRIPE_PRICE_STARTER", "STRIPE_PRICE_PRO", "STRIPE_PRICE_ACADE
 for (const v of ["MAIL_TRANSPORT", "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_SECURE", "MAIL_FROM", "PUBLIC_BASE_URL"]) {
   if (!new RegExp(`^${v}=`, "m").test(envEx)) errs.push(`.env.example без ${v}= (9.1)`);
 }
+// 13.2: переменные доверия прокси и адреса прослушивания
+for (const v of ["TRUST_PROXY", "HOST"]) {
+  if (!new RegExp(`^${v}=`, "m").test(envEx)) errs.push(`.env.example без ${v}= (13.2)`);
+}
+if (!/^TRUST_PROXY=false$/m.test(envEx)) errs.push(".env.example: TRUST_PROXY обязан быть false по умолчанию (13.2)");
 if (!/^dev-billing-state\/$/m.test(rd(".gitignore"))) errs.push(".gitignore без dev-billing-state/ (8.6)");
 if (!existsSync(new URL("env.local.example", ROOT))) errs.push("нет env.local.example (8.6, без точки)");
 if (existsSync(new URL(".env.local.example", ROOT))) errs.push("в дереве старый .env.local.example (8.6)");
@@ -30,6 +38,7 @@ for (const n of ["starter", "pro", "academic"]) {
   if (!new RegExp(`^STRIPE_PRICE_${n.toUpperCase()}=price_mock_${n}$`, "m").test(envLoc)) errs.push(`env.local.example без STRIPE_PRICE_${n.toUpperCase()}=price_mock_${n} (8.3)`);
 }
 if (!/^MAIL_TRANSPORT=console$/m.test(envLoc)) errs.push("env.local.example без MAIL_TRANSPORT=console (9.1)");
+if (!/^TRUST_PROXY=false$/m.test(envLoc)) errs.push("env.local.example без TRUST_PROXY=false (13.2)");
 if (errs.length) {
   console.error("DOTFILES: правки потеряны выкладкой —\n - " + errs.join("\n - "));
   process.exit(1);

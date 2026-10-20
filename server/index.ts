@@ -5,6 +5,9 @@
  * Беседа 6.1: billing/prompts-роуты, прогрев кэша реестра.
  * Беседа 9.1: работник очереди писем (интервал; остановка в shutdown).
  * Беседа 13.1: заголовки безопасности (CSP) у каждого ответа.
+ * Беседа 13.2: сессия проверяется ДО лимитера (optionalAuth на /api/v1/*) —
+ *   лимитер считает по пользователю, а не по хэшу любой cookie; адрес
+ *   прослушивания HOST; заголовки прокси — только под TRUST_PROXY.
  * Дальше: syntheses/sections/… — беседы 1.x+.
  */
 import { serve } from "@hono/node-server";
@@ -14,7 +17,7 @@ import { cors } from "hono/cors";
 import { env } from "./env.js";
 import { closeDb, sql } from "./db/index.js";
 import { closeRedis, connectRedis } from "./redis.js";
-import type { AuthEnv } from "./middleware/auth.js";
+import { optionalAuth, type AuthEnv } from "./middleware/auth.js";
 import { rateLimiter } from "./middleware/rate-limiter.js";
 import { SECURITY_HEADERS } from "./security-headers.js"; // беседа 13.1
 import { installServerCatalogProvider, requestLocale } from "./i18n/locale.js"; // беседа 11.2
@@ -93,6 +96,13 @@ app.get("/api/v1/health", async (c) => {
 // Провайдер каталога tl() читает его же.
 installServerCatalogProvider();
 app.use("/api/v1/*", requestLocale);
+// 13.2 (Д-67): сессия проверяется ОДИН раз, ДО лимитера — тот считает по
+// пользователю проверенной сессии (u:id), непроверенная cookie квоты не
+// даёт (счёт по адресу). Роутовые requireAuth/optionalAuth результат
+// переиспользуют (resolveSession в middleware/auth) — второго запроса к БД
+// нет; мёртвая cookie подчищается здесь же. Гейты роутов не ослабляются:
+// requireAuth на них стоит как прежде.
+app.use("/api/v1/*", optionalAuth);
 app.use("/api/v1/*", rateLimiter());
 app.route("/api/v1/auth", authRoutes);
 app.route("/api/v1/syntheses", synthesesRoutes); // беседа 1.4 + 1.6
@@ -130,9 +140,24 @@ void warmCache()
 // прогрев выше); останавливается в shutdown() ДО закрытия пула БД.
 startMailWorker();
 
-const server = serve({ fetch: app.fetch, port: env.port }, (info) => {
-  console.log(`PhiloSynth server: http://localhost:${info.port}/api/v1/health`);
-});
+// 13.2 (Д-67): HOST — адрес прослушивания (пусто — все интерфейсы, как до
+// 13.2); за доверенным прокси (TRUST_PROXY=true) сервер обязан слушать петлю,
+// иначе X-Forwarded-For подделывается прямым обращением к порту мимо Caddy
+if (env.trustProxy && !isLoopbackHost(env.host)) {
+  console.warn(
+    `[server] TRUST_PROXY=true, а HOST=${env.host ?? "(все интерфейсы)"}: заголовки прокси принимаются с любого соединения — за Caddy задайте HOST=127.0.0.1 (deploy/philosynth-hosting.md)`,
+  );
+}
+const server = serve(
+  { fetch: app.fetch, port: env.port, ...(env.host ? { hostname: env.host } : {}) },
+  (info) => {
+    console.log(`PhiloSynth server: http://${env.host ?? "localhost"}:${info.port}/api/v1/health`);
+  },
+);
+
+function isLoopbackHost(host: string | undefined): boolean {
+  return host === "127.0.0.1" || host === "localhost" || host === "::1";
+}
 
 injectWebSocket(server);
 

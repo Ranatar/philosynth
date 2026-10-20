@@ -515,15 +515,20 @@ GET    /syntheses/:id          → { synthesis: SynthesisFull }
                                 //   userId=null → viewer 'guest'.
                                 // Отсечение полей — ОДНОЙ функцией
                                 // projectSynthesis(full, viewer, flags):
+                                //   13.2 (Д-65): pausedState/pauseEstimates — ТОЛЬКО владельцу
+                                //   на ЛЮБОЙ ступени; каждому невладельцу (user,
+                                //   guest; 'full' и витрина) оба поля null —
+                                //   genParams паузы несут зерно, secCtx и
+                                //   содержимое РОДИТЕЛЬСКИХ концепций (в том
+                                //   числе приватных родителей владельца);
+                                //   оценки паузы невладельцу не считаются;
                                 //   guest: без totalCostUsd/totalInputTokens/
-                                //   totalOutputTokens и без pausedState/
-                                //   pauseEstimates; при scope='full' документ
+                                //   totalOutputTokens; при scope='full' документ
                                 //   ОДНИМ ответом — sections: SectionFull[]
                                 //   (гостю /sections недоступен);
                                 //   user: стоимость и токены видны всегда;
                                 //   scope='showcase' (любой невладелец):
-                                //   sections не отдаются, pausedState/
-                                //   pauseEstimates → null; capsuleHtml,
+                                //   sections не отдаются; capsuleHtml,
                                 //   метаданные, философы, даты — отдаются;
                                 //   authorName — только при действенном
                                 //   show_author и непустом display_name.
@@ -637,8 +642,23 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
                                 // §2.8), а настоящую связь даёт импорт родителя
                                 // ДО ребёнка (прежнее «привязать позже» снято:
                                 // интерфейса привязки после импорта нет). Файлы
-                                // экспорта 4.2 (с UUID) связываются прежней
-                                // веткой, lineageCandidates для них пуст.
+                                // экспорта 4.2 (с UUID) связываются веткой UUID.
+                                // 13.2 (Д-66): ветка UUID идёт ПО ПРАВИЛУ
+                                // POST /syntheses — metaParentAllowed
+                                // (shared/utils/visibility: своя концепция —
+                                // всегда; чужая — только при действенном
+                                // allow_meta; витрина и приватная — никогда)
+                                // плюс заслон цикла isDescendantOf (у новой
+                                // строки потомков нет — заслон структурный, как
+                                // у /lineage/link). Не прошла — та же дорога,
+                                // что у родителя без UUID: кандидат по имени
+                                // среди своих, связь не пишется, предупреждение
+                                // lineage одной фразой на все причины (состояние
+                                // чужой концепции по идентификатору из файла не
+                                // раскрывается). До 13.2 проверялось лишь
+                                // существование строки. Записанное до 13.2 —
+                                // отчётом npm run report:lineage-parents
+                                // (строки не снимаются — решение пользователя).
                                 // Клиент (ImportPage): блок на каждого родителя,
                                 // «Связать» вторым шагом кнопок → POST
                                 // /syntheses/:id/lineage/link (§2.8).
@@ -1572,6 +1592,14 @@ GET    /syntheses/:id/export/md     → text/markdown
 > генерации» нет), итоговая стоимость остаётся в ФУТЕРЕ документа — она не
 > под флагом (`exportHTML(id, { includeLogs })`).
 >
+> **13.2 (Д-65):** выгрузка НЕвладельца — `exportHTML(id, { includeLogs,
+> ownerView: false })`: во встроенном состоянии `pausedState: null` и `params`
+> без содержимого родительских концепций (`stripParentContent`: у
+> участников-концепций остаётся идентичность — type/synthesisId/name/method/
+> synthLevel/seed, как в `participants`); импорт 4.3 читает из `params` лишь
+> type/name участников, `phil`, `seed`, `secCtx` — файл невладельца
+> импортируется как прежде. Выгрузка владельца не меняется.
+>
 > **Футер в экспорте (найдено 8.6, утрачено 4.2).** В исходнике `#docFooter`
 > лежал внутри `#docOutput` и уезжал в файл вместе с `footerCost`; 4.2
 > собрала документ как шапку-зеркало DocumentHeader плюс разделы — без
@@ -2144,6 +2172,19 @@ Endpoint: `wss://host/ws?token={sessionToken}`
 > момент подсчёта всегда IP. «Per-user» HTTP-лимитирование потребует
 > переноса подсчёта после auth — долг внесён в реестр 07 §12,
 > адресат 6.1 (вместе с billing-service).
+>
+> **13.2 (Д-67).** Решение 6.1 (ключ — SHA-256 cookie сессии ДО проверки)
+> обходилось случайной cookie на каждый запрос. С 13.2 сессия проверяется
+> ОДИН раз глобальным `optionalAuth` на `/api/v1/*` ДО лимитера (роутовые
+> `requireAuth`/`optionalAuth` результат переиспользуют — `resolveSession`),
+> и ключ — `u:{userId}` ПРОВЕРЕННОЙ сессии (все сессии одного пользователя
+> делят квоту; снята половина Огр-10), иначе `ip:{адрес клиента}`;
+> значение cookie без проверки квоты не даёт. Адрес клиента —
+> `server/utils/client-address.ts`: `X-Forwarded-For` (первый адрес) →
+> `X-Real-IP` ТОЛЬКО при `TRUST_PROXY=true` (env; умолчание false; за Caddy
+> публичного размещения — true вместе с `HOST=127.0.0.1`), иначе адрес
+> соединения. Тем же правилом живёт IP строки `admin_audit`. `mailLimiter`
+> (9.1) — тот же механизм.
 
 ---
 

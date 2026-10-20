@@ -565,14 +565,60 @@ export function buildGraphExportSection(
 <script>${initScript}</script>`;
 }
 
+/* ══ 13.2 (Д-65): params без содержимого родителей ══════════════════ */
+
+/** Поля ConceptParticipantFull с содержимым родительской концепции —
+ *  всё, что loadConceptContext извлекает из её разделов. Идентичность
+ *  (type/synthesisId/name/method/synthLevel/seed) остаётся. */
+const PARENT_CONTENT_FIELDS = [
+  "capsule",
+  "goals",
+  "portraits",
+  "tensions",
+  "graphNodes",
+  "graphEdges",
+  "dialogueConcepts",
+  "dialogueSynthesis",
+  "glossaryCompact",
+  "thesesSummary",
+] as const;
+
+/** params встроенного состояния для НЕвладельца: у участников-концепций
+ *  (participants и conceptParticipants) содержимое родителей снято;
+ *  философы и прочие параметры — без изменений. Чистая функция. */
+export function stripParentContent<
+  T extends { participants?: readonly unknown[] | undefined; conceptParticipants?: readonly unknown[] | undefined },
+>(params: T): T {
+  const strip = (p: unknown): unknown => {
+    if (!p || typeof p !== "object") return p;
+    const rec = p as Record<string, unknown>;
+    if (rec["type"] === "philosopher") return p;
+    const out: Record<string, unknown> = { ...rec };
+    for (const f of PARENT_CONTENT_FIELDS) delete out[f];
+    return out;
+  };
+  const out: Record<string, unknown> = { ...(params as Record<string, unknown>) };
+  if (Array.isArray(params.participants)) out["participants"] = params.participants.map(strip);
+  if (Array.isArray(params.conceptParticipants)) out["conceptParticipants"] = params.conceptParticipants.map(strip);
+  return out as T;
+}
+
 /* ══ saveHTML [18003] ═════════════════════════════════════════════════ */
 
 /** Опции экспорта (8.6): includeLogs=false — выгрузка невладельцу при
  *  недейственном show_logs: embedded genLog/ctxLog пусты, genCommon null,
  *  видимый блок «◈ Лог контекста и генерации» не печатается. Формат файла
- *  тот же (пустые логи — законное состояние импорта 4.3). */
+ *  тот же (пустые логи — законное состояние импорта 4.3).
+ *  13.2 (Д-65): ownerView=false — выгрузка НЕвладельца: pausedState во
+ *  встроенном состоянии null (genParams паузы несут зерно, secCtx и
+ *  содержимое родительских концепций), а у участников-концепций в params
+ *  остаётся только идентичность (как в participants — паритет
+ *  cleanParticipants [18066]); импорт 4.3 из params читает лишь type/name/
+ *  phil/seed/secCtx, так что файл невладельца импортируется как прежде.
+ *  Умолчание — владелец (все прежние вызовы). */
 export interface ExportHTMLOptions {
   includeLogs?: boolean;
+  ownerView?: boolean;
 }
 
 export async function exportHTML(
@@ -580,6 +626,7 @@ export async function exportHTML(
   options: ExportHTMLOptions = {},
 ): Promise<string> {
   const includeLogs = options.includeLogs !== false;
+  const ownerView = options.ownerView !== false; // 13.2 (Д-65)
   const s = await loadExportSynthesis(synthesisId);
   const row = s.row;
 
@@ -677,6 +724,10 @@ export async function exportHTML(
   const { philosophers, secCtx } = await loadSynthesis(synthesisId);
   const conceptParticipants = await loadConceptParticipants(synthesisId);
   const params = buildParams(row, philosophers, secCtx, conceptParticipants);
+  // 13.2 (Д-65): невладельцу — params без содержимого родителей (capsule,
+  // goals, graph*, dialogue*, glossaryCompact, thesesSummary, portraits,
+  // tensions остаются только в выгрузке владельца)
+  const stateParams = ownerView ? params : stripParentContent(params);
 
   const { genRows, ctxRows, genCommon } = includeLogs
     ? await loadExportLogs(synthesisId)
@@ -763,7 +814,7 @@ export async function exportHTML(
     genLog: genLogClean,
     ctxLog: ctxLogClean,
     genCommon,
-    params,
+    params: stateParams,
     sectionOrder: row.sectionOrder,
     editedSections,
     docVersion: {
@@ -775,7 +826,9 @@ export async function exportHTML(
     participants: cleanParticipants,
     genealogy,
     structureSections: row.structureSections || null,
-    pausedState: row.pausedState || null,
+    // 13.2 (Д-65): пауза — только владельцу (genParams — рабочее состояние
+    // владельца, включая контекст приватных родителей)
+    pausedState: ownerView ? row.pausedState || null : null,
   };
   let stateJSON = `\n<script type="application/json" id="philosynth-state">\n${JSON.stringify(stateData, null, 2)}\n</script>`;
 

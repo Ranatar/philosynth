@@ -1404,6 +1404,7 @@
     "server.importService.noSections": "No sections (.doc-section) were found in the file.",
     "server.importService.parentAmbiguous": "Parent concept “{name}” was not linked automatically: {matchesCount} matches by name were found in the database — choose the parent in the suggestion below (a name is not an identifier, no link is created silently).",
     "server.importService.parentMissing": "Parent concept “{name}” was not found in the database — no genealogy link was created. Its lineage branch is kept from the file and shown in the genealogical tree as a snapshot, without links; a real link will appear if the parent is imported BEFORE this concept.",
+    "server.importService.parentNotAllowed": "Parent concept “{name}” was found by the identifier from the file, but it is not eligible for meta-synthesis under the access rule (the author did not allow its use, the concept is private, or it is open as a showcase) — no genealogy link was created. Its branch is kept from the file and shown in the genealogical tree as a snapshot, without links.",
     "server.importService.philosophersNotFound": "The list of philosophers was not found. Sections cannot be regenerated without it.",
     "server.importService.sectionKeyUnknown": "Failed to determine the key for section “{titleText}” — the section was skipped.",
     "server.importService.sectionNotInOrder": "Section “{sectionKey}” is missing from the embedded sectionOrder — added to the end of the order.",

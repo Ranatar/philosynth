@@ -205,14 +205,34 @@ export function getSessionToken(c: Context): string | undefined {
 /* ── Middleware ──────────────────────────────────────────────────────── */
 
 /**
+ * 13.2 (Д-67): сессия проверяется ОДИН раз на запрос. Глобальный optionalAuth
+ * в index.ts (до лимитера, на всём /api/v1/*) кладёт в контекст user/session
+ * либо null; роутовые requireAuth/optionalAuth результат переиспользуют —
+ * второго запроса к БД нет. Переменная не выставлена вовсе (undefined) —
+ * роутер смонтирован без глобального прохода (сторожа и тесты на
+ * app.request) — проверка идёт здесь, как до 13.2.
+ */
+async function resolveSession(
+  c: Context,
+): Promise<{ user: AuthUser; session: SessionInfo } | null> {
+  const already = c.get("user") as AuthUser | null | undefined;
+  if (already !== undefined) {
+    const session = c.get("session") as SessionInfo | null | undefined;
+    return already && session ? { user: already, session } : null;
+  }
+  const token = getSessionToken(c);
+  const result = token ? await validateSessionToken(token) : null;
+  if (!result && token) clearSessionCookie(c); // мёртвый cookie — подчистить
+  return result;
+}
+
+/**
  * Проверка сессии: валидный cookie → c.get("user") / c.get("session"),
  * иначе 401 AUTH_REQUIRED (03-spec §4.3).
  */
 export const requireAuth: MiddlewareHandler<AuthEnv> = async (c, next) => {
-  const token = getSessionToken(c);
-  const result = token ? await validateSessionToken(token) : null;
+  const result = await resolveSession(c);
   if (!result) {
-    if (token) clearSessionCookie(c); // мёртвый cookie — подчистить
     return c.json(
       { error: tl("common.authRequired", "Требуется авторизация"), code: "AUTH_REQUIRED" },
       401,
@@ -232,15 +252,17 @@ export const requireAuth: MiddlewareHandler<AuthEnv> = async (c, next) => {
  * requireAuth). requireAuth не тронут: гейты прочих роутов не ослабляются.
  * Гостю открыты ровно три пути: GET /syntheses/public, GET /syntheses/:id,
  * GET /billing/plans.
+ * 13.2 (Д-67): стоит и ГЛОБАЛЬНО на /api/v1/* перед лимитером (index.ts) —
+ * лимитер считает по пользователю проверенной сессии; роутовые экземпляры
+ * результат переиспользуют (resolveSession).
  */
 // Типизирован по умолчанию (любой Env): монтируется на роутеры Hono<AuthEnv>
 // рядом с requireAuth — там `c.get("user")` объявлен ненулевым, поэтому
 // гостевые обработчики читают смотрящего через viewerOf(c).
 export const optionalAuth: MiddlewareHandler = async (c, next) => {
-  const token = getSessionToken(c);
-  const result = token ? await validateSessionToken(token) : null;
+  const result = await resolveSession(c);
   if (!result) {
-    if (token) clearSessionCookie(c); // просроченная сессия = гость, не 401
+    // просроченная сессия = гость, не 401 (мёртвый cookie подчистил resolveSession)
     c.set("user", null);
     c.set("session", null);
   } else {

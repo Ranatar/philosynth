@@ -34,3 +34,21 @@ export function effectiveFlags(row: VisibilityFlags): EffectiveFlags {
 export function isPublicOf(visibility: VisibilityFlags["visibility"]): boolean {
   return visibility !== "private";
 }
+
+/**
+ * Годится ли концепция в РОДИТЕЛИ (участник мета-синтеза) смотрящему —
+ * ОДНО правило на все входы, где связь «ребёнок → родитель-концепция»
+ * создаётся (беседа 13.2, Д-66): POST /syntheses (участники), импорт файла
+ * (ветка UUID), оценка /estimate. Правило 8.6 п.8: своя концепция — всегда;
+ * чужая — только при ДЕЙСТВЕННОМ allow_meta (effectiveFlags ⇒
+ * visibility='full'); витрина и приватная — никогда (loadConceptContext
+ * читал бы спрятанное от человека). Гость (viewerUserId=null) — только
+ * чужая с действенным allow_meta, своих у него нет.
+ */
+export function metaParentAllowed(
+  row: VisibilityFlags & { userId: string },
+  viewerUserId: string | null,
+): boolean {
+  if (viewerUserId !== null && row.userId === viewerUserId) return true;
+  return effectiveFlags(row).allowMeta;
+}

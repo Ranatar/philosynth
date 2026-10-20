@@ -172,6 +172,10 @@ CREATE TABLE syntheses (
     -- reasonKind: 'auth'|'billing'|'pre-stream'|'max-tokens'|'partial'|'stuck'|'user-abort'
     --   |'context-error' (сбой ПОСТРОЕНИЯ контекста/промпта, outer catch
     --   _runGenPassesFromIdx [~25842]; найдено беседой 1.4 — kind'ом стрима не является)
+    -- 13.2 (Д-65): отдаётся ТОЛЬКО владельцу (GET /:id — projectSynthesis;
+    --   HTML-выгрузка — exportHTML ownerView): genParams несут зерно, secCtx и
+    --   conceptParticipants — содержимое родительских концепций, в том числе
+    --   приватных родителей владельца; невладельцу на любой ступени — null
   version_base     INT NOT NULL DEFAULT 1,
   version_sub      INT NOT NULL DEFAULT 0,
   version_modes    INT NOT NULL DEFAULT 0,
@@ -239,6 +243,14 @@ CREATE INDEX idx_lineage_parent_name ON synthesis_lineage(parent_name)
 > предложению `lineageCandidates` (03 §2.2/§2.8), `position` у такой строки —
 > `max(position)+1` среди родителей синтеза.
 
+> **13.2 (Д-66):** строка `parent_type='synthesis'` при импорте по UUID из
+> файла пишется ТОЛЬКО по правилу родителя мета-синтеза (`metaParentAllowed`,
+> shared: своя — всегда; чужая — при действенном `allow_meta`; витрина и
+> приватная — никогда) и без цикла (`isDescendantOf`); до 13.2 — при одном
+> существовании строки. Записанные до 13.2 связи с чужим негодным родителем
+> перечисляет `npm run report:lineage-parents` (только отчёт; снятие — решение
+> пользователя, отвязка — 15.1).
+>
 > **Дерево файла (2026-09-21, вне бесед):** импорт файла пишет дерево
 > `genealogy` файла целиком в `syntheses.file_genealogy` (миграция
 > `0008_file_genealogy`); индекс в `participants` корня = `position` строки

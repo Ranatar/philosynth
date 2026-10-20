@@ -30,6 +30,7 @@
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
     "check:dotfiles": "node scripts/checks/check-dotfiles.mjs",
     "sanitize:stored-html": "tsx scripts/maintenance/sanitize-stored-html.ts",
+    "report:lineage-parents": "tsx scripts/maintenance/lineage-parent-access-report.ts",
     "i18n:extract": "node scripts/i18n/extract-ui-strings.mjs",
     "i18n:build": "node scripts/i18n/build-localized.mjs",
     "i18n:init": "node scripts/i18n/i18n-init.mjs",

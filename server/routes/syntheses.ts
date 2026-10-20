@@ -14,10 +14,15 @@
  * флагов — ТОЛЬКО effectiveFlags (shared/utils/visibility); отсечение полей
  * по смотрящему — ТОЛЬКО projectSynthesis/projectPreview. Гостю (без
  * сессии, optionalAuth) открыты ровно два пути этого файла: GET /public и
- * GET /:id (третий — GET /billing/plans); стоимость/токены/пауза гостю не
+ * GET /:id (третий — GET /billing/plans); стоимость/токены гостю не
  * отдаются никогда, зарегистрированному — всегда (флагом не управляются).
- * Чужая концепция годится в участники мета-синтеза только при действенном
- * allow_meta (403 META_NOT_ALLOWED); витрина — никогда.
+ * Пауза генерации (pausedState/pauseEstimates) — ТОЛЬКО владельцу на любой
+ * ступени (беседа 13.2, Д-65: genParams несут зерно, secCtx и содержимое
+ * родительских концепций — рабочее состояние владельца; до 13.2 чужой
+ * зарегистрированный на 'full' получал её целиком). Чужая концепция годится
+ * в участники мета-синтеза только при действенном allow_meta (403
+ * META_NOT_ALLOWED); витрина — никогда; правило одно — metaParentAllowed
+ * (shared/utils/visibility), им же пользуется ветка UUID импорта (13.2).
  *
  * Беседа 1.6 (транспорт чтения, сервер) добавила: GET / (список своих),
  * GET /public, GET /:id (SynthesisFull + pausedState + pauseEstimates),
@@ -138,7 +143,7 @@ import type {
 } from "@philosynth/shared/types/synthesis";
 import { SYNTHESIS_VISIBILITIES } from "@philosynth/shared/types/synthesis";
 import type { SectionFull } from "@philosynth/shared/types/section";
-import { effectiveFlags } from "@philosynth/shared/utils/visibility";
+import { effectiveFlags, metaParentAllowed } from "@philosynth/shared/utils/visibility";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
 import type { PauseEstimates } from "@philosynth/shared/types/ws-messages";
 import { tl } from "@philosynth/shared/i18n/t";
@@ -250,11 +255,13 @@ export async function loadSynthesisForRead(
 /** Чужая концепция годится в участники мета-синтеза, только если
  *  allow_meta ДЕЙСТВЕНЕН (effectiveFlags ⇒ visibility='full'); своя —
  *  всегда; витрина — никогда (8.6 п.8: loadConceptContext читал бы
- *  спрятанное от человека). */
+ *  спрятанное от человека). 13.2 (Д-66): само правило живёт в shared
+ *  (metaParentAllowed) — его же зовёт ветка UUID импорта; здесь —
+ *  обёртка над результатом loadSynthesisForRead (viewer 'owner' ≡ свой). */
 export function metaAllowedFor(
   res: Extract<ReadAccess, { access: "ok" }>,
 ): boolean {
-  return res.viewer === "owner" || effectiveFlags(res.row).allowMeta;
+  return metaParentAllowed(res.row, res.viewer === "owner" ? res.row.userId : null);
 }
 
 /** Единые JSON-ответы отказа доступа (03 §4.3). */
@@ -424,12 +431,17 @@ export function projectPreview(
 
 /**
  * 8.6 п.5: отсечение полей SynthesisFull по смотрящему — ОДНОЙ функцией.
- *  - guest: totalCostUsd/totalInputTokens/totalOutputTokens убраны;
- *    pausedState/pauseEstimates → null (genParams несут зерно и secCtx —
- *    рабочее состояние владельца); при scope='full' документ отдаётся
- *    одним ответом — sections (тела разделов) вложены;
+ *  - любой НЕвладелец (user и guest, на любой ступени): pausedState и
+ *    pauseEstimates → null (13.2, Д-65: genParams несут зерно, secCtx и
+ *    conceptParticipants — капсулы, графы, тезисы РОДИТЕЛЬСКИХ концепций,
+ *    в том числе приватных родителей владельца; клиенту невладельца пауза
+ *    не нужна — PauseModal и прогресс под isOwner). До 13.2 чужой
+ *    зарегистрированный на 'full' получал паузу целиком, хотя шапка
+ *    утверждала обратное;
+ *  - guest: сверх того totalCostUsd/totalInputTokens/totalOutputTokens
+ *    убраны; при scope='full' документ отдаётся одним ответом — sections
+ *    (тела разделов) вложены;
  *  - user (чужой зарегистрированный): стоимость и токены видны всегда;
- *    pausedState/pauseEstimates → null при scope='showcase';
  *  - scope='showcase' (любой невладелец): sections не отдаются (элементы,
  *    граф, тезисы, глоссарий живут в своих роутах и там гейтятся тем же
  *    правилом); capsuleHtml, метаданные, философы, даты — отдаются;
@@ -450,10 +462,9 @@ export function projectSynthesis(
     base.authorName = extra.authorName.trim();
   }
   if (viewer === "owner") return base;
-  if (scope === "showcase") {
-    base.pausedState = null;
-    base.pauseEstimates = null;
-  }
+  // 13.2 (Д-65): пауза — только владельцу, на любой ступени
+  base.pausedState = null;
+  base.pauseEstimates = null;
   if (viewer === "user") return base;
   // guest
   const {
@@ -462,11 +473,7 @@ export function projectSynthesis(
     totalOutputTokens: _o,
     ...guest
   } = base;
-  const out: SynthesisFull = {
-    ...guest,
-    pausedState: null,
-    pauseEstimates: null,
-  };
+  const out: SynthesisFull = { ...guest };
   if (scope === "full" && extra.sections) out.sections = extra.sections;
   return out;
 }
@@ -575,7 +582,11 @@ async function buildSynthesisFull(
       ),
     );
 
-  const ps = (row.pausedState ?? null) as PausedState | null;
+  // 13.2 (Д-65): оценки паузы считаются только владельцу — невладельцу
+  // projectSynthesis всё равно обнулит pausedState/pauseEstimates, а
+  // computePauseEstimates собирает промпты из содержимого родителей
+  const ownerView = viewerUserId !== null && row.userId === viewerUserId;
+  const ps = ownerView ? ((row.pausedState ?? null) as PausedState | null) : null;
   let pauseEstimates: PauseEstimates | null = null;
   if (ps) {
     pauseEstimates =

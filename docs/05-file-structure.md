@@ -37,6 +37,9 @@ philosynth-service/
 │                                   # пароль БД обязан совпадать с дефолтом
 │                                   # env.ts — .env читает только drizzle-kit,
 │                                   # tsx-скрипты берут process.env.
+│                                   # 13.2: + TRUST_PROXY=false (заголовки прокси — только за своим
+│                                   # Caddy, hosting.md ставит true вместе с HOST=127.0.0.1) и HOST=
+│                                   # (адрес прослушивания; пусто — все интерфейсы); оба — в check-dotfiles
 │                                   # 8.3: + STRIPE_PRICE_STARTER/PRO/ACADEMIC (читает
 │                                   # seed-plans напрямую из process.env, не env.ts)
 │                                   # 9.1: + MAIL_TRANSPORT, SMTP_*, MAIL_FROM, PUBLIC_BASE_URL,
@@ -128,6 +131,9 @@ philosynth-service/
 │   │                                   # 11.2: requestLocale ДО rate-limiter и роутов,
 │   │                                   # installServerCatalogProvider()
 │   │                                   # 13.1: SECURITY_HEADERS на каждый ответ
+│   │                                   # 13.2: optionalAuth на /api/v1/* МЕЖДУ requestLocale и
+│   │                                   # rateLimiter (лимитер считает по проверенной сессии);
+│   │                                   # serve на HOST; предупреждение TRUST_PROXY без петли
 │   ├── security-headers.ts             # 13.1 (Д-63): CONTENT_SECURITY_POLICY (копии дословно:
 │   │                                   # client/vite.config.ts preview, Caddy в deploy/hosting),
 │   │                                   # nosniff, Referrer-Policy — сторож 4be сверяет
@@ -136,6 +142,7 @@ philosynth-service/
 │   │                                   # ui_locale → Accept-Language → ru; каталоги generated/*;
 │   │                                   # провайдер tl() — все ответы на языке запроса
 │   ├── env.ts                          # Типизированные env-переменные
+│   │                                   # 13.2: trustProxy (TRUST_PROXY, умолчание false), host (HOST)
 │   │
 │   ├── db/
 │   │   ├── schema.ts                   # Drizzle-схема (все таблицы из 02-data-model)
@@ -462,6 +469,9 @@ philosynth-service/
 │   │   ├── html-parser.ts              # Обёртка над linkedom для серверного DOM-парсинга
 │   │   │                               # 13.1: санитайзер на общем ядре shared; sanitizeSectionHtml
 │   │   │                               # (раздел целиком) — для всех входов разметки
+│   │   ├── client-address.ts           # 13.2 (Д-67): адрес клиента — ЕДИНСТВЕННЫЙ читатель
+│   │   │                               # X-Forwarded-For/X-Real-IP, только под TRUST_PROXY; иначе
+│   │   │                               # адрес соединения; потребители — rate-limiter, admin-audit
 │   │   └── crypto.ts                   # AES-256-GCM шифрование API-ключей (СДЕЛАНО 6.1:
 │   │   │                               #  deriveKey SHA-256 из секрета, pack iv‖tag‖ciphertext)
 │   │
@@ -761,10 +771,14 @@ philosynth-service/
 │   │   ├── extract-ui-strings.mjs      # временная оснастка (опись в один JSON)
 │   │   └── build-localized.mjs         # временная оснастка (копия проекта с переводом)
 │   ├── maintenance/                    # 13.1: одноразовые обслуживающие скрипты (tsx, живая БД)
-│   │   └── sanitize-stored-html.ts     # Д-63: чистка УЖЕ сохранённой разметки (sections,
-│   │                                   # capsule_html, mode_results, снимки element_versions,
-│   │                                   # element_enrichments); --dry, --synthesis; идемпотентен;
-│   │                                   # npm run sanitize:stored-html — шаг после обновления (deploy/*)
+│   │   ├── sanitize-stored-html.ts     # Д-63: чистка УЖЕ сохранённой разметки (sections,
+│   │   │                               # capsule_html, mode_results, снимки element_versions,
+│   │   │                               # element_enrichments); --dry, --synthesis; идемпотентен;
+│   │   │                               # npm run sanitize:stored-html — шаг после обновления (deploy/*)
+│   │   └── lineage-parent-access-report.ts  # 13.2 (Д-66): ОТЧЁТ о связях synthesis_lineage, где
+│   │                                   # чужой родитель сегодня не годится по правилу metaParentAllowed
+│   │                                   # (записаны до 13.2 веткой UUID); только читает — снятие строк
+│   │                                   # решает пользователь; npm run report:lineage-parents [-- --json]
 │   ├── checks/                         # проверки, идущие без браузера
 │   │   ├── check-dotfiles.mjs          # 8.7: сторож правок .env.example/.gitignore
 │   │   │                               # 9.1: + восемь переменных почты и MAIL_TRANSPORT стенда
@@ -880,6 +894,16 @@ philosynth-service/
     │                                   # строкой под CSP (title не меняется); скрипт чистки; сужение;
     │                                   # 13 кнопок редактора, вставка, таблица, плашка, «Разметка»,
     │                                   # сервер ≡ зеркалу; живой файл — таблица/выноска без потерь, замки
+    │                                   # test-132-requests2-4 — 13.2: R2 пауза на моке (HTTP 500) у
+    │                                   # концепции с приватным родителем — GET/выгрузка владелец ≠ чужой ≠
+    │                                   # гость; R3 файл с шестью UUID → три связи, три кандидата, отчёт на
+    │                                   # копии БД (pg_dump) со «старыми» строками; R4 100 случайных cookie,
+    │                                   # две сессии = одна квота, mailLimiter, X-Forwarded-For без/с TRUST_PROXY
+    │                                   # smoke-132-request1 — 13.2: metaParentAllowed, stripParentContent,
+    │                                   # clientIdentity/resolveSession (мини-Hono); живой сервер — пауза и
+    │                                   # params выгрузки владелец ≠ чужой, импорт трёх UUID (связь только
+    │                                   # со своей, отчёт report:lineage-parents), лимитер: случайные cookie,
+    │                                   # две сессии = одна квота, X-Forwarded-For без TRUST_PROXY, mailLimiter
     │                                   # smoke-131-request1 — 13.1: ядро санитайзера, живые входы
     │                                   # (PATCH капсулы, импорт файла с <img onerror>/javascript:),
     │                                   # CSP на сервере/preview/трёх копиях, скрипт чистки --dry,
