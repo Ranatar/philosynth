@@ -5172,15 +5172,20 @@ font-size: 14px;
     margin: 8px 0 14px;
   }
 
-  /* (2) поле разметки */
+  /* (2) поле разметки. 13.1 (Д-64): на всю ширину, с переносом длинных
+   * строк (таблица в одну строку больше не уезжает за край), высота — по
+   * содержимому (rows), а не 90px базового .form-textarea */
   .form-textarea.subsection-edit-source {
     font-family: var(--mono);
     font-size: 12px;
     line-height: 1.55;
+    width: 100%;
+    height: auto;
     min-height: 180px;
     resize: vertical;
-    white-space: pre;
-    overflow-x: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow-x: hidden;
     tab-size: 2;
   }
 
@@ -6126,6 +6131,127 @@ font-size: 14px;
     margin: 4px 0 6px 18px;
     font-size: 12px;
     color: var(--ink);
+  }
+}
+
+/* ═══ Беседа 13.1 — полнотекстовая правка подраздела (Д-64) ═════════════
+ * Поверх формы 9.2: (1) панель кнопок разметки — группы по общему модулю
+ * (абзац/подзаголовок/выделение, списки/таблица, выноски, метки риска) и
+ * операции строк/столбцов; кнопки — .inline-edit-btn кита (блок 7) без
+ * прозрачности, т.к. панель видна всегда; (2) редактируемый блок — та же
+ * типографика документа (.doc-content), рамка кита .form-textarea, фокус —
+ * золотой, как у полей; (3) плашка вложенного подраздела — некликабельная
+ * строка цветом --ink-dim на фоне --off, пунктирная рамка --rule-strong.
+ * Новых hex нет; углы прямые, теней нет. Переключатель «Разметка/Текст» —
+ * та же кнопка, нажатое состояние — золотая рамка (как .doc-title-edit-btn.active).
+ * ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* (1) панель */
+  .rich-editor-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 6px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 8px;
+  }
+
+  .rich-editor-group {
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .rich-editor-table-ops {
+    padding-left: 10px;
+    border-left: 1px solid var(--rule);
+  }
+
+  .rich-editor-btn {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink-mid);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    line-height: 1.4;
+    padding: 2px 7px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .rich-editor-btn:hover:not([disabled]) {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .rich-editor-btn[disabled] {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .rich-editor-btn-inline {
+    font-weight: 600;
+  }
+
+  .rich-editor-toggle {
+    margin-left: auto;
+  }
+
+  .rich-editor-toggle[aria-pressed="true"] {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* (2) редактируемый блок — в типографике документа */
+  .rich-editor-body {
+    min-height: 120px;
+    padding: 10px 12px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    outline: none;
+    caret-color: var(--gold);
+  }
+
+  .rich-editor-body:focus {
+    border-color: var(--gold);
+  }
+
+  .rich-editor-body[contenteditable="false"] {
+    color: var(--ink-dim);
+  }
+
+  .rich-editor-body > :first-child {
+    margin-top: 0;
+  }
+
+  .rich-editor-body > :last-child {
+    margin-bottom: 0;
+  }
+
+  /* ячейки таблицы правятся на месте: видимая сетка пустых ячеек */
+  .rich-editor-body td:empty::after,
+  .rich-editor-body th:empty::after {
+    content: "\00a0";
+  }
+
+  /* (3) плашка вложенного подраздела — не правится и не удаляется */
+  .rich-placeholder {
+    margin: 10px 0;
+    padding: 6px 10px;
+    border: 1px dashed var(--rule-strong);
+    background: var(--off);
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    user-select: none;
+    cursor: not-allowed;
+  }
+
+  .rich-editor-loading {
+    color: var(--ink-dim);
   }
 }
 

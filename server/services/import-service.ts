@@ -115,8 +115,10 @@ import {
   parseDocument,
   type HtmlDocument,
   type HtmlElement,
+  sanitizeSectionHtml,
   stripTocTraces,
 } from "../utils/html-parser.js";
+import { esc } from "@philosynth/shared/utils/escape"; // 13.1 (Д-63)
 import {
   parseGraphFromHTML,
   saveGraphToDb,
@@ -1211,7 +1213,7 @@ export async function importHTML(
     ? '<div class="doc-section"><div class="doc-content"><div data-section="Капсула"><p>' +
       meta.capsuleText
         .split("\n")
-        .map((l) => l.trim())
+        .map((l) => esc(l.trim())) // 13.1 (Д-63): текст шапки — текстом, не разметкой
         .filter(Boolean)
         .join("</p><p>") +
       "</p></div></div></div>"
@@ -1257,6 +1259,17 @@ export async function importHTML(
   // собственные (адаптация; фиксируется в ревью беседы).
   try {
     // ── g. Разделы ──
+    // 13.1 (Д-63): разметка файла входит в документ ТОЛЬКО через санитайзер
+    // раздела (живая проба 2026-10-13: <img onerror> и javascript:-ссылка из
+    // импортированного файла исполнялись); что снято — в warnings ответа
+    for (const sec of byKey.values()) {
+      const cleaned = sanitizeSectionHtml(sec.html);
+      if (cleaned.changed) {
+        sec.html = cleaned.html;
+        for (const w of cleaned.warnings)
+          warnings.push({ field: "sections", message: `${sec.key}: ${w}`, critical: false });
+      }
+    }
     const sectionRows = [...byKey.values()].map((sec) => ({
       synthesisId,
       key: sec.key,
@@ -1478,11 +1491,14 @@ export async function importHTML(
     for (const [modeKey, results] of Object.entries(modes)) {
       for (const r of results) {
         if (!r.html) continue;
+        const cleanedMode = sanitizeSectionHtml(r.html); // 13.1 (Д-63)
+        for (const w of cleanedMode.warnings)
+          warnings.push({ field: "modes", message: `${modeKey}: ${w}`, critical: false });
         modeRows.push({
           synthesisId,
           modeKey,
           paramValue: r.param,
-          htmlContent: r.html,
+          htmlContent: cleanedMode.html,
           // Токены/стоимость файл не несёт (АДАПТАЦИЯ 8) — нули по умолчанию
           createdAt: parseDate(r.timestamp) ?? new Date(t0 + modeIdx),
         });

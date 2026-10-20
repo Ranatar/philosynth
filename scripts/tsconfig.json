@@ -13,6 +13,7 @@
   },
   "include": [
     "seed/*.ts",
+    "maintenance/*.ts",
     "../tests/*.ts",
     "../tests/*.mts"
   ]

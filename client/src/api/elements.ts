@@ -23,7 +23,7 @@
  *      (12.1: у версий капсулы; 12.4 — потребитель SectionHistory);
  *  - autoRename → POST /elements/auto-rename { oldName, newName } →
  *      { affectedSections, affectedTheses };
- *  - updateCapsule → PATCH /capsule { html } → { capsuleHtml, version }.
+ *  - updateCapsule → PATCH /capsule { html } → { capsuleHtml, version, warnings (13.1) }.
  *
  * Гейты правок (сервер 5.1): не-владелец → 403 FORBIDDEN, активная
  * генерация → 409 GENERATION_IN_PROGRESS, невалидные поля → 400
@@ -115,6 +115,9 @@ export interface RollbackResponse extends ElementMutationMeta {
 export interface UpdateCapsuleResponse {
   capsuleHtml: string;
   version: ElementVersion;
+  /** 13.1 (Д-63): что санитайзер снял из присланного; у правки текстом
+   *  (DocumentHeader собирает <p> из текста) — пусто, показа нет */
+  warnings: string[];
 }
 
 export function updateCategory(

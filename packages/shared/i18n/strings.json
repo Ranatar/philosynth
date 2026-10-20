@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-10-12T05:38:18.677Z",
-    "imported": "2026-10-12T05:39:23.642Z"
+    "synced": "2026-10-20T06:00:05.904Z",
+    "imported": "2026-10-20T06:00:06.718Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -2343,14 +2343,14 @@
       "en": "Philosophical Concept Synthesis",
       "de": "Synthese eines philosophischen Konzepts",
       "from": {"en":"Синтез Философской Концепции","de":"Синтез Философской Концепции"},
-      "where": ["server/services/generation-service.ts:3243"]
+      "where": ["server/services/generation-service.ts:3270"]
     },
     "common.authRequired": {
       "ru": "Требуется авторизация",
       "en": "Authorization required",
       "de": "Anmeldung erforderlich",
       "from": {"en":"Требуется авторизация","de":"Требуется авторизация"},
-      "where": ["server/middleware/auth.ts:217","server/middleware/billing-check.ts:62","server/routes/auth.ts:474","server/ws/handler.ts:585"]
+      "where": ["server/middleware/auth.ts:217","server/middleware/billing-check.ts:62","server/routes/auth.ts:474","server/ws/handler.ts:591"]
     },
     "common.brandPhilo": {
       "ru": "Philo",
@@ -2378,14 +2378,14 @@
       "en": "Cancel",
       "de": "Abbrechen",
       "from": {"en":"Отмена","de":"Отмена"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:331","client/src/components/catalog/SynthesisCard.tsx:397","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:300","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:505","client/src/components/edit/RecommendationsPanel.tsx:667","client/src/components/edit/SubsectionRegenPanel.tsx:458","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/pages/AdminPromptsPage.tsx:1085","client/src/pages/AdminPromptsPage.tsx:1120","client/src/pages/AdminPromptsPage.tsx:1385","client/src/pages/BillingPage.tsx:240","client/src/pages/BillingPage.tsx:365","client/src/pages/BillingPage.tsx:523","client/src/pages/ImportPage.tsx:165","client/src/pages/ImportPage.tsx:431","client/src/pages/ProfilePage.tsx:351"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:331","client/src/components/catalog/SynthesisCard.tsx:397","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:411","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:505","client/src/components/edit/RecommendationsPanel.tsx:667","client/src/components/edit/SubsectionRegenPanel.tsx:458","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/pages/AdminPromptsPage.tsx:1085","client/src/pages/AdminPromptsPage.tsx:1120","client/src/pages/AdminPromptsPage.tsx:1385","client/src/pages/BillingPage.tsx:240","client/src/pages/BillingPage.tsx:365","client/src/pages/BillingPage.tsx:523","client/src/pages/ImportPage.tsx:165","client/src/pages/ImportPage.tsx:431","client/src/pages/ProfilePage.tsx:351"]
     },
     "common.capsule": {
       "ru": "Капсула",
       "en": "Capsule",
       "de": "Kapsel",
       "from": {"en":"Капсула","de":"Капсула"},
-      "where": ["client/src/components/lineage/GenealogyTree.tsx:85","server/services/element-editor.ts:1343"]
+      "where": ["client/src/components/lineage/GenealogyTree.tsx:85","server/services/element-editor.ts:1354"]
     },
     "common.categoryGraph": {
       "ru": "Граф категорий",
@@ -2441,7 +2441,7 @@
       "en": "Create account",
       "de": "Konto erstellen",
       "from": {"en":"Создать аккаунт","de":"Создать аккаунт"},
-      "where": ["client/src/pages/CatalogPage.tsx:342","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:96","client/src/pages/SynthesisPage.tsx:760"]
+      "where": ["client/src/pages/CatalogPage.tsx:342","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:96","client/src/pages/SynthesisPage.tsx:775"]
     },
     "common.creating": {
       "ru": "Создание…",
@@ -2533,7 +2533,7 @@
       "de": "Element nicht gefunden",
       "from": {"en":"Элемент не найден","de":"Элемент не найден"},
       "static": true,
-      "where": ["server/routes/elements.ts:254","server/routes/enrichment.ts:60","server/services/element-versioning.ts:233","server/services/element-versioning.ts:288","server/services/element-versioning.ts:294","server/services/element-versioning.ts:310"]
+      "where": ["server/routes/elements.ts:254","server/routes/enrichment.ts:60","server/services/element-versioning.ts:234","server/services/element-versioning.ts:290","server/services/element-versioning.ts:296","server/services/element-versioning.ts:312"]
     },
     "common.email": {
       "ru": "Email",
@@ -2547,14 +2547,14 @@
       "en": "Error",
       "de": "Fehler",
       "from": {"en":"Ошибка","de":"Ошибка"},
-      "where": ["client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:420","client/src/pages/SynthesisPage.tsx:741"]
+      "where": ["client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:420","client/src/pages/SynthesisPage.tsx:756"]
     },
     "common.fillParameter": {
       "ru": "Заполните параметр.",
       "en": "Fill in the parameter.",
       "de": "Füllen Sie den Parameter aus.",
       "from": {"en":"Заполните параметр.","de":"Заполните параметр."},
-      "where": ["client/src/components/modes/ModeModal.tsx:238","server/routes/modes.ts:199","server/services/mode-service.ts:473"]
+      "where": ["client/src/components/modes/ModeModal.tsx:238","server/routes/modes.ts:199","server/services/mode-service.ts:474"]
     },
     "common.formalized": {
       "ru": "Формализованная",
@@ -2617,7 +2617,7 @@
       "en": "Invalid data",
       "de": "Ungültige Daten",
       "from": {"en":"Невалидные данные","de":"Невалидные данные"},
-      "where": ["server/routes/auth.ts:188","server/routes/auth.ts:240","server/routes/auth.ts:300","server/routes/auth.ts:353","server/routes/auth.ts:462","server/routes/auth.ts:542","server/routes/auth.ts:579","server/routes/auth.ts:686","server/routes/enrichment.ts:93","server/routes/modes.ts:197","server/routes/recommendations.ts:131","server/services/element-editor.ts:216","server/services/element-editor.ts:1683","server/services/element-editor.ts:1715","server/services/element-editor.ts:1738","server/services/element-enrichment.ts:663","server/services/element-enrichment.ts:719"]
+      "where": ["server/routes/auth.ts:188","server/routes/auth.ts:240","server/routes/auth.ts:300","server/routes/auth.ts:353","server/routes/auth.ts:462","server/routes/auth.ts:542","server/routes/auth.ts:579","server/routes/auth.ts:686","server/routes/enrichment.ts:93","server/routes/modes.ts:197","server/routes/recommendations.ts:131","server/services/element-editor.ts:218","server/services/element-editor.ts:1694","server/services/element-editor.ts:1726","server/services/element-editor.ts:1749","server/services/element-enrichment.ts:670","server/services/element-enrichment.ts:726"]
     },
     "common.invalidJson": {
       "ru": "Невалидный JSON",
@@ -2645,7 +2645,7 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:276","client/src/components/edit/EditSectionCard.tsx:168","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:446","client/src/pages/AdminPromptsPage.tsx:769","client/src/pages/AdminPromptsPage.tsx:1012","client/src/pages/AdminPromptsPage.tsx:1335","client/src/pages/AdminPromptsPage.tsx:1424","client/src/pages/BillingPage.tsx:324","client/src/pages/BillingPage.tsx:668","client/src/pages/SynthesisPage.tsx:791"]
+      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:367","client/src/components/document/SectionView.tsx:383","client/src/components/edit/EditSectionCard.tsx:168","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:446","client/src/pages/AdminPromptsPage.tsx:769","client/src/pages/AdminPromptsPage.tsx:1012","client/src/pages/AdminPromptsPage.tsx:1335","client/src/pages/AdminPromptsPage.tsx:1424","client/src/pages/BillingPage.tsx:324","client/src/pages/BillingPage.tsx:668","client/src/pages/SynthesisPage.tsx:806"]
     },
     "common.logIn": {
       "ru": "Войти",
@@ -2667,7 +2667,7 @@
       "de": "Kein Zugriff auf die Synthese",
       "from": {"en":"Нет доступа к синтезу","de":"Нет доступа к синтезу"},
       "static": true,
-      "where": ["server/routes/generation.ts:79","server/routes/generation.ts:210","server/routes/plans.ts:213","server/routes/syntheses.ts:266","server/services/edit-planner.ts:952","server/services/generation-service.ts:867","server/services/generation-service.ts:906","server/services/pause-resume-service.ts:542","server/services/pause-resume-service.ts:924","server/ws/handler.ts:173","server/ws/handler.ts:464","server/ws/handler.ts:491"]
+      "where": ["server/routes/generation.ts:79","server/routes/generation.ts:210","server/routes/plans.ts:213","server/routes/syntheses.ts:266","server/services/edit-planner.ts:952","server/services/generation-service.ts:868","server/services/generation-service.ts:907","server/services/pause-resume-service.ts:542","server/services/pause-resume-service.ts:925","server/ws/handler.ts:173","server/ws/handler.ts:470","server/ws/handler.ts:497"]
     },
     "common.noveltyDegree": {
       "ru": "Степень новизны",
@@ -2695,7 +2695,7 @@
       "en": "Plan not found",
       "de": "Plan nicht gefunden",
       "from": {"en":"План не найден","de":"План не найден"},
-      "where": ["server/routes/plans.ts:115","server/routes/plans.ts:132","server/routes/plans.ts:156","server/routes/plans.ts:279","server/services/edit-planner.ts:1015","server/services/edit-planner.ts:1207","server/services/pause-resume-service.ts:946","server/services/plan-executor.ts:810"]
+      "where": ["server/routes/plans.ts:115","server/routes/plans.ts:132","server/routes/plans.ts:156","server/routes/plans.ts:279","server/services/edit-planner.ts:1015","server/services/edit-planner.ts:1207","server/services/pause-resume-service.ts:947","server/services/plan-executor.ts:810"]
     },
     "common.prehorizon": {
       "ru": "Предгоризонт",
@@ -2730,21 +2730,21 @@
       "en": "Save",
       "de": "Speichern",
       "from": {"en":"Сохранить","de":"Сохранить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:320","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:296","client/src/components/edit/ElementEditor.tsx:497","client/src/pages/AdminPromptsPage.tsx:1082","client/src/pages/BillingPage.tsx:408","client/src/pages/ProfilePage.tsx:215"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:320","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:407","client/src/components/edit/ElementEditor.tsx:497","client/src/pages/AdminPromptsPage.tsx:1082","client/src/pages/BillingPage.tsx:408","client/src/pages/ProfilePage.tsx:215"]
     },
     "common.saving": {
       "ru": "Сохранение…",
       "en": "Saving…",
       "de": "Wird gespeichert…",
       "from": {"en":"Сохранение…","de":"Сохранение…"},
-      "where": ["client/src/components/document/SectionView.tsx:296","client/src/components/edit/ElementEditor.tsx:497","client/src/components/synthesis/PauseModal.tsx:552","client/src/pages/ProfilePage.tsx:215"]
+      "where": ["client/src/components/document/SectionView.tsx:407","client/src/components/edit/ElementEditor.tsx:497","client/src/components/synthesis/PauseModal.tsx:552","client/src/pages/ProfilePage.tsx:215"]
     },
     "common.sectionNotFound": {
       "ru": "Раздел не найден",
       "en": "Section not found",
       "de": "Abschnitt nicht gefunden",
       "from": {"en":"Раздел не найден","de":"Раздел не найден"},
-      "where": ["server/routes/sections.ts:206","server/services/element-editor.ts:1653","server/services/element-editor.ts:1700","server/services/recommendations.ts:1248"]
+      "where": ["server/routes/sections.ts:206","server/services/element-editor.ts:1664","server/services/element-editor.ts:1711","server/services/recommendations.ts:1248"]
     },
     "common.sectionsGen": {
       "ru": "разделов",
@@ -2766,7 +2766,7 @@
       "de": "Synthese nicht gefunden",
       "from": {"en":"Синтез не найден","de":"Синтез не найден"},
       "static": true,
-      "where": ["server/routes/generation.ts:70","server/routes/generation.ts:77","server/routes/generation.ts:185","server/routes/generation.ts:310","server/routes/plans.ts:79","server/routes/plans.ts:91","server/routes/plans.ts:185","server/routes/syntheses.ts:262","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1331","server/services/export/common.ts:50","server/services/generation-service.ts:657","server/services/generation-service.ts:3182","server/services/pause-resume-service.ts:540","server/services/pause-resume-service.ts:922","server/services/recommendation-planner.ts:456","server/ws/handler.ts:149","server/ws/handler.ts:164","server/ws/handler.ts:462","server/ws/handler.ts:483","server/ws/handler.ts:489"]
+      "where": ["server/routes/generation.ts:70","server/routes/generation.ts:77","server/routes/generation.ts:185","server/routes/generation.ts:310","server/routes/plans.ts:79","server/routes/plans.ts:91","server/routes/plans.ts:185","server/routes/syntheses.ts:262","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1342","server/services/export/common.ts:50","server/services/generation-service.ts:658","server/services/generation-service.ts:3209","server/services/pause-resume-service.ts:540","server/services/pause-resume-service.ts:923","server/services/recommendation-planner.ts:456","server/ws/handler.ts:149","server/ws/handler.ts:164","server/ws/handler.ts:468","server/ws/handler.ts:489","server/ws/handler.ts:495"]
     },
     "common.term": {
       "ru": "Термин",
@@ -4288,98 +4288,105 @@
       "en": "Showcase",
       "de": "Schaufenster",
       "from": {"en":"Витрина","de":"Витрина"},
-      "where": ["client/src/components/document/DocumentView.tsx:93"]
+      "where": ["client/src/components/document/DocumentView.tsx:96"]
     },
     "document.documentView.showcaseNote": {
       "ru": "Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора.",
       "en": "The author has opened only the showcase of this concept: the capsule, metadata and participants. Section bodies, the category graph, theses and glossary are closed to everyone except the author.",
       "de": "Der Autor hat nur das Schaufenster dieses Konzepts geöffnet: Kapsel, Metadaten und Teilnehmer. Abschnittstexte, Kategoriegraph, Thesen und Glossar sind für alle außer dem Autor geschlossen.",
       "from": {"en":"Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора.","de":"Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора."},
-      "where": ["client/src/components/document/DocumentView.tsx:94"]
+      "where": ["client/src/components/document/DocumentView.tsx:97"]
     },
     "document.sectionView.edit": {
       "ru": "Правка",
       "en": "Edit",
       "de": "Bearbeiten",
       "from": {"en":"Правка","de":"Правка"},
-      "where": ["client/src/components/document/SectionView.tsx:147"]
+      "where": ["client/src/components/document/SectionView.tsx:185"]
     },
     "document.sectionView.editSubsection": {
       "ru": "Править подраздел",
       "en": "Edit subsection",
       "de": "Unterabschnitt bearbeiten",
       "from": {"en":"Править подраздел","de":"Править подраздел"},
-      "where": ["client/src/components/document/SectionView.tsx:197"]
+      "where": ["client/src/components/document/SectionView.tsx:235"]
     },
     "document.sectionView.editTerm": {
       "ru": "Редактировать термин",
       "en": "Edit term",
       "de": "Begriff bearbeiten",
       "from": {"en":"Редактировать термин","de":"Редактировать термин"},
-      "where": ["client/src/components/document/SectionView.tsx:158"]
+      "where": ["client/src/components/document/SectionView.tsx:196"]
     },
     "document.sectionView.editThesis": {
       "ru": "Редактировать тезис",
       "en": "Edit thesis",
       "de": "These bearbeiten",
       "from": {"en":"Редактировать тезис","de":"Редактировать тезис"},
-      "where": ["client/src/components/document/SectionView.tsx:158"]
+      "where": ["client/src/components/document/SectionView.tsx:196"]
     },
     "document.sectionView.edited": {
       "ru": "⟳ изменён",
       "en": "⟳ edited",
       "de": "⟳ geändert",
       "from": {"en":"⟳ изменён","de":"⟳ изменён"},
-      "where": ["client/src/components/document/SectionView.tsx:500"]
+      "where": ["client/src/components/document/SectionView.tsx:704"]
     },
     "document.sectionView.editedHint": {
       "ru": "Раздел изменён после генерации: перегенерация, правка таблицы или подраздела",
       "en": "Section changed after generation: regeneration, a table edit or a subsection edit",
       "de": "Abschnitt nach der Generierung geändert: Neugenerierung, Tabellen- oder Unterabschnittsänderung",
       "from": {"en":"Раздел изменён после генерации: перегенерация, правка таблицы или подраздела","de":"Раздел изменён после генерации: перегенерация, правка таблицы или подраздела"},
-      "where": ["client/src/components/document/SectionView.tsx:497"]
+      "where": ["client/src/components/document/SectionView.tsx:701"]
     },
     "document.sectionView.gotIt": {
       "ru": "Понятно",
       "en": "Got it",
       "de": "Verstanden",
       "from": {"en":"Понятно","de":"Понятно"},
-      "where": ["client/src/components/document/SectionView.tsx:254"]
+      "where": ["client/src/components/document/SectionView.tsx:292"]
     },
     "document.sectionView.headingNotEditable": {
       "ru": "Заголовок подраздела здесь не правится.",
       "en": "The subsection heading is not edited here.",
       "de": "Die Überschrift des Unterabschnitts wird hier nicht bearbeitet.",
       "from": {"en":"Заголовок подраздела здесь не правится.","de":"Заголовок подраздела здесь не правится."},
-      "where": ["client/src/components/document/SectionView.tsx:283"]
+      "where": ["client/src/components/document/SectionView.tsx:392"]
     },
     "document.sectionView.keysHint": {
       "ru": "Esc — отмена · Ctrl+Enter — сохранить",
       "en": "Esc — cancel · Ctrl+Enter — save",
       "de": "Esc — abbrechen · Ctrl+Enter — speichern",
       "from": {"en":"Esc — отмена · Ctrl+Enter — сохранить","de":"Esc — отмена · Ctrl+Enter — сохранить"},
-      "where": ["client/src/components/document/SectionView.tsx:306"]
+      "where": ["client/src/components/document/SectionView.tsx:417"]
     },
     "document.sectionView.markupHelp": {
       "ru": "Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. ",
       "en": "Editable markup: <p> — paragraph, <strong> — emphasis, <ul>/<ol> with <li> — lists, <h5> — subheading, <table> — table. ",
       "de": "Bearbeitet wird das Markup: <p> — Absatz, <strong> — Hervorhebung, <ul>/<ol> mit <li> — Listen, <h5> — Zwischenüberschrift, <table> — Tabelle. ",
       "from": {"en":"Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. ","de":"Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. "},
-      "where": ["client/src/components/document/SectionView.tsx:282"]
+      "where": ["client/src/components/document/SectionView.tsx:391"]
     },
     "document.sectionView.nestedSubsectionLine": {
       "ru": " Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять.",
       "en": " The line “subsection N” marks a nested subsection: it has its own editing, do not delete the line.",
       "de": " Die Zeile „Unterabschnitt N“ markiert die Stelle eines eingebetteten Unterabschnitts: er wird separat bearbeitet, die Zeile nicht löschen.",
       "from": {"en":" Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять.","de":" Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять."},
-      "where": ["client/src/components/document/SectionView.tsx:285"]
+      "where": ["client/src/components/document/SectionView.tsx:396"]
+    },
+    "document.sectionView.nestedSubsectionPlaque": {
+      "ru": " Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить.",
+      "en": " The “nested subsection” plaque marks a nested subsection: it has its own editor; the plaque cannot be deleted or moved.",
+      "de": " Die Plakette „verschachtelter Unterabschnitt“ markiert einen verschachtelten Unterabschnitt: er wird gesondert bearbeitet; die Plakette kann weder gelöscht noch verschoben werden.",
+      "from": {"en":" Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить.","de":" Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить."},
+      "where": ["client/src/components/document/SectionView.tsx:395"]
     },
     "document.sectionView.parseWarningsLead": {
       "ru": "Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте.",
       "en": "What the service noticed while accepting the model's answer: substitutions during analysis into tables (a value recognised by position or replaced with a default) and omissions — subsections missing from the answer. The section is kept as is; check what is named below and regenerate if needed.",
       "de": "Was der Dienst beim Annehmen der Modellantwort bemerkt hat: Ersetzungen bei der Auswertung in Tabellen (ein Wert nach Position erkannt oder durch einen Standardwert ersetzt) und Auslassungen — Unterabschnitte, die in der Antwort fehlten. Der Abschnitt bleibt, wie er ist; prüfen Sie das unten Genannte und generieren Sie bei Bedarf neu.",
       "from": {"en":"Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте.","de":"Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте."},
-      "where": ["client/src/components/document/SectionView.tsx:520"]
+      "where": ["client/src/components/document/SectionView.tsx:729"]
     },
     "document.sectionView.parsedWithLosses": {
       "ru": "⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})",
@@ -4387,49 +4394,91 @@
       "de": "⚠ Anmerkungen zur letzten Generierung ({n, plural, one {# Anmerkung} other {# Anmerkungen}})",
       "from": {"en":"⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})","de":"⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})"},
       "params": {"n":""},
-      "where": ["client/src/components/document/SectionView.tsx:516"]
+      "where": ["client/src/components/document/SectionView.tsx:725"]
+    },
+    "document.sectionView.richBodyLabel": {
+      "ru": "Текст подраздела",
+      "en": "Subsection text",
+      "de": "Text des Unterabschnitts",
+      "from": {"en":"Текст подраздела","de":"Текст подраздела"},
+      "where": ["client/src/components/document/SectionView.tsx:366"]
+    },
+    "document.sectionView.richHelp": {
+      "ru": "Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. ",
+      "en": "Edit the text in place: the panel buttons insert a paragraph, subheading, emphasis, lists, a table, callouts and risk labels — exactly what the document markup allows; pasted content is reduced to the same set. ",
+      "de": "Der Text wird an Ort und Stelle bearbeitet: Die Schaltflächen setzen Absatz, Zwischenüberschrift, Hervorhebung, Listen, Tabelle, Hinweiskästen und Risikomarken — genau das, was die Dokumentauszeichnung zulässt; Eingefügtes wird auf dieselbe Menge zurückgeführt. ",
+      "from": {"en":"Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. ","de":"Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. "},
+      "where": ["client/src/components/document/SectionView.tsx:390"]
     },
     "document.sectionView.savedServerFixedMarkup": {
       "ru": "Сохранено. Сервер поправил разметку:",
       "en": "Saved. The server corrected the markup:",
       "de": "Gespeichert. Der Server hat das Markup korrigiert:",
       "from": {"en":"Сохранено. Сервер поправил разметку:","de":"Сохранено. Сервер поправил разметку:"},
-      "where": ["client/src/components/document/SectionView.tsx:248"]
+      "where": ["client/src/components/document/SectionView.tsx:286"]
     },
     "document.sectionView.savedWithNotes": {
       "ru": "Сохранено.",
       "en": "Saved.",
       "de": "Gespeichert.",
       "from": {"en":"Сохранено.","de":"Сохранено."},
-      "where": ["client/src/components/document/SectionView.tsx:240"]
+      "where": ["client/src/components/document/SectionView.tsx:278"]
     },
     "document.sectionView.sectionExtraContext": {
       "ru": "Дополнительный контекст раздела",
       "en": "Additional section context",
       "de": "Zusätzlicher Kontext des Abschnitts",
       "from": {"en":"Дополнительный контекст раздела","de":"Дополнительный контекст раздела"},
-      "where": ["client/src/components/document/SectionView.tsx:537"]
+      "where": ["client/src/components/document/SectionView.tsx:746"]
     },
     "document.sectionView.serverFixedMarkup": {
       "ru": "Сервер поправил разметку:",
       "en": "The server adjusted the markup:",
       "de": "Der Server hat das Markup angepasst:",
       "from": {"en":"Сервер поправил разметку:","de":"Сервер поправил разметку:"},
-      "where": ["client/src/components/document/SectionView.tsx:247"]
+      "where": ["client/src/components/document/SectionView.tsx:285"]
     },
     "document.sectionView.subsectionMarkup": {
       "ru": "Разметка подраздела",
       "en": "Subsection markup",
       "de": "Markup des Unterabschnitts",
       "from": {"en":"Разметка подраздела","de":"Разметка подраздела"},
-      "where": ["client/src/components/document/SectionView.tsx:265"]
+      "where": ["client/src/components/document/SectionView.tsx:371"]
     },
     "document.sectionView.toContents": {
       "ru": "К содержанию",
       "en": "To contents",
       "de": "Zum Inhalt",
       "from": {"en":"К содержанию","de":"К содержанию"},
-      "where": ["client/src/components/document/SectionView.tsx:317"]
+      "where": ["client/src/components/document/SectionView.tsx:428"]
+    },
+    "document.sectionView.viewMarkup": {
+      "ru": "Разметка",
+      "en": "Markup",
+      "de": "Auszeichnung",
+      "from": {"en":"Разметка","de":"Разметка"},
+      "where": ["client/src/components/document/SectionView.tsx:349"]
+    },
+    "document.sectionView.viewMarkupHint": {
+      "ru": "Показать разметку подраздела полем (прежний вид правки)",
+      "en": "Show the subsection markup in a field (the previous editing view)",
+      "de": "Auszeichnung des Unterabschnitts als Feld anzeigen (bisherige Bearbeitungsansicht)",
+      "from": {"en":"Показать разметку подраздела полем (прежний вид правки)","de":"Показать разметку подраздела полем (прежний вид правки)"},
+      "where": ["client/src/components/document/SectionView.tsx:353"]
+    },
+    "document.sectionView.viewRich": {
+      "ru": "Текст",
+      "en": "Text",
+      "de": "Text",
+      "from": {"en":"Текст","de":"Текст"},
+      "where": ["client/src/components/document/SectionView.tsx:349"]
+    },
+    "document.sectionView.viewRichHint": {
+      "ru": "Вернуться к правке текста на месте",
+      "en": "Back to editing the text in place",
+      "de": "Zurück zur Bearbeitung des Textes an Ort und Stelle",
+      "from": {"en":"Вернуться к правке текста на месте","de":"Вернуться к правке текста на месте"},
+      "where": ["client/src/components/document/SectionView.tsx:354"]
     },
     "document.tableOfContents.contents": {
       "ru": "Содержание",
@@ -7645,7 +7694,7 @@
       "de": "Nachrichtenlimit überschritten; wiederholen Sie in {retryAfter} s.",
       "from": {"en":"Превышен лимит сообщений; повторите через {retryAfter} с.","de":"Превышен лимит сообщений; повторите через {retryAfter} с."},
       "params": {"retryAfter":"msg.retryAfter"},
-      "where": ["client/src/hooks/useStreamingGeneration.ts:320"]
+      "where": ["client/src/hooks/useStreamingGeneration.ts:330"]
     },
     "hooks.useTransformStream.otherOperation": {
       "ru": "Идёт другая операция (генерация, режим, обогащение или трансформация) — дождитесь её завершения",
@@ -9672,42 +9721,42 @@
       "en": "Category not found",
       "de": "Kategorie nicht gefunden",
       "from": {"en":"Категория не найдена","de":"Категория не найдена"},
-      "where": ["server/services/element-editor.ts:314","server/services/element-editor.ts:617"]
+      "where": ["server/services/element-editor.ts:316","server/services/element-editor.ts:619"]
     },
     "server.elementEditor.edgeNotCreated": {
       "ru": "Связь не создана",
       "en": "The relation was not created",
       "de": "Beziehung nicht erstellt",
       "from": {"en":"Связь не создана","de":"Связь не создана"},
-      "where": ["server/services/element-editor.ts:839"]
+      "where": ["server/services/element-editor.ts:841"]
     },
     "server.elementEditor.edgeNotFound": {
       "ru": "Связь не найдена",
       "en": "Relation not found",
       "de": "Beziehung nicht gefunden",
       "from": {"en":"Связь не найдена","de":"Связь не найдена"},
-      "where": ["server/services/element-editor.ts:328","server/services/element-editor.ts:727"]
+      "where": ["server/services/element-editor.ts:330","server/services/element-editor.ts:729"]
     },
     "server.elementEditor.htmlStringExpected": {
       "ru": "ожидается непустая HTML-строка",
       "en": "a non-empty HTML string is expected",
       "de": "erwartet wird eine nichtleere HTML-Zeichenkette",
       "from": {"en":"ожидается непустая HTML-строка","de":"ожидается непустая HTML-строка"},
-      "where": ["server/services/element-editor.ts:1323"]
+      "where": ["server/services/element-editor.ts:1330","server/services/element-editor.ts:1335"]
     },
     "server.elementEditor.markupStringExpected": {
       "ru": "ожидается строка с разметкой подраздела",
       "en": "a string with the subsection markup is expected",
       "de": "erwartet wird eine Zeichenkette mit dem Markup des Unterabschnitts",
       "from": {"en":"ожидается строка с разметкой подраздела","de":"ожидается строка с разметкой подраздела"},
-      "where": ["server/services/element-editor.ts:1684"]
+      "where": ["server/services/element-editor.ts:1695"]
     },
     "server.elementEditor.nameTooShort": {
       "ru": "слишком короткое имя",
       "en": "name too short",
       "de": "Name zu kurz",
       "from": {"en":"слишком короткое имя","de":"слишком короткое имя"},
-      "where": ["server/services/element-editor.ts:1102"]
+      "where": ["server/services/element-editor.ts:1104"]
     },
     "server.elementEditor.newParagraphNotThesis": {
       "ru": "Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)",
@@ -9715,21 +9764,21 @@
       "de": "Der Absatz „{paragraph}“ ist keiner These zugeordnet — er wurde nicht in die Thesenliste aufgenommen (eine neue These entsteht durch Neugenerierung des Abschnitts)",
       "from": {"en":"Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)","de":"Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)"},
       "params": {"paragraph":""},
-      "where": ["server/services/element-editor.ts:1620"]
+      "where": ["server/services/element-editor.ts:1631"]
     },
     "server.elementEditor.noFieldsToUpdate": {
       "ru": "нет ни одного поля для обновления",
       "en": "there are no fields to update",
       "de": "kein einziges Feld zum Aktualisieren",
       "from": {"en":"нет ни одного поля для обновления","de":"нет ни одного поля для обновления"},
-      "where": ["server/services/element-editor.ts:604","server/services/element-editor.ts:714","server/services/element-editor.ts:924","server/services/element-editor.ts:1045"]
+      "where": ["server/services/element-editor.ts:606","server/services/element-editor.ts:716","server/services/element-editor.ts:926","server/services/element-editor.ts:1047"]
     },
     "server.elementEditor.objectExpected": {
       "ru": "ожидается объект",
       "en": "an object is expected",
       "de": "erwartet wird ein Objekt",
       "from": {"en":"ожидается объект","de":"ожидается объект"},
-      "where": ["server/services/element-editor.ts:575","server/services/element-editor.ts:691","server/services/element-editor.ts:769","server/services/element-editor.ts:907","server/services/element-editor.ts:1029"]
+      "where": ["server/services/element-editor.ts:577","server/services/element-editor.ts:693","server/services/element-editor.ts:771","server/services/element-editor.ts:909","server/services/element-editor.ts:1031"]
     },
     "server.elementEditor.paragraphWithoutThesis": {
       "ru": "Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён",
@@ -9737,14 +9786,14 @@
       "de": "Der Absatz „{paragraph}“ wurde geändert, ist aber keiner These der Liste zugeordnet — die Thesenliste wurde nicht aktualisiert",
       "from": {"en":"Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён","de":"Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён"},
       "params": {"paragraph":""},
-      "where": ["server/services/element-editor.ts:1601"]
+      "where": ["server/services/element-editor.ts:1612"]
     },
     "server.elementEditor.sameAsOldName": {
       "ru": "совпадает с oldName",
       "en": "matches oldName",
       "de": "stimmt mit oldName überein",
       "from": {"en":"совпадает с oldName","de":"совпадает с oldName"},
-      "where": ["server/services/element-editor.ts:1100"]
+      "where": ["server/services/element-editor.ts:1102"]
     },
     "server.elementEditor.subsectionNotFound": {
       "ru": "Подраздел «{name}» не найден",
@@ -9752,21 +9801,21 @@
       "de": "Unterabschnitt „{name}“ nicht gefunden",
       "from": {"en":"Подраздел «{name}» не найден","de":"Подраздел «{name}» не найден"},
       "params": {"name":"name"},
-      "where": ["server/services/element-editor.ts:1629"]
+      "where": ["server/services/element-editor.ts:1640"]
     },
     "server.elementEditor.subsectionsChanged": {
       "ru": "правка изменила состав подразделов раздела — не сохранено",
       "en": "the edit changed the set of the section's subsections — not saved",
       "de": "die Änderung hat die Zusammensetzung der Unterabschnitte des Abschnitts verändert — nicht gespeichert",
       "from": {"en":"правка изменила состав подразделов раздела — не сохранено","de":"правка изменила состав подразделов раздела — не сохранено"},
-      "where": ["server/services/element-editor.ts:1739"]
+      "where": ["server/services/element-editor.ts:1750"]
     },
     "server.elementEditor.termNotFound": {
       "ru": "Термин не найден",
       "en": "Term not found",
       "de": "Begriff nicht gefunden",
       "from": {"en":"Термин не найден","de":"Термин не найден"},
-      "where": ["server/services/element-editor.ts:356","server/services/element-editor.ts:1058"]
+      "where": ["server/services/element-editor.ts:358","server/services/element-editor.ts:1060"]
     },
     "server.elementEditor.thesisFormulationFuzzy": {
       "ru": "Формулировка тезиса {thesis} в прозе изменена, но с тезисом она сведена нечётко — формулировка в списке тезисов не обновлена (правьте её карандашом ✎ в строке сводной таблицы)",
@@ -9774,14 +9823,14 @@
       "de": "Die Formulierung der These {thesis} wurde im Fließtext geändert, ist der These aber nur unscharf zugeordnet — die Formulierung in der Thesenliste wurde nicht aktualisiert (bearbeiten Sie sie mit dem Stift ✎ in der Zeile der Übersichtstabelle)",
       "from": {"en":"Формулировка тезиса {thesis} в прозе изменена, но с тезисом она сведена нечётко — формулировка в списке тезисов не обновлена (правьте её карандашом ✎ в строке сводной таблицы)","de":"Формулировка тезиса {thesis} в прозе изменена, но с тезисом она сведена нечётко — формулировка в списке тезисов не обновлена (правьте её карандашом ✎ в строке сводной таблицы)"},
       "params": {"thesis":""},
-      "where": ["server/services/element-editor.ts:1611"]
+      "where": ["server/services/element-editor.ts:1622"]
     },
     "server.elementEditor.thesisNotFound": {
       "ru": "Тезис не найден",
       "en": "Thesis not found",
       "de": "These nicht gefunden",
       "from": {"en":"Тезис не найден","de":"Тезис не найден"},
-      "where": ["server/services/element-editor.ts:342","server/services/element-editor.ts:937"]
+      "where": ["server/services/element-editor.ts:344","server/services/element-editor.ts:939"]
     },
     "server.elementEditor.thesisParagraphLost": {
       "ru": "Абзац тезиса {thesis} после правки не найден — тезис в списке тезисов не изменён и не удалён",
@@ -9789,7 +9838,7 @@
       "de": "Der Absatz der These {thesis} wurde nach der Bearbeitung nicht gefunden — die These in der Thesenliste wurde weder geändert noch gelöscht",
       "from": {"en":"Абзац тезиса {thesis} после правки не найден — тезис в списке тезисов не изменён и не удалён","de":"Абзац тезиса {thesis} после правки не найден — тезис в списке тезисов не изменён и не удалён"},
       "params": {"thesis":""},
-      "where": ["server/services/element-editor.ts:1591"]
+      "where": ["server/services/element-editor.ts:1602"]
     },
     "server.elementEditor.titleKeptRenamed": {
       "ru": "Название в разделе теперь «{sectionTitle}», но концепция названа отдельно («{title}») — её название не тронуто",
@@ -9797,7 +9846,7 @@
       "de": "Der Titel im Abschnitt lautet jetzt „{sectionTitle}“, das Konzept wurde jedoch separat benannt („{title}“) — sein Titel wurde nicht geändert",
       "from": {"en":"Название в разделе теперь «{sectionTitle}», но концепция названа отдельно («{title}») — её название не тронуто","de":"Название в разделе теперь «{sectionTitle}», но концепция названа отдельно («{title}») — её название не тронуто"},
       "params": {"sectionTitle":"","title":""},
-      "where": ["server/services/element-editor.ts:1821"]
+      "where": ["server/services/element-editor.ts:1832"]
     },
     "server.elementEditor.titleTooLong": {
       "ru": "Название в разделе длиннее {max} знаков — название концепции не обновлено",
@@ -9805,7 +9854,7 @@
       "de": "Der Titel im Abschnitt ist länger als {max} Zeichen — der Titel des Konzepts wurde nicht aktualisiert",
       "from": {"en":"Название в разделе длиннее {max} знаков — название концепции не обновлено","de":"Название в разделе длиннее {max} знаков — название концепции не обновлено"},
       "params": {"max":""},
-      "where": ["server/services/element-editor.ts:1814"]
+      "where": ["server/services/element-editor.ts:1825"]
     },
     "server.elementEnrichment.categoryNotFound": {
       "ru": "Категория не найдена",
@@ -9826,7 +9875,7 @@
       "en": "Unknown category enrichment type",
       "de": "Unbekannter Anreicherungstyp für Kategorien",
       "from": {"en":"Неизвестный тип обогащения категории","de":"Неизвестный тип обогащения категории"},
-      "where": ["server/services/element-enrichment.ts:530"]
+      "where": ["server/services/element-enrichment.ts:537"]
     },
     "server.elementEnrichment.unknownCategoryEnrichmentOf": {
       "ru": "Неизвестный тип обогащения категории: {enrichmentType}",
@@ -9834,21 +9883,21 @@
       "de": "Unbekannter Anreicherungstyp für Kategorien: {enrichmentType}",
       "from": {"en":"Неизвестный тип обогащения категории: {enrichmentType}","de":"Неизвестный тип обогащения категории: {enrichmentType}"},
       "params": {"enrichmentType":"enrichmentType"},
-      "where": ["server/services/element-enrichment.ts:816"]
+      "where": ["server/services/element-enrichment.ts:823"]
     },
     "server.elementEnrichment.unknownCharacteristic": {
       "ru": "Неизвестная характеристика",
       "en": "Unknown characteristic",
       "de": "Unbekanntes Merkmal",
       "from": {"en":"Неизвестная характеристика","de":"Неизвестная характеристика"},
-      "where": ["server/services/element-enrichment.ts:714"]
+      "where": ["server/services/element-enrichment.ts:721"]
     },
     "server.elementEnrichment.unknownEdgeEnrichment": {
       "ru": "Неизвестный тип обогащения связи",
       "en": "Unknown relation enrichment type",
       "de": "Unbekannter Anreicherungstyp für Beziehungen",
       "from": {"en":"Неизвестный тип обогащения связи","de":"Неизвестный тип обогащения связи"},
-      "where": ["server/services/element-enrichment.ts:580"]
+      "where": ["server/services/element-enrichment.ts:587"]
     },
     "server.elementEnrichment.unknownEdgeEnrichmentOf": {
       "ru": "Неизвестный тип обогащения связи: {enrichmentType}",
@@ -9856,7 +9905,7 @@
       "de": "Unbekannter Anreicherungstyp für Beziehungen: {enrichmentType}",
       "from": {"en":"Неизвестный тип обогащения связи: {enrichmentType}","de":"Неизвестный тип обогащения связи: {enrichmentType}"},
       "params": {"enrichmentType":"enrichmentType"},
-      "where": ["server/services/element-enrichment.ts:820"]
+      "where": ["server/services/element-enrichment.ts:827"]
     },
     "server.elementStep.elementNotFound": {
       "ru": "Элемент шага не найден: {kind} {elementId}",
@@ -9968,14 +10017,14 @@
       "en": "element-versioning: insert without returning",
       "de": "element-versioning: insert ohne returning",
       "from": {"en":"element-versioning: insert без returning","de":"element-versioning: insert без returning"},
-      "where": ["server/services/element-versioning.ts:131"]
+      "where": ["server/services/element-versioning.ts:132"]
     },
     "server.elementVersioning.versionNotFound": {
       "ru": "Версия не найдена",
       "en": "Version not found",
       "de": "Version nicht gefunden",
       "from": {"en":"Версия не найдена","de":"Версия не найдена"},
-      "where": ["server/services/element-versioning.ts:278"]
+      "where": ["server/services/element-versioning.ts:279"]
     },
     "server.export.pngExporter.core": {
       "ru": "Ядро",
@@ -10003,7 +10052,7 @@
       "en": "Generation is already running for this synthesis",
       "de": "Für diese Synthese läuft bereits eine Generierung",
       "from": {"en":"Генерация уже запущена для этого синтеза","de":"Генерация уже запущена для этого синтеза"},
-      "where": ["server/services/generation-service.ts:817"]
+      "where": ["server/services/generation-service.ts:818"]
     },
     "server.generationService.concurrencyLimit": {
       "ru": "Не более {concurrentGenerations} одновременных генераций",
@@ -10011,7 +10060,7 @@
       "de": "Höchstens {concurrentGenerations} gleichzeitige Generierungen",
       "from": {"en":"Не более {concurrentGenerations} одновременных генераций","de":"Не более {concurrentGenerations} одновременных генераций"},
       "params": {"concurrentGenerations":"env.rateLimit.concurrentGenerations"},
-      "where": ["server/services/generation-service.ts:732"]
+      "where": ["server/services/generation-service.ts:733"]
     },
     "server.generationService.noStructuredParts": {
       "ru": "Раздел «{sectionKey}» не имеет структурированных parts.",
@@ -10019,7 +10068,7 @@
       "de": "Der Abschnitt „{sectionKey}“ hat keine strukturierten parts.",
       "from": {"en":"Раздел «{sectionKey}» не имеет структурированных parts.","de":"Раздел «{sectionKey}» не имеет структурированных parts."},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2467"]
+      "where": ["server/services/generation-service.ts:2492"]
     },
     "server.generationService.sectionExists": {
       "ru": "Раздел «{sectionKey}» уже есть в документе",
@@ -10027,7 +10076,7 @@
       "de": "Der Abschnitt „{sectionKey}“ ist bereits im Dokument",
       "from": {"en":"Раздел «{sectionKey}» уже есть в документе","de":"Раздел «{sectionKey}» уже есть в документе"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2931"]
+      "where": ["server/services/generation-service.ts:2957"]
     },
     "server.generationService.sectionMissing": {
       "ru": "Раздел «{sectionKey}» отсутствует в документе",
@@ -10035,7 +10084,7 @@
       "de": "Der Abschnitt „{sectionKey}“ fehlt im Dokument",
       "from": {"en":"Раздел «{sectionKey}» отсутствует в документе","de":"Раздел «{sectionKey}» отсутствует в документе"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2049"]
+      "where": ["server/services/generation-service.ts:2073"]
     },
     "server.generationService.sectionNotInDefs": {
       "ru": "Раздел «{sectionKey}» не найден в определениях.",
@@ -10043,7 +10092,7 @@
       "de": "Der Abschnitt „{sectionKey}“ wurde in den Definitionen nicht gefunden.",
       "from": {"en":"Раздел «{sectionKey}» не найден в определениях.","de":"Раздел «{sectionKey}» не найден в определениях."},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2094","server/services/generation-service.ts:2736","server/services/generation-service.ts:2964"]
+      "where": ["server/services/generation-service.ts:2118","server/services/generation-service.ts:2762","server/services/generation-service.ts:2990"]
     },
     "server.generationService.sectionUndeletable": {
       "ru": "Раздел «{sectionKey}» нельзя удалить",
@@ -10051,14 +10100,14 @@
       "de": "Der Abschnitt „{sectionKey}“ kann nicht gelöscht werden",
       "from": {"en":"Раздел «{sectionKey}» нельзя удалить","de":"Раздел «{sectionKey}» нельзя удалить"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:3187"]
+      "where": ["server/services/generation-service.ts:3214"]
     },
     "server.generationService.unknownError": {
       "ru": "неизвестная ошибка",
       "en": "unknown error",
       "de": "unbekannter Fehler",
       "from": {"en":"неизвестная ошибка","de":"неизвестная ошибка"},
-      "where": ["server/services/generation-service.ts:1284","server/services/generation-service.ts:1884"]
+      "where": ["server/services/generation-service.ts:1285","server/services/generation-service.ts:1890"]
     },
     "server.generationService.unknownSection": {
       "ru": "Неизвестный раздел «{sectionKey}»",
@@ -10066,7 +10115,7 @@
       "de": "Unbekannter Abschnitt „{sectionKey}“",
       "from": {"en":"Неизвестный раздел «{sectionKey}»","de":"Неизвестный раздел «{sectionKey}»"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2937"]
+      "where": ["server/services/generation-service.ts:2963"]
     },
     "server.importService.depthUnrecognized": {
       "ru": "Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию.",
@@ -10074,14 +10123,14 @@
       "de": "Tiefe nicht erkannt (gefunden: „{depthDisplay}“). Standard „Standard“ eingesetzt.",
       "from": {"en":"Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию.","de":"Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию."},
       "params": {"depthDisplay":"depthDisplay || \"—\""},
-      "where": ["server/services/import-service.ts:696"]
+      "where": ["server/services/import-service.ts:698"]
     },
     "server.importService.docOutputMissing": {
       "ru": "Не найден элемент #docOutput. Это не файл PhiloSynth.",
       "en": "Element #docOutput not found. This is not a PhiloSynth file.",
       "de": "Element #docOutput nicht gefunden. Dies ist keine PhiloSynth-Datei.",
       "from": {"en":"Не найден элемент #docOutput. Это не файл PhiloSynth.","de":"Не найден элемент #docOutput. Это не файл PhiloSynth."},
-      "where": ["server/services/import-service.ts:1090"]
+      "where": ["server/services/import-service.ts:1092"]
     },
     "server.importService.duplicateSectionKey": {
       "ru": "Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр.",
@@ -10089,14 +10138,14 @@
       "de": "Der Abschnitt „{title}“ dupliziert den Schlüssel „{key}“ — das erste Exemplar wurde verwendet.",
       "from": {"en":"Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр.","de":"Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр."},
       "params": {"title":"sec.title","key":"sec.key"},
-      "where": ["server/services/import-service.ts:1115"]
+      "where": ["server/services/import-service.ts:1117"]
     },
     "server.importService.graphParseFailed": {
       "ru": "Не удалось распарсить граф — категории и связи не восстановлены.",
       "en": "Failed to parse the graph — categories and relations were not restored.",
       "de": "Der Graph konnte nicht ausgewertet werden — Kategorien und Beziehungen nicht wiederhergestellt.",
       "from": {"en":"Не удалось распарсить граф — категории и связи не восстановлены.","de":"Не удалось распарсить граф — категории и связи не восстановлены."},
-      "where": ["server/services/import-service.ts:1296"]
+      "where": ["server/services/import-service.ts:1309"]
     },
     "server.importService.levelUnrecognized": {
       "ru": "Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию.",
@@ -10104,21 +10153,21 @@
       "de": "Syntheseebene nicht erkannt (gefunden: „{synthDisplay}“). Standard „Vergleichend“ eingesetzt.",
       "from": {"en":"Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию.","de":"Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию."},
       "params": {"synthDisplay":"synthDisplay || \"—\""},
-      "where": ["server/services/import-service.ts:704"]
+      "where": ["server/services/import-service.ts:706"]
     },
     "server.importService.logMissing": {
       "ru": "Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. ",
       "en": "The context and generation log is missing. The history of cost and context dependencies is unavailable. ",
       "de": "Das Kontext- und Generierungsprotokoll fehlt. Der Verlauf der Kosten und Kontextabhängigkeiten ist nicht verfügbar. ",
       "from": {"en":"Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. ","de":"Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. "},
-      "where": ["server/services/import-service.ts:713"]
+      "where": ["server/services/import-service.ts:715"]
     },
     "server.importService.logWillAccumulate": {
       "ru": "Лог начнёт накапливаться заново при редактировании.",
       "en": "The log will start accumulating again on editing.",
       "de": "Das Protokoll beginnt beim Bearbeiten erneut zu wachsen.",
       "from": {"en":"Лог начнёт накапливаться заново при редактировании.","de":"Лог начнёт накапливаться заново при редактировании."},
-      "where": ["server/services/import-service.ts:714"]
+      "where": ["server/services/import-service.ts:716"]
     },
     "server.importService.methodUnrecognized": {
       "ru": "Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию.",
@@ -10126,14 +10175,14 @@
       "de": "Synthesemethode nicht erkannt (gefunden: „{methodDisplay}“). Standard „Dialektisch“ eingesetzt.",
       "from": {"en":"Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию.","de":"Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию."},
       "params": {"methodDisplay":"methodDisplay || \"—\""},
-      "where": ["server/services/import-service.ts:688"]
+      "where": ["server/services/import-service.ts:690"]
     },
     "server.importService.noSections": {
       "ru": "В файле не найдено ни одного раздела (.doc-section).",
       "en": "No sections (.doc-section) were found in the file.",
       "de": "In der Datei wurde kein einziger Abschnitt (.doc-section) gefunden.",
       "from": {"en":"В файле не найдено ни одного раздела (.doc-section).","de":"В файле не найдено ни одного раздела (.doc-section)."},
-      "where": ["server/services/import-service.ts:1100"]
+      "where": ["server/services/import-service.ts:1102"]
     },
     "server.importService.parentAmbiguous": {
       "ru": "Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).",
@@ -10141,7 +10190,7 @@
       "de": "Das Elternkonzept „{name}“ wurde nicht automatisch verknüpft: in der Datenbank gibt es {matchesCount} Namensübereinstimmungen — wählen Sie das Elternteil im Vorschlag unten (ein Name ist kein Bezeichner, die Verknüpfung wird nicht stillschweigend erstellt).",
       "from": {"en":"Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).","de":"Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча)."},
       "params": {"name":"p.name","matchesCount":"matches.length"},
-      "where": ["server/services/import-service.ts:1435"]
+      "where": ["server/services/import-service.ts:1448"]
     },
     "server.importService.parentMissing": {
       "ru": "Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.",
@@ -10149,14 +10198,14 @@
       "de": "Das Elternkonzept „{name}“ wurde in der Datenbank nicht gefunden — keine Genealogieverknüpfung erstellt. Sein Abstammungszweig wurde aus der Datei übernommen und wird im Stammbaum als Schnappschuss ohne Verweise angezeigt; eine echte Verknüpfung entsteht, wenn das Elternteil VOR diesem Konzept importiert wird.",
       "from": {"en":"Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.","de":"Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции."},
       "params": {"name":"p.name"},
-      "where": ["server/services/import-service.ts:1436"]
+      "where": ["server/services/import-service.ts:1449"]
     },
     "server.importService.philosophersNotFound": {
       "ru": "Список философов не найден. Перегенерация разделов невозможна без него.",
       "en": "The list of philosophers was not found. Sections cannot be regenerated without it.",
       "de": "Die Philosophenliste wurde nicht gefunden. Ohne sie ist eine Neugenerierung der Abschnitte unmöglich.",
       "from": {"en":"Список философов не найден. Перегенерация разделов невозможна без него.","de":"Список философов не найден. Перегенерация разделов невозможна без него."},
-      "where": ["server/services/import-service.ts:676"]
+      "where": ["server/services/import-service.ts:678"]
     },
     "server.importService.sectionKeyUnknown": {
       "ru": "Не удалось определить ключ для раздела «{titleText}» — раздел пропущен.",
@@ -10164,7 +10213,7 @@
       "de": "Der Schlüssel für den Abschnitt „{titleText}“ konnte nicht bestimmt werden — der Abschnitt wurde übersprungen.",
       "from": {"en":"Не удалось определить ключ для раздела «{titleText}» — раздел пропущен.","de":"Не удалось определить ключ для раздела «{titleText}» — раздел пропущен."},
       "params": {"titleText":"titleText"},
-      "where": ["server/services/import-service.ts:767"]
+      "where": ["server/services/import-service.ts:769"]
     },
     "server.importService.sectionNotInOrder": {
       "ru": "Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка.",
@@ -10172,21 +10221,21 @@
       "de": "Der Abschnitt „{sectionKey}“ fehlt in der eingebetteten sectionOrder — ans Ende der Reihenfolge angefügt.",
       "from": {"en":"Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка.","de":"Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка."},
       "params": {"sectionKey":"k"},
-      "where": ["server/services/import-service.ts:1169"]
+      "where": ["server/services/import-service.ts:1171"]
     },
     "server.importService.synthesisNotCreated": {
       "ru": "Импорт: запись syntheses не создана",
       "en": "Import: the syntheses record was not created",
       "de": "Import: syntheses-Eintrag nicht erstellt",
       "from": {"en":"Импорт: запись syntheses не создана","de":"Импорт: запись syntheses не создана"},
-      "where": ["server/services/import-service.ts:1251"]
+      "where": ["server/services/import-service.ts:1253"]
     },
     "server.importService.thesesParseFailed": {
       "ru": "Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены.",
       "en": "Failed to parse the theses/glossary — granular elements were not restored.",
       "de": "Thesen/Glossar konnten nicht ausgewertet werden — granulare Elemente nicht wiederhergestellt.",
       "from": {"en":"Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены.","de":"Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены."},
-      "where": ["server/services/import-service.ts:1318"]
+      "where": ["server/services/import-service.ts:1331"]
     },
     "server.lineageService.alreadyParent": {
       "ru": "Эта концепция уже указана родителем",
@@ -11251,7 +11300,7 @@
       "en": "Additional context “",
       "de": "Zusätzlicher Kontext „",
       "from": {"en":"Дополнительный контекст «","de":"Дополнительный контекст «"},
-      "where": ["server/services/mode-service.ts:374"]
+      "where": ["server/services/mode-service.ts:375"]
     },
     "server.modeService.modeMissing": {
       "ru": "Режим «{modeKey}» не существует",
@@ -11259,14 +11308,14 @@
       "de": "Der Modus „{modeKey}“ existiert nicht",
       "from": {"en":"Режим «{modeKey}» не существует","de":"Режим «{modeKey}» не существует"},
       "params": {"modeKey":"modeKey"},
-      "where": ["server/services/mode-service.ts:469"]
+      "where": ["server/services/mode-service.ts:470"]
     },
     "server.modeService.notGenerated": {
       "ru": "» не сгенерирован).",
       "en": "” has not been generated).",
       "de": "“ nicht generiert).",
       "from": {"en":"» не сгенерирован).","de":"» не сгенерирован)."},
-      "where": ["server/services/mode-service.ts:363"]
+      "where": ["server/services/mode-service.ts:364"]
     },
     "server.modeService.opponent": {
       "ru": "⚔ Оппонент",
@@ -11281,7 +11330,7 @@
       "en": "Required context “",
       "de": "Erforderlicher Kontext „",
       "from": {"en":"Обязательный контекст «","de":"Обязательный контекст «"},
-      "where": ["server/services/mode-service.ts:362"]
+      "where": ["server/services/mode-service.ts:363"]
     },
     "server.modeService.timeSlice": {
       "ru": "⏳ Временной срез",
@@ -11304,14 +11353,14 @@
       "en": "” is unavailable — quality may be reduced.",
       "de": "“ nicht verfügbar — die Qualität kann beeinträchtigt sein.",
       "from": {"en":"» недоступен — качество может быть снижено.","de":"» недоступен — качество может быть снижено."},
-      "where": ["server/services/mode-service.ts:375"]
+      "where": ["server/services/mode-service.ts:376"]
     },
     "server.modeService.unavailableSectionLead": {
       "ru": "» недоступен (раздел «",
       "en": "” is unavailable (section “",
       "de": "“ nicht verfügbar (Abschnitt „",
       "from": {"en":"» недоступен (раздел «","de":"» недоступен (раздел «"},
-      "where": ["server/services/mode-service.ts:363"]
+      "where": ["server/services/mode-service.ts:364"]
     },
     "server.pauseResumeService.alreadyRunning": {
       "ru": "Генерация уже выполняется — повторное возобновление отклонено",
@@ -11325,7 +11374,7 @@
       "en": "Resuming plan steps requires plan-executor (conversation 2.2)",
       "de": "Die Fortsetzung von Planschritten erfordert den plan-executor (Gespräch 2.2)",
       "from": {"en":"Возобновление шагов плана требует plan-executor (беседа 2.2)","de":"Возобновление шагов плана требует plan-executor (беседа 2.2)"},
-      "where": ["server/services/pause-resume-service.ts:985"]
+      "where": ["server/services/pause-resume-service.ts:986"]
     },
     "server.pauseResumeService.notPausedGeneration": {
       "ru": "Возобновление невозможно: синтез не находится в паузе генерации",
@@ -11339,7 +11388,7 @@
       "en": "Resume is impossible: the synthesis is not in a plan pause",
       "de": "Fortsetzung unmöglich: die Synthese befindet sich nicht in einer Planpause",
       "from": {"en":"Возобновление невозможно: синтез не находится в паузе плана","de":"Возобновление невозможно: синтез не находится в паузе плана"},
-      "where": ["server/services/pause-resume-service.ts:930"]
+      "where": ["server/services/pause-resume-service.ts:931"]
     },
     "server.pauseResumeService.paramsLost": {
       "ru": "Невозможно возобновить: параметры генерации утеряны",
@@ -11354,7 +11403,7 @@
       "de": "Unbekannter Fortsetzungsmodus des Plans: {mode}",
       "from": {"en":"Неизвестный режим возобновления плана: {mode}","de":"Неизвестный режим возобновления плана: {mode}"},
       "params": {"mode":"String(mode)"},
-      "where": ["server/services/pause-resume-service.ts:936"]
+      "where": ["server/services/pause-resume-service.ts:937"]
     },
     "server.pauseResumeService.unknownResumeMode": {
       "ru": "Неизвестный режим возобновления: {mode}",
@@ -11923,14 +11972,14 @@
       "en": "“Category table” was not found in the response — the graph was not replaced",
       "de": "In der Antwort wurde keine „Kategorietabelle“ gefunden — der Graph wurde nicht ersetzt",
       "from": {"en":"В ответе не найдена «Таблица категорий» — граф не заменён","de":"В ответе не найдена «Таблица категорий» — граф не заменён"},
-      "where": ["server/services/representation-transformer.ts:607"]
+      "where": ["server/services/representation-transformer.ts:610"]
     },
     "server.representationTransformer.graphSnapshotCorrupt": {
       "ru": "Снимок графа повреждён — откат невозможен",
       "en": "The graph snapshot is corrupted — rollback is impossible",
       "de": "Der Schnappschuss des Graphen ist beschädigt — Rücksetzung unmöglich",
       "from": {"en":"Снимок графа повреждён — откат невозможен","de":"Снимок графа повреждён — откат невозможен"},
-      "where": ["server/services/representation-transformer.ts:773"]
+      "where": ["server/services/representation-transformer.ts:776"]
     },
     "server.representationTransformer.sectionNotInDefs": {
       "ru": "Раздел «{targetKey}» не найден в определениях",
@@ -11938,28 +11987,28 @@
       "de": "Der Abschnitt „{targetKey}“ wurde in den Definitionen nicht gefunden",
       "from": {"en":"Раздел «{targetKey}» не найден в определениях","de":"Раздел «{targetKey}» не найден в определениях"},
       "params": {"targetKey":"targetKey"},
-      "where": ["server/services/representation-transformer.ts:383"]
+      "where": ["server/services/representation-transformer.ts:385"]
     },
     "server.representationTransformer.thesesSnapshotCorrupt": {
       "ru": "Снимок тезисов повреждён — откат невозможен",
       "en": "The theses snapshot is corrupted — rollback is impossible",
       "de": "Der Schnappschuss der Thesen ist beschädigt — Rücksetzung unmöglich",
       "from": {"en":"Снимок тезисов повреждён — откат невозможен","de":"Снимок тезисов повреждён — откат невозможен"},
-      "where": ["server/services/representation-transformer.ts:768"]
+      "where": ["server/services/representation-transformer.ts:771"]
     },
     "server.representationTransformer.thesesTableMissing": {
       "ru": "В ответе не найдена «Сводная таблица тезисов» — тезисы не заменены",
       "en": "“Thesis summary table” was not found in the response — the theses were not replaced",
       "de": "In der Antwort wurde keine „Übersichtstabelle der Thesen“ gefunden — die Thesen wurden nicht ersetzt",
       "from": {"en":"В ответе не найдена «Сводная таблица тезисов» — тезисы не заменены","de":"В ответе не найдена «Сводная таблица тезисов» — тезисы не заменены"},
-      "where": ["server/services/representation-transformer.ts:564"]
+      "where": ["server/services/representation-transformer.ts:567"]
     },
     "server.representationTransformer.transformNotFound": {
       "ru": "Трансформация не найдена",
       "en": "Transformation not found",
       "de": "Transformation nicht gefunden",
       "from": {"en":"Трансформация не найдена","de":"Трансформация не найдена"},
-      "where": ["server/services/representation-transformer.ts:760"]
+      "where": ["server/services/representation-transformer.ts:763"]
     },
     "server.routes.auth.alreadyRegistered": {
       "ru": "Уже зарегистрирован",
@@ -12617,21 +12666,21 @@
       "en": "direction: graph_to_theses | theses_to_graph expected",
       "de": "direction: erwartet wird graph_to_theses | theses_to_graph",
       "from": {"en":"direction: ожидается graph_to_theses | theses_to_graph","de":"direction: ожидается graph_to_theses | theses_to_graph"},
-      "where": ["server/ws/handler.ts:481"]
+      "where": ["server/ws/handler.ts:487"]
     },
     "server.ws.handler.elementTypeExpected": {
       "ru": "elementType: ожидается category | edge",
       "en": "elementType: category | edge expected",
       "de": "elementType: erwartet wird category | edge",
       "from": {"en":"elementType: ожидается category | edge","de":"elementType: ожидается category | edge"},
-      "where": ["server/ws/handler.ts:454"]
+      "where": ["server/ws/handler.ts:460"]
     },
     "server.ws.handler.synthesisOrElementNotFound": {
       "ru": "Синтез или элемент не найден",
       "en": "Synthesis or element not found",
       "de": "Synthese oder Element nicht gefunden",
       "from": {"en":"Синтез или элемент не найден","de":"Синтез или элемент не найден"},
-      "where": ["server/ws/handler.ts:456"]
+      "where": ["server/ws/handler.ts:462"]
     },
     "shared.auth.passwordMinLength": {
       "ru": "Минимальная длина пароля — {minLength} символов",
@@ -15942,161 +15991,161 @@
       "de": " · Autor: {authorName}",
       "from": {"en":" · автор: {authorName}","de":" · автор: {authorName}"},
       "params": {"authorName":"synthesis.authorName"},
-      "where": ["client/src/pages/SynthesisPage.tsx:756"]
+      "where": ["client/src/pages/SynthesisPage.tsx:771"]
     },
     "synthesisPage.descendantsInCatalog": {
       "ru": "◈ Потомки этой концепции в каталоге",
       "en": "◈ Descendants of this concept in the catalog",
       "de": "◈ Nachkommen dieses Konzepts im Katalog",
       "from": {"en":"◈ Потомки этой концепции в каталоге","de":"◈ Потомки этой концепции в каталоге"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1040"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1056"]
     },
     "synthesisPage.editIcon": {
       "ru": "✎ Изменить",
       "en": "✎ Edit",
       "de": "✎ Bearbeiten",
       "from": {"en":"✎ Изменить","de":"✎ Изменить"},
-      "where": ["client/src/pages/SynthesisPage.tsx:801"]
+      "where": ["client/src/pages/SynthesisPage.tsx:816"]
     },
     "synthesisPage.editor": {
       "ru": "Редактор",
       "en": "Editor",
       "de": "Editor",
       "from": {"en":"Редактор","de":"Редактор"},
-      "where": ["client/src/pages/SynthesisPage.tsx:910"]
+      "where": ["client/src/pages/SynthesisPage.tsx:925"]
     },
     "synthesisPage.editorOpenFailed": {
       "ru": "Не удалось открыть редактор",
       "en": "Failed to open the editor",
       "de": "Editor konnte nicht geöffnet werden",
       "from": {"en":"Не удалось открыть редактор","de":"Не удалось открыть редактор"},
-      "where": ["client/src/pages/SynthesisPage.tsx:282"]
+      "where": ["client/src/pages/SynthesisPage.tsx:283"]
     },
     "synthesisPage.export": {
       "ru": "⤓ Экспорт",
       "en": "⤓ Export",
       "de": "⤓ Export",
       "from": {"en":"⤓ Экспорт","de":"⤓ Экспорт"},
-      "where": ["client/src/pages/SynthesisPage.tsx:845"]
+      "where": ["client/src/pages/SynthesisPage.tsx:860"]
     },
     "synthesisPage.genealogyTree": {
       "ru": "Генеалогическое древо",
       "en": "Genealogical tree",
       "de": "Genealogischer Stammbaum",
       "from": {"en":"Генеалогическое древо","de":"Генеалогическое древо"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1012"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1028"]
     },
     "synthesisPage.generatedBadge": {
       "ru": "ДОКУМЕНТ СГЕНЕРИРОВАН",
       "en": "DOCUMENT GENERATED",
       "de": "DOKUMENT GENERIERT",
       "from": {"en":"ДОКУМЕНТ СГЕНЕРИРОВАН","de":"ДОКУМЕНТ СГЕНЕРИРОВАН"},
-      "where": ["client/src/pages/SynthesisPage.tsx:780"]
+      "where": ["client/src/pages/SynthesisPage.tsx:795"]
     },
     "synthesisPage.generatingBadge": {
       "ru": "ГЕНЕРАЦИЯ ДОКУМЕНТА",
       "en": "DOCUMENT GENERATION",
       "de": "DOKUMENT WIRD GENERIERT",
       "from": {"en":"ГЕНЕРАЦИЯ ДОКУМЕНТА","de":"ГЕНЕРАЦИЯ ДОКУМЕНТА"},
-      "where": ["client/src/pages/SynthesisPage.tsx:779"]
+      "where": ["client/src/pages/SynthesisPage.tsx:794"]
     },
     "synthesisPage.generationError": {
       "ru": "Ошибка генерации",
       "en": "Generation error",
       "de": "Generierungsfehler",
       "from": {"en":"Ошибка генерации","de":"Ошибка генерации"},
-      "where": ["client/src/pages/SynthesisPage.tsx:901"]
+      "where": ["client/src/pages/SynthesisPage.tsx:916"]
     },
     "synthesisPage.glossaryRowNotFound": {
       "ru": "Строка глоссария не найдена в данных синтеза",
       "en": "The glossary row was not found in the synthesis data",
       "de": "Glossarzeile in den Synthesedaten nicht gefunden",
       "from": {"en":"Строка глоссария не найдена в данных синтеза","de":"Строка глоссария не найдена в данных синтеза"},
-      "where": ["client/src/pages/SynthesisPage.tsx:268"]
+      "where": ["client/src/pages/SynthesisPage.tsx:269"]
     },
     "synthesisPage.graph": {
       "ru": "◈ Граф",
       "en": "◈ Graph",
       "de": "◈ Graph",
       "from": {"en":"◈ Граф","de":"◈ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:791"]
+      "where": ["client/src/pages/SynthesisPage.tsx:806"]
     },
     "synthesisPage.ifYoursLead": {
       "ru": "Если это ваша концепция —",
       "en": "If this is your concept —",
       "de": "Wenn dies Ihr Konzept ist —",
       "from": {"en":"Если это ваша концепция —","de":"Если это ваша концепция —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:726"]
+      "where": ["client/src/pages/SynthesisPage.tsx:741"]
     },
     "synthesisPage.loadFailed": {
       "ru": "Не удалось загрузить синтез.",
       "en": "Failed to load the synthesis.",
       "de": "Synthese konnte nicht geladen werden.",
       "from": {"en":"Не удалось загрузить синтез.","de":"Не удалось загрузить синтез."},
-      "where": ["client/src/pages/SynthesisPage.tsx:741"]
+      "where": ["client/src/pages/SynthesisPage.tsx:756"]
     },
     "synthesisPage.loading": {
       "ru": "загрузка синтеза…",
       "en": "loading synthesis…",
       "de": "Synthese wird geladen…",
       "from": {"en":"загрузка синтеза…","de":"загрузка синтеза…"},
-      "where": ["client/src/pages/SynthesisPage.tsx:745"]
+      "where": ["client/src/pages/SynthesisPage.tsx:760"]
     },
     "synthesisPage.logInLower": {
       "ru": "войдите",
       "en": "log in",
       "de": "melden Sie sich an",
       "from": {"en":"войдите","de":"войдите"},
-      "where": ["client/src/pages/SynthesisPage.tsx:732"]
+      "where": ["client/src/pages/SynthesisPage.tsx:747"]
     },
     "synthesisPage.notFoundOrDeleted": {
       "ru": "Синтез не найден или был удалён.",
       "en": "The synthesis was not found or has been deleted.",
       "de": "Die Synthese wurde nicht gefunden oder gelöscht.",
       "from": {"en":"Синтез не найден или был удалён.","de":"Синтез не найден или был удалён."},
-      "where": ["client/src/pages/SynthesisPage.tsx:707"]
+      "where": ["client/src/pages/SynthesisPage.tsx:722"]
     },
     "synthesisPage.otherwise": {
       "ru": ". Иначе —",
       "en": ". Otherwise —",
       "de": ". Andernfalls —",
       "from": {"en":". Иначе —","de":". Иначе —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:734"]
+      "where": ["client/src/pages/SynthesisPage.tsx:749"]
     },
     "synthesisPage.parentConcepts": {
       "ru": "Родительские концепции:",
       "en": "Parent concepts:",
       "de": "Elternkonzepte:",
       "from": {"en":"Родительские концепции:","de":"Родительские концепции:"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1021"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1037"]
     },
     "synthesisPage.print": {
       "ru": "Распечатать",
       "en": "Print",
       "de": "Drucken",
       "from": {"en":"Распечатать","de":"Распечатать"},
-      "where": ["client/src/pages/SynthesisPage.tsx:884"]
+      "where": ["client/src/pages/SynthesisPage.tsx:899"]
     },
     "synthesisPage.privateConcept": {
       "ru": "Эта концепция приватна: автор не открыл её посторонним.",
       "en": "This concept is private: the author has not opened it to others.",
       "de": "Dieses Konzept ist privat: der Autor hat es Außenstehenden nicht geöffnet.",
       "from": {"en":"Эта концепция приватна: автор не открыл её посторонним.","de":"Эта концепция приватна: автор не открыл её посторонним."},
-      "where": ["client/src/pages/SynthesisPage.tsx:719"]
+      "where": ["client/src/pages/SynthesisPage.tsx:734"]
     },
     "synthesisPage.privateSynthesis": {
       "ru": "Этот синтез приватный: доступен только владельцу.",
       "en": "This synthesis is private: available only to the owner.",
       "de": "Diese Synthese ist privat: nur dem Eigentümer zugänglich.",
       "from": {"en":"Этот синтез приватный: доступен только владельцу.","de":"Этот синтез приватный: доступен только владельцу."},
-      "where": ["client/src/pages/SynthesisPage.tsx:720"]
+      "where": ["client/src/pages/SynthesisPage.tsx:735"]
     },
     "synthesisPage.publicCatalogLower": {
       "ru": "публичный каталог",
       "en": "the public catalog",
       "de": "öffentlicher Katalog",
       "from": {"en":"публичный каталог","de":"публичный каталог"},
-      "where": ["client/src/pages/SynthesisPage.tsx:734"]
+      "where": ["client/src/pages/SynthesisPage.tsx:749"]
     },
     "synthesisPage.recommendations": {
       "ru": "◈ Рекомендации{recCount}",
@@ -16104,56 +16153,56 @@
       "de": "◈ Empfehlungen{recCount}",
       "from": {"en":"◈ Рекомендации{recCount}","de":"◈ Рекомендации{recCount}"},
       "params": {"recCount":"recCount !== null ? ` · ${recCount}` : \"\""},
-      "where": ["client/src/pages/SynthesisPage.tsx:938"]
+      "where": ["client/src/pages/SynthesisPage.tsx:954"]
     },
     "synthesisPage.recommendationsHint": {
       "ru": "Рекомендации критики: что исполнять, решаете вы — поштучно",
       "en": "Critique recommendations: you decide what to execute — one by one",
       "de": "Empfehlungen der Kritik: was ausgeführt wird, entscheiden Sie — einzeln",
       "from": {"en":"Рекомендации критики: что исполнять, решаете вы — поштучно","de":"Рекомендации критики: что исполнять, решаете вы — поштучно"},
-      "where": ["client/src/pages/SynthesisPage.tsx:935"]
+      "where": ["client/src/pages/SynthesisPage.tsx:951"]
     },
     "synthesisPage.sectionHistory": {
       "ru": "◷ История",
       "en": "◷ History",
       "de": "◷ Verlauf",
       "from": {"en":"◷ История","de":"◷ История"},
-      "where": ["client/src/pages/SynthesisPage.tsx:963"]
+      "where": ["client/src/pages/SynthesisPage.tsx:979"]
     },
     "synthesisPage.sectionHistoryHint": {
       "ru": "Версии раздела до каждой правки и откат",
       "en": "Section versions before each edit, and rollback",
       "de": "Abschnittsversionen vor jeder Änderung und Rollback",
       "from": {"en":"Версии раздела до каждой правки и откат","de":"Версии раздела до каждой правки и откат"},
-      "where": ["client/src/pages/SynthesisPage.tsx:960"]
+      "where": ["client/src/pages/SynthesisPage.tsx:976"]
     },
     "synthesisPage.showcaseParen": {
       "ru": " (витрина)",
       "en": " (showcase)",
       "de": " (Schaufenster)",
       "from": {"en":" (витрина)","de":" (витрина)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:755"]
+      "where": ["client/src/pages/SynthesisPage.tsx:770"]
     },
     "synthesisPage.thesisRowNotFound": {
       "ru": "Строка тезиса не найдена в данных синтеза",
       "en": "The thesis row was not found in the synthesis data",
       "de": "Thesenzeile in den Synthesedaten nicht gefunden",
       "from": {"en":"Строка тезиса не найдена в данных синтеза","de":"Строка тезиса не найдена в данных синтеза"},
-      "where": ["client/src/pages/SynthesisPage.tsx:253"]
+      "where": ["client/src/pages/SynthesisPage.tsx:254"]
     },
     "synthesisPage.toGraph": {
       "ru": "→ Граф",
       "en": "→ Graph",
       "de": "→ Graph",
       "from": {"en":"→ Граф","de":"→ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:949"]
+      "where": ["client/src/pages/SynthesisPage.tsx:965"]
     },
     "synthesisPage.toGraphHint": {
       "ru": "Трансформировать тезисы в граф (Representation Transformer)",
       "en": "Transform the theses into a graph (Representation Transformer)",
       "de": "Thesen in einen Graphen transformieren (Representation Transformer)",
       "from": {"en":"Трансформировать тезисы в граф (Representation Transformer)","de":"Трансформировать тезисы в граф (Representation Transformer)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:946"]
+      "where": ["client/src/pages/SynthesisPage.tsx:962"]
     },
     "synthesisPage.viewModeBadge": {
       "ru": "РЕЖИМ ПРОСМОТРА · {visibility}",
@@ -16161,14 +16210,14 @@
       "de": "ANSICHTSMODUS · {visibility}",
       "from": {"en":"РЕЖИМ ПРОСМОТРА · {visibility}","de":"РЕЖИМ ПРОСМОТРА · {visibility}"},
       "params": {"visibility":"visibilityBadge(synthesis.visibility).toUpperCase()"},
-      "where": ["client/src/pages/SynthesisPage.tsx:781"]
+      "where": ["client/src/pages/SynthesisPage.tsx:796"]
     },
     "synthesisPage.viewingPublic": {
       "ru": "Вы смотрите публичную концепцию",
       "en": "You are viewing a public concept",
       "de": "Sie betrachten ein öffentliches Konzept",
       "from": {"en":"Вы смотрите публичную концепцию","de":"Вы смотрите публичную концепцию"},
-      "where": ["client/src/pages/SynthesisPage.tsx:754"]
+      "where": ["client/src/pages/SynthesisPage.tsx:769"]
     },
     "utils.conceptFile.addMissingSections": {
       "ru": ". Откройте документ, добавьте недостающие разделы и сохраните заново.",
@@ -16584,6 +16633,309 @@
       "from": {"en":"Подраздел «Таблица рекомендаций» не разбирается как таблица.","de":"Подраздел «Таблица рекомендаций» не разбирается как таблица."},
       "where": ["client/src/utils/recommendations.ts:372"]
     },
+    "utils.richEditor.calloutGold": {
+      "ru": "РЕКОМЕНДАЦИЯ",
+      "en": "RECOMMENDATION",
+      "de": "EMPFEHLUNG",
+      "from": {"en":"РЕКОМЕНДАЦИЯ","de":"РЕКОМЕНДАЦИЯ"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:323"]
+    },
+    "utils.richEditor.calloutNote": {
+      "ru": "ПРИМЕЧАНИЕ",
+      "en": "NOTE",
+      "de": "HINWEIS",
+      "from": {"en":"ПРИМЕЧАНИЕ","de":"ПРИМЕЧАНИЕ"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:322"]
+    },
+    "utils.richEditor.calloutWarning": {
+      "ru": "ПРЕДУПРЕЖДЕНИЕ",
+      "en": "WARNING",
+      "de": "WARNUNG",
+      "from": {"en":"ПРЕДУПРЕЖДЕНИЕ","de":"ПРЕДУПРЕЖДЕНИЕ"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:321"]
+    },
+    "utils.richEditor.colAdd": {
+      "ru": "+ столбец",
+      "en": "+ column",
+      "de": "+ Spalte",
+      "from": {"en":"+ столбец","de":"+ столбец"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:655"]
+    },
+    "utils.richEditor.colAddHint": {
+      "ru": "Добавить столбец после текущего",
+      "en": "Add a column after the current one",
+      "de": "Spalte nach der aktuellen einfügen",
+      "from": {"en":"Добавить столбец после текущего","de":"Добавить столбец после текущего"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:655"]
+    },
+    "utils.richEditor.colDel": {
+      "ru": "− столбец",
+      "en": "− column",
+      "de": "− Spalte",
+      "from": {"en":"− столбец","de":"− столбец"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:656"]
+    },
+    "utils.richEditor.colDelHint": {
+      "ru": "Удалить текущий столбец",
+      "en": "Delete the current column",
+      "de": "Aktuelle Spalte löschen",
+      "from": {"en":"Удалить текущий столбец","de":"Удалить текущий столбец"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:656"]
+    },
+    "utils.richEditor.placeholderText": {
+      "ru": "▣ Вложенный подраздел «{name}» — правится отдельно",
+      "en": "▣ Nested subsection “{name}” — edited separately",
+      "de": "▣ Verschachtelter Unterabschnitt „{name}“ — wird gesondert bearbeitet",
+      "from": {"en":"▣ Вложенный подраздел «{name}» — правится отдельно","de":"▣ Вложенный подраздел «{name}» — правится отдельно"},
+      "params": {"name":""},
+      "where": ["client/src/utils/subsection-rich-editor.ts:86"]
+    },
+    "utils.richEditor.placeholderTitle": {
+      "ru": "Вложенный подраздел правится отдельно; плашку нельзя удалить или переставить",
+      "en": "The nested subsection is edited separately; the plaque cannot be deleted or moved",
+      "de": "Der verschachtelte Unterabschnitt wird gesondert bearbeitet; die Plakette kann weder gelöscht noch verschoben werden",
+      "from": {"en":"Вложенный подраздел правится отдельно; плашку нельзя удалить или переставить","de":"Вложенный подраздел правится отдельно; плашку нельзя удалить или переставить"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:85"]
+    },
+    "utils.richEditor.riskHigh": {
+      "ru": "ВЫСОКИЙ",
+      "en": "HIGH",
+      "de": "HOCH",
+      "from": {"en":"ВЫСОКИЙ","de":"ВЫСОКИЙ"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:313"]
+    },
+    "utils.richEditor.riskLow": {
+      "ru": "НИЗКИЙ",
+      "en": "LOW",
+      "de": "NIEDRIG",
+      "from": {"en":"НИЗКИЙ","de":"НИЗКИЙ"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:315"]
+    },
+    "utils.richEditor.riskMedium": {
+      "ru": "СРЕДНИЙ",
+      "en": "MEDIUM",
+      "de": "MITTEL",
+      "from": {"en":"СРЕДНИЙ","de":"СРЕДНИЙ"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:314"]
+    },
+    "utils.richEditor.rowAdd": {
+      "ru": "+ строка",
+      "en": "+ row",
+      "de": "+ Zeile",
+      "from": {"en":"+ строка","de":"+ строка"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:653"]
+    },
+    "utils.richEditor.rowAddHint": {
+      "ru": "Добавить строку после текущей",
+      "en": "Add a row after the current one",
+      "de": "Zeile nach der aktuellen einfügen",
+      "from": {"en":"Добавить строку после текущей","de":"Добавить строку после текущей"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:653"]
+    },
+    "utils.richEditor.rowDel": {
+      "ru": "− строка",
+      "en": "− row",
+      "de": "− Zeile",
+      "from": {"en":"− строка","de":"− строка"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:654"]
+    },
+    "utils.richEditor.rowDelHint": {
+      "ru": "Удалить текущую строку",
+      "en": "Delete the current row",
+      "de": "Aktuelle Zeile löschen",
+      "from": {"en":"Удалить текущую строку","de":"Удалить текущую строку"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:654"]
+    },
+    "utils.richEditor.tableHeader": {
+      "ru": "Столбец {n}",
+      "en": "Column {n}",
+      "de": "Spalte {n}",
+      "from": {"en":"Столбец {n}","de":"Столбец {n}"},
+      "params": {"n":""},
+      "where": ["client/src/utils/subsection-rich-editor.ts:389","client/src/utils/subsection-rich-editor.ts:390"]
+    },
+    "utils.richEditor.toolCalloutGold": {
+      "ru": "Рекомендация",
+      "en": "Recommendation",
+      "de": "Empfehlung",
+      "from": {"en":"Рекомендация","de":"Рекомендация"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:644"]
+    },
+    "utils.richEditor.toolCalloutGoldHint": {
+      "ru": "Выноска callout gold (повторное нажатие снимает)",
+      "en": "Callout gold (press again to remove)",
+      "de": "Hinweiskasten callout gold (erneut drücken entfernt ihn)",
+      "from": {"en":"Выноска callout gold (повторное нажатие снимает)","de":"Выноска callout gold (повторное нажатие снимает)"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:644"]
+    },
+    "utils.richEditor.toolCalloutNote": {
+      "ru": "Примечание",
+      "en": "Note",
+      "de": "Hinweis",
+      "from": {"en":"Примечание","de":"Примечание"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:643"]
+    },
+    "utils.richEditor.toolCalloutNoteHint": {
+      "ru": "Выноска callout note (повторное нажатие снимает)",
+      "en": "Callout note (press again to remove)",
+      "de": "Hinweiskasten callout note (erneut drücken entfernt ihn)",
+      "from": {"en":"Выноска callout note (повторное нажатие снимает)","de":"Выноска callout note (повторное нажатие снимает)"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:643"]
+    },
+    "utils.richEditor.toolCalloutWarning": {
+      "ru": "Предупреждение",
+      "en": "Warning",
+      "de": "Warnung",
+      "from": {"en":"Предупреждение","de":"Предупреждение"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:642"]
+    },
+    "utils.richEditor.toolCalloutWarningHint": {
+      "ru": "Выноска callout warning (повторное нажатие снимает)",
+      "en": "Callout warning (press again to remove)",
+      "de": "Hinweiskasten callout warning (erneut drücken entfernt ihn)",
+      "from": {"en":"Выноска callout warning (повторное нажатие снимает)","de":"Выноска callout warning (повторное нажатие снимает)"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:642"]
+    },
+    "utils.richEditor.toolEm": {
+      "ru": "К",
+      "en": "I",
+      "de": "K",
+      "from": {"en":"К","de":"К"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:638"]
+    },
+    "utils.richEditor.toolEmHint": {
+      "ru": "Курсив <em> (Ctrl+I)",
+      "en": "Italic <em> (Ctrl+I)",
+      "de": "Kursiv <em> (Strg+I)",
+      "from": {"en":"Курсив <em> (Ctrl+I)","de":"Курсив <em> (Ctrl+I)"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:638"]
+    },
+    "utils.richEditor.toolH5": {
+      "ru": "H5",
+      "en": "H5",
+      "de": "H5",
+      "from": {"en":"H5","de":"H5"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:636"]
+    },
+    "utils.richEditor.toolH5Hint": {
+      "ru": "Подзаголовок <h5>",
+      "en": "Subheading <h5>",
+      "de": "Zwischenüberschrift <h5>",
+      "from": {"en":"Подзаголовок <h5>","de":"Подзаголовок <h5>"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:636"]
+    },
+    "utils.richEditor.toolOl": {
+      "ru": "1. список",
+      "en": "1. list",
+      "de": "1. Liste",
+      "from": {"en":"1. список","de":"1. список"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:640"]
+    },
+    "utils.richEditor.toolOlHint": {
+      "ru": "Нумерованный список <ol>",
+      "en": "Numbered list <ol>",
+      "de": "Nummerierte Liste <ol>",
+      "from": {"en":"Нумерованный список <ol>","de":"Нумерованный список <ol>"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:640"]
+    },
+    "utils.richEditor.toolP": {
+      "ru": "¶",
+      "en": "¶",
+      "de": "¶",
+      "from": {"en":"¶","de":"¶"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:635"]
+    },
+    "utils.richEditor.toolPHint": {
+      "ru": "Абзац <p>",
+      "en": "Paragraph <p>",
+      "de": "Absatz <p>",
+      "from": {"en":"Абзац <p>","de":"Абзац <p>"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:635"]
+    },
+    "utils.richEditor.toolRiskHigh": {
+      "ru": "Риск ↑",
+      "en": "Risk ↑",
+      "de": "Risiko ↑",
+      "from": {"en":"Риск ↑","de":"Риск ↑"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:645"]
+    },
+    "utils.richEditor.toolRiskHighHint": {
+      "ru": "Метка риска high (повторное нажатие снимает)",
+      "en": "Risk label high (press again to remove)",
+      "de": "Risikomarke high (erneut drücken entfernt sie)",
+      "from": {"en":"Метка риска high (повторное нажатие снимает)","de":"Метка риска high (повторное нажатие снимает)"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:645"]
+    },
+    "utils.richEditor.toolRiskLow": {
+      "ru": "Риск ↓",
+      "en": "Risk ↓",
+      "de": "Risiko ↓",
+      "from": {"en":"Риск ↓","de":"Риск ↓"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:647"]
+    },
+    "utils.richEditor.toolRiskLowHint": {
+      "ru": "Метка риска low (повторное нажатие снимает)",
+      "en": "Risk label low (press again to remove)",
+      "de": "Risikomarke low (erneut drücken entfernt sie)",
+      "from": {"en":"Метка риска low (повторное нажатие снимает)","de":"Метка риска low (повторное нажатие снимает)"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:647"]
+    },
+    "utils.richEditor.toolRiskMedium": {
+      "ru": "Риск →",
+      "en": "Risk →",
+      "de": "Risiko →",
+      "from": {"en":"Риск →","de":"Риск →"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:646"]
+    },
+    "utils.richEditor.toolRiskMediumHint": {
+      "ru": "Метка риска medium (повторное нажатие снимает)",
+      "en": "Risk label medium (press again to remove)",
+      "de": "Risikomarke medium (erneut drücken entfernt sie)",
+      "from": {"en":"Метка риска medium (повторное нажатие снимает)","de":"Метка риска medium (повторное нажатие снимает)"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:646"]
+    },
+    "utils.richEditor.toolStrong": {
+      "ru": "Ж",
+      "en": "B",
+      "de": "F",
+      "from": {"en":"Ж","de":"Ж"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:637"]
+    },
+    "utils.richEditor.toolStrongHint": {
+      "ru": "Выделение <strong> (Ctrl+B)",
+      "en": "Emphasis <strong> (Ctrl+B)",
+      "de": "Hervorhebung <strong> (Strg+B)",
+      "from": {"en":"Выделение <strong> (Ctrl+B)","de":"Выделение <strong> (Ctrl+B)"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:637"]
+    },
+    "utils.richEditor.toolTable": {
+      "ru": "Таблица",
+      "en": "Table",
+      "de": "Tabelle",
+      "from": {"en":"Таблица","de":"Таблица"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:641"]
+    },
+    "utils.richEditor.toolTableHint": {
+      "ru": "Вставить таблицу 2×2 <table class=\"doc-table\">",
+      "en": "Insert a 2×2 table <table class=\"doc-table\">",
+      "de": "Tabelle 2×2 einfügen <table class=\"doc-table\">",
+      "from": {"en":"Вставить таблицу 2×2 <table class=\"doc-table\">","de":"Вставить таблицу 2×2 <table class=\"doc-table\">"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:641"]
+    },
+    "utils.richEditor.toolUl": {
+      "ru": "• список",
+      "en": "• list",
+      "de": "• Liste",
+      "from": {"en":"• список","de":"• список"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:639"]
+    },
+    "utils.richEditor.toolUlHint": {
+      "ru": "Маркированный список <ul>",
+      "en": "Bulleted list <ul>",
+      "de": "Aufzählung <ul>",
+      "from": {"en":"Маркированный список <ul>","de":"Маркированный список <ul>"},
+      "where": ["client/src/utils/subsection-rich-editor.ts:639"]
+    },
     "utils.stripe.stripeKeyMissing": {
       "ru": "VITE_STRIPE_PUBLISHABLE_KEY не задан",
       "en": "VITE_STRIPE_PUBLISHABLE_KEY is not set",
@@ -16610,21 +16962,21 @@
       "en": "formulation",
       "de": "Formulierung",
       "from": {"en":"формулировка","de":"формулировка"},
-      "where": ["client/src/utils/subsection-edit.ts:79"]
+      "where": ["client/src/utils/subsection-edit.ts:91"]
     },
     "utils.subsectionEdit.fieldJustification": {
       "ru": "обоснование",
       "en": "justification",
       "de": "Begründung",
       "from": {"en":"обоснование","de":"обоснование"},
-      "where": ["client/src/utils/subsection-edit.ts:80"]
+      "where": ["client/src/utils/subsection-edit.ts:92"]
     },
     "utils.subsectionEdit.lockedGenerating": {
       "ru": "Генерация ещё идёт — правка подраздела заблокирована.",
       "en": "Generation is still running — subsection editing is locked.",
       "de": "Die Generierung läuft noch — die Bearbeitung des Unterabschnitts ist gesperrt.",
       "from": {"en":"Генерация ещё идёт — правка подраздела заблокирована.","de":"Генерация ещё идёт — правка подраздела заблокирована."},
-      "where": ["client/src/utils/subsection-edit.ts:55"]
+      "where": ["client/src/utils/subsection-edit.ts:67"]
     },
     "utils.subsectionEdit.markupRejected": {
       "ru": "Разметка не принята: {reason}",
@@ -16632,35 +16984,35 @@
       "de": "Markup nicht akzeptiert: {reason}",
       "from": {"en":"Разметка не принята: {reason}","de":"Разметка не принята: {reason}"},
       "params": {"reason":"v"},
-      "where": ["client/src/utils/subsection-edit.ts:61"]
+      "where": ["client/src/utils/subsection-edit.ts:73"]
     },
     "utils.subsectionEdit.notEditable": {
       "ru": "Этот подраздел вручную не правится.",
       "en": "This subsection is not edited manually.",
       "de": "Dieser Unterabschnitt wird nicht manuell bearbeitet.",
       "from": {"en":"Этот подраздел вручную не правится.","de":"Этот подраздел вручную не правится."},
-      "where": ["client/src/utils/subsection-edit.ts:58"]
+      "where": ["client/src/utils/subsection-edit.ts:70"]
     },
     "utils.subsectionEdit.ownerOnly": {
       "ru": "Править концепцию может только владелец.",
       "en": "Only the owner can edit the concept.",
       "de": "Das Konzept kann nur der Eigentümer bearbeiten.",
       "from": {"en":"Править концепцию может только владелец.","de":"Править концепцию может только владелец."},
-      "where": ["client/src/utils/subsection-edit.ts:56"]
+      "where": ["client/src/utils/subsection-edit.ts:68"]
     },
     "utils.subsectionEdit.saveFailed": {
       "ru": "Не удалось сохранить подраздел.",
       "en": "Failed to save the subsection.",
       "de": "Unterabschnitt konnte nicht gespeichert werden.",
       "from": {"en":"Не удалось сохранить подраздел.","de":"Не удалось сохранить подраздел."},
-      "where": ["client/src/utils/subsection-edit.ts:53","client/src/utils/subsection-edit.ts:65"]
+      "where": ["client/src/utils/subsection-edit.ts:65","client/src/utils/subsection-edit.ts:77"]
     },
     "utils.subsectionEdit.subsectionGone": {
       "ru": "Подраздел не найден — документ изменился. Закройте правку и откройте её заново.",
       "en": "Subsection not found — the document has changed. Close the editor and open it again.",
       "de": "Unterabschnitt nicht gefunden — das Dokument hat sich geändert. Schließen Sie die Bearbeitung und öffnen Sie sie erneut.",
       "from": {"en":"Подраздел не найден — документ изменился. Закройте правку и откройте её заново.","de":"Подраздел не найден — документ изменился. Закройте правку и откройте её заново."},
-      "where": ["client/src/utils/subsection-edit.ts:64"]
+      "where": ["client/src/utils/subsection-edit.ts:76"]
     },
     "utils.subsectionEdit.thesesUpdated": {
       "ru": "Сведено со списком тезисов: {list}.",
@@ -16668,7 +17020,7 @@
       "de": "Mit der Thesenliste abgeglichen: {list}.",
       "from": {"en":"Сведено со списком тезисов: {list}.","de":"Сведено со списком тезисов: {list}."},
       "params": {"list":""},
-      "where": ["client/src/utils/subsection-edit.ts:84"]
+      "where": ["client/src/utils/subsection-edit.ts:96"]
     },
     "utils.subsectionEdit.titleUpdated": {
       "ru": "Название концепции обновлено: «{title}».",
@@ -16676,7 +17028,7 @@
       "de": "Konzepttitel aktualisiert: „{title}“.",
       "from": {"en":"Название концепции обновлено: «{title}».","de":"Название концепции обновлено: «{title}»."},
       "params": {"title":""},
-      "where": ["client/src/utils/subsection-edit.ts:75"]
+      "where": ["client/src/utils/subsection-edit.ts:87"]
     },
     "utils.textDiff.lineFew": {
       "ru": "строки",

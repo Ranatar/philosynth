@@ -98,6 +98,7 @@ import {
   subsectionEditNotes,
   subsectionErrorText,
   type SubsectionEditState,
+  type SubsectionEditView,
   type SubsectionRef,
 } from "../utils/subsection-edit";
 
@@ -397,6 +398,11 @@ export function SynthesisPage() {
     if (subEditBusyRef.current) return;
     setSubEdit(null);
   }, []);
+  // 13.1 (Д-64): переключение вида формы — набранное едет в draft, строка
+  // формы пересобирается уже с другим видом
+  const viewSubsectionEdit = useCallback((view: SubsectionEditView, draft: string) => {
+    setSubEdit((cur) => (cur && cur.phase === "ready" ? { ...cur, view, draft } : cur));
+  }, []);
   const saveSubsectionEdit = useCallback(
     async (html: string) => {
       const cur = subEdit;
@@ -427,17 +433,18 @@ export function SynthesisPage() {
     },
     [id, subEdit, reloadSections, applySynthesis],
   );
-  // Фокус в поле, когда исходник приехал (поле — часть строки HTML раздела)
+  // Фокус в поле, когда исходник приехал (поле — часть строки HTML раздела);
+  // 13.1: в виде rich — в редактор, в markup — в поле; смена вида — тоже фокус
   const subEditReadyKey =
     subEdit && subEdit.phase === "ready" && !subEdit.error
-      ? `${subEdit.sectionKey}:${subEdit.name}`
+      ? `${subEdit.sectionKey}:${subEdit.name}:${subEdit.view ?? "rich"}`
       : null;
   useEffect(() => {
     if (!subEditReadyKey || typeof document === "undefined") return;
-    const area = document.querySelector<HTMLTextAreaElement>(
-      "textarea[data-subsection-source]",
-    );
-    area?.focus();
+    const target =
+      document.querySelector<HTMLElement>("[data-subsection-editor-body][contenteditable=\"true\"]") ??
+      document.querySelector<HTMLTextAreaElement>("textarea[data-subsection-source]");
+    target?.focus();
   }, [subEditReadyKey]);
 
   /* ── Беседа 5.5 (п. 7): трансформация представлений graph↔theses.
@@ -932,6 +939,7 @@ export function SynthesisPage() {
         onSubsectionEdit={(ref) => void openSubsectionEdit(ref)}
         onSubsectionSave={(html) => void saveSubsectionEdit(html)}
         onSubsectionCancel={cancelSubsectionEdit}
+        onSubsectionView={viewSubsectionEdit}
         sectionActionsFor={(key) =>
           isOwner && !live ? (
             <>

@@ -49,6 +49,7 @@ import {
   theses,
 } from "../db/schema.js";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
+import { esc } from "@philosynth/shared/utils/escape"; // 13.1 (Д-63)
 import {
   SubsectionHtmlError,
   listSubsectionNames,
@@ -58,6 +59,7 @@ import {
   replaceThesisBlock,
   replaceThesisParagraph,
   thesisLabelIndex,
+  sanitizeSectionHtml,
 } from "../utils/html-parser.js";
 import {
   analyzeImpact,
@@ -1100,6 +1102,7 @@ export async function autoRenameReferences(
   if (o === n) fail({ newName: tl("server.elementEditor.sameAsOldName", "совпадает с oldName") });
   const re = nameRegex(o);
   if (!re) fail({ oldName: tl("server.elementEditor.nameTooShort", "слишком короткое имя") });
+  const htmlName = esc(n);
 
   return db.transaction(async (tx) => {
     const secRows = await tx
@@ -1112,7 +1115,9 @@ export async function autoRenameReferences(
       re.lastIndex = 0;
       if (!re.test(s.htmlContent)) continue;
       re.lastIndex = 0;
-      const html = s.htmlContent.replace(re, n);
+      // 13.1 (Д-63): в HTML имя идёт ЭКРАНИРОВАННЫМ и функцией замены — иначе
+      // новое имя с «<img onerror>» или «$&» становилось бы разметкой/шаблоном
+      const html = s.htmlContent.replace(re, () => htmlName);
       await createVersion(synthesisId, s.id, "section", snapshotOf(s), "auto_rename", tx);
       await tx
         .update(sections)
@@ -1133,7 +1138,7 @@ export async function autoRenameReferences(
         re.lastIndex = 0;
         await tx
           .update(syntheses)
-          .set({ capsuleHtml: synth.capsule.replace(re, n), updatedAt: new Date() })
+          .set({ capsuleHtml: synth.capsule.replace(re, () => htmlName), updatedAt: new Date() })
           .where(eq(syntheses.id, synthesisId));
         if (!affectedSections.includes("capsule")) affectedSections.push("capsule");
       }
@@ -1141,7 +1146,7 @@ export async function autoRenameReferences(
 
     const sub = (text: string): string => {
       re.lastIndex = 0;
-      return text.replace(re, n);
+      return text.replace(re, () => n); // текстовые поля — без экранирования, но и без $-шаблонов
     };
 
     const thRows = await tx
@@ -1307,6 +1312,8 @@ export async function rollbackElement(
 export interface UpdateCapsuleResult {
   capsuleHtml: string;
   version: ElementVersion;
+  /** 13.1 (Д-63): что санитайзер снял из присланного (пусто — ничего) */
+  warnings: string[];
 }
 
 /**
@@ -1321,7 +1328,11 @@ export async function updateCapsule(
 ): Promise<UpdateCapsuleResult> {
   if (typeof html !== "string" || !html.trim())
     fail({ html: tl("server.elementEditor.htmlStringExpected", "ожидается непустая HTML-строка") });
-  const value = html.trim();
+  // 13.1 (Д-63): капсула — раздел документа; присланному сервер не верит
+  // (живая проба 2026-10-13: <img onerror> через PATCH капсулы исполнялся)
+  const cleaned = sanitizeSectionHtml(html.trim());
+  const value = cleaned.html.trim();
+  if (!value) fail({ html: tl("server.elementEditor.htmlStringExpected", "ожидается непустая HTML-строка") });
   return db.transaction(async (tx) => {
     const [synth] = await tx
       .select({ id: syntheses.id, capsule: syntheses.capsuleHtml })
@@ -1353,7 +1364,7 @@ export async function updateCapsule(
         .update(sections)
         .set({ htmlContent: value, isEdited: true, updatedAt: new Date() })
         .where(eq(sections.id, capRow.id));
-    return { capsuleHtml: value, version };
+    return { capsuleHtml: value, version, warnings: cleaned.warnings };
   });
 }
 

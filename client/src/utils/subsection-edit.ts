@@ -12,9 +12,19 @@
  * страница применяет новое название к шапке (applySynthesis) и говорит о
  * сведённых тезисах заметкой (subsectionEditNotes), перечитывая только
  * разделы.
+ *
+ * 13.1 (Д-64): поле view — вид формы: «rich» (умолчание) — правка текста на
+ * месте, contenteditable с панелью по общему модулю разметки; «markup» —
+ * прежнее поле разметки. Переключение не теряет набранное: SectionView
+ * передаёт draft в onSubsectionView. Клиент по-прежнему ничего не собирает
+ * сверх ядра санитайзера, общего с сервером (packages/shared/utils/
+ * doc-markup-sanitize.ts); сервер чистит повторно.
  */
 import { ApiError } from "../api/client";
 import { tl } from "@philosynth/shared/i18n/t";
+
+/** 13.1: вид формы правки — текст на месте (rich) или поле разметки (markup) */
+export type SubsectionEditView = "rich" | "markup";
 
 /** Что рисует SectionView на месте подраздела, пока он правится. */
 export interface SubsectionEditState {
@@ -34,6 +44,8 @@ export interface SubsectionEditState {
    *  прозой (thesesUpdated, 12.1); показываются в фазе saved рядом с
    *  warnings, тоном сообщения, не предупреждения */
   notes?: string[] | undefined;
+  /** 13.1: вид формы; нет поля — rich */
+  view?: SubsectionEditView | undefined;
 }
 
 export interface SubsectionRef {

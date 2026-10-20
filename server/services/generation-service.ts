@@ -74,6 +74,7 @@ import {
   innerTextTrimmed,
   parseFragment,
   resolveSubsection,
+  sanitizeSectionHtml,
   spliceSubsectionHtml,
   type HtmlElement,
 } from "../utils/html-parser.js";
@@ -1300,7 +1301,9 @@ export async function runGenerationPasses(
         const errorMsg = pauseFriendlyMessage(e);
         // Частичный HTML: streamed-контент прохода (буфер Redis его же
         // держит для reconnect); сохраняем в раздел.
-        const partialHtml = await currentPartialHtml(synthesisId, passKey);
+        const partialHtml = await cleanModelHtml(
+          await currentPartialHtml(synthesisId, passKey), genEntryId,
+        );
         if (partialHtml) {
           for (const def of pass) {
             await upsertSection(
@@ -1427,6 +1430,7 @@ export async function runGenerationPasses(
       }
 
       /* ── Успех прохода [25668–25689] ── */
+      html = await cleanModelHtml(html, genEntryId); // 13.1 (Д-63): до разбора и записи
       totalInputTokens += usage.inputTokens;
       totalOutputTokens += usage.outputTokens;
       if (expectedSubs.length > 0) {
@@ -1911,7 +1915,7 @@ async function parseAndSaveGraph(
 }
 
 /** 11.1: дописать предупреждения разбора в metadata строки генлога. */
-async function appendParseWarnings(
+export async function appendParseWarnings(
   genEntryId: string,
   parseWarnings: readonly string[],
 ): Promise<void> {
@@ -1923,6 +1927,24 @@ async function appendParseWarnings(
       metadata: dsql`jsonb_set(metadata, '{parseWarnings}', coalesce(metadata->'parseWarnings', '[]'::jsonb) || ${JSON.stringify(parseWarnings)}::jsonb)`,
     })
     .where(eq(generationLog.id, genEntryId));
+}
+
+/**
+ * 13.1 (Д-63): ответ модели входит в документ ТОЛЬКО через санитайзер раздела
+ * целиком — до записи в sections, до разбора в гранулярные таблицы и до
+ * side-effects (капсула, название). Белый список — общий модуль
+ * shared/constants/doc-markup; что снято — пометкой в metadata.parseWarnings
+ * строки генлога (их видит владелец в блоке замечаний раздела; перевод — Фаза 14).
+ * Дельты стрима в браузер уходят сырыми: это окно владельца, и встроенные
+ * обработчики в нём гасит CSP (server/security-headers); хранится — чистое.
+ */
+export const SANITIZE_WARNING_PREFIX = "чистка разметки ответа модели: ";
+
+export async function cleanModelHtml(html: string, genEntryId: string | null): Promise<string> {
+  const r = sanitizeSectionHtml(html);
+  if (r.changed && genEntryId && r.warnings.length)
+    await appendParseWarnings(genEntryId, r.warnings.map((w) => SANITIZE_WARNING_PREFIX + w));
+  return r.html;
 }
 
 /** Side-effects раздела [20450–20454, 20661–20684]: graph/name/capsule.
@@ -2220,9 +2242,10 @@ export async function regenerateSection(
   };
 
   try {
-    const { usage, html } = await streamWithRetries(
+    const { usage, html: rawHtml } = await streamWithRetries(
       handle, sectionKey, fp, SYS, apiKey, onDelta,
     );
+    const html = await cleanModelHtml(rawHtml, genEntryId); // 13.1 (Д-63)
 
     // ── 8. Финализация genEntry [20636–20648] ──
     if (expectedSubs.length > 0) {
@@ -2612,7 +2635,7 @@ export async function regenerateSubsection(
   /* ── 4. Стрим ── */
   const streamKey = `${sectionKey}:${subsectionName}`;
   try {
-    const { usage, html } = await streamWithRetries(
+    const { usage, html: rawHtml } = await streamWithRetries(
       handle,
       streamKey,
       fp,
@@ -2628,6 +2651,7 @@ export async function regenerateSubsection(
         });
       },
     );
+    const html = await cleanModelHtml(rawHtml, genEntryId); // 13.1 (Д-63)
 
     /* ── 5. Фиксация + врезка [20426–20444] ── */
     const cost = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
@@ -3060,7 +3084,7 @@ export async function addSection(
     /* ── 11. Стрим ── */
     let lastSubScan = 0;
     let subsections: ParsedSubsection[] = [];
-    const { usage, html } = await streamWithRetries(
+    const { usage, html: rawHtml } = await streamWithRetries(
       handle,
       sectionKey,
       fp,
@@ -3084,6 +3108,7 @@ export async function addSection(
       },
     );
 
+    const html = await cleanModelHtml(rawHtml, genEntryId); // 13.1 (Д-63)
     if (expectedSubs.length > 0) {
       subsections = parseSubsectionsFromHTML(html, expectedSubs);
       subsections.forEach((s) => { s.status = "done"; });

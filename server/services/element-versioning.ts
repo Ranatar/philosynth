@@ -22,6 +22,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
+import { sanitizeSectionHtml } from "../utils/html-parser.js"; // 13.1 (Д-63)
 import {
   categories,
   categoryEdges,
@@ -283,7 +284,8 @@ export async function rollbackToVersion(
     // найден»: откатить правку капсулы импортированной концепции было нельзя.
     // Элемент такой версии — сама колонка syntheses.capsule_html.
     if (elementType === "section" && elementId === synthesisId) {
-      const html = typeof target.data["htmlContent"] === "string" ? target.data["htmlContent"] : null;
+      // 13.1 (Д-63): снимок мог быть снят до чистки — через санитайзер раздела
+      const html = typeof target.data["htmlContent"] === "string" ? sanitizeSectionHtml(target.data["htmlContent"]).html : null;
       if (target.data["key"] !== CAPSULE_KEY || html === null)
         throw new VersioningError("NOT_FOUND", tl("common.elementNotFound", "Элемент не найден"));
       const [synth] = await tx
@@ -317,11 +319,16 @@ export async function rollbackToVersion(
       "rollback",
       tx,
     );
+    // 13.1 (Д-63): снимок раздела мог быть снят до чистки — HTML через санитайзер
+    const restoreData =
+      elementType === "section" && typeof target.data["htmlContent"] === "string"
+        ? { ...target.data, htmlContent: sanitizeSectionHtml(target.data["htmlContent"]).html }
+        : target.data;
     const element = await restoreElementData(
       synthesisId,
       elementType,
       elementId,
-      target.data,
+      restoreData,
       tx,
     );
     // 12.1 (Д-14): строка sections 'capsule' восстановлена — та же транзакция

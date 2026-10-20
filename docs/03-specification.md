@@ -795,9 +795,16 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
                                 // разбирает linkedom'ом и пропускает теги
                                 // системного промпта (p, ul/ol/li, strong/em,
                                 // h5, table…, div.callout, span.risk/.callout-
-                                // label, br + b/i/sup/sub/blockquote/caption/
-                                // tfoot); прочие теги снимаются с сохранением
-                                // текста, script/style/iframe/form… удаляются
+                                // label). 13.1 (Д-63): набор СУЖЕН до раздела
+                                // «ФОРМАТИРОВАНИЕ» промпта — общий модуль
+                                // shared/constants/doc-markup и ядро
+                                // shared/utils/doc-markup-sanitize (одно на
+                                // сервер и клиентский редактор): b/i →
+                                // strong/em; br/sup/sub/blockquote/caption/
+                                // tfoot/a — текст без тега (caption → <p>
+                                // перед таблицей); прочие теги снимаются с
+                                // сохранением текста, img/script/style/iframe/
+                                // form… удаляются
                                 // с содержимым, атрибуты — только class из
                                 // набора документа и colspan/rowspan; каждой
                                 // таблице возвращается class="doc-table" (по
@@ -997,7 +1004,22 @@ PATCH  /syntheses/:id/categories/:catId
                                 { …, structuralRoles?, proceduralRoles?,
                                   clusterIndices? }
 PATCH  /syntheses/:id/capsule   { html: string }
-                                → { capsuleHtml: string }
+                                → { capsuleHtml: string, version,
+                                    warnings: string[] }
+                                // 13.1 (Д-63): присланное чистится тем же
+                                // ядром в режиме «раздел целиком» (обёртка
+                                // doc-section и <h4> допустимы); что снято —
+                                // warnings (русские фразы, как у правки
+                                // подраздела). Санитайзер стоит и на ВСЕХ
+                                // прочих входах разметки: ответы модели
+                                // (генерация, перегенерация, режимы,
+                                // трансформация, обогащение — предупреждения
+                                // в parseWarnings генлога с префиксом
+                                // «чистка разметки ответа модели: »), импорт
+                                // (warnings ответа полем sections/modes),
+                                // откат снимков версий; уже сохранённое —
+                                // npm run sanitize:stored-html. Каждый ответ
+                                // сервера несёт CSP (server/security-headers).
                                 // Клиент (8.4): ✎ у капсулы в
                                 // DocumentHeader (только isOwner,
                                 // disabled при status='generating'),

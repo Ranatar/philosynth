@@ -310,7 +310,9 @@ try {
     ok(/негодн/i.test(await text(page, T("rec-invalid"))) && /в план не берутся/i.test(await text(page, T("rec-invalid"))), "группа подписана: в план не берутся");
     await click(page, T("rec-edit-table"));
     await gone(page, T("rec-panel"));
-    await page.waitForSelector("textarea[data-subsection-source]", { timeout: 20000 });
+    await page.waitForSelector("textarea[data-subsection-source]:not([disabled])", { timeout: 20000 });
+    // 13.1 (Д-64): форма открывается видом «Текст», поле — скрытое зеркало; харнесс правит ПОЛЕ — вид «Разметка»
+    { const b = await page.$('button[data-subsection-action="view-markup"]:not([disabled])'); if (b) { await b.evaluate((x) => x.click()); await page.waitForFunction(() => { const a = document.querySelector("textarea[data-subsection-source]"); return !!a && !a.hidden; }, { timeout: 5000 }); } }
     const src = await page.$eval("textarea[data-subsection-source]", (el) => el.value);
     ok(/<table class="doc-table">/.test(src) && src.includes("Несуществующий подраздел"), "открыта правка по месту подраздела «Таблица рекомендаций» с разметкой таблицы");
     const host = await page.$eval("textarea[data-subsection-source]", (el) => el.closest("[data-section]")?.getAttribute("data-section") ?? "");

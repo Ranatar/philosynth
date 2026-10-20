@@ -26,6 +26,12 @@
 
 import { parseHTML } from "linkedom";
 
+import {
+  sanitizeDocMarkup,
+  sanitizeWarningsRu,
+  type SanitizableElement,
+} from "@philosynth/shared/utils/doc-markup-sanitize";
+
 import type { TableLikeElement } from "./text.js";
 
 /** Структурный минимум DOM-элемента, достаточный для портов extract*(). */
@@ -981,21 +987,15 @@ export function readSubsectionSource(
   return { name: subsectionName, html: lines.join("\n"), nested: names };
 }
 
-/* Белый список — теги раздела «ФОРМАТИРОВАНИЕ» системного промпта плюс их
-   безвредная родня (b/i/sup/sub/blockquote/tfoot/caption). */
-const ALLOWED_TAGS = new Set([
-  "P", "UL", "OL", "LI", "STRONG", "EM", "B", "I", "SUP", "SUB", "BR", "H5",
-  "BLOCKQUOTE", "TABLE", "CAPTION", "THEAD", "TBODY", "TFOOT", "TR", "TH",
-  "TD", "DIV", "SPAN",
-]);
-/** Удаляются ВМЕСТЕ с содержимым: текст внутри них — не текст документа. */
-const DROPPED_TAGS = new Set([
-  "SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "LINK", "META", "TEMPLATE",
-  "NOSCRIPT", "SVG", "MATH", "FORM", "INPUT", "BUTTON", "TEXTAREA", "SELECT",
-  "IMG", "VIDEO", "AUDIO", "CANVAS", "BASE", "HEAD", "TITLE",
-]);
-const DIV_CLASS_RE = /^callout(?: (?:warning|note|gold))?$/;
-const SPAN_CLASS_RE = /^(?:callout-label|risk(?: (?:high|medium|low))?)$/;
+/* Белый список тегов, классов и атрибутов — ОБЩИЙ модуль
+   packages/shared/constants/doc-markup.ts (беседа 13.1, Д-63): по нему же
+   строится панель кнопок редактора, и сторож сверяет его с текстом раздела
+   «ФОРМАТИРОВАНИЕ» системного промпта. До 13.1 список жил здесь своей
+   копией и был шире промпта (b/i/sup/sub/blockquote/br/caption/tfoot);
+   решением пользователя 2026-10-13 он СУЖЕН до промпта: b → strong, i → em,
+   прочее вне списка снимается с сохранением текста. Само ядро чистки —
+   shared/utils/doc-markup-sanitize.ts (общее с клиентом); здесь — только
+   вызов на linkedom-дереве и сборка предупреждений. */
 
 export const SUBSECTION_HTML_MAX = 200_000;
 
@@ -1046,42 +1046,42 @@ function dropStrayClosers(html: string): string {
 }
 
 function sanitizeTree(root: EditElement, warnings: string[]): void {
-  const unwrapped = new Set<string>();
-  const dropped = new Set<string>();
-  // Снимок списка: дерево меняется по ходу обхода
-  for (const el of Array.from(root.querySelectorAll("*"))) {
-    const tag = el.tagName.toUpperCase();
-    if (DROPPED_TAGS.has(tag)) {
-      dropped.add(tag.toLowerCase());
-      el.remove();
-      continue;
-    }
-    if (!ALLOWED_TAGS.has(tag)) {
-      unwrapped.add(tag.toLowerCase());
-      el.replaceWith(...Array.from(el.childNodes));
-      continue;
-    }
-    for (const attr of Array.from(el.attributes)) {
-      const n = attr.name.toLowerCase();
-      const spanOk = (n === "colspan" || n === "rowspan") &&
-        (tag === "TD" || tag === "TH") && /^\d{1,2}$/.test(attr.value.trim());
-      if (n === "class" || spanOk) continue;
-      el.removeAttribute(attr.name);
-    }
-    const cls = (el.getAttribute("class") ?? "").trim().replace(/\s+/g, " ");
-    if (tag === "TABLE") {
-      // Парсеры и экстракторы контекста ищут table.doc-table
-      el.setAttribute("class", "doc-table");
-    } else if ((tag === "DIV" && DIV_CLASS_RE.test(cls)) || (tag === "SPAN" && SPAN_CLASS_RE.test(cls))) {
-      el.setAttribute("class", cls);
-    } else if (el.getAttribute("class") !== null) {
-      el.removeAttribute("class");
-    }
-  }
-  if (dropped.size)
-    warnings.push(`Удалены вместе с содержимым: ${[...dropped].map((t) => `<${t}>`).join(", ")}`);
-  if (unwrapped.size)
-    warnings.push(`Теги вне набора документа сняты, текст оставлен: ${[...unwrapped].map((t) => `<${t}>`).join(", ")}`);
+  const report = sanitizeDocMarkup(root as unknown as SanitizableElement, { mode: "subsection" });
+  warnings.push(...sanitizeWarningsRu(report));
+}
+
+export interface SanitizeHtmlResult {
+  /** Разметка после чистки (сериализация linkedom) */
+  html: string;
+  /** Что снято — русские фразы для владельца (перевод — Фаза 14, Д-60) */
+  warnings: string[];
+  /** Хоть что-то изменилось; false — html равен присланному побайтно */
+  changed: boolean;
+}
+
+/**
+ * Чистка РАЗДЕЛА ЦЕЛИКОМ (беседа 13.1, Д-63): ответ модели (генерация,
+ * перегенерация раздела и подраздела, возобновление, режимы, трансформация),
+ * импорт, PATCH капсулы, откат снимка версии — всё, что входит в
+ * sections.html_content / syntheses.capsule_html / mode_results, идёт через
+ * эту функцию. Режим `section` общего ядра: сверх содержимого разрешена
+ * обёртка раздела (doc-section, section-num, section-title, doc-content,
+ * div[data-section] с <h4>) и якоря оглавления 12.2; комментарии снимаются.
+ * Пустая строка — пустая строка. При `changed === false` возвращается
+ * присланная строка побайтно (сериализация не меняет того, что чистить не
+ * пришлось: сравнение «до/после» у вызывающих и в одноразовом скрипте —
+ * по этому признаку).
+ */
+export function sanitizeSectionHtml(html: string): SanitizeHtmlResult {
+  if (!html) return { html, warnings: [], changed: false };
+  const root = parseEditable(html);
+  const report = sanitizeDocMarkup(root as unknown as SanitizableElement, { mode: "section" });
+  // linkedom схлопывает пробелы class ещё при разборе: «callout  warning » он
+  // отдаёт как «callout warning», и ядро не видит разницы — а в строке она есть.
+  // Такой вход считается изменённым, чтобы в БД легло точное значение набора.
+  const sloppyClass = /class="(?:\s[^"]*|[^"]*\s|[^"]*\s\s[^"]*)"/.test(html);
+  if (!report.changed && !sloppyClass) return { html, warnings: [], changed: false };
+  return { html: root.innerHTML, warnings: sanitizeWarningsRu(report), changed: true };
 }
 
 function stripForeignComments(node: EditElement): void {

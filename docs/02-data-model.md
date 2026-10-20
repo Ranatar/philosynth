@@ -177,7 +177,8 @@ CREATE TABLE syntheses (
   version_modes    INT NOT NULL DEFAULT 0,
   version_mode_regen INT NOT NULL DEFAULT 0,
   
-  -- Капсула (HTML, хранится отдельно от секций)
+  -- Капсула (HTML, хранится отдельно от секций); 13.1: как html_content —
+  -- только после санитайзера (PATCH капсулы, импорт, откат, генерация)
   capsule_html     TEXT NOT NULL DEFAULT '',
 
   -- Дерево генеалогии импортированного файла (FileGenealogyNode, миграция
@@ -278,7 +279,10 @@ CREATE TABLE sections (
   key           TEXT NOT NULL,  -- 'sum'|'graph'|'glossary'|'theses'|...
   section_num   INT NOT NULL,
   title         TEXT NOT NULL,
-  html_content  TEXT NOT NULL DEFAULT '',
+  html_content  TEXT NOT NULL DEFAULT '',  -- 13.1 (Д-63): только ПОСЛЕ санитайзера
+                                          -- (shared/utils/doc-markup-sanitize, режим
+                                          -- section) — на всех входах; старое —
+                                          -- npm run sanitize:stored-html
   sec_context   TEXT NOT NULL DEFAULT '',  -- доп. контекст раздела (secCtx)
   is_edited     BOOLEAN NOT NULL DEFAULT false,  -- true после перегенерации (2.2), врезки таблицы
                                                  -- рендерером (5.1) и ручной правки подраздела (9.2)

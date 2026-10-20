@@ -19,7 +19,7 @@
 import type { SectionFull, SectionSummary } from "@philosynth/shared/types/section";
 import type { SynthesisFull } from "@philosynth/shared/types/synthesis";
 
-import type { SubsectionEditState, SubsectionRef } from "../../utils/subsection-edit";
+import type { SubsectionEditState, SubsectionEditView, SubsectionRef } from "../../utils/subsection-edit";
 
 import { DocumentFooter } from "./DocumentFooter";
 import { DocumentHeader } from "./DocumentHeader";
@@ -52,6 +52,8 @@ export interface DocumentViewProps {
   onSubsectionEdit?: ((ref: SubsectionRef) => void) | undefined;
   onSubsectionSave?: ((html: string) => void) | undefined;
   onSubsectionCancel?: (() => void) | undefined;
+  /** 13.1: переключение вида формы правки подраздела */
+  onSubsectionView?: ((view: SubsectionEditView, draft: string) => void) | undefined;
 }
 
 export function DocumentView({
@@ -69,6 +71,7 @@ export function DocumentView({
   onSubsectionEdit,
   onSubsectionSave,
   onSubsectionCancel,
+  onSubsectionView,
 }: DocumentViewProps) {
   const showcase = synthesis.scope === "showcase" && !synthesis.isOwner;
   const byKey = new Map(
@@ -118,6 +121,7 @@ export function DocumentView({
               onSubsectionEdit={onSubsectionEdit}
               onSubsectionSave={onSubsectionSave}
               onSubsectionCancel={onSubsectionCancel}
+              onSubsectionView={onSubsectionView}
             />
           ))}
         </div>

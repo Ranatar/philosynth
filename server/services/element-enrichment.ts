@@ -72,7 +72,7 @@ import {
 } from "../db/schema.js";
 import { env } from "../env.js";
 import { JUSTIFICATION_SECTIONS } from "../config/enrichment-templates.js";
-import { innerTextTrimmed, parseFragment } from "../utils/html-parser.js";
+import { innerTextTrimmed, parseFragment, sanitizeSectionHtml } from "../utils/html-parser.js";
 import { connectionManager } from "../ws/connection-manager.js";
 import { clearStreamState } from "../ws/stream-state.js";
 
@@ -498,7 +498,14 @@ async function streamEnrichment(
     });
   };
   try {
-    const { usage, html } = await streamWithRetries(handle, streamKey, prompt, SYS, apiKey, onDelta);
+    const { usage, html: rawHtml } = await streamWithRetries(handle, streamKey, prompt, SYS, apiKey, onDelta);
+    // 13.1 (Д-63): содержимое обогащения показывается разметкой (EnrichmentPanel,
+    // dangerouslySetInnerHTML) и читателям публичной концепции — через тот же
+    // санитайзер, что ответы модели в документе; предупреждения — в лог сервера
+    // (у обогащения нет строки генлога с parseWarnings)
+    const cleaned = sanitizeSectionHtml(rawHtml);
+    if (cleaned.warnings.length) console.warn("[enrichment] чистка разметки ответа:", cleaned.warnings.join("; "));
+    const html = cleaned.html;
     const costUsd = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
     await clearStreamState(handle.synthesisId, streamKey);
     return { content: html.trim(), usage: { ...usage, costUsd } };

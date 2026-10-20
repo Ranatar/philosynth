@@ -79,6 +79,11 @@ bash deploy/philosynth-ubuntu.sh            # setup: миграции и сид�
 bash deploy/philosynth-ubuntu.sh start
 ```
 
+Один раз при переходе на беседу 13.1 (Д-63) — чистка уже сохранённой
+разметки: `(cd ~/philosynth && npm run sanitize:stored-html -- --dry)` для
+отчёта, затем без `--dry`. Что и зачем — `deploy/philosynth-hosting.md`
+§8; скрипт идемпотентен, службу останавливать не требует.
+
 Порядок не случаен. **Сначала `stop`** — из-за схемы. Служба идёт в
 dev-режиме (`tsx watch`) и на `git pull` перезапускается сама, то есть ДО
 миграций. С миграции `0008` новый код читает

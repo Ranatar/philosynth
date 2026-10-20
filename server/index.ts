@@ -4,6 +4,7 @@
  * Беседа 0.2: CORS, формат ошибок, auth-роуты, rate-limiter, WebSocket.
  * Беседа 6.1: billing/prompts-роуты, прогрев кэша реестра.
  * Беседа 9.1: работник очереди писем (интервал; остановка в shutdown).
+ * Беседа 13.1: заголовки безопасности (CSP) у каждого ответа.
  * Дальше: syntheses/sections/… — беседы 1.x+.
  */
 import { serve } from "@hono/node-server";
@@ -15,6 +16,7 @@ import { closeDb, sql } from "./db/index.js";
 import { closeRedis, connectRedis } from "./redis.js";
 import type { AuthEnv } from "./middleware/auth.js";
 import { rateLimiter } from "./middleware/rate-limiter.js";
+import { SECURITY_HEADERS } from "./security-headers.js"; // беседа 13.1
 import { installServerCatalogProvider, requestLocale } from "./i18n/locale.js"; // беседа 11.2
 import { authRoutes } from "./routes/auth.js";
 import { synthesesRoutes } from "./routes/syntheses.js";
@@ -45,6 +47,13 @@ import { registerWebSocket } from "./ws/handler.js";
 const app = new Hono<AuthEnv>();
 
 /* ── Глобальные middleware ───────────────────────────────────────────── */
+
+// 13.1 (Д-63): CSP и сопутствующие заголовки — у КАЖДОГО ответа, включая
+// 404/500 и экспорт (тот уходит вложением и под политику страницы не попадает)
+app.use("*", async (c, next) => {
+  await next();
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) c.header(name, value);
+});
 
 app.use(
   "*",

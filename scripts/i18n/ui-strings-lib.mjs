@@ -46,6 +46,12 @@ export const SCOPE = [
       "packages/shared/utils/transliterate.ts",
       "packages/shared/utils/normalize.ts",
       "packages/shared/utils/colorize-log.ts", // только регулярки
+      // 13.1 (Д-63): общий модуль разметки и ядро санитайзера — их русские
+      // строки суть диагностика (предупреждения чистки в parseWarnings и в
+      // warnings ответа правки, как у server/utils/html-parser.ts вне охвата;
+      // расхождения модуля с промптом — вывод сторожа). Перевод — Фаза 14 (Д-60).
+      "packages/shared/constants/doc-markup.ts",
+      "packages/shared/utils/doc-markup-sanitize.ts",
     ],
   },
   { group: "server-data", file: "server/config/compat-matrix.ts", mode: "ui" },

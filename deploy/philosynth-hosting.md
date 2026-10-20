@@ -76,6 +76,19 @@ philosynth.example.org {
     root * /home/philos/philosynth/client/dist
     file_server
 
+    # Заголовки безопасности страницы (беседа 13.1, Д-63). Политика —
+    # дословно та же, что у ответов сервера (server/security-headers.ts) и
+    # у `vite preview` (client/vite.config.ts): check:integration сверяет
+    # три копии. Документ рисуется разметкой, и CSP — второй рубеж после
+    # санитайзера: встроенный обработчик или javascript:-ссылка, если бы
+    # они дошли до страницы, не исполнятся. js.stripe.com — Stripe.js
+    # (BillingPage), остальное — 'self'.
+    header {
+        Content-Security-Policy "script-src 'self' https://js.stripe.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+    }
+
     # API и живые соединения — на сервер
     handle /api/* {
         reverse_proxy 127.0.0.1:3000
@@ -257,6 +270,24 @@ sudo -u philos npm run --prefix /home/philos/philosynth seed:configs
 sudo -u philos npm run --prefix /home/philos/philosynth build
 sudo systemctl restart philosynth
 ```
+
+**Один раз при переходе на беседу 13.1** (Д-63) — после миграций, до или
+после перезапуска, всё равно: чистка уже сохранённой разметки.
+
+```bash
+sudo -u philos npm run --prefix /home/philos/philosynth sanitize:stored-html -- --dry   # отчёт
+sudo -u philos npm run --prefix /home/philos/philosynth sanitize:stored-html            # запись
+```
+
+До 13.1 санитайзер стоял только на ручной правке подраздела; ответы модели,
+импорт, PATCH капсулы и откат версий входили в документ как есть, и в базе
+может лежать `<img onerror>` или `javascript:`-ссылка (живая проба). Скрипт
+прогоняет санитайзер раздела по `sections.html_content`,
+`syntheses.capsule_html`, `mode_results.html_content`, снимкам
+`element_versions` (section) и `element_enrichments.content`; `--dry` —
+только отчёт по таблицам. Идемпотентен — повторный прогон меняет 0 строк;
+`--synthesis <uuid>` — одна концепция. Записи обновляются построчно, службу
+останавливать не нужно.
 
 Миграции — до перезапуска, не после: новый код рассчитывает на новую
 схему. Сиды шаблонов и конфигов — тоже до перезапуска: они идемпотентны (без

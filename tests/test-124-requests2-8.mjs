@@ -112,7 +112,9 @@ const nameHtml = (num, strong) => wrap(num, "Анализ названия",
   sub("Таблица вариантов названия", tbl(["Вариант", "Довод"], [["Первый", "черновой"]])) +
   sub("Сравнительный анализ вариантов", "<p>Сравнение вариантов.</p>") +
   sub("Итоговая рекомендация", `<p><strong>${strong}</strong></p><p>Довод в пользу названия.</p>`));
-const CAPSULE = (t) => `<div class="capsule"><p>${t}</p></div>`;
+// 13.1 (Д-63): капсула — раздел документа под санитайзером; класс «capsule» не из набора
+// промпта (настоящая капсула — обёртка doc-section), откат чистил бы его → обёртка как у генерации
+const CAPSULE = (t) => `<div class="doc-section"><div class="doc-content"><p>${t}</p></div></div>`;
 const REPL1 = "то, что есть, взятое в его определённости";
 const ROWS = [
   ["1", "Таблица категорий", "Бытие", "уточнить формулировку", REPL1, "Слепые пятна", "существенная"],
@@ -309,6 +311,9 @@ const setValue = (page, sel, value) => page.$eval(sel, (el, v) => {
 async function openSubEditor(page, name) {
   await click(page, `button[data-edit-subsection="${name}"]`);
   await page.waitForFunction(() => { const a = document.querySelector("textarea[data-subsection-source]"); return !!a && !a.disabled && a.value !== "" && !/^Загрузка/.test(a.value); }, { timeout: 15000 });
+  // 13.1 (Д-64): форма открывается видом «Текст», поле — скрытое зеркало; харнесс правит ПОЛЕ — вид «Разметка»
+  const toMarkup = await page.$('button[data-subsection-action="view-markup"]:not([disabled])');
+  if (toMarkup) { await toMarkup.evaluate((b) => b.click()); await page.waitForFunction(() => { const a = document.querySelector("textarea[data-subsection-source]"); return !!a && !a.hidden; }, { timeout: 5000 }); }
   await sleep(100);
 }
 /** Правка подраздела сохранена: без предупреждений и заметок форма закрывается сама (9.2), с ними — фаза saved и «Понятно» */

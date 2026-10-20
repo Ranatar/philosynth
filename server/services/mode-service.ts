@@ -76,6 +76,7 @@ import {
   buildParams,
   buildPromptSkeleton,
   bumpTotals,
+  cleanModelHtml,
   GenerationError,
   loadSynthesis,
   streamWithRetries,
@@ -523,9 +524,10 @@ export async function runMode(
   };
 
   try {
-    const { usage, html } = await streamWithRetries(
+    const { usage, html: rawHtml } = await streamWithRetries(
       handle, streamKey, prompt, SYS, apiKey, onDelta,
     );
+    const html = await cleanModelHtml(rawHtml, genEntryId); // 13.1 (Д-63)
 
     const cost = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
     await db
@@ -744,10 +746,11 @@ export async function regenerateModeSilent(
   const genEntryId = (genEntry as { id: string }).id;
 
   try {
-    const { usage, html } = await streamWithRetries(
+    const { usage, html: rawHtml } = await streamWithRetries(
       handle, streamKey, prompt, SYS, apiKey,
       () => {}, // silent: скрытый контейнер исходника — дельты не шлём
     );
+    const html = await cleanModelHtml(rawHtml, genEntryId); // 13.1 (Д-63)
     const cost = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
     await db
       .update(generationLog)

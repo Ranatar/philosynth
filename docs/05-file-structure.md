@@ -59,9 +59,13 @@ philosynth-service/
 │       │   │                           # диапазонами, resolveCharacteristic (алиасы
 │       │   │                           # depth/camelCase), validateCharacteristicValue
 │       │   │                           # (5.3; нужны серверу и слайдерам 5.4)
-│       │   └── auth.ts                 # 8.1: PASSWORD_MIN_LENGTH, EMAIL_RE,
-│       │                               # DISPLAY_NAME_MAX_LENGTH — единый свод правил
-│       │                               # аккаунта (routes/auth, bootstrap-admin, RegisterPage)
+│       │   ├── auth.ts                 # 8.1: PASSWORD_MIN_LENGTH, EMAIL_RE,
+│       │   │                           # DISPLAY_NAME_MAX_LENGTH — единый свод правил
+│       │   │                           # аккаунта (routes/auth, bootstrap-admin, RegisterPage)
+│       │   └── doc-markup.ts           # 13.1 (Д-63): набор разметки документа РОВНО по
+│       │                               # разделу «ФОРМАТИРОВАНИЕ» промпта (parsePromptFormatting
+│       │                               # читает генерат, diffMarkupSpecs — сторож), EDITOR_TOOLS
+│       │                               # панели редактора; вне описи i18n (диагностика)
 │       │
 │       ├── i18n/                       # 11.2: перевод строк интерфейса (общий клиент + сервер)
 │       │   ├── t.ts                    # tl(key, ru, params): второй аргумент — русский текст и запасной
@@ -105,6 +109,10 @@ philosynth-service/
 │           ├── transliterate.ts        # transliterate() (transliterate())
 │           ├── normalize.ts            # normalizeName, normalizeType (normalizeName(), normalizeType())
 │           ├── escape.ts               # esc() — HTML-экранирование
+│           ├── doc-markup-sanitize.ts  # 13.1 (Д-63): ядро санитайзера — одно на сервер
+│           │                           # (linkedom) и клиент (DOMParser); режимы subsection/
+│           │                           # section, b/i → strong/em, прочее — текст;
+│           │                           # sanitizeWarningsRu (перевод — Фаза 14)
 │           ├── cardinality.ts          # participantCardinality, participantWord/Sg,
 │           │                           # hasConceptParticipants (v11, 01 §4.14)
 │           ├── colorize-log.ts         # colorizeLog() — единая реализация (2.4;
@@ -119,6 +127,10 @@ philosynth-service/
 │   ├── index.ts                        # Точка входа: Hono app + WebSocket
 │   │                                   # 11.2: requestLocale ДО rate-limiter и роутов,
 │   │                                   # installServerCatalogProvider()
+│   │                                   # 13.1: SECURITY_HEADERS на каждый ответ
+│   ├── security-headers.ts             # 13.1 (Д-63): CONTENT_SECURITY_POLICY (копии дословно:
+│   │                                   # client/vite.config.ts preview, Caddy в deploy/hosting),
+│   │                                   # nosniff, Referrer-Policy — сторож 4be сверяет
 │   ├── i18n/                           # 11.2
 │   │   └── locale.ts                   # язык запроса (AsyncLocalStorage): пользователь → cookie
 │   │                                   # ui_locale → Accept-Language → ru; каталоги generated/*;
@@ -448,6 +460,8 @@ philosynth-service/
 │   │   ├── text.ts                     # truncateText, tableToText (truncateText(), tableToText())
 │   │   ├── css-audit.ts                # auditCSS (auditCSS())
 │   │   ├── html-parser.ts              # Обёртка над linkedom для серверного DOM-парсинга
+│   │   │                               # 13.1: санитайзер на общем ядре shared; sanitizeSectionHtml
+│   │   │                               # (раздел целиком) — для всех входов разметки
 │   │   └── crypto.ts                   # AES-256-GCM шифрование API-ключей (СДЕЛАНО 6.1:
 │   │   │                               #  deriveKey SHA-256 из секрета, pack iv‖tag‖ciphertext)
 │   │
@@ -686,7 +700,13 @@ philosynth-service/
 │   │       ├── capsule-html.ts             # 8.4: пересборка HTML капсулы из текста
 │   │       │                               # (обёртка секции и <h4> сохраняются, содержимое → <p>)
 │   │       ├── subsection-edit.ts          # 9.2: состояние правки подраздела и тексты отказов
-│   │       │                               # (клиент разметку НЕ собирает и НЕ чистит — сервер)
+│   │       │                               # (клиент разметку НЕ собирает и НЕ чистит — сервер);
+│   │       │                               # 13.1: + view 'rich'|'markup'
+│   │       ├── subsection-rich-editor.ts   # 13.1 (Д-64): полнотекстовая правка — contenteditable
+│   │       │                               # поверх общего ядра: fillEditable/readEditorHtml,
+│   │       │                               # applyTool/applyTableOp, sanitizePasted/insertPasted,
+│   │       │                               # плашки вложенных подразделов ↔ комментарии-ссылки,
+│   │       │                               # подписи панели (tl); React не знает
 │   │       ├── genealogy.ts                # Порты генеалогии (3.2): reconstructGenealogy,
 │   │       │                               # restoreCapsulesFromHTML, checkGenealogyOverlaps,
 │   │       │                               # resolveConceptName (FIX [а-яё]), lineageNodeToGenealogy
@@ -740,6 +760,11 @@ philosynth-service/
 │   │   │                               # meta.languages + колонка, split; печатает ручной остаток)
 │   │   ├── extract-ui-strings.mjs      # временная оснастка (опись в один JSON)
 │   │   └── build-localized.mjs         # временная оснастка (копия проекта с переводом)
+│   ├── maintenance/                    # 13.1: одноразовые обслуживающие скрипты (tsx, живая БД)
+│   │   └── sanitize-stored-html.ts     # Д-63: чистка УЖЕ сохранённой разметки (sections,
+│   │                                   # capsule_html, mode_results, снимки element_versions,
+│   │                                   # element_enrichments); --dry, --synthesis; идемпотентен;
+│   │                                   # npm run sanitize:stored-html — шаг после обновления (deploy/*)
 │   ├── checks/                         # проверки, идущие без браузера
 │   │   ├── check-dotfiles.mjs          # 8.7: сторож правок .env.example/.gitignore
 │   │   │                               # 9.1: + восемь переменных почты и MAIL_TRANSPORT стенда
@@ -850,6 +875,16 @@ philosynth-service/
     │                                   # (раскладка в промпте и разборе), Д-43 на файле концепции через PATCH,
     │                                   # Д-49 круг GET /export/html → POST /import, Д-50 replay по WS (?resume=)
     │                                   # и страница в паузе (бейдж, не модалка; один вопрос) — Chrome 131
+    │                                   # test-131-requests2-5 — 13.1: тестовые запросы живьём — ответ мока с
+    │                                   # ядом → mode_results чист + parseWarnings; страница с отравленной
+    │                                   # строкой под CSP (title не меняется); скрипт чистки; сужение;
+    │                                   # 13 кнопок редактора, вставка, таблица, плашка, «Разметка»,
+    │                                   # сервер ≡ зеркалу; живой файл — таблица/выноска без потерь, замки
+    │                                   # smoke-131-request1 — 13.1: ядро санитайзера, живые входы
+    │                                   # (PATCH капсулы, импорт файла с <img onerror>/javascript:),
+    │                                   # CSP на сервере/preview/трёх копиях, скрипт чистки --dry,
+    │                                   # редактор в сборке под Chrome 131 (панель, вставка, таблица,
+    │                                   # плашка, два вида формы, Ctrl+Enter → БД)
     │                                   # smoke-125-request1 — 12.5: Д-43 (столбец «Тип» при перерисовке,
     │                                   # T125_FILE — живой документ), Д-40 (надстройка), Д-33 (сканер данных,
     │                                   # add-lang --dry), Д-39 (ROOT), Д-49 (круг экспорт → импорт, живая БД)

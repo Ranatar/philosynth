@@ -142,12 +142,19 @@ async function setArea(page, fn, arg) {
     t.dispatchEvent(new Event("input", { bubbles: true }));
   }, fn.toString(), arg);
 }
+/** 13.1 (Д-64): форма открывается видом «Текст» (contenteditable), поле разметки при нём — скрытое
+ *  зеркало; харнесс 9.2 проверяет ПОЛЕ — переключаем вид «Разметка» (данные те же, фокус — в поле) */
+async function toMarkupView(page) {
+  const btn = await page.$('button[data-subsection-action="view-markup"]:not([disabled])');
+  if (btn) { await btn.evaluate((b) => b.click()); await page.waitForFunction((s) => { const a = document.querySelector(s); return !!a && !a.hidden; }, { timeout: 5000 }, AREA); }
+}
 async function waitArea(page) {
   try { await page.waitForSelector(`${AREA}:not([disabled])`, { timeout: 15000 }); }
   catch (e) {
     const form = await page.evaluate(() => document.querySelector("[data-subsection-editor]")?.textContent ?? "(формы нет)");
     throw new Error(`поле правки не открылось; форма: ${form}`);
   }
+  await toMarkupView(page);
 }
 const clickAction = (page, which) => page.$eval(`button[data-subsection-action="${which}"]`, (b) => b.click());
 
@@ -186,6 +193,8 @@ async function main() {
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 900 });
+  // 13.1: с 11.3 интерфейс идёт по Accept-Language — харнесс 9.2 ждёт русские подписи
+  { const cdp = await page.createCDPSession(); await cdp.send("Network.setUserAgentOverride", { userAgent: await browser.userAgent(), acceptLanguage: "ru-RU,ru" }); }
   const [cn, cv] = A.cookie.split("=");
   await page.setCookie({ name: cn, value: cv, url: UI });
   const pageErrors = [];
@@ -465,7 +474,8 @@ async function main() {
   ok(/итого правил с расхождениями: 0/.test(out), "B: правил с расхождениями 0");
   ok(/совпадает с блоком <style> исходника/.test(out), "D: CSS выгружаемого документа ≡ исходнику");
   const cBlock = out.slice(out.indexOf("═══ C."), out.indexOf("═══ D."));
-  ok(!/subsection-edit|inline-edit/.test(cBlock) && /без правил: 1\b/.test(cBlock) && cBlock.includes("gm-hint"), "C: без правил только предсуществующий gm-hint — классы 9.2 покрыты");
+  // 13.1: gm-hint с тех пор покрыт (12.4) — допускаем и «без правил: 0»
+  ok(!/subsection-edit|inline-edit|rich-/.test(cBlock) && (/без правил: 0\b/.test(cBlock) || (/без правил: 1\b/.test(cBlock) && cBlock.includes("gm-hint"))), "C: без правил ничего (или только предсуществующий gm-hint) — классы 9.2 покрыты");
   const formCss = await (async () => {
     await openSynth(page, LIVE);
     await page.waitForSelector("button[data-edit-subsection]", { timeout: 20000 });

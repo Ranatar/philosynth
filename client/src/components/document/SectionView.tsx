@@ -56,19 +56,56 @@
  * НЕ цел. Заголовок и вводная переписаны нейтрально — замечания службы к
  * последней генерации раздела; сами пометки — русская диагностика генлога,
  * не переводятся. Д-15: пометка «⟳ изменён» у раздела (.section-edited-mark).
+ *
+ * Беседа 13.1 (Д-64): полнотекстовая правка. Форма 9.2 получает два вида
+ * (SubsectionEditState.view): «rich» — contenteditable-блок НА МЕСТЕ
+ * подраздела, в типографике документа, с панелью кнопок по общему модулю
+ * разметки (EDITOR_TOOLS, utils/subsection-rich-editor.ts) и кнопками
+ * строк/столбцов таблицы; «markup» — прежнее поле разметки, на всю ширину,
+ * с переносом, высотой по содержимому. Поле <textarea> есть в ОБОИХ видах:
+ * в rich оно скрыто (hidden) и ЗЕРКАЛИТ редактор — после каждого ввода,
+ * кнопки и вставки в него пишется собранная разметка (readEditorHtml), а
+ * сохранение по-прежнему читает поле. Так черновик один (liveDraft, 9.2),
+ * а харнессы 9.2–12.x, ставящие значение полю и жмущие «Сохранить»,
+ * продолжают работать. Содержимое редактора кладётся в строку HTML при
+ * сборке (fillEditable в DOMParser-документе) — без эффекта после монтажа.
+ * Вставка из буфера — onPaste делегированием: буфер чистится тем же ядром
+ * санитайзера, что на сервере (DOMParser), и входит через insertHTML.
+ * Плашки вложенных подразделов — contenteditable="false", Backspace/Delete/
+ * вырезание/перетаскивание рядом с ними гасятся (isPlaceholderDeletion).
  */
 import {
   useMemo,
   useRef,
+  type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
 } from "react";
 
+import { EDITOR_TOOLS, type EditorToolId } from "@philosynth/shared/constants/doc-markup";
+
 import type { SectionFull } from "@philosynth/shared/types/section";
 
-import type { SubsectionEditState, SubsectionRef } from "../../utils/subsection-edit";
+import type { SubsectionEditState, SubsectionEditView, SubsectionRef } from "../../utils/subsection-edit";
+import {
+  EDITOR_BODY_SELECTOR,
+  TABLE_OPS,
+  applyTableOp,
+  applyTool,
+  enterAtBlockEnd,
+  fillEditable,
+  insertPasted,
+  isPlaceholderDeletion,
+  prepareParagraphs,
+  readEditorHtml,
+  sanitizePasted,
+  tableOpLabel,
+  toolLabel,
+  type TableOp,
+} from "../../utils/subsection-rich-editor";
 
 import { subsectionSlugId } from "./TableOfContents";
 import { tl } from "@philosynth/shared/i18n/t";
@@ -106,6 +143,8 @@ export interface SectionViewProps {
   onSubsectionEdit?: ((ref: SubsectionRef) => void) | undefined;
   onSubsectionSave?: ((html: string) => void) | undefined;
   onSubsectionCancel?: (() => void) | undefined;
+  /** 13.1: переключение вида формы (rich ↔ markup); draft — набранное на момент переключения */
+  onSubsectionView?: ((view: SubsectionEditView, draft: string) => void) | undefined;
   /** 11.3 (Д-16): пометка «разобран с потерями» — только владельцу */
   showParseWarnings?: boolean | undefined;
 }
@@ -262,13 +301,82 @@ export function renderSubsectionEditor(
 
   // Исходник не приехал (замок, 409, сеть): поля нет — только отказ и «Отмена»
   const loadFailed = edit.phase === "loading" && !!edit.error;
-  form.appendChild(el("label", "form-label", tl("document.sectionView.subsectionMarkup", "Разметка подраздела")));
+  const view: SubsectionEditView = edit.view ?? "rich";
+  const rich = view === "rich";
+  // 13.1: панель кнопок — ровно EDITOR_TOOLS общего модуля (сторож 4be
+  // сверяет data-editor-tool ⊆ EDITOR_TOOL_IDS) плюс строки/столбцы таблицы
+  // и переключатель вида. Кнопки — type=button, обработчики — делегированием.
+  const panel = el("div", "rich-editor-panel");
+  panel.setAttribute("data-subsection-panel", "1");
+  panel.setAttribute("role", "toolbar");
+  if (rich) {
+    const groups: EditorToolId[][] = [
+      ["p", "h5", "strong", "em"],
+      ["ul", "ol", "table"],
+      ["callout-warning", "callout-note", "callout-gold"],
+      ["risk-high", "risk-medium", "risk-low"],
+    ];
+    for (const g of groups) {
+      const grp = el("span", "rich-editor-group");
+      for (const id of g) {
+        const t = EDITOR_TOOLS.find((x) => x.id === id);
+        if (!t) continue;
+        const lab = toolLabel(id);
+        const b = el("button", `rich-editor-btn rich-editor-btn-${t.kind}`, lab.text);
+        b.setAttribute("type", "button");
+        b.setAttribute("title", lab.hint);
+        b.setAttribute("data-editor-tool", id);
+        if (edit.phase !== "ready") b.setAttribute("disabled", "");
+        grp.appendChild(b);
+      }
+      panel.appendChild(grp);
+    }
+    const tgrp = el("span", "rich-editor-group rich-editor-table-ops");
+    tgrp.setAttribute("data-table-ops", "1");
+    for (const op of TABLE_OPS) {
+      const lab = tableOpLabel(op);
+      const b = el("button", "rich-editor-btn", lab.text);
+      b.setAttribute("type", "button");
+      b.setAttribute("title", lab.hint);
+      b.setAttribute("data-table-op", op);
+      if (edit.phase !== "ready") b.setAttribute("disabled", "");
+      tgrp.appendChild(b);
+    }
+    panel.appendChild(tgrp);
+  }
+  const toggle = el(
+    "button",
+    "rich-editor-btn rich-editor-toggle",
+    rich ? tl("document.sectionView.viewMarkup", "Разметка") : tl("document.sectionView.viewRich", "Текст"),
+  );
+  toggle.setAttribute("type", "button");
+  toggle.setAttribute("title", rich
+    ? tl("document.sectionView.viewMarkupHint", "Показать разметку подраздела полем (прежний вид правки)")
+    : tl("document.sectionView.viewRichHint", "Вернуться к правке текста на месте"));
+  toggle.setAttribute("data-subsection-action", rich ? "view-markup" : "view-rich");
+  toggle.setAttribute("aria-pressed", rich ? "false" : "true");
+  if (edit.phase !== "ready") toggle.setAttribute("disabled", "");
+  panel.appendChild(toggle);
+  if (!loadFailed) form.appendChild(panel);
+
+  if (rich && !loadFailed) {
+    const body = el("div", "rich-editor-body");
+    body.setAttribute("data-subsection-editor-body", "1");
+    body.setAttribute("contenteditable", edit.phase === "ready" ? "true" : "false");
+    body.setAttribute("spellcheck", "true");
+    body.setAttribute("aria-label", tl("document.sectionView.richBodyLabel", "Текст подраздела"));
+    if (edit.phase === "loading") body.appendChild(el("p", "rich-editor-loading", tl("common.loading", "Загрузка…")));
+    else fillEditable(doc, body, edit.draft);
+    form.appendChild(body);
+  }
+  if (!rich) form.appendChild(el("label", "form-label", tl("document.sectionView.subsectionMarkup", "Разметка подраздела")));
   const area = doc.createElement("textarea");
   area.className = "form-textarea subsection-edit-source";
   area.setAttribute("data-subsection-source", "1");
   area.setAttribute("spellcheck", "true");
   area.setAttribute("rows", String(Math.min(28, Math.max(8, edit.draft.split("\n").length + 2))));
   if (edit.phase !== "ready") area.setAttribute("disabled", "");
+  if (rich) area.setAttribute("hidden", ""); // зеркало редактора, см. шапку
   // Разметка в поле — через метку и подстановку в ГОТОВУЮ строку
   // (enrichSectionHtml): экранирование содержимого <textarea> при
   // сериализации у DOM-реализаций разное (браузер экранирует, linkedom —
@@ -279,10 +387,14 @@ export function renderSubsectionEditor(
     el(
       "div",
       "subsection-edit-note",
-      tl("document.sectionView.markupHelp", "Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. ") +
+      (rich
+        ? tl("document.sectionView.richHelp", "Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. ")
+        : tl("document.sectionView.markupHelp", "Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. ")) +
         tl("document.sectionView.headingNotEditable", "Заголовок подраздела здесь не правится.") +
         (edit.nested.length
-          ? tl("document.sectionView.nestedSubsectionLine", " Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять.")
+          ? (rich
+            ? tl("document.sectionView.nestedSubsectionPlaque", " Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить.")
+            : tl("document.sectionView.nestedSubsectionLine", " Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять."))
           : ""),
     ),
   );
@@ -387,6 +499,7 @@ export function SectionView({
   onSubsectionEdit,
   onSubsectionSave,
   onSubsectionCancel,
+  onSubsectionView,
   showParseWarnings = false,
 }: SectionViewProps) {
   const parseWarnings = showParseWarnings ? section.parseWarnings ?? [] : [];
@@ -417,10 +530,28 @@ export function SectionView({
   // при любом постороннем ре-рендере страницы (найдено пробой в Chrome, 9.2)
   const innerHtmlProp = useMemo(() => ({ __html: enrichedHtml }), [enrichedHtml]);
 
+  /** 13.1: собранная разметка редактора — в скрытое поле (зеркало) и в liveDraft */
+  const syncFromBody = (body: Element) => {
+    if (!subsectionEdit) return;
+    const html = readEditorHtml(body);
+    const area = body
+      .closest("[data-subsection-editor]")
+      ?.querySelector("textarea[data-subsection-source]") as HTMLTextAreaElement | null;
+    if (area) area.value = html;
+    liveDraft.current = { name: subsectionEdit.name, text: html };
+  };
+  const bodyOf = (from: Element | null): HTMLElement | null =>
+    (from?.closest("[data-subsection-editor]")?.querySelector(EDITOR_BODY_SELECTOR) as HTMLElement | null) ?? null;
+
   const handleInput = (e: FormEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLTextAreaElement | null;
-    if (!subsectionEdit || !target?.matches?.("textarea[data-subsection-source]")) return;
-    liveDraft.current = { name: subsectionEdit.name, text: target.value };
+    const target = e.target as HTMLElement | null;
+    if (!subsectionEdit || !target) return;
+    if (target.matches?.("textarea[data-subsection-source]")) {
+      liveDraft.current = { name: subsectionEdit.name, text: (target as HTMLTextAreaElement).value };
+      return;
+    }
+    const body = target.closest?.(EDITOR_BODY_SELECTOR);
+    if (body) syncFromBody(body);
   };
 
   /** Набранное в поле: читается из DOM — поле неуправляемое (см. шапку) */
@@ -433,15 +564,63 @@ export function SectionView({
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement | null;
-    if (!target?.matches?.("textarea[data-subsection-source]")) return;
+    const inArea = !!target?.matches?.("textarea[data-subsection-source]");
+    const body = inArea ? null : (target?.closest?.(EDITOR_BODY_SELECTOR) as HTMLElement | null);
+    if (!inArea && !body) return;
     if (e.key === "Escape") {
       e.preventDefault();
       onSubsectionCancel?.();
     } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
+      if (body) syncFromBody(body);
       const draft = readDraft(target);
       if (draft !== null) onSubsectionSave?.(draft);
+    } else if (body && (e.key === "Backspace" || e.key === "Delete")) {
+      // 13.1 (п.9): плашку вложенного подраздела удалить нельзя
+      if (isPlaceholderDeletion(body, e.key)) e.preventDefault();
+    } else if (body && e.key === "Enter" && !e.shiftKey) {
+      prepareParagraphs(body);
+      // в конце абзаца/подзаголовка/выноски — чистый <p> после блока
+      if (enterAtBlockEnd(body)) {
+        e.preventDefault();
+        syncFromBody(body);
+      }
     }
+  };
+
+  // 13.1 (п.7): вставка — через общий санитайзер; буфер в редактор не попадает как есть
+  const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
+    const body = (e.target as HTMLElement | null)?.closest?.(EDITOR_BODY_SELECTOR) as HTMLElement | null;
+    if (!body || !subsectionEdit || subsectionEdit.phase !== "ready") return;
+    e.preventDefault();
+    if (isPlaceholderDeletion(body, "selection")) return;
+    const clean = sanitizePasted(document, e.clipboardData.getData("text/html"), e.clipboardData.getData("text/plain"));
+    insertPasted(body, clean);
+    syncFromBody(body);
+  };
+  const handleCut = (e: ClipboardEvent<HTMLDivElement>) => {
+    const body = (e.target as HTMLElement | null)?.closest?.(EDITOR_BODY_SELECTOR) as HTMLElement | null;
+    if (body && isPlaceholderDeletion(body, "selection")) e.preventDefault();
+  };
+  const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    const body = target?.closest?.(EDITOR_BODY_SELECTOR) as HTMLElement | null;
+    if (body && (target?.closest?.(".rich-placeholder") || isPlaceholderDeletion(body, "selection"))) e.preventDefault();
+  };
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    const body = (e.target as HTMLElement | null)?.closest?.(EDITOR_BODY_SELECTOR) as HTMLElement | null;
+    if (!body) return;
+    // перетаскивание в редактор — те же правила, что вставка: только чистая разметка
+    e.preventDefault();
+    const clean = sanitizePasted(document, e.dataTransfer.getData("text/html"), e.dataTransfer.getData("text/plain"));
+    insertPasted(body, clean);
+    syncFromBody(body);
+  };
+
+  // Кнопки панели не забирают фокус (и выделение) у редактора
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest?.("[data-subsection-panel] button")) e.preventDefault();
   };
 
   // Делегирование клика по ✎ (кнопки — часть __html, обработчиков у них нет)
@@ -455,12 +634,43 @@ export function SectionView({
       if (name) onSubsectionEdit?.({ sectionKey: section.key, name });
       return;
     }
+    // 13.1: кнопки панели редактора — mousedown гасится ниже, фокус остаётся в редакторе
+    const tool = target?.closest?.("button[data-editor-tool]") as HTMLElement | null;
+    if (tool) {
+      e.preventDefault();
+      const body = bodyOf(tool);
+      const id = tool.getAttribute("data-editor-tool") as EditorToolId | null;
+      if (body && id && !tool.hasAttribute("disabled")) {
+        applyTool(body, id);
+        syncFromBody(body);
+      }
+      return;
+    }
+    const top = target?.closest?.("button[data-table-op]") as HTMLElement | null;
+    if (top) {
+      e.preventDefault();
+      const body = bodyOf(top);
+      const op = top.getAttribute("data-table-op") as TableOp | null;
+      if (body && op && !top.hasAttribute("disabled")) {
+        applyTableOp(body, op);
+        syncFromBody(body);
+      }
+      return;
+    }
     const act = target?.closest?.("button[data-subsection-action]") as HTMLElement | null;
     if (act) {
       e.preventDefault();
-      if (act.getAttribute("data-subsection-action") === "save") {
+      if (act.hasAttribute("disabled")) return;
+      const which = act.getAttribute("data-subsection-action");
+      const body = bodyOf(act);
+      if (which === "save") {
+        if (body) syncFromBody(body);
         const draft = readDraft(act);
         if (draft !== null) onSubsectionSave?.(draft);
+      } else if (which === "view-markup" || which === "view-rich") {
+        if (body) syncFromBody(body);
+        const draft = readDraft(act);
+        if (draft !== null) onSubsectionView?.(which === "view-markup" ? "markup" : "rich", draft);
       } else onSubsectionCancel?.();
       return;
     }
@@ -506,8 +716,13 @@ export function SectionView({
       <div
         dangerouslySetInnerHTML={innerHtmlProp}
         onClick={handleClick}
+        onMouseDown={handleMouseDown}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
+        onPaste={handlePaste}
+        onCut={handleCut}
+        onDragStart={handleDragStart}
+        onDrop={handleDrop}
       />
       {inlineEditor}
       {parseWarnings.length > 0 && (

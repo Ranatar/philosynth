@@ -96,12 +96,14 @@ import {
   buildEditInfra,
   buildPromptSkeleton,
   bumpTotals,
+  cleanModelHtml,
   loadSynthesis,
   streamWithRetries,
   withGenerationSlot,
   type GenerationSlotHandle,
   type SynthesisRow,
 } from "./generation-service.js";
+import { sanitizeSectionHtml } from "../utils/html-parser.js"; // 13.1 (Д-63)
 import { ROLE_MAP, parseGraphFromHTML, saveGraphToDb } from "./graph-parser.js";
 import { buildSYS } from "./prompt-builder.js";
 import { renderTemplate } from "./prompt-registry.js";
@@ -444,7 +446,8 @@ async function streamTransform(
     sendToUser(userId, { type: "stream_delta", synthesisId, sectionKey: streamKey, delta, totalChars });
   };
   try {
-    const { usage, html } = await streamWithRetries(handle, streamKey, prompt, SYS, apiKey, onDelta);
+    const { usage, html: rawHtml } = await streamWithRetries(handle, streamKey, prompt, SYS, apiKey, onDelta);
+    const html = await cleanModelHtml(rawHtml, genEntryId); // 13.1 (Д-63)
     const costUsd = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
     await db
       .update(generationLog)
@@ -786,7 +789,8 @@ export async function rollbackTransform(
   if (!sec) {
     summary.sectionMissing = 1;
   } else if (snap.sectionHtml) {
-    await writeSectionHtml(sec.id, snap.sectionHtml);
+    // 13.1 (Д-63): снимок мог быть снят до чистки — через санитайзер раздела
+    await writeSectionHtml(sec.id, sanitizeSectionHtml(snap.sectionHtml).html);
   } else {
     // В снимке HTML не было (раздел появился позже) — таблицы из строк БД
     const tables: RenderableTable[] = targetKey === "theses" ? ["theses"] : ["categories", "edges", "topology"];
