@@ -688,7 +688,7 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
     : body.philosophers === undefined
       ? []
       : null;
-  if (philosophers === null) details.philosophers = "массив строк";
+  if (philosophers === null) details.philosophers = tl("server.routes.syntheses.stringArrayExpected", "массив строк");
 
   // v11: participants (мета-синтез) — тип "synthesis" ПРИНИМАЕТСЯ
   // (беседа 3.1: серверная половина снятия гейта 1.5b; клиент — 3.2).
@@ -696,7 +696,7 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
   const conceptIds: string[] = [];
   if (body.participants !== undefined) {
     if (!Array.isArray(body.participants)) {
-      details.participants = "массив ParticipantInput";
+      details.participants = tl("server.routes.syntheses.participantArrayExpected", "массив ParticipantInput");
     } else {
       for (const p of body.participants as Array<Record<string, unknown>>) {
         if (p && p.type === "philosopher" && typeof p.name === "string") {
@@ -704,13 +704,13 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
         } else if (p && p.type === "synthesis") {
           if (typeof p.synthesisId !== "string" || !isUuid(p.synthesisId)) {
             details.participants =
-              "участник synthesis требует synthesisId (UUID)";
+              tl("server.routes.syntheses.participantSynthesisIdRequired", "участник synthesis требует synthesisId (UUID)");
             break;
           }
           conceptIds.push(p.synthesisId);
         } else {
           details.participants =
-            "элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}";
+            tl("server.routes.syntheses.participantShape", "элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}");
           break;
         }
       }
@@ -727,27 +727,27 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
   let noParticipantsSeedMissing = false;
   if (allPhilosophers.length === 0 && conceptIds.length === 0 && !seed) {
     noParticipantsSeedMissing = true;
-    details.seed = "обязателен при пустых philosophers/participants";
+    details.seed = tl("server.routes.syntheses.seedRequiredWithoutParticipants", "обязателен при пустых philosophers/participants");
   }
 
   const knownSections = new Set(Object.keys(SEC_NAMES));
   let sections: string[] = [];
   if (!isStrArray(body.sections)) {
-    details.sections = "массив ключей разделов";
+    details.sections = tl("server.routes.syntheses.sectionKeysArrayExpected", "массив ключей разделов");
   } else {
     sections = [...new Set(body.sections.filter((s) => s !== "sum"))];
     const unknown = sections.filter((s) => !knownSections.has(s));
     if (unknown.length > 0) {
-      details.sections = `неизвестные разделы: ${unknown.join(", ")}`;
+      details.sections = tl("server.routes.syntheses.unknownSectionsList", "неизвестные разделы: {keys}", { keys: unknown.join(", ") });
     }
   }
 
   const method = (body.method ?? "dialectical") as string;
-  if (!METHODS.has(method)) details.method = "неизвестный метод";
+  if (!METHODS.has(method)) details.method = tl("server.routes.syntheses.unknownMethod", "неизвестный метод");
   const synthLevel = (body.synthLevel ?? "comparative") as string;
-  if (!SYNTH_LEVELS.has(synthLevel)) details.synthLevel = "неизвестный уровень";
+  if (!SYNTH_LEVELS.has(synthLevel)) details.synthLevel = tl("server.routes.syntheses.unknownLevel", "неизвестный уровень");
   const depth = (body.depth ?? "standard") as string;
-  if (!DEPTHS.has(depth)) details.depth = "неизвестная глубина";
+  if (!DEPTHS.has(depth)) details.depth = tl("server.routes.syntheses.unknownDepth", "неизвестная глубина");
   const generationOrder = (body.generationOrder ?? "architectural") as string;
   if (!GENERATION_ORDERS.has(generationOrder))
     details.generationOrder = "architectural | genetic";
@@ -971,7 +971,7 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
   }).catch(
     async (err) => {
       const message =
-        err instanceof Error ? err.message : "Не удалось запустить генерацию";
+        err instanceof Error ? err.message : tl("server.routes.syntheses.startFailed", "Не удалось запустить генерацию");
       const code = err instanceof GenerationError ? err.code : "INTERNAL_ERROR";
       console.error(`[syntheses] generateSynthesis(${synthesisId}):`, err);
       // Пред-цикловый сбой: строка не должна висеть в 'generating'
@@ -1022,9 +1022,9 @@ synthesesRoutes.post("/advice", requireAuth, async (c) => {
 
   const details: Record<string, string> = {};
   const method = (body.method ?? "dialectical") as string;
-  if (!METHODS.has(method)) details.method = "неизвестный метод";
+  if (!METHODS.has(method)) details.method = tl("server.routes.syntheses.unknownMethod", "неизвестный метод");
   const synthLevel = (body.synthLevel ?? "comparative") as string;
-  if (!SYNTH_LEVELS.has(synthLevel)) details.synthLevel = "неизвестный уровень";
+  if (!SYNTH_LEVELS.has(synthLevel)) details.synthLevel = tl("server.routes.syntheses.unknownLevel", "неизвестный уровень");
   const generationOrder = (body.generationOrder ?? "architectural") as string;
   if (!GENERATION_ORDERS.has(generationOrder))
     details.generationOrder = "architectural | genetic";
@@ -1033,7 +1033,7 @@ synthesesRoutes.post("/advice", requireAuth, async (c) => {
     ? [...new Set(body.sections.filter((s) => s !== "sum"))]
     : null;
   if (sections === null || sections.some((s) => !knownSections.has(s))) {
-    details.sections = "массив известных ключей разделов";
+    details.sections = tl("server.routes.syntheses.knownSectionKeysArrayExpected", "массив известных ключей разделов");
   }
   if (Object.keys(details).length > 0) {
     return c.json(
@@ -1263,18 +1263,18 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
   if (isStrArray(body.sections)) {
     sections = [...new Set(body.sections.filter((s) => s !== "sum"))];
     if (sections.some((s) => !knownSections.has(s))) {
-      details.sections = "неизвестные разделы";
+      details.sections = tl("server.routes.syntheses.unknownSections", "неизвестные разделы");
     }
   } else {
-    details.sections = "массив ключей разделов";
+    details.sections = tl("server.routes.syntheses.sectionKeysArrayExpected", "массив ключей разделов");
   }
 
   const method = (body.method ?? "dialectical") as string;
-  if (!METHODS.has(method)) details.method = "неизвестный метод";
+  if (!METHODS.has(method)) details.method = tl("server.routes.syntheses.unknownMethod", "неизвестный метод");
   const synthLevel = (body.synthLevel ?? "comparative") as string;
-  if (!SYNTH_LEVELS.has(synthLevel)) details.synthLevel = "неизвестный уровень";
+  if (!SYNTH_LEVELS.has(synthLevel)) details.synthLevel = tl("server.routes.syntheses.unknownLevel", "неизвестный уровень");
   const depth = (body.depth ?? "standard") as string;
-  if (!DEPTHS.has(depth)) details.depth = "неизвестная глубина";
+  if (!DEPTHS.has(depth)) details.depth = tl("server.routes.syntheses.unknownDepth", "неизвестная глубина");
   const generationOrder = (body.generationOrder ?? "architectural") as string;
   if (!GENERATION_ORDERS.has(generationOrder))
     details.generationOrder = "architectural | genetic";
@@ -1526,9 +1526,9 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
   const patch: Partial<typeof syntheses.$inferInsert> = {};
   if (body.title !== undefined) {
     if (typeof body.title !== "string" || !body.title.trim()) {
-      details.title = "непустая строка";
+      details.title = tl("server.routes.syntheses.nonEmptyString", "непустая строка");
     } else if (body.title.trim().length > 300) {
-      details.title = "не длиннее 300 символов";
+      details.title = tl("server.routes.syntheses.titleMax300", "не длиннее 300 символов");
     } else {
       patch.title = body.title.trim();
     }
@@ -1545,7 +1545,7 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
   }
   if (body.isPublic !== undefined) {
     // 8.7: синоним 8.6 снят — старому клиенту ясный ответ, не молчаливый no-op
-    details.isPublic = "снят в 8.7 — используйте visibility";
+    details.isPublic = tl("server.routes.syntheses.publicFlagRemoved", "снят в 8.7 — используйте visibility");
   }
   for (const flag of ["showAuthor", "showLogs", "showPrompts", "allowMeta"] as const) {
     if (body[flag] === undefined) continue;

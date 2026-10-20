@@ -50,10 +50,17 @@ export class RegistryNotFoundError extends Error {
     readonly key: string,
     detail?: string,
   ) {
+    // 14.1 (Д-52): сообщение — на языке запроса (админ-роуты отдают его в error)
     super(
       kind === "template"
-        ? `Промптовый шаблон «${key}» не найден${detail ? `: ${detail}` : " (нет активной версии)"}`
-        : `Конфигурация «${key}» не найдена${detail ? `: ${detail}` : " (нет активной версии)"}`,
+        ? tl("server.promptRegistry.templateNotFound", "Промптовый шаблон «{key}» не найден{detail}", {
+            key,
+            detail: detail ? `: ${detail}` : tl("server.promptRegistry.noActiveVersion", " (нет активной версии)"),
+          })
+        : tl("server.promptRegistry.configNotFound", "Конфигурация «{key}» не найдена{detail}", {
+            key,
+            detail: detail ? `: ${detail}` : tl("server.promptRegistry.noActiveVersion", " (нет активной версии)"),
+          }),
     );
     this.name = "RegistryNotFoundError";
   }
@@ -67,7 +74,10 @@ export class TemplateRenderError extends Error {
     readonly missing: string[],
   ) {
     super(
-      `Шаблон «${key}»: нет значений для плейсхолдеров: ${missing.join(", ")}`,
+      tl("server.promptRegistry.missingPlaceholders", "Шаблон «{key}»: нет значений для плейсхолдеров: {placeholders}", {
+        key,
+        placeholders: missing.join(", "),
+      }),
     );
     this.name = "TemplateRenderError";
   }

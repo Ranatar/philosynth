@@ -31,7 +31,8 @@
  *   мок НЕ ЗНАЕТ (id из прежнего запуска — счётчики процесса начинаются с 1),
  *   принимается по-прежнему: отказ получает только явно удалённый.
  * Новое под 8.3 (тарифы):
- *   POST /v1/products, GET /v1/products/:id, GET /v1/products
+ *   POST /v1/products, GET /v1/products/:id, GET /v1/products,
+ *   POST /v1/products/:id (обновление name/active/description/metadata — 14.1, Д-61: сид приводит описание)
  *   POST /v1/prices  (product, unit_amount, currency, recurring[interval],
  *                      lookup_key [+ transfer_lookup_key])
  *   GET  /v1/prices/:id, GET /v1/prices?lookup_keys[]=…&active=…&product=…
@@ -158,7 +159,10 @@ export function createStripeMock(options = {}) {
 
       /* ── Customers ──────────────────────────────────────────────────── */
       if (req.method === "POST" && p === "/v1/customers") {
-        const c = { id: mkId("cus", state.customers.length + 1), object: "customer", email: form.email, metadata: form.metadata ?? {} };
+        // 14.1 (Д-61): preferred_locales — как у Stripe, список (форма preferred_locales[0]=en)
+        const preferredLocales = form.preferred_locales ? Object.values(form.preferred_locales) : [];
+        const c = { id: mkId("cus", state.customers.length + 1), object: "customer", email: form.email, metadata: form.metadata ?? {},
+          preferred_locales: preferredLocales };
         state.customers.push(c); return send(200, c);
       }
       // 12.3 (Д-12): удаление клиента на стороне «Stripe». Запись остаётся в

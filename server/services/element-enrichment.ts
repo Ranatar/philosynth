@@ -650,21 +650,21 @@ export function validateJustifyInput(body: unknown): JustifyInput {
   const b = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
   const elementType = b.elementType;
   if (elementType !== "category" && elementType !== "edge")
-    details.elementType = "Ожидается 'category' или 'edge'";
+    details.elementType = tl("server.elementEnrichment.elementTypeExpected", "Ожидается 'category' или 'edge'");
   if (typeof b.elementId !== "string" || !b.elementId)
-    details.elementId = "Обязательное поле";
+    details.elementId = tl("server.elementEnrichment.requiredField", "Обязательное поле");
   let spec: CharacteristicSpec | null = null;
   if (typeof b.characteristic !== "string" || !b.characteristic) {
-    details.characteristic = "Обязательное поле";
+    details.characteristic = tl("server.elementEnrichment.requiredField", "Обязательное поле");
   } else if (!details.elementType) {
     spec = resolveCharacteristic(elementType as CharacteristicElementType, b.characteristic);
-    if (!spec) details.characteristic = `У элемента типа '${String(elementType)}' нет характеристики «${b.characteristic}»`;
+    if (!spec) details.characteristic = tl("server.elementEnrichment.noSuchCharacteristic", "У элемента типа '{elementType}' нет характеристики «{characteristic}»", { elementType: String(elementType), characteristic: b.characteristic });
   }
   if (spec) {
     const err = validateCharacteristicValue(spec, b.value);
     if (err) details.value = err;
   } else if (typeof b.value !== "number") {
-    details.value = "Ожидается число";
+    details.value = tl("server.elementEnrichment.numberExpected", "Ожидается число");
   }
   if (Object.keys(details).length > 0)
     throw new EnrichmentError("VALIDATION_ERROR", tl("common.invalidData", "Невалидные данные"), details);

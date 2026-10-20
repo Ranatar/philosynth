@@ -58,6 +58,8 @@ export interface PlanPriceResult {
   productId?: string;
   /** created с --transfer: прежняя цена, деактивированная */
   replacedPriceId?: string;
+  /** 14.1 (Д-61): у существующего продукта обновлены описание/имя по plans.ts */
+  productUpdated?: boolean;
   error?: string;
 }
 
@@ -102,17 +104,37 @@ async function findProduct(plan: PlanDefinition): Promise<StripeProduct | undefi
   return list.data.find((p) => p.metadata?.[STRIPE_PRODUCT_META_KEY] === plan.name);
 }
 
-async function ensureProduct(plan: PlanDefinition): Promise<StripeProduct> {
+/**
+ * 14.1 (Д-61): описание продукта — АНГЛИЙСКОЕ, одно на все языки (решение
+ * владельца 2026-10-13): у Stripe одно описание на продукт, его видит любой
+ * покупатель на странице оплаты и в счетах; tl() здесь неуместен — это не
+ * текст ответа, а значение в чужой системе.
+ */
+export function stripeProductDescriptionFor(plan: PlanDefinition): string {
+  return (
+    `PhiloSynth "${plan.displayName}" subscription: ${plan.quotaSyntheses} syntheses, ` +
+    `${plan.quotaRegenerations} regenerations, ${plan.quotaModes} modes, ` +
+    `${plan.quotaEnrichments} enrichments per ${plan.billingPeriod}`
+  );
+}
+
+/** Существующий продукт: описание (и имя) приводятся к plans.ts
+ *  (POST /v1/products/:id) — прежде найденный продукт пропускался целиком,
+ *  и русское описание 8.3 оставалось в Stripe навсегда (14.1, Д-61). */
+async function ensureProduct(plan: PlanDefinition): Promise<{ product: StripeProduct; updated: boolean }> {
   const found = await findProduct(plan);
-  if (found) return found;
-  return stripe.createProduct({
-    name: stripeProductNameFor(plan),
-    description:
-      `Подписка PhiloSynth «${plan.displayName}»: ${plan.quotaSyntheses} синтезов, ` +
-      `${plan.quotaRegenerations} перегенераций, ${plan.quotaModes} режимов, ` +
-      `${plan.quotaEnrichments} обогащений за ${plan.billingPeriod === "month" ? "месяц" : "год"}`,
+  const name = stripeProductNameFor(plan);
+  const description = stripeProductDescriptionFor(plan);
+  if (found) {
+    if (found.description === description && found.name === name) return { product: found, updated: false };
+    return { product: await stripe.updateProduct(found.id, { name, description }), updated: true };
+  }
+  const product = await stripe.createProduct({
+    name,
+    description,
     metadata: { [STRIPE_PRODUCT_META_KEY]: plan.name },
   });
+  return { product, updated: false };
 }
 
 async function ensurePrice(plan: PlanDefinition, transfer: boolean): Promise<PlanPriceResult> {
@@ -124,8 +146,11 @@ async function ensurePrice(plan: PlanDefinition, transfer: boolean): Promise<Pla
   const found = existing.data.find((p) => p.active) ?? existing.data[0];
 
   if (found) {
+    // 14.1 (Д-61): цена на месте — но описание продукта всё равно приводится
+    // к plans.ts (раньше при skip продукт не трогался вовсе)
+    const { updated: productUpdated } = await ensureProduct(plan);
     if (priceMatchesPlan(found, plan)) {
-      return { name: plan.name, outcome: "skip", envVar, priceId: found.id, productId: found.product };
+      return { name: plan.name, outcome: "skip", envVar, priceId: found.id, productId: found.product, productUpdated };
     }
     if (!transfer) {
       return {
@@ -161,7 +186,7 @@ async function ensurePrice(plan: PlanDefinition, transfer: boolean): Promise<Pla
     };
   }
 
-  const product = await ensureProduct(plan);
+  const { product, updated: productUpdated } = await ensureProduct(plan);
   const price = await stripe.createPrice({
     productId: product.id,
     unitAmountCents: priceCents(plan),
@@ -171,7 +196,7 @@ async function ensurePrice(plan: PlanDefinition, transfer: boolean): Promise<Pla
     nickname: plan.displayName,
     metadata: { [STRIPE_PRODUCT_META_KEY]: plan.name },
   });
-  return { name: plan.name, outcome: "created", envVar, priceId: price.id, productId: product.id };
+  return { name: plan.name, outcome: "created", envVar, priceId: price.id, productId: product.id, productUpdated };
 }
 
 /**
@@ -261,7 +286,7 @@ async function main(): Promise<void> {
         `  created ${r.name}: ${r.priceId} (product ${r.productId})` +
           (r.replacedPriceId ? ` — заменил ${r.replacedPriceId}, тот деактивирован` : ""),
       );
-    else console.log(`  skip    ${r.name}: найден ${r.priceId} по lookup_key ${stripeLookupKeyFor(r.name)}`);
+    else console.log(`  skip    ${r.name}: найден ${r.priceId} по lookup_key ${stripeLookupKeyFor(r.name)}${r.productUpdated ? " (описание продукта обновлено)" : ""}`);
   }
 
   const lines = envLines(report);

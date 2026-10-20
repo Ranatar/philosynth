@@ -25,6 +25,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { schema } from "../db/index.js";
 import { env } from "../env.js";
 import { enqueue, underSavepoint, type MailDbExecutor } from "./mail/outbox.js";
+import { currentLocale, runWithLocale } from "../i18n/locale.js"; // 14.1 (Д-51)
 import { passwordResetLetter, verifyEmailLetter } from "./mail/templates.js";
 
 const { authTokens } = schema;
@@ -155,6 +156,9 @@ export interface MailRecipient {
   id: string;
   email: string;
   displayName: string | null;
+  /** 14.1 (Д-51): язык интерфейса получателя (users.ui_locale); null —
+   *  язык текущего запроса (регистрация: созданный пользователь ещё без выбора) */
+  uiLocale: string | null;
 }
 
 async function queueTokenMail(
@@ -162,6 +166,8 @@ async function queueTokenMail(
   user: MailRecipient,
   purpose: AuthTokenPurpose,
 ): Promise<boolean> {
+  // 14.1 (Д-51): письмо собирается под языком ПОЛУЧАТЕЛЯ в момент постановки
+  // в очередь — работник почты языка не знает, тело хранится собранным
   const id = await underSavepoint(exec, `письмо ${purpose} для ${user.id} не поставлено`, async (sp) => {
     const token = await issueToken(sp, user.id, purpose);
     const input = {
@@ -169,7 +175,9 @@ async function queueTokenMail(
       link: tokenLink(purpose, token),
       ttlHours: TOKEN_TTL_HOURS[purpose],
     };
-    const letter = purpose === "email_verify" ? verifyEmailLetter(input) : passwordResetLetter(input);
+    const letter = runWithLocale(user.uiLocale ?? currentLocale(), () =>
+      purpose === "email_verify" ? verifyEmailLetter(input) : passwordResetLetter(input),
+    );
     return enqueue(sp, { to: user.email, ...letter });
   });
   return id !== null;

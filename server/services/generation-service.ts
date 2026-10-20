@@ -156,6 +156,7 @@ import {
   saveElementsToDb,
 } from "./element-parser.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { sanitizeWarningsRu } from "@philosynth/shared/utils/doc-markup-sanitize"; // 14.1 (Д-60): хранимые фразы чистки
 
 /* ══ Разъём провайдера родительского контекста (TODO 1.2 → 1.4) ═══════ */
 
@@ -1942,8 +1943,11 @@ export const SANITIZE_WARNING_PREFIX = "чистка разметки ответ
 
 export async function cleanModelHtml(html: string, genEntryId: string | null): Promise<string> {
   const r = sanitizeSectionHtml(html);
-  if (r.changed && genEntryId && r.warnings.length)
-    await appendParseWarnings(genEntryId, r.warnings.map((w) => SANITIZE_WARNING_PREFIX + w));
+  // 14.1 (Д-60): в генлог — ХРАНИМАЯ русская формулировка по отчёту
+  // (sanitizeWarningsRu), не r.warnings: те собраны под языком запроса
+  // для ответа человеку, а язык записи — не язык чтения (14.2, Д-54)
+  if (r.changed && genEntryId && r.report)
+    await appendParseWarnings(genEntryId, sanitizeWarningsRu(r.report).map((w) => SANITIZE_WARNING_PREFIX + w));
   return r.html;
 }
 

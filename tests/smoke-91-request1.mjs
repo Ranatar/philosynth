@@ -148,7 +148,7 @@ const tokens = await import("../server/services/auth-tokens.ts");
   check("password-reset/request БЕЗ requireAuth, под лимитом 'mail'", /authRoutes\.post\("\/password-reset\/request", mailLimiter, async/.test(routes));
   check("confirm-роуты без requireAuth (ссылку открывают без входа)", /authRoutes\.post\("\/email\/verify\/confirm", async/.test(routes) && /authRoutes\.post\("\/password-reset\/confirm", async/.test(routes));
   const reg = routes.slice(routes.indexOf('authRoutes.post("/register"'), routes.indexOf('authRoutes.post("/login"'));
-  check("регистрация: пользователь и письмо — одной транзакцией", /db\.transaction\(async \(tx\) => \{[\s\S]*?tx\s*\.insert\(schema\.users\)[\s\S]*?queueVerificationMail\(tx, created!\)/.test(reg));
+  check("регистрация: пользователь и письмо — одной транзакцией", /db\.transaction\(async \(tx\) => \{[\s\S]*?tx\s*\.insert\(schema\.users\)[\s\S]*?queueVerificationMail\(tx, \{ \.\.\.created!, uiLocale: currentLocale\(\) \}\)/.test(reg)); // 14.1 (Д-51): письмо под языком запроса регистрации
   const reqBlock = routes.slice(routes.indexOf('"/password-reset/request"'), routes.indexOf('"/password-reset/confirm"'));
   check("сброс/запрос: один ответ на оба случая (единственный c.json с ok)", (reqBlock.match(/ok: true/g) ?? []).length === 1 && /message: PASSWORD_RESET_REQUESTED_MESSAGE/.test(reqBlock));
   const confBlock = routes.slice(routes.indexOf('"/password-reset/confirm"'), routes.indexOf("Управление доступом"));
@@ -208,7 +208,7 @@ console.log("── 5. Живая БД: очередь, доводы, работ
       check("просроченный довод → null", (await tokens.isTokenUsable(db, t3, "password_reset")) === false && (await tokens.consumeToken(db, t3, "password_reset")) === null);
       const stored = await db.select().from(schema.authTokens).where(eq(schema.authTokens.userId, user.id));
       check("в таблице нет ни одного довода в открытом виде", stored.length === 3 && stored.every((r) => ![t1, t2, t3].includes(r.tokenHash) && /^[0-9a-f]{64}$/.test(r.tokenHash)));
-      const sentOk = await tokens.queueVerificationMail(db, { id: user.id, email: `${TAG}-5@example.org`, displayName: null });
+      const sentOk = await tokens.queueVerificationMail(db, { id: user.id, email: `${TAG}-5@example.org`, displayName: null, uiLocale: null });
       const q = (await rowsOf()).find((r) => r.toEmail === `${TAG}-5@example.org`);
       check("queueVerificationMail: довод выдан, письмо pending со ссылкой", sentOk && q?.status === "pending" && /\/verify-email\/[A-Za-z0-9_-]{43}/.test(q.bodyText));
       await db.delete(schema.mailOutbox).where(eq(schema.mailOutbox.id, q.id));

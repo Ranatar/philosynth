@@ -53,6 +53,8 @@ import {
   isNoSuchCustomerError,
 } from "./stripe-client.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { isUiLocale } from "@philosynth/shared/i18n/locales"; // 14.1 (Д-61)
+import { currentLocale } from "../i18n/locale.js"; // 14.1 (Д-61)
 
 const { subscriptionPlans, userSubscriptions, users } = schema;
 
@@ -295,16 +297,19 @@ export type CreateSubscriptionResult = SubscribeResult;
  */
 export async function ensureStripeCustomer(userId: string): Promise<string> {
   const [u] = await db
-    .select({ email: users.email, customerId: users.stripeCustomerId })
+    .select({ email: users.email, customerId: users.stripeCustomerId, uiLocale: users.uiLocale })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   if (!u) throw new SubscriptionError("NOT_FOUND", tl("common.userNotFound", "Пользователь не найден"));
   if (u.customerId) return u.customerId;
 
+  // 14.1 (Д-61): язык покупателя — Stripe переводит свою оболочку (счета,
+  // квитанции, письма) по preferred_locales клиента; ui_locale → язык запроса
   const customer = await stripe.createCustomer({
     email: u.email,
     metadata: { userId },
+    preferredLocales: [isUiLocale(u.uiLocale) ? u.uiLocale : currentLocale()],
   });
   const [saved] = await db
     .update(users)

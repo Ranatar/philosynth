@@ -218,7 +218,7 @@ billingRoutes.get("/usage", async (c) => {
   const details: Record<string, string> = {};
   if (from.error) details.from = from.error;
   if (to.error) details.to = to.error;
-  if (synthesisId && !UUID_RE.test(synthesisId)) details.synthesisId = "ожидается UUID";
+  if (synthesisId && !UUID_RE.test(synthesisId)) details.synthesisId = tl("server.routes.billing.uuidExpected", "ожидается UUID");
   if (Object.keys(details).length > 0) {
     return c.json({ error: tl("server.routes.billing.invalidParams", "Невалидные параметры"), code: "VALIDATION_ERROR", details }, 400);
   }

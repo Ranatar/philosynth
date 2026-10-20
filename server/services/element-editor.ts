@@ -227,16 +227,16 @@ function str(
 ): string | undefined {
   if (v === undefined) return undefined;
   if (typeof v !== "string") {
-    d[field] = "ожидается строка";
+    d[field] = tl("server.elementEditor.stringExpected", "ожидается строка");
     return undefined;
   }
   const t = v.trim();
   if (!t && !opts.allowEmpty) {
-    d[field] = "не может быть пустым";
+    d[field] = tl("server.elementEditor.mustNotBeEmpty", "не может быть пустым");
     return undefined;
   }
   if (opts.max && t.length > opts.max) {
-    d[field] = `не длиннее ${opts.max} символов`;
+    d[field] = tl("server.elementEditor.maxChars", "не длиннее {max} символов", { max: opts.max });
     return undefined;
   }
   return t;
@@ -254,15 +254,15 @@ function num(
 ): number | undefined {
   if (v === undefined) return undefined;
   if (typeof v !== "number" || !Number.isFinite(v)) {
-    d[field] = "ожидается число";
+    d[field] = tl("server.elementEditor.numberExpected", "ожидается число");
     return undefined;
   }
   if (integer && !Number.isInteger(v)) {
-    d[field] = "ожидается целое";
+    d[field] = tl("server.elementEditor.integerExpected", "ожидается целое");
     return undefined;
   }
   if (v < lo || v > hi) {
-    d[field] = `допустимый диапазон ${lo}–${hi}`;
+    d[field] = tl("server.elementEditor.allowedRange", "допустимый диапазон {lo}–{hi}", { lo, hi });
     return undefined;
   }
   return v;
@@ -271,7 +271,7 @@ function num(
 function strList(v: unknown, field: string, d: Details): string[] | undefined {
   if (v === undefined) return undefined;
   if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) {
-    d[field] = "ожидается массив строк";
+    d[field] = tl("server.elementEditor.stringArrayExpected", "ожидается массив строк");
     return undefined;
   }
   return v.map((x: string) => x.trim()).filter(Boolean);
@@ -286,7 +286,7 @@ async function catalogIdOrNull(
   if (v === undefined) return undefined;
   if (v === null) return null;
   if (typeof v !== "string" || !/^[0-9a-f-]{36}$/i.test(v)) {
-    d[field] = "ожидается id каталога или null";
+    d[field] = tl("server.elementEditor.catalogIdOrNullExpected", "ожидается id каталога или null");
     return undefined;
   }
   const [row] = await db
@@ -295,7 +295,7 @@ async function catalogIdOrNull(
     .where(eq(table.id, v))
     .limit(1);
   if (!row) {
-    d[field] = "тип не найден в каталоге";
+    d[field] = tl("server.elementEditor.typeNotInCatalog", "тип не найден в каталоге");
     return undefined;
   }
   return v;
@@ -597,7 +597,7 @@ export async function updateCategory(
   if (updates["clusterIndices"] !== undefined) {
     const ci = updates["clusterIndices"];
     if (!Array.isArray(ci) || !ci.every((x) => Number.isInteger(x) && x >= 0))
-      d["clusterIndices"] = "ожидается массив неотрицательных целых";
+      d["clusterIndices"] = tl("server.elementEditor.nonNegativeIntArrayExpected", "ожидается массив неотрицательных целых");
     else set("clusterIndices", ci as number[]);
   }
   const tc = await catalogIdOrNull(updates["typeCatalogId"], "typeCatalogId", d, categoryTypeCatalog);
@@ -701,7 +701,7 @@ export async function updateCategoryEdge(
   if (updates["direction"] !== undefined) {
     const dir = updates["direction"];
     if (typeof dir !== "string" || !(DIRECTIONS as readonly string[]).includes(dir))
-      d["direction"] = "одно из: " + DIRECTIONS.join(" | ");
+      d["direction"] = tl("server.elementEditor.oneOf", "одно из: {options}", { options: DIRECTIONS.join(" | ") });
     else set("direction", dir as (typeof DIRECTIONS)[number]);
   }
   set("strength", num(updates["strength"], "strength", d, 0, 1));
@@ -777,7 +777,7 @@ export async function createCategoryEdge(
   const idOf = (field: string): string | undefined => {
     const v = input[field];
     if (typeof v !== "string" || !/^[0-9a-f-]{36}$/i.test(v)) {
-      d[field] = "ожидается id категории";
+      d[field] = tl("server.elementEditor.categoryIdExpected", "ожидается id категории");
       return undefined;
     }
     return v;
@@ -790,7 +790,7 @@ export async function createCategoryEdge(
   if (input["direction"] !== undefined) {
     const dir = input["direction"];
     if (typeof dir !== "string" || !(DIRECTIONS as readonly string[]).includes(dir))
-      d["direction"] = "одно из: " + DIRECTIONS.join(" | ");
+      d["direction"] = tl("server.elementEditor.oneOf", "одно из: {options}", { options: DIRECTIONS.join(" | ") });
     else direction = dir as (typeof DIRECTIONS)[number];
   }
   set("strength", num(input["strength"], "strength", d, 0, 1));
@@ -802,7 +802,7 @@ export async function createCategoryEdge(
   const tc = await catalogIdOrNull(input["typeCatalogId"], "typeCatalogId", d, relationshipTypeCatalog);
   if (tc !== undefined) values.typeCatalogId = tc;
   if (sourceId && targetId && sourceId === targetId && direction !== "рефлексивная")
-    d["targetId"] = "совпадение концов допустимо только у рефлексивной связи";
+    d["targetId"] = tl("server.elementEditor.sameEndsOnlyReflexive", "совпадение концов допустимо только у рефлексивной связи");
   if (Object.keys(d).length) fail(d);
 
   const { row, reflexiveChanged } = await db.transaction(async (tx) => {
@@ -817,8 +817,8 @@ export async function createCategoryEdge(
       );
     const found = new Set(ends.map((e) => e.id));
     const dd: Details = {};
-    if (!found.has(sourceId!)) dd["sourceId"] = "категория не найдена в этом синтезе";
-    if (!found.has(targetId!)) dd["targetId"] = "категория не найдена в этом синтезе";
+    if (!found.has(sourceId!)) dd["sourceId"] = tl("server.elementEditor.categoryNotInSynthesis", "категория не найдена в этом синтезе");
+    if (!found.has(targetId!)) dd["targetId"] = tl("server.elementEditor.categoryNotInSynthesis", "категория не найдена в этом синтезе");
     if (Object.keys(dd).length) fail(dd);
     const [last] = await tx
       .select({ position: categoryEdges.position })
@@ -918,7 +918,7 @@ export async function updateThesis(
   if (updates["thesisType"] !== undefined) {
     const t = updates["thesisType"];
     if (typeof t !== "string" || !(THESIS_TYPES as readonly string[]).includes(t))
-      d["thesisType"] = "одно из: " + THESIS_TYPES.join(" | ");
+      d["thesisType"] = tl("server.elementEditor.oneOf", "одно из: {options}", { options: THESIS_TYPES.join(" | ") });
     else set("thesisType", t as (typeof THESIS_TYPES)[number]);
   }
   set("relatedCategories", strList(updates["relatedCategories"], "relatedCategories", d));
@@ -1040,7 +1040,7 @@ export async function updateGlossaryTerm(
   if (updates["extraColumns"] !== undefined) {
     const ec = updates["extraColumns"];
     if (!isObj(ec) || !Object.values(ec).every((v) => typeof v === "string"))
-      d["extraColumns"] = "ожидается объект строка → строка";
+      d["extraColumns"] = tl("server.elementEditor.stringMapExpected", "ожидается объект строка → строка");
     else set("extraColumns", ec as Record<string, string>);
   }
   if (Object.keys(d).length) fail(d);
@@ -1383,21 +1383,25 @@ export interface SubsectionLock {
   hint: string;
 }
 
-const TABLE_LOCK_HINT: Readonly<Record<RenderableTable, string>> = {
-  categories:
-    "Таблицу категорий служба рисует из графа: правьте категорию в панели узла графа («◈ Граф» → узел → «✎ Редактировать»)",
-  edges:
-    "Таблицу связей служба рисует из графа: правьте связь в панели связи графа («◈ Граф» → связь → «✎ Редактировать»)",
-  topology:
-    "Топологическую таблицу служба рисует из графа: роли и кластеры правятся в панели узла графа («◈ Граф» → узел → «✎ Редактировать»)",
-  theses:
-    "Сводную таблицу тезисов служба рисует из списка тезисов: правьте тезис карандашом ✎ в его строке таблицы",
-  glossary:
-    "Таблицу определений служба рисует из списка терминов: правьте термин карандашом ✎ в его строке таблицы",
-};
+// 14.1 (Д-53): подсказки — фабрики, не константы модуля: tl() читает язык
+// запроса в момент ответа, а константа вычислилась бы при импорте по-русски.
+function tableLockHint(table: RenderableTable): string {
+  switch (table) {
+    case "categories":
+      return tl("server.elementEditor.lockHintCategories", "Таблицу категорий служба рисует из графа: правьте категорию в панели узла графа («◈ Граф» → узел → «✎ Редактировать»)");
+    case "edges":
+      return tl("server.elementEditor.lockHintEdges", "Таблицу связей служба рисует из графа: правьте связь в панели связи графа («◈ Граф» → связь → «✎ Редактировать»)");
+    case "topology":
+      return tl("server.elementEditor.lockHintTopology", "Топологическую таблицу служба рисует из графа: роли и кластеры правятся в панели узла графа («◈ Граф» → узел → «✎ Редактировать»)");
+    case "theses":
+      return tl("server.elementEditor.lockHintTheses", "Сводную таблицу тезисов служба рисует из списка тезисов: правьте тезис карандашом ✎ в его строке таблицы");
+    case "glossary":
+      return tl("server.elementEditor.lockHintGlossary", "Таблицу определений служба рисует из списка терминов: правьте термин карандашом ✎ в его строке таблицы");
+  }
+}
 
-const CAPSULE_LOCK_HINT =
-  "У капсулы свой путь правки: карандаш ✎ у капсулы в шапке документа (PATCH /syntheses/:id/capsule)";
+const capsuleLockHint = (): string =>
+  tl("server.elementEditor.lockHintCapsule", "У капсулы свой путь правки: карандаш ✎ у капсулы в шапке документа (PATCH /syntheses/:id/capsule)");
 
 /**
  * Заперт ли подраздел и чем его править. Таблицы — вычисляемым заслоном
@@ -1410,11 +1414,11 @@ export function subsectionLockOf(
   subsectionName: string,
 ): SubsectionLock | null {
   if (sectionKey === "capsule" || subsectionName === CAPSULE_SUBSECTION)
-    return { reason: "capsule", hint: CAPSULE_LOCK_HINT };
+    return { reason: "capsule", hint: capsuleLockHint() };
   const hit = lockedSubsectionsOf(sectionKey, sectionHtml).find(
     (l) => l.subsection === subsectionName,
   );
-  return hit ? { reason: "table", table: hit.table, hint: TABLE_LOCK_HINT[hit.table] } : null;
+  return hit ? { reason: "table", table: hit.table, hint: tableLockHint(hit.table) } : null;
 }
 
 /** Имена запертых подразделов раздела — клиенту, чтобы не рисовать карандаш. */
@@ -1654,7 +1658,7 @@ export async function getSubsectionSource(
       name: subsectionName,
       html: "",
       nested: [],
-      lock: { reason: "capsule", hint: CAPSULE_LOCK_HINT },
+      lock: { reason: "capsule", hint: capsuleLockHint() },
     };
   const [row] = await db
     .select({ html: sections.htmlContent })
@@ -1697,7 +1701,7 @@ export async function updateSubsection(
   // Капсула — ДО поиска: после импорта (4.3) строки sections 'capsule' нет
   // вовсе, и 404 вместо «у капсулы свой путь» увёл бы человека искать не там
   if (sectionKey === "capsule" || subsectionName === CAPSULE_SUBSECTION)
-    throw new SubsectionEditError("SECTION_TABLE_LOCKED", CAPSULE_LOCK_HINT, {
+    throw new SubsectionEditError("SECTION_TABLE_LOCKED", capsuleLockHint(), {
       reason: "capsule",
       subsection: subsectionName,
     });

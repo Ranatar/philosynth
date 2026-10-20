@@ -12,6 +12,10 @@
  *   · по языкам: нет перевода / устарел / черновик;
  *   · строки интерфейса, всё ещё стоящие в коде литералами: с ключом в таблице
  *     (codemod не применён) и без ключа (новая строка без имени в names.json);
+ *     14.1 (Д-58): опись сервера (режим msg) видит и присваивания в details,
+ *     литералы по имени (константы, переменные, функции того же файла),
+ *     warnings.push, super() в *Error, весь server/ (index.ts, utils) — см.
+ *     ui-strings-lib; хранимые тексты (STORED_TEXT_EXCLUSIONS, 14.2) — счётом;
  *     литералы строк data (зеркала с данными, MIRROR_EXCLUSIONS codemod'а) —
  *     отдельной справкой, не ошибкой: они переводятся по месту показа (11.4);
  *   · 12.5 (Д-33): значения ФАЙЛОВ-ДАННЫХ (packages/shared/*, compat-matrix,
@@ -31,7 +35,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractProject, namespaceOf, isDataFile } from "./ui-strings-lib.mjs";
 import { scanDataValues } from "./i18n-data.mjs";
-import { LANGS, LANG_LOCALE, readTable, scanCalls, scanStaticCalls, placeholderSet, isStale, loadNames, resolveName, pluralFormProblems, mirrorExclusionFor } from "./i18n-core.mjs";
+import { LANGS, LANG_LOCALE, readTable, scanCalls, scanStaticCalls, placeholderSet, isStale, loadNames, resolveName, pluralFormProblems, mirrorExclusionFor, storedExclusionFor } from "./i18n-core.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argv = process.argv.slice(2);
@@ -66,18 +70,24 @@ for (const [key, row] of Object.entries(S)) {
 // строки, оставшиеся литералами
 const names = loadNames(ROOT);
 const project = extractProject(ROOT, { withWarnings: false });
-const literalKeyed = [], literalUnnamed = [], literalData = [];
+const literalKeyed = [], literalUnnamed = [], literalData = [], literalStored = [];
 for (const f of project.files) {
   if (isDataFile(f.rel)) continue;
   const ns = namespaceOf(f.rel);
+  const src = fs.readFileSync(path.join(ROOT, f.rel), "utf8");
   for (const e of f.entries) {
+    // 14.1 (Д-58): хранимый текст (пауза, parseWarnings, журнал) — не красный:
+    // переводится кодом в 14.2, запись в STORED_TEXT_EXCLUSIONS носит номер долга
+    const stored = storedExclusionFor(f.rel, src, e);
+    if (stored) { literalStored.push(`${f.rel}:${e.line} ${e.text.slice(0, 60)} [${stored.debt}]`); continue; }
     const r = resolveName(names, ns, e);
     if (!r) literalUnnamed.push(`${f.rel}:${e.line} ${e.text}`);
-    else if (!r.exclude) (S[r.key]?.data || mirrorExclusionFor(f.rel, fs.readFileSync(path.join(ROOT, f.rel), "utf8"), e) ? literalData : literalKeyed).push(`${f.rel}:${e.line} ${r.key}`);
+    else if (!r.exclude) (S[r.key]?.data || mirrorExclusionFor(f.rel, src, e) ? literalData : literalKeyed).push(`${f.rel}:${e.line} ${r.key}`);
   }
 }
 
 const show = (title, list, limit = 15) => {
+  if (process.env.I18N_CHECK_FULL) limit = Infinity;
   console.log(`${list.length ? "✗" : "✓"} ${title}: ${list.length}`);
   for (const s of list.slice(0, limit)) console.log("    " + s.slice(0, 160));
   if (list.length > limit) console.log(`    … ещё ${list.length - limit}`);
@@ -91,6 +101,7 @@ show("подстановки перевода ≠ русским", badPlaceholde
 show("формы плюрала не своего языка", badPlurals);
 show("литералы с ключом — codemod не применён", literalKeyed, 5);
 console.log(`· литералы строк data (зеркала с данными, по месту показа — 11.4): ${literalData.length}`);
+console.log(`· хранимые тексты сервера (пауза, parseWarnings, журнал — код + фраза при чтении, 14.2): ${literalStored.length}`);
 show("литералы без ключа — дополнить names.json", literalUnnamed);
 // 12.5 (Д-33): значения файлов-данных против таблицы — без строки tData
 // молча вернёт русский; отметка data и перевод заводятся только в таблице

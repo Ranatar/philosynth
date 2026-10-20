@@ -35,6 +35,7 @@ import type { CanvasRenderingContext2D } from "canvas";
 import type { GModel } from "./graph-model.js";
 import type { SimNode } from "./graph-physics.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tDataLoose } from "@philosynth/shared/i18n/data"; // 14.1 (Д-56): типы в легенде — по месту показа
 
 /** Ядро на готовой модели G — возвращает PNG-буфер. */
 export function buildPNG(G: GModel): Buffer {
@@ -357,7 +358,7 @@ export function buildPNG(G: GModel): Buffer {
     // ── Метка ──
     const cx = members.reduce((s, n) => s + n.px, 0) / members.length;
     const cy = members.reduce((s, n) => s + n.py, 0) / members.length - 50;
-    const label = (clLabels[clIdx] || "Кластер " + (clIdx + 1))
+    const label = (clLabels[clIdx] || tl("server.export.pngExporter.clusterFallback", "Кластер {n}", { n: clIdx + 1 }))
       .replace(/^[IVXLCDM]+\s*[-–—]\s*/i, "")
       .trim();
     ctx.font = "600 13px 'IBM Plex Mono', monospace";
@@ -545,7 +546,10 @@ export function buildPNG(G: GModel): Buffer {
 
   // ── 5. Легенда (структура как в buildLegend) ─────────────────
   // Собираем данные: только те роли/типы, что есть в графе
-  const nodeTypes = new Set(G.nodes.map((n) => n.type || "другое"));
+  // 14.1 (Д-56): типы — значения документа; в легенде переводятся по месту показа
+  // (tDataLoose: тип каталога без строки таблицы — как есть), «другое» — надпись
+  const otherType = tl("server.export.pngExporter.otherType", "другое");
+  const nodeTypes = new Set(G.nodes.map((n) => n.type || otherType));
   const edgeTypes = new Set(G.edges.map((e) => e.type).filter(Boolean));
 
   const procRolesActive = new Set<string>();
@@ -584,11 +588,11 @@ export function buildPNG(G: GModel): Buffer {
   const activeProcRoles = ROLE_REG_PNG.filter((r) => procRolesActive.has(r.key));
 
   const STRUCT_REG_PNG = [
-    { key: "core",       label: tl("server.export.pngExporter.core", "Ядро"),          desc: "внутренний силуэт" },
-    { key: "generative", label: tl("common.generative", "Генеративная"),  desc: "свечение (glow)" },
-    { key: "bridge",     label: tl("common.bridge", "Мост"),          desc: "пунктирная обводка" },
-    { key: "central",    label: tl("common.central", "Центральная"),   desc: "жирная обводка" },
-    { key: "peripheral", label: tl("common.peripheral", "Периферийная"),  desc: "тонкая обводка" },
+    { key: "core",       label: tl("server.export.pngExporter.core", "Ядро"),          desc: tl("server.export.pngExporter.innerSilhouette", "внутренний силуэт") },
+    { key: "generative", label: tl("common.generative", "Генеративная"),  desc: tl("server.export.pngExporter.glow", "свечение (glow)") },
+    { key: "bridge",     label: tl("common.bridge", "Мост"),          desc: tl("server.export.pngExporter.dashedOutline", "пунктирная обводка") },
+    { key: "central",    label: tl("common.central", "Центральная"),   desc: tl("server.export.pngExporter.boldOutline", "жирная обводка") },
+    { key: "peripheral", label: tl("common.peripheral", "Периферийная"),  desc: tl("server.export.pngExporter.thinOutline", "тонкая обводка") },
   ];
   const activeStructRoles = STRUCT_REG_PNG.filter((s) => structRolesActive.has(s.key));
 
@@ -628,7 +632,7 @@ export function buildPNG(G: GModel): Buffer {
   }
 
   // ── Типы категорий ──
-  secTitle("ТИПЫ КАТЕГОРИЙ");
+  secTitle(tl("server.export.pngExporter.categoryTypesHeading", "ТИПЫ КАТЕГОРИЙ"));
   for (const t of nodeTypes) {
     ctx.beginPath();
     ctx.arc(LX + 6, ly, 4.5, 0, Math.PI * 2);
@@ -636,13 +640,13 @@ export function buildPNG(G: GModel): Buffer {
     ctx.fill();
     ctx.font = itemFont;
     ctx.fillStyle = txtColor;
-    ctx.fillText(t, LX + 18, ly);
+    ctx.fillText(t === otherType ? t : tDataLoose(t), LX + 18, ly);
     ly += ROW_H;
   }
 
   // ── Процессуальные роли (ФОРМА) ──
   if (activeProcRoles.length) {
-    secTitle("ПРОЦЕССУАЛЬНЫЕ РОЛИ (ФОРМА)");
+    secTitle(tl("server.export.pngExporter.proceduralRolesShape", "ПРОЦЕССУАЛЬНЫЕ РОЛИ (ФОРМА)"));
     for (const r of activeProcRoles) {
       ctx.beginPath();
       r.draw(LX + 6, ly, 7);
@@ -660,7 +664,7 @@ export function buildPNG(G: GModel): Buffer {
 
   // ── Структурные роли (МАРКЕР) ──
   if (activeStructRoles.length) {
-    secTitle("СТРУКТУРНЫЕ РОЛИ (МАРКЕР)");
+    secTitle(tl("server.export.pngExporter.structuralRolesMarker", "СТРУКТУРНЫЕ РОЛИ (МАРКЕР)"));
     for (const s of activeStructRoles) {
       const sm = {
         core:       { sw: 2.5, d: null as number[] | null, glow: false, inner: true },
@@ -698,7 +702,7 @@ export function buildPNG(G: GModel): Buffer {
 
   // ── Типы связей ──
   if (edgeTypes.size) {
-    secTitle("ТИПЫ СВЯЗЕЙ");
+    secTitle(tl("server.export.pngExporter.edgeTypesHeading", "ТИПЫ СВЯЗЕЙ"));
     for (const t of edgeTypes) {
       const { color, dash } = style.edgeTypeStyle(t);
       ctx.beginPath();
@@ -711,14 +715,14 @@ export function buildPNG(G: GModel): Buffer {
       ctx.setLineDash([]);
       ctx.font = itemFont;
       ctx.fillStyle = txtColor;
-      ctx.fillText(t, LX + 22, ly);
+      ctx.fillText(tDataLoose(t), LX + 22, ly);
       ly += ROW_H;
     }
   }
 
   // ── Кластеры ──
   if (clLabels.length) {
-    secTitle("КЛАСТЕРЫ");
+    secTitle(tl("server.export.pngExporter.clustersHeading", "КЛАСТЕРЫ"));
     clLabels.forEach((label, i) => {
       const c = CPAL[i % CPAL.length]!;
       ctx.beginPath();
@@ -738,7 +742,7 @@ export function buildPNG(G: GModel): Buffer {
   // ── Подсказка ──
   ctx.font = "500 9px 'IBM Plex Mono', monospace";
   ctx.fillStyle = "rgba(255,255,255,0.28)";
-  ctx.fillText("→ однонаправл. · ↔ двунаправл. · ↺ рефлексив.", LX, ly);
+  ctx.fillText(tl("server.export.pngExporter.directionLegend", "→ однонаправл. · ↔ двунаправл. · ↺ рефлексив."), LX, ly);
 
   ctx.globalAlpha = 1;
 

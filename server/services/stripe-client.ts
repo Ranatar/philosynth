@@ -110,6 +110,8 @@ export interface StripeCustomer {
   id: string;
   object: "customer";
   email?: string | null;
+  /** 14.1 (Д-61): язык покупателя для оболочки Stripe (счета, квитанции, письма) */
+  preferred_locales?: string[];
 }
 
 export interface StripeInvoice {
@@ -281,10 +283,15 @@ export const stripe = {
   createCustomer(params: {
     email: string;
     metadata?: Record<string, string>;
+    /** 14.1 (Д-61): preferred_locales — язык интерфейса покупателя (ru/en/de);
+     *  в службе нет Checkout (подписка default_incomplete + Elements на
+     *  клиенте), и это единственное серверное место, где Stripe узнаёт язык */
+    preferredLocales?: string[];
   }): Promise<StripeCustomer> {
     return request<StripeCustomer>("POST", "/v1/customers", {
       email: params.email,
       metadata: params.metadata ?? {},
+      ...(params.preferredLocales?.length ? { preferred_locales: params.preferredLocales } : {}),
     });
   },
 
@@ -334,6 +341,18 @@ export const stripe = {
       name: params.name,
       ...(params.description ? { description: params.description } : {}),
       metadata: params.metadata ?? {},
+    });
+  },
+
+  /** 14.1 (Д-61): обновить описание/имя существующего продукта (сид цен
+   *  раньше находил продукт и пропускал его — описание оставалось прежним). */
+  updateProduct(
+    id: string,
+    params: { description?: string; name?: string },
+  ): Promise<StripeProduct> {
+    return request<StripeProduct>("POST", `/v1/products/${encodeURIComponent(id)}`, {
+      ...(params.name !== undefined ? { name: params.name } : {}),
+      ...(params.description !== undefined ? { description: params.description } : {}),
     });
   },
 

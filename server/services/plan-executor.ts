@@ -623,7 +623,7 @@ async function appendCascadeSteps(
     }));
   const reasons: string[] = [];
   if (newSteps.length > 0) {
-    reasons.push("каскад: разделы зависят от изменённых");
+    reasons.push(tl("server.planExecutor.cascadeReason", "каскад: разделы зависят от изменённых"));
   }
 
   /* Пост-план [07 2.2 п.1]: добавлялись/удалялись разделы → предложить
@@ -648,7 +648,7 @@ async function appendCascadeSteps(
         status: "pending",
         cascadeGenerated: true,
       });
-      reasons.push("состав разделов изменился — обновить «Структуру документа»");
+      reasons.push(tl("server.planExecutor.structureReason", "состав разделов изменился — обновить «Структуру документа»"));
     }
   }
   if (newSteps.length === 0) return;

@@ -81,8 +81,9 @@ export interface DeleteAccountOptions {
   ip?: string | null | undefined;
 }
 
-const LAST_ADMIN_MESSAGE =
-  "Вы единственный администратор — сначала назначьте второго (POST /auth/users/:id/role)";
+// 14.1 (Д-53): фабрика, не константа модуля — tl() читает язык запроса в момент отказа
+const lastAdminMessage = (): string =>
+  tl("server.accountDeletion.lastAdmin", "Вы единственный администратор — сначала назначьте второго (POST /auth/users/:id/role)");
 
 /** 8.1: администратор, единственный в базе, уйти не может. */
 async function assertNotLastAdmin(
@@ -91,7 +92,7 @@ async function assertNotLastAdmin(
 ): Promise<void> {
   if (role !== "admin") return;
   const [adm] = await exec.select({ n: count() }).from(users).where(eq(users.role, "admin"));
-  if (Number(adm?.n ?? 0) <= 1) throw new AccountDeletionError("LAST_ADMIN", LAST_ADMIN_MESSAGE);
+  if (Number(adm?.n ?? 0) <= 1) throw new AccountDeletionError("LAST_ADMIN", lastAdminMessage());
 }
 
 export async function deleteAccount(

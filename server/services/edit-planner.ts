@@ -142,6 +142,8 @@ import type { PromptParams } from "./prompt-builder.js";
 import type { SectionDefFull } from "./section-defs-builder.js";
 import type { CascadeWaveEntry } from "./cost-estimator.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { tData } from "@philosynth/shared/i18n/data"; // 14.1 (Д-52)
+import { KEY_LABELS, isSectionKey } from "@philosynth/shared/constants/section-labels"; // 14.1 (Д-52)
 
 /* ── Ошибки планировщика (коды 03 §4.3) ──────────────────────────────── */
 
@@ -219,6 +221,8 @@ export function toApiPlan(row: PlanRow, cost: PlanCostEstimate): EditPlan {
 /* ── Валидация действий плана ────────────────────────────────────────── */
 
 const KNOWN_SECTIONS = new Set(Object.keys(SEC_NAMES));
+/** 14.1 (Д-52): имя раздела в тексте проверки — по месту показа (tData), ключ без метки — как есть. */
+const secLabel = (k: string): string => (isSectionKey(k) ? tData(KEY_LABELS[k]) : k);
 
 interface NormalizedActions {
   regen: string[];
@@ -306,17 +310,17 @@ async function normalizeActions(
   const add = uniq(body.add);
 
   for (const k of regen)
-    if (!inDoc.has(k)) details.regen = `раздел «${k}» отсутствует в документе`;
+    if (!inDoc.has(k)) details.regen = tl("server.editPlanner.sectionNotInDocument", "раздел «{section}» отсутствует в документе", { section: secLabel(k) });
   for (const k of remove)
-    if (!inDoc.has(k)) details.remove = `раздел «${k}» отсутствует в документе`;
+    if (!inDoc.has(k)) details.remove = tl("server.editPlanner.sectionNotInDocument", "раздел «{section}» отсутствует в документе", { section: secLabel(k) });
   for (const k of add) {
-    if (!KNOWN_SECTIONS.has(k)) details.add = `неизвестный раздел «${k}»`;
+    if (!KNOWN_SECTIONS.has(k)) details.add = tl("server.editPlanner.unknownSection", "неизвестный раздел «{section}»", { section: k });
     else if (inDoc.has(k) && !remove.includes(k))
-      details.add = `раздел «${k}» уже есть в документе`;
+      details.add = tl("server.editPlanner.sectionAlreadyInDocument", "раздел «{section}» уже есть в документе", { section: secLabel(k) });
   }
   const contradiction = regen.filter((k) => remove.includes(k));
   if (contradiction.length > 0)
-    details.regen = `regen и remove одновременно: ${contradiction.join(", ")}`;
+    details.regen = tl("server.editPlanner.regenAndRemove", "regen и remove одновременно: {sections}", { sections: contradiction.map(secLabel).join(", ") });
 
   const modes = await loadModesState(synthesisId);
   const asPairs = (xs: unknown): [string, number][] =>
@@ -336,7 +340,7 @@ async function normalizeActions(
     for (const [mk, i] of field === "modeRegen" ? modeRegen : modeRemove) {
       const list = modes[mk];
       if (!list || i < 0 || i >= list.length)
-        details[field] = `результат «${mk}:${i}» не существует`;
+        details[field] = tl("server.editPlanner.modeResultMissing", "результат «{mode}:{index}» не существует", { mode: mk, index: i });
     }
   };
   checkPair("modeRegen");
@@ -344,7 +348,7 @@ async function normalizeActions(
   const modeKeyOf = ([mk, i]: [string, number]) => `${mk}:${i}`;
   const removeModeSet = new Set(modeRemove.map(modeKeyOf));
   if (modeRegen.some((t) => removeModeSet.has(modeKeyOf(t))))
-    details.modeRegen = "modeRegen и modeRemove одновременно для результата";
+    details.modeRegen = tl("server.editPlanner.modeRegenAndRemove", "modeRegen и modeRemove одновременно для результата");
 
   /* ── 10.2: подразделы ── */
   const subRegens: SubRegenAction[] = [];
@@ -362,19 +366,19 @@ async function normalizeActions(
       const sectionKey = i > 0 ? target.slice(0, i) : "";
       const name = i > 0 ? target.slice(i + 1) : "";
       if (!sectionKey || !name) {
-        details.regenSubsections = `адрес «${target}» — не «sectionKey:подраздел»`;
+        details.regenSubsections = tl("server.editPlanner.subsectionAddressShape", "адрес «{target}» — не «sectionKey:подраздел»", { target });
         continue;
       }
       if (!sectionOrder.includes(sectionKey)) {
-        details.regenSubsections = `раздел «${sectionKey}» отсутствует в документе`;
+        details.regenSubsections = tl("server.editPlanner.sectionNotInDocument", "раздел «{section}» отсутствует в документе", { section: secLabel(sectionKey) });
         continue;
       }
       if (!(namesOf.get(sectionKey) ?? []).includes(name)) {
-        details.regenSubsections = `в разделе «${sectionKey}» нет подраздела «${name}»`;
+        details.regenSubsections = tl("server.editPlanner.subsectionNotInSection", "в разделе «{section}» нет подраздела «{subsection}»", { section: secLabel(sectionKey), subsection: name });
         continue;
       }
       if (regen.includes(sectionKey) || remove.includes(sectionKey)) {
-        details.regenSubsections = `раздел «${sectionKey}» этим же планом перегенерируется или удаляется целиком`;
+        details.regenSubsections = tl("server.editPlanner.sectionRegeneratedByPlan", "раздел «{section}» этим же планом перегенерируется или удаляется целиком", { section: secLabel(sectionKey) });
         continue;
       }
       if (seen.has(target)) continue;
@@ -399,7 +403,7 @@ async function normalizeActions(
   ): Promise<void> => {
     const kind = a?.kind as ElementStepKind;
     if (!(ELEMENT_STEP_KINDS as readonly string[]).includes(kind as string)) {
-      details[fieldName] = `неизвестный вид элемента «${String(a?.kind)}»`;
+      details[fieldName] = tl("server.editPlanner.unknownElementKind", "неизвестный вид элемента «{kind}»", { kind: String(a?.kind) });
       return;
     }
     const elementId = typeof a.elementId === "string" ? a.elementId : "";
@@ -412,18 +416,18 @@ async function normalizeActions(
     }
     const host = ELEMENT_STEP_HOST[kind];
     if (regen.includes(host) || remove.includes(host)) {
-      details[fieldName] = `раздел «${host}» этим же планом перегенерируется или удаляется целиком — правка элемента в нём бессмысленна`;
+      details[fieldName] = tl("server.editPlanner.hostRegeneratedByPlan", "раздел «{section}» этим же планом перегенерируется или удаляется целиком — правка элемента в нём бессмысленна", { section: secLabel(host) });
       return;
     }
     if (!(await loadStepElement(synthesisId, kind, elementId))) {
-      details[fieldName] = `элемент «${kind}:${elementId}» не найден в этой концепции`;
+      details[fieldName] = tl("server.editPlanner.elementNotFound", "элемент «{kind}:{elementId}» не найден в этой концепции", { kind, elementId });
       return;
     }
     // Один адресат — один шаг: два шага на одно поле исполнялись бы вслепую
     // друг за другом, второй — по устаревшему доводу
     const k = `${kind}:${elementId}:${field}`;
     if (seenEl.has(k)) {
-      details[fieldName] = `поле «${field}» элемента «${kind}:${elementId}» названо дважды`;
+      details[fieldName] = tl("server.editPlanner.fieldNamedTwice", "поле «{field}» элемента «{kind}:{elementId}» названо дважды", { field, kind, elementId });
       return;
     }
     seenEl.add(k);
@@ -431,18 +435,18 @@ async function normalizeActions(
     if (type === "edit_element") {
       const value = typeof a.value === "string" ? normalizeFieldValue(a.value) : "";
       if (!value) {
-        details[fieldName] = "пустое значение: удаление — отдельная операция, а не пустая правка";
+        details[fieldName] = tl("server.editPlanner.emptyValue", "пустое значение: удаление — отдельная операция, а не пустая правка");
         return;
       }
       if (value.length > ELEMENT_FIELD_MAX_CHARS) {
-        details[fieldName] = `значение длиннее ${ELEMENT_FIELD_MAX_CHARS} знаков`;
+        details[fieldName] = tl("server.editPlanner.valueTooLong", "значение длиннее {max} знаков", { max: ELEMENT_FIELD_MAX_CHARS });
         return;
       }
       elementSteps.push({ type, kind, elementId, field, value, ...(refs ? { recommendations: refs } : {}) });
     } else {
       const note = typeof a.note === "string" ? a.note.trim() : "";
       if (!note) {
-        details[fieldName] = "точечной генерации нужен довод (note): что не так и что требуется";
+        details[fieldName] = tl("server.editPlanner.refineNeedsNote", "точечной генерации нужен довод (note): что не так и что требуется");
         return;
       }
       elementSteps.push({

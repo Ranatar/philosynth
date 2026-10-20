@@ -149,10 +149,10 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
   const details: Record<string, string> = {};
   const parentName =
     typeof b.parentName === "string" ? b.parentName.trim() : "";
-  if (!parentName) details.parentName = "обязательное поле";
+  if (!parentName) details.parentName = tl("server.routes.lineage.requiredFieldLower", "обязательное поле");
   const parentSynthesisId =
     typeof b.parentSynthesisId === "string" ? b.parentSynthesisId : "";
-  if (!parentSynthesisId) details.parentSynthesisId = "обязательное поле";
+  if (!parentSynthesisId) details.parentSynthesisId = tl("server.routes.lineage.requiredFieldLower", "обязательное поле");
   if (Object.keys(details).length > 0) {
     return c.json(
       { error: tl("server.routes.lineage.invalidLinkParams", "Невалидные параметры связи"), code: "VALIDATION_ERROR", details },

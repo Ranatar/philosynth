@@ -28,9 +28,10 @@ import { parseHTML } from "linkedom";
 
 import {
   sanitizeDocMarkup,
-  sanitizeWarningsRu,
   type SanitizableElement,
+  type SanitizeReport,
 } from "@philosynth/shared/utils/doc-markup-sanitize";
+import { tl } from "@philosynth/shared/i18n/t"; // 14.1 (Д-60): тексты ответа — на языке запроса
 
 import type { TableLikeElement } from "./text.js";
 
@@ -915,11 +916,31 @@ function nestedSubsections(host: EditElement): EditElement[] {
   return out;
 }
 
+/** Машинный префикс строки-места «подраздел N» — токен разбора, НЕ текст для
+ *  человека: по нему же клиент (subsection-rich-editor.ts, PLACEHOLDER_RE)
+ *  узнаёт строку-место и рисует плашку. Разбор — по номеру; текст после
+ *  двоеточия — для глаз, при любом языке интерфейса сохранение старого
+ *  черновика (русская строка) проходит (14.1, Д-60). */
 const PLACEHOLDER_RE = /^\s*подраздел\s+(\d+)\b/;
 
-/** Комментарий-ссылка на вложенный подраздел: номер решает, имя — для глаз. */
+/** Комментарий-ссылка на вложенный подраздел: номер решает, имя — для глаз.
+ *  14.1 (Д-60): имя — видимый заголовок <h4> (title), не ключ data-section;
+ *  хвост — на языке запроса. */
 export function subsectionPlaceholder(index: number, name: string): string {
-  return `<!-- подраздел ${index}: ${name.replace(/--+/g, "—")} — правится отдельно, строку не удалять -->`;
+  const tail = tl("server.utils.htmlParser.placeholderTail", "правится отдельно, строку не удалять");
+  return `<!-- подраздел ${index}: ${name.replace(/--+/g, "—")} — ${tail} -->`;
+}
+
+/** Видимый заголовок вложенного подраздела (<h4>), без ключа data-section;
+ *  нет заголовка — имя data-section. */
+function visibleSubsectionTitle(el: EditElement): string {
+  for (const child of el.children) {
+    if (child.tagName.toUpperCase() === "H4") {
+      const t = (child.textContent ?? "").replace(/\s+/g, " ").trim();
+      if (t) return t;
+    }
+  }
+  return el.getAttribute("data-section") ?? "";
 }
 
 /** Таблицы и списки — построчно: одна строка на ряд, иначе в поле правки
@@ -954,7 +975,7 @@ export function readSubsectionSource(
   const nested = nestedSubsections(sub);
   const names = nested.map((el) => el.getAttribute("data-section") ?? "");
   nested.forEach((el, i) => {
-    el.insertAdjacentHTML("beforebegin", subsectionPlaceholder(i + 1, names[i] ?? ""));
+    el.insertAdjacentHTML("beforebegin", subsectionPlaceholder(i + 1, visibleSubsectionTitle(el) || (names[i] ?? "")));
     el.remove();
   });
   const lines: string[] = [];
@@ -1045,16 +1066,43 @@ function dropStrayClosers(html: string): string {
     });
 }
 
+/**
+ * 14.1 (Д-60): фразы предупреждений чистки ДЛЯ ОТВЕТА — на языке запроса
+ * (tl()). Хранимый вариант (parseWarnings генлога — язык записи, не чтения)
+ * собирает `sanitizeWarningsRu(report)` общего модуля; здесь — тот же отчёт,
+ * та же структура фраз, но под языком запроса.
+ */
+export function sanitizeWarnings(report: SanitizeReport): string[] {
+  const out: string[] = [];
+  const tags = (arr: readonly string[]): string => arr.map((t) => `<${t}>`).join(", ");
+  if (report.dropped.length)
+    out.push(tl("server.utils.htmlParser.droppedWithContent", "Удалены вместе с содержимым: {tags}", { tags: tags(report.dropped) }));
+  if (report.unwrapped.length)
+    out.push(tl("server.utils.htmlParser.unwrappedTags", "Теги вне набора документа сняты, текст оставлен: {tags}", { tags: tags(report.unwrapped) }));
+  if (report.renamed.length)
+    out.push(tl("server.utils.htmlParser.renamedTags", "Заменены тегами набора: {pairs}", {
+      pairs: report.renamed.map((r) => { const [a, b] = r.split("→"); return `<${a}> → <${b}>`; }).join(", "),
+    }));
+  if (report.classesStripped.length)
+    out.push(tl("server.utils.htmlParser.classesStripped", "Сняты классы вне набора: {classes}", { classes: report.classesStripped.join(", ") }));
+  if (report.attrsStripped.length)
+    out.push(tl("server.utils.htmlParser.attrsStripped", "Сняты атрибуты: {attrs}", { attrs: report.attrsStripped.join(", ") }));
+  return out;
+}
+
 function sanitizeTree(root: EditElement, warnings: string[]): void {
   const report = sanitizeDocMarkup(root as unknown as SanitizableElement, { mode: "subsection" });
-  warnings.push(...sanitizeWarningsRu(report));
+  warnings.push(...sanitizeWarnings(report));
 }
 
 export interface SanitizeHtmlResult {
   /** Разметка после чистки (сериализация linkedom) */
   html: string;
-  /** Что снято — русские фразы для владельца (перевод — Фаза 14, Д-60) */
+  /** Что снято — фразы для ответа человеку на языке запроса (14.1, Д-60);
+   *  для ХРАНЕНИЯ (parseWarnings генлога) — sanitizeWarningsRu(report) */
   warnings: string[];
+  /** Отчёт чистки — для хранимой русской формулировки (generation-service) */
+  report: SanitizeReport | null;
   /** Хоть что-то изменилось; false — html равен присланному побайтно */
   changed: boolean;
 }
@@ -1073,15 +1121,15 @@ export interface SanitizeHtmlResult {
  * по этому признаку).
  */
 export function sanitizeSectionHtml(html: string): SanitizeHtmlResult {
-  if (!html) return { html, warnings: [], changed: false };
+  if (!html) return { html, warnings: [], report: null, changed: false };
   const root = parseEditable(html);
   const report = sanitizeDocMarkup(root as unknown as SanitizableElement, { mode: "section" });
   // linkedom схлопывает пробелы class ещё при разборе: «callout  warning » он
   // отдаёт как «callout warning», и ядро не видит разницы — а в строке она есть.
   // Такой вход считается изменённым, чтобы в БД легло точное значение набора.
   const sloppyClass = /class="(?:\s[^"]*|[^"]*\s|[^"]*\s\s[^"]*)"/.test(html);
-  if (!report.changed && !sloppyClass) return { html, warnings: [], changed: false };
-  return { html: root.innerHTML, warnings: sanitizeWarningsRu(report), changed: true };
+  if (!report.changed && !sloppyClass) return { html, warnings: [], report: null, changed: false };
+  return { html: root.innerHTML, warnings: sanitizeWarnings(report), report, changed: true };
 }
 
 function stripForeignComments(node: EditElement): void {
@@ -1107,7 +1155,7 @@ export function replaceSubsectionContent(
   const current = readSubsectionSource(sectionHtml, subsectionName);
   if (!current) return null;
   if (userHtml.length > SUBSECTION_HTML_MAX)
-    throw new SubsectionHtmlError("too_long", `Не длиннее ${SUBSECTION_HTML_MAX} знаков`);
+    throw new SubsectionHtmlError("too_long", tl("server.utils.htmlParser.tooLong", "Не длиннее {max} знаков", { max: SUBSECTION_HTML_MAX }));
   const norm = (s: string): string => s.replace(/\r\n?/g, "\n").trim();
   if (norm(userHtml) === norm(current.html))
     return { html: sectionHtml, changed: false, warnings: [] };
@@ -1118,13 +1166,13 @@ export function replaceSubsectionContent(
   for (const el of draft.querySelectorAll("h1, h2, h3, h4")) {
     throw new SubsectionHtmlError(
       "heading",
-      `<${el.tagName.toLowerCase()}> здесь нельзя: <h4> — заголовок подраздела, он не правится; внутренние подзаголовки — <h5>`,
+      tl("server.utils.htmlParser.headingNotAllowed", "<{tag}> здесь нельзя: <h4> — заголовок подраздела, он не правится; внутренние подзаголовки — <h5>", { tag: el.tagName.toLowerCase() }),
     );
   }
   for (const _ of draft.querySelectorAll("[data-section]")) {
     throw new SubsectionHtmlError(
       "anchor",
-      "Атрибут data-section здесь нельзя: по нему служба находит подразделы, заводить и переименовывать их правкой нельзя",
+      tl("server.utils.htmlParser.anchorNotAllowed", "Атрибут data-section здесь нельзя: по нему служба находит подразделы, заводить и переименовывать их правкой нельзя"),
     );
   }
   const warnings: string[] = [];
@@ -1160,7 +1208,7 @@ export function replaceSubsectionContent(
   flushLoose();
   let body = blocks.join("\n");
   if (!hasText && !/<table\b/i.test(body) && current.nested.length === 0)
-    throw new SubsectionHtmlError("empty", "Подраздел не может быть пустым");
+    throw new SubsectionHtmlError("empty", tl("server.utils.htmlParser.emptySubsection", "Подраздел не может быть пустым"));
 
   // Вложенные подразделы — обратно на места своих комментариев-ссылок
   const root = parseEditable(sectionHtml);
@@ -1174,14 +1222,14 @@ export function replaceSubsectionContent(
     if (!m) return "";
     const idx = Number(m[1]);
     const original = originals[idx - 1];
-    if (original === undefined) bad = `строка-ссылка «подраздел ${idx}» не из этого подраздела`;
-    else if (seen.has(idx)) bad = `строка-ссылка «подраздел ${idx}» повторена`;
+    if (original === undefined) bad = tl("server.utils.htmlParser.placeholderForeign", "строка-ссылка «подраздел {index}» не из этого подраздела", { index: idx });
+    else if (seen.has(idx)) bad = tl("server.utils.htmlParser.placeholderRepeated", "строка-ссылка «подраздел {index}» повторена", { index: idx });
     seen.add(idx);
     return original ?? whole;
   });
   if (!bad && seen.size !== originals.length) {
     const lost = current.nested.filter((_, i) => !seen.has(i + 1));
-    bad = `пропала строка-ссылка на вложенный подраздел: ${lost.map((n) => `«${n}»`).join(", ")} — верните её на место`;
+    bad = tl("server.utils.htmlParser.placeholderLost", "пропала строка-ссылка на вложенный подраздел: {names} — верните её на место", { names: lost.map((n) => `«${n}»`).join(", ") });
   }
   if (bad) throw new SubsectionHtmlError("placeholder", bad);
 

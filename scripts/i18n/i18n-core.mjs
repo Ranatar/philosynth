@@ -380,6 +380,69 @@ export const MIRROR_EXCLUSIONS = [
   },
 ];
 
+/**
+ * 14.1 (Д-58): ХРАНИМЫЕ тексты сервера — русские фразы, которые пишутся в БД
+ * (причина паузы, parseWarnings, error_message журнала) и читаются позже на
+ * другом языке: `tl()` при записи не помог бы — язык записи не язык чтения.
+ * Их переводит Фаза 14.2 (Д-54, Д-55, Д-62) образцом recommendation-issues
+ * 12.3: код + параметры в jsonb, фраза при чтении. До неё опись msg-режима
+ * (после 14.1 она видит и эти места) не красит их, а СЧИТАЕТ отдельной
+ * строкой отчёта — запись здесь временная, с номером долга, и снимается
+ * беседой, которая долг закрывает. Форма записи — как у MIRROR_EXCLUSIONS
+ * (файл, область парой маркеров либо точный текст, довод). Белым списком
+ * конституции Фазы 11 (промпты, разбор, значения БД, консоль) это не
+ * является: та живёт в names.json записями с id: null.
+ */
+export const STORED_TEXT_EXCLUSIONS = [
+  {
+    file: "server/services/graph-parser.ts",
+    block: ["export function parseTopology(", "export async function hasGraph("],
+    debt: "Д-55",
+    reason: "предупреждения разбора графа (11.1; и пропущенные рёбра saveGraphToDb) → metadata.parseWarnings генлога — хранятся фразой, читаются владельцем на любом языке; 14.2 переводит кодом",
+  },
+  {
+    file: "server/utils/html-parser.ts",
+    block: ["export function resolveSubsection(", "export function removeSubsectionHtml("],
+    debt: "Д-55",
+    reason: "предупреждения опознания подраздела по месту (11.1) → parseWarnings генлога через вызывающих; 14.2 переводит кодом",
+  },
+  {
+    file: "server/services/recommendations.ts",
+    text: "метки тезисов: {0}",
+    debt: "Д-55",
+    reason: "lookupWarnings DocumentIndex — предупреждение опознания подраздела по месту (той же природы, что parseWarnings); 14.2",
+  },
+  {
+    file: "server/services/generation-service.ts",
+    text: "Ошибка контекста: ",
+    debt: "Д-54",
+    reason: "pausedState.reason (context-error) хранится фразой; 14.2 — reasonKind + rawMessage, фразу собирает PauseModal",
+  },
+  {
+    file: "server/services/element-step.ts",
+    text: "модель вернула пустой ответ",
+    debt: "Д-62",
+    reason: "error_message строки генлога шага плана хранится фразой (и та же фраза уходит в ответ ElementStepError — двойное употребление); 14.2 — код в metadata, фраза при чтении и в ответе",
+  },
+  {
+    file: "server/services/element-step.ts",
+    text: "ответ модели длиннее {0} знаков",
+    debt: "Д-62",
+    reason: "error_message строки генлога шага плана хранится фразой (двойное употребление, см. выше); 14.2",
+  },
+];
+
+/** Исключение хранимого текста для записи описи файла rel либо null. */
+export function storedExclusionFor(rel, src, e) {
+  for (const x of STORED_TEXT_EXCLUSIONS) {
+    if (x.file !== rel) continue;
+    if (x.text !== undefined) { if (e.text === x.text) return x; continue; }
+    const span = exclusionSpan(src, x.block);
+    if (span && e.start >= span[0] && e.end <= span[1]) return x;
+  }
+  return null;
+}
+
 /** Диапазон [start, end) области исключения в тексте файла (либо null). */
 export function exclusionSpan(src, [beg, end]) {
   const a = src.indexOf(beg);

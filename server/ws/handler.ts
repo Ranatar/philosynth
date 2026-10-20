@@ -77,6 +77,7 @@ import {
 import { connectionManager } from "./connection-manager.js";
 import { getStreamState } from "./stream-state.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { runWithLocale } from "../i18n/locale.js"; // 14.1 (Д-53): язык пользователя в обработчиках WS
 
 /** Типы клиентских сообщений (валидация до диспетчеризации). */
 const CLIENT_MESSAGE_TYPES: ReadonlySet<WsClientMessage["type"]> = new Set([
@@ -202,7 +203,7 @@ async function handleSubscribeGeneration(
       return; // гонка двух subscribe — второй просто подписан
     }
     const message =
-      err instanceof Error ? err.message : "Не удалось запустить генерацию";
+      err instanceof Error ? err.message : tl("server.ws.handler.startFailed", "Не удалось запустить генерацию");
     console.error(`[ws] generateSynthesis(${synthesisId}):`, err);
     connectionManager.send(ws, {
       type: "stream_error",
@@ -315,7 +316,7 @@ async function handleResumeGeneration(
         ? `${err.code}: ${err.message}`
         : err instanceof Error
           ? err.message
-          : "Не удалось возобновить генерацию";
+          : tl("server.ws.handler.resumeGenerationFailed", "Не удалось возобновить генерацию");
     console.error(`[ws] resumeGeneration(${synthesisId}, ${mode}):`, err);
     connectionManager.send(ws, {
       type: "stream_error",
@@ -341,7 +342,7 @@ async function handleResumePlan(
         ? `${err.code}: ${err.message}`
         : err instanceof Error
           ? err.message
-          : "Не удалось возобновить план";
+          : tl("server.ws.handler.resumePlanFailed", "Не удалось возобновить план");
     console.error(`[ws] resumePlan(${synthesisId}, ${mode}):`, err);
     connectionManager.send(ws, {
       type: "stream_error",
@@ -555,7 +556,9 @@ export function registerWebSocket(app: Hono<AuthEnv>): {
         console.log(
           `[ws] подключение user=${user.id} (соединений: ${connectionManager.connectionCount(user.id)})`,
         );
-        if (resumeId) void handleResume(ws, user, resumeId);
+        // 14.1 (Д-53): обработчики WS живут вне контекста requestLocale —
+        // язык пользователя (users.ui_locale) ставится здесь явно
+        if (resumeId) void runWithLocale(user.uiLocale, () => handleResume(ws, user, resumeId));
       },
 
       onMessage(evt, ws) {
@@ -567,7 +570,7 @@ export function registerWebSocket(app: Hono<AuthEnv>): {
           console.warn(`[ws] user=${user.id}: невалидное сообщение проигнорировано`);
           return;
         }
-        handleMessage(ws, user, msg);
+        runWithLocale(user.uiLocale, () => handleMessage(ws, user, msg));
       },
 
       onClose(_evt, ws) {

@@ -14302,5 +14302,925 @@
     "id": "document.sectionView.parseWarningsLead",
     "ru": "Разбор ответа модели в таблицы прошёл с подстановками: часть значений опознана по месту или заменена умолчанием. Документ цел; сверьте таблицы графа и подразделы, названные ниже.",
     "en": "Parsing the model's answer into tables involved substitutions: some values were recognised by position or replaced with defaults. The document is intact; check the graph tables and the subsections named below."
+  },
+  {
+    "ns": "server.utils.crypto",
+    "id": null,
+    "ru": "API_KEY_ENCRYPTION_SECRET не задан — хранение API-ключей недоступно",
+    "en": null
+  },
+  {
+    "ns": "server.utils.crypto",
+    "id": null,
+    "ru": "Ключ AES-256 должен быть длиной 32 байта",
+    "en": null
+  },
+  {
+    "ns": "server.utils.crypto",
+    "id": null,
+    "ru": "Повреждённая запись зашифрованного ключа",
+    "en": null
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": null,
+    "ru": "html-parser: не удалось создать контейнер фрагмента",
+    "en": null
+  },
+  {
+    "ns": "server.parentContext",
+    "id": null,
+    "ru": "[{0}] неизвестное поле «{1}» в разделе \"{2}\" ({3})",
+    "en": null
+  },
+  {
+    "ns": "server.importService",
+    "id": null,
+    "ru": "Импортированный документ",
+    "en": null
+  },
+  {
+    "ns": "server.modeService",
+    "id": "server.modeService.opponentDescription",
+    "ru": "Генерирует контр-документ от лица философа или традиции, несовместимой с синтезом.",
+    "en": "Generates a counter-document on behalf of a philosopher or tradition incompatible with the synthesis."
+  },
+  {
+    "ns": "server.modeService",
+    "id": "server.modeService.translatorDescription",
+    "ru": "Переформулирует концепцию в терминах другой философской традиции.",
+    "en": "Reformulates the concept in the terms of another philosophical tradition."
+  },
+  {
+    "ns": "server.modeService",
+    "id": "server.modeService.timeSliceDescription",
+    "ru": "Проецирует концепцию в конкретный исторический период.",
+    "en": "Projects the concept into a specific historical period."
+  },
+  {
+    "ns": "server.modeService",
+    "id": null,
+    "ru": "КОНТЕКСТ КОНЦЕПЦИИ:\n\"\"\"\n",
+    "en": null
+  },
+  {
+    "ns": "server.index",
+    "id": "server.index.notFound",
+    "ru": "Ресурс не найден",
+    "en": "Resource not found"
+  },
+  {
+    "ns": "server.index",
+    "id": "server.index.internalError",
+    "ru": "Внутренняя ошибка сервера",
+    "en": "Internal server error"
+  },
+  {
+    "ns": "server.routes.billing",
+    "id": "server.routes.billing.uuidExpected",
+    "ru": "ожидается UUID",
+    "en": "a UUID is expected"
+  },
+  {
+    "ns": "server.routes.enrichment",
+    "id": "server.routes.enrichment.categoryTypeExpected",
+    "ru": "Ожидается description | evolution | justification",
+    "en": "Expected description | evolution | justification"
+  },
+  {
+    "ns": "server.routes.enrichment",
+    "id": "server.routes.enrichment.edgeTypeExpected",
+    "ru": "Ожидается justification | counterarguments",
+    "en": "Expected justification | counterarguments"
+  },
+  {
+    "ns": "server.routes.lineage",
+    "id": "server.routes.lineage.requiredFieldLower",
+    "ru": "обязательное поле",
+    "en": "required field"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.stringArrayExpected",
+    "ru": "массив строк",
+    "en": "an array of strings"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.participantArrayExpected",
+    "ru": "массив ParticipantInput",
+    "en": "an array of ParticipantInput"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.participantSynthesisIdRequired",
+    "ru": "участник synthesis требует synthesisId (UUID)",
+    "en": "a synthesis participant requires synthesisId (UUID)"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.participantShape",
+    "ru": "элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}",
+    "en": "items {type:'philosopher', name} | {type:'synthesis', synthesisId}"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.seedRequiredWithoutParticipants",
+    "ru": "обязателен при пустых philosophers/participants",
+    "en": "required when philosophers/participants are empty"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.sectionKeysArrayExpected",
+    "ru": "массив ключей разделов",
+    "en": "an array of section keys"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.unknownSectionsList",
+    "ru": "неизвестные разделы: {0}",
+    "en": "unknown sections: {0}",
+    "params": [
+      "keys"
+    ]
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.unknownLevel",
+    "ru": "неизвестный уровень",
+    "en": "unknown level"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.unknownDepth",
+    "ru": "неизвестная глубина",
+    "en": "unknown depth"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.startFailed",
+    "ru": "Не удалось запустить генерацию",
+    "en": "Failed to start the generation"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.knownSectionKeysArrayExpected",
+    "ru": "массив известных ключей разделов",
+    "en": "an array of known section keys"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.unknownSections",
+    "ru": "неизвестные разделы",
+    "en": "unknown sections"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.nonEmptyString",
+    "ru": "непустая строка",
+    "en": "non-empty string"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.titleMax300",
+    "ru": "не длиннее 300 символов",
+    "en": "at most 300 characters"
+  },
+  {
+    "ns": "server.routes.syntheses",
+    "id": "server.routes.syntheses.publicFlagRemoved",
+    "ru": "снят в 8.7 — используйте visibility",
+    "en": "removed in 8.7 — use visibility"
+  },
+  {
+    "ns": "server.routes.taxonomy",
+    "id": "server.routes.taxonomy.requiredField",
+    "ru": "Обязательное поле",
+    "en": "Required field"
+  },
+  {
+    "ns": "server.routes.taxonomy",
+    "id": "server.routes.taxonomy.stringExpected",
+    "ru": "Ожидается строка",
+    "en": "A string is expected"
+  },
+  {
+    "ns": "server.routes.taxonomy",
+    "id": "server.routes.taxonomy.nonEmptyString",
+    "ru": "Непустая строка",
+    "en": "Non-empty string"
+  },
+  {
+    "ns": "server.routes.taxonomy",
+    "id": "server.routes.taxonomy.directionExpected",
+    "ru": "Ожидается {0}",
+    "en": "Expected {0}",
+    "params": [
+      "options"
+    ]
+  },
+  {
+    "ns": "server.routes.taxonomy",
+    "id": "server.routes.taxonomy.kindExpected",
+    "ru": "Ожидается category | relationship",
+    "en": "Expected category | relationship"
+  },
+  {
+    "ns": "server.accountDeletion",
+    "id": "server.accountDeletion.lastAdmin",
+    "ru": "Вы единственный администратор — сначала назначьте второго (POST /auth/users/:id/role)",
+    "en": "You are the only administrator — appoint a second one first (POST /auth/users/:id/role)"
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.sectionNotInDocument",
+    "ru": "раздел «{0}» отсутствует в документе",
+    "en": "section “{0}” is not in the document",
+    "params": [
+      "section"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.unknownSection",
+    "ru": "неизвестный раздел «{0}»",
+    "en": "unknown section “{0}”",
+    "params": [
+      "section"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.sectionAlreadyInDocument",
+    "ru": "раздел «{0}» уже есть в документе",
+    "en": "section “{0}” is already in the document",
+    "params": [
+      "section"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.regenAndRemove",
+    "ru": "regen и remove одновременно: {0}",
+    "en": "regen and remove at the same time: {0}",
+    "params": [
+      "sections"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.modeResultMissing",
+    "ru": "результат «{0}:{1}» не существует",
+    "en": "result “{0}:{1}” does not exist",
+    "params": [
+      "mode",
+      "index"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.modeRegenAndRemove",
+    "ru": "modeRegen и modeRemove одновременно для результата",
+    "en": "modeRegen and modeRemove at the same time for the same result"
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.subsectionAddressShape",
+    "ru": "адрес «{0}» — не «sectionKey:подраздел»",
+    "en": "address “{0}” is not of the form “sectionKey:subsection”",
+    "params": [
+      "target"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.subsectionNotInSection",
+    "ru": "в разделе «{0}» нет подраздела «{1}»",
+    "en": "section “{0}” has no subsection “{1}”",
+    "params": [
+      "section",
+      "subsection"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.sectionRegeneratedByPlan",
+    "ru": "раздел «{0}» этим же планом перегенерируется или удаляется целиком",
+    "en": "section “{0}” is regenerated or removed as a whole by this same plan",
+    "params": [
+      "section"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.unknownElementKind",
+    "ru": "неизвестный вид элемента «{0}»",
+    "en": "unknown element kind “{0}”",
+    "params": [
+      "kind"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.hostRegeneratedByPlan",
+    "ru": "раздел «{0}» этим же планом перегенерируется или удаляется целиком — правка элемента в нём бессмысленна",
+    "en": "section “{0}” is regenerated or removed as a whole by this same plan — editing an element in it is pointless",
+    "params": [
+      "section"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.elementNotFound",
+    "ru": "элемент «{0}:{1}» не найден в этой концепции",
+    "en": "element “{0}:{1}” was not found in this concept",
+    "params": [
+      "kind",
+      "elementId"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.fieldNamedTwice",
+    "ru": "поле «{0}» элемента «{1}:{2}» названо дважды",
+    "en": "field “{0}” of element “{1}:{2}” is named twice",
+    "params": [
+      "field",
+      "kind",
+      "elementId"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.emptyValue",
+    "ru": "пустое значение: удаление — отдельная операция, а не пустая правка",
+    "en": "empty value: deletion is a separate operation, not an empty edit"
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.valueTooLong",
+    "ru": "значение длиннее {0} знаков",
+    "en": "value longer than {0} characters",
+    "params": [
+      "max"
+    ]
+  },
+  {
+    "ns": "server.editPlanner",
+    "id": "server.editPlanner.refineNeedsNote",
+    "ru": "точечной генерации нужен довод (note): что не так и что требуется",
+    "en": "targeted generation needs a note: what is wrong and what is required"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.stringExpected",
+    "ru": "ожидается строка",
+    "en": "a string is expected"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.mustNotBeEmpty",
+    "ru": "не может быть пустым",
+    "en": "must not be empty"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.maxChars",
+    "ru": "не длиннее {0} символов",
+    "en": "at most {0} characters",
+    "params": [
+      "max"
+    ]
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.numberExpected",
+    "ru": "ожидается число",
+    "en": "a number is expected"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.integerExpected",
+    "ru": "ожидается целое",
+    "en": "an integer is expected"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.allowedRange",
+    "ru": "допустимый диапазон {0}–{1}",
+    "en": "allowed range {0}–{1}",
+    "params": [
+      "lo",
+      "hi"
+    ]
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.stringArrayExpected",
+    "ru": "ожидается массив строк",
+    "en": "an array of strings is expected"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.catalogIdOrNullExpected",
+    "ru": "ожидается id каталога или null",
+    "en": "a catalog id or null is expected"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.typeNotInCatalog",
+    "ru": "тип не найден в каталоге",
+    "en": "type not found in the catalog"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.nonNegativeIntArrayExpected",
+    "ru": "ожидается массив неотрицательных целых",
+    "en": "an array of non-negative integers is expected"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.oneOf",
+    "ru": "одно из: {0}",
+    "en": "one of: {0}",
+    "params": [
+      "options"
+    ]
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.categoryIdExpected",
+    "ru": "ожидается id категории",
+    "en": "a category id is expected"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.sameEndsOnlyReflexive",
+    "ru": "совпадение концов допустимо только у рефлексивной связи",
+    "en": "identical ends are allowed only for a reflexive relation"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.categoryNotInSynthesis",
+    "ru": "категория не найдена в этом синтезе",
+    "en": "category not found in this synthesis"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.stringMapExpected",
+    "ru": "ожидается объект строка → строка",
+    "en": "an object string → string is expected"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.lockHintCategories",
+    "ru": "Таблицу категорий служба рисует из графа: правьте категорию в панели узла графа («◈ Граф» → узел → «✎ Редактировать»)",
+    "en": "The category table is drawn by the service from the graph: edit the category in the graph node panel (“◈ Graph” → node → “✎ Edit”)"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.lockHintEdges",
+    "ru": "Таблицу связей служба рисует из графа: правьте связь в панели связи графа («◈ Граф» → связь → «✎ Редактировать»)",
+    "en": "The relation table is drawn by the service from the graph: edit the relation in the graph edge panel (“◈ Graph” → edge → “✎ Edit”)"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.lockHintTopology",
+    "ru": "Топологическую таблицу служба рисует из графа: роли и кластеры правятся в панели узла графа («◈ Граф» → узел → «✎ Редактировать»)",
+    "en": "The topology table is drawn by the service from the graph: roles and clusters are edited in the graph node panel (“◈ Graph” → node → “✎ Edit”)"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.lockHintTheses",
+    "ru": "Сводную таблицу тезисов служба рисует из списка тезисов: правьте тезис карандашом ✎ в его строке таблицы",
+    "en": "The thesis summary table is drawn by the service from the list of theses: edit the thesis with the pencil ✎ in its table row"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.lockHintGlossary",
+    "ru": "Таблицу определений служба рисует из списка терминов: правьте термин карандашом ✎ в его строке таблицы",
+    "en": "The definitions table is drawn by the service from the list of terms: edit the term with the pencil ✎ in its table row"
+  },
+  {
+    "ns": "server.elementEditor",
+    "id": "server.elementEditor.lockHintCapsule",
+    "ru": "У капсулы свой путь правки: карандаш ✎ у капсулы в шапке документа (PATCH /syntheses/:id/capsule)",
+    "en": "The capsule has its own editing path: the pencil ✎ next to the capsule in the document header (PATCH /syntheses/:id/capsule)"
+  },
+  {
+    "ns": "server.elementEnrichment",
+    "id": "server.elementEnrichment.elementTypeExpected",
+    "ru": "Ожидается 'category' или 'edge'",
+    "en": "Expected 'category' or 'edge'"
+  },
+  {
+    "ns": "server.elementEnrichment",
+    "id": "server.elementEnrichment.requiredField",
+    "ru": "Обязательное поле",
+    "en": "Required field"
+  },
+  {
+    "ns": "server.elementEnrichment",
+    "id": "server.elementEnrichment.noSuchCharacteristic",
+    "ru": "У элемента типа '{0}' нет характеристики «{1}»",
+    "en": "An element of type '{0}' has no characteristic “{1}”",
+    "params": [
+      "elementType",
+      "characteristic"
+    ]
+  },
+  {
+    "ns": "server.elementEnrichment",
+    "id": "server.elementEnrichment.numberExpected",
+    "ru": "Ожидается число",
+    "en": "A number is expected"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.clusterFallback",
+    "ru": "Кластер {0}",
+    "en": "Cluster {0}",
+    "params": [
+      "n"
+    ]
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.otherType",
+    "ru": "другое",
+    "en": "other"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.innerSilhouette",
+    "ru": "внутренний силуэт",
+    "en": "inner silhouette"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.glow",
+    "ru": "свечение (glow)",
+    "en": "glow"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.dashedOutline",
+    "ru": "пунктирная обводка",
+    "en": "dashed outline"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.boldOutline",
+    "ru": "жирная обводка",
+    "en": "bold outline"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.thinOutline",
+    "ru": "тонкая обводка",
+    "en": "thin outline"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.categoryTypesHeading",
+    "ru": "ТИПЫ КАТЕГОРИЙ",
+    "en": "CATEGORY TYPES"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.proceduralRolesShape",
+    "ru": "ПРОЦЕССУАЛЬНЫЕ РОЛИ (ФОРМА)",
+    "en": "PROCEDURAL ROLES (SHAPE)"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.structuralRolesMarker",
+    "ru": "СТРУКТУРНЫЕ РОЛИ (МАРКЕР)",
+    "en": "STRUCTURAL ROLES (MARKER)"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.edgeTypesHeading",
+    "ru": "ТИПЫ СВЯЗЕЙ",
+    "en": "RELATION TYPES"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.clustersHeading",
+    "ru": "КЛАСТЕРЫ",
+    "en": "CLUSTERS"
+  },
+  {
+    "ns": "server.export.pngExporter",
+    "id": "server.export.pngExporter.directionLegend",
+    "ru": "→ однонаправл. · ↔ двунаправл. · ↺ рефлексив.",
+    "en": "→ one-way · ↔ two-way · ↺ reflexive"
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.greetingNamed",
+    "ru": "Здравствуйте, {0}.",
+    "en": "Hello, {0}.",
+    "params": [
+      "name"
+    ]
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.greeting",
+    "ru": "Здравствуйте.",
+    "en": "Hello."
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.hours",
+    "ru": "{n, plural, one {# час} few {# часа} many {# часов} other {# часа}}",
+    "en": "{n, plural, one {# hour} other {# hours}}"
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.copyLinkHint",
+    "ru": "Если кнопка не открывается, скопируйте ссылку в адресную строку:",
+    "en": "If the button does not open, copy the link into the address bar:"
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.verifySubject",
+    "ru": "{0}: подтверждение адреса",
+    "en": "{0}: email address confirmation",
+    "params": [
+      "service"
+    ]
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.verifyLead",
+    "ru": "Этот адрес указан при регистрации в службе {0}. Чтобы подтвердить, что он ваш, перейдите по ссылке:",
+    "en": "This address was given when registering with {0}. To confirm that it is yours, follow the link:",
+    "params": [
+      "service"
+    ]
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.verifyTtl",
+    "ru": "Ссылка действует {0} и срабатывает один раз. Новое письмо с подтверждением делает прежнюю ссылку недействительной.",
+    "en": "The link is valid for {0} and works once. A new confirmation email makes the previous link invalid.",
+    "params": [
+      "ttl"
+    ]
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.verifyIgnore",
+    "ru": "Если вы не регистрировались в {0}, ничего делать не нужно: без перехода по ссылке адрес останется неподтверждённым.",
+    "en": "If you did not register with {0}, no action is needed: without following the link the address will remain unconfirmed.",
+    "params": [
+      "service"
+    ]
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.verifyButton",
+    "ru": "Подтвердить адрес",
+    "en": "Confirm address"
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.resetSubject",
+    "ru": "{0}: сброс пароля",
+    "en": "{0}: password reset",
+    "params": [
+      "service"
+    ]
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.resetLead",
+    "ru": "Для учётной записи с этим адресом запрошен сброс пароля. Чтобы задать новый пароль, перейдите по ссылке:",
+    "en": "A password reset was requested for the account with this address. To set a new password, follow the link:"
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.resetTtl",
+    "ru": "Ссылка действует {0} и срабатывает один раз. После смены пароля все сеансы входа будут завершены.",
+    "en": "The link is valid for {0} and works once. After the password change all sign-in sessions will be ended.",
+    "params": [
+      "ttl"
+    ]
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.resetIgnore",
+    "ru": "Если вы не запрашивали сброс, ничего делать не нужно: пароль останется прежним.",
+    "en": "If you did not request a reset, no action is needed: the password will stay the same."
+  },
+  {
+    "ns": "server.mail.templates",
+    "id": "server.mail.templates.resetButton",
+    "ru": "Задать новый пароль",
+    "en": "Set a new password"
+  },
+  {
+    "ns": "server.metaSynthesisService",
+    "id": "server.metaSynthesisService.graphOrDialogue",
+    "ru": "graph или dialogue",
+    "en": "graph or dialogue"
+  },
+  {
+    "ns": "server.metaSynthesisService",
+    "id": "server.metaSynthesisService.noCategoryGraph",
+    "ru": "нет графа категорий",
+    "en": "no category graph"
+  },
+  {
+    "ns": "server.metaSynthesisService",
+    "id": "server.metaSynthesisService.noDialogue",
+    "ru": "нет диалога",
+    "en": "no dialogue"
+  },
+  {
+    "ns": "server.metaSynthesisService",
+    "id": "server.metaSynthesisService.unsuitableConcept",
+    "ru": "Концепция «{0}» не пригодна для мета-синтеза. Отсутствуют разделы: {1}",
+    "en": "Concept “{0}” is not suitable for meta-synthesis. Missing sections: {1}",
+    "params": [
+      "name",
+      "sections"
+    ]
+  },
+  {
+    "ns": "server.planExecutor",
+    "id": "server.planExecutor.cascadeReason",
+    "ru": "каскад: разделы зависят от изменённых",
+    "en": "cascade: sections depend on the changed ones"
+  },
+  {
+    "ns": "server.planExecutor",
+    "id": "server.planExecutor.structureReason",
+    "ru": "состав разделов изменился — обновить «Структуру документа»",
+    "en": "the set of sections changed — update “Document structure”"
+  },
+  {
+    "ns": "server.promptRegistry",
+    "id": "server.promptRegistry.templateNotFound",
+    "ru": "Промптовый шаблон «{0}» не найден{1}",
+    "en": "Prompt template “{0}” not found{1}",
+    "params": [
+      "key",
+      "detail"
+    ]
+  },
+  {
+    "ns": "server.promptRegistry",
+    "id": "server.promptRegistry.noActiveVersion",
+    "ru": " (нет активной версии)",
+    "en": " (no active version)"
+  },
+  {
+    "ns": "server.promptRegistry",
+    "id": "server.promptRegistry.configNotFound",
+    "ru": "Конфигурация «{0}» не найдена{1}",
+    "en": "Configuration “{0}” not found{1}",
+    "params": [
+      "key",
+      "detail"
+    ]
+  },
+  {
+    "ns": "server.promptRegistry",
+    "id": "server.promptRegistry.missingPlaceholders",
+    "ru": "Шаблон «{0}»: нет значений для плейсхолдеров: {1}",
+    "en": "Template “{0}”: no values for placeholders: {1}",
+    "params": [
+      "key",
+      "placeholders"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.placeholderTail",
+    "ru": "правится отдельно, строку не удалять",
+    "en": "edited separately, do not delete this line"
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.droppedWithContent",
+    "ru": "Удалены вместе с содержимым: {0}",
+    "en": "Removed together with their content: {0}",
+    "params": [
+      "tags"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.unwrappedTags",
+    "ru": "Теги вне набора документа сняты, текст оставлен: {0}",
+    "en": "Tags outside the document set were removed, text kept: {0}",
+    "params": [
+      "tags"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.renamedTags",
+    "ru": "Заменены тегами набора: {0}",
+    "en": "Replaced with tags of the set: {0}",
+    "params": [
+      "pairs"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.classesStripped",
+    "ru": "Сняты классы вне набора: {0}",
+    "en": "Classes outside the set removed: {0}",
+    "params": [
+      "classes"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.attrsStripped",
+    "ru": "Сняты атрибуты: {0}",
+    "en": "Attributes removed: {0}",
+    "params": [
+      "attrs"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.tooLong",
+    "ru": "Не длиннее {0} знаков",
+    "en": "At most {0} characters",
+    "params": [
+      "max"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.headingNotAllowed",
+    "ru": "<{0}> здесь нельзя: <h4> — заголовок подраздела, он не правится; внутренние подзаголовки — <h5>",
+    "en": "<{0}> is not allowed here: <h4> is the subsection heading and cannot be edited; inner subheadings are <h5>",
+    "params": [
+      "tag"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.anchorNotAllowed",
+    "ru": "Атрибут data-section здесь нельзя: по нему служба находит подразделы, заводить и переименовывать их правкой нельзя",
+    "en": "The data-section attribute is not allowed here: the service finds subsections by it; creating or renaming them by editing is not allowed"
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.emptySubsection",
+    "ru": "Подраздел не может быть пустым",
+    "en": "The subsection cannot be empty"
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.placeholderForeign",
+    "ru": "строка-ссылка «подраздел {0}» не из этого подраздела",
+    "en": "placeholder line “subsection {0}” is not from this subsection",
+    "params": [
+      "index"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.placeholderRepeated",
+    "ru": "строка-ссылка «подраздел {0}» повторена",
+    "en": "placeholder line “subsection {0}” is repeated",
+    "params": [
+      "index"
+    ]
+  },
+  {
+    "ns": "server.utils.htmlParser",
+    "id": "server.utils.htmlParser.placeholderLost",
+    "ru": "пропала строка-ссылка на вложенный подраздел: {0} — верните её на место",
+    "en": "the placeholder line for a nested subsection is missing: {0} — put it back",
+    "params": [
+      "names"
+    ]
+  },
+  {
+    "ns": "server.ws.handler",
+    "id": "server.ws.handler.startFailed",
+    "ru": "Не удалось запустить генерацию",
+    "en": "Failed to start the generation"
+  },
+  {
+    "ns": "server.ws.handler",
+    "id": "server.ws.handler.resumeGenerationFailed",
+    "ru": "Не удалось возобновить генерацию",
+    "en": "Failed to resume the generation"
+  },
+  {
+    "ns": "server.ws.handler",
+    "id": "server.ws.handler.resumePlanFailed",
+    "ru": "Не удалось возобновить план",
+    "en": "Failed to resume the plan"
   }
 ]

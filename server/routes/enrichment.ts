@@ -134,7 +134,7 @@ enrichmentRoutes.post("/:id/enrich/category/:catId", requireAuth, billingCheck({
   const body = (await readJson(c)) as { type?: unknown } | undefined;
   const type = body?.type;
   if (!isCategoryEnrichmentType(type))
-    return validationJson(c, { type: "Ожидается description | evolution | justification" });
+    return validationJson(c, { type: tl("server.routes.enrichment.categoryTypeExpected", "Ожидается description | evolution | justification") });
   if (!(await elementExists(id, "category", catId)))
     return c.json(elementNotFoundJson, 404);
 
@@ -157,7 +157,7 @@ enrichmentRoutes.post("/:id/enrich/edge/:edgeId", requireAuth, billingCheck({ qu
   const body = (await readJson(c)) as { type?: unknown } | undefined;
   const type = body?.type;
   if (!isEdgeEnrichmentType(type))
-    return validationJson(c, { type: "Ожидается justification | counterarguments" });
+    return validationJson(c, { type: tl("server.routes.enrichment.edgeTypeExpected", "Ожидается justification | counterarguments") });
   if (!(await elementExists(id, "edge", edgeId)))
     return c.json(elementNotFoundJson, 404);
 

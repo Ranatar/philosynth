@@ -364,6 +364,8 @@ philosynth-service/
 │   │   │   ├── transport.ts            # ТОЛЬКО отправка: nodemailer либо вывод в консоль
 │   │   │   │                           # (MAIL_TRANSPORT); classifySendError — род отказа
 │   │   │   ├── templates.ts            # два письма, текст и HTML: подтверждение адреса, сброс пароля
+│   │   │   │                           # (14.1: все фразы tl() под языком ПОЛУЧАТЕЛЯ — runWithLocale в
+│   │   │   │                           # queueTokenMail; часы — плюрал; <html lang> по языку)
 │   │   │   ├── outbox.ts               # enqueue(exec, letter) — запись в ПЕРЕДАННОЙ транзакции;
 │   │   │   │                           # underSavepoint / tryEnqueue; getOutboxCounts
 │   │   │   └── worker.ts               # processOutbox: захват арендой, постоянный/временный отказ,
@@ -413,7 +415,8 @@ philosynth-service/
 │   │       │                           #  renderGenealogyDisclosure (древо в шапке, Д-30),
 │   │       │                           #  просмотрщик — с надстройкой export-viewer-overrides
 │   │       ├── mmd-exporter.ts         # exportMMD (exportMMD())
-│   │       ├── png-exporter.ts         # exportPNG — node-canvas (exportPNG())
+│   │       ├── png-exporter.ts         # exportPNG — node-canvas (exportPNG()); 14.1: единственная
+│   │       │                           # выгрузка на языке запроса — легенда tl(), типы tDataLoose
 │   │       ├── json-exporter.ts        # exportJSON (exportJSON())
 │   │       ├── md-exporter.ts          # Markdown экспорт — порт saveMD() + node2md/sec2md/
 │   │       │                           # table2md из исходника (реализован, НЕ новое)
@@ -748,7 +751,9 @@ philosynth-service/
 │   │   │                               # пароль из BOOTSTRAP_ADMIN_PASSWORD, заслон
 │   │   │                               # «другой админ уже есть»
 │   │   └── stripe-create-prices.ts     # 8.3: Product+Price в Stripe ключом владельца,
-│   │                                   # идемпотентно по lookup_key philosynth_<name>
+│   │                                   # идемпотентно по lookup_key philosynth_<name>;
+│   │                                   # 14.1: описание продукта английское, у найденного
+│   │                                   # продукта приводится (updateProduct) и при skip цены
 │   ├── i18n/                           # инструменты перевода интерфейса (сделаны вне бесед;
 │   │   │                               # впервые применены к коду в 11.2) — см. scripts/i18n/README.md
 │   │   ├── README.md
@@ -791,7 +796,8 @@ philosynth-service/
 │   │   ├── extract-seed-data.mjs       # vm-извлечение конфигов и промптов
 │   │   ├── extract-section-templates.mjs
 │   │   └── extract-export-assets.mjs
-│   ├── patches/                        # 51 идемпотентный патч доков по итогам бесед
+│   ├── patches/                        # идемпотентные патчи доков по итогам бесед (по одному
+│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv141)
 │   │   ├── patch-docs-*.py             # запускаются ИЗ КОРНЯ репозитория;
 │   │   │                               # осторожно с повторным прогоном старого патча:
 │   │   │                               # доки с тех пор менялись, и якорь может совпасть
@@ -899,6 +905,18 @@ philosynth-service/
     │                                   # гость; R3 файл с шестью UUID → три связи, три кандидата, отчёт на
     │                                   # копии БД (pg_dump) со «старыми» строками; R4 100 случайных cookie,
     │                                   # две сессии = одна квота, mailLimiter, X-Forwarded-For без/с TRUST_PROXY
+    │                                   # test-141-requests2-5 — 14.1: R2 опись на коде dd1b1e0 (worktree) —
+    │                                   # 150 красных как в «По факту», ноль после, красный на временном
+    │                                   # литерале; R3 details/404/LAST_ADMIN/правка подраздела под en/de;
+    │                                   # R4 письмо сброса de-пользователя, ru побайтно против dd1b1e0;
+    │                                   # R5 PNG (шпион fillText), сид цен на моке (обновление описания),
+    │                                   # preferred_locales Customer
+    │                                   # smoke-141-request1 — 14.1: опись msg-режима на пробе, i18n:check
+    │                                   # --strict, письма под языком получателя (ru побайтно), строки-места
+    │                                   # и предупреждения чистки под en/de, PNG (шпион fillText), сид цен
+    │                                   # на моке Stripe (описание существующего продукта), preferred_locales;
+    │                                   # живой сервер :3141 — details en/de, 404, LAST_ADMIN, PATCH подраздела
+    │                                   # с <script>, письмо en-пользователю под ru-запросом
     │                                   # smoke-132-request1 — 13.2: metaParentAllowed, stripParentContent,
     │                                   # clientIdentity/resolveSession (мини-Hono); живой сервер — пауза и
     │                                   # params выгрузки владелец ≠ чужой, импорт трёх UUID (связь только

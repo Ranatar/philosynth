@@ -21,6 +21,7 @@ import { optionalAuth, type AuthEnv } from "./middleware/auth.js";
 import { rateLimiter } from "./middleware/rate-limiter.js";
 import { SECURITY_HEADERS } from "./security-headers.js"; // беседа 13.1
 import { installServerCatalogProvider, requestLocale } from "./i18n/locale.js"; // беседа 11.2
+import { tl } from "@philosynth/shared/i18n/t"; // 14.1 (Д-53): notFound/onError на языке запроса
 import { authRoutes } from "./routes/auth.js";
 import { synthesesRoutes } from "./routes/syntheses.js";
 import { sectionsRoutes } from "./routes/sections.js";
@@ -66,14 +67,16 @@ app.use(
   }),
 );
 
-// Единый формат ошибок { error, code } (03-spec §2, §4.3)
+// Единый формат ошибок { error, code } (03-spec §2, §4.3). 14.1 (Д-53): tl() —
+// notFound и onError вызываются внутри цепочки compose, т.е. внутри контекста
+// requestLocale (als.run вокруг next()); вне /api/v1/* — ru (сторож 5aq это проверяет).
 app.notFound((c) =>
-  c.json({ error: "Ресурс не найден", code: "NOT_FOUND" }, 404),
+  c.json({ error: tl("server.index.notFound", "Ресурс не найден"), code: "NOT_FOUND" }, 404),
 );
 app.onError((err, c) => {
   console.error(`[http] ${c.req.method} ${c.req.path}:`, err);
   return c.json(
-    { error: "Внутренняя ошибка сервера", code: "INTERNAL_ERROR" },
+    { error: tl("server.index.internalError", "Внутренняя ошибка сервера"), code: "INTERNAL_ERROR" },
     500,
   );
 });

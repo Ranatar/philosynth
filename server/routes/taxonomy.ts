@@ -65,8 +65,9 @@ async function readJson(c: Context): Promise<Record<string, unknown>> {
   }
 }
 
-function validationJson(c: Context, details: Record<string, string>, error = "Невалидные данные"): Response {
-  return c.json({ error, code: "VALIDATION_ERROR", details }, 400);
+function validationJson(c: Context, details: Record<string, string>, error?: string): Response {
+  // 14.1 (Д-52): умолчание — tl() в точке ответа, не в сигнатуре (язык запроса)
+  return c.json({ error: error ?? tl("common.invalidData", "Невалидные данные"), code: "VALIDATION_ERROR", details }, 400);
 }
 
 /** Общие поля тела POST каталога: key, nameRu обязательны; description → "". */
@@ -74,10 +75,10 @@ function readTypeBody(body: Record<string, unknown>):
   | { ok: true; key: string; nameRu: string; description: string }
   | { ok: false; details: Record<string, string> } {
   const details: Record<string, string> = {};
-  if (typeof body.key !== "string" || !body.key.trim()) details.key = "Обязательное поле";
-  if (typeof body.nameRu !== "string" || !body.nameRu.trim()) details.nameRu = "Обязательное поле";
+  if (typeof body.key !== "string" || !body.key.trim()) details.key = tl("server.routes.taxonomy.requiredField", "Обязательное поле");
+  if (typeof body.nameRu !== "string" || !body.nameRu.trim()) details.nameRu = tl("server.routes.taxonomy.requiredField", "Обязательное поле");
   if (body.description !== undefined && typeof body.description !== "string")
-    details.description = "Ожидается строка";
+    details.description = tl("server.routes.taxonomy.stringExpected", "Ожидается строка");
   if (Object.keys(details).length) return { ok: false, details };
   return {
     ok: true,
@@ -103,9 +104,9 @@ function readPatchBody(body: Record<string, unknown>):
   | { ok: false; details: Record<string, string> } {
   const details: Record<string, string> = {};
   if (body.nameRu !== undefined && (typeof body.nameRu !== "string" || !body.nameRu.trim()))
-    details.nameRu = "Непустая строка";
+    details.nameRu = tl("server.routes.taxonomy.nonEmptyString", "Непустая строка");
   if (body.description !== undefined && typeof body.description !== "string")
-    details.description = "Ожидается строка";
+    details.description = tl("server.routes.taxonomy.stringExpected", "Ожидается строка");
   if (Object.keys(details).length) return { ok: false, details };
   return {
     ok: true,
@@ -174,7 +175,7 @@ taxonomyRoutes.post("/relationship-types", requireAuth, async (c) => {
       !(RELATIONSHIP_DIRECTIONS as readonly string[]).includes(body.defaultDirection)
     ) {
       return validationJson(c, {
-        defaultDirection: `Ожидается ${RELATIONSHIP_DIRECTIONS.join(" | ")}`,
+        defaultDirection: tl("server.routes.taxonomy.directionExpected", "Ожидается {options}", { options: RELATIONSHIP_DIRECTIONS.join(" | ") }),
       });
     }
     defaultDirection = body.defaultDirection as RelationshipDirection;
@@ -202,7 +203,7 @@ taxonomyRoutes.patch("/relationship-types/:id", requireAuth, requireAdmin, async
       !(RELATIONSHIP_DIRECTIONS as readonly string[]).includes(body.defaultDirection)
     ) {
       return validationJson(c, {
-        defaultDirection: `Ожидается ${RELATIONSHIP_DIRECTIONS.join(" | ")}`,
+        defaultDirection: tl("server.routes.taxonomy.directionExpected", "Ожидается {options}", { options: RELATIONSHIP_DIRECTIONS.join(" | ") }),
       });
     }
     defaultDirection = body.defaultDirection as RelationshipDirection;
@@ -236,9 +237,9 @@ taxonomyRoutes.delete("/relationship-types/:id", requireAuth, requireAdmin, asyn
 taxonomyRoutes.post("/normalize", requireAuth, async (c) => {
   const body = await readJson(c);
   const details: Record<string, string> = {};
-  if (typeof body.text !== "string" || !body.text.trim()) details.text = "Обязательное поле";
+  if (typeof body.text !== "string" || !body.text.trim()) details.text = tl("server.routes.taxonomy.requiredField", "Обязательное поле");
   if (body.kind !== "category" && body.kind !== "relationship")
-    details.kind = "Ожидается category | relationship";
+    details.kind = tl("server.routes.taxonomy.kindExpected", "Ожидается category | relationship");
   if (Object.keys(details).length) return validationJson(c, details);
   const result = await normalizeType(body.text as string, body.kind as TaxonomyKind);
   return c.json(result);

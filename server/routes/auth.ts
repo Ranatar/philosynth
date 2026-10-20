@@ -119,6 +119,7 @@ import {
 } from "../services/auth-tokens.js"; // 9.1
 import { rateLimiter } from "../middleware/rate-limiter.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { currentLocale } from "../i18n/locale.js"; // 14.1 (Д-51): язык письма при регистрации
 
 /* ── Валидация тела запроса ──────────────────────────────────────────── */
 
@@ -155,10 +156,10 @@ function parseCredentials(
   const password = typeof body?.password === "string" ? body.password : "";
   const displayNameRaw = body?.displayName;
 
-  if (!email) details.email = "Обязательное поле";
-  else if (!EMAIL_RE.test(email)) details.email = "Невалидный email";
+  if (!email) details.email = tl("server.routes.auth.requiredField", "Обязательное поле");
+  else if (!EMAIL_RE.test(email)) details.email = tl("server.routes.auth.invalidEmail", "Невалидный email");
 
-  if (!password) details.password = "Обязательное поле";
+  if (!password) details.password = tl("server.routes.auth.requiredField", "Обязательное поле");
   else if (opts.validateStrength && password.length < PASSWORD_MIN_LENGTH) {
     details.password = tData(PASSWORD_TOO_SHORT_TEMPLATE, { minLength: PASSWORD_MIN_LENGTH });
   }
@@ -209,7 +210,8 @@ authRoutes.post("/register", async (c) => {
           email: schema.users.email,
           displayName: schema.users.displayName,
         });
-      await queueVerificationMail(tx, created!);
+      // 14.1 (Д-51): у нового пользователя ui_locale ещё нет — письмо под языком запроса
+      await queueVerificationMail(tx, { ...created!, uiLocale: currentLocale() });
       return created!;
     });
     return c.json({ user }, 201);
@@ -290,8 +292,8 @@ authRoutes.post("/password-change", requireAuth, async (c) => {
   const newPassword =
     typeof body?.newPassword === "string" ? body.newPassword : "";
 
-  if (!currentPassword) details.currentPassword = "Обязательное поле";
-  if (!newPassword) details.newPassword = "Обязательное поле";
+  if (!currentPassword) details.currentPassword = tl("server.routes.auth.requiredField", "Обязательное поле");
+  if (!newPassword) details.newPassword = tl("server.routes.auth.requiredField", "Обязательное поле");
   else if (newPassword.length < PASSWORD_MIN_LENGTH) {
     details.newPassword = tData(PASSWORD_TOO_SHORT_TEMPLATE, { minLength: PASSWORD_MIN_LENGTH });
   }
@@ -504,6 +506,7 @@ authRoutes.post("/email/verify/request", mailLimiter, requireAuth, async (c) => 
     id: user.id,
     email: user.email,
     displayName: user.displayName,
+    uiLocale: user.uiLocale, // 14.1 (Д-51): язык получателя
   });
   if (!sent) {
     return c.json(
@@ -552,6 +555,7 @@ authRoutes.post("/password-reset/request", mailLimiter, async (c) => {
         id: schema.users.id,
         email: schema.users.email,
         displayName: schema.users.displayName,
+        uiLocale: schema.users.uiLocale, // 14.1 (Д-51): язык получателя
       })
       .from(schema.users)
       .where(eq(schema.users.email, email))
@@ -571,7 +575,7 @@ authRoutes.post("/password-reset/confirm", async (c) => {
 
   // Пароль проверяется ДО довода: короткий пароль не должен сжигать ссылку
   const details: Record<string, string> = {};
-  if (!newPassword) details.newPassword = "Обязательное поле";
+  if (!newPassword) details.newPassword = tl("server.routes.auth.requiredField", "Обязательное поле");
   else if (newPassword.length < PASSWORD_MIN_LENGTH) {
     details.newPassword = tData(PASSWORD_TOO_SHORT_TEMPLATE, { minLength: PASSWORD_MIN_LENGTH });
   }

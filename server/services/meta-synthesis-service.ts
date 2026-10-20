@@ -54,7 +54,8 @@ import { and, eq } from "drizzle-orm";
 import { db, sql } from "../db/index.js";
 import { sections, syntheses, synthesisLineage } from "../db/schema.js";
 import { ML, SL } from "@philosynth/shared/constants/labels";
-import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
+import { KEY_LABELS, isSectionKey } from "@philosynth/shared/constants/section-labels";
+import { tData } from "@philosynth/shared/i18n/data"; // 14.1 (Д-52)
 
 import {
   createDbContextSource,
@@ -285,15 +286,15 @@ export async function validateConceptForMetaSynthesis(
 
   const hasGraph = sectionKeys.has("graph");
   const hasDialogue = sectionKeys.has("dialogue");
-  if (!hasGraph && !hasDialogue) missing.push("graph или dialogue");
+  if (!hasGraph && !hasDialogue) missing.push(tl("server.metaSynthesisService.graphOrDialogue", "graph или dialogue"));
 
   // Капсула: в сервисе живёт в syntheses.capsule_html (беседа 1.4) —
   // ветки embeddedState/.header-disclosure-capsule исходника вырождены.
   if (!row.capsuleHtml || !row.capsuleHtml.trim()) missing.push("capsule");
 
   const warnings: string[] = [];
-  if (!hasGraph) warnings.push("нет графа категорий");
-  if (!hasDialogue) warnings.push("нет диалога");
+  if (!hasGraph) warnings.push(tl("server.metaSynthesisService.noCategoryGraph", "нет графа категорий"));
+  if (!hasDialogue) warnings.push(tl("server.metaSynthesisService.noDialogue", "нет диалога"));
 
   return { valid: missing.length === 0, missing, warnings };
 }
@@ -303,12 +304,16 @@ export function unsuitableConceptMessage(
   name: string,
   missing: string[],
 ): string {
-  return (
-    `Концепция «${name}» не пригодна для мета-синтеза. ` +
-    "Отсутствуют разделы: " +
-    missing
-      .map((k) => "«" + (KEY_LABELS[k as keyof typeof KEY_LABELS] ?? k) + "»")
-      .join(", ")
+  // 14.1 (Д-52): текст — на языке запроса; имена разделов — по месту показа (tData)
+  return tl(
+    "server.metaSynthesisService.unsuitableConcept",
+    "Концепция «{name}» не пригодна для мета-синтеза. Отсутствуют разделы: {sections}",
+    {
+      name,
+      sections: missing
+        .map((k) => "«" + (isSectionKey(k) ? tData(KEY_LABELS[k]) : k) + "»")
+        .join(", "),
+    },
   );
 }
 

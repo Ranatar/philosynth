@@ -47,9 +47,12 @@ export const SCOPE = [
       "packages/shared/utils/normalize.ts",
       "packages/shared/utils/colorize-log.ts", // только регулярки
       // 13.1 (Д-63): общий модуль разметки и ядро санитайзера — их русские
-      // строки суть диагностика (предупреждения чистки в parseWarnings и в
-      // warnings ответа правки, как у server/utils/html-parser.ts вне охвата;
-      // расхождения модуля с промптом — вывод сторожа). Перевод — Фаза 14 (Д-60).
+      // строки суть диагностика (расхождения модуля с промптом — вывод сторожа;
+      // sanitizeWarningsRu — ХРАНИМАЯ форма предупреждений чистки в parseWarnings
+      // генлога, язык записи — не язык чтения, 14.2/Д-54). Фразы для ОТВЕТА
+      // (warnings правки подраздела, импорта) с 14.1 (Д-60) собирает
+      // server/utils/html-parser.ts: sanitizeWarnings(report) через tl() — он в
+      // охвате группы server-messages.
       "packages/shared/constants/doc-markup.ts",
       "packages/shared/utils/doc-markup-sanitize.ts",
     ],
@@ -62,6 +65,21 @@ export const SCOPE = [
   { group: "server-messages", dir: "server/services", mode: "msg" },
   { group: "server-messages", dir: "server/ws", mode: "msg" },
   { group: "server-messages", dir: "server/middleware", mode: "msg" },
+  // 14.1 (Д-58, п.3): ВЕСЬ server/ в режиме msg — до 14.1 index.ts (notFound /
+  // onError) и utils/ (html-parser: отказы и предупреждения ручной правки) были
+  // вне охвата, и русский литерал там проходил i18n:check. Вне описи остаётся то,
+  // что русским положено по конституции Фазы 11: server/config (промпты и генераты
+  // из исходника), server/db (схема — значения БД), server/env.ts (отказы при
+  // старте — вывод в консоль, не ответ человеку), сторожа audit/integration-check
+  // (их вывод — консоль). Белый список — ЭТИ строки и STORED_TEXT_EXCLUSIONS
+  // (i18n-core): новая запись — только с доводом.
+  {
+    group: "server-messages",
+    dir: "server",
+    mode: "msg",
+    skipDirs: ["server/config", "server/db"],
+    skip: ["server/env.ts", "server/audit.mts", "server/integration-check.mts"],
+  },
 ];
 
 /** Каталоги, чьи строки не входят в опись, но сверяются: попадание текста
@@ -78,14 +96,26 @@ const HIDDEN_ATTRS = new Set([
   "htmlFor", "method", "src", "rel", "target", "autoComplete", "inputMode",
   "data-testid", "viewBox", "d", "fill", "stroke", "xmlns", "lang", "value",
 ]);
-const MSG_PROPS = /^(message|error|text|title|label|warning|reason|hint|description)$/;
+// 14.1 (Д-58): + subject — тема письма (mail/templates), собранная в
+// переменную и отданная свойством `{ subject, text, html }`.
+// 14.1 (Д-56): + desc — описания маркеров легенды PNG («внутренний силуэт»).
+const MSG_PROPS = /^(message|error|text|title|label|warning|reason|hint|description|subject|desc)$/;
+// 14.1 (Д-58, п.1): цель присваивания `details[поле] = "…"` / `d.email = "…"` —
+// словари отказов проверки полей (ответ VALIDATION_ERROR, клиент показывает
+// как есть). Имя словаря — по соглашению кода (details, d, dd, errors…) либо
+// свойство с именем из MSG_PROPS.
+const DETAILS_IDS = /^(d|dd|details|errors?|problems?|fieldErrors|issues)$/;
+// 14.1 (Д-58, п.5): накопители предупреждений — `warnings.push("…")`.
+const PUSH_TARGETS = /^(warnings?|warns|errs|errors|problems|messages|notes|hints|reasons|lost|missing)$/;
 // 12.3 (Д-32): + decline и *hint — сообщения планировщика рекомендаций.
 // Отказ `decline(r, "код", "текст")` и часть подсказки `addHint("текст")` уходят
 // в ответ человеку, но ни throw, ни new *Error, ни свойство message их не
 // окружает: до 12.3 опись их не видела, и литерал без tl() проходил i18n:check
 // («По факту 11.4» п.14). Код отказа (второй довод decline) — латиница, в
 // опись не попадает: msg-режим берёт только кириллические литералы.
-const MSG_CALLS = /(\.json|fail|decline|hint|badRequest|httpError|apiError)$/i;
+// 14.1 (Д-58/Д-56): + …Json (локальные обёртки ответа — validationJson), + fillText /
+// strokeText (текст, нарисованный на холсте PNG-выгрузки, читает человек).
+const MSG_CALLS = /(\.json|Json|fail|decline|hint|badRequest|httpError|apiError|fillText|strokeText)$/i;
 const MATCHER_METHODS =
   /^(includes|startsWith|endsWith|indexOf|lastIndexOf|test|match|matchAll|search|split|replace|replaceAll|has|querySelector|querySelectorAll|closest)$/;
 
@@ -112,6 +142,7 @@ export function listScopeFiles(root) {
       const rel = path.relative(root, abs).split(path.sep).join("/");
       if (seen.has(rel) || !fs.existsSync(abs)) continue;
       if (s.skip?.includes(rel)) continue;
+      if (s.skipDirs?.some((d) => rel.startsWith(d + "/"))) continue;
       if (rel.startsWith("packages/shared/i18n/generated/")) continue; // генераты 11.2/11.4 — не опись
       seen.add(rel);
       res.push({ rel, group: s.group, mode: s.mode });
@@ -201,14 +232,222 @@ function inFunction(n) {
   return false;
 }
 
-function isMessageContext(n, sf) {
-  for (let p = n.parent; p && !ts.isBlock(p) && !ts.isSourceFile(p); p = p.parent) {
-    if (ts.isThrowStatement(p)) return true;
-    if (ts.isNewExpression(p) && /Error$/.test(p.expression.getText(sf))) return true;
-    if (ts.isPropertyAssignment(p) && MSG_PROPS.test(p.name.getText(sf))) return true;
-    if (ts.isCallExpression(p) && MSG_CALLS.test(p.expression.getText(sf))) return true;
+/** Корневой идентификатор цепочки `a.b[c].d` (или null). */
+function rootIdentifier(e) {
+  while (ts.isPropertyAccessExpression(e) || ts.isElementAccessExpression(e) || ts.isNonNullExpression(e)) e = e.expression;
+  return ts.isIdentifier(e) ? e : null;
+}
+
+/** Левая часть присваивания — словарь отказов проверки полей либо свойство-сообщение. */
+function isDetailsTarget(lhs, sf) {
+  if (ts.isElementAccessExpression(lhs) || ts.isPropertyAccessExpression(lhs)) {
+    const root = rootIdentifier(lhs);
+    if (root && DETAILS_IDS.test(root.text)) return true;
+    if (ts.isPropertyAccessExpression(lhs) && MSG_PROPS.test(lhs.name.getText(sf))) return true;
   }
   return false;
+}
+
+/** `super(…)` в классе, расширяющем *Error: довод — сообщение ошибки. */
+function isErrorSuperCall(p, sf) {
+  if (!ts.isCallExpression(p) || p.expression.kind !== ts.SyntaxKind.SuperKeyword) return false;
+  for (let c = p.parent; c; c = c.parent) {
+    if (ts.isClassDeclaration(c) || ts.isClassExpression(c)) {
+      const ext = (c.heritageClauses ?? []).find((h) => h.token === ts.SyntaxKind.ExtendsKeyword);
+      return !!ext && ext.types.some((t) => /Error$/.test(t.expression.getText(sf)));
+    }
+  }
+  return false;
+}
+
+/**
+ * Узел стоит в сообщении человеку. Исходные виды (11.2): довод throw,
+ * `new …Error(…)`, свойство из MSG_PROPS, довод вызова из MSG_CALLS.
+ * 14.1 (Д-58) — пять слепых видов ревизии непереведённого 2026-10-13:
+ *  (1) правая часть присваивания в словарь отказов `details[поле] = …`;
+ *  (5) довод `warnings.push(…)` и прочих накопителей PUSH_TARGETS;
+ *  (6) довод `super(…)` в классе-наследнике *Error (prompt-registry);
+ *  (2) и (4) — литералы, отданные ПО ИМЕНИ (константа уровня модуля,
+ *      локальная переменная, функция того же файла), разбираются
+ *      resolveByName ниже: этот предикат проверяет только контекст узла.
+ */
+function isMessageContext(n, sf, sinks = null) {
+  let child = n;
+  for (let p = n.parent; p && !ts.isBlock(p) && !ts.isSourceFile(p); child = p, p = p.parent) {
+    if (ts.isThrowStatement(p)) return true;
+    // (7) довод локальной функции, которая отдаёт этот параметр в сообщение
+    // (secTitle(text) → ctx.fillText(text); validationJson(c, details, error) → c.json({ error }))
+    if (sinks && ts.isCallExpression(p) && ts.isIdentifier(p.expression) && sinks.has(p.expression.text) &&
+        sinks.get(p.expression.text).has(p.arguments.indexOf(child))) return true;
+    if (ts.isNewExpression(p) && /Error$/.test(p.expression.getText(sf))) return true;
+    if (ts.isPropertyAssignment(p) && MSG_PROPS.test(p.name.getText(sf))) return true;
+    if (ts.isShorthandPropertyAssignment(p) && MSG_PROPS.test(p.name.getText(sf))) return true;
+    if (ts.isCallExpression(p) && MSG_CALLS.test(p.expression.getText(sf))) return true;
+    if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        child === p.right && isDetailsTarget(p.left, sf)) return true;
+    if (ts.isCallExpression(p) && p.arguments.includes(child) && ts.isPropertyAccessExpression(p.expression) &&
+        p.expression.name.text === "push") {
+      const root = rootIdentifier(p.expression.expression);
+      if (root && PUSH_TARGETS.test(root.text)) return true;
+    }
+    if (isErrorSuperCall(p, sf) && p.arguments.includes(child)) return true;
+  }
+  return false;
+}
+
+/* ───────────── 14.1 (Д-58, пп.2 и 4): литералы, отданные по имени ───────────── */
+
+function scopeOf(n, sf) {
+  for (let p = n.parent; p; p = p.parent) if (ts.isFunctionLike(p) || ts.isSourceFile(p)) return p;
+  return sf;
+}
+
+/** Объявления файла по имени: переменные (с присваиваниями `name = …` в той же
+ *  области — `let bad = null; … bad = "…"`), параметры с умолчанием, функции
+ *  (объявления и стрелочные/функциональные выражения в const). */
+function collectDeclarations(sf) {
+  const decls = new Map(); // имя → [{ node, scope, assigns: [] }]
+  const add = (name, node) => {
+    if (!decls.has(name)) decls.set(name, []);
+    const rec = { node, scope: scopeOf(node, sf), assigns: [] };
+    decls.get(name).push(rec);
+    return rec;
+  };
+  const assigns = [];
+  (function v(n) {
+    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) add(n.name.text, n);
+    else if (ts.isParameter(n) && ts.isIdentifier(n.name) && n.initializer) add(n.name.text, n);
+    else if (ts.isFunctionDeclaration(n) && n.name) add(n.name.text, n);
+    else if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(n.left)) assigns.push(n);
+    ts.forEachChild(n, v);
+  })(sf);
+  for (const a of assigns) {
+    const rec = resolveDeclRec(decls, a.left.text, a);
+    if (rec) rec.assigns.push(a.right);
+  }
+  return decls;
+}
+
+function resolveDeclRec(decls, name, use) {
+  let best = null;
+  for (const d of decls.get(name) ?? []) {
+    if (d.scope.pos <= use.pos && use.end <= d.scope.end && (!best || d.scope.pos >= best.scope.pos)) best = d;
+  }
+  return best;
+}
+
+/** Ближайшее объявление имени, чья область охватывает место употребления. */
+function resolveDecl(decls, name, use) {
+  return resolveDeclRec(decls, name, use)?.node ?? null;
+}
+
+/** Выражения-значения объявления: инициализатор и присваивания переменной
+ *  либо return функции (объявленной или присвоенной в const). */
+function valueNodesOf(rec) {
+  const decl = rec.node;
+  const fnReturns = (fn) => {
+    const out = [];
+    if (!fn.body) return out;
+    if (!ts.isBlock(fn.body)) return [fn.body]; // стрелочная с выражением
+    (function v(n) {
+      if (ts.isReturnStatement(n) && n.expression) out.push(n.expression);
+      if (ts.isFunctionLike(n)) return; // вложенные функции — не возврат этой
+      ts.forEachChild(n, v);
+    })(fn.body);
+    return out;
+  };
+  if (ts.isFunctionDeclaration(decl)) return fnReturns(decl);
+  if (ts.isVariableDeclaration(decl) && decl.initializer && (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer)))
+    return fnReturns(decl.initializer);
+  const out = [];
+  if ((ts.isVariableDeclaration(decl) || ts.isParameter(decl)) && decl.initializer) out.push(decl.initializer);
+  out.push(...rec.assigns);
+  return out;
+}
+
+/** Функции файла, отдающие параметр в сообщение: имя → индексы параметров.
+ *  `const secTitle = (text) => { … ctx.fillText(text, …) }` → secTitle: {0};
+ *  `function validationJson(c, details, error = "…") { c.json({ error, … }) }` → {2}. */
+function collectParamSinks(decls, sf) {
+  const sinks = new Map();
+  for (const [name, recs] of decls) {
+    for (const rec of recs) {
+      const fn = ts.isFunctionDeclaration(rec.node) ? rec.node
+        : ts.isVariableDeclaration(rec.node) && rec.node.initializer && (ts.isArrowFunction(rec.node.initializer) || ts.isFunctionExpression(rec.node.initializer)) ? rec.node.initializer
+        : null;
+      if (!fn || !fn.body) continue;
+      fn.parameters.forEach((param, idx) => {
+        if (!ts.isIdentifier(param.name)) return;
+        const pname = param.name.text;
+        let hit = false;
+        (function v(n) {
+          if (hit) return;
+          if (ts.isIdentifier(n) && n.text === pname && isValueIdentifier(n) && n !== param.name && isMessageContext(n, sf)) hit = true;
+          ts.forEachChild(n, v);
+        })(fn.body);
+        if (hit) {
+          if (!sinks.has(name)) sinks.set(name, new Set());
+          sinks.get(name).add(idx);
+        }
+      });
+    }
+  }
+  return sinks;
+}
+
+/** Идентификатор в позиции ЗНАЧЕНИЯ (не имя свойства, не объявление, не тип)
+ *  и не объект вызова метода (`DIRECTIONS.join(…)` — запрос к данным, а не
+ *  текст сообщения; `TABLE_LOCK_HINT[hit.table]` и голое имя — текст). */
+function isValueIdentifier(id) {
+  const p = id.parent;
+  if (ts.isPropertyAccessExpression(p) && (p.name === id || p.expression === id)) return false;
+  if (ts.isPropertyAssignment(p) && p.name === id) return false;
+  if ((ts.isVariableDeclaration(p) || ts.isParameter(p) || ts.isFunctionDeclaration(p)) && p.name === id) return false;
+  if (ts.isBindingElement(p)) return false;
+  if (inTypeOrImport(id)) return false;
+  for (let q = p; q; q = q.parent) if (ts.isTypeNode(q)) return false;
+  return true;
+}
+
+/**
+ * Литералы, которые попадают в сообщение не на месте, а через имя:
+ * `throw new X(LAST_ADMIN_MESSAGE)`, `hint: TABLE_LOCK_HINT[t]`,
+ * `const subject = \`…\`; return { subject }`, `tail` → `hoursPhrase(h)` →
+ * возвраты функции. Для каждого идентификатора в контексте сообщения берётся
+ * ближайшее объявление того же файла, из его значений собираются
+ * кириллические литералы, вложенные имена разбираются так же (глубина ≤ 4,
+ * без повторов). Возвращает Set узлов-литералов.
+ */
+function literalsByName(sf) {
+  const decls = collectDeclarations(sf);
+  const sinks = collectParamSinks(decls, sf);
+  const found = new Set();
+  const visited = new Set();
+  const follow = (expr, depth) => {
+    if (depth > 4) return;
+    (function v(n) {
+      if (isStrLike(n) && CYR.test(templateText(n)) && !inConsole(n, sf) && !inTypeOrImport(n)) found.add(n);
+      if (ts.isIdentifier(n) && isValueIdentifier(n)) {
+        const rec = resolveDeclRec(decls, n.text, n);
+        if (rec && !visited.has(rec)) {
+          visited.add(rec);
+          for (const val of valueNodesOf(rec)) follow(val, depth + 1);
+        }
+      }
+      ts.forEachChild(n, v);
+    })(expr);
+  };
+  (function v(n) {
+    if (ts.isIdentifier(n) && isValueIdentifier(n) && isMessageContext(n, sf, sinks)) {
+      const rec = resolveDeclRec(decls, n.text, n);
+      if (rec && !visited.has(rec)) {
+        visited.add(rec);
+        for (const val of valueNodesOf(rec)) follow(val, 1);
+      }
+    }
+    ts.forEachChild(n, v);
+  })(sf);
+  return { found, sinks };
 }
 
 /**
@@ -309,6 +548,8 @@ export function extractFile(abs, mode, typed = null) {
   const matchers = [];
   const covered = new Set(); // узлы, уже вошедшие в jsx-запись
   const lineOf = (pos) => sf.getLineAndCharacterOfPosition(pos).line + 1;
+  // 14.1 (Д-58): литералы, отданные в сообщение по имени (константа, переменная, функция)
+  const { found: byName, sinks } = mode === "msg" ? literalsByName(sf) : { found: new Set(), sinks: null };
 
   function jsxRuns(el) {
     const kids = [...el.children];
@@ -401,12 +642,13 @@ export function extractFile(abs, mode, typed = null) {
           if (take) kind = ts.isTemplateExpression(n) ? "tpl" : "attr";
         } else take = CYR.test(text);
       } else {
-        take = CYR.test(text) && isMessageContext(n, sf);
+        take = CYR.test(text) && (isMessageContext(n, sf, sinks) || byName.has(n));
       }
       if (take) {
         const start = n.getStart(sf);
         const e = { kind, text, line: lineOf(start), start, end: n.getEnd() };
         if (!inFunction(n)) e.static = true;
+        if (mode === "msg" && byName.has(n) && !isMessageContext(n, sf, sinks)) e.byName = true;
         if (ts.isTemplateExpression(n)) {
           e.args = n.templateSpans.map((s) => s.expression.getText(sf));
           e.argSpans = n.templateSpans.map((s) => [s.expression.getStart(sf), s.expression.end]);
