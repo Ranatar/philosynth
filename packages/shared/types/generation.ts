@@ -29,6 +29,71 @@ export type GenerationSource =
    * закрыть патчем доков в завершение беседы). */
   | "resume";
 
+/* ── 14.2 (Д-62): подпись и ошибка записи журнала — кодом ─────────────── */
+
+/**
+ * Код подписи записи журнала с параметрами — `metadata.logLabel`.
+ * Колонка `section_label` пишется как прежде (русская запасная строка для
+ * старых читателей и выгрузки); `log-formatter` собирает подпись по коду под
+ * языком запроса (tData(KEY_LABELS) + tl()), запись без кода (до 14.2, журнал
+ * из выгрузки) показывает `section_label` как есть. Ключи разделов хранятся
+ * ключами; имена подразделов, элементов и параметры режимов — данные документа.
+ */
+export type GenLogLabel =
+  /** проход основной генерации: «Резюме + Граф» (+ « [возобновление]») */
+  | { kind: "pass"; sections: string[]; resume?: boolean }
+  /** «Общие элементы» (SYS + общий контекст) */
+  | { kind: "common" }
+  /** метка раздела без хвоста (маркер удаления) */
+  | { kind: "section"; section: string }
+  /** «{раздел} [перегенерация]» */
+  | { kind: "regen"; section: string }
+  /** «{раздел} [добавлен]» */
+  | { kind: "added"; section: string }
+  /** «{раздел} → {подраздел} [подраздел]» */
+  | { kind: "subsection"; section: string; subsection: string }
+  /** «{раздел-хозяин} → {вид} «{элемент}», {поле} [по рекомендации N, раунд M | точечная правка]» */
+  | {
+      kind: "element_step";
+      section: string;
+      elementKind: string;
+      elementName: string;
+      field: string;
+      recNum?: string;
+      recRound?: number;
+    }
+  /** «{режим} · {параметр}» (+ « [каскад]»); modeTitle — русская константа MODE_CONFIG (данные) */
+  | { kind: "mode"; modeKey: string; modeTitle: string; param: string; cascade?: boolean }
+  /** «{раздел} [трансформация граф → тезисы | тезисы → граф]» */
+  | { kind: "transform"; section: string; direction: "graph_to_theses" | "theses_to_graph" }
+  /** «Критический анализ → Таблица рекомендаций [повтор: пропущена моделью | негодна]» */
+  | { kind: "table_retry"; gap: "missing" | "no_table" }
+  /** «Критический анализ → Таблица рекомендаций [по готовой прозе]» */
+  | { kind: "table_compose" }
+  /** «Версия документа» (маркер версии плана) */
+  | { kind: "version" };
+
+/**
+ * Код ошибки записи журнала — `metadata.error`. Колонка `error_message`
+ * пишется как прежде (сообщение API — как есть, фразы службы — по-русски);
+ * `log-formatter` собирает текст по коду: `stream` с `raw` — сырое сообщение
+ * API Anthropic как есть; `stream` без `raw` (max-tokens, stuck, user-abort) и
+ * ошибки службы — фразой на языке запроса.
+ */
+export interface GenLogError {
+  code: "stream" | "element_empty_response" | "element_too_long";
+  /** stream: вид обрыва (StreamErrorKind) */
+  kind?: string;
+  /** stream: сырое сообщение API / сети — как есть */
+  raw?: string;
+  /** stream, max-tokens */
+  maxTokensUsed?: number;
+  /** stream, stuck: порог молчания, с */
+  stuckSec?: number;
+  /** element_too_long */
+  maxChars?: number;
+}
+
 /** Строка generation_log (аналог genLog из исходника) */
 export interface GenLogEntry {
   id: string;

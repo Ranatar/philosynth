@@ -56,6 +56,8 @@ import { truncateText } from "../utils/text.js";
 import type { HtmlElement } from "../utils/html-parser.js";
 import { tableToText } from "../utils/text.js";
 import { innerTextTrimmed, resolveSubsection } from "../utils/html-parser.js";
+import { withVia } from "./parse-warnings.js";
+import type { ParseWarning } from "@philosynth/shared/types/parse-warnings";
 import { getConfig } from "./prompt-registry.js";
 import { getCanonicalizer } from "./cascade-analyzer.js";
 import { findSubstitute, getActiveSubstitutionMap } from "./synthesis-engine.js";
@@ -525,7 +527,7 @@ export interface IntraContextOptions {
    *  страховку по позиции 11.1 для переведённых атрибутов data-section. */
   expectedOrder?: readonly string[] | undefined;
   /** Куда складывать предупреждения опознания (в генлог пишет вызывающий). */
-  warnings?: string[] | undefined;
+  warnings?: ParseWarning[] | undefined;
 }
 
 export async function extractRelevantIntraSectionContext(
@@ -576,7 +578,7 @@ export async function extractRelevantIntraSectionContext(
     : [...needed];
   for (const canonName of candidates) {
     const found = resolveSubsection(container, canonName, opts.expectedOrder);
-    if (found.warning && found.el && opts.warnings) opts.warnings.push(`intra-контекст: ${found.warning}`);
+    if (found.warning && found.el && opts.warnings) opts.warnings.push(withVia(found.warning, "intra"));
     if (!found.el || found.el === selfEl || seen.has(found.el)) continue;
     seen.add(found.el);
     picked.push({ name: found.actualName ?? canonName, sec: found.el });

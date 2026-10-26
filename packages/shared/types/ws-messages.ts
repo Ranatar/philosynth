@@ -192,7 +192,14 @@ export interface WsGenerationPaused {
   synthesisId: string;
   kind: "gen" | "plan";
   reasonKind: Exclude<PauseReasonKind, "user-abort">;
-  reason: string;
+  /** 14.2 (Д-54): фразы причины сервер не шлёт — клиент собирает её по
+   *  reasonKind; `reason` несут только replay-сообщения пауз до 14.2 */
+  reason?: string | undefined;
+  /** 14.2 (Д-54): сырое сообщение API / ошибки службы — деталь к причине */
+  rawMessage?: string | undefined;
+  /** 14.2 (Д-54): числа причины полями (max-tokens / stuck) */
+  maxTokensUsed?: number | undefined;
+  stuckSec?: number | undefined;
   isPartial: boolean;
   partialSubsections?: string[];
   expectedSubsections?: string[];

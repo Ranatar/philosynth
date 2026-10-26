@@ -378,6 +378,14 @@ export const MIRROR_EXCLUSIONS = [
     text: "перегенерировать",
     reason: "OP_REGENERATE — операция контракта таблицы рекомендаций, сравнивается с row.op сервера",
   },
+  // 14.2 (Д-55): параметры кодов parseWarnings — машинные значения контракта
+  // графа; опись msg-режима видит их через warnings.push(pw(…)), но это данные
+  // записи (в фразе читателя стоят как есть, 11.1), не надпись
+  {
+    file: "server/services/graph-parser.ts",
+    block: ["export const EDGE_DIRECTIONS", "export type EdgeDirection"],
+    reason: "EDGE_DIRECTIONS — три значения контракта section.graph.sub.edges (11.1): параметр expected кода graph_dir_unknown, сравнение с ячейкой таблицы; значение, не надпись",
+  },
 ];
 
 /**
@@ -394,42 +402,10 @@ export const MIRROR_EXCLUSIONS = [
  * является: та живёт в names.json записями с id: null.
  */
 export const STORED_TEXT_EXCLUSIONS = [
-  {
-    file: "server/services/graph-parser.ts",
-    block: ["export function parseTopology(", "export async function hasGraph("],
-    debt: "Д-55",
-    reason: "предупреждения разбора графа (11.1; и пропущенные рёбра saveGraphToDb) → metadata.parseWarnings генлога — хранятся фразой, читаются владельцем на любом языке; 14.2 переводит кодом",
-  },
-  {
-    file: "server/utils/html-parser.ts",
-    block: ["export function resolveSubsection(", "export function removeSubsectionHtml("],
-    debt: "Д-55",
-    reason: "предупреждения опознания подраздела по месту (11.1) → parseWarnings генлога через вызывающих; 14.2 переводит кодом",
-  },
-  {
-    file: "server/services/recommendations.ts",
-    text: "метки тезисов: {0}",
-    debt: "Д-55",
-    reason: "lookupWarnings DocumentIndex — предупреждение опознания подраздела по месту (той же природы, что parseWarnings); 14.2",
-  },
-  {
-    file: "server/services/generation-service.ts",
-    text: "Ошибка контекста: ",
-    debt: "Д-54",
-    reason: "pausedState.reason (context-error) хранится фразой; 14.2 — reasonKind + rawMessage, фразу собирает PauseModal",
-  },
-  {
-    file: "server/services/element-step.ts",
-    text: "модель вернула пустой ответ",
-    debt: "Д-62",
-    reason: "error_message строки генлога шага плана хранится фразой (и та же фраза уходит в ответ ElementStepError — двойное употребление); 14.2 — код в metadata, фраза при чтении и в ответе",
-  },
-  {
-    file: "server/services/element-step.ts",
-    text: "ответ модели длиннее {0} знаков",
-    debt: "Д-62",
-    reason: "error_message строки генлога шага плана хранится фразой (двойное употребление, см. выше); 14.2",
-  },
+  // 14.2 закрыла Д-54, Д-55, Д-62: хранимые фразы стали кодами (shared
+  // ParseWarning / GenLogLabel / GenLogError, PauseReasonFields), фразу
+  // собирают читатели (server/services/parse-warnings.ts, gen-log-labels.ts,
+  // клиентский PauseModal). Список пуст; механизм оставлен на будущие долги.
 ];
 
 /** Исключение хранимого текста для записи описи файла rel либо null. */

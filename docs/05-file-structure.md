@@ -286,6 +286,12 @@ philosynth-service/
 │   │   │                               #  черновик плана; развилка, свёртка, устаревание
 │   │   ├── recommendation-issues.ts    # 12.3 (Д-46): находки сторожа — кодом в БД, фразой при
 │   │   │                               #  чтении под языком запроса; русский вид для колонок
+│   │   ├── parse-warnings.ts           # 14.2 (Д-55): предупреждения разбора — коды с параметрами
+│   │   │                               #  (shared ParseWarning), фраза при чтении (renderParseWarning),
+│   │   │                               #  русская сборка для консоли/сторожей, коды чистки по отчёту
+│   │   ├── gen-log-labels.ts           # 14.2 (Д-62): подписи и ошибки записей журнала — код в
+│   │   │                               #  metadata (GenLogLabel/GenLogError), фраза при чтении;
+│   │   │                               #  section_label/error_message — русская запасная строка
 │   │   ├── element-step.ts             # 10.2: шаги плана edit_element / refine_element
 │   │   │                               #  (запись функциями 5.1, версия 'recommendation' + origin)
 │   │   │                               # Адаптация executeEditPlan (executeEditPlan())
@@ -715,6 +721,9 @@ philosynth-service/
 │   │       ├── subsection-edit.ts          # 9.2: состояние правки подраздела и тексты отказов
 │   │       │                               # (клиент разметку НЕ собирает и НЕ чистит — сервер);
 │   │       │                               # 13.1: + view 'rich'|'markup'
+│   │       ├── subsection-titles.ts        # 14.2 (Д-59): видимые заголовки подразделов/разделов из
+│   │       │                               #  DTO (subsectionTitles/sectionTitle) — помощник и хук;
+│   │       │                               #  ключи data-section остаются машинными
 │   │       ├── subsection-rich-editor.ts   # 13.1 (Д-64): полнотекстовая правка — contenteditable
 │   │       │                               # поверх общего ядра: fillEditable/readEditorHtml,
 │   │       │                               # applyTool/applyTableOp, sanitizePasted/insertPasted,
@@ -797,7 +806,7 @@ philosynth-service/
 │   │   ├── extract-section-templates.mjs
 │   │   └── extract-export-assets.mjs
 │   ├── patches/                        # идемпотентные патчи доков по итогам бесед (по одному
-│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv141)
+│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv142)
 │   │   ├── patch-docs-*.py             # запускаются ИЗ КОРНЯ репозитория;
 │   │   │                               # осторожно с повторным прогоном старого патча:
 │   │   │                               # доки с тех пор менялись, и якорь может совпасть
@@ -905,12 +914,18 @@ philosynth-service/
     │                                   # гость; R3 файл с шестью UUID → три связи, три кандидата, отчёт на
     │                                   # копии БД (pg_dump) со «старыми» строками; R4 100 случайных cookie,
     │                                   # две сессии = одна квота, mailLimiter, X-Forwarded-For без/с TRUST_PROXY
+    │                                   # test-142-requests2-7 — 14.2: R2 max_tokens на моке → пауза полями, R3 коды
+    │                                   #  parseWarnings/подписей en/ru + старая запись, R4 импорт с безымянным
+    │                                   #  предком, R5 /sections с заголовками, R6/R7 браузер (пауза en/ru; английский
+    │                                   #  документ в немецком интерфейсе) — Chrome 131 на сборке клиента
     │                                   # test-141-requests2-5 — 14.1: R2 опись на коде dd1b1e0 (worktree) —
     │                                   # 150 красных как в «По факту», ноль после, красный на временном
     │                                   # литерале; R3 details/404/LAST_ADMIN/правка подраздела под en/de;
     │                                   # R4 письмо сброса de-пользователя, ru побайтно против dd1b1e0;
     │                                   # R5 PNG (шпион fillText), сид цен на моке (обновление описания),
     │                                   # preferred_locales Customer
+    │                                   # smoke-142-request1 — 14.2: коды parseWarnings/подписей/причины паузы,
+    │                                   #  родословная без заглушек, sectionTitlesOf, клиентские помощники (чистые)
     │                                   # smoke-141-request1 — 14.1: опись msg-режима на пробе, i18n:check
     │                                   # --strict, письма под языком получателя (ru побайтно), строки-места
     │                                   # и предупреждения чистки под en/de, PNG (шпион fillText), сид цен

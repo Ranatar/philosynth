@@ -39,6 +39,7 @@ import { getModeResults, regenerateModeResult } from "../../api/modes";
 import { getSubsectionImpact, regenerateSubsection } from "../../api/plans";
 import type { SectionEvent } from "../../hooks/useEditPlan";
 import { tl } from "@philosynth/shared/i18n/t";
+import { useSubsectionTitle } from "../../utils/subsection-titles"; // 14.2 (Д-59)
 
 export interface SubsectionRegenPanelProps {
   synthesisId: string;
@@ -69,6 +70,9 @@ export function SubsectionRegenPanel({
   onClose,
   onBusyChange,
 }: SubsectionRegenPanelProps) {
+  // 14.2 (Д-59): имена подразделов — видимыми заголовками документа; ключи
+  // (sectionKey/subsectionName, адреса запросов, itemKey) не меняются
+  const subTitle = useSubsectionTitle();
   const [impact, setImpact] = useState<SubsectionImpactResponse | null>(null);
   const [impactState, setImpactState] = useState<
     "loading" | "ready" | "error"
@@ -132,7 +136,7 @@ export function SubsectionRegenPanel({
       }
       const label =
         item.kind === "sub"
-          ? `${labels(item.section)} → ${item.subsection}`
+          ? `${labels(item.section)} → ${subTitle(item.section, item.subsection)}`
           : labels(item.section);
       setProgressText(tl("edit.subsectionRegenPanel.regenProgress", "Перегенерация: {label}…", { label }));
       try {
@@ -161,7 +165,7 @@ export function SubsectionRegenPanel({
         setQueue([]);
       }
     },
-    [synthesisId, sectionKey, subsectionName, note, includeContent, labels],
+    [synthesisId, sectionKey, subsectionName, note, includeContent, labels, subTitle],
   );
 
   /* ── Каскад режимов после волны (долг §12 закрыт) ── */
@@ -192,7 +196,7 @@ export function SubsectionRegenPanel({
           affected.length + tl("edit.subsectionRegenPanel.requestsAbbr", " запр.")
         : "";
     const doRegen = window.confirm(
-      tl("edit.subsectionRegenPanel.subsectionUpdatedLead", "Подраздел «") + subsectionName + tl("edit.subsectionRegenPanel.subsectionUpdatedTail", "» обновлён.\n\n") +
+      tl("edit.subsectionRegenPanel.subsectionUpdatedLead", "Подраздел «") + subTitle(sectionKey, subsectionName) + tl("edit.subsectionRegenPanel.subsectionUpdatedTail", "» обновлён.\n\n") +
       tl("edit.subsectionRegenPanel.affectedModesPrefix", "Затронутые режимы: ") + modeNames + "." + costStr + "\n\n" +
       tl("edit.subsectionRegenPanel.regenerateThem", "Перегенерировать их?"),
     );
@@ -212,7 +216,7 @@ export function SubsectionRegenPanel({
     if (!first) return;
     setQueue(rest);
     void startItem(first);
-  }, [impact, synthesisId, subsectionName, startItem]);
+  }, [impact, synthesisId, sectionKey, subsectionName, startItem, subTitle]);
 
   // Очередь: section_done текущего раздела → следующий POST
   const lastEventRef = useRef<SectionEvent | null>(null);
@@ -313,7 +317,7 @@ export function SubsectionRegenPanel({
           marginBottom: 6,
         }}
       >
-        ⟳ {subsectionName}
+        ⟳ {subTitle(sectionKey, subsectionName)}
       </div>
 
       <textarea
@@ -378,7 +382,7 @@ export function SubsectionRegenPanel({
                       }
                       disabled={busy}
                     />
-                    «{d}»
+                    «{subTitle(sectionKey, d)}»
                   </label>
                 ))}
               </div>
@@ -413,7 +417,7 @@ export function SubsectionRegenPanel({
                             disabled={busy}
                           />
                           {d.subsection && sec !== "capsule"
-                            ? `«${d.subsection}»`
+                            ? `«${subTitle(sec, d.subsection)}»`
                             : tl("edit.subsectionRegenPanel.wholeSection", "весь раздел")}
                         </label>
                       ))}

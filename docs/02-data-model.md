@@ -165,10 +165,17 @@ CREATE TABLE syntheses (
     -- перегенерации с маркером schema_migration_marker в generation_log)
   paused_state     JSONB,  -- персистентное состояние паузы (v11, nullable):
     -- kind 'gen': { passIdx, sectionKeys, isPartial, partialSubsections,
-    --   expectedSubsections, completedPasses, genParams, maxTokensUsed,
-    --   reason, reasonKind, timestamp }
+    --   expectedSubsections, completedPasses, genParams, reasonKind,
+    --   rawMessage?, maxTokensUsed?, stuckSec?, reason?, timestamp }
     -- kind 'plan': { stepIdx, totalSteps, failedOp, remainingOps, plan,
-    --   regenCtx, addCtx, reason, reasonKind, timestamp }
+    --   regenCtx, addCtx, reasonKind, rawMessage?, maxTokensUsed?, stuckSec?,
+    --   reason?, timestamp }
+    -- 14.2 (Д-54): причина — ПОЛЯМИ (shared PauseReasonFields): reasonKind,
+    --   rawMessage (сырое сообщение API/службы — как есть), числа
+    --   (maxTokensUsed, stuckSec); готовую фразу (reason) новые паузы НЕ
+    --   пишут — её собирает клиент по reasonKind; reason остаётся у пауз,
+    --   записанных до 14.2 (и из выгрузки) — показывается как есть.
+    --   pause_marker.metadata несёт те же поля (reason — только у старых)
     -- reasonKind: 'auth'|'billing'|'pre-stream'|'max-tokens'|'partial'|'stuck'|'user-abort'
     --   |'context-error' (сбой ПОСТРОЕНИЯ контекста/промпта, outer catch
     --   _runGenPassesFromIdx [~25842]; найдено беседой 1.4 — kind'ом стрима не является)
@@ -186,7 +193,12 @@ CREATE TABLE syntheses (
   capsule_html     TEXT NOT NULL DEFAULT '',
 
   -- Дерево генеалогии импортированного файла (FileGenealogyNode, миграция
-  -- 0008): снимок предков, которых нет в synthesis_lineage; NULL — не из файла
+  -- 0008): снимок предков, которых нет в synthesis_lineage; NULL — не из файла.
+  -- 14.2 (Д-57): безымянный узел — { type, name: "", unnamed: true } (до 14.2 —
+  --   русская заглушка «[безымянная концепция]» / «[безымянный философ]»;
+  --   читатели распознают её как пустое имя). Подстановка имени — при чтении
+  --   на языке запроса (lineage-service fileNodeName → tl()); выгрузка пишет
+  --   русскую заглушку (зеркало 11.4), импорт её снимает санацией
   file_genealogy   JSONB,
   
   -- Статистика
@@ -574,11 +586,25 @@ CREATE TABLE generation_log (
   error_message  TEXT,
   -- Метаданные (secCtxPreview, modeParam, subsections; v11: promptSkeleton —
   -- скелет промпта пишется при генерации, реконструкция — fallback импорта)
-  -- 11.1: + parseWarnings string[] — предупреждения разбора раздела
+  -- 11.1: + parseWarnings — предупреждения разбора раздела
   --   (подставленное направление связи, роль вне ROLE_MAP, таблица не
   --   найдена по русскому data-section, подраздел опознан по месту /
   --   не опознан). Пишутся jsonb_set с НАКОПЛЕНИЕМ (`||` по верхнему
-  --   ключу заменил бы массив); показ — log-formatter «РАЗБОР С ПОТЕРЯМИ»
+  --   ключу заменил бы массив); показ — log-formatter «РАЗБОР С ПОТЕРЯМИ».
+  --   14.2 (Д-55): элемент — КОД с параметрами (shared ParseWarning
+  --   { code, params }, список PARSE_WARNING_CODES) либо строка (записи до
+  --   14.2, журнал из выгрузки); фразу собирают читатели под языком запроса
+  --   (server/services/parse-warnings.ts), строка — как есть
+  -- 14.2 (Д-62): + logLabel (shared GenLogLabel — код подписи записи с
+  --   параметрами: ключи разделов прохода, имя подраздела, вид операции,
+  --   элемент/поле/№ рекомендации, режим/параметр, направление
+  --   трансформации) и error (GenLogError — код ошибки: stream с kind и
+  --   сырым raw сообщением API, element_empty_response, element_too_long).
+  --   Колонки section_label и error_message пишутся КАК ПРЕЖДЕ (русская
+  --   запасная строка для старых читателей и выгрузки); log-formatter собирает
+  --   подпись/ошибку по коду под языком запроса (gen-log-labels.ts), запись
+  --   без кода — колонки как есть. pause_marker/resume_marker несут logLabel
+  --   { kind: 'pass', sections }
   metadata       JSONB NOT NULL DEFAULT '{}',
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

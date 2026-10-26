@@ -88,6 +88,8 @@ import { setModeRegenerator } from "./plan-executor.js";
 import { buildSYS } from "./prompt-builder.js";
 import { getConfig, renderTemplate } from "./prompt-registry.js";
 import { StreamError, classifyStreamError } from "./streaming-manager.js";
+import { streamLogError } from "./gen-log-labels.js"; // 14.2 (Д-62)
+import type { GenLogLabel } from "@philosynth/shared/types/generation";
 import { tl } from "@philosynth/shared/i18n/t";
 
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
@@ -502,6 +504,7 @@ export async function runMode(
       taskChars: prompt.length - ctx.length,
       inputChars: SYS.length + prompt.length,
       metadata: {
+        logLabel: { kind: "mode", modeKey, modeTitle: config.title, param } satisfies GenLogLabel, // 14.2 (Д-62)
         modeParam: param,
         ctxChars: ctx.length,
         expectedSubsections: [],
@@ -591,6 +594,7 @@ export async function runMode(
         inputTokens: eUsage.inputTokens,
         outputTokens: eUsage.outputTokens,
         costUsd: eCost.toFixed(6),
+        metadata: dsql`metadata || ${JSON.stringify({ error: streamLogError(e) })}::jsonb`, // 14.2 (Д-62)
       })
       .where(eq(generationLog.id, genEntryId));
     await bumpTotals(synthesisId, eUsage);
@@ -736,6 +740,7 @@ export async function regenerateModeSilent(
       taskChars: prompt.length,
       inputChars: SYS.length + prompt.length,
       metadata: {
+        logLabel: { kind: "mode", modeKey, modeTitle: config.title, param: target.paramValue, cascade: true } satisfies GenLogLabel, // 14.2 (Д-62)
         modeParam: target.paramValue,
         ctxChars: ctx.length,
         expectedSubsections: [],
@@ -796,7 +801,11 @@ export async function regenerateModeSilent(
       rawErr instanceof StreamError ? rawErr : classifyStreamError(rawErr, false);
     await db
       .update(generationLog)
-      .set({ status: "error", errorMessage: e.message })
+      .set({
+        status: "error",
+        errorMessage: e.message,
+        metadata: dsql`metadata || ${JSON.stringify({ error: streamLogError(e) })}::jsonb`, // 14.2 (Д-62)
+      })
       .where(eq(generationLog.id, genEntryId));
     throw e;
   }

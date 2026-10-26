@@ -86,6 +86,7 @@ import {
 } from "../../utils/recommendations";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
+import { useSubsectionTitle } from "../../utils/subsection-titles"; // 14.2 (Д-59)
 
 const labelOf = (key: string): string =>
   tData((KEY_LABELS as Record<string, string>)[key] ?? key);
@@ -133,6 +134,11 @@ export function RecommendationsPanel({
     critique?.subsections.includes(RECOMMENDATIONS_TABLE_SUBSECTION) ?? false;
 
   const [phase, setPhase] = useState<Phase>("loading");
+  // 14.2 (Д-59): адреса рекомендаций — видимыми заголовками подразделов
+  // документа; сами адреса (ключи data-section) не меняются
+  const subTitle = useSubsectionTitle();
+  const addressTitle = (r: Recommendation): string =>
+    r.addressSection ? subTitle(r.addressSection, r.addressSubsection) : r.addressSubsection;
   const [current, setCurrent] = useState<RecommendationsResponse | null>(null);
   const [past, setPast] = useState<RecommendationsResponse[]>([]);
   const [retrofitReason, setRetrofitReason] = useState<RetrofitReason>(null);
@@ -407,7 +413,7 @@ export function RecommendationsPanel({
       <div className="rec-row" key={r.id} data-testid="rec-row" data-rec-num={r.num} data-rec-status={r.status} data-rec-cost={kind}>
         <div className="rec-row-line">
           <span className="rec-address" data-testid="rec-address">
-            {r.addressSection ? `${labelOf(r.addressSection)} → ` : ""}«{r.addressSubsection}»
+            {r.addressSection ? `${labelOf(r.addressSection)} → ` : ""}«{addressTitle(r)}»
           </span>
           {r.element && (
             <span className="rec-element" data-testid="rec-element">
@@ -539,7 +545,7 @@ export function RecommendationsPanel({
             <div className="form-label">{tl("common.ground", "Основание")}</div>
             <div className="rec-rationale" data-testid="rec-rationale">
               {first.rationale
-                ? tl("edit.recommendationsPanel.problemIdentifiedIn", "Проблема установлена в подразделе критики «{rationale}».", { rationale: first.rationale })
+                ? tl("edit.recommendationsPanel.problemIdentifiedIn", "Проблема установлена в подразделе критики «{rationale}».", { rationale: subTitle("critique", first.rationale) })
                 : tl("edit.recommendationsPanel.subsectionUnnamed", "Подраздел критики не назван.")}
             </div>
           </div>
@@ -552,7 +558,7 @@ export function RecommendationsPanel({
     <div className="rec-past-row" key={r.id} data-testid="rec-past-row">
       <span className="rec-num">№ {r.num}</span>
       <span className="rec-address">
-        {r.addressSection ? `${labelOf(r.addressSection)} → ` : ""}«{r.addressSubsection}»
+        {r.addressSection ? `${labelOf(r.addressSection)} → ` : ""}«{addressTitle(r)}»
         {r.element ? ` · ${r.element}` : ""}
       </span>
       <span className="rec-op">{tData(r.op)}</span>
@@ -725,7 +731,7 @@ export function RecommendationsPanel({
                 <div className="rec-invalid-row" key={r.id} data-testid="rec-invalid-row" data-rec-num={r.num}>
                   <div className="rec-row-line">
                     <span className="rec-num">№ {r.num}</span>
-                    <span className="rec-address">«{r.addressSubsection}»</span>
+                    <span className="rec-address">«{addressTitle(r)}»</span>
                     {r.element && <span className="rec-element">{r.element}</span>}
                     <span className="rec-op">{tData(r.op)}</span>
                   </div>

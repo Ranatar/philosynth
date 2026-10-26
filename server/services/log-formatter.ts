@@ -41,6 +41,8 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { contextLog, generationLog, syntheses, synthesisLineage } from "../db/schema.js";
 import { getConfig } from "./prompt-registry.js";
+import { parseWarningsFromMetadata, renderParseWarnings } from "./parse-warnings.js"; // 14.2 (Д-55)
+import { logErrorText, logLabelText } from "./gen-log-labels.js"; // 14.2 (Д-62)
 
 import { CTX_LABELS } from "@philosynth/shared/constants/ctx-keys";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
@@ -309,6 +311,10 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
 
   for (const g of genLog) {
     const meta = g.metadata as Record<string, unknown>;
+    // 14.2 (Д-62): подпись и ошибка — по коду metadata под языком запроса;
+    // запись без кода (до 14.2, журнал из выгрузки) — колонки как есть
+    const label = logLabelText(meta, g.sectionLabel);
+    const errorText = logErrorText(meta, g.errorMessage);
     const dt = g.createdAt ? g.createdAt.toLocaleString("ru-RU") : "";
 
     // ── Маркер версии ──
@@ -366,10 +372,12 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       lines.push(tl("server.logFormatter.pauseHeading", "  ⏸  ПАУЗА") + (dt ? "  ·  " + dt : ""));
       lines.push(
         tl("server.logFormatter.pauseSection", "    Раздел: ") +
-          (g.sectionLabel || String(meta["sectionLabel"] ?? "") || "?"),
+          (label || String(meta["sectionLabel"] ?? "") || "?"),
       );
       lines.push(tl("server.logFormatter.pauseCause", "    Причина: ") + kindLabel);
-      if (meta["reason"]) lines.push(tl("server.logFormatter.pauseDetails", "    Детали: ") + String(meta["reason"]));
+      // 14.2 (Д-54): новые паузы несут сырое сообщение API (rawMessage), старые — фразу reason
+      const details = meta["rawMessage"] ?? meta["reason"];
+      if (details) lines.push(tl("server.logFormatter.pauseDetails", "    Детали: ") + String(details));
       if (meta["isPartial"]) lines.push(tl("server.logFormatter.partialSaved", "    Частичное содержимое сохранено"));
       lines.push("─".repeat(70));
       continue;
@@ -393,7 +401,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       lines.push("─".repeat(70));
       lines.push(tl("server.logFormatter.resumeHeading", "  ▶  ВОЗОБНОВЛЕНИЕ") + (dt ? "  ·  " + dt : ""));
       lines.push(tl("server.logFormatter.resumeAction", "    Действие: ") + modeLabel);
-      if (g.sectionLabel) lines.push(tl("server.logFormatter.pauseSection", "    Раздел: ") + g.sectionLabel);
+      if (label) lines.push(tl("server.logFormatter.pauseSection", "    Раздел: ") + label);
       // Адаптация: opDescription исходника план не пишет; для kind='plan'
       // печатаем шаг из stepIdx/totalSteps (metadata resume_marker 2.2)
       if (typeof meta["opDescription"] === "string") {
@@ -443,8 +451,8 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
           " → " +
           String(meta["toSchema"] ?? "?"),
       );
-      if (g.sectionLabel) {
-        lines.push(tl("server.logFormatter.onSectionRegen", "    при перегенерации раздела: ") + g.sectionLabel);
+      if (label) {
+        lines.push(tl("server.logFormatter.onSectionRegen", "    при перегенерации раздела: ") + label);
       }
       lines.push("─".repeat(70));
       continue;
@@ -462,7 +470,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         tl("server.logFormatter.deletedSection", "  ✗ УДАЛЁН: § ") +
           secNum +
           " — " +
-          g.sectionLabel +
+          label +
           (dt ? "  ·  " + dt : ""),
       );
       lines.push("─".repeat(70));
@@ -472,7 +480,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
     const keys = g.sectionKey.split("+");
 
     lines.push("");
-    lines.push("═══ " + g.sectionLabel.toUpperCase() + " ═══");
+    lines.push("═══ " + label.toUpperCase() + " ═══");
 
     // --- Состав входа ---
     lines.push("");
@@ -733,7 +741,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
     if (g.status === "streaming") {
       lines.push(tl("server.logFormatter.outputPrefix", "ВЫХОД: ") + num(g.outputChars) + tl("server.logFormatter.charsGenerating", " симв. ⟳ генерация..."));
     } else if (g.status === "error") {
-      lines.push(tl("server.logFormatter.outputError", "ВЫХОД: ⚠ ОШИБКА: ") + (g.errorMessage ?? ""));
+      lines.push(tl("server.logFormatter.outputError", "ВЫХОД: ⚠ ОШИБКА: ") + (errorText ?? ""));
     } else {
       lines.push(tl("server.logFormatter.outputHeading", "ВЫХОД:"));
       lines.push(
@@ -749,17 +757,17 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       lines.push(
         tl("server.logFormatter.costPrefix", "  Стоимость: $") + cost.toFixed(4) + " (" + (cost * 100).toFixed(2) + "¢)",
       );
-      if (g.errorMessage) {
-        lines.push(tl("server.logFormatter.errorPrefix", "  ⚠ ОШИБКА: ") + g.errorMessage);
+      if (errorText) {
+        lines.push(tl("server.logFormatter.errorPrefix", "  ⚠ ОШИБКА: ") + errorText);
       }
     }
     // 11.1: предупреждения разбора (metadata.parseWarnings — generation-service):
     // подставленные направления связей, роли вне ROLE_MAP, рёбра без концов,
     // подраздел, опознанный по месту. Владелец видит, что документ разобран
     // с потерями; в исходнике аналога нет — там это уходило в console.warn.
-    const parseWarnings = Array.isArray(meta["parseWarnings"])
-      ? (meta["parseWarnings"] as unknown[]).filter((w): w is string => typeof w === "string")
-      : [];
+    // 14.2 (Д-55): коды с параметрами собираются под языком запроса, строки
+    // старых записей — как есть
+    const parseWarnings = renderParseWarnings(parseWarningsFromMetadata(meta["parseWarnings"]));
     if (parseWarnings.length > 0) {
       lines.push(tl("server.logFormatter.parseWarningsHeader", "  ⚠ РАЗБОР С ПОТЕРЯМИ (") + parseWarnings.length + "):");
       for (const w of parseWarnings) lines.push("    ⚠ " + w);
@@ -843,7 +851,8 @@ export async function formatCtxLogHTML(
   synthesisId: string,
 ): Promise<{ text: string; html: string }> {
   const plain = await formatCtxLog(synthesisId);
-  if (plain === "Лог пуст. Сгенерируйте документ.")
+  // 14.2: сравнение с фразой на языке запроса, не с русским литералом
+  if (plain === tl("server.logFormatter.logEmpty", "Лог пуст. Сгенерируйте документ."))
     return {
       text: plain,
       html: '<span style="color:#8a8278">' + plain + "</span>",
@@ -990,7 +999,7 @@ export async function formatPromptsForExport(
     const isSubRegen = g.source === "subsection_regen";
     const isCascade = g.source === "cascade" || g.source === "mode_cascade";
 
-    let title = g.sectionLabel || g.sectionKey;
+    let title = logLabelText(metaOf(g), g.sectionLabel) || g.sectionKey; // 14.2 (Д-62)
     if (isSubRegen) title += tl("server.logFormatter.tagSubsectionRegen", " [подразделовая перегенерация]");
     if (isCascade) title += tl("server.logFormatter.tagCascade", " [каскад]");
     if (isMode) title += tl("server.logFormatter.tagMode", " [режим]");
@@ -1073,7 +1082,7 @@ export async function formatPromptsForExport(
         );
       }
     }
-    if (g.status === "error") lines.push(tl("server.logFormatter.errorWarn", "⚠ ОШИБКА: ") + (g.errorMessage ?? ""));
+    if (g.status === "error") lines.push(tl("server.logFormatter.errorWarn", "⚠ ОШИБКА: ") + (logErrorText(meta, g.errorMessage) ?? ""));
     lines.push("");
   }
 

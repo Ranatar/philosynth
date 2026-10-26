@@ -15222,5 +15222,383 @@
     "id": "server.ws.handler.resumePlanFailed",
     "ru": "Не удалось возобновить план",
     "en": "Failed to resume the plan"
+  },
+  {
+    "ns": "server.graphParser",
+    "id": null,
+    "ru": "Структурные роли",
+    "en": null
+  },
+  {
+    "ns": "server.graphParser",
+    "id": null,
+    "ru": "Процессуальные роли",
+    "en": null
+  },
+  {
+    "ns": "server.graphParser",
+    "id": null,
+    "ru": "Таблица категорий",
+    "en": null
+  },
+  {
+    "ns": "server.graphParser",
+    "id": null,
+    "ru": "Таблица связей",
+    "en": null
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.added",
+    "ru": "{section} [добавлен]",
+    "en": "{section} [added]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.byRecommendation",
+    "ru": " [по рекомендации {num}, раунд {round}]",
+    "en": " [per recommendation {num}, round {round}]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.cascadeSuffix",
+    "ru": " [каскад]",
+    "en": " [cascade]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.commonElements",
+    "ru": "Общие элементы",
+    "en": "Common elements"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.documentVersion",
+    "ru": "Версия документа",
+    "en": "Document version"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.elementEmptyResponse",
+    "ru": "модель вернула пустой ответ",
+    "en": "the model returned an empty response"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.elementStepHead",
+    "ru": "{section} → {elementKind} «{elementName}», {field}",
+    "en": "{section} → {elementKind} “{elementName}”, {field}"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.elementTooLong",
+    "ru": "ответ модели длиннее {maxChars} знаков",
+    "en": "the model’s response is longer than {maxChars} characters"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.pointEdit",
+    "ru": " [точечная правка]",
+    "en": " [targeted edit]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.regen",
+    "ru": "{section} [перегенерация]",
+    "en": "{section} [regeneration]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.resumeSuffix",
+    "ru": " [возобновление]",
+    "en": " [resume]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.streamStuck",
+    "ru": "Нет ответа от API более {stuckSec} секунд (стрим «завис»)",
+    "en": "No response from the API for more than {stuckSec} seconds (the stream “hung”)"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.subsection",
+    "ru": "{section} → {subsection} [подраздел]",
+    "en": "{section} → {subsection} [subsection]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.tableCompose",
+    "ru": "{critique} → {table} [по готовой прозе]",
+    "en": "{critique} → {table} [from finished prose]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.tableRetryBad",
+    "ru": "{critique} → {table} [повтор: негодна]",
+    "en": "{critique} → {table} [retry: unusable]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.tableRetryMissing",
+    "ru": "{critique} → {table} [повтор: пропущена моделью]",
+    "en": "{critique} → {table} [retry: skipped by the model]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.transformGraphToTheses",
+    "ru": "{section} [трансформация граф → тезисы]",
+    "en": "{section} [transformation graph → theses]"
+  },
+  {
+    "ns": "server.genLogLabels",
+    "id": "server.genLogLabels.transformThesesToGraph",
+    "ru": "{section} [трансформация тезисы → граф]",
+    "en": "{section} [transformation theses → graph]"
+  },
+  {
+    "ns": "server.lineageService",
+    "id": "server.lineageService.unnamedConcept",
+    "ru": "[безымянная концепция]",
+    "en": "[unnamed concept]"
+  },
+  {
+    "ns": "server.lineageService",
+    "id": "server.lineageService.unnamedPhilosopher",
+    "ru": "[безымянный философ]",
+    "en": "[unnamed philosopher]"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.graphDirUnknown",
+    "ru": "таблица связей, строка {row} («{src}» → «{tgt}»): направление «{dir}» не опознано (ожидается {expected}) — подставлено «{fallback}»",
+    "en": "edge table, row {row} (“{src}” → “{tgt}”): direction “{dir}” not recognized (expected {expected}) — substituted “{fallback}”"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.graphEdgeSkippedSource",
+    "ru": "ребро «{src}» → «{tgt}» пропущено: источник не найдена в таблице категорий",
+    "en": "edge “{src}” → “{tgt}” skipped: source not found in the category table"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.graphEdgeSkippedTarget",
+    "ru": "ребро «{src}» → «{tgt}» пропущено: цель не найдена в таблице категорий",
+    "en": "edge “{src}” → “{tgt}” skipped: target not found in the category table"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.graphEdgesTableMissing",
+    "ru": "подраздел «{table}» не найден — связи не разобраны (атрибуты data-section раздела: {attrs})",
+    "en": "subsection “{table}” not found — edges not parsed (data-section attributes of the section: {attrs})"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.graphNodesTableMissing",
+    "ru": "подраздел «{table}» не найден — категории не разобраны (атрибуты data-section раздела: {attrs})",
+    "en": "subsection “{table}” not found — categories not parsed (data-section attributes of the section: {attrs})"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.graphNormalizeSkipped",
+    "ru": "нормализация типов на каталог пропущена: {message}",
+    "en": "type normalization to the catalog skipped: {message}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.graphParseFailed",
+    "ru": "разбор графа не удался: {message}",
+    "en": "graph parsing failed: {message}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.graphRoleUnknown",
+    "ru": "топологическая таблица, строка {row} («{name}»), столбец «{column}»: роль «{role}» не опознана (ожидается одна из ролей задания, по-русски) — пропущена",
+    "en": "topology table, row {row} (“{name}”), column “{column}”: role “{role}” not recognized (one of the task’s roles is expected, in Russian) — skipped"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.none",
+    "ru": "нет",
+    "en": "none"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.sanitizeAttrsStripped",
+    "ru": "Сняты атрибуты: {attrs}",
+    "en": "Attributes removed: {attrs}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.sanitizeClassesStripped",
+    "ru": "Сняты классы вне набора: {classes}",
+    "en": "Classes outside the set removed: {classes}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.sanitizeDropped",
+    "ru": "Удалены вместе с содержимым: {tags}",
+    "en": "Removed together with their content: {tags}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.sanitizePrefix",
+    "ru": "чистка разметки ответа модели: {text}",
+    "en": "cleanup of the model’s response markup: {text}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.sanitizeRenamed",
+    "ru": "Заменены тегами набора: {pairs}",
+    "en": "Replaced with tags from the set: {pairs}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.sanitizeUnwrapped",
+    "ru": "Теги вне набора документа сняты, текст оставлен: {tags}",
+    "en": "Tags outside the document set removed, text kept: {tags}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.subsectionByPosition",
+    "ru": "подраздел {index} опознан по месту: атрибут \"{attr}\" вместо \"{name}\"",
+    "en": "subsection {index} identified by position: attribute \"{attr}\" instead of \"{name}\""
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.subsectionCountMismatch",
+    "ru": "подраздел «{name}» не найден по имени; опознать по месту нельзя: в разделе {actual} подраздел(ов), в карте {expected}",
+    "en": "subsection “{name}” not found by name; cannot identify it by position: the section has {actual} subsection(s), the map has {expected}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.subsectionMissingMany",
+    "ru": "модель завершила ответ, не написав подразделы {names} (ожидалось подразделов: {expected}, размечено: {marked}). Раздел сохранён как есть — перегенерируйте его, если подразделы нужны",
+    "en": "the model finished its response without writing subsections {names} (subsections expected: {expected}, marked up: {marked}). The section is saved as is — regenerate it if the subsections are needed"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.subsectionMissingOne",
+    "ru": "модель завершила ответ, не написав подраздел {names} (ожидалось подразделов: {expected}, размечено: {marked}). Раздел сохранён как есть — перегенерируйте его, если подраздел нужен",
+    "en": "the model finished its response without writing subsection {names} (subsections expected: {expected}, marked up: {marked}). The section is saved as is — regenerate it if the subsection is needed"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.subsectionNotFoundNoOrder",
+    "ru": "подраздел «{name}» не найден по имени (атрибуты data-section раздела: {attrs}); ожидаемый порядок не передан — опознать по месту нельзя",
+    "en": "subsection “{name}” not found by name (data-section attributes of the section: {attrs}); the expected order was not passed — cannot identify it by position"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.subsectionNotInMap",
+    "ru": "подраздел «{name}» не найден по имени и отсутствует в ожидаемом порядке карты ({count} имён) — опознать по месту нельзя",
+    "en": "subsection “{name}” not found by name and absent from the expected order of the map ({count} names) — cannot identify it by position"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.subsectionRenamedMany",
+    "ru": "модель завершила ответ, но подразделы {names} по названию не найдены (ожидалось подразделов: {expected}, размечено: {marked}) — вероятно, названия изменены. Раздел сохранён как есть",
+    "en": "the model finished its response, but subsections {names} were not found by title (subsections expected: {expected}, marked up: {marked}) — the titles were probably changed. The section is saved as is"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.subsectionRenamedOne",
+    "ru": "модель завершила ответ, но подраздел {names} по названию не найден (ожидалось подразделов: {expected}, размечено: {marked}) — вероятно, названия изменены. Раздел сохранён как есть",
+    "en": "the model finished its response, but subsection {names} was not found by title (subsections expected: {expected}, marked up: {marked}) — the titles were probably changed. The section is saved as is"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.tableGapMissing",
+    "ru": "модель не написала подраздел «{subsection}»",
+    "en": "the model did not write subsection “{subsection}”"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.tableGapNoTable",
+    "ru": "подраздел «{subsection}» написан без таблицы либо без столбцов контракта",
+    "en": "subsection “{subsection}” was written without a table or without the contract’s columns"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.tableRetryComposed",
+    "ru": "таблица рекомендаций: {what} — составлена повторным обращением по готовой прозе",
+    "en": "recommendations table: {what} — composed by a repeated request from the finished prose"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.tableRetryFailed",
+    "ru": "таблица рекомендаций: {what}; повторное обращение не помогло ({message}) — составьте её по готовой прозе из панели рекомендаций",
+    "en": "recommendations table: {what}; the repeated request did not help ({message}) — compose it from the finished prose in the recommendations panel"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.viaIntra",
+    "ru": "intra-контекст: {text}",
+    "en": "intra-context: {text}"
+  },
+  {
+    "ns": "server.parseWarnings",
+    "id": "server.parseWarnings.viaThesisLabels",
+    "ru": "метки тезисов: {text}",
+    "en": "thesis labels: {text}"
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonAuth",
+    "ru": "API-ключ недействителен или истёк (401).",
+    "en": "The Anthropic API key is invalid or has expired (401)."
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonBilling",
+    "ru": "Недостаточно средств на балансе API. Пополните баланс на console.anthropic.com и нажмите «Продолжить».",
+    "en": "Insufficient funds on the API balance. Top up the balance at console.anthropic.com and press “Continue”."
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonContextError",
+    "ru": "Ошибка построения контекста.",
+    "en": "Error while building the context."
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonMaxTokens",
+    "ru": "Ответ оборван по лимиту токенов (max_tokens = {maxTokens}). Раздел слишком объёмный.",
+    "en": "The response was cut off by the token limit (max_tokens = {maxTokens}). The section is too large."
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonPartial",
+    "ru": "Стрим оборвался в процессе.",
+    "en": "The stream broke off midway."
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonPreStream",
+    "ru": "Сбой до начала стрима.",
+    "en": "Failure before the stream started."
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonRateLimit",
+    "ru": "Превышен лимит запросов (429).",
+    "en": "Request limit exceeded (429)."
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonServer",
+    "ru": "Сбой сервера API.",
+    "en": "API server failure."
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonStuck",
+    "ru": "Нет ответа от API более {stuckSec} секунд (стрим «завис»).",
+    "en": "No response from the API for more than {stuckSec} seconds (the stream “hung”)."
+  },
+  {
+    "ns": "synthesis.pauseModal",
+    "id": "synthesis.pauseModal.reasonUserAbort",
+    "ru": "Генерация остановлена вручную.",
+    "en": "Generation was stopped manually."
   }
 ]

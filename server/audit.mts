@@ -54,7 +54,7 @@ const PAIRS: Pair[] = [
       "authorName", "scope", "sections"] },
   { table: "sections", file: "section.ts", iface: "SectionFull",
     schemaOnly: ["id", "synthesisId", "createdAt", "updatedAt"],
-    typeOnly: ["subsections", "lockedSubsections", "parseWarnings"], renamed: { secContext: "secContext" } }, // parseWarnings — 11.2 (Д-16): из генлога, вычисляемое
+    typeOnly: ["subsections", "lockedSubsections", "parseWarnings", "sectionTitle", "subsectionTitles"], renamed: { secContext: "secContext" } }, // parseWarnings — 11.2 (Д-16): из генлога, вычисляемое; sectionTitle/subsectionTitles — 14.2 (Д-59): из html_content (sectionTitlesOf)
   { table: "categories", file: "graph.ts", iface: "Category" },
   { table: "categoryEdges", file: "graph.ts", iface: "CategoryEdge" },
   { table: "clusterLabels", file: "graph.ts", iface: "ClusterLabel" },

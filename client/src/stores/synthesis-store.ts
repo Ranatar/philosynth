@@ -84,6 +84,8 @@ export function summariesFromSections(
     htmlChars: s.htmlContent.length,
     contextQualityScore: null,
     subsections: s.subsections,
+    sectionTitle: s.sectionTitle ?? null, // 14.2 (Д-59)
+    subsectionTitles: s.subsectionTitles ?? {},
     updatedAt,
   }));
 }

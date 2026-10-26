@@ -95,15 +95,35 @@ export type PauseReasonKind =
   | "user-abort"
   | "context-error";
 
+/**
+ * Причина паузы — полями (беседа 14.2, Д-54). До 14.2 сервер писал в `reason`
+ * готовую русскую фразу (`pauseFriendlyMessage`), и PauseModal показывал её
+ * на любом языке интерфейса. Теперь сервер пишет `reasonKind` и сырые данные
+ * (`rawMessage` — сообщение API Anthropic или ошибки службы как есть; числа —
+ * `maxTokensUsed`, `stuckSec`), а фразу собирает клиент через tl() по
+ * `reasonKind`. `reason` остаётся у пауз, записанных до 14.2, и у паузы из
+ * выгрузки: без новых полей показывается как есть (запасной текст).
+ */
+export interface PauseReasonFields {
+  reasonKind: PauseReasonKind;
+  /** Готовая фраза причины (до 14.2) — запасной текст, новыми паузами не пишется */
+  reason?: string | undefined;
+  /** Сырое сообщение API Anthropic / ошибки службы (pre-stream, partial, auth,
+   *  billing, context-error) — как есть, деталь к причине */
+  rawMessage?: string | undefined;
+  /** max-tokens: предел, по которому оборван ответ */
+  maxTokensUsed?: number | undefined;
+  /** stuck: порог молчания стрима, секунды */
+  stuckSec?: number | undefined;
+}
+
 /** syntheses.paused_state, kind === "gen" — прервана основная генерация */
-export interface PausedStateGen {
+export interface PausedStateGen extends PauseReasonFields {
   kind: "gen";
   passIdx: number;
   sectionKeys: string[];
   sectionLabel: string;
   isPartial: boolean;
-  reason: string;
-  reasonKind: PauseReasonKind;
   timestamp: number;
   partialSubsections: string[];
   expectedSubsections: string[];
@@ -111,14 +131,13 @@ export interface PausedStateGen {
   /** Полный снапшот параметров генерации {…p, secCtx} —
    *  возобновление не зависит от состояния формы */
   genParams: Record<string, unknown>;
-  maxTokensUsed?: number;
   /** Разделы, теряющие контекст пропускаемых при skip-remaining
    *  (confirm деградации [25686], беседа 2.2) */
   skipDegrades?: string[];
 }
 
 /** syntheses.paused_state, kind === "plan" — прерван план редактирования */
-export interface PausedStatePlan {
+export interface PausedStatePlan extends PauseReasonFields {
   kind: "plan";
   stepIdx: number;
   totalSteps: number;
@@ -133,8 +152,6 @@ export interface PausedStatePlan {
   };
   regenCtx: Record<string, string>;
   addCtx: Record<string, string>;
-  reason: string;
-  reasonKind: PauseReasonKind;
   timestamp: number;
 }
 

@@ -58,7 +58,29 @@ export const PLACEHOLDER_SELECTOR = `.${PLACEHOLDER_CLASS}`;
 
 /** Регулярка строки-места — та же, что у сервера (html-parser PLACEHOLDER_RE). */
 const PLACEHOLDER_RE = /^\s*подраздел\s+(\d+)\b/;
-const PLACEHOLDER_NAME_RE = /^\s*подраздел\s+\d+\s*:\s*(.*?)\s*(?:—\s*правится отдельно.*)?$/s;
+const PLACEHOLDER_BODY_RE = /^\s*подраздел\s+\d+\s*:\s*(.*?)\s*$/s;
+/** Русский хвост строки-места до 14.1 — «— правится отдельно, строку не удалять». */
+const LEGACY_TAIL_RE = /\s*—\s*правится отдельно.*$/s;
+
+/**
+ * 14.2 (Д-76): имя вложенного подраздела из комментария-ссылки. Сервер
+ * (`subsectionPlaceholder`, 14.1) пишет «подраздел N: {имя} — {хвост}», где
+ * хвост — `server.utils.htmlParser.placeholderTail` на языке запроса записи;
+ * до 14.1 хвост был русским. Режется: русский хвост — по регулярке; хвост на
+ * языке текущего интерфейса — по переводу того же ключа; иначе — по
+ * ПОСЛЕДНЕМУ « — » (хвост всегда стоит последним; «--» в имени сервер уже
+ * заменил на «—», так что тире в имени хвост не маскирует). Строка без тире —
+ * имя целиком.
+ */
+export function placeholderNameOf(commentText: string): string {
+  const body = PLACEHOLDER_BODY_RE.exec(commentText)?.[1] ?? "";
+  if (!body) return "";
+  if (LEGACY_TAIL_RE.test(body)) return body.replace(LEGACY_TAIL_RE, "").trim();
+  const tail = tl("server.utils.htmlParser.placeholderTail", "правится отдельно, строку не удалять");
+  if (body.endsWith(tail)) return body.slice(0, -tail.length).replace(/\s*—\s*$/, "").trim();
+  const dash = body.lastIndexOf(" — ");
+  return (dash >= 0 ? body.slice(0, dash) : body).trim();
+}
 
 export type TableOp = "row-add" | "row-del" | "col-add" | "col-del";
 export const TABLE_OPS: readonly TableOp[] = ["row-add", "row-del", "col-add", "col-del"];
@@ -75,7 +97,7 @@ export function isPlaceholder(el: Element | null | undefined): boolean {
 export function placeholderFromComment(doc: Document, commentText: string): HTMLElement | null {
   const m = PLACEHOLDER_RE.exec(commentText);
   if (!m) return null;
-  const name = PLACEHOLDER_NAME_RE.exec(commentText)?.[1] ?? "";
+  const name = placeholderNameOf(commentText);
   const el = doc.createElement("div");
   el.className = PLACEHOLDER_CLASS;
   el.setAttribute("contenteditable", "false");

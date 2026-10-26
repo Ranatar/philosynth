@@ -45,6 +45,38 @@ import { tl } from "@philosynth/shared/i18n/t";
 
 const MAX_LINEAGE_DEPTH = 10;
 
+/* ══ 14.2 (Д-57): безымянные узлы дерева файла ════════════════════════ */
+
+/** Русские заглушки записей до 14.2 — и вид для экспорт-зеркал (11.4). */
+export const UNNAMED_CONCEPT_RU = "[безымянная концепция]";
+export const UNNAMED_PHILOSOPHER_RU = "[безымянный философ]";
+
+/** Узел файла без имени: признак 14.2, пустое имя либо старая русская заглушка. */
+export function isUnnamedFileNode(node: Pick<FileGenealogyNode, "name" | "unnamed">): boolean {
+  if (node.unnamed) return true;
+  const t = (node.name ?? "").trim();
+  return !t || t === UNNAMED_CONCEPT_RU || t === UNNAMED_PHILOSOPHER_RU;
+}
+
+/** Подстановка имени на языке запроса (вне запроса — по-русски). */
+export function unnamedLabel(type: "concept" | "philosopher" | "synthesis"): string {
+  return type === "philosopher"
+    ? tl("server.lineageService.unnamedPhilosopher", "[безымянный философ]")
+    : tl("server.lineageService.unnamedConcept", "[безымянная концепция]");
+}
+
+/** Имя узла файла для ответа: своё либо подстановка на языке запроса. */
+export function fileNodeName(node: FileGenealogyNode): string {
+  return isUnnamedFileNode(node) ? unnamedLabel(node.type) : node.name;
+}
+
+/** Имя узла файла для экспорт-зеркала: своё либо русская заглушка. */
+export function fileNodeNameRu(node: FileGenealogyNode): string {
+  return isUnnamedFileNode(node)
+    ? node.type === "philosopher" ? UNNAMED_PHILOSOPHER_RU : UNNAMED_CONCEPT_RU
+    : node.name;
+}
+
 function clampDepth(depth: number | undefined, fallback: number): number {
   if (!Number.isFinite(depth) || depth === undefined) return fallback;
   return Math.min(Math.max(Math.trunc(depth), 1), MAX_LINEAGE_DEPTH);
@@ -74,9 +106,11 @@ function strField(v: unknown): string | undefined {
 /**
  * Очистка дерева файла перед записью в syntheses.file_genealogy: только
  * известные поля, имя обязательно, всё, что не 'philosopher', — концепция
- * (сервис 4.3 пишет у участников type='synthesis'). Узел без имени
- * становится «[безымянная концепция]», а НЕ выбрасывается — иначе съедут
- * индексы participants корня, а индекс = position связи в БД.
+ * (сервис 4.3 пишет у участников type='synthesis'). Узел без имени НЕ
+ * выбрасывается — иначе съедут индексы participants корня, а индекс =
+ * position связи в БД; 14.2 (Д-57): он пишется с пустым имением и признаком
+ * unnamed (до 14.2 — русской заглушкой; старая заглушка на входе тоже
+ * считается пустым именем), подстановку делает читатель (fileNodeName).
  */
 export function sanitizeFileGenealogy(
   node: unknown,
@@ -85,10 +119,12 @@ export function sanitizeFileGenealogy(
   if (!node || typeof node !== "object") return null;
   const n = node as Record<string, unknown>;
   const isPhil = n.type === "philosopher";
-  const name =
-    strField(n.name)?.trim() ?? (isPhil ? "[безымянный философ]" : "[безымянная концепция]");
-  if (isPhil) return { type: "philosopher", name };
-  const out: FileGenealogyNode = { type: "concept", name };
+  const rawName = strField(n.name)?.trim() ?? "";
+  const unnamed = isUnnamedFileNode({ name: rawName });
+  const named = (type: FileGenealogyNode["type"]): FileGenealogyNode =>
+    unnamed ? { type, name: "", unnamed: true } : { type, name: rawName };
+  if (isPhil) return named("philosopher");
+  const out = named("concept");
   for (const k of [
     "method",
     "synthLevel",
@@ -146,10 +182,12 @@ function fileNodeToLineage(
   nodeDepth: number,
   maxDepth: number,
 ): LineageNode {
+  const unnamed = isUnnamedFileNode(node);
   if (node.type === "philosopher") {
     return {
       type: "philosopher",
-      name: node.name,
+      name: fileNodeName(node),
+      ...(unnamed ? { unnamed: true } : {}),
       depth: nodeDepth,
       children: [],
       fromFile: true,
@@ -157,7 +195,8 @@ function fileNodeToLineage(
   }
   const out: LineageNode = {
     type: "synthesis",
-    name: node.name,
+    name: fileNodeName(node),
+    ...(unnamed ? { unnamed: true } : {}),
     depth: nodeDepth,
     children:
       nodeDepth < maxDepth
@@ -207,9 +246,11 @@ export function lineageTreeToFileGenealogy(
   node: LineageNode,
   rootMeta: { method?: string; synthLevel?: string; seed?: string } = {},
 ): FileGenealogyNode {
+  // 14.2 (Д-57): безымянный узел в выгрузке — русская заглушка (зеркало 11.4),
+  // импорт распознаёт её как пустое имя
   const conv = (n: LineageNode): FileGenealogyNode => {
-    if (n.type === "philosopher") return { type: "philosopher", name: n.name };
-    const out: FileGenealogyNode = { type: "concept", name: n.name };
+    if (n.type === "philosopher") return { type: "philosopher", name: n.unnamed ? UNNAMED_PHILOSOPHER_RU : n.name };
+    const out: FileGenealogyNode = { type: "concept", name: n.unnamed ? UNNAMED_CONCEPT_RU : n.name };
     if (n.synthesisId) out.synthesisId = n.synthesisId;
     if (n.method) out.method = n.method;
     if (n.synthLevel) out.synthLevel = n.synthLevel;
@@ -307,7 +348,7 @@ export async function getAncestors(
           position: r.position,
           node: {
             type: "synthesis",
-            name: titles.get(pid) ?? "[безымянная концепция]",
+            name: titles.get(pid) ?? unnamedLabel("synthesis"),
             synthesisId: pid,
             depth: nodeDepth,
             children: build(pid, nodeDepth + 1, new Set([...path, pid])),
@@ -339,7 +380,7 @@ export async function getAncestors(
 
   return {
     type: "synthesis",
-    name: titles.get(synthesisId) ?? "[безымянная концепция]",
+    name: titles.get(synthesisId) ?? unnamedLabel("synthesis"),
     synthesisId,
     depth: 0,
     children: build(synthesisId, 1, new Set([synthesisId])),
@@ -404,7 +445,7 @@ export async function getDescendants(
       if (path.has(childId)) continue; // страховка от цикла в данных
       out.push({
         type: "synthesis",
-        name: titles.get(childId) ?? "[безымянная концепция]",
+        name: titles.get(childId) ?? unnamedLabel("synthesis"),
         synthesisId: childId,
         depth: nodeDepth,
         children: build(childId, nodeDepth + 1, new Set([...path, childId])),

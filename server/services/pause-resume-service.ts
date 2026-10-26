@@ -60,6 +60,7 @@ import type {
   PausedStatePlan,
   PauseReasonKind,
 } from "@philosynth/shared/types/synthesis";
+import type { GenLogLabel } from "@philosynth/shared/types/generation"; // 14.2 (Д-62)
 import type {
   PauseEstimates,
   ResumeGenerationMode,
@@ -113,7 +114,7 @@ import {
 } from "./section-defs-builder.js";
 import {
   classifyStreamError,
-  pauseFriendlyMessage,
+  pauseReasonFields,
   StreamError,
 } from "./streaming-manager.js";
 import { buildEffectiveDeps, resolveContextDeps } from "./synthesis-engine.js";
@@ -244,8 +245,12 @@ export async function createPausedState(
       kind: "gen",
       sectionKey: ps.sectionKeys.join("+"),
       sectionLabel: ps.sectionLabel,
+      logLabel: { kind: "pass", sections: ps.sectionKeys } satisfies GenLogLabel, // 14.2 (Д-62)
+      // 14.2 (Д-54): причина — полями; reason только у пауз до 14.2
       reasonKind: ps.reasonKind,
-      reason: ps.reason,
+      ...(ps.reason !== undefined ? { reason: ps.reason } : {}),
+      ...(ps.rawMessage !== undefined ? { rawMessage: ps.rawMessage } : {}),
+      ...(ps.stuckSec !== undefined ? { stuckSec: ps.stuckSec } : {}),
       passIdx: ps.passIdx,
       isPartial: ps.isPartial,
       maxTokensUsed: ps.maxTokensUsed ?? null,
@@ -254,7 +259,10 @@ export async function createPausedState(
     await logPauseEvent(synthesisId, "pause_marker", {
       kind: "plan",
       reasonKind: ps.reasonKind,
-      reason: ps.reason,
+      ...(ps.reason !== undefined ? { reason: ps.reason } : {}),
+      ...(ps.rawMessage !== undefined ? { rawMessage: ps.rawMessage } : {}),
+      ...(ps.maxTokensUsed !== undefined ? { maxTokensUsed: ps.maxTokensUsed } : {}),
+      ...(ps.stuckSec !== undefined ? { stuckSec: ps.stuckSec } : {}),
       stepIdx: ps.stepIdx,
       totalSteps: ps.totalSteps,
     });
@@ -569,6 +577,7 @@ export async function resumeGeneration(
     mode,
     sectionKey: ps.sectionKeys.join("+"),
     sectionLabel: ps.sectionLabel,
+    logLabel: { kind: "pass", sections: ps.sectionKeys } satisfies GenLogLabel, // 14.2 (Д-62)
     passIdx: ps.passIdx,
     source: "resume",
   });
@@ -805,7 +814,7 @@ async function resumeFillMissingSubs(
         rawErr instanceof StreamError
           ? rawErr
           : classifyStreamError(rawErr, false);
-      const errorMsg = pauseFriendlyMessage(e);
+      const reasonFields = pauseReasonFields(e); // 14.2 (Д-54): без фразы
       const [fresh] = await db
         .select({
           totalInputTokens: syntheses.totalInputTokens,
@@ -854,8 +863,7 @@ async function resumeFillMissingSubs(
         sectionKeys: ps.sectionKeys,
         sectionLabel: ps.sectionLabel,
         isPartial: doneSubs.length > 0,
-        reason: errorMsg,
-        reasonKind: e.kind || "partial",
+        ...reasonFields,
         partialSubsections: doneSubs.map((s) => s.name),
         expectedSubsections: [...ps.expectedSubsections],
         completedPasses: ps.completedPasses,
@@ -863,16 +871,13 @@ async function resumeFillMissingSubs(
         skipDegrades: computeSkipDegrades(
           effectiveDeps, ps.sectionKeys, ps.completedPasses,
         ),
-        ...(e.kind === "max-tokens"
-          ? { maxTokensUsed: e.maxTokensUsed || env.anthropic.maxTokens }
-          : {}),
       });
       sendToUser(userId, {
         type: "generation_paused",
         synthesisId,
         kind: "gen",
+        ...reasonFields,
         reasonKind: newPs.reasonKind as Exclude<PauseReasonKind, "user-abort">,
-        reason: errorMsg,
         isPartial: newPs.isPartial,
         partialSubsections: newPs.partialSubsections,
         expectedSubsections: newPs.expectedSubsections,

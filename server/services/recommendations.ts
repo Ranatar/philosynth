@@ -67,7 +67,7 @@
  */
 import { createHash } from "node:crypto";
 
-import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, max, sql as dsql } from "drizzle-orm";
 
 import {
   RECOMMENDATIONS_PROSE_SUBSECTION,
@@ -132,6 +132,10 @@ import {
 import { buildSYS } from "./prompt-builder.js";
 import { renderTemplate } from "./prompt-registry.js";
 import { loadExpectedSubsectionOrder } from "./subsection-order.js"; // 11.2, Д-16
+import { pw, withVia } from "./parse-warnings.js"; // 14.2, Д-55
+import { streamLogError } from "./gen-log-labels.js"; // 14.2, Д-62
+import type { GenLogLabel } from "@philosynth/shared/types/generation";
+import type { ParseWarning } from "@philosynth/shared/types/parse-warnings";
 import {
   addressableSectionKeys,
   formatDocumentSubsections,
@@ -302,7 +306,7 @@ export interface DocumentIndex {
    *  различаются — переведённый моделью атрибут); читать документ — по нему. */
   actualNameOf(sectionKey: string, canonicalName: string): string;
   /** Предупреждения опознания подразделов по месту (для владельца). */
-  lookupWarnings: string[];
+  lookupWarnings: ParseWarning[];
   categories: { id: string; name: string; value: string }[];
   /** labels — как тезис назван в «Сводной таблице тезисов» («Э-2») и числом */
   theses: { id: string; labels: string[]; formulation: string; value: string }[];
@@ -326,14 +330,14 @@ const THESES_SUMMARY_TABLE = "Сводная таблица тезисов";
 export function thesisLabelsFromHtml(
   thesesHtml: string,
   expectedOrder?: readonly string[] | undefined,
-  warnings?: string[] | undefined,
+  warnings?: ParseWarning[] | undefined,
 ): Map<string, string> {
   const out = new Map<string, string>();
   if (!thesesHtml) return out;
   const root = parseFragment(thesesHtml);
   const found = resolveSubsection(root, THESES_SUMMARY_TABLE, expectedOrder);
   let host: HtmlElement | null = found.el;
-  if (found.el && found.warning && warnings) warnings.push(`метки тезисов: ${found.warning}`);
+  if (found.el && found.warning && warnings) warnings.push(withVia(found.warning, "thesis_labels"));
   if (!host) {
     for (const el of root.querySelectorAll("[data-section]")) {
       if ((el.getAttribute("data-section") ?? "").toLowerCase().includes("сводная таблица")) {
@@ -372,7 +376,7 @@ export function indexSectionSubsections(
   sectionHtml: string,
   expectedOrder: readonly string[],
   actualByCanon: Map<string, string>,
-  warnings: string[],
+  warnings: ParseWarning[],
 ): string[] {
   const actual = listSubsectionNames(sectionHtml);
   if (!expectedOrder.length) return actual;
@@ -383,7 +387,7 @@ export function indexSectionSubsections(
     if (!found.el || found.actualName === null || canonByActual.has(found.actualName)) continue;
     canonByActual.set(found.actualName, canon);
     if (found.actualName !== canon) actualByCanon.set(`${sectionKey}\u0000${canon}`, found.actualName);
-    if (found.warning) warnings.push(`${sectionKey}: ${found.warning}`);
+    if (found.warning) warnings.push(withVia(found.warning, sectionKey));
   }
   return actual.map((a) => canonByActual.get(a) ?? a);
 }
@@ -396,7 +400,7 @@ export async function loadDocumentIndex(synthesisId: string): Promise<DocumentIn
     .where(eq(sections.synthesisId, synthesisId));
   const htmlByKey = new Map(secRows.map((r) => [r.key, r.html]));
   const expected = await loadExpectedSubsectionOrder(synthesisId);
-  const lookupWarnings: string[] = [];
+  const lookupWarnings: ParseWarning[] = [];
   const subsectionsBySection: Record<string, string[]> = {};
   const actualByCanon = new Map<string, string>(); // `${key}\u0000${canon}` → атрибут
   for (const r of secRows) {
@@ -1132,8 +1136,10 @@ export async function estimateExtractCost(
 export const RECOMMENDATIONS_TABLE_LOG_KEY = `${RECOMMENDATIONS_SECTION_KEY}:${RECOMMENDATIONS_TABLE_SUBSECTION}`;
 
 interface ComposeTableOptions {
-  /** Подпись строки генлога (хранимая диагностика владельца — по-русски) */
+  /** Подпись строки генлога (хранимая русская запасная строка section_label) */
   logLabel: string;
+  /** 14.2 (Д-62): код подписи — metadata.logLabel */
+  logLabelCode: GenLogLabel;
   /** Снимок раздела ДО записи таблицы (версия 'section'/'regenerated') */
   versioned: boolean;
   /** Пометить раздел изменённым (is_edited) */
@@ -1176,6 +1182,7 @@ async function composeTableUnderSlot(
       taskChars: prompt.length,
       inputChars: SYS.length + prompt.length,
       metadata: {
+        logLabel: opts.logLabelCode,
         subsectionName: RECOMMENDATIONS_TABLE_SUBSECTION,
         expectedSubsections: [RECOMMENDATIONS_TABLE_SUBSECTION],
         subsections: [],
@@ -1209,6 +1216,7 @@ async function composeTableUnderSlot(
         inputTokens: eUsage.inputTokens,
         outputTokens: eUsage.outputTokens,
         costUsd: (eUsage.inputTokens * PRICE_IN + eUsage.outputTokens * PRICE_OUT).toFixed(6),
+        metadata: dsql`metadata || ${JSON.stringify({ error: streamLogError(e) })}::jsonb`, // 14.2 (Д-62)
       })
       .where(eq(generationLog.id, genEntryId));
     await bumpTotals(synthesisId, eUsage);
@@ -1306,6 +1314,7 @@ export async function extractRecommendationsTable(
     async (handle) => {
       const run = await composeTableUnderSlot(handle, synthesisId, req, {
         logLabel: `Критический анализ → ${RECOMMENDATIONS_TABLE_SUBSECTION} [по готовой прозе]`,
+        logLabelCode: { kind: "table_compose" },
         versioned: true,
         markEdited: true,
       });
@@ -1371,7 +1380,8 @@ export interface TableRetryResult {
    *  обращения не было */
   usage: { inputTokens: number; outputTokens: number } | null;
   /** Что записать в предупреждения генлога раздела (владельцу) */
-  note: string | null;
+  /** Пометка в генлог раздела — кодом (14.2, Д-55); null — сказать нечего */
+  note: ParseWarning | null;
 }
 
 /**
@@ -1402,10 +1412,6 @@ export async function ensureRecommendationsTable(
   }
   if (gap === "none") return { outcome: "present", html: null, usage: null, note: null };
   if (gap === "no_prose") return { outcome: "not_applicable", html: null, usage: null, note: null };
-  const what =
-    gap === "missing"
-      ? `модель не написала подраздел «${RECOMMENDATIONS_TABLE_SUBSECTION}»`
-      : `подраздел «${RECOMMENDATIONS_TABLE_SUBSECTION}» написан без таблицы либо без столбцов контракта`;
   // Расход повтора — разницей итога документа: ядро вносит его в итог и при
   // удаче, и при обрыве, и при негодном ответе (обращение состоялось, токены
   // потрачены) — а вызывающему он нужен во всех трёх случаях
@@ -1419,6 +1425,7 @@ export async function ensureRecommendationsTable(
     const req = await buildExtractRequest(synthesisId);
     const run = await composeTableUnderSlot(handle, synthesisId, req, {
       logLabel: `Критический анализ → ${RECOMMENDATIONS_TABLE_SUBSECTION} [повтор: ${gap === "missing" ? "пропущена моделью" : "негодна"}]`,
+      logLabelCode: { kind: "table_retry", gap: gap === "missing" ? "missing" : "no_table" },
       versioned: false,
       markEdited: false,
     });
@@ -1426,7 +1433,7 @@ export async function ensureRecommendationsTable(
       outcome: "composed",
       html: run.written.html,
       usage: await spent(),
-      note: `таблица рекомендаций: ${what} — составлена повторным обращением по готовой прозе`,
+      note: pw("table_retry_composed", { gap, subsection: RECOMMENDATIONS_TABLE_SUBSECTION }),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -1435,9 +1442,7 @@ export async function ensureRecommendationsTable(
       outcome: "failed",
       html: null,
       usage: await spent().catch(() => null),
-      note:
-        `таблица рекомендаций: ${what}; повторное обращение не помогло (${message}) — ` +
-        "составьте её по готовой прозе из панели рекомендаций",
+      note: pw("table_retry_failed", { gap, subsection: RECOMMENDATIONS_TABLE_SUBSECTION, message }),
     };
   }
 }

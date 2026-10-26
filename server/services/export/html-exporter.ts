@@ -96,6 +96,7 @@ import { loadConceptParticipants } from "../meta-synthesis-service.js";
 import { exportFilename, loadExportSynthesis } from "./common.js";
 import { loadGModel } from "./graph-model.js";
 import { docDateFor, subtitleForExport } from "./md-exporter.js";
+import { runWithLocale } from "../../i18n/locale.js"; // 14.2: лог выгрузки — русское зеркало
 
 import type { LineageNode } from "@philosynth/shared/types/lineage";
 
@@ -655,7 +656,8 @@ export async function exportHTML(
     `</div>`;
 
   // Дерево предков — одно на шапку (Д-30) и на встроенное genealogy ниже
-  const ancestors = await getAncestors(synthesisId);
+  // 14.2 (Д-57): подстановки безымянных узлов — по-русски (экспорт-зеркало 11.4)
+  const ancestors = await runWithLocale("ru", () => getAncestors(synthesisId));
   const genealogyRoot = lineageTreeToExportGenealogy(ancestors, {
     name: row.title,
     method: row.method,
@@ -834,7 +836,10 @@ export async function exportHTML(
 
   // ── Видимый лог контекста (адаптация: предвычисленный html 2.4) ──
   if (includeLogs && (genRows.length > 0 || ctxRows.length > 0)) {
-    const log = await formatCtxLogHTML(synthesisId);
+    // 14.2: лог в выгрузке — русское зеркало (11.4): собирается под ru при
+    // любом языке запроса (до 14.2 оболочка лога шла на языке запроса —
+    // расхождение с 11.4, найдено сверкой 14.2 п.0)
+    const log = await runWithLocale("ru", () => formatCtxLogHTML(synthesisId));
     const isEmpty = log.text === "Лог пуст. Сгенерируйте документ.";
     stateJSON += `\n<details style="
       max-width:1100px; margin:20px auto 0;

@@ -108,6 +108,9 @@ import { ROLE_MAP, parseGraphFromHTML, saveGraphToDb } from "./graph-parser.js";
 import { buildSYS } from "./prompt-builder.js";
 import { renderTemplate } from "./prompt-registry.js";
 import { StreamError, classifyStreamError } from "./streaming-manager.js";
+import { renderParseWarningsRu } from "./parse-warnings.js"; // 14.2 (Д-55)
+import { streamLogError } from "./gen-log-labels.js"; // 14.2 (Д-62)
+import type { GenLogLabel } from "@philosynth/shared/types/generation";
 import { tl } from "@philosynth/shared/i18n/t";
 
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
@@ -432,6 +435,7 @@ async function streamTransform(
       taskChars: prompt.length,
       inputChars: SYS.length + prompt.length,
       metadata: {
+        logLabel: { kind: "transform", section: targetKey, direction } satisfies GenLogLabel, // 14.2 (Д-62)
         transformDirection: direction,
         expectedSubsections: [],
         subsections: [],
@@ -474,6 +478,7 @@ async function streamTransform(
         inputTokens: eUsage.inputTokens,
         outputTokens: eUsage.outputTokens,
         costUsd: eCost.toFixed(6),
+        metadata: dsql`metadata || ${JSON.stringify({ error: streamLogError(e) })}::jsonb`, // 14.2 (Д-62)
       })
       .where(eq(generationLog.id, genEntryId));
     await bumpTotals(synthesisId, eUsage);
@@ -609,7 +614,7 @@ export async function transformThesesToGraph(handle: GenerationSlotHandle): Prom
   if (parsed.nodes.length === 0)
     throw new TransformError("VALIDATION_ERROR", tl("server.representationTransformer.categoryTableMissing", "В ответе не найдена «Таблица категорий» — граф не заменён"));
   const saved = await saveGraphToDb(synthesisId, parsed);
-  for (const w of saved.warnings) console.warn("transform theses→graph:", w);
+  for (const w of renderParseWarningsRu(saved.warnings)) console.warn("transform theses→graph:", w);
   // 11.1: предупреждения разбора (подставленные направления, роли вне ROLE_MAP,
   // рёбра без концов) — в генлог трансформации, как у generation-service
   if (saved.warnings.length > 0) {

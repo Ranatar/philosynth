@@ -52,9 +52,12 @@ import { eq } from "drizzle-orm";
 
 import { normalizeName, normalizeType } from "@philosynth/shared/utils/normalize";
 
+import type { ParseWarning } from "@philosynth/shared/types/parse-warnings";
+
 import { db } from "../db/index.js";
 import { categories, categoryEdges, clusterLabels } from "../db/schema.js";
 import { parseFragment, type HtmlElement } from "../utils/html-parser.js";
+import { pw } from "./parse-warnings.js";
 import {
   getCategoryTypes,
   getRelationshipTypes,
@@ -116,8 +119,10 @@ export interface ParsedGraph {
   edges: ParsedGraphEdge[];
   topology: ParsedTopology;
   /** 11.1: предупреждения разбора — подставленные направления, роли вне
-   *  ROLE_MAP. Пусто у документа, где все машинные значения по-русски. */
-  warnings: string[];
+   *  ROLE_MAP. Пусто у документа, где все машинные значения по-русски.
+   *  14.2 (Д-55): кодами с параметрами — фразу собирает читатель
+   *  (`renderParseWarning`) под языком запроса. */
+  warnings: ParseWarning[];
 }
 
 /* ── Направление связи (11.1) ────────────────────────────────────────── */
@@ -188,7 +193,7 @@ export const ROLE_MAP: Readonly<Record<string, string>> = {
 export function parseTopology(
   container: HtmlElement,
   nodeNames: string[],
-  warnings: string[] = [],
+  warnings: ParseWarning[] = [],
 ): ParsedTopology {
   const result: ParsedTopology = {
     clusters: {},
@@ -344,10 +349,7 @@ export function parseTopology(
 
     // 11.1: роль вне ROLE_MAP — не молчаливая потеря, а предупреждение
     const unknownRole = (column: string, part: string): void => {
-      warnings.push(
-        `топологическая таблица, строка ${rowNo} («${name}»), столбец «${column}»: ` +
-          `роль «${part.trim()}» не опознана (ожидается одна из ролей задания, по-русски) — пропущена`,
-      );
+      warnings.push(pw("graph_role_unknown", { row: rowNo, name, column, role: part.trim() }));
     };
 
     // ── Столбец 2: Структурные роли ──
@@ -398,19 +400,15 @@ export function characteristicOf(cell: string | undefined): number {
 export function parseGraphFromElement(ct: HtmlElement): ParsedGraph {
   const nodes: ParsedGraphNode[] = [];
   const edges: ParsedGraphEdge[] = [];
-  const warnings: string[] = [];
+  const warnings: ParseWarning[] = [];
 
   // 11.1: таблицы ищутся по русским data-section; переведённый атрибут раньше
   // давал молчаливые нули в гранулярных таблицах — теперь предупреждение
-  const attrsOf = (): string =>
-    Array.from(ct.querySelectorAll("[data-section]"))
-      .map((e) => `"${e.getAttribute("data-section") ?? ""}"`)
-      .join(", ") || "нет";
+  const attrsOf = (): string[] =>
+    Array.from(ct.querySelectorAll("[data-section]")).map((e) => e.getAttribute("data-section") ?? "");
   const nodeSection = ct.querySelector('[data-section="Таблица категорий"]');
   if (!nodeSection)
-    warnings.push(
-      `подраздел «Таблица категорий» не найден — категории не разобраны (атрибуты data-section раздела: ${attrsOf()})`,
-    );
+    warnings.push(pw("graph_table_missing", { table: "Таблица категорий", attrs: attrsOf() }));
   if (nodeSection) {
     for (const tr of nodeSection.querySelectorAll("table.doc-table tbody tr")) {
       const td = Array.from(tr.querySelectorAll("td")).map((c) =>
@@ -442,9 +440,7 @@ export function parseGraphFromElement(ct: HtmlElement): ParsedGraph {
 
   const edgeSection = ct.querySelector('[data-section="Таблица связей"]');
   if (!edgeSection)
-    warnings.push(
-      `подраздел «Таблица связей» не найден — связи не разобраны (атрибуты data-section раздела: ${attrsOf()})`,
-    );
+    warnings.push(pw("graph_table_missing", { table: "Таблица связей", attrs: attrsOf() }));
   if (edgeSection) {
     let rowNo = 0;
     for (const tr of edgeSection.querySelectorAll("table.doc-table tbody tr")) {
@@ -467,11 +463,10 @@ export function parseGraphFromElement(ct: HtmlElement): ParsedGraph {
         if (!dirNorm.recognized) {
           edge.dirSubstituted = true;
           edge.dirRaw = dirRaw;
-          warnings.push(
-            `таблица связей, строка ${rowNo} («${edge.src}» → «${edge.tgt}»): ` +
-              `направление «${dirRaw}» не опознано (ожидается ${EDGE_DIRECTIONS.join(" | ")}) — ` +
-              `подставлено «${EDGE_DIRECTION_FALLBACK}»`,
-          );
+          warnings.push(pw("graph_dir_unknown", {
+            row: rowNo, src: edge.src, tgt: edge.tgt, dir: dirRaw,
+            expected: [...EDGE_DIRECTIONS], fallback: EDGE_DIRECTION_FALLBACK,
+          }));
         }
         // Расширенные характеристики связей (столбцы 6–10)
         if (td.length > 6 && td[6]) {
@@ -512,8 +507,8 @@ export interface SaveGraphResult {
   categoriesNormalized: number;
   edgesNormalized: number;
   /** Предупреждения разбора (parsed.warnings, 11.1) + рёбра с концами вне
-   *  таблицы категорий и прочие пропуски записи */
-  warnings: string[];
+   *  таблицы категорий и прочие пропуски записи — кодами (14.2) */
+  warnings: ParseWarning[];
 }
 
 export interface SaveGraphOptions {
@@ -524,7 +519,7 @@ export interface SaveGraphOptions {
 export interface NormalizeGraphTypesResult {
   categoriesNormalized: number;
   edgesNormalized: number;
-  warnings: string[];
+  warnings: ParseWarning[];
 }
 
 /**
@@ -593,9 +588,7 @@ export async function normalizeGraphTypesToCatalog(
       res.edgesNormalized += 1;
     }
   } catch (err) {
-    res.warnings.push(
-      `нормализация типов на каталог пропущена: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    res.warnings.push(pw("graph_normalize_skipped", { message: err instanceof Error ? err.message : String(err) }));
   }
   return res;
 }
@@ -611,7 +604,7 @@ export async function saveGraphToDb(
   opts: SaveGraphOptions = {},
 ): Promise<SaveGraphResult> {
   // 11.1: предупреждения разбора идут первыми — потребителю одна корзина
-  const warnings: string[] = [...(parsed.warnings ?? [])];
+  const warnings: ParseWarning[] = [...(parsed.warnings ?? [])];
 
   const saved = await db.transaction(async (tx) => {
     // Замена: рёбра удалятся и CASCADE'ом по категориям, DELETE явный —
@@ -679,10 +672,7 @@ export async function saveGraphToDb(
         if (!sourceId || !targetId) {
           // Исходник хранил такие рёбра по именам и не рендерил; БД с FK
           // их не принимает — фиксируем предупреждением.
-          warnings.push(
-            `ребро «${e.src}» → «${e.tgt}» пропущено: ` +
-              `${!sourceId ? "источник" : "цель"} не найдена в таблице категорий`,
-          );
+          warnings.push(pw("graph_edge_skipped", { src: e.src, tgt: e.tgt, end: !sourceId ? "source" : "target" }));
           continue;
         }
         edgeRows.push({

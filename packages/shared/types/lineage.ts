@@ -28,8 +28,11 @@ export interface LineageRecord {
 export interface LineageNode {
   /** 'philosopher' — лист; 'synthesis' — может иметь родителей */
   type: ParentType;
-  /** Имя философа либо заголовок концепции */
+  /** Имя философа либо заголовок концепции. 14.2 (Д-57): у безымянного узла
+   *  файла — подстановка на языке запроса (сервер, tl()), признак — unnamed */
   name: string;
+  /** 14.2 (Д-57): имени в файле не было — name подставлен при чтении */
+  unnamed?: true;
   /** id синтеза (для type='synthesis') */
   synthesisId?: string;
   /** Глубина от корня запроса (1 = непосредственный родитель) */
@@ -61,7 +64,11 @@ export interface LineageNode {
  */
 export interface FileGenealogyNode {
   type: "concept" | "philosopher";
+  /** Имя из файла. 14.2 (Д-57): у безымянного узла — "" с признаком unnamed;
+   *  русские заглушки «[безымянная концепция]» / «[безымянный философ]»
+   *  записей до 14.2 читатели распознают как пустое имя */
   name: string;
+  unnamed?: true;
   method?: string;
   synthLevel?: string;
   generationOrder?: string;

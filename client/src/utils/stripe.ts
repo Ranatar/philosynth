@@ -16,6 +16,8 @@
  */
 
 import { tl } from "@philosynth/shared/i18n/t";
+
+import { currentUiLocale } from "../i18n/i18n-store"; // 14.2 (Д-77)
 export interface StripeElement {
   mount(target: HTMLElement | string): void;
   unmount(): void;
@@ -32,7 +34,7 @@ export interface StripeConfirmResult {
 }
 
 export interface StripeInstance {
-  elements(options: { clientSecret: string; appearance?: Record<string, unknown> }): StripeElements;
+  elements(options: { clientSecret: string; appearance?: Record<string, unknown>; locale?: string }): StripeElements;
   confirmPayment(options: {
     elements: StripeElements;
     redirect: "if_required";
@@ -40,7 +42,7 @@ export interface StripeInstance {
   }): Promise<StripeConfirmResult>;
 }
 
-type StripeFactory = (publishableKey: string) => StripeInstance;
+type StripeFactory = (publishableKey: string, options?: { locale?: string }) => StripeInstance;
 
 declare global {
   interface Window {
@@ -88,13 +90,24 @@ function loadScript(): Promise<StripeFactory> {
 
 let instance: StripeInstance | null = null;
 
+/**
+ * 14.2 (Д-77): язык Stripe Elements — язык интерфейса (хранилище 11.3:
+ * ru/en/de), иначе `auto` (язык браузера — умолчание Stripe). Передаётся и
+ * фабрике Stripe при первом создании, и каждому `elements()` — экземпляр один
+ * на вкладку, а язык интерфейса может смениться позже.
+ */
+export function stripeLocale(): string {
+  const locale: string = currentUiLocale();
+  return locale === "ru" || locale === "en" || locale === "de" ? locale : "auto";
+}
+
 /** Экземпляр Stripe (один на вкладку). Бросает, если ключа нет или CDN недоступен. */
 export async function getStripe(): Promise<StripeInstance> {
   const pk = stripePublishableKey();
   if (!pk) throw new Error(tl("utils.stripe.stripeKeyMissing", "VITE_STRIPE_PUBLISHABLE_KEY не задан"));
   if (instance) return instance;
   const factory = await loadScript();
-  instance = factory(pk);
+  instance = factory(pk, { locale: stripeLocale() });
   return instance;
 }
 

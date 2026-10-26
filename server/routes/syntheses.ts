@@ -59,6 +59,7 @@ import {
 import {
   createLineageRecords,
   unlinkedFileParents,
+  fileNodeName,
 } from "../services/lineage-service.js";
 import { parentOverheadForSection } from "../services/context-builder.js";
 import { normalizeSectionKey } from "../services/parent-context.js";
@@ -145,6 +146,7 @@ import { SYNTHESIS_VISIBILITIES } from "@philosynth/shared/types/synthesis";
 import type { SectionFull } from "@philosynth/shared/types/section";
 import { effectiveFlags, metaParentAllowed } from "@philosynth/shared/utils/visibility";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
+import { sectionTitlesOf } from "../utils/html-parser.js"; // 14.2 (Д-59)
 import type { PauseEstimates } from "@philosynth/shared/types/ws-messages";
 import { tl } from "@philosynth/shared/i18n/t";
 
@@ -504,6 +506,7 @@ async function loadSectionsFull(row: SynthesisRow): Promise<SectionFull[]> {
       secContext: r.secContext,
       isEdited: r.isEdited,
       subsections: subsectionNamesOf(r.htmlContent),
+      ...sectionTitlesOf(r.htmlContent), // 14.2 (Д-59)
     }));
 }
 
@@ -563,7 +566,7 @@ async function buildSynthesisFull(
   // (правило приоритета — unlinkedFileParents, lineage-service)
   const fileConceptParents = unlinkedFileParents(row.fileGenealogy, lineageRows)
     .filter((f) => f.node.type === "concept")
-    .map((f) => f.node.name);
+    .map((f) => fileNodeName(f.node)); // 14.2 (Д-57): безымянный — подстановка на языке запроса
 
   const childSyntheses = await db
     .select({ id: syntheses.id, title: syntheses.title })

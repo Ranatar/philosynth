@@ -27,7 +27,7 @@
  *
  * Модуль — лист графа импортов (его зовёт только plan-executor).
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql as dsql } from "drizzle-orm";
 
 import {
   ELEMENT_STEP_FIELDS,
@@ -51,6 +51,10 @@ import {
 } from "../db/schema.js";
 import { parseFragment, resolveSubsection } from "../utils/html-parser.js";
 import { loadExpectedSubsectionOrder } from "./subsection-order.js"; // 11.2, Д-16
+import { renderParseWarningsRu } from "./parse-warnings.js"; // 14.2, Д-55
+import { renderLogError, streamLogError } from "./gen-log-labels.js"; // 14.2, Д-62
+import { runWithLocale } from "../i18n/locale.js";
+import type { GenLogError, GenLogLabel } from "@philosynth/shared/types/generation";
 import { truncateText } from "../utils/text.js";
 import { PRICE_IN, PRICE_OUT } from "./cost-estimator.js";
 import {
@@ -396,7 +400,7 @@ export async function refineElement(
     const container = parseFragment(sec.html);
     const order = (await loadExpectedSubsectionOrder(synthesisId))[secKey] ?? [];
     const found = resolveSubsection(container, subName, order);
-    if (found.warning && found.el) console.warn(`refineElement(${secKey}):`, found.warning);
+    if (found.warning && found.el) console.warn(`refineElement(${secKey}):`, renderParseWarningsRu([found.warning])[0]);
     subText = found.actualName ? (extractSubsectionContent(container, found.actualName) ?? "") : "";
   }
 
@@ -432,6 +436,11 @@ export async function refineElement(
       taskChars: prompt.length,
       inputChars: SYS.length + prompt.length,
       metadata: {
+        // 14.2 (Д-62): подпись кодом; section_label — русская запасная строка
+        logLabel: {
+          kind: "element_step", section: host, elementKind: kind, elementName: truncateText(el.name, 80), field,
+          ...(rec ? { recNum: String(rec.num), recRound: rec.round } : {}),
+        } satisfies GenLogLabel,
         elementStep: { kind, elementId, field },
         ...(rec ? { recommendation: { id: rec.id, num: rec.num, round: rec.round } } : {}),
         promptSkeleton: buildPromptSkeleton(prompt),
@@ -465,6 +474,7 @@ export async function refineElement(
         inputTokens: eUsage.inputTokens,
         outputTokens: eUsage.outputTokens,
         costUsd: (eUsage.inputTokens * PRICE_IN + eUsage.outputTokens * PRICE_OUT).toFixed(6),
+        metadata: dsql`metadata || ${JSON.stringify({ error: streamLogError(e) })}::jsonb`, // 14.2 (Д-62)
       })
       .where(eq(generationLog.id, genEntryId));
     await bumpTotals(synthesisId, eUsage);
@@ -473,15 +483,23 @@ export async function refineElement(
   }
   const costUsd = usage.inputTokens * PRICE_IN + usage.outputTokens * PRICE_OUT;
   const value = cleanModelFieldValue(answer);
-  const bad =
-    value === null ? "модель вернула пустой ответ"
-    : value.length > ELEMENT_FIELD_MAX_CHARS ? `ответ модели длиннее ${ELEMENT_FIELD_MAX_CHARS} знаков`
+  // 14.2 (Д-62): негодный ответ — кодом в metadata.error (фразу собирает
+  // log-formatter под языком запроса); error_message — русская запасная
+  // строка той же фразы; ответ человеку (ElementStepError) — на языке запроса
+  const bad: GenLogError | null =
+    value === null ? { code: "element_empty_response" }
+    : value.length > ELEMENT_FIELD_MAX_CHARS ? { code: "element_too_long", maxChars: ELEMENT_FIELD_MAX_CHARS }
     : null;
   await db
     .update(generationLog)
     .set({
       status: bad ? "error" : "done",
-      ...(bad ? { errorMessage: bad } : {}),
+      ...(bad
+        ? {
+            errorMessage: runWithLocale("ru", () => renderLogError(bad, null)),
+            metadata: dsql`metadata || ${JSON.stringify({ error: bad })}::jsonb`,
+          }
+        : {}),
       outputChars: answer.length,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
@@ -492,7 +510,7 @@ export async function refineElement(
   await clearStreamState(synthesisId, streamKey);
   if (bad || value === null)
     // Негодный ответ в элемент НЕ пишется; токены потрачены и учтены
-    throw new ElementStepError("MODEL_ANSWER_INVALID", tl("server.elementStep.pointEditFailed", "Точечная правка не удалась: {bad}. Элемент не изменён.", { bad }));
+    throw new ElementStepError("MODEL_ANSWER_INVALID", tl("server.elementStep.pointEditFailed", "Точечная правка не удалась: {bad}. Элемент не изменён.", { bad: renderLogError(bad, null) ?? "" }));
 
   const origin = originOf(step, planId, stepIndex);
   const applied = await writeField(synthesisId, el, field, value, {

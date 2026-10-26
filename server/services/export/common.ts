@@ -11,7 +11,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "../../db/index.js";
 import { syntheses, synthesisLineage } from "../../db/schema.js";
-import { unlinkedFileParents } from "../lineage-service.js";
+import { UNNAMED_CONCEPT_RU, fileNodeNameRu, unlinkedFileParents } from "../lineage-service.js";
 import { getDocFilename } from "./filename.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
@@ -85,11 +85,12 @@ export async function loadExportSynthesis(
         name:
           titles.get(l.parentSynthesisId as string) ??
           l.parentName ??
-          "[безымянная концепция]",
+          UNNAMED_CONCEPT_RU,
       }));
+  // 14.2 (Д-57): безымянный узел файла — русская заглушка (экспорт-зеркало)
   for (const f of unlinkedFileParents(row.fileGenealogy, lineageRows)) {
     if (f.node.type === "concept")
-      slots.push({ position: f.position, id: null, name: f.node.name });
+      slots.push({ position: f.position, id: null, name: fileNodeNameRu(f.node) });
   }
   const conceptParents = slots
     .sort((a, b) => a.position - b.position)

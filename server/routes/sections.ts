@@ -46,6 +46,7 @@ import { db } from "../db/index.js";
 import { generationLog, sections, synthesisLineage } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
+import { sectionTitlesOf } from "../utils/html-parser.js"; // 14.2 (Д-59)
 import { getSectionContextQualityMap } from "../services/context-quality.js";
 import { loadConceptParticipants } from "../services/meta-synthesis-service.js";
 import { buildContextForSection } from "../services/context-builder.js";
@@ -62,6 +63,7 @@ import {
 } from "../services/element-editor.js";
 import { ownerEditGate } from "./elements.js";
 import { logsAllowed } from "./logs.js";
+import { parseWarningsFromMetadata, renderParseWarnings } from "../services/parse-warnings.js"; // 14.2 (Д-55)
 import {
   forbiddenJson,
   loadSynthesisForRead,
@@ -144,6 +146,7 @@ sectionsRoutes.get("/:id/sections", requireAuth, async (c) => {
     htmlChars: s.htmlContent.length,
     contextQualityScore: quality.get(s.key)?.score ?? null,
     subsections: listSubsections(s.htmlContent),
+    ...sectionTitlesOf(s.htmlContent), // 14.2 (Д-59): sectionTitle + subsectionTitles
     updatedAt: s.updatedAt.toISOString(),
   }));
   return c.json({ sections: list });
@@ -158,7 +161,9 @@ sectionsRoutes.get("/:id/sections", requireAuth, async (c) => {
  * догенераций после неё входят — они пишутся с section_key вида
  * «graph:Таблица связей» (generation-service 2.2), поэтому отбор —
  * по точному ключу ИЛИ по префиксу «key:» (нашёл тест R9 11.2).
- * Пустой массив — разбор без потерь.
+ * Пустой массив — разбор без потерь. 14.2 (Д-55): элементы — коды с
+ * параметрами либо строки (старые записи); фраза собирается здесь под
+ * языком запроса (`renderParseWarning`) — клиенту 11.3 менять нечего.
  */
 export async function loadSectionParseWarnings(synthesisId: string, sectionKey: string): Promise<string[]> {
   const rows = await db
@@ -179,8 +184,7 @@ export async function loadSectionParseWarnings(synthesisId: string, sectionKey: 
   const out: string[] = [];
   for (const r of rows) {
     const meta = (r.metadata ?? {}) as { parseWarnings?: unknown };
-    if (Array.isArray(meta.parseWarnings))
-      out.unshift(...meta.parseWarnings.filter((w): w is string => typeof w === "string"));
+    out.unshift(...renderParseWarnings(parseWarningsFromMetadata(meta.parseWarnings)));
     if (r.source !== "subsection_regen") break; // граница последней полной (пере)генерации
   }
   return [...new Set(out)];
@@ -215,6 +219,7 @@ sectionsRoutes.get("/:id/sections/:key", requireAuth, async (c) => {
     secContext: row.secContext,
     isEdited: row.isEdited,
     subsections: listSubsections(row.htmlContent),
+    ...sectionTitlesOf(row.htmlContent), // 14.2 (Д-59)
     // 9.2: вычисляемый заслон — клиент не рисует карандаш у запертых
     lockedSubsections: lockedSubsectionNames(row.key, row.htmlContent),
     // 11.2 (Д-16): предупреждения разбора из генлога — показ в 11.3.
@@ -299,6 +304,7 @@ sectionsRoutes.patch("/:id/sections/:key/subsections/:name", requireAuth, async 
         htmlContent: r.htmlContent,
         isEdited: r.changed ? true : undefined,
         subsections: listSubsections(r.htmlContent),
+        subsectionTitles: sectionTitlesOf(r.htmlContent).subsectionTitles, // 14.2 (Д-59)
         lockedSubsections: lockedSubsectionNames(r.sectionKey, r.htmlContent),
       },
     };

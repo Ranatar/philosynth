@@ -283,7 +283,11 @@ async function handleResume(
         synthesisId,
         kind: "gen",
         reasonKind: ps.reasonKind,
-        reason: ps.reason,
+        // 14.2 (Д-54): причина полями; reason — только у пауз до 14.2
+        ...(ps.reason !== undefined ? { reason: ps.reason } : {}),
+        ...(ps.rawMessage !== undefined ? { rawMessage: ps.rawMessage } : {}),
+        ...(ps.maxTokensUsed !== undefined ? { maxTokensUsed: ps.maxTokensUsed } : {}),
+        ...(ps.stuckSec !== undefined ? { stuckSec: ps.stuckSec } : {}),
         isPartial: ps.isPartial,
         partialSubsections: ps.partialSubsections,
         expectedSubsections: ps.expectedSubsections,

@@ -134,10 +134,13 @@ import {
   parseGraphFromHTML,
   saveGraphToDb,
 } from "./graph-parser.js";
+import { renderParseWarnings } from "./parse-warnings.js"; // 14.2 (Д-55)
 import {
   findSameOwnerSynthesesByTitle,
   isDescendantOf,
+  isUnnamedFileNode, // 14.2 (Д-57)
   sanitizeFileGenealogy,
+  unnamedLabel,
 } from "./lineage-service.js";
 import { metaParentAllowed } from "@philosynth/shared/utils/visibility"; // 13.2 (Д-66)
 import {
@@ -1301,15 +1304,15 @@ export async function importHTML(
         const parsed = parseGraphFromHTML(graphSec.html);
         if (parsed.nodes.length > 0) {
           const res = await saveGraphToDb(synthesisId, parsed);
-          // res.warnings ⊇ parsed.warnings (11.1)
-          for (const w of res.warnings) {
+          // res.warnings ⊇ parsed.warnings (11.1); 14.2 — коды, фраза на языке запроса импорта
+          for (const w of renderParseWarnings(res.warnings)) {
             warnings.push({ field: "graph", message: w, critical: false });
           }
         } else {
           // 11.2 (Д-16): ноль категорий — чаще всего переведённая моделью
           // «Таблица категорий»; предупреждения разбора 11.1 доходят до
           // ответа импорта и без записи в БД (ImportPage их показывает)
-          for (const w of parsed.warnings ?? []) {
+          for (const w of renderParseWarnings(parsed.warnings ?? [])) {
             warnings.push({ field: "graph", message: w, critical: false });
           }
         }
@@ -1473,17 +1476,19 @@ export async function importHTML(
         p.name,
         synthesisId,
       );
-      lineageCandidates.push({ parentName: p.name, position: position++, matches });
+      // 14.2 (Д-57): безымянный родитель в ответе — подстановка на языке запроса
+      const shownName = isUnnamedFileNode({ name: p.name }) ? unnamedLabel("concept") : p.name;
+      lineageCandidates.push({ parentName: shownName, position: position++, matches });
       warnings.push({
         field: "lineage",
         message: uuidRejected
           ? // 13.2 (Д-66): причина одна на все случаи (приватная, витрина,
             // allow_meta снят, цикл) — различать их значило бы выдавать
             // состояние чужой концепции по идентификатору из файла
-            tl("server.importService.parentNotAllowed", "Концепция-родитель «{name}» найдена по идентификатору из файла, но в мета-синтез не годится по правилу доступа (автор не разрешил использование, концепция приватна или открыта витриной) — связь генеалогии не создана. Её ветка сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок.", { name: p.name })
+            tl("server.importService.parentNotAllowed", "Концепция-родитель «{name}» найдена по идентификатору из файла, но в мета-синтез не годится по правилу доступа (автор не разрешил использование, концепция приватна или открыта витриной) — связь генеалогии не создана. Её ветка сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок.", { name: shownName })
           : matches.length > 0
-            ? tl("server.importService.parentAmbiguous", "Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).", { name: p.name, matchesCount: matches.length })
-            : tl("server.importService.parentMissing", "Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.", { name: p.name }),
+            ? tl("server.importService.parentAmbiguous", "Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).", { name: shownName, matchesCount: matches.length })
+            : tl("server.importService.parentMissing", "Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.", { name: shownName }),
         critical: false,
       });
     }

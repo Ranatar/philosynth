@@ -39,6 +39,8 @@ import {
 } from "../ws/stream-state.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
+import type { PauseReasonFields } from "@philosynth/shared/types/synthesis";
+
 export { getStreamState, clearStreamState };
 export type { StreamState } from "../ws/stream-state.js";
 
@@ -418,11 +420,31 @@ export async function streamSection(
   return usage;
 }
 
+/* ── Причина паузы — полями (14.2, Д-54) ─────────────────────────────── */
+
+/**
+ * Поля причины паузы для pausedState / pause_marker / generation_paused:
+ * reasonKind и сырые данные — без фразы службы. Сообщение ошибки уходит в
+ * rawMessage только там, где оно СЫРОЕ (ответ API Anthropic, ошибка
+ * построения контекста): у kind'ов, чьё сообщение собрала сама служба
+ * (stuck, max-tokens, user-abort), фраза не хранится — её соберёт клиент
+ * по reasonKind и числам (`maxTokensUsed`, `stuckSec`).
+ */
+export function pauseReasonFields(err: StreamError): PauseReasonFields {
+  const kind = err.kind;
+  if (kind === "max-tokens") return { reasonKind: kind, maxTokensUsed: err.maxTokensUsed || env.anthropic.maxTokens };
+  if (kind === "stuck") return { reasonKind: kind, stuckSec: Math.round(env.streaming.stuckMs / 1000) };
+  if (kind === "user-abort") return { reasonKind: kind };
+  const raw = (err.message || String(err)).trim();
+  return raw ? { reasonKind: kind, rawMessage: raw } : { reasonKind: kind };
+}
+
 /* ── Дружественное сообщение об обрыве ───────────────────────────────── */
 
 /**
  * Порт _pauseFriendlyMessage(err) [24653]: человекочитаемая причина паузы
- * по kind. Используется generation-service при записи pausedState.reason.
+ * по kind — для консоли и тестов. С 14.2 (Д-54) в pausedState НЕ пишется:
+ * причина хранится полями (`pauseReasonFields`), фразу собирает клиент.
  */
 export function pauseFriendlyMessage(err: StreamError | null | undefined): string {
   if (!err) return "Неизвестная ошибка";

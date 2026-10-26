@@ -33,6 +33,7 @@ import type {
   PausedState,
   PausedStateGen,
   PausedStatePlan,
+  PauseReasonFields,
 } from "@philosynth/shared/types/synthesis";
 import type {
   PauseEstimates,
@@ -117,6 +118,21 @@ function seedState(expected: readonly string[] | undefined): SectionState {
     };
   }
   return { order, byKey };
+}
+
+/** 14.2 (Д-54): поля причины паузы из WS-сообщения — reasonKind, сырое
+ *  сообщение API и числа; `reason` несут только повторы пауз до 14.2. Без
+ *  undefined-ключей (exactOptionalPropertyTypes). */
+export function pauseReasonFieldsOf(
+  msg: Extract<WsServerMessage, { type: "generation_paused" }>,
+): PauseReasonFields {
+  return {
+    reasonKind: msg.reasonKind,
+    ...(msg.reason !== undefined ? { reason: msg.reason } : {}),
+    ...(msg.rawMessage !== undefined ? { rawMessage: msg.rawMessage } : {}),
+    ...(msg.maxTokensUsed !== undefined ? { maxTokensUsed: msg.maxTokensUsed } : {}),
+    ...(msg.stuckSec !== undefined ? { stuckSec: msg.stuckSec } : {}),
+  };
 }
 
 export function useStreamingGeneration(
@@ -207,8 +223,8 @@ export function useStreamingGeneration(
           },
           regenCtx: {},
           addCtx: {},
-          reason: msg.reason,
-          reasonKind: msg.reasonKind,
+          // 14.2 (Д-54): причина — полями; reason только у повторов пауз до 14.2
+          ...pauseReasonFieldsOf(msg),
           timestamp: Date.now(),
         };
         return plan;
@@ -219,8 +235,7 @@ export function useStreamingGeneration(
         sectionKeys: msg.sectionKeys ?? (cur ? [cur] : []),
         sectionLabel: (msg.sectionKeys ?? (cur ? [cur] : [])).map(labelFor).join(", "),
         isPartial: msg.isPartial,
-        reason: msg.reason,
-        reasonKind: msg.reasonKind,
+        ...pauseReasonFieldsOf(msg),
         timestamp: Date.now(),
         partialSubsections: msg.partialSubsections ?? [],
         expectedSubsections: msg.expectedSubsections ?? [],

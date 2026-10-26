@@ -908,6 +908,17 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
                                        // нужны TableOfContents (беседа 1.6b)
                                        // для якорей второго уровня;
                                        // parseSubsectionsFromHTML (1.4)
+  sectionTitle: string | null;         // 14.2 (Д-59): видимый .section-title
+                                       // документа без ⏫ и якорей (язык
+                                       // генерации); нет — null
+  subsectionTitles: Record<string, string>;  // 14.2 (Д-59): ключ data-section →
+                                       // видимый текст первого <h4> подраздела
+                                       // (без ⏫ и якорей); нет <h4> — ключ.
+                                       // Ключи subsections остаются машинными
+                                       // (сравнения, адреса, якоря); клиент
+                                       // рисует имена по карте (helper
+                                       // subsectionTitle), перевода ключей
+                                       // по таблице НЕТ
   updatedAt: string;
 }
 ```
@@ -923,6 +934,8 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
   secContext: string;
   isEdited: boolean;
   subsections: string[];  // имена data-section внутри HTML
+  sectionTitle: string | null;               // 14.2 (Д-59): см. SectionSummary
+  subsectionTitles: Record<string, string>;  // 14.2 (Д-59): см. SectionSummary
   lockedSubsections?: string[];  // 9.2: запертые для ручной правки (таблицы,
                                  // которые служба рисует из БД, и капсула) —
                                  // вычисляются против текущего HTML. Несёт
@@ -942,6 +955,11 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
                                  // завершила ответ, не написав подраздел …» и исход
                                  // своего повтора «Таблицы рекомендаций»; документ
                                  // при них сохранён как есть, догенерации нет.
+                                 // 14.2 (Д-55): в генлоге лежат КОДЫ с параметрами
+                                 // (shared ParseWarning; записи до 14.2 — строки),
+                                 // сюда отдаются фразы, собранные под языком
+                                 // запроса (server/services/parse-warnings.ts);
+                                 // старая строка — как есть.
                                  // Несёт GET /sections/:key; показ — 11.3:
                                  // SectionView рисует «⚠ Разобран с потерями (N)» со
                                  // списком ТОЛЬКО владельцу (DocumentView передаёт
@@ -971,7 +989,9 @@ PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
   titleUpdated?: string;            // 12.1 (Д-4): правка раздела name обновила
                                     // syntheses.title — только если название совпадало с
                                     // извлечённым из раздела ДО правки
-  section: { key, htmlContent, isEdited?, subsections, lockedSubsections } }
+  section: { key, htmlContent, isEdited?, subsections,
+             subsectionTitles,           // 14.2 (Д-59): карта видимых заголовков после правки
+             lockedSubsections } }
 ```
 
 ### 2.4. Elements (гранулярные)
@@ -2070,8 +2090,17 @@ Endpoint: `wss://host/ws?token={sessionToken}`
 { type: "generation_paused",
   synthesisId: string,
   kind: "gen" | "plan",
-  reasonKind: "auth"|"billing"|"pre-stream"|"max-tokens"|"partial"|"stuck",
-  reason: string,
+  reasonKind: "auth"|"billing"|"pre-stream"|"max-tokens"|"partial"|"stuck"
+             |"context-error",
+  reason?: string,           // 14.2 (Д-54): фразы причины сервер больше НЕ шлёт —
+                             // клиент собирает её по reasonKind (PauseModal,
+                             // tl()); поле несут только replay-сообщения пауз,
+                             // записанных до 14.2 (запасной текст как есть)
+  rawMessage?: string,       // 14.2 (Д-54): сырое сообщение API Anthropic /
+                             // ошибки службы (auth, billing, pre-stream,
+                             // partial, context-error) — деталь к причине, как есть
+  maxTokensUsed?: number,    // 14.2 (Д-54): max-tokens — предел; stuck — порог
+  stuckSec?: number,         //   молчания стрима, с (числа — подстановками)
   isPartial: boolean,
   partialSubsections?: string[],
   expectedSubsections?: string[],

@@ -88,6 +88,7 @@ import { ThesisEditor, thesisDiff, thesisToDraft, type ThesisDraft } from "./The
 import { VersionHistory } from "./VersionHistory";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData, tDataLoose } from "@philosynth/shared/i18n/data";
+import { useSubsectionTitle } from "../../utils/subsection-titles"; // 14.2 (Д-59)
 
 /* ── Общие мелочи для редакторов ─────────────────────────────────────── */
 
@@ -745,6 +746,16 @@ function ImpactPanel({
 }) {
   const { impact, htmlSync } = outcome;
   const sync: HtmlSyncInfo = htmlSync;
+  // 14.2 (Д-59): affectedSubsections — составные ключи «раздел:подраздел»
+  // (element-editor сервера); показ — метка раздела → видимый заголовок
+  const subTitle = useSubsectionTitle();
+  const affectedSubsectionLabel = (composite: string): string => {
+    const i = composite.indexOf(":");
+    if (i < 0) return composite;
+    const sec = composite.slice(0, i);
+    const name = composite.slice(i + 1);
+    return `${labelOf(sec)} → ${subTitle(sec, name)}`;
+  };
   return (
     <div className="cascade-panel visible" data-element-impact style={{ marginTop: 12 }}>
       <div className="cascade-title">{tl("edit.elementEditor.impactAnalysis", "Анализ влияния")}</div>
@@ -786,7 +797,7 @@ function ImpactPanel({
           {impact.affectedSubsections.map((s) => (
             <div className="sec-warning-item" key={`ss:${s}`}>
               <span className="warn-icon">⚠</span>
-              <span>{tl("edit.elementEditor.subsection", "Подраздел {subsection}", { subsection: s })}</span>
+              <span>{tl("edit.elementEditor.subsection", "Подраздел {subsection}", { subsection: affectedSubsectionLabel(s) })}</span>
             </div>
           ))}
           {impact.affectedModes.map((m) => (

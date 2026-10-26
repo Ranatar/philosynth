@@ -101,7 +101,8 @@ import {
   setPlanResumeExecutor,
 } from "./pause-resume-service.js";
 import { STRUCTURE_SUBSECTION } from "./structure-tracker.js";
-import { classifyStreamError, StreamError } from "./streaming-manager.js";
+import { classifyStreamError, pauseReasonFields, StreamError } from "./streaming-manager.js";
+import type { GenLogLabel } from "@philosynth/shared/types/generation"; // 14.2 (Д-62)
 
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import { formatVersion } from "@philosynth/shared/utils/version";
@@ -360,6 +361,7 @@ async function bumpVersionsForPlan(
     source: "edit",
     status: "done",
     metadata: {
+      logLabel: { kind: "version" } satisfies GenLogLabel, // 14.2 (Д-62)
       actions,
       hasSectionChanges,
       modeRegenCount,
@@ -535,6 +537,8 @@ async function runPlanSteps(
           : classifyStreamError(rawErr, false);
       step.status = "failed";
       await persistSteps(planId, steps, i);
+      // 14.2 (Д-54): причина — полями (reasonKind, rawMessage, числа), без фразы
+      const reasonFields = pauseReasonFields(e);
 
       const remaining = steps
         .slice(i + 1)
@@ -548,7 +552,7 @@ async function runPlanSteps(
         plan: planSummaryFromSteps(steps),
         regenCtx,
         addCtx,
-        reason: e.message,
+        ...reasonFields,
         reasonKind: (e.kind || "partial") as PauseReasonKind,
       });
       await setPlanStatus(planId, "paused");
@@ -563,8 +567,8 @@ async function runPlanSteps(
           type: "generation_paused",
           synthesisId,
           kind: "plan",
+          ...reasonFields,
           reasonKind: ps.reasonKind as Exclude<PauseReasonKind, "user-abort">,
-          reason: e.message,
           isPartial: false,
           estimates: {},
         });

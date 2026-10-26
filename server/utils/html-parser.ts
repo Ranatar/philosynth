@@ -33,6 +33,7 @@ import {
 } from "@philosynth/shared/utils/doc-markup-sanitize";
 import { tl } from "@philosynth/shared/i18n/t"; // 14.1 (Д-60): тексты ответа — на языке запроса
 
+import type { ParseWarning } from "@philosynth/shared/types/parse-warnings";
 import type { TableLikeElement } from "./text.js";
 
 /** Структурный минимум DOM-элемента, достаточный для портов extract*(). */
@@ -343,8 +344,9 @@ export interface SubsectionLookup {
   actualName: string | null;
   /** Найден не по имени, а по позиции в ожидаемом порядке карты. */
   byPosition: boolean;
-  /** Предупреждение для генлога (опознан по месту / не найден и почему). */
-  warning: string | null;
+  /** Предупреждение для генлога (опознан по месту / не найден и почему) —
+   *  кодом с параметрами (14.2, Д-55); фразу собирает `renderParseWarning`. */
+  warning: ParseWarning | null;
 }
 
 /**
@@ -362,7 +364,8 @@ export interface SubsectionLookup {
  * context-builder (intra-контекст), recommendations (адреса, метки тезисов,
  * хэш источника), recommendation-planner (проза) и element-step; читают они
  * по actualName, ключи карт и адреса остаются каноническими. Предупреждения —
- * на русском: это диагностика владельца, хранимая в генлоге (не интерфейс).
+ * кодами (14.2, Д-55): это диагностика владельца, хранимая в генлоге; язык
+ * записи — не язык чтения, фразу собирает `renderParseWarning` при показе.
  */
 export function resolveSubsection(
   container: HtmlElement,
@@ -384,9 +387,10 @@ export function resolveSubsection(
       el: null,
       actualName: null,
       byPosition: false,
-      warning: `подраздел «${name}» не найден по имени (атрибуты data-section раздела: ${all
-        .map((e) => `"${e.getAttribute("data-section") ?? ""}"`)
-        .join(", ") || "нет"}); ожидаемый порядок не передан — опознать по месту нельзя`,
+      warning: {
+        code: "subsection_not_found_no_order",
+        params: { name, attrs: all.map((e) => e.getAttribute("data-section") ?? "") },
+      },
     };
   }
   const idx = expectedOrder.indexOf(name);
@@ -395,7 +399,7 @@ export function resolveSubsection(
       el: null,
       actualName: null,
       byPosition: false,
-      warning: `подраздел «${name}» не найден по имени и отсутствует в ожидаемом порядке карты (${expectedOrder.length} имён) — опознать по месту нельзя`,
+      warning: { code: "subsection_not_in_map", params: { name, count: expectedOrder.length } },
     };
   }
   if (all.length !== expectedOrder.length) {
@@ -403,7 +407,10 @@ export function resolveSubsection(
       el: null,
       actualName: null,
       byPosition: false,
-      warning: `подраздел «${name}» не найден по имени; опознать по месту нельзя: в разделе ${all.length} подраздел(ов), в карте ${expectedOrder.length}`,
+      warning: {
+        code: "subsection_count_mismatch",
+        params: { name, actual: all.length, expected: expectedOrder.length },
+      },
     };
   }
   const el = all[idx] as HtmlElement;
@@ -412,7 +419,7 @@ export function resolveSubsection(
     el,
     actualName: attr,
     byPosition: true,
-    warning: `подраздел ${idx + 1} опознан по месту: атрибут "${attr}" вместо "${name}"`,
+    warning: { code: "subsection_by_position", params: { index: idx + 1, attr, name } },
   };
 }
 
@@ -1401,6 +1408,49 @@ export function addTocAnchors(
     }
   }
   return root.innerHTML;
+}
+
+/* ── 14.2 (Д-59): видимые заголовки раздела и подразделов ─────────────── */
+
+/** Видимые заголовки раздела (DTO `sectionTitle` / `subsectionTitles`). */
+export interface SectionTitles {
+  /** Текст `.section-title` без ⏫ и якорей оглавления; нет — null */
+  sectionTitle: string | null;
+  /** Ключ data-section → текст первого `<h4>` подраздела без ⏫ и якорей; нет `<h4>` — ключ */
+  subsectionTitles: Record<string, string>;
+}
+
+/**
+ * Имя подраздела вокруг документа = видимый `<h4>` самого документа (решение
+ * пользователя 2026-10-13 — «как проще и надёжнее»): модель пишет заголовки на
+ * языке генерации, по-русски остаётся только атрибут data-section, а интерфейс
+ * до 14.2 брал имена из атрибута. Кнопки ⏫ (`a.toc-back-btn`) и пустые якоря
+ * оглавления в заголовок не попадают; ключи остаются машинными (сравнения,
+ * адреса, якоря), перевода ключей по таблице нет.
+ */
+export function sectionTitlesOf(html: string): SectionTitles {
+  const out: SectionTitles = { sectionTitle: null, subsectionTitles: {} };
+  if (!html) return out;
+  const root = parseEditable(html);
+  for (const btn of Array.from(root.querySelectorAll("a.toc-back-btn"))) btn.remove();
+  for (const a of Array.from(root.querySelectorAll("a[id]"))) {
+    if ((a.getAttribute("id") ?? "").startsWith("subsec-") && (a.textContent ?? "").trim() === "") a.remove();
+  }
+  const clean = (t: string | null | undefined): string => (t ?? "").replace(/⏫/g, "").replace(/\s+/g, " ").trim();
+  for (const title of root.querySelectorAll(".section-title")) {
+    out.sectionTitle = clean(title.textContent) || null;
+    break;
+  }
+  for (const sub of Array.from(root.querySelectorAll("[data-section]"))) {
+    const key = sub.getAttribute("data-section") ?? "";
+    if (!key || key in out.subsectionTitles) continue;
+    let text = "";
+    for (const child of sub.children) {
+      if (child.tagName.toUpperCase() === "H4") { text = clean(child.textContent); break; }
+    }
+    out.subsectionTitles[key] = text || key;
+  }
+  return out;
 }
 
 /**

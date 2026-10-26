@@ -75,8 +75,62 @@ export function fmtCost(cost: number | null | undefined): string {
 
 /* ── Мелкие блоки разметки (аналог css-классов pause-* исходника) ────── */
 
-function ReasonBox({ reason }: { reason: string }) {
-  return <div className="pause-reason-box">{reason}</div>;
+/**
+ * 14.2 (Д-54): причина паузы собирается здесь по reasonKind через tl(), числа
+ * (max_tokens, порог stuck) — подстановками из полей pausedState; сырое
+ * сообщение API (rawMessage) — отдельной строкой как деталь. Пауза, записанная
+ * до 14.2 (есть reason, нет новых полей), показывает reason как есть.
+ * Порт _pauseFriendlyMessage [24653], бывший серверным (streaming-manager).
+ */
+export function pauseReasonText(ps: PausedState): { text: string; detail: string | null } {
+  const legacy = ps.reason !== undefined && ps.rawMessage === undefined && ps.stuckSec === undefined;
+  if (legacy) return { text: ps.reason as string, detail: null };
+  const raw = ps.rawMessage ?? null;
+  switch (ps.reasonKind) {
+    case "auth":
+      return { text: tl("synthesis.pauseModal.reasonAuth", "API-ключ недействителен или истёк (401)."), detail: raw };
+    case "billing":
+      return { text: tl("synthesis.pauseModal.reasonBilling", "Недостаточно средств на балансе API. Пополните баланс на console.anthropic.com и нажмите «Продолжить»."), detail: raw };
+    case "user-abort":
+      return { text: tl("synthesis.pauseModal.reasonUserAbort", "Генерация остановлена вручную."), detail: null };
+    case "stuck":
+      return { text: tl("synthesis.pauseModal.reasonStuck", "Нет ответа от API более {stuckSec} секунд (стрим «завис»).", { stuckSec: ps.stuckSec ?? 45 }), detail: null };
+    case "max-tokens":
+      return { text: tl("synthesis.pauseModal.reasonMaxTokens", "Ответ оборван по лимиту токенов (max_tokens = {maxTokens}). Раздел слишком объёмный.", { maxTokens: (ps.maxTokensUsed ?? 0).toLocaleString("ru") }), detail: null };
+    case "pre-stream":
+      if (raw && /429/.test(raw)) return { text: tl("synthesis.pauseModal.reasonRateLimit", "Превышен лимит запросов (429)."), detail: raw };
+      if (raw && /5\d{2}/.test(raw)) return { text: tl("synthesis.pauseModal.reasonServer", "Сбой сервера API."), detail: raw };
+      return { text: tl("synthesis.pauseModal.reasonPreStream", "Сбой до начала стрима."), detail: raw };
+    case "partial":
+      return { text: tl("synthesis.pauseModal.reasonPartial", "Стрим оборвался в процессе."), detail: raw };
+    case "context-error":
+      return { text: tl("synthesis.pauseModal.reasonContextError", "Ошибка построения контекста."), detail: raw };
+    default:
+      return { text: raw ?? ps.reason ?? String(ps.reasonKind), detail: null };
+  }
+}
+
+/** 14.2 (Д-62/Д-54): подпись прерванного прохода — по ключам разделов на языке
+ *  интерфейса; без sectionKeys (пауза до 12.5) — sectionLabel как есть. */
+function pauseSectionLabel(ps: PausedStateGen): string {
+  return ps.sectionKeys?.length
+    ? ps.sectionKeys.map((k) => tData(LABELS[k] ?? k)).join(" + ")
+    : ps.sectionLabel;
+}
+
+function ReasonBox({ ps }: { ps: PausedState }) {
+  const { text, detail } = pauseReasonText(ps);
+  return (
+    <div className="pause-reason-box" data-testid="pause-reason">
+      {text}
+      {detail && (
+        <>
+          <br />
+          <span className="pause-subtle" data-testid="pause-reason-detail">{detail}</span>
+        </>
+      )}
+    </div>
+  );
 }
 
 function InfoBox({ children }: { children: React.ReactNode }) {
@@ -155,12 +209,12 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
     return (
       <div className="pause-content">
         <p>
-          {tl("synthesis.pauseModal.sectionGeneration", "Генерация раздела")} <strong>{ps.sectionLabel}</strong> {tl("synthesis.pauseModal.brokeOff", "оборвалась{causeHint} — успело сгенерироваться", { causeHint })}
+          {tl("synthesis.pauseModal.sectionGeneration", "Генерация раздела")} <strong>{pauseSectionLabel(ps)}</strong> {tl("synthesis.pauseModal.brokeOff", "оборвалась{causeHint} — успело сгенерироваться", { causeHint })}
           <strong>
             {tl("synthesis.pauseModal.countOf", "{doneCount} из {expectedCount}", { doneCount: done.length, expectedCount: expected.length })}
           </strong>{tl("synthesis.pauseModal.subsectionsDot", "подразделов.")}
         </p>
-        <ReasonBox reason={ps.reason} />
+        <ReasonBox ps={ps} />
         <InfoBox>
           <strong>{tl("synthesis.pauseModal.completedEarlier", "Завершено ранее:")}</strong> {completedCount} {completedWord}
           {completedCount > 0 && (
@@ -170,7 +224,7 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
             </>
           )}
           <br />
-          <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {ps.sectionLabel}
+          <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {pauseSectionLabel(ps)}
           {done.length > 0 && (
             <>
               <br />
@@ -205,9 +259,9 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
   return (
     <div className="pause-content">
       <p>
-        {tl("synthesis.pauseModal.sectionGeneration", "Генерация раздела")} <strong>{ps.sectionLabel}</strong> {tl("synthesis.pauseModal.couldNotStart", "не смогла начаться — запрос к API не прошёл после 3 попыток.")}
+        {tl("synthesis.pauseModal.sectionGeneration", "Генерация раздела")} <strong>{pauseSectionLabel(ps)}</strong> {tl("synthesis.pauseModal.couldNotStart", "не смогла начаться — запрос к API не прошёл после 3 попыток.")}
       </p>
-      <ReasonBox reason={ps.reason} />
+      <ReasonBox ps={ps} />
       <InfoBox>
         <strong>{tl("synthesis.pauseModal.completedEarlier", "Завершено ранее:")}</strong> {completedCount} {completedWord}
         {completedCount > 0 && (
@@ -217,7 +271,7 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
           </>
         )}
         <br />
-        <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {ps.sectionLabel}
+        <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {pauseSectionLabel(ps)}
       </InfoBox>
       <Subtle>
         {tl("synthesis.pauseModal.possibleCauses", "Возможные причины: перегрузка API, проблемы с сетью, превышение лимита. Попробуйте ещё раз через несколько минут.")}
@@ -340,7 +394,7 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
         </strong>
         .
       </p>
-      <ReasonBox reason={ps.reason} />
+      <ReasonBox ps={ps} />
       <InfoBox>
         <strong>{tl("synthesis.pauseModal.failedStep", "Упавший шаг:")}</strong> {planOpLabel(op)}
         <br />
@@ -406,7 +460,7 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
       <p>
         {tl("synthesis.pauseModal.pausedLead", "Генерация приостановлена:")} <strong>{tl("synthesis.pauseModal.balanceExhausted", "баланс API исчерпан")}</strong>.
       </p>
-      <ReasonBox reason={ps.reason || "credit balance too low"} />
+      <ReasonBox ps={ps} />
       <InfoBox>
         <strong>{tl("synthesis.pauseModal.completedBeforePause", "Завершено до паузы:")}</strong> {completedCount} {completedWord}
         {completedCount > 0 && (
@@ -416,7 +470,7 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
           </>
         )}
         <br />
-        <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {ps.sectionLabel || "?"}
+        <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {pauseSectionLabel(ps) || "?"}
       </InfoBox>
       <Subtle>
         {tl("synthesis.pauseModal.topUpLead", "Пополните баланс на")}
@@ -478,7 +532,7 @@ function AuthContent({ ps, form }: { ps: PausedState; form: AuthKeyForm }) {
   const context =
     ps.kind === "gen" ? (
       <>
-        {tl("synthesis.pauseModal.atSection", "на разделе")} <strong>{ps.sectionLabel || "—"}</strong>
+        {tl("synthesis.pauseModal.atSection", "на разделе")} <strong>{pauseSectionLabel(ps) || "—"}</strong>
       </>
     ) : (
       <>
@@ -493,7 +547,7 @@ function AuthContent({ ps, form }: { ps: PausedState; form: AuthKeyForm }) {
         {tl("synthesis.pauseModal.keyInvalidLead", "API-ключ Anthropic недействителен или истёк. Генерация остановлена")}{" "}
         {context}.
       </p>
-      <ReasonBox reason={ps.reason} />
+      <ReasonBox ps={ps} />
       <p>
         {tl("synthesis.pauseModal.enterNewKey", "Введите новый ключ — он будет сохранён как ваш ключ (BYO-Key), и генерация продолжится с прерванного места:")}
       </p>

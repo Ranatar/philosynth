@@ -37,6 +37,7 @@ import type { SectionContextPreview } from "@philosynth/shared/types/section";
 import { getSectionContext } from "../../api/sections";
 import type { RollbackResponse } from "../../api/elements";
 import { tl } from "@philosynth/shared/i18n/t";
+import { subsectionTitleFrom } from "../../utils/subsection-titles"; // 14.2 (Д-59)
 
 import { SectionHistory } from "./SectionHistory";
 
@@ -295,7 +296,7 @@ export function EditSectionCard({
                 onClick={() => onOpenSubRegen(name)}
                 disabled={disabled}
               >
-                ⟳ {name}
+                ⟳ {subsectionTitleFrom(summary.subsectionTitles, name)}
               </button>
             ))}
           </div>

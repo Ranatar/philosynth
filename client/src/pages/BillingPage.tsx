@@ -66,6 +66,7 @@ import {
   getStripe,
   STRIPE_APPEARANCE,
   stripeConfigured,
+  stripeLocale,
   type StripeElements,
 } from "../utils/stripe";
 import { tl } from "@philosynth/shared/i18n/t";
@@ -175,7 +176,8 @@ function StripePaymentBox({ clientSecret, submitLabel, onPaid, onCancel }: Strip
       try {
         const stripe = await getStripe();
         if (cancelled || !hostRef.current) return;
-        const elements = stripe.elements({ clientSecret, appearance: STRIPE_APPEARANCE });
+        // 14.2 (Д-77): язык формы карты — язык интерфейса (не браузера)
+        const elements = stripe.elements({ clientSecret, appearance: STRIPE_APPEARANCE, locale: stripeLocale() });
         elementsRef.current = elements;
         element = elements.create("payment", { layout: "tabs" });
         element.mount(hostRef.current);

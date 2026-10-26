@@ -33,6 +33,14 @@ export interface SectionSummary {
   /** Имена data-section внутри HTML — якоря второго уровня для
    *  TableOfContents (беседа 1.6b); parseSubsectionsFromHTML (1.4) */
   subsections: string[];
+  /** 14.2 (Д-59, аддитивно): видимый заголовок раздела — текст `.section-title`
+   *  документа без ⏫ и якорей оглавления (язык генерации); нет — null */
+  sectionTitle: string | null;
+  /** 14.2 (Д-59, аддитивно): ключ data-section → видимый текст первого `<h4>`
+   *  подраздела без ⏫ и якорей; нет `<h4>` — ключ. Ключи `subsections`
+   *  остаются машинными (сравнения, адреса, якоря); перевода ключей по
+   *  таблице нет — клиент рисует имя по этой карте (subsectionTitle) */
+  subsectionTitles: Record<string, string>;
   updatedAt: string;
 }
 
@@ -49,6 +57,14 @@ export interface SectionFull {
   isEdited: boolean;
   /** Имена data-section внутри HTML */
   subsections: string[];
+  /** 14.2 (Д-59, аддитивно): видимый заголовок раздела — текст `.section-title`
+   *  документа без ⏫ и якорей оглавления (язык генерации); нет — null */
+  sectionTitle: string | null;
+  /** 14.2 (Д-59, аддитивно): ключ data-section → видимый текст первого `<h4>`
+   *  подраздела без ⏫ и якорей; нет `<h4>` — ключ. Ключи `subsections`
+   *  остаются машинными (сравнения, адреса, якоря); перевода ключей по
+   *  таблице нет — клиент рисует имя по этой карте (subsectionTitle) */
+  subsectionTitles: Record<string, string>;
   /** 9.2: подразделы, запертые для ручной правки (таблицы, которые служба
    *  рисует из БД, и капсула) — вычисляются против текущего HTML. Поле
    *  несёт GET /sections/:key; во вложенных sections гостя его нет */
@@ -100,6 +116,8 @@ export interface SubsectionUpdateResult {
     htmlContent: string;
     isEdited?: boolean | undefined;
     subsections: string[];
+    /** 14.2 (Д-59): карта видимых заголовков после правки (см. SectionFull) */
+    subsectionTitles: Record<string, string>;
     lockedSubsections: string[];
   };
 }

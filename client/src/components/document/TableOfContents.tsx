@@ -24,9 +24,9 @@
  * пометку ставит SectionView (.section-edited-mark).
  */
 import type { SectionSummary } from "@philosynth/shared/types/section";
-import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import { tl } from "@philosynth/shared/i18n/t";
-import { tData } from "@philosynth/shared/i18n/data";
+
+import { documentSectionTitle, subsectionTitleFrom } from "../../utils/subsection-titles"; // 14.2 (Д-59)
 
 export function subsectionSlugId(key: string, subName: string): string {
   return "subsec-" + key + "-" + subName.replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, "_");
@@ -58,11 +58,9 @@ export function TableOfContents({
         {visible.map((key) => {
           const summary = byKey.get(key);
           if (!summary) return null;
-          const label = tData(
-            (KEY_LABELS as Record<string, string>)[key] ??
-              summary.title ??
-              key,
-          );
+          // 14.2 (Д-59): оглавление рядом с телом документа — видимые заголовки
+          // самого документа (язык генерации); нет .section-title — tData(KEY_LABELS)
+          const label = documentSectionTitle(summary);
           return (
             <div key={key}>
               <p className="toc-section-link">
@@ -81,7 +79,7 @@ export function TableOfContents({
               </p>
               {summary.subsections.map((subName) => (
                 <p className="toc-sub-link" key={subName}>
-                  <a href={`#${subsectionSlugId(key, subName)}`}>{subName}</a>
+                  <a href={`#${subsectionSlugId(key, subName)}`}>{subsectionTitleFrom(summary.subsectionTitles, subName)}</a>
                 </p>
               ))}
             </div>

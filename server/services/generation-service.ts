@@ -126,7 +126,7 @@ import {
 } from "./section-defs-builder.js";
 import {
   classifyStreamError,
-  pauseFriendlyMessage,
+  pauseReasonFields,
   StreamError,
   streamSection,
 } from "./streaming-manager.js";
@@ -156,7 +156,10 @@ import {
   saveElementsToDb,
 } from "./element-parser.js";
 import { tl } from "@philosynth/shared/i18n/t";
-import { sanitizeWarningsRu } from "@philosynth/shared/utils/doc-markup-sanitize"; // 14.1 (Д-60): хранимые фразы чистки
+import { pw, renderParseWarningsRu, sanitizeParseWarnings } from "./parse-warnings.js"; // 14.2 (Д-55): коды предупреждений
+import { streamLogError } from "./gen-log-labels.js"; // 14.2 (Д-62): коды подписей и ошибок журнала
+import type { GenLogLabel } from "@philosynth/shared/types/generation";
+import type { ParseWarning, StoredParseWarning } from "@philosynth/shared/types/parse-warnings";
 
 /* ══ Разъём провайдера родительского контекста (TODO 1.2 → 1.4) ═══════ */
 
@@ -333,31 +336,23 @@ export function findMissingSubsections(
 
 /**
  * Пометка владельцу о пропущенных подразделах — либо null, если всё на
- * месте. Текст русский: это диагностика генлога, не интерфейс (11.2).
+ * месте. С 14.2 (Д-55) — кодом с параметрами: это диагностика генлога, язык
+ * записи — не язык чтения; фразу собирает `renderParseWarning`.
  * Два случая различаются счётом размеченных подразделов: меньше ожидаемого —
- * подраздел не написан; не меньше — написан, но под названием, по которому
- * служба его не узнаёт (и страховка по месту не сработала: число не сошлось).
+ * подраздел не написан (`subsections_missing`); не меньше — написан, но под
+ * названием, по которому служба его не узнаёт, и страховка по месту не
+ * сработала: число не сошлось (`subsections_renamed`).
  */
 export function missingSubsectionsNote(
   html: string,
   expected: readonly string[],
   skip: readonly string[] = [],
-): string | null {
+): ParseWarning | null {
   const missing = findMissingSubsections(html, expected, skip);
   if (missing.length === 0) return null;
   const marked = (html.match(/data-section="/g) ?? []).length;
-  const one = missing.length === 1;
-  const names = missing.map((n) => `«${n}»`).join(", ");
-  const counts = `ожидалось подразделов: ${expected.length}, размечено: ${marked}`;
-  if (marked >= expected.length)
-    return (
-      `модель завершила ответ, но ${one ? "подраздел" : "подразделы"} ${names} по названию не ` +
-      `${one ? "найден" : "найдены"} (${counts}) — вероятно, названия изменены. Раздел сохранён как есть`
-    );
-  return (
-    `модель завершила ответ, не написав ${one ? "подраздел" : "подразделы"} ${names} (${counts}). ` +
-    `Раздел сохранён как есть — перегенерируйте его, если ${one ? "подраздел нужен" : "подразделы нужны"}`
-  );
+  const params = { names: missing, expected: expected.length, marked };
+  return pw(marked >= expected.length ? "subsections_renamed" : "subsections_missing", params);
 }
 
 /**
@@ -1079,7 +1074,7 @@ export async function runGenerationPasses(
       source,
       status: "common",
       inputChars: commonChars,
-      metadata: { genCommon },
+      metadata: { genCommon, logLabel: { kind: "common" } satisfies GenLogLabel },
     });
   }
 
@@ -1184,6 +1179,10 @@ export async function runGenerationPasses(
           taskChars: sp.length,
           inputChars: SYS.length + fp.length,
           metadata: {
+            // 14.2 (Д-62): подпись кодом — section_label остаётся русской запасной строкой
+            logLabel: {
+              kind: "pass", sections: pass.map((d) => d.key), ...(isResume ? { resume: true } : {}),
+            } satisfies GenLogLabel,
             expectedSubsections: expectedSubs,
             subsections: [],
             promptSkeleton: buildPromptSkeleton(fp),
@@ -1299,7 +1298,9 @@ export async function runGenerationPasses(
         const eUsage = e.usage ?? { inputTokens: 0, outputTokens: 0 };
         totalInputTokens += eUsage.inputTokens;
         totalOutputTokens += eUsage.outputTokens;
-        const errorMsg = pauseFriendlyMessage(e);
+        // 14.2 (Д-54): причина — полями (reasonKind, rawMessage, числа), без
+        // готовой фразы: язык записи — не язык чтения, фразу соберёт клиент
+        const reasonFields = pauseReasonFields(e);
         // Частичный HTML: streamed-контент прохода (буфер Redis его же
         // держит для reconnect); сохраняем в раздел.
         const partialHtml = await cleanModelHtml(
@@ -1332,6 +1333,7 @@ export async function runGenerationPasses(
             costUsd: cost.toFixed(6),
             metadata: dsql`metadata || ${JSON.stringify({
               subsections,
+              error: streamLogError(e), // 14.2 (Д-62)
             })}::jsonb`,
           })
           .where(eq(generationLog.id, genEntryId));
@@ -1368,8 +1370,7 @@ export async function runGenerationPasses(
           sectionKeys: pass.map((d) => d.key),
           sectionLabel,
           isPartial,
-          reason: errorMsg,
-          reasonKind: e.kind,
+          ...reasonFields,
           timestamp: Date.now(),
           partialSubsections: doneSubs.map((s) => s.name),
           expectedSubsections: [...expectedSubs],
@@ -1378,9 +1379,6 @@ export async function runGenerationPasses(
           skipDegrades: computeSkipDegrades(
             effectiveDeps, pass.map((d) => d.key), completedPasses,
           ),
-          ...(e.kind === "max-tokens"
-            ? { maxTokensUsed: e.maxTokensUsed || env.anthropic.maxTokens }
-            : {}),
         };
         await db
           .update(syntheses)
@@ -1403,23 +1401,20 @@ export async function runGenerationPasses(
           status: "done",
           metadata: {
             kind: "gen",
-            reasonKind: e.kind,
-            reason: errorMsg,
+            ...reasonFields,
             sectionLabel,
+            logLabel: { kind: "pass", sections: pass.map((d) => d.key) } satisfies GenLogLabel, // 14.2 (Д-62)
             passIdx: i,
             isPartial,
-            maxTokensUsed:
-              e.kind === "max-tokens"
-                ? e.maxTokensUsed || env.anthropic.maxTokens
-                : null,
+            maxTokensUsed: reasonFields.maxTokensUsed ?? null,
           },
         });
         sendToUser(userId, {
           type: "generation_paused",
           synthesisId,
           kind: "gen",
-          reasonKind: e.kind,
-          reason: errorMsg,
+          ...reasonFields,
+          reasonKind: e.kind, // сужен выше: user-abort паузы не создаёт
           isPartial,
           partialSubsections: doneSubs.map((s) => s.name),
           expectedSubsections: [...expectedSubs],
@@ -1540,9 +1535,9 @@ export async function runGenerationPasses(
         pass.map((d) => d.key),
         outerErr,
       );
-      const reason =
-        "Ошибка контекста: " +
-        ((outerErr as Error).message || String(outerErr));
+      // 14.2 (Д-54): без фразы «Ошибка контекста: …» — reasonKind и сырое
+      // сообщение полями, фразу собирает клиент
+      const rawMessage = (outerErr as Error).message || String(outerErr);
       const completedPasses: string[][] = [];
       for (let n = 0; n < i; n++)
         completedPasses.push((passes[n] as SectionDefFull[]).map((d) => d.key));
@@ -1552,8 +1547,8 @@ export async function runGenerationPasses(
         sectionKeys: pass.map((d) => d.key),
         sectionLabel,
         isPartial: false,
-        reason,
         reasonKind: "context-error",
+        rawMessage,
         timestamp: Date.now(),
         partialSubsections: [],
         expectedSubsections: [],
@@ -1584,8 +1579,9 @@ export async function runGenerationPasses(
         metadata: {
           kind: "gen",
           reasonKind: "context-error",
-          reason,
+          rawMessage,
           sectionLabel,
+          logLabel: { kind: "pass", sections: pass.map((d) => d.key) } satisfies GenLogLabel, // 14.2 (Д-62)
           passIdx: i,
           isPartial: false,
         },
@@ -1595,7 +1591,7 @@ export async function runGenerationPasses(
         synthesisId,
         kind: "gen",
         reasonKind: "context-error",
-        reason,
+        rawMessage,
         isPartial: false,
         skipDegrades: pausedState.skipDegrades ?? [],
         sectionKeys: pausedState.sectionKeys, // 12.5 (Д-50)
@@ -1815,6 +1811,7 @@ async function ensureGenCommonForEdit(
     status: "common",
     inputChars: sysChars + baseChars + scaffoldLen,
     metadata: {
+      logLabel: { kind: "common" } satisfies GenLogLabel,
       genCommon: {
         sysChars,
         baseChars,
@@ -1902,23 +1899,25 @@ async function parseAndSaveGraph(
   synthesisId: string,
   html: string,
   label: string,
-): Promise<string[]> {
+): Promise<ParseWarning[]> {
   try {
     const parsed = parseGraphFromHTML(html);
     if (parsed.nodes.length === 0) return parsed.warnings;
     const saved = await saveGraphToDb(synthesisId, parsed);
-    for (const w of saved.warnings) console.warn(`${label}:`, w);
+    for (const w of renderParseWarningsRu(saved.warnings)) console.warn(`${label}:`, w);
     return saved.warnings;
   } catch (e) {
     console.warn(`${label}:`, e);
-    return [`разбор графа не удался: ${e instanceof Error ? e.message : String(e)}`];
+    return [pw("graph_parse_failed", { message: e instanceof Error ? e.message : String(e) })];
   }
 }
 
-/** 11.1: дописать предупреждения разбора в metadata строки генлога. */
+/** 11.1: дописать предупреждения разбора в metadata строки генлога.
+ *  14.2 (Д-55): элементы — коды с параметрами (`ParseWarning`); строки
+ *  допускаются ради старых записей и журнала из выгрузки. */
 export async function appendParseWarnings(
   genEntryId: string,
-  parseWarnings: readonly string[],
+  parseWarnings: readonly StoredParseWarning[],
 ): Promise<void> {
   if (parseWarnings.length === 0) return;
   // jsonb `||` заменил бы ключ целиком — накапливаем массив
@@ -1939,15 +1938,14 @@ export async function appendParseWarnings(
  * Дельты стрима в браузер уходят сырыми: это окно владельца, и встроенные
  * обработчики в нём гасит CSP (server/security-headers); хранится — чистое.
  */
-export const SANITIZE_WARNING_PREFIX = "чистка разметки ответа модели: ";
-
 export async function cleanModelHtml(html: string, genEntryId: string | null): Promise<string> {
   const r = sanitizeSectionHtml(html);
-  // 14.1 (Д-60): в генлог — ХРАНИМАЯ русская формулировка по отчёту
-  // (sanitizeWarningsRu), не r.warnings: те собраны под языком запроса
-  // для ответа человеку, а язык записи — не язык чтения (14.2, Д-54)
+  // 14.1 (Д-60) → 14.2 (Д-55): в генлог — КОДЫ по отчёту (sanitizeParseWarnings),
+  // не r.warnings: те собраны под языком запроса для ответа человеку, а язык
+  // записи — не язык чтения; фразу с префиксом «чистка разметки ответа
+  // модели» собирает renderParseWarning при показе
   if (r.changed && genEntryId && r.report)
-    await appendParseWarnings(genEntryId, sanitizeWarningsRu(r.report).map((w) => SANITIZE_WARNING_PREFIX + w));
+    await appendParseWarnings(genEntryId, sanitizeParseWarnings(r.report));
   return r.html;
 }
 
@@ -1958,8 +1956,8 @@ async function applySectionSideEffects(
   synthesisId: string,
   sectionKey: string,
   html: string,
-): Promise<string[]> {
-  let parseWarnings: string[] = [];
+): Promise<ParseWarning[]> {
+  let parseWarnings: ParseWarning[] = [];
   if (sectionKey === "graph") {
     parseWarnings = await parseAndSaveGraph(synthesisId, html, "Graph re-parse after edit");
   }
@@ -2210,6 +2208,7 @@ export async function regenerateSection(
       taskChars: sp.length,
       inputChars: SYS.length + fp.length,
       metadata: {
+        logLabel: { kind: "regen", section: sectionKey } satisfies GenLogLabel, // 14.2 (Д-62)
         expectedSubsections: expectedSubs,
         subsections: [],
         promptSkeleton: buildPromptSkeleton(fp),
@@ -2309,6 +2308,7 @@ export async function regenerateSection(
         inputTokens: eUsage.inputTokens,
         outputTokens: eUsage.outputTokens,
         costUsd: eCost.toFixed(6),
+        metadata: dsql`metadata || ${JSON.stringify({ error: streamLogError(e) })}::jsonb`, // 14.2 (Д-62)
       })
       .where(eq(generationLog.id, genEntryId));
     await bumpTotals(synthesisId, eUsage);
@@ -2516,12 +2516,12 @@ export async function regenerateSubsection(
   const expectedOrder = (await buildSubsectionMap(p))[sectionKey] ?? [];
   const lookup = resolveSubsection(container, subsectionName, expectedOrder);
   const actualName = lookup.actualName ?? subsectionName;
-  if (lookup.warning) console.warn(`regenerateSubsection(${sectionKey}):`, lookup.warning);
+  if (lookup.warning) console.warn(`regenerateSubsection(${sectionKey}):`, renderParseWarningsRu([lookup.warning])[0]);
 
   /* ── 1. Контексты ── */
   // 11.2 (Д-16): соседние подразделы тоже опознаются по месту; их
   // предупреждения уходят в генлог вместе с lookup.warning
-  const intraWarnings: string[] = [];
+  const intraWarnings: ParseWarning[] = [];
   const intraSectionCtx = await extractRelevantIntraSectionContext(
     container,
     sectionKey,
@@ -2616,6 +2616,7 @@ export async function regenerateSubsection(
       taskChars: subPrompt.length,
       inputChars: SYS.length + fp.length,
       metadata: {
+        logLabel: { kind: "subsection", section: sectionKey, subsection: subsectionName } satisfies GenLogLabel, // 14.2 (Д-62)
         expectedSubsections: [subsectionName],
         subsections: [],
         promptSkeleton: buildPromptSkeleton(fp),
@@ -2736,6 +2737,7 @@ export async function regenerateSubsection(
         inputTokens: eUsage.inputTokens,
         outputTokens: eUsage.outputTokens,
         costUsd: eCost.toFixed(6),
+        metadata: dsql`metadata || ${JSON.stringify({ error: streamLogError(e) })}::jsonb`, // 14.2 (Д-62)
       })
       .where(eq(generationLog.id, genEntryId));
     await bumpTotals(synthesisId, eUsage);
@@ -3074,6 +3076,7 @@ export async function addSection(
         taskChars: sp.length,
         inputChars: SYS.length + fp.length,
         metadata: {
+          logLabel: { kind: "added", section: newDef.key } satisfies GenLogLabel, // 14.2 (Д-62)
           expectedSubsections: expectedSubs,
           subsections: [],
           promptSkeleton: buildPromptSkeleton(fp),
@@ -3237,7 +3240,7 @@ export async function deleteSection(
     logType: "deletion_marker",
     source: "edit",
     status: "done",
-    metadata: { sectionNum: deletedNum ?? null },
+    metadata: { sectionNum: deletedNum ?? null, logLabel: { kind: "section", section: sectionKey } satisfies GenLogLabel },
   });
 
   // ── 2–3. Удаление строки + порядок ──
