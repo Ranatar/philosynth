@@ -290,6 +290,15 @@ export const synthesisLineage = pgTable(
     index("idx_lineage_parent_name")
       .on(t.parentName)
       .where(sql`${t.parentType} = 'philosopher'`),
+    // 15.1 (Д-70, миграция 0014): пара «ребёнок → концепция-родитель»
+    // единственна — два одновременных POST /lineage/link не пишут дубль;
+    // linkParent переводит нарушение в LINEAGE_EXISTS. Частичный: строки
+    // философов и строки с удалённым родителем (SET NULL) не ограничиваются
+    uniqueIndex("uq_lineage_parent_pair")
+      .on(t.synthesisId, t.parentSynthesisId)
+      .where(
+        sql`${t.parentType} = 'synthesis' AND ${t.parentSynthesisId} IS NOT NULL`,
+      ),
   ],
 );
 

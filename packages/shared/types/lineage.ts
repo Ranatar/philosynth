@@ -37,6 +37,13 @@ export interface LineageNode {
   synthesisId?: string;
   /** Глубина от корня запроса (1 = непосредственный родитель) */
   depth: number;
+  /** 15.1: позиция слота среди родителей (position строки БД либо индекс
+   *  узла в participants файла) — адрес для привязки/отвязки; только у
+   *  ancestors, у корня нет */
+  position?: number;
+  /** 15.1 (Д-69): связь-концепция БД, перекрывающая узел-концепцию дерева
+   *  файла на той же позиции — её можно отвязать, узел проступит снова */
+  coversFileNode?: true;
   /** Родители узла (для ancestors) либо потомки (для descendants) */
   children: LineageNode[];
   /**
@@ -106,4 +113,31 @@ export interface LineageCandidate {
 export interface LinkParentInput {
   parentName: string;
   parentSynthesisId: string;
+  /** 15.1 (Д-68): явная позиция узла файла, который связь перекроет
+   *  (из кандидатов узла); без неё позицию ищет linkParent по имени */
+  position?: number;
+}
+
+/* ══ Беседа 15.1: родословная после импорта ═══════════════════════════ */
+
+/** Состояние узла верхнего уровня дерева файла по правилу приоритета */
+export type FileNodeState = "free" | "covered" | "not_concept" | "missing";
+
+/** Ответ GET /syntheses/:id/lineage/file-node/:position/candidates */
+export interface FileNodeCandidates {
+  node: { position: number; name: string; unnamed?: true };
+  /** Совпадения по имени среди синтезов владельца (8.5) */
+  matches: LineageCandidateMatch[];
+  /** Совпадения по подстроке названия среди своих (при query) */
+  search: LineageCandidateMatch[];
+  query: string;
+}
+
+/** Ответ DELETE /syntheses/:id/lineage/link/:parentSynthesisId */
+export interface LineageUnlinkResult {
+  ok: true;
+  /** Снятая строка */
+  record: LineageRecord;
+  /** Узел-концепция файла, снова проступивший на позиции снятой связи */
+  revealed: { position: number; name: string; unnamed?: true };
 }

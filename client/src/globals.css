@@ -6255,6 +6255,213 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 15.1 — действия у узла генеалогического древа (Д-68, Д-69) ══
+ * В исходнике дерево (renderGenealogyTree) — снимок: ни связать, ни
+ * отвязать родителя после импорта нельзя, потому классов нет. Здесь, под
+ * карточкой узла верхнего уровня: (1) кнопки действия — в идиоме
+ * `.gen-card-capsule summary` (моно, 8px, капитель, золото на тёмном; в
+ * .gen-tree-light — чернила), рамка как у `.gen-tree li > .gen-card`;
+ * «Точно связать?» — заливка `--violet` (цвет карточки), «Точно отвязать?» —
+ * `--red`; (2) панель кандидатов раскрывается ПО МЕСТУ внутри карточки
+ * (правило кита: popover негде разместить), текст слева, список строкой
+ * «название · дата · кнопка»; (3) поле поиска — рамка кита `.form-input`
+ * на тёмном фоне, фокус золотой. Новых hex нет, углы прямые, теней нет.
+ * ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* (1) строка действий и кнопки */
+  .gen-card-actions {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    justify-content: center;
+    text-align: left;
+  }
+
+  .gen-card-action-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--gold);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    line-height: 1.4;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+
+  .gen-card-action-btn:hover:not([disabled]) {
+    border-color: var(--gold);
+  }
+
+  .gen-card-action-btn[disabled] {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .gen-card-action-btn.primary {
+    background: var(--violet);
+    border-color: var(--violet);
+    color: var(--white);
+  }
+
+  .gen-card-action-btn.danger {
+    background: var(--red);
+    border-color: var(--red);
+    color: var(--white);
+  }
+
+  /* (2) панель кандидатов внутри карточки */
+  .gen-link-panel {
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .gen-link-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+    font-family: var(--sans);
+    font-size: 11px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .gen-link-group-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .gen-link-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gen-link-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: var(--sans);
+    font-size: 11px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .gen-link-item-title {
+    flex: 1 1 120px;
+    text-align: left;
+  }
+
+  .gen-link-item-date {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .gen-link-item-btns {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .gen-link-empty,
+  .gen-link-status,
+  .gen-link-note {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: left;
+  }
+
+  .gen-link-note {
+    flex: 1 1 100%;
+  }
+
+  .gen-link-status.err {
+    color: var(--gold-light);
+  }
+
+  /* (3) поле поиска — рамка кита на тёмном фоне */
+  .gen-link-search {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--white);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+  }
+
+  .gen-link-search:focus {
+    border-color: var(--gold);
+  }
+
+  /* светлая схема (дерево в теле документа) */
+  .gen-tree-light .gen-card-actions,
+  .gen-tree-light .gen-link-item {
+    border-color: var(--rule);
+  }
+
+  .gen-tree-light .gen-card-action-btn {
+    border-color: var(--rule-strong);
+    color: var(--ink-mid);
+  }
+
+  .gen-tree-light .gen-card-action-btn:hover:not([disabled]) {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .gen-tree-light .gen-card-action-btn.primary,
+  .gen-tree-light .gen-card-action-btn.danger {
+    color: var(--white);
+  }
+
+  .gen-tree-light .gen-link-panel-head,
+  .gen-tree-light .gen-link-item {
+    color: var(--ink);
+  }
+
+  .gen-tree-light .gen-link-group-label,
+  .gen-tree-light .gen-link-item-date,
+  .gen-tree-light .gen-link-empty,
+  .gen-tree-light .gen-link-status,
+  .gen-tree-light .gen-link-note {
+    color: var(--ink-dim);
+  }
+
+  .gen-tree-light .gen-link-status.err {
+    color: var(--red);
+  }
+
+  .gen-tree-light .gen-link-search {
+    border-color: var(--rule-strong);
+    background: var(--white);
+    color: var(--ink);
+  }
+}
+
 @media (max-width: 600px) {
   .gm-body .gm-hint {
     display: none;

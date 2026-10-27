@@ -46,6 +46,12 @@ export interface GenealogyNode {
   /** Узел из дерева импортированного файла (LineageNode.fromFile):
    *  снимок без связи в базе */
   fromFile?: boolean;
+  /** 15.1: позиция слота среди родителей (адрес привязки/отвязки) —
+   *  только у узлов из API */
+  position?: number;
+  /** 15.1 (Д-69): связь БД, перекрывающая узел-концепцию файла, —
+   *  её можно отвязать */
+  coversFileNode?: boolean;
 }
 
 /** Участник для проверки пересечений (форма checkGenealogyOverlaps). */
@@ -357,6 +363,7 @@ export function lineageNodeToGenealogy(node: LineageNode): GenealogyNode {
   if (node.type === "philosopher") {
     const p: GenealogyNode = { type: "philosopher", name: node.name };
     if (node.fromFile) p.fromFile = true;
+    if (node.position !== undefined) p.position = node.position; // 15.1
     return p;
   }
   const g: GenealogyNode = {
@@ -368,6 +375,9 @@ export function lineageNodeToGenealogy(node: LineageNode): GenealogyNode {
   // Узлы дерева файла несут метаданные файла — карточка рисует мета-строку,
   // зерно и капсулу, как одностраничник
   if (node.fromFile) g.fromFile = true;
+  // 15.1: адрес слота и признак отвязываемой связи
+  if (node.position !== undefined) g.position = node.position;
+  if (node.coversFileNode) g.coversFileNode = true;
   if (node.method) g.method = node.method;
   if (node.synthLevel) g.synthLevel = node.synthLevel;
   if (node.generationOrder) g.generationOrder = node.generationOrder;

@@ -18,7 +18,22 @@
  *    концепции-родителя ПО ИМЕНИ среди синтезов того же владельца
  *    (предложением, без записи); isDescendantOf + linkParent —
  *    POST /syntheses/:id/lineage/link с заслонами LINEAGE_SELF /
- *    LINEAGE_CYCLE / идемпотентный отказ на существующую пару.
+ *    LINEAGE_CYCLE / идемпотентный отказ на существующую пару;
+ *  - 15.1 (Д-68/Д-69/Д-70): родословная после импорта. fileNodeAt — узел
+ *    верхнего уровня дерева файла по позиции и его состояние (свободен /
+ *    перекрыт / не концепция); fileNodeCandidates — совпадения по имени и
+ *    поиск по названию среди своих (GET …/lineage/file-node/:position/
+ *    candidates); linkParent принимает явную позицию узла файла
+ *    (безымянные и одноимённые узлы по имени не адресуются) и переводит
+ *    нарушение уникального индекса uq_lineage_parent_pair (миграция 0014)
+ *    в LINEAGE_EXISTS; unlinkParent снимает связь ТОЛЬКО поверх узла-концепции
+ *    файла (DELETE …/lineage/link/:parentSynthesisId; иначе
+ *    LINEAGE_GENERATED — текст разделов написан по этому родителю);
+ *    isMetaSynthesisRows — ОДНО правило «мета-синтез» для бейджа каталога
+ *    (loadConceptParentFlags) и страницы (parentSyntheses/fileConceptParents):
+ *    живая связь-концепция либо неперекрытый узел-концепция файла; строка
+ *    с удалённым родителем (SET NULL) не считается — её не видят ни древо,
+ *    ни контекст генерации, ни выгрузка.
  *
  * Прародителей в исходнике нет (клиентская генеалогия жила в объектах
  * genealogy концепт-файлов — reconstructGenealogy, беседа 3.2); здесь
@@ -30,15 +45,18 @@
  * синтезы, роут отсекает невидимые поддеревья.
  */
 
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, ne } from "drizzle-orm";
 
 import { db, sql } from "../db/index.js";
 import { syntheses, synthesisLineage } from "../db/schema.js";
 import type {
   FileGenealogyNode,
+  FileNodeCandidates,
+  FileNodeState,
   LineageCandidateMatch,
   LineageNode,
   LineageRecord,
+  LineageUnlinkResult,
   ParticipantInput,
 } from "@philosynth/shared/types/lineage";
 import { tl } from "@philosynth/shared/i18n/t";
@@ -146,7 +164,7 @@ export function sanitizeFileGenealogy(
 }
 
 /** Минимум строки synthesis_lineage для правила приоритета. */
-interface LineagePosRow {
+export interface LineagePosRow {
   position: number;
   parentType: "philosopher" | "synthesis";
   parentName: string | null;
@@ -154,10 +172,52 @@ interface LineagePosRow {
 }
 
 /** Действует ли строка: философ с именем или концепция с живым родителем. */
-function rowIsLive(r: LineagePosRow): boolean {
+export function rowIsLive(r: LineagePosRow): boolean {
   return r.parentType === "philosopher"
     ? !!r.parentName
     : !!r.parentSynthesisId;
+}
+
+/**
+ * 15.1 (Д-68/Д-69): узел ВЕРХНЕГО уровня дерева файла по позиции и его
+ * состояние по правилу приоритета: 'missing' — дерева нет либо позиция вне
+ * participants; 'covered' — на позиции действует связь БД (узел перекрыт);
+ * 'not_concept' — узел философа; 'free' — неперекрытая концепция (её можно
+ * связать; её же проступание и есть результат отвязки).
+ */
+export function fileNodeAt(
+  fileGenealogy: FileGenealogyNode | null | undefined,
+  rows: readonly LineagePosRow[],
+  position: number,
+): { state: FileNodeState; node: FileGenealogyNode | null } {
+  const parts = fileGenealogy?.participants ?? [];
+  if (!Number.isInteger(position) || position < 0 || position >= parts.length)
+    return { state: "missing", node: null };
+  const node = parts[position] as FileGenealogyNode;
+  if (rows.some((r) => r.position === position && rowIsLive(r)))
+    return { state: "covered", node };
+  if (node.type !== "concept") return { state: "not_concept", node };
+  return { state: "free", node };
+}
+
+/**
+ * 15.1 (Д-70): ОДНО правило «мета-синтез» — живая связь-концепция в БД либо
+ * неперекрытый узел-концепция дерева файла. Им живут бейдж каталога
+ * (loadConceptParentFlags) и страница синтеза (parentSyntheses непусты либо
+ * fileConceptParents непусты — те же два источника). Строка с удалённым
+ * родителем (SET NULL) мета-синтезом не делает: древо (getAncestors),
+ * контекст генерации (loadConceptParticipants), реконструкция промптов и
+ * выгрузка её не видят — считать её только в каталоге значило бы расходиться
+ * с ними (решение 15.1, «По факту»).
+ */
+export function isMetaSynthesisRows(
+  rows: readonly LineagePosRow[],
+  fileGenealogy: FileGenealogyNode | null | undefined,
+): boolean {
+  if (rows.some((r) => r.parentType === "synthesis" && rowIsLive(r))) return true;
+  return unlinkedFileParents(fileGenealogy, rows).some(
+    (f) => f.node.type === "concept",
+  );
 }
 
 /**
@@ -326,9 +386,12 @@ export async function getAncestors(
     path: Set<string>,
   ): LineageNode[] => {
     if (nodeDepth > depth) return [];
-    // Слоты по позиции: связь БД либо (правило приоритета) узел файла
+    // Слоты по позиции: связь БД либо (правило приоритета) узел файла.
+    // 15.1: каждый узел несёт position; связь-концепция, перекрывающая
+    // узел-концепцию файла, — coversFileNode (её можно отвязать, Д-69)
     const slots: { position: number; node: LineageNode }[] = [];
     const dbRows = byChild.get(id) ?? [];
+    const fileParts = files.get(id)?.participants ?? [];
     for (const r of dbRows) {
       if (r.parent_type === "philosopher") {
         if (!r.parent_name) continue;
@@ -338,12 +401,14 @@ export async function getAncestors(
             type: "philosopher",
             name: r.parent_name,
             depth: nodeDepth,
+            position: r.position,
             children: [],
           },
         });
       } else {
         const pid = r.parent_synthesis_id;
         if (!pid || path.has(pid)) continue; // страховка от цикла в данных
+        const covers = fileParts[r.position]?.type === "concept";
         slots.push({
           position: r.position,
           node: {
@@ -351,6 +416,8 @@ export async function getAncestors(
             name: titles.get(pid) ?? unnamedLabel("synthesis"),
             synthesisId: pid,
             depth: nodeDepth,
+            position: r.position,
+            ...(covers ? { coversFileNode: true as const } : {}),
             children: build(pid, nodeDepth + 1, new Set([...path, pid])),
           },
         });
@@ -368,7 +435,7 @@ export async function getAncestors(
     for (const f of fileParents) {
       slots.push({
         position: f.position,
-        node: fileNodeToLineage(f.node, nodeDepth, depth),
+        node: { ...fileNodeToLineage(f.node, nodeDepth, depth), position: f.position },
       });
     }
     // Устойчивая сортировка: при равных позициях — порядок БД, затем файла
@@ -612,17 +679,28 @@ export async function isDescendantOf(
 export type LineageLinkErrorCode =
   | "LINEAGE_SELF"
   | "LINEAGE_CYCLE"
-  | "LINEAGE_EXISTS";
+  | "LINEAGE_EXISTS"
+  | "LINEAGE_NODE_UNAVAILABLE" // 15.1 (Д-68): узел файла перекрыт / не концепция / нет такой позиции
+  | "LINEAGE_NOT_LINKED" // 15.1 (Д-69): такой связи нет (роут → 404 NOT_FOUND)
+  | "LINEAGE_GENERATED"; // 15.1 (Д-69): родитель без узла файла — по нему сгенерирован документ
 
 /** Отказ связывания; статус/код HTTP назначает роут (03 §4.3). */
 export class LineageLinkError extends Error {
   constructor(
     readonly code: LineageLinkErrorCode,
     message: string,
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "LineageLinkError";
   }
+}
+
+/** pg-код ошибки: DrizzleQueryError прячет его в cause (09 §3, 0.2). */
+function pgCodeOf(err: unknown): string | undefined {
+  const e = err as { code?: unknown; cause?: { code?: unknown } } | null;
+  const c = e?.cause?.code ?? e?.code;
+  return typeof c === "string" ? c : undefined;
 }
 
 /**
@@ -632,12 +710,22 @@ export class LineageLinkError extends Error {
  * пара уже есть / цикл через потомков); владение обоими синтезами
  * проверяет роут (403 FORBIDDEN), как и прочий доступ в этом сервисе.
  * Существующая пара → LINEAGE_EXISTS (идемпотентный отказ, строка не
- * дублируется).
+ * дублируется). 15.1 (Д-70): отказ держит и уникальный индекс
+ * uq_lineage_parent_pair (миграция 0014) — два одновременных вызова не
+ * пишут дубль, второй получает тот же LINEAGE_EXISTS из 23505. 15.1
+ * (Д-68): `position` — явная позиция узла файла из Д-68 (кандидаты узла);
+ * узел на ней обязан быть свободной концепцией (LINEAGE_NODE_UNAVAILABLE),
+ * имя при этом не сверяется — безымянный и одноимённые узлы по имени не
+ * адресуются. 15.1 (Д-80): без position и без узла файла с таким именем —
+ * LINEAGE_NODE_UNAVAILABLE (reason: missing): связь человека всегда стоит
+ * на узле-концепции файла, строки «за пределы» дерева больше не пишутся —
+ * каждая строка без узла файла есть родитель генерации.
  */
 export async function linkParent(
   synthesisId: string,
   parentSynthesisId: string,
   parentName?: string,
+  options: { position?: number | undefined } = {},
 ): Promise<LineageRecord> {
   if (synthesisId === parentSynthesisId) {
     throw new LineageLinkError(
@@ -689,7 +777,30 @@ export async function linkParent(
     .limit(1);
   const fileGenealogy = own?.fileGenealogy ?? null;
   let position: number | null = null;
-  if (parentName && fileGenealogy) {
+  // Гонка двух одинаковых привязок: вторая читает строки уже после вставки
+  // первой — та же пара уже есть → тот же идемпотентный LINEAGE_EXISTS, а не
+  // «узел перекрыт» (перекрыт он этим самым родителем)
+  const alreadyLinked = () =>
+    existing.some((r) => r.parentType === "synthesis" && r.parentSynthesisId === parentSynthesisId);
+  if (options.position !== undefined) {
+    // 15.1 (Д-68): явная позиция узла файла — узел обязан быть свободной концепцией
+    const at = fileNodeAt(fileGenealogy, existing, options.position);
+    if (at.state !== "free") {
+      if (alreadyLinked()) {
+        throw new LineageLinkError(
+          "LINEAGE_EXISTS",
+          tl("server.lineageService.alreadyParent", "Эта концепция уже указана родителем"),
+        );
+      }
+      throw new LineageLinkError(
+        "LINEAGE_NODE_UNAVAILABLE",
+        fileNodeUnavailableMessage(at.state),
+        { position: options.position, reason: at.state },
+      );
+    }
+    position = options.position;
+  }
+  if (position === null && parentName && fileGenealogy) {
     const want = normalizeConceptTitle(parentName);
     const hit = unlinkedFileParents(fileGenealogy, existing).find(
       (f) =>
@@ -697,20 +808,47 @@ export async function linkParent(
     );
     if (hit) position = hit.position;
   }
-  if (position === null) {
-    const maxRow = existing.reduce((m, r) => Math.max(m, r.position), -1);
-    const fileLen = fileGenealogy?.participants?.length ?? 0;
-    position = Math.max(maxRow, fileLen - 1) + 1;
+  if (position === null && alreadyLinked()) {
+    throw new LineageLinkError(
+      "LINEAGE_EXISTS",
+      tl("server.lineageService.alreadyParent", "Эта концепция уже указана родителем"),
+    );
   }
-  const [row] = await db
-    .insert(synthesisLineage)
-    .values({
-      synthesisId,
-      parentType: "synthesis",
-      parentSynthesisId,
-      position,
-    })
-    .returning();
+  if (position === null) {
+    // 15.1 (Д-80): связь по выбору человека ВСЕГДА стоит на узле-концепции
+    // дерева файла — иначе строка не отвязывалась бы (Д-69: без узла файла —
+    // LINEAGE_GENERATED), а по ней ничего не генерировалось. До 15.1 связь без
+    // совпадения уходила «за пределы» (position = max(maxRow, fileLen-1)+1,
+    // правило 2026-09-21); теперь это отказ — у ImportPage и древа есть
+    // position, по имени без узла связывать нечего.
+    throw new LineageLinkError(
+      "LINEAGE_NODE_UNAVAILABLE",
+      fileNodeUnavailableMessage("missing"),
+      { reason: "missing" },
+    );
+  }
+  let row: typeof synthesisLineage.$inferSelect | undefined;
+  try {
+    [row] = await db
+      .insert(synthesisLineage)
+      .values({
+        synthesisId,
+        parentType: "synthesis",
+        parentSynthesisId,
+        position,
+      })
+      .returning();
+  } catch (err) {
+    // 15.1 (Д-70): гонка двух одновременных привязок — уникальный индекс
+    // uq_lineage_parent_pair; второй получает тот же идемпотентный отказ
+    if (pgCodeOf(err) === "23505") {
+      throw new LineageLinkError(
+        "LINEAGE_EXISTS",
+        tl("server.lineageService.alreadyParent", "Эта концепция уже указана родителем"),
+      );
+    }
+    throw err;
+  }
   if (!row) throw new Error(tl("server.lineageService.lineageRowNotCreated", "synthesis_lineage: строка связи не создана"));
   return {
     id: row.id,
@@ -719,5 +857,181 @@ export async function linkParent(
     parentName: row.parentName,
     parentSynthesisId: row.parentSynthesisId,
     position: row.position,
+  };
+}
+
+/** Текст отказа по состоянию узла файла (15.1, Д-68). */
+function fileNodeUnavailableMessage(state: FileNodeState): string {
+  switch (state) {
+    case "covered":
+      return tl("server.lineageService.nodeCovered", "Этот узел дерева файла уже перекрыт связью в базе");
+    case "not_concept":
+      return tl("server.lineageService.nodeNotConcept", "Этот узел дерева файла — философ, а не концепция: связывать нечего");
+    default:
+      return tl("server.lineageService.nodeMissing", "Узла дерева файла с такой позицией нет");
+  }
+}
+
+/* ══ 15.1 (Д-68): кандидаты для узла дерева файла ══════════════════════ */
+
+/** Экранирование % и _ для ILIKE-поиска по подстроке. */
+function escapeLike(s: string): string {
+  return s.replace(/[\\%_]/g, (ch) => "\\" + ch);
+}
+
+/** Предел списка совпадений по подстроке названия. */
+export const FILE_NODE_SEARCH_LIMIT = 20;
+
+/**
+ * Синтезы владельца, чьё название содержит подстроку (ILIKE), кроме самого
+ * ребёнка; новые первыми, не больше FILE_NODE_SEARCH_LIMIT. Пустой запрос →
+ * пустой список (поиск — по слову человека, не «все мои концепции»).
+ */
+export async function searchOwnerSynthesesByTitle(
+  userId: string,
+  query: string,
+  excludeId: string,
+): Promise<LineageCandidateMatch[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const rows = await db
+    .select({
+      id: syntheses.id,
+      title: syntheses.title,
+      createdAt: syntheses.createdAt,
+    })
+    .from(syntheses)
+    .where(
+      and(
+        eq(syntheses.userId, userId),
+        ne(syntheses.id, excludeId),
+        ilike(syntheses.title, `%${escapeLike(q)}%`),
+      ),
+    )
+    .orderBy(desc(syntheses.createdAt))
+    .limit(FILE_NODE_SEARCH_LIMIT);
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
+
+/**
+ * Кандидаты для узла верхнего уровня дерева файла (GET …/lineage/file-node/
+ * :position/candidates): узел по позиции обязан быть свободной концепцией
+ * (иначе LineageLinkError LINEAGE_NODE_UNAVAILABLE с details.reason —
+ * 'covered' | 'not_concept' | 'missing'); matches — совпадения по имени
+ * среди синтезов владельца (8.5, по имени узла; у безымянного — пусто),
+ * search — по подстроке названия, когда query непуст. Владение ребёнком
+ * проверяет роут.
+ */
+export async function fileNodeCandidates(
+  synthesisId: string,
+  userId: string,
+  position: number,
+  query = "",
+): Promise<FileNodeCandidates> {
+  const [own] = await db
+    .select({ fileGenealogy: syntheses.fileGenealogy })
+    .from(syntheses)
+    .where(eq(syntheses.id, synthesisId))
+    .limit(1);
+  const rows = await db
+    .select({
+      position: synthesisLineage.position,
+      parentType: synthesisLineage.parentType,
+      parentName: synthesisLineage.parentName,
+      parentSynthesisId: synthesisLineage.parentSynthesisId,
+    })
+    .from(synthesisLineage)
+    .where(eq(synthesisLineage.synthesisId, synthesisId));
+  const at = fileNodeAt(own?.fileGenealogy ?? null, rows, position);
+  if (at.state !== "free" || !at.node) {
+    throw new LineageLinkError(
+      "LINEAGE_NODE_UNAVAILABLE",
+      fileNodeUnavailableMessage(at.state),
+      { position, reason: at.state },
+    );
+  }
+  const unnamed = isUnnamedFileNode(at.node);
+  const matches = unnamed
+    ? []
+    : await findSameOwnerSynthesesByTitle(userId, at.node.name, synthesisId);
+  const search = await searchOwnerSynthesesByTitle(userId, query, synthesisId);
+  return {
+    node: {
+      position,
+      name: fileNodeName(at.node),
+      ...(unnamed ? { unnamed: true as const } : {}),
+    },
+    matches,
+    search,
+    query: query.trim(),
+  };
+}
+
+/* ══ 15.1 (Д-69): DELETE /syntheses/:id/lineage/link/:parentSynthesisId ══ */
+
+/**
+ * Отвязка концепции-родителя — обратная операция привязки (решение
+ * пользователя 2026-10-14, «как надёжнее»): снимается строка
+ * parent_type='synthesis' с этим родителем, и ТОЛЬКО если на её позиции в
+ * file_genealogy стоит узел-концепция — тогда узел снова проступает
+ * снимком (unlinkedFileParents), сведения о родителе не теряются. Строка
+ * без узла файла — родитель, по которому документ сгенерирован (участник
+ * POST /syntheses) либо привязанный за пределы дерева файла, — не
+ * снимается: LINEAGE_GENERATED (текст разделов написан по этому родителю,
+ * реконструкция промптов и бейдж «мета» солгали бы). Дерево потомков не
+ * трогается — у ребёнка свои потомки остаются, у родителя из «Потомков»
+ * уходит одна ветка. Нет такой связи → LINEAGE_NOT_LINKED. Владение
+ * ребёнком и гейт активной операции — у роута.
+ */
+export async function unlinkParent(
+  synthesisId: string,
+  parentSynthesisId: string,
+): Promise<LineageUnlinkResult> {
+  const rows = await db
+    .select()
+    .from(synthesisLineage)
+    .where(eq(synthesisLineage.synthesisId, synthesisId));
+  const link = rows.find(
+    (r) => r.parentType === "synthesis" && r.parentSynthesisId === parentSynthesisId,
+  );
+  if (!link) {
+    throw new LineageLinkError(
+      "LINEAGE_NOT_LINKED",
+      tl("server.lineageService.notLinked", "Эта концепция не указана родителем"),
+    );
+  }
+  const [own] = await db
+    .select({ fileGenealogy: syntheses.fileGenealogy })
+    .from(syntheses)
+    .where(eq(syntheses.id, synthesisId))
+    .limit(1);
+  const fileNode = own?.fileGenealogy?.participants?.[link.position] ?? null;
+  if (!fileNode || fileNode.type !== "concept") {
+    throw new LineageLinkError(
+      "LINEAGE_GENERATED",
+      tl("server.lineageService.generatedParent", "По этому родителю сгенерирован текст документа — его нельзя отвязать"),
+      { position: link.position },
+    );
+  }
+  await db.delete(synthesisLineage).where(eq(synthesisLineage.id, link.id));
+  return {
+    ok: true,
+    record: {
+      id: link.id,
+      synthesisId: link.synthesisId,
+      parentType: link.parentType,
+      parentName: link.parentName,
+      parentSynthesisId: link.parentSynthesisId,
+      position: link.position,
+    },
+    revealed: {
+      position: link.position,
+      name: fileNodeName(fileNode),
+      ...(isUnnamedFileNode(fileNode) ? { unnamed: true as const } : {}),
+    },
   };
 }

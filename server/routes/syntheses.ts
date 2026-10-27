@@ -60,6 +60,8 @@ import {
   createLineageRecords,
   unlinkedFileParents,
   fileNodeName,
+  isMetaSynthesisRows,
+  type LineagePosRow,
 } from "../services/lineage-service.js";
 import { parentOverheadForSection } from "../services/context-builder.js";
 import { normalizeSectionKey } from "../services/parent-context.js";
@@ -337,31 +339,35 @@ export async function loadConceptParentFlags(
 ): Promise<Set<string>> {
   const flags = new Set<string>();
   if (ids.length === 0) return flags;
+  // 15.1 (Д-70): ОДНО правило «мета-синтез» — isMetaSynthesisRows
+  // (lineage-service): живая связь-концепция либо неперекрытый
+  // узел-концепция дерева файла — то же, что isMetaSynthesis страницы
+  // (parentSyntheses / fileConceptParents). До 15.1 здесь считалась и
+  // строка с удалённым родителем (SET NULL): бейдж каталога был, древо и
+  // шапка концепции — нет.
   const rows = await db
-    .select({ synthesisId: synthesisLineage.synthesisId })
+    .select({
+      synthesisId: synthesisLineage.synthesisId,
+      position: synthesisLineage.position,
+      parentType: synthesisLineage.parentType,
+      parentName: synthesisLineage.parentName,
+      parentSynthesisId: synthesisLineage.parentSynthesisId,
+    })
     .from(synthesisLineage)
-    .where(
-      and(
-        inArray(synthesisLineage.synthesisId, ids),
-        eq(synthesisLineage.parentType, "synthesis"),
-      ),
-    );
-  for (const r of rows) flags.add(r.synthesisId);
-  // Родители-концепции из дерева импортированного файла тоже делают синтез
-  // мета-синтезом (бейдж каталога); перекрытие связью БД здесь неважно —
-  // перекрытая связь сама даёт флаг выше
-  const rest = ids.filter((id) => !flags.has(id));
-  if (rest.length > 0) {
-    const fileRows = await db
-      .select({ id: syntheses.id, fileGenealogy: syntheses.fileGenealogy })
-      .from(syntheses)
-      .where(
-        and(inArray(syntheses.id, rest), isNotNull(syntheses.fileGenealogy)),
-      );
-    for (const r of fileRows) {
-      if (r.fileGenealogy?.participants?.some((p) => p.type === "concept"))
-        flags.add(r.id);
-    }
+    .where(inArray(synthesisLineage.synthesisId, ids));
+  const byId = new Map<string, LineagePosRow[]>();
+  for (const r of rows) {
+    const list = byId.get(r.synthesisId) ?? [];
+    list.push(r);
+    byId.set(r.synthesisId, list);
+  }
+  const fileRows = await db
+    .select({ id: syntheses.id, fileGenealogy: syntheses.fileGenealogy })
+    .from(syntheses)
+    .where(and(inArray(syntheses.id, ids), isNotNull(syntheses.fileGenealogy)));
+  const files = new Map(fileRows.map((r) => [r.id, r.fileGenealogy]));
+  for (const id of ids) {
+    if (isMetaSynthesisRows(byId.get(id) ?? [], files.get(id))) flags.add(id);
   }
   return flags;
 }
@@ -1687,6 +1693,10 @@ synthesesRoutes.post("/:id/duplicate", requireAuth, async (c) => {
         sectionOrder: row.sectionOrder,
         structureSections: row.structureSections ?? null,
         parentContextSchema: row.parentContextSchema,
+        // 15.1 (Д-70): дерево импортированного файла — вместе со строками
+        // родословной ниже, иначе их позиции у копии ничего не перекрывают
+        // (узлы файла, отвязка 15.1 и бейдж «мета» у копии терялись)
+        fileGenealogy: row.fileGenealogy ?? null,
         pausedState: (row.pausedState ?? null) as PausedState | null,
         versionBase: row.versionBase,
         versionSub: row.versionSub,

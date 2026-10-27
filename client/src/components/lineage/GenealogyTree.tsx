@@ -18,9 +18,16 @@
  *     были всегда; транспорт 3.1 отдаёт только type/name/synthesisId).
  *  2. Узлы с synthesisId — кликабельные ссылки на /synthesis/:id
  *     (п. 4 первого запроса: «ссылки на родительские концепции»).
+ *  3. Беседа 15.1 (Д-68/Д-69): у узлов ВЕРХНЕГО уровня — действия
+ *     владельца (проп actions от SynthesisPage): «Связать с концепцией…» у
+ *     неперекрытого узла-концепции дерева файла, «Отвязать» у связи,
+ *     перекрывающей узел файла (coversFileNode); у родителя без узла файла
+ *     действия нет (LineageNodeActions.lineageActionFor). Без actions
+ *     (гость, невладелец, каталог) древо прежнее.
  *
  * CSS .gen-* — в globals.css (порт из фрагмента 3.2-genealogy-ui.js:
- * базовые правила + @media light/print/≤500px + .gen-tree-light).
+ * базовые правила + @media light/print/≤500px + .gen-tree-light);
+ * действия — блок «Беседа 15.1» части 3.
  */
 import { Link } from "react-router-dom";
 
@@ -29,17 +36,35 @@ import { ML, SL } from "@philosynth/shared/constants/labels";
 import type { GenealogyNode } from "../../utils/genealogy";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
+import {
+  LineageNodeActions,
+  lineageActionFor,
+  type LineageActionsContext,
+} from "./LineageNodeActions";
 
 export interface GenealogyTreeProps {
   node: GenealogyNode | null;
   /** Светлая схема (.gen-tree-light) — дерево в теле документа */
   light?: boolean | undefined;
+  /** 15.1: действия владельца у узлов верхнего уровня (SynthesisPage) */
+  actions?: LineageActionsContext | undefined;
 }
 
 /** Подсказка у узлов дерева импортированного файла (снимок без связи). */
 const FROM_FILE_TITLE = () => (tl("lineage.genealogyTree.fromImportedFile", "Из импортированного файла: в базе этой концепции нет, узел — снимок без ссылки"));
 
-function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) {
+function NodeView({
+  n,
+  isRootNode,
+  level,
+  actions,
+}: {
+  n: GenealogyNode;
+  isRootNode: boolean;
+  /** 0 — корень, 1 — прямые родители (только у них действия 15.1) */
+  level: number;
+  actions?: LineageActionsContext | undefined;
+}) {
   // Философ → простой блок
   if (n.type === "philosopher") {
     return (
@@ -88,6 +113,8 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
     ) : null;
 
   const nameContent = <>◈ {n.name}</>;
+  // 15.1: действие у узла верхнего уровня — только когда хозяин дал actions
+  const action = actions ? lineageActionFor(n, level) : null;
 
   return (
     <>
@@ -117,12 +144,15 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
         )}
         {seedNode}
         {capsuleNode}
+        {action && actions && (
+          <LineageNodeActions node={n} action={action} ctx={actions} />
+        )}
       </div>
       {n.participants && n.participants.length > 0 && (
         <ul className={n.participants.length > 4 ? "gen-vertical" : undefined}>
           {n.participants.map((child, i) => (
             <li key={(child.synthesisId ?? child.name) + "_" + i}>
-              <NodeView n={child} isRootNode={false} />
+              <NodeView n={child} isRootNode={false} level={level + 1} actions={actions} />
             </li>
           ))}
         </ul>
@@ -131,11 +161,11 @@ function NodeView({ n, isRootNode }: { n: GenealogyNode; isRootNode: boolean }) 
   );
 }
 
-export function GenealogyTree({ node, light }: GenealogyTreeProps) {
+export function GenealogyTree({ node, light, actions }: GenealogyTreeProps) {
   if (!node) return null;
   return (
     <div className={"gen-tree" + (light ? " gen-tree-light" : "")}>
-      <NodeView n={node} isRootNode={true} />
+      <NodeView n={node} isRootNode={true} level={0} actions={actions} />
     </div>
   );
 }

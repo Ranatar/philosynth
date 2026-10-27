@@ -62,6 +62,8 @@ function linkErrorText(err: unknown): string {
       return tl("importPage.cycleParent", "Эта концепция — потомок импортированной: связь замкнула бы родословную в цикл.");
     case "LINEAGE_EXISTS":
       return tl("importPage.alreadyParent", "Эта концепция уже указана родителем.");
+    case "LINEAGE_NODE_UNAVAILABLE": // 15.1
+      return tl("importPage.nodeUnavailable", "Узел дерева файла уже перекрыт связью — обновите страницу концепции.");
     case "FORBIDDEN":
       return tl("importPage.foreignParent", "Концепция принадлежит другому пользователю — в родители не идёт.");
     case "NOT_FOUND":
@@ -287,7 +289,9 @@ export function ImportPage() {
     if (!resultId || !cand) return;
     setCand(i, (s) => (s.kind === "pending" ? { ...s, busy: true, error: null } : s));
     try {
-      await linkParent(resultId, cand.parentName, matchId);
+      // 15.1 (Д-68): позиция узла файла явно — безымянный и одноимённые
+      // узлы по имени не адресуются (linkParent при ней имя не сверяет)
+      await linkParent(resultId, cand.parentName, matchId, cand.position);
       setCand(i, () => ({ kind: "linked", matchId }));
     } catch (err) {
       // LINEAGE_EXISTS — пара уже есть: цель достигнута, считаем связанной

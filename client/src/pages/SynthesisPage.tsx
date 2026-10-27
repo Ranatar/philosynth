@@ -536,16 +536,23 @@ export function SynthesisPage() {
   const [genealogyTree, setGenealogyTree] = useState<GenealogyNode | null>(
     null,
   );
+  // 15.1: после привязки/отвязки родителя древо перечитывается (счётчик в deps)
+  const [lineageVersion, setLineageVersion] = useState(0);
+  const treeForIdRef = useRef<string | null>(null);
   const synthesisIdLoaded = synthesis?.id ?? null;
   useEffect(() => {
-    setGenealogyTree(null);
+    // 15.1: при перечитке по действию (тот же синтез) прежнее древо не
+    // сбрасываем — иначе блок мигнул бы списком родителей
+    if (treeForIdRef.current !== synthesisIdLoaded) setGenealogyTree(null);
     // 8.7: /lineage/ancestors под requireAuth — гостю дерево не грузим,
     // остаётся список родителей из SynthesisFull (метаданные витрины)
     if (!synthesisIdLoaded || !isMetaSynthesis || isGuest) return;
     let cancelled = false;
     getAncestors(synthesisIdLoaded)
       .then((tree) => {
-        if (!cancelled) setGenealogyTree(lineageNodeToGenealogy(tree));
+        if (cancelled) return;
+        treeForIdRef.current = synthesisIdLoaded;
+        setGenealogyTree(lineageNodeToGenealogy(tree));
       })
       .catch(() => {
         if (!cancelled) setGenealogyTree(null);
@@ -553,12 +560,35 @@ export function SynthesisPage() {
     return () => {
       cancelled = true;
     };
-  }, [synthesisIdLoaded, isMetaSynthesis, isGuest]);
+  }, [synthesisIdLoaded, isMetaSynthesis, isGuest, lineageVersion]);
 
   const live = synthesis?.status === "generating" || synthesis?.status === "paused";
   // Беседа 5.2 («По факту 5.2»): владение — из SynthesisFull.isOwner
   // (оптимизм «покажем всем, 403 решит» 2.3/4.1 снят тем же флагом)
   const isOwner = synthesis?.isOwner ?? false;
+
+  // 15.1 (Д-68/Д-69): контекст действий у узлов древа. Перечитка после
+  // действия — неразрушающая (applySynthesis, не store.load — грабля R3
+  // 2.3) плюс счётчик древа
+  const lineageActions = useMemo(
+    () =>
+      synthesisIdLoaded
+        ? {
+            synthesisId: synthesisIdLoaded,
+            disabled: live,
+            onChanged: async () => {
+              try {
+                const fresh = await getSynthesis(synthesisIdLoaded);
+                applySynthesis(fresh);
+              } catch {
+                /* перечитка древа ниже всё равно покажет итог */
+              }
+              setLineageVersion((v) => v + 1);
+            },
+          }
+        : undefined,
+    [synthesisIdLoaded, live, applySynthesis],
+  );
 
   /* ── Беседа 10.3: рекомендации критики ──
      Число на кнопке — GET строк последнего раунда (разбор при загрузке
@@ -1031,7 +1061,13 @@ export function SynthesisPage() {
                 style={{ padding: 16, overflowX: "auto" }}
               >
                 {genealogyTree ? (
-                  <GenealogyTree node={genealogyTree} light={false} />
+                  <GenealogyTree
+                    node={genealogyTree}
+                    light={false}
+                    // 15.1 (Д-68/Д-69): действия у узлов — только владельцу;
+                    // после привязки/отвязки — перечитать синтез и древо
+                    actions={isOwner ? lineageActions : undefined}
+                  />
                 ) : (
                   <div className="doc-meta-val">
                     {tl("synthesisPage.parentConcepts", "Родительские концепции:")}

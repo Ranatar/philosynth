@@ -12,7 +12,22 @@
  *    ПОТОМКОВ :id → 409 LINEAGE_CYCLE; пара уже есть → 409 LINEAGE_EXISTS
  *    (идемпотентный отказ, дубликата строки нет). parentName обязателен
  *    (текст из файла — для журнала/сообщения), в БД не пишется:
- *    parent_name в модели — имя ФИЛОСОФА (02 §2.4).
+ *    parent_name в модели — имя ФИЛОСОФА (02 §2.4). 15.1 (Д-68): тело
+ *    принимает необязательный position — явный узел файла, который связь
+ *    перекроет (узел не свободная концепция → 409 LINEAGE_NODE_UNAVAILABLE);
+ *    15.1 (Д-70): гонка двух привязок → второй 409 LINEAGE_EXISTS из
+ *    уникального индекса.
+ *  - GET /syntheses/:id/lineage/file-node/:position/candidates?q= (15.1, Д-68)
+ *      → { node, matches, search, query } — кандидаты для узла-концепции
+ *    верхнего уровня дерева файла: совпадения по имени и поиск по подстроке
+ *    среди своих синтезов; владелец ребёнка; position не целое → 400;
+ *    узел перекрыт / философ / нет позиции → 409 LINEAGE_NODE_UNAVAILABLE
+ *    (details.reason).
+ *  - DELETE /syntheses/:id/lineage/link/:parentSynthesisId (15.1, Д-69)
+ *      → { ok, record, revealed } — отвязка: владелец ребёнка; активная
+ *    операция → 409 GENERATION_IN_PROGRESS; связи нет → 404; на позиции
+ *    связи нет узла-концепции файла → 409 LINEAGE_GENERATED (по этому
+ *    родителю сгенерирован документ). Потомки не трогаются.
  *
  * Точки монтирования РАЗНЫЕ (§2.8): первые два живут под /syntheses,
  * поиск — под /lineage; отсюда ДВА экспортируемых роутера
@@ -39,12 +54,15 @@ import { db } from "../db/index.js";
 import { syntheses } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import {
+  fileNodeCandidates,
   getAncestors,
   getDescendants,
   LineageLinkError,
   linkParent,
   searchByPhilosophers,
+  unlinkParent,
 } from "../services/lineage-service.js";
+import { isGenerationActive } from "../services/generation-service.js";
 import type { LineageNode } from "@philosynth/shared/types/lineage";
 import {
   forbiddenJson,
@@ -145,7 +163,7 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
   } catch {
     body = null;
   }
-  const b = (body ?? {}) as { parentName?: unknown; parentSynthesisId?: unknown };
+  const b = (body ?? {}) as { parentName?: unknown; parentSynthesisId?: unknown; position?: unknown };
   const details: Record<string, string> = {};
   const parentName =
     typeof b.parentName === "string" ? b.parentName.trim() : "";
@@ -153,6 +171,15 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
   const parentSynthesisId =
     typeof b.parentSynthesisId === "string" ? b.parentSynthesisId : "";
   if (!parentSynthesisId) details.parentSynthesisId = tl("server.routes.lineage.requiredFieldLower", "обязательное поле");
+  // 15.1 (Д-68): явная позиция узла файла — необязательна; дана — целое ≥ 0
+  let position: number | undefined;
+  if (b.position !== undefined && b.position !== null) {
+    if (typeof b.position === "number" && Number.isInteger(b.position) && b.position >= 0) {
+      position = b.position;
+    } else {
+      details.position = tl("server.routes.lineage.positionInteger", "целое число не меньше нуля");
+    }
+  }
   if (Object.keys(details).length > 0) {
     return c.json(
       { error: tl("server.routes.lineage.invalidLinkParams", "Невалидные параметры связи"), code: "VALIDATION_ERROR", details },
@@ -208,12 +235,94 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
   }
 
   try {
-    const record = await linkParent(id, parentSynthesisId, parentName);
+    const record = await linkParent(id, parentSynthesisId, parentName, { position });
     return c.json({ ok: true, record });
   } catch (err) {
     if (err instanceof LineageLinkError) {
       const status = err.code === "LINEAGE_SELF" ? 400 : 409;
-      return c.json({ error: err.message, code: err.code }, status);
+      return c.json(linkErrorJson(err), status);
+    }
+    throw err;
+  }
+});
+
+/** Тело отказа сервиса родословной: code + details, если есть (15.1). */
+function linkErrorJson(err: LineageLinkError): Record<string, unknown> {
+  return err.details
+    ? { error: err.message, code: err.code, details: err.details }
+    : { error: err.message, code: err.code };
+}
+
+/* ══ 15.1 (Д-68): кандидаты для узла дерева файла ═════════════════════ */
+
+lineageRoutes.get("/:id/lineage/file-node/:position/candidates", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const rawPos = c.req.param("position");
+  const position = /^\d+$/.test(rawPos) ? Number.parseInt(rawPos, 10) : NaN;
+  if (!Number.isInteger(position)) {
+    return c.json(
+      {
+        error: tl("server.routes.lineage.invalidPosition", "Невалидная позиция узла"),
+        code: "VALIDATION_ERROR",
+        details: { position: tl("server.routes.lineage.positionInteger", "целое число не меньше нуля") },
+      },
+      400,
+    );
+  }
+  // Ребёнок: существует и принадлежит пользователю — кандидаты ищутся
+  // среди ЕГО синтезов, чужому читателю эта выборка не нужна
+  const child = await loadSynthesisForRead(id, user.id);
+  if (child.access === "notfound") return c.json(notFoundJson, 404);
+  if (child.access === "forbidden" || child.row.userId !== user.id)
+    return c.json(forbiddenJson, 403);
+
+  try {
+    const res = await fileNodeCandidates(id, user.id, position, c.req.query("q") ?? "");
+    return c.json(res);
+  } catch (err) {
+    if (err instanceof LineageLinkError) return c.json(linkErrorJson(err), 409);
+    throw err;
+  }
+});
+
+/* ══ 15.1 (Д-69): DELETE /syntheses/:id/lineage/link/:parentSynthesisId ══ */
+
+lineageRoutes.delete("/:id/lineage/link/:parentSynthesisId", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const parentSynthesisId = c.req.param("parentSynthesisId");
+
+  const child = await loadSynthesisForRead(id, user.id);
+  if (child.access === "notfound") return c.json(notFoundJson, 404);
+  if (child.access === "forbidden" || child.row.userId !== user.id)
+    return c.json(forbiddenJson, 403);
+  // Активная операция над ребёнком — как у прочих правок (ownerEditGate)
+  if (isGenerationActive(id)) {
+    return c.json(
+      { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" },
+      409,
+    );
+  }
+  if (!isUuid(parentSynthesisId)) {
+    return c.json(
+      { error: tl("server.routes.lineage.notLinked", "Такой связи с родителем нет"), code: "NOT_FOUND" },
+      404,
+    );
+  }
+
+  try {
+    const res = await unlinkParent(id, parentSynthesisId);
+    return c.json(res);
+  } catch (err) {
+    if (err instanceof LineageLinkError) {
+      if (err.code === "LINEAGE_NOT_LINKED") {
+        return c.json(
+          { error: tl("server.routes.lineage.notLinked", "Такой связи с родителем нет"), code: "NOT_FOUND" },
+          404,
+        );
+      }
+      return c.json(linkErrorJson(err), 409);
     }
     throw err;
   }

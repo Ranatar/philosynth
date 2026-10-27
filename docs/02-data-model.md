@@ -238,7 +238,33 @@ CREATE INDEX idx_lineage_synthesis ON synthesis_lineage(synthesis_id);
 CREATE INDEX idx_lineage_parent_synth ON synthesis_lineage(parent_synthesis_id);
 CREATE INDEX idx_lineage_parent_name ON synthesis_lineage(parent_name) 
   WHERE parent_type = 'philosopher';
+-- 15.1 (Д-70), миграция 0014_lineage_parent_unique: одна пара «ребёнок —
+-- родитель-концепция»; философы и строки с удалённым родителем (NULL) не
+-- ограничены. Миграция сначала снимает дубли (остаётся строка с меньшей
+-- position, при равных — меньший id).
+CREATE UNIQUE INDEX uq_lineage_parent_pair
+  ON synthesis_lineage(synthesis_id, parent_synthesis_id)
+  WHERE parent_type = 'synthesis' AND parent_synthesis_id IS NOT NULL;
 ```
+
+> **15.1 (Д-68, Д-69, Д-70; 2026-10-27):** `linkParent` переводит нарушение
+> `uq_lineage_parent_pair` (23505) в тот же `LINEAGE_EXISTS` — гонка двух
+> привязок даёт одну строку. `POST /lineage/link` принимает `position`
+> узла файла (связь ставится на ЭТОТ узел, он обязан быть свободной
+> концепцией). **Отвязка** (`DELETE …/lineage/link/:parentSynthesisId`)
+> снимает строку `parent_type='synthesis'` ТОЛЬКО если на её `position` в
+> `file_genealogy` стоит узел-концепция — он снова проступает по ПРАВИЛУ
+> ПРИОРИТЕТА; строку без узла файла (родитель генерации; связь за
+> пределами `participants`) снять нельзя — 409 `LINEAGE_GENERATED`;
+> потомки, тексты и журнал не трогаются. Копия синтеза переносит
+> `file_genealogy` вместе со строками (иначе их позиции ничего не
+> перекрывали). **Одно правило «мета-синтез»** (`isMetaSynthesisRows`,
+> lineage-service): живая связь-концепция (`parent_synthesis_id` не NULL)
+> ЛИБО неперекрытый узел-концепция дерева файла; им живут бейдж каталога
+> (`loadConceptParentFlags`) и страница (`parentSyntheses` ∪
+> `fileConceptParents`). Строка с удалённым родителем (SET NULL) сама по
+> себе «мета» не даёт — её не видят древо, контекст генерации,
+> восстановление промпта и выгрузка.
 
 > **8.6 (2026-09-15):** «виден» для узла-концепции в дереве потомков
 > (`pruneInvisible`, `/lineage/search`) = владелец ИЛИ `visibility <>
@@ -273,8 +299,12 @@ CREATE INDEX idx_lineage_parent_name ON synthesis_lineage(parent_name)
 > NULL). Подшивка — одна, в `getAncestors` (lineage-service); оттуда берут
 > дерево страница синтеза и экспорт. Правило 8.5 «`position` —
 > `max(position)+1`» ЗАМЕНЕНО: `linkParent` ставит связь на позицию
-> неперекрытого узла файла с тем же (нормализованным) именем, иначе — за
-> пределы и связей, и `participants` файла.
+> неперекрытого узла файла с тем же (нормализованным) именем (с 15.1 — по
+> явному `position`); узла нет — отказ `LINEAGE_NODE_UNAVAILABLE` (15.1,
+> Д-80; до того — «за пределы и связей, и `participants` файла»). Инвариант:
+> строка `parent_type='synthesis'` либо стоит на узле-концепции файла
+> (поставлена человеком, отвязывается), либо узла не имеет (генерация или
+> импорт по UUID — не отвязывается).
 
 **Рекурсивный запрос — все предки концепции:**
 ```sql

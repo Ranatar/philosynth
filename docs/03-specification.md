@@ -1424,9 +1424,14 @@ POST   /syntheses/:id/lineage/link { parentName, parentSynthesisId }
                                 // Беседа 8.5. Строка synthesis_lineage
                                 // parent_type='synthesis'. position (2026-09-21):
                                 // на позицию неперекрытого узла file_genealogy
-                                // с тем же нормализованным parentName, иначе —
-                                // за пределы и связей БД, и participants файла
-                                // (прежнее «в конец существующих» 8.5 заменено).
+                                // с тем же нормализованным parentName; узла нет
+                                // → 409 LINEAGE_NODE_UNAVAILABLE (reason:
+                                // missing) — 15.1 (Д-80); прежнее «иначе — за
+                                // пределы и связей БД, и participants файла»
+                                // (2026-09-21) и «в конец существующих» (8.5)
+                                // сняты: связь человека всегда стоит на узле
+                                // файла, строка без узла — только от генерации
+                                // или импорта по UUID.
                                 // parentName — имя из
                                 // файла (обязателен, в БД НЕ пишется: parent_name
                                 // модели — имя философа). Заслоны по порядку:
@@ -1442,7 +1447,49 @@ POST   /syntheses/:id/lineage/link { parentName, parentSynthesisId }
                                 // parentSynthesisId среди ПОТОМКОВ :id → 409
                                 // LINEAGE_CYCLE (проверяются потомки, не предки:
                                 // цикл создаётся привязкой родителя, который сам
-                                // происходит от нас). Отвязки (DELETE) нет.
+                                // происходит от нас).
+                                // 15.1 (Д-68): необязательный position —
+                                // целое ≥ 0 (иначе 400 VALIDATION_ERROR,
+                                // details.position): связь ставится на
+                                // ЭТОТ узел файла; узел перекрыт / философ /
+                                // позиции нет → 409 LINEAGE_NODE_UNAVAILABLE
+                                // (details: { position, reason: covered |
+                                // not_concept | missing }). Без position —
+                                // поиск по имени, как выше. Гонка двух
+                                // одинаковых запросов: частичный уникальный
+                                // индекс uq_lineage_parent_pair (02 §2.4) —
+                                // второй получает тот же 409 LINEAGE_EXISTS.
+
+GET    /syntheses/:id/lineage/file-node/:position/candidates?q=подстрока
+                                → FileNodeCandidates { node: { position, name,
+                                  unnamed? }, matches: SynthesisPreview[],
+                                  search: SynthesisPreview[], query }
+                                // 15.1 (Д-68): кандидаты для узла-концепции
+                                // ВЕРХНЕГО уровня file_genealogy (владелец;
+                                // :position — целое, иначе 400). matches —
+                                // совпадения по имени узла среди синтезов
+                                // владельца (findSameOwnerSynthesesByTitle; у
+                                // безымянного узла — пусто), search — ILIKE по
+                                // названию среди своих, кроме самого :id,
+                                // новые первыми, ≤ 20 (q пустой → []). Узел
+                                // перекрыт связью / философ / позиции нет →
+                                // 409 LINEAGE_NODE_UNAVAILABLE.
+
+DELETE /syntheses/:id/lineage/link/:parentSynthesisId
+                                → LineageUnlinkResult { ok: true, record,
+                                  revealed: { position, name, unnamed? } }
+                                // 15.1 (Д-69): отвязка — обратная операция
+                                // привязки, ничего не теряет. Владелец :id;
+                                // активная операция → 409 GENERATION_IN_PROGRESS;
+                                // связи нет / не UUID → 404 NOT_FOUND; на
+                                // позиции строки в file_genealogy НЕТ
+                                // узла-концепции (родитель генерации — участник
+                                // POST /syntheses, либо связь за пределами
+                                // дерева файла) → 409 LINEAGE_GENERATED
+                                // (details.position). Иначе строка снимается,
+                                // узел файла снова проступает снимком (revealed
+                                // — его имя на языке запроса). Тексты разделов,
+                                // журнал и дерево потомков не трогаются.
 ```
 
 Клиентские потребители (беседа 3.2): `client/api/lineage.ts`
@@ -2339,7 +2386,17 @@ LINEAGE_SELF        — POST /lineage/link: концепция — собств�
 LINEAGE_CYCLE       — POST /lineage/link: родитель среди потомков — 409 (8.5)
 LINEAGE_EXISTS      — POST /lineage/link: такая пара уже есть — 409, идемпотентный
                       отказ без дубликата строки (8.5; код не назван текстом
-                      беседы — заведён по образцу пары выше)
+                      беседы — заведён по образцу пары выше). 15.1: тот же код
+                      из нарушения уникального индекса при гонке
+LINEAGE_NODE_UNAVAILABLE — POST /lineage/link с position и GET
+                      …/file-node/:position/candidates: узел дерева файла
+                      перекрыт связью, философ либо позиции нет — 409;
+                      details: { position, reason: covered | not_concept |
+                      missing } (15.1, Д-68)
+LINEAGE_GENERATED   — DELETE /lineage/link/:parentSynthesisId: на позиции
+                      связи нет узла-концепции файла — по этому родителю
+                      документ сгенерирован, отвязать нельзя — 409;
+                      details: { position } (15.1, Д-69)
 META_NOT_ALLOWED    — POST /syntheses: чужая концепция в участниках без
                       ДЕЙСТВЕННОГО allow_meta (visibility='full' && allow_meta;
                       витрина — никогда) — 403; details: { participants: id,

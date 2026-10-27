@@ -172,6 +172,8 @@ philosynth-service/
 │   │       ├── 0012_recommendation_warning.sql  # 12.3 (Д-21): recommendations.warning (text, NULL)
 │   │       ├── 0013_recommendation_issues.sql   # 12.3 (Д-46): recommendations.issues (jsonb, NULL);
 │   │       │                           #  оба — генераты, теги переименованы
+│   │       ├── 0014_lineage_parent_unique.sql   # 15.1 (Д-70): чистка дублей пары + частичный уникальный
+│   │       │                           #  индекс uq_lineage_parent_pair; генерат, тег переименован
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -674,7 +676,11 @@ philosynth-service/
 │   │   │   │   └── ModeContent.tsx         # Рендер HTML-результата
 │   │   │   │
 │   │   │   ├── lineage/
-│   │   │   │   ├── GenealogyTree.tsx       # Дерево наследования (CSS org-chart)
+│   │   │   │   ├── GenealogyTree.tsx       # Дерево наследования (CSS org-chart); 15.1: actions
+│   │   │   │   │                           #  владельца → действия у узлов верхнего уровня
+│   │   │   │   ├── LineageNodeActions.tsx  # 15.1 (Д-68/Д-69): «Связать с концепцией…» у узла файла
+│   │   │   │   │                           #  (кандидаты/поиск, второй шаг, position) и «Отвязать»
+│   │   │   │   │                           #  у связи поверх узла файла (второй шаг); lineageActionFor
 │   │   │   │   └── LineageSearch.tsx       # Поиск по генеалогии
 │   │   │   │
 │   │   │   ├── pool/                        # Unified Concept Pool (v10)
@@ -924,6 +930,17 @@ philosynth-service/
     │                                   # R4 письмо сброса de-пользователя, ru побайтно против dd1b1e0;
     │                                   # R5 PNG (шпион fillText), сид цен на моке (обновление описания),
     │                                   # preferred_locales Customer
+    │                                   # test-151-requests2-4 — 15.1: R2 живой импорт ребёнка раньше родителя →
+    │                                   #  кандидаты/привязка/«Потомки»/search/отвязка/LINEAGE_GENERATED; R3 гонка
+    │                                   #  POST ×2, миграция 0014 на копии БД (pg_dump) с дублем, копия с
+    │                                   #  file_genealogy, удалённый родитель — каталог ≡ шапка; R4 браузер —
+    │                                   #  связать через кандидата и поиск вторым шагом, отвязать (Chrome 131)
+    │                                   # test-151-request1-browser — 15.1 (запрос 1, клиент): действия у узла
+    │                                   #  древа на сборке клиента (Chrome 131): связать через кандидата и поиск
+    │                                   #  вторым шагом, отвязать, гость/чужой без действий, коды API
+    │                                   # smoke-151-request1 — 15.1: fileNodeAt/isMetaSynthesisRows, миграция 0014,
+    │                                   #  кандидаты узла, привязка по позиции, гонка → LINEAGE_EXISTS, отвязка/
+    │                                   #  LINEAGE_GENERATED, одно правило «мета», копия с file_genealogy
     │                                   # smoke-142-request1 — 14.2: коды parseWarnings/подписей/причины паузы,
     │                                   #  родословная без заглушек, sectionTitlesOf, клиентские помощники (чистые)
     │                                   # smoke-141-request1 — 14.1: опись msg-режима на пробе, i18n:check

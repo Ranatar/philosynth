@@ -1438,6 +1438,19 @@ export async function importHTML(
       // связывал с ней молча, минуя гейт POST /syntheses.
       const sid = typeof p.synthesisId === "string" ? p.synthesisId : null;
       let uuidRejected = false;
+      // 15.1 (Д-70): пара «ребёнок → родитель» единственна (uq_lineage_parent_pair);
+      // повтор того же UUID в participants файла второй строкой не пишется —
+      // узел остаётся снимком на своей позиции, связь даёт первое вхождение
+      const repeated = !!sid && lineageRows.some((r) => r.parentSynthesisId === sid);
+      if (repeated) {
+        lineageCandidates.push({ parentName: isUnnamedFileNode({ name: p.name }) ? unnamedLabel("concept") : p.name, position: position++, matches: [] });
+        warnings.push({
+          field: "lineage",
+          message: tl("server.importService.parentRepeated", "Концепция-родитель «{name}» указана в файле повторно — связь уже создана первым вхождением, повтор показывается в древе снимком.", { name: isUnnamedFileNode({ name: p.name }) ? unnamedLabel("concept") : p.name }),
+          critical: false,
+        });
+        continue;
+      }
       if (sid && UUID_RE.test(sid) && sid !== synthesisId) {
         const [parent] = await db
           .select({
