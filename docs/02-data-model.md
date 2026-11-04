@@ -105,6 +105,10 @@ CREATE TABLE sessions (
 CREATE INDEX idx_sessions_user ON sessions(user_id);
 ```
 
+Истёкшие строки снимаются при обращении (`middleware/auth.ts`) и, с 15.3
+(Д-72), проходом чистки работника почты (`services/mail/maintenance.ts`,
+§2.31) — иначе строки гостей, не вернувшихся за 30 дней, копились бы вечно.
+
 ### 2.3. syntheses
 
 Центральная таблица. Каждая запись — один синтез.
@@ -1059,9 +1063,11 @@ email вместо uuid.
 CREATE TABLE auth_tokens (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  purpose     TEXT NOT NULL CHECK (purpose IN ('email_verify','password_reset')),
+  purpose     TEXT NOT NULL CHECK (purpose IN ('email_verify','password_reset','email_change')),
+                                 -- email_change — 15.3 (миграция 0015)
   token_hash  TEXT NOT NULL,     -- sha256(довод), hex; сам довод — только в письме
-  expires_at  TIMESTAMPTZ NOT NULL,  -- email_verify: +72 ч; password_reset: +1 ч
+  expires_at  TIMESTAMPTZ NOT NULL,  -- email_verify: +72 ч; password_reset, email_change: +1 ч
+  new_email   TEXT,              -- 15.3: адрес, на который переводится запись (только email_change)
   used_at     TIMESTAMPTZ,       -- погашен переходом ЛИБО выдачей следующего
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -1077,7 +1083,19 @@ CREATE INDEX idx_auth_tokens_hash ON auth_tokens(token_hash);
 WHERE used_at IS NULL AND expires_at > now() RETURNING user_id`: два
 одновременных перехода оба не пройдут; просроченный, использованный и
 несуществующий довод неразличимы (03 §4.3 TOKEN_INVALID). Строки не
-удаляются (кроме удаления аккаунта, §2.1): погашенные — след выдачи.
+удаляются по действию (кроме удаления аккаунта, §2.1): погашенные — след
+выдачи; с 15.3 (Д-72) погашенные и просроченные старше
+`AUTH_TOKEN_RETENTION_DAYS` (30 сут) снимает проход чистки (§2.31).
+
+**Смена адреса (15.3, Д-73).** Довод `email_change` несёт новый адрес в
+`new_email`: подтверждение по ссылке с НОВОГО ящика одной транзакцией
+гасит довод (`consumeTokenRow` возвращает `user_id` и `new_email`), ставит
+`users.email`/`email_verified_at`, гасит ждущие доводы `password_reset` и
+`email_verify` и ставит уведомление на прежний адрес. Адрес, занятый к
+этому моменту, даёт 23505 на `UPDATE users` — транзакция откатывается,
+довод гасится отдельно и ответ тот же TOKEN_INVALID. Сессии не
+завершаются: пароль не менялся. `admin_audit` не пишется — действие
+пользователя над собой; след — погашенный довод с `new_email`.
 
 ### 2.31. mail_outbox
 
@@ -1141,6 +1159,17 @@ RETURNING *`; разговор с узлом идёт вне транзакци�
 давала. Поэтому при переходе в `sent` и в `failed` работник записывает в оба
 поля пустую строку; остаются адресат, тема, исход и `last_error`. В `pending`
 ссылка лежит неизбежно — секунды до прохода работника.
+
+**Чистка (15.3, Д-72).** `services/mail/maintenance.ts` — `runMaintenance`
+зовётся на тике работника (`maybeMaintain`) реже основного цикла
+(`MAINTENANCE_INTERVAL_MS`, час) под своим `try/catch` — сбой чистки не
+ломает разбор очереди: три независимых `DELETE` — `mail_outbox` в
+`sent`/`failed` старше `MAIL_RETENTION_DAYS` (30 сут; `pending` — живая
+очередь, не трогается), `auth_tokens` (§2.30), истёкшие `sessions` (§2.2).
+Вкладка «Почта» админки (03 §2.1 `GET /auth/mail-outbox`) показывает
+счётчики `getOutboxCounts` (pending / overdue — ждущие с наступившим
+сроком / sent / failed) и последние строки `listOutboxRows` без тел;
+повтора отправки нет — тела затёрты.
 
 ### 2.32. recommendations
 

@@ -44,6 +44,9 @@ philosynth-service/
 │                                   # seed-plans напрямую из process.env, не env.ts)
 │                                   # 9.1: + MAIL_TRANSPORT, SMTP_*, MAIL_FROM, PUBLIC_BASE_URL,
 │                                   # MAIL_WORKER_INTERVAL_MS, MAIL_RETRY_DELAYS, RATE_LIMIT_MAIL_PER_HOUR
+│                                   # 15.3: + MAIL_RETENTION_DAYS, AUTH_TOKEN_RETENTION_DAYS (сроки чистки),
+│                                   # MAINTENANCE_INTERVAL_MS (период прохода), AUTH_MIN_RESPONSE_MS
+│                                   # (минимум времени ответа форм); все четыре — в check-dotfiles
 ├── drizzle.config.ts               # Конфигурация Drizzle ORM
 │
 ├── packages/
@@ -102,7 +105,8 @@ philosynth-service/
 │       │   ├── modes.ts                # ModeConfig, ModeResult
 │       │   ├── billing.ts              # ApiUsage, Transaction
 │       │   ├── prompts.ts              # PromptTemplate, SynthesisConfig
-│       │   ├── admin.ts                # 8.1: AdminAction, AdminAuditEntry, AdminUserRow, UserRole
+│       │   ├── admin.ts                # 8.1: AdminAction, AdminAuditEntry, AdminUserRow, UserRole;
+│       │   │                           # 15.3: MailOutboxCounts, MailOutboxRow, MailOutboxView
 │       │   └── ws-messages.ts          # Все типы WebSocket-сообщений (клиент↔сервер)
 │       │                               # v11: + resume_generation/resume_plan,
 │       │                               #   generation_paused (estimates), generation_resumed
@@ -174,6 +178,8 @@ philosynth-service/
 │   │       │                           #  оба — генераты, теги переименованы
 │   │       ├── 0014_lineage_parent_unique.sql   # 15.1 (Д-70): чистка дублей пары + частичный уникальный
 │   │       │                           #  индекс uq_lineage_parent_pair; генерат, тег переименован
+│   │       ├── 0015_email_change.sql   # 15.3 (Д-73): auth_tokens.purpose += email_change (пара
+│   │       │                           #  DROP/ADD CONSTRAINT), new_email text; генерат, тег переименован
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -371,13 +377,20 @@ philosynth-service/
 │   │   ├── mail/                       # 9.1: почта — четыре модуля с разделением обязанностей
 │   │   │   ├── transport.ts            # ТОЛЬКО отправка: nodemailer либо вывод в консоль
 │   │   │   │                           # (MAIL_TRANSPORT); classifySendError — род отказа
-│   │   │   ├── templates.ts            # два письма, текст и HTML: подтверждение адреса, сброс пароля
+│   │   │   ├── templates.ts            # четыре письма, текст и HTML: подтверждение адреса, сброс пароля,
+│   │   │   │                           # 15.3 — подтверждение нового адреса (ссылка) и уведомление на
+│   │   │   │                           # прежний адрес (htmlShell с link=null — без кнопки и ссылки)
 │   │   │   │                           # (14.1: все фразы tl() под языком ПОЛУЧАТЕЛЯ — runWithLocale в
 │   │   │   │                           # queueTokenMail; часы — плюрал; <html lang> по языку)
 │   │   │   ├── outbox.ts               # enqueue(exec, letter) — запись в ПЕРЕДАННОЙ транзакции;
-│   │   │   │                           # underSavepoint / tryEnqueue; getOutboxCounts
+│   │   │   │                           # underSavepoint / tryEnqueue; getOutboxCounts (15.3: + sent),
+│   │   │   │                           # listOutboxRows(limit) — строки вкладки «Почта» без тел (15.3)
+│   │   │   ├── maintenance.ts          # 15.3 (Д-72): runMaintenance — три DELETE (mail_outbox sent/failed,
+│   │   │   │                           # auth_tokens погашенные/просроченные, истёкшие sessions) старше
+│   │   │   │                           # сроков env; maintenanceDue — период от прошлого прохода
 │   │   │   └── worker.ts               # processOutbox: захват арендой, постоянный/временный отказ,
-│   │   │                               # decideRetry; startMailWorker / stopMailWorker (index.ts)
+│   │   │                               # decideRetry; startMailWorker / stopMailWorker (index.ts);
+│   │   │                               # 15.3: tick() зовёт maybeMaintain — чистка реже цикла, fail-open
 │   │   ├── stripe-client.ts            # Тонкий fetch-клиент Stripe REST + проверка подписи
 │   │   │                               # webhook; STRIPE_API_BASE для мока (НОВОЕ 6.1, без SDK)
 │   │   │                               # 8.3: + Products/Prices (createProduct, listProducts,
@@ -528,7 +541,8 @@ philosynth-service/
 │   │   │   ├── modes.ts
 │   │   │   ├── lineage.ts              # 3.2: ancestors/descendants/search; 8.5: + linkParent
 │   │   │   ├── billing.ts              # 7 функций §2.10: ключ, пополнение, истории (6.2 СДЕЛАНО 2026-09-07)
-│   │   │   ├── admin.ts                # 8.1: listUsers / setUserRole / getAuditLog (вкладка «Доступ»)
+│   │   │   ├── admin.ts                # 8.1: listUsers / setUserRole / getAuditLog (вкладка «Доступ»);
+│   │   │   │                           # 15.3: getMailOutbox (вкладка «Почта»)
 │   │   │   ├── subscription.ts         # 5 функций §2.10: подписка/тарифы/subscribe/cancel/resume (6.2 СДЕЛАНО)
 │   │   │   ├── recommendations.ts      # 10.3: list / parse / extract / plan (+ withBusyRetry на 409 после done)
 │   │   │   └── export.ts
@@ -568,6 +582,9 @@ philosynth-service/
 │   │   │   │                           #  «/reset-password/:token» (новый пароль → /login с пояснением)
 │   │   │   ├── VerifyEmailPage.tsx     # 9.1: «/verify-email/:token» — подтверждение, затем каталог
 │   │   │   │                           #  (гостю — вход с пояснением); довод гасится один раз
+│   │   │   ├── ChangeEmailPage.tsx     # 15.3 (Д-73): «/change-email/:token» — подтверждение смены адреса
+│   │   │   │                           #  по образцу VerifyEmailPage; успех → профиль (гостю — вход
+│   │   │   │                           #  новым адресом с пояснением); ref-заслон от двойного эффекта
 │   │   │   ├── LandingPage.tsx         # 8.7: стартовая «/» для гостя — что это, живая
 │   │   │   │                           #  витрина (GET /syntheses/public, 4 карточки), цены
 │   │   │   │                           #  (PlansTable), крупная «Создать аккаунт»; вошедшего → /catalog
@@ -583,7 +600,7 @@ philosynth-service/
 │   │   │   ├── BillingPage.tsx         # 6.2 СДЕЛАНО: секции API-ключ / баланс (Stripe Elements или dev-режим) / подписка / история использования / транзакции
 │   │   │   ├── ProfilePage.tsx         # Профиль: displayName + смена пароля (A3, беседа 0.6); 7.1: + удаление аккаунта (DELETE /auth/me);
 │   │   │   │                           #  11.3: секция «Язык» — LanguageSwitch variant="form" + строка языка генерации по умолчанию
-│   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin; 7.1: + вкладка «Каталоги» (типы категорий/связей, правка и удаление пользовательских); 8.1: + вкладка «Доступ» (поиск пользователей, роль с подтверждением, последние 50 строк admin_audit)
+│   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin; 7.1: + вкладка «Каталоги» (типы категорий/связей, правка и удаление пользовательских); 8.1: + вкладка «Доступ» (поиск пользователей, роль с подтверждением, последние 50 строк admin_audit); 15.3: + вкладка «Почта» (MailTab — четыре счётчика очереди, последние 50 строк без тел, «Обновить»; повтора нет)
 │   │   │
 │   │   ├── components/
 │   │   │   ├── layout/
@@ -812,7 +829,7 @@ philosynth-service/
 │   │   ├── extract-section-templates.mjs
 │   │   └── extract-export-assets.mjs
 │   ├── patches/                        # идемпотентные патчи доков по итогам бесед (по одному
-│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv152)
+│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv153)
 │   │   ├── patch-docs-*.py             # запускаются ИЗ КОРНЯ репозитория;
 │   │   │                               # осторожно с повторным прогоном старого патча:
 │   │   │                               # доки с тех пор менялись, и якорь может совпасть
@@ -946,6 +963,19 @@ philosynth-service/
     │                                   #  карте (мок), regen_subsection — в конец; R5 браузер Chrome 131 на
     │                                   #  сборке — второй шаг (граф → узел, инлайн, карточка подраздела),
     │                                   #  отчёт влияния, панель рекомендаций и ряды плана
+    │                                   # test-153-requests2-4 — 15.3: живой сервер (console, работник 300 мс, чистка
+    │                                   #  1 с) + сборка под preview :5229 + Chrome 131; R2 чистка на первом тике по
+    │                                   #  фикстурам, медианы 20 прогонов формы сброса и входа, вкладка 401/403/200;
+    │                                   #  R3 смена адреса end-to-end по-немецки (письма из лога, вход новым адресом,
+    │                                   #  повтор, занятый к подтверждению); R4 браузер — форма, /change-email/:token
+    │                                   #  вошедшему и гостю, вкладка «Почта» с «Обновить», пользователю закрыто
+    │                                   # smoke-153-request1 — 15.3: maintenanceDue, письма 15.3 (ссылка только в
+    │                                   #  первом, de под runWithLocale), TTL/путь довода, исходники (auth.ts,
+    │                                   #  worker, схема/0015, env, клиент, CSS, ключи); живая БД — runMaintenance
+    │                                   #  на фикстурах, медианы входа, форма сброса ≥ минимума, смена адреса
+    │                                   #  end-to-end через app.request (401/400/200, занятый без письма, довод с
+    │                                   #  new_email, confirm без сессии, уведомление, повтор, занятый к
+    │                                   #  подтверждению), /auth/mail-outbox 401/403/200 без тел
     │                                   # smoke-152-request1 — 15.2: типы шагов, removeExactSubsectionHtml,
     │                                   #  subsectionNamesOf ≡ копиям (Д-79), зеркало клиента, один pause_marker
     │                                   #  (Д-78); живая БД — DELETE категории/тезиса/термина через app.request

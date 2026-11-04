@@ -62,3 +62,34 @@ export interface AdminUserList {
   users: AdminUserRow[];
   total: number;
 }
+
+/* ── Очередь писем — вкладка «Почта» (беседа 15.3, Д-72 п.3) ─────────── */
+
+/** Счётчики mail_outbox по статусам (GET /auth/mail-outbox). overdue —
+ *  'pending' с уже наступившим next_attempt_at: работник отстал. */
+export interface MailOutboxCounts {
+  pending: number;
+  overdue: number;
+  sent: number;
+  failed: number;
+}
+
+/** Строка очереди БЕЗ тел: тела отправленных затёрты (9.1), у ждущих —
+ *  живая ссылка-довод; повтора отправки нет по той же причине. */
+export interface MailOutboxRow {
+  id: string;
+  toEmail: string;
+  subject: string;
+  status: "pending" | "sent" | "failed";
+  attempts: number;
+  lastError: string | null;
+  nextAttemptAt: string;
+  createdAt: string;
+  sentAt: string | null;
+}
+
+/** Ответ GET /auth/mail-outbox ?limit= (requireAdmin). */
+export interface MailOutboxView {
+  counts: MailOutboxCounts;
+  rows: MailOutboxRow[];
+}

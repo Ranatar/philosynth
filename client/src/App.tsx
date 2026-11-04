@@ -49,6 +49,7 @@ import { Layout } from "./components/layout/Layout";
 import { AdminPromptsPage } from "./pages/AdminPromptsPage";
 import { BillingPage } from "./pages/BillingPage";
 import { CatalogPage } from "./pages/CatalogPage";
+import { ChangeEmailPage } from "./pages/ChangeEmailPage"; // 15.3 (Д-73)
 import { CreateSynthesisPage } from "./pages/CreateSynthesisPage";
 import { ImportPage } from "./pages/ImportPage";
 import { LandingPage } from "./pages/LandingPage";
@@ -116,6 +117,8 @@ export function App() {
         <Route path="/reset-password" element={<ResetPasswordRequestPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordConfirmPage />} />
         <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+        {/* 15.3 (Д-73): подтверждение смены адреса — ссылка приходит на новый ящик */}
+        <Route path="/change-email/:token" element={<ChangeEmailPage />} />
 
         {/* Общий каркас: шапка (гостевая или своя), меню — только вошедшему */}
         <Route element={<Layout />}>

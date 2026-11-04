@@ -132,6 +132,31 @@ export function ProfilePage() {
     }
   }
 
+  /* ── Секция «Смена адреса» (15.3, Д-73) ── */
+  const requestEmailChange = useAuthStore((s) => s.requestEmailChange);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
+  const [emailErrors, setEmailErrors] = useState<FieldErrors>({});
+  const [emailRequested, setEmailRequested] = useState<string | null>(null);
+  const [emailPending, setEmailPending] = useState(false);
+
+  async function handleEmailSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailErrors({});
+    setEmailRequested(null);
+    setEmailPending(true);
+    const result = await requestEmailChange(newEmail.trim(), emailPassword);
+    setEmailPending(false);
+    if (result.ok) {
+      // Ответ один и тот же, занят адрес или свободен: форма не знает и не
+      // должна знать, ушло ли письмо (анти-enumeration)
+      setEmailRequested(result.message);
+      setEmailPassword("");
+    } else {
+      setEmailErrors(result.details ?? { _: result.error });
+    }
+  }
+
   /* ── Секция «Смена пароля» ── */
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -213,6 +238,57 @@ export function ProfilePage() {
           style={{ alignSelf: "flex-start", marginTop: 4 }}
         >
           {profilePending ? tl("common.saving", "Сохранение…") : tl("common.save", "Сохранить")}
+        </button>
+      </form>
+
+      {/* ── Смена адреса (15.3, Д-73) ── */}
+      <form onSubmit={handleEmailSubmit} className="input-form" data-testid="email-change-form">
+        <div className="form-section-title">{tl("profilePage.changeEmailTitle", "Смена адреса")}</div>
+        <div className="form-sublabel">
+          {tl("profilePage.changeEmailNote", "На новый адрес придёт письмо со ссылкой; адрес сменится после перехода по ней (ссылка действует час). На прежний адрес придёт уведомление о смене.")}
+        </div>
+        <Field
+          label={tl("profilePage.newEmail", "Новый адрес")}
+          type="email"
+          autoComplete="email"
+          value={newEmail}
+          onChange={(v) => {
+            setNewEmail(v);
+            setEmailRequested(null);
+            if (Object.keys(emailErrors).length) setEmailErrors({});
+          }}
+          error={emailErrors.newEmail}
+        />
+        <Field
+          label={tl("profilePage.currentPassword", "Текущий пароль")}
+          type="password"
+          autoComplete="current-password"
+          value={emailPassword}
+          onChange={(v) => {
+            setEmailPassword(v);
+            setEmailRequested(null);
+            if (Object.keys(emailErrors).length) setEmailErrors({});
+          }}
+          error={emailErrors.password}
+        />
+        {emailErrors._ && (
+          <p role="alert" className="callout warning">
+            {emailErrors._}
+          </p>
+        )}
+        {emailRequested && (
+          <p role="status" className="callout note" data-testid="email-change-requested">
+            {emailRequested}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={emailPending}
+          className="submit-btn"
+          style={{ alignSelf: "flex-start", marginTop: 4 }}
+          data-testid="email-change-submit"
+        >
+          {emailPending ? tl("profilePage.sending", "Отправка…") : tl("profilePage.sendChangeLink", "Отправить ссылку")}
         </button>
       </form>
 

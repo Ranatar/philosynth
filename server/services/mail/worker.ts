@@ -26,6 +26,7 @@ import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 
 import { db, schema } from "../../db/index.js";
 import { env } from "../../env.js";
+import { maintenanceDue, runMaintenance } from "./maintenance.js"; // 15.3 (Д-72)
 import { sendMail, type OutgoingMail, type SendResult } from "./transport.js";
 
 const { mailOutbox } = schema;
@@ -170,8 +171,30 @@ export async function processOutbox(
 let timer: NodeJS.Timeout | null = null;
 let running: Promise<void> | null = null;
 let overdueWarnedAt = 0;
+/** 15.3 (Д-72): момент последнего прохода чистки; 0 — ещё не было, первый
+ *  проход — на первом же тике после старта (старые строки не ждут час) */
+let maintenanceRanAt = 0;
+
+/**
+ * 15.3 (Д-72): проход чистки — на тике работника, РЕЖЕ основного цикла
+ * (env.mail.maintenanceIntervalMs); свой try/catch — сбой чистки не трогает
+ * ни разбор очереди, ни сервер (fail-open, как сам работник).
+ */
+async function maybeMaintain(now: number = Date.now()): Promise<void> {
+  if (!maintenanceDue(maintenanceRanAt, now)) return;
+  maintenanceRanAt = now;
+  try {
+    const m = await runMaintenance();
+    if (m.mailDeleted || m.tokensDeleted || m.sessionsDeleted) {
+      console.log(`[mail] чистка: писем ${m.mailDeleted}, доводов ${m.tokensDeleted}, истёкших сессий ${m.sessionsDeleted}`);
+    }
+  } catch (err) {
+    console.error("[mail] проход чистки:", (err as Error).message);
+  }
+}
 
 async function tick(): Promise<void> {
+  await maybeMaintain();
   try {
     const r = await processOutbox();
     if (r.taken > 0) {

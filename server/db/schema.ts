@@ -1246,6 +1246,10 @@ export const adminAudit = pgTable(
  * (services/auth-tokens.ts), иначе старая ссылка из почты осталась бы
  * рабочей. user_id — ON DELETE CASCADE; но 7.1 строку users анонимизирует,
  * а не удаляет, поэтому account-deletion снимает доводы явно (урок 8.1).
+ * 15.3 (Д-73, миграция 0015): третье назначение 'email_change' — смена
+ * адреса; НОВЫЙ адрес лежит в строке довода (new_email), в users до
+ * подтверждения ничего не пишется. 15.3 (Д-72): погашенные и просроченные
+ * доводы старше AUTH_TOKEN_RETENTION_DAYS снимает проход чистки.
  */
 export const authTokens = pgTable(
   "auth_tokens",
@@ -1254,8 +1258,10 @@ export const authTokens = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    purpose: text("purpose", { enum: ["email_verify", "password_reset"] }).notNull(),
+    purpose: text("purpose", { enum: ["email_verify", "password_reset", "email_change"] }).notNull(),
     tokenHash: text("token_hash").notNull(),
+    /** 15.3 (Д-73): новый адрес у довода 'email_change'; у прочих — NULL */
+    newEmail: text("new_email"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     usedAt: timestamp("used_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -1267,7 +1273,7 @@ export const authTokens = pgTable(
     index("idx_auth_tokens_hash").on(t.tokenHash),
     check(
       "auth_tokens_purpose_check",
-      sql`${t.purpose} IN ('email_verify','password_reset')`,
+      sql`${t.purpose} IN ('email_verify','password_reset','email_change')`,
     ),
   ],
 );

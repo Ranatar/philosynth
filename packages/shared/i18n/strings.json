@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-11-03T23:33:18.648Z",
-    "imported": "2026-11-03T23:33:27.221Z"
+    "synced": "2026-11-04T18:33:49.893Z",
+    "imported": "2026-11-04T19:03:44.470Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -464,6 +464,140 @@
       "from": {"en":"Загрузка версий…","de":"Загрузка версий…"},
       "where": ["client/src/pages/AdminPromptsPage.tsx:460","client/src/pages/AdminPromptsPage.tsx:782"]
     },
+    "adminPromptsPage.mailAttempts": {
+      "ru": "Попыток",
+      "en": "Attempts",
+      "de": "Versuche",
+      "from": {"en":"Попыток","de":"Попыток"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1553"]
+    },
+    "adminPromptsPage.mailCreated": {
+      "ru": "Поставлено",
+      "en": "Queued",
+      "de": "Eingestellt",
+      "from": {"en":"Поставлено","de":"Поставлено"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1549"]
+    },
+    "adminPromptsPage.mailEmpty": {
+      "ru": "очередь пуста",
+      "en": "the queue is empty",
+      "de": "Warteschlange ist leer",
+      "from": {"en":"очередь пуста","de":"очередь пуста"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1544"]
+    },
+    "adminPromptsPage.mailFailed": {
+      "ru": "отказ",
+      "en": "failed",
+      "de": "fehlgeschlagen",
+      "from": {"en":"отказ","de":"отказ"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1470"]
+    },
+    "adminPromptsPage.mailFailedLabel": {
+      "ru": "отказов",
+      "en": "failed",
+      "de": "fehlgeschlagen",
+      "from": {"en":"отказов","de":"отказов"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1529"]
+    },
+    "adminPromptsPage.mailLastError": {
+      "ru": "Последняя ошибка",
+      "en": "Last error",
+      "de": "Letzter Fehler",
+      "from": {"en":"Последняя ошибка","de":"Последняя ошибка"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1554"]
+    },
+    "adminPromptsPage.mailLastRows": {
+      "ru": "последние {limit} строк, новые первыми",
+      "en": "last {limit} rows, newest first",
+      "de": "die letzten {limit} Zeilen, neueste zuerst",
+      "from": {"en":"последние {limit} строк, новые первыми","de":"последние {limit} строк, новые первыми"},
+      "params": {"limit":""},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1535"]
+    },
+    "adminPromptsPage.mailLoadFailed": {
+      "ru": "Не удалось загрузить очередь писем",
+      "en": "Failed to load the mail queue",
+      "de": "Die E-Mail-Warteschlange konnte nicht geladen werden",
+      "from": {"en":"Не удалось загрузить очередь писем","de":"Не удалось загрузить очередь писем"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1495"]
+    },
+    "adminPromptsPage.mailNote": {
+      "ru": "Письма ставятся в очередь транзакцией действия и уходят работником; тела отправленных и отказанных затёрты, у ждущих — живая ссылка, поэтому тел здесь нет и повторной отправки тоже. «Просрочено» — ждущие с наступившим сроком: работник отстал. Отработанное старше срока хранения снимает проход чистки.",
+      "en": "Emails are queued in the transaction of the action and sent by the worker; the bodies of sent and failed emails are scrubbed, and waiting ones carry a live link, so there are no bodies here and no resending either. “Overdue” — waiting emails whose time has come: the worker is behind. Processed emails older than the retention period are removed by the cleanup pass.",
+      "de": "E-Mails werden in der Transaktion der Aktion in die Warteschlange gestellt und vom Worker gesendet; die Inhalte gesendeter und fehlgeschlagener E-Mails sind gelöscht, wartende enthalten einen gültigen Link — deshalb gibt es hier weder Inhalte noch erneutes Senden. „Überfällig“ — wartende E-Mails, deren Zeitpunkt gekommen ist: der Worker hinkt hinterher. Abgearbeitete E-Mails, die älter als die Aufbewahrungsfrist sind, entfernt der Bereinigungslauf.",
+      "from": {"en":"Письма ставятся в очередь транзакцией действия и уходят работником; тела отправленных и отказанных затёрты, у ждущих — живая ссылка, поэтому тел здесь нет и повторной отправки тоже. «Просрочено» — ждущие с наступившим сроком: работник отстал. Отработанное старше срока хранения снимает проход чистки.","de":"Письма ставятся в очередь транзакцией действия и уходят работником; тела отправленных и отказанных затёрты, у ждущих — живая ссылка, поэтому тел здесь нет и повторной отправки тоже. «Просрочено» — ждущие с наступившим сроком: работник отстал. Отработанное старше срока хранения снимает проход чистки."},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1511"]
+    },
+    "adminPromptsPage.mailOverdueLabel": {
+      "ru": "просрочено",
+      "en": "overdue",
+      "de": "überfällig",
+      "from": {"en":"просрочено","de":"просрочено"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1521"]
+    },
+    "adminPromptsPage.mailPending": {
+      "ru": "ждёт",
+      "en": "waiting",
+      "de": "wartet",
+      "from": {"en":"ждёт","de":"ждёт"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1468"]
+    },
+    "adminPromptsPage.mailPendingLabel": {
+      "ru": "ждут",
+      "en": "waiting",
+      "de": "wartend",
+      "from": {"en":"ждут","de":"ждут"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1517"]
+    },
+    "adminPromptsPage.mailQueue": {
+      "ru": "Очередь писем",
+      "en": "Mail queue",
+      "de": "E-Mail-Warteschlange",
+      "from": {"en":"Очередь писем","de":"Очередь писем"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1509"]
+    },
+    "adminPromptsPage.mailSent": {
+      "ru": "отправлено",
+      "en": "sent",
+      "de": "gesendet",
+      "from": {"en":"отправлено","de":"отправлено"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1469"]
+    },
+    "adminPromptsPage.mailSentLabel": {
+      "ru": "отправлено",
+      "en": "sent",
+      "de": "gesendet",
+      "from": {"en":"отправлено","de":"отправлено"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1525"]
+    },
+    "adminPromptsPage.mailStatus": {
+      "ru": "Статус",
+      "en": "Status",
+      "de": "Status",
+      "from": {"en":"Статус","de":"Статус"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1552"]
+    },
+    "adminPromptsPage.mailSubject": {
+      "ru": "Тема",
+      "en": "Subject",
+      "de": "Betreff",
+      "from": {"en":"Тема","de":"Тема"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1551"]
+    },
+    "adminPromptsPage.mailTo": {
+      "ru": "Кому",
+      "en": "To",
+      "de": "An",
+      "from": {"en":"Кому","de":"Кому"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1550"]
+    },
+    "adminPromptsPage.mailWhen": {
+      "ru": "Отправлено / следующая",
+      "en": "Sent / next attempt",
+      "de": "Gesendet / nächster Versuch",
+      "from": {"en":"Отправлено / следующая","de":"Отправлено / следующая"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1555"]
+    },
     "adminPromptsPage.makeAdmin": {
       "ru": "Назначить администратором",
       "en": "Make administrator",
@@ -562,7 +696,14 @@
       "en": "Prompt Registry",
       "de": "Prompt Registry",
       "from": {"en":"Prompt Registry","de":"Prompt Registry"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1480"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1598"]
+    },
+    "adminPromptsPage.refresh": {
+      "ru": "↻ Обновить",
+      "en": "↻ Refresh",
+      "de": "↻ Aktualisieren",
+      "from": {"en":"↻ Обновить","de":"↻ Обновить"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1538"]
     },
     "adminPromptsPage.registered": {
       "ru": "Зарегистрирован",
@@ -576,7 +717,7 @@
       "en": "Saving creates a new draft version; generation uses only the active one. Activation resets the registry cache — the next generation takes the new text.",
       "de": "Speichern erzeugt eine neue Entwurfsversion; die Generierung verwendet nur die aktive. Aktivierung leert den Registry-Cache — die nächste Generierung nimmt den neuen Text.",
       "from": {"en":"Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация сбрасывает кэш реестра — следующая генерация берёт новый текст.","de":"Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация сбрасывает кэш реестра — следующая генерация берёт новый текст."},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1525"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1653"]
     },
     "adminPromptsPage.revoke": {
       "ru": "↓ Снять права",
@@ -768,28 +909,35 @@
       "en": "Access",
       "de": "Zugang",
       "from": {"en":"Доступ","de":"Доступ"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1520"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1638"]
     },
     "adminPromptsPage.tabCatalogs": {
       "ru": "Каталоги",
       "en": "Catalogs",
       "de": "Kataloge",
       "from": {"en":"Каталоги","de":"Каталоги"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1510"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1628"]
     },
     "adminPromptsPage.tabConfigs": {
       "ru": "Конфиги",
       "en": "Configs",
       "de": "Konfigurationen",
       "from": {"en":"Конфиги","de":"Конфиги"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1500"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1618"]
+    },
+    "adminPromptsPage.tabMail": {
+      "ru": "Почта",
+      "en": "Mail",
+      "de": "E-Mail",
+      "from": {"en":"Почта","de":"Почта"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1648"]
     },
     "adminPromptsPage.tabTemplates": {
       "ru": "Шаблоны",
       "en": "Templates",
       "de": "Vorlagen",
       "from": {"en":"Шаблоны","de":"Шаблоны"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1490"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1608"]
     },
     "adminPromptsPage.target": {
       "ru": "Цель",
@@ -1028,7 +1176,7 @@
       "en": "checking session…",
       "de": "Sitzung wird geprüft…",
       "from": {"en":"проверка сессии…","de":"проверка сессии…"},
-      "where": ["client/src/App.tsx:76"]
+      "where": ["client/src/App.tsx:77"]
     },
     "billing.plansTable.enrichments": {
       "ru": "Обогащения",
@@ -2331,6 +2479,34 @@
       "params": {"visibility":"v"},
       "where": ["client/src/pages/CatalogPage.tsx:123"]
     },
+    "changeEmailPage.changeLower": {
+      "ru": "смена адреса",
+      "en": "email address change",
+      "de": "Adressänderung",
+      "from": {"en":"смена адреса","de":"смена адреса"},
+      "where": ["client/src/pages/ChangeEmailPage.tsx:54"]
+    },
+    "changeEmailPage.changedLogin": {
+      "ru": "Адрес изменён. Войдите новым адресом, чтобы продолжить.",
+      "en": "Address changed. Log in with the new address to continue.",
+      "de": "Adresse geändert. Melden Sie sich mit der neuen Adresse an, um fortzufahren.",
+      "from": {"en":"Адрес изменён. Войдите новым адресом, чтобы продолжить.","de":"Адрес изменён. Войдите новым адресом, чтобы продолжить."},
+      "where": ["client/src/pages/ChangeEmailPage.tsx:15"]
+    },
+    "changeEmailPage.changedOpening": {
+      "ru": "Адрес изменён и подтверждён. Открываем профиль…",
+      "en": "Address changed and verified. Opening the profile…",
+      "de": "Adresse geändert und bestätigt. Profil wird geöffnet…",
+      "from": {"en":"Адрес изменён и подтверждён. Открываем профиль…","de":"Адрес изменён и подтверждён. Открываем профиль…"},
+      "where": ["client/src/pages/ChangeEmailPage.tsx:61"]
+    },
+    "changeEmailPage.retryNote": {
+      "ru": "Ссылка действует час и срабатывает один раз; если адрес к этому времени занят, смена не состоится. Новый запрос — в профиле, форма «Смена адреса».",
+      "en": "The link is valid for an hour and works once; if the address is taken by then, the change does not happen. A new request — in the profile, the “Change email address” form.",
+      "de": "Der Link gilt eine Stunde und funktioniert einmal; ist die Adresse bis dahin vergeben, findet die Änderung nicht statt. Eine neue Anfrage — im Profil, Formular „Adressänderung“.",
+      "from": {"en":"Ссылка действует час и срабатывает один раз; если адрес к этому времени занят, смена не состоится. Новый запрос — в профиле, форма «Смена адреса».","de":"Ссылка действует час и срабатывает один раз; если адрес к этому времени занят, смена не состоится. Новый запрос — в профиле, форма «Смена адреса»."},
+      "where": ["client/src/pages/ChangeEmailPage.tsx:70"]
+    },
     "common.antithesis": {
       "ru": "Антитезис",
       "en": "Antithesis",
@@ -2350,21 +2526,21 @@
       "en": "Authorization required",
       "de": "Anmeldung erforderlich",
       "from": {"en":"Требуется авторизация","de":"Требуется авторизация"},
-      "where": ["server/middleware/auth.ts:237","server/middleware/billing-check.ts:62","server/routes/auth.ts:476","server/ws/handler.ts:598"]
+      "where": ["server/middleware/auth.ts:237","server/middleware/billing-check.ts:62","server/routes/auth.ts:523","server/ws/handler.ts:598"]
     },
     "common.brandPhilo": {
       "ru": "Philo",
       "en": "Philo",
       "de": "Philo",
       "from": {"en":"Philo","de":"Philo"},
-      "where": ["client/src/components/layout/Header.tsx:169","client/src/pages/LoginPage.tsx:38","client/src/pages/RegisterPage.tsx:32","client/src/pages/ResetPasswordPage.tsx:29","client/src/pages/VerifyEmailPage.tsx:52"]
+      "where": ["client/src/components/layout/Header.tsx:169","client/src/pages/ChangeEmailPage.tsx:52","client/src/pages/LoginPage.tsx:38","client/src/pages/RegisterPage.tsx:32","client/src/pages/ResetPasswordPage.tsx:29","client/src/pages/VerifyEmailPage.tsx:52"]
     },
     "common.brandSynth": {
       "ru": "Synth",
       "en": "Synth",
       "de": "Synth",
       "from": {"en":"Synth","de":"Synth"},
-      "where": ["client/src/components/layout/Header.tsx:169","client/src/pages/LoginPage.tsx:38","client/src/pages/RegisterPage.tsx:32","client/src/pages/ResetPasswordPage.tsx:29","client/src/pages/VerifyEmailPage.tsx:52"]
+      "where": ["client/src/components/layout/Header.tsx:169","client/src/pages/ChangeEmailPage.tsx:52","client/src/pages/LoginPage.tsx:38","client/src/pages/RegisterPage.tsx:32","client/src/pages/ResetPasswordPage.tsx:29","client/src/pages/VerifyEmailPage.tsx:52"]
     },
     "common.bridge": {
       "ru": "Мост",
@@ -2378,7 +2554,7 @@
       "en": "Cancel",
       "de": "Abbrechen",
       "from": {"en":"Отмена","de":"Отмена"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:331","client/src/components/catalog/SynthesisCard.tsx:397","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:419","client/src/components/document/SectionView.tsx:439","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:532","client/src/components/edit/ElementEditor.tsx:611","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/pages/AdminPromptsPage.tsx:1085","client/src/pages/AdminPromptsPage.tsx:1120","client/src/pages/AdminPromptsPage.tsx:1385","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:351"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:331","client/src/components/catalog/SynthesisCard.tsx:397","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:419","client/src/components/document/SectionView.tsx:439","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:532","client/src/components/edit/ElementEditor.tsx:611","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/pages/AdminPromptsPage.tsx:1085","client/src/pages/AdminPromptsPage.tsx:1120","client/src/pages/AdminPromptsPage.tsx:1385","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:427"]
     },
     "common.capsule": {
       "ru": "Капсула",
@@ -2434,7 +2610,7 @@
       "en": "Really delete?",
       "de": "Wirklich löschen?",
       "from": {"en":"Точно удалить?","de":"Точно удалить?"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:385","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1111","client/src/pages/BillingPage.tsx:358","client/src/pages/ProfilePage.tsx:340"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:385","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1111","client/src/pages/BillingPage.tsx:358","client/src/pages/ProfilePage.tsx:416"]
     },
     "common.createAccount": {
       "ru": "Создать аккаунт",
@@ -2540,7 +2716,7 @@
       "en": "Email",
       "de": "E-Mail",
       "from": {"en":"Email","de":"Email"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/LoginPage.tsx:54","client/src/pages/ProfilePage.tsx:181","client/src/pages/RegisterPage.tsx:43"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/LoginPage.tsx:54","client/src/pages/ProfilePage.tsx:206","client/src/pages/RegisterPage.tsx:43"]
     },
     "common.error": {
       "ru": "Ошибка",
@@ -2617,7 +2793,7 @@
       "en": "Invalid data",
       "de": "Ungültige Daten",
       "from": {"en":"Невалидные данные","de":"Невалидные данные"},
-      "where": ["server/routes/auth.ts:189","server/routes/auth.ts:242","server/routes/auth.ts:302","server/routes/auth.ts:355","server/routes/auth.ts:464","server/routes/auth.ts:545","server/routes/auth.ts:583","server/routes/auth.ts:690","server/routes/enrichment.ts:93","server/routes/modes.ts:197","server/routes/recommendations.ts:131","server/routes/taxonomy.ts:70","server/services/element-editor.ts:230","server/services/element-editor.ts:1871","server/services/element-editor.ts:1903","server/services/element-editor.ts:1926","server/services/element-editor.ts:2116","server/services/element-enrichment.ts:670","server/services/element-enrichment.ts:726"]
+      "where": ["server/routes/auth.ts:234","server/routes/auth.ts:287","server/routes/auth.ts:349","server/routes/auth.ts:402","server/routes/auth.ts:511","server/routes/auth.ts:592","server/routes/auth.ts:638","server/routes/auth.ts:745","server/routes/auth.ts:867","server/routes/auth.ts:873","server/routes/enrichment.ts:93","server/routes/modes.ts:197","server/routes/recommendations.ts:131","server/routes/taxonomy.ts:70","server/services/element-editor.ts:230","server/services/element-editor.ts:1871","server/services/element-editor.ts:1903","server/services/element-editor.ts:1926","server/services/element-editor.ts:2116","server/services/element-enrichment.ts:670","server/services/element-enrichment.ts:726"]
     },
     "common.invalidJson": {
       "ru": "Невалидный JSON",
@@ -2645,14 +2821,14 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:375","client/src/components/document/SectionView.tsx:391","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:446","client/src/pages/AdminPromptsPage.tsx:769","client/src/pages/AdminPromptsPage.tsx:1012","client/src/pages/AdminPromptsPage.tsx:1335","client/src/pages/AdminPromptsPage.tsx:1424","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:882"]
+      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:375","client/src/components/document/SectionView.tsx:391","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:446","client/src/pages/AdminPromptsPage.tsx:769","client/src/pages/AdminPromptsPage.tsx:1012","client/src/pages/AdminPromptsPage.tsx:1335","client/src/pages/AdminPromptsPage.tsx:1424","client/src/pages/AdminPromptsPage.tsx:1538","client/src/pages/AdminPromptsPage.tsx:1542","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:882"]
     },
     "common.logIn": {
       "ru": "Войти",
       "en": "Log in",
       "de": "Anmelden",
       "from": {"en":"Войти","de":"Войти"},
-      "where": ["client/src/components/layout/Header.tsx:152","client/src/pages/LandingPage.tsx:137","client/src/pages/LoginPage.tsx:95","client/src/pages/RegisterPage.tsx:100","client/src/pages/ResetPasswordPage.tsx:43","client/src/pages/VerifyEmailPage.tsx:72"]
+      "where": ["client/src/components/layout/Header.tsx:152","client/src/pages/ChangeEmailPage.tsx:72","client/src/pages/LandingPage.tsx:137","client/src/pages/LoginPage.tsx:95","client/src/pages/RegisterPage.tsx:100","client/src/pages/ResetPasswordPage.tsx:43","client/src/pages/VerifyEmailPage.tsx:72"]
     },
     "common.noGraph": {
       "ru": "Нет графа.",
@@ -2730,14 +2906,14 @@
       "en": "Save",
       "de": "Speichern",
       "from": {"en":"Сохранить","de":"Сохранить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:320","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/pages/AdminPromptsPage.tsx:1082","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:215"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:320","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/pages/AdminPromptsPage.tsx:1082","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:240"]
     },
     "common.saving": {
       "ru": "Сохранение…",
       "en": "Saving…",
       "de": "Wird gespeichert…",
       "from": {"en":"Сохранение…","de":"Сохранение…"},
-      "where": ["client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/components/synthesis/PauseModal.tsx:629","client/src/pages/ProfilePage.tsx:215"]
+      "where": ["client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/components/synthesis/PauseModal.tsx:629","client/src/pages/ProfilePage.tsx:240"]
     },
     "common.sectionNotFound": {
       "ru": "Раздел не найден",
@@ -2808,7 +2984,7 @@
       "en": "To the main page",
       "de": "Zur Startseite",
       "from": {"en":"На главную","de":"На главную"},
-      "where": ["client/src/pages/LoginPage.tsx:105","client/src/pages/RegisterPage.tsx:102","client/src/pages/ResetPasswordPage.tsx:45","client/src/pages/VerifyEmailPage.tsx:74"]
+      "where": ["client/src/pages/ChangeEmailPage.tsx:74","client/src/pages/LoginPage.tsx:105","client/src/pages/RegisterPage.tsx:102","client/src/pages/ResetPasswordPage.tsx:45","client/src/pages/VerifyEmailPage.tsx:74"]
     },
     "common.type": {
       "ru": "Тип",
@@ -2822,7 +2998,7 @@
       "en": "User not found",
       "de": "Benutzer nicht gefunden",
       "from": {"en":"Пользователь не найден","de":"Пользователь не найден"},
-      "where": ["server/routes/auth.ts:683","server/routes/auth.ts:749","server/services/account-deletion.ts:107","server/services/account-deletion.ts:140","server/services/billing-service.ts:132","server/services/billing-service.ts:242","server/services/billing-service.ts:290","server/services/subscription-service.ts:304"]
+      "where": ["server/routes/auth.ts:738","server/routes/auth.ts:804","server/services/account-deletion.ts:107","server/services/account-deletion.ts:140","server/services/billing-service.ts:132","server/services/billing-service.ts:242","server/services/billing-service.ts:290","server/services/subscription-service.ts:304"]
     },
     "common.verifying": {
       "ru": "Верифицирующая",
@@ -9319,89 +9495,103 @@
       "from": {"en":"Просм.","de":"Просм."},
       "where": ["client/src/components/pool/PoolCard.tsx:98"]
     },
+    "profilePage.changeEmailNote": {
+      "ru": "На новый адрес придёт письмо со ссылкой; адрес сменится после перехода по ней (ссылка действует час). На прежний адрес придёт уведомление о смене.",
+      "en": "An email with a link will be sent to the new address; the address changes after you follow it (the link is valid for an hour). A notice about the change is sent to the previous address.",
+      "de": "An die neue Adresse wird eine E-Mail mit einem Link gesendet; die Adresse wird nach dem Aufruf geändert (der Link gilt eine Stunde). An die bisherige Adresse geht eine Benachrichtigung über die Änderung.",
+      "from": {"en":"На новый адрес придёт письмо со ссылкой; адрес сменится после перехода по ней (ссылка действует час). На прежний адрес придёт уведомление о смене.","de":"На новый адрес придёт письмо со ссылкой; адрес сменится после перехода по ней (ссылка действует час). На прежний адрес придёт уведомление о смене."},
+      "where": ["client/src/pages/ProfilePage.tsx:248"]
+    },
+    "profilePage.changeEmailTitle": {
+      "ru": "Смена адреса",
+      "en": "Change email address",
+      "de": "Adressänderung",
+      "from": {"en":"Смена адреса","de":"Смена адреса"},
+      "where": ["client/src/pages/ProfilePage.tsx:246"]
+    },
     "profilePage.changePassword": {
       "ru": "Сменить пароль",
       "en": "Change password",
       "de": "Passwort ändern",
       "from": {"en":"Сменить пароль","de":"Сменить пароль"},
-      "where": ["client/src/pages/ProfilePage.tsx:291"]
+      "where": ["client/src/pages/ProfilePage.tsx:367"]
     },
     "profilePage.changePasswordTitle": {
       "ru": "Смена пароля",
       "en": "Change password",
       "de": "Passwortänderung",
       "from": {"en":"Смена пароля","de":"Смена пароля"},
-      "where": ["client/src/pages/ProfilePage.tsx:238"]
+      "where": ["client/src/pages/ProfilePage.tsx:314"]
     },
     "profilePage.changing": {
       "ru": "Смена…",
       "en": "Changing…",
       "de": "Wird geändert…",
       "from": {"en":"Смена…","de":"Смена…"},
-      "where": ["client/src/pages/ProfilePage.tsx:291"]
+      "where": ["client/src/pages/ProfilePage.tsx:367"]
     },
     "profilePage.confirmDeleteLead": {
       "ru": "Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, ",
       "en": "Delete the account? All your syntheses will be deleted irreversibly, sessions ended, ",
       "de": "Konto löschen? Alle Ihre Synthesen werden unwiderruflich gelöscht, Sitzungen beendet, ",
       "from": {"en":"Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, ","de":"Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, "},
-      "where": ["client/src/pages/ProfilePage.tsx:326"]
+      "where": ["client/src/pages/ProfilePage.tsx:402"]
     },
     "profilePage.confirmDeleteTail": {
       "ru": "подписка отменена. История платежей сохраняется обезличенной.",
       "en": "the subscription canceled. The payment history is kept anonymized.",
       "de": "das Abonnement gekündigt. Der Zahlungsverlauf bleibt anonymisiert erhalten.",
       "from": {"en":"подписка отменена. История платежей сохраняется обезличенной.","de":"подписка отменена. История платежей сохраняется обезличенной."},
-      "where": ["client/src/pages/ProfilePage.tsx:327"]
+      "where": ["client/src/pages/ProfilePage.tsx:403"]
     },
     "profilePage.currentPassword": {
       "ru": "Текущий пароль",
       "en": "Current password",
       "de": "Aktuelles Passwort",
       "from": {"en":"Текущий пароль","de":"Текущий пароль"},
-      "where": ["client/src/pages/ProfilePage.tsx:240"]
+      "where": ["client/src/pages/ProfilePage.tsx:263","client/src/pages/ProfilePage.tsx:316"]
     },
     "profilePage.data": {
       "ru": "Данные",
       "en": "Data",
       "de": "Daten",
       "from": {"en":"Данные","de":"Данные"},
-      "where": ["client/src/pages/ProfilePage.tsx:179"]
+      "where": ["client/src/pages/ProfilePage.tsx:204"]
     },
     "profilePage.deleteAccount": {
       "ru": "✕ Удалить аккаунт",
       "en": "✕ Delete account",
       "de": "✕ Konto löschen",
       "from": {"en":"✕ Удалить аккаунт","de":"✕ Удалить аккаунт"},
-      "where": ["client/src/pages/ProfilePage.tsx:341"]
+      "where": ["client/src/pages/ProfilePage.tsx:417"]
     },
     "profilePage.deleteAccountNote": {
       "ru": "Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история платежей и использования остаётся обезличенной. Действие необратимо.",
       "en": "Syntheses are deleted, sessions and API keys are reset, the subscription is canceled; the payment and usage history remains anonymized. The action is irreversible.",
       "de": "Synthesen werden gelöscht, Sitzungen und API-Schlüssel zurückgesetzt, das Abonnement gekündigt; Zahlungs- und Nutzungsverlauf bleiben anonymisiert erhalten. Die Aktion ist unwiderruflich.",
       "from": {"en":"Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история платежей и использования остаётся обезличенной. Действие необратимо.","de":"Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история платежей и использования остаётся обезличенной. Действие необратимо."},
-      "where": ["client/src/pages/ProfilePage.tsx:306"]
+      "where": ["client/src/pages/ProfilePage.tsx:382"]
     },
     "profilePage.deleteAccountTitle": {
       "ru": "Удаление аккаунта",
       "en": "Account deletion",
       "de": "Kontolöschung",
       "from": {"en":"Удаление аккаунта","de":"Удаление аккаунта"},
-      "where": ["client/src/pages/ProfilePage.tsx:304"]
+      "where": ["client/src/pages/ProfilePage.tsx:380"]
     },
     "profilePage.deleting": {
       "ru": "Удаление…",
       "en": "Deleting…",
       "de": "Wird gelöscht…",
       "from": {"en":"Удаление…","de":"Удаление…"},
-      "where": ["client/src/pages/ProfilePage.tsx:338"]
+      "where": ["client/src/pages/ProfilePage.tsx:414"]
     },
     "profilePage.displayName": {
       "ru": "Отображаемое имя",
       "en": "Display name",
       "de": "Anzeigename",
       "from": {"en":"Отображаемое имя","de":"Отображаемое имя"},
-      "where": ["client/src/pages/ProfilePage.tsx:188"]
+      "where": ["client/src/pages/ProfilePage.tsx:213"]
     },
     "profilePage.enterPasswordToConfirm": {
       "ru": "Введите пароль для подтверждения",
@@ -9416,70 +9606,91 @@
       "de": "Standardsprache der Generierung: {lang} — wird im Formular zum Erstellen einer Synthese festgelegt; ein Wechsel der Oberflächensprache schaltet sie auf die entsprechende um.",
       "from": {"en":"Язык генерации по умолчанию: {lang} — задаётся в форме создания синтеза; смена языка интерфейса переключает его на соответствующий.","de":"Язык генерации по умолчанию: {lang} — задаётся в форме создания синтеза; смена языка интерфейса переключает его на соответствующий."},
       "params": {"lang":""},
-      "where": ["client/src/pages/ProfilePage.tsx:227"]
+      "where": ["client/src/pages/ProfilePage.tsx:303"]
     },
     "profilePage.languageTitle": {
       "ru": "Язык",
       "en": "Language",
       "de": "Sprache",
       "from": {"en":"Язык","de":"Язык"},
-      "where": ["client/src/pages/ProfilePage.tsx:221"]
+      "where": ["client/src/pages/ProfilePage.tsx:297"]
+    },
+    "profilePage.newEmail": {
+      "ru": "Новый адрес",
+      "en": "New address",
+      "de": "Neue Adresse",
+      "from": {"en":"Новый адрес","de":"Новый адрес"},
+      "where": ["client/src/pages/ProfilePage.tsx:251"]
     },
     "profilePage.newPassword": {
       "ru": "Новый пароль",
       "en": "New password",
       "de": "Neues Passwort",
       "from": {"en":"Новый пароль","de":"Новый пароль"},
-      "where": ["client/src/pages/ProfilePage.tsx:252"]
+      "where": ["client/src/pages/ProfilePage.tsx:328"]
     },
     "profilePage.newPasswordAgain": {
       "ru": "Новый пароль ещё раз",
       "en": "New password again",
       "de": "Neues Passwort wiederholen",
       "from": {"en":"Новый пароль ещё раз","de":"Новый пароль ещё раз"},
-      "where": ["client/src/pages/ProfilePage.tsx:264"]
+      "where": ["client/src/pages/ProfilePage.tsx:340"]
     },
     "profilePage.passwordChanged": {
       "ru": "Пароль изменён; прочие сессии завершены",
       "en": "Password changed; other sessions have been ended",
       "de": "Passwort geändert; übrige Sitzungen beendet",
       "from": {"en":"Пароль изменён; прочие сессии завершены","de":"Пароль изменён; прочие сессии завершены"},
-      "where": ["client/src/pages/ProfilePage.tsx:282"]
+      "where": ["client/src/pages/ProfilePage.tsx:358"]
     },
     "profilePage.passwordToConfirm": {
       "ru": "Пароль для подтверждения",
       "en": "Password to confirm",
       "de": "Passwort zur Bestätigung",
       "from": {"en":"Пароль для подтверждения","de":"Пароль для подтверждения"},
-      "where": ["client/src/pages/ProfilePage.tsx:309"]
+      "where": ["client/src/pages/ProfilePage.tsx:385"]
     },
     "profilePage.passwordsMismatch": {
       "ru": "Пароли не совпадают",
       "en": "Passwords do not match",
       "de": "Die Passwörter stimmen nicht überein",
       "from": {"en":"Пароли не совпадают","de":"Пароли не совпадают"},
-      "where": ["client/src/pages/ProfilePage.tsx:148"]
+      "where": ["client/src/pages/ProfilePage.tsx:173"]
     },
     "profilePage.saved": {
       "ru": "Сохранено",
       "en": "Saved",
       "de": "Gespeichert",
       "from": {"en":"Сохранено","de":"Сохранено"},
-      "where": ["client/src/pages/ProfilePage.tsx:206"]
+      "where": ["client/src/pages/ProfilePage.tsx:231"]
+    },
+    "profilePage.sendChangeLink": {
+      "ru": "Отправить ссылку",
+      "en": "Send the link",
+      "de": "Link senden",
+      "from": {"en":"Отправить ссылку","de":"Отправить ссылку"},
+      "where": ["client/src/pages/ProfilePage.tsx:291"]
+    },
+    "profilePage.sending": {
+      "ru": "Отправка…",
+      "en": "Sending…",
+      "de": "Wird gesendet…",
+      "from": {"en":"Отправка…","de":"Отправка…"},
+      "where": ["client/src/pages/ProfilePage.tsx:291"]
     },
     "profilePage.title": {
       "ru": "Профиль",
       "en": "Profile",
       "de": "Profil",
       "from": {"en":"Профиль","de":"Профиль"},
-      "where": ["client/src/pages/ProfilePage.tsx:174"]
+      "where": ["client/src/pages/ProfilePage.tsx:199"]
     },
     "profilePage.uiLanguage": {
       "ru": "Язык интерфейса",
       "en": "Interface language",
       "de": "Sprache der Oberfläche",
       "from": {"en":"Язык интерфейса","de":"Язык интерфейса"},
-      "where": ["client/src/pages/ProfilePage.tsx:223"]
+      "where": ["client/src/pages/ProfilePage.tsx:299"]
     },
     "registerPage.displayNameOptional": {
       "ru": "Отображаемое имя (необязательно)",
@@ -12127,12 +12338,80 @@
       "from": {"en":"  ВЕРСИЯ","de":"  ВЕРСИЯ"},
       "where": ["server/services/log-formatter.ts:326"]
     },
+    "server.mail.templates.changeButton": {
+      "ru": "Подтвердить новый адрес",
+      "en": "Confirm the new address",
+      "de": "Neue Adresse bestätigen",
+      "from": {"en":"Подтвердить новый адрес","de":"Подтвердить новый адрес"},
+      "where": ["server/services/mail/templates.ts:127"]
+    },
+    "server.mail.templates.changeIgnore": {
+      "ru": "Если вы не запрашивали смену адреса, ничего делать не нужно: без перехода по ссылке адрес останется прежним.",
+      "en": "If you did not request an address change, no action is needed: without following the link the address will stay the same.",
+      "de": "Falls Sie keine Adressänderung angefordert haben, müssen Sie nichts tun: ohne Aufruf des Links bleibt die Adresse unverändert.",
+      "from": {"en":"Если вы не запрашивали смену адреса, ничего делать не нужно: без перехода по ссылке адрес останется прежним.","de":"Если вы не запрашивали смену адреса, ничего делать не нужно: без перехода по ссылке адрес останется прежним."},
+      "where": ["server/services/mail/templates.ts:124"]
+    },
+    "server.mail.templates.changeLead": {
+      "ru": "Для учётной записи в службе {service} запрошена смена адреса на {newEmail}. Чтобы подтвердить, что этот ящик ваш, перейдите по ссылке:",
+      "en": "A change of address to {newEmail} was requested for an account with {service}. To confirm that this mailbox is yours, follow the link:",
+      "de": "Für ein Konto bei {service} wurde die Änderung der Adresse auf {newEmail} angefordert. Um zu bestätigen, dass dieses Postfach Ihnen gehört, folgen Sie dem Link:",
+      "from": {"en":"Для учётной записи в службе {service} запрошена смена адреса на {newEmail}. Чтобы подтвердить, что этот ящик ваш, перейдите по ссылке:","de":"Для учётной записи в службе {service} запрошена смена адреса на {newEmail}. Чтобы подтвердить, что этот ящик ваш, перейдите по ссылке:"},
+      "params": {"service":"","newEmail":""},
+      "where": ["server/services/mail/templates.ts:121"]
+    },
+    "server.mail.templates.changeSubject": {
+      "ru": "{service}: подтверждение нового адреса",
+      "en": "{service}: new address confirmation",
+      "de": "{service}: Bestätigung der neuen Adresse",
+      "from": {"en":"{service}: подтверждение нового адреса","de":"{service}: подтверждение нового адреса"},
+      "params": {"service":""},
+      "where": ["server/services/mail/templates.ts:120"]
+    },
+    "server.mail.templates.changeTtl": {
+      "ru": "Ссылка действует {ttl} и срабатывает один раз. Новый запрос смены делает прежнюю ссылку недействительной.",
+      "en": "The link is valid for {ttl} and works once. A new change request makes the previous link invalid.",
+      "de": "Der Link gilt {ttl} und funktioniert einmal. Eine neue Änderungsanfrage macht den vorherigen Link ungültig.",
+      "from": {"en":"Ссылка действует {ttl} и срабатывает один раз. Новый запрос смены делает прежнюю ссылку недействительной.","de":"Ссылка действует {ttl} и срабатывает один раз. Новый запрос смены делает прежнюю ссылку недействительной."},
+      "params": {"ttl":""},
+      "where": ["server/services/mail/templates.ts:123"]
+    },
+    "server.mail.templates.changedAlert": {
+      "ru": "Если смену запрашивали не вы, учётная запись могла быть доступна постороннему: обратитесь к владельцу службы — вход и сброс пароля по этому адресу уже невозможны.",
+      "en": "If you did not request the change, the account may have been accessed by someone else: contact the service owner — logging in and resetting the password with this address are no longer possible.",
+      "de": "Falls Sie die Änderung nicht angefordert haben, könnte das Konto einem Fremden zugänglich gewesen sein: wenden Sie sich an den Betreiber des Dienstes — Anmeldung und Passwort-Zurücksetzen über diese Adresse sind nicht mehr möglich.",
+      "from": {"en":"Если смену запрашивали не вы, учётная запись могла быть доступна постороннему: обратитесь к владельцу службы — вход и сброс пароля по этому адресу уже невозможны.","de":"Если смену запрашивали не вы, учётная запись могла быть доступна постороннему: обратитесь к владельцу службы — вход и сброс пароля по этому адресу уже невозможны."},
+      "where": ["server/services/mail/templates.ts:143"]
+    },
+    "server.mail.templates.changedIgnore": {
+      "ru": "Если смену запрашивали вы, ничего делать не нужно.",
+      "en": "If you requested the change, no action is needed.",
+      "de": "Falls Sie die Änderung angefordert haben, müssen Sie nichts tun.",
+      "from": {"en":"Если смену запрашивали вы, ничего делать не нужно.","de":"Если смену запрашивали вы, ничего делать не нужно."},
+      "where": ["server/services/mail/templates.ts:142"]
+    },
+    "server.mail.templates.changedLead": {
+      "ru": "Адрес учётной записи в службе {service} изменён на {newEmail}. Письма службы теперь приходят туда; этот адрес к учётной записи больше не привязан.",
+      "en": "The address of the account with {service} has been changed to {newEmail}. Service emails now go there; this address is no longer linked to the account.",
+      "de": "Die Adresse des Kontos bei {service} wurde auf {newEmail} geändert. E-Mails des Dienstes gehen jetzt dorthin; diese Adresse ist nicht mehr mit dem Konto verknüpft.",
+      "from": {"en":"Адрес учётной записи в службе {service} изменён на {newEmail}. Письма службы теперь приходят туда; этот адрес к учётной записи больше не привязан.","de":"Адрес учётной записи в службе {service} изменён на {newEmail}. Письма службы теперь приходят туда; этот адрес к учётной записи больше не привязан."},
+      "params": {"service":"","newEmail":""},
+      "where": ["server/services/mail/templates.ts:140"]
+    },
+    "server.mail.templates.changedSubject": {
+      "ru": "{service}: адрес учётной записи изменён",
+      "en": "{service}: account address changed",
+      "de": "{service}: Adresse des Kontos geändert",
+      "from": {"en":"{service}: адрес учётной записи изменён","de":"{service}: адрес учётной записи изменён"},
+      "params": {"service":""},
+      "where": ["server/services/mail/templates.ts:139"]
+    },
     "server.mail.templates.copyLinkHint": {
       "ru": "Если кнопка не открывается, скопируйте ссылку в адресную строку:",
       "en": "If the button does not open, copy the link into the address bar:",
       "de": "Falls sich die Schaltfläche nicht öffnet, kopieren Sie den Link in die Adressleiste:",
       "from": {"en":"Если кнопка не открывается, скопируйте ссылку в адресную строку:","de":"Если кнопка не открывается, скопируйте ссылку в адресную строку:"},
-      "where": ["server/services/mail/templates.ts:64"]
+      "where": ["server/services/mail/templates.ts:62"]
     },
     "server.mail.templates.greeting": {
       "ru": "Здравствуйте.",
@@ -12162,21 +12441,21 @@
       "en": "Set a new password",
       "de": "Neues Passwort festlegen",
       "from": {"en":"Задать новый пароль","de":"Задать новый пароль"},
-      "where": ["server/services/mail/templates.ts:95"]
+      "where": ["server/services/mail/templates.ts:102"]
     },
     "server.mail.templates.resetIgnore": {
       "ru": "Если вы не запрашивали сброс, ничего делать не нужно: пароль останется прежним.",
       "en": "If you did not request a reset, no action is needed: the password will stay the same.",
       "de": "Falls Sie kein Zurücksetzen angefordert haben, müssen Sie nichts tun: das Passwort bleibt unverändert.",
       "from": {"en":"Если вы не запрашивали сброс, ничего делать не нужно: пароль останется прежним.","de":"Если вы не запрашивали сброс, ничего делать не нужно: пароль останется прежним."},
-      "where": ["server/services/mail/templates.ts:92"]
+      "where": ["server/services/mail/templates.ts:99"]
     },
     "server.mail.templates.resetLead": {
       "ru": "Для учётной записи с этим адресом запрошен сброс пароля. Чтобы задать новый пароль, перейдите по ссылке:",
       "en": "A password reset was requested for the account with this address. To set a new password, follow the link:",
       "de": "Für das Konto mit dieser Adresse wurde das Zurücksetzen des Passworts angefordert. Um ein neues Passwort festzulegen, folgen Sie dem Link:",
       "from": {"en":"Для учётной записи с этим адресом запрошен сброс пароля. Чтобы задать новый пароль, перейдите по ссылке:","de":"Для учётной записи с этим адресом запрошен сброс пароля. Чтобы задать новый пароль, перейдите по ссылке:"},
-      "where": ["server/services/mail/templates.ts:89"]
+      "where": ["server/services/mail/templates.ts:96"]
     },
     "server.mail.templates.resetSubject": {
       "ru": "{service}: сброс пароля",
@@ -12184,7 +12463,7 @@
       "de": "{service}: Passwort zurücksetzen",
       "from": {"en":"{service}: сброс пароля","de":"{service}: сброс пароля"},
       "params": {"service":""},
-      "where": ["server/services/mail/templates.ts:88"]
+      "where": ["server/services/mail/templates.ts:95"]
     },
     "server.mail.templates.resetTtl": {
       "ru": "Ссылка действует {ttl} и срабатывает один раз. После смены пароля все сеансы входа будут завершены.",
@@ -12192,14 +12471,14 @@
       "de": "Der Link gilt {ttl} und funktioniert einmal. Nach der Passwortänderung werden alle Anmeldesitzungen beendet.",
       "from": {"en":"Ссылка действует {ttl} и срабатывает один раз. После смены пароля все сеансы входа будут завершены.","de":"Ссылка действует {ttl} и срабатывает один раз. После смены пароля все сеансы входа будут завершены."},
       "params": {"ttl":""},
-      "where": ["server/services/mail/templates.ts:91"]
+      "where": ["server/services/mail/templates.ts:98"]
     },
     "server.mail.templates.verifyButton": {
       "ru": "Подтвердить адрес",
       "en": "Confirm address",
       "de": "Adresse bestätigen",
       "from": {"en":"Подтвердить адрес","de":"Подтвердить адрес"},
-      "where": ["server/services/mail/templates.ts:81"]
+      "where": ["server/services/mail/templates.ts:88"]
     },
     "server.mail.templates.verifyIgnore": {
       "ru": "Если вы не регистрировались в {service}, ничего делать не нужно: без перехода по ссылке адрес останется неподтверждённым.",
@@ -12207,7 +12486,7 @@
       "de": "Falls Sie sich nicht bei {service} registriert haben, müssen Sie nichts tun: ohne Aufruf des Links bleibt die Adresse unbestätigt.",
       "from": {"en":"Если вы не регистрировались в {service}, ничего делать не нужно: без перехода по ссылке адрес останется неподтверждённым.","de":"Если вы не регистрировались в {service}, ничего делать не нужно: без перехода по ссылке адрес останется неподтверждённым."},
       "params": {"service":""},
-      "where": ["server/services/mail/templates.ts:78"]
+      "where": ["server/services/mail/templates.ts:85"]
     },
     "server.mail.templates.verifyLead": {
       "ru": "Этот адрес указан при регистрации в службе {service}. Чтобы подтвердить, что он ваш, перейдите по ссылке:",
@@ -12215,7 +12494,7 @@
       "de": "Diese Adresse wurde bei der Registrierung bei {service} angegeben. Um zu bestätigen, dass sie Ihnen gehört, folgen Sie dem Link:",
       "from": {"en":"Этот адрес указан при регистрации в службе {service}. Чтобы подтвердить, что он ваш, перейдите по ссылке:","de":"Этот адрес указан при регистрации в службе {service}. Чтобы подтвердить, что он ваш, перейдите по ссылке:"},
       "params": {"service":""},
-      "where": ["server/services/mail/templates.ts:75"]
+      "where": ["server/services/mail/templates.ts:82"]
     },
     "server.mail.templates.verifySubject": {
       "ru": "{service}: подтверждение адреса",
@@ -12223,7 +12502,7 @@
       "de": "{service}: Bestätigung der E-Mail-Adresse",
       "from": {"en":"{service}: подтверждение адреса","de":"{service}: подтверждение адреса"},
       "params": {"service":""},
-      "where": ["server/services/mail/templates.ts:74"]
+      "where": ["server/services/mail/templates.ts:81"]
     },
     "server.mail.templates.verifyTtl": {
       "ru": "Ссылка действует {ttl} и срабатывает один раз. Новое письмо с подтверждением делает прежнюю ссылку недействительной.",
@@ -12231,7 +12510,7 @@
       "de": "Der Link gilt {ttl} und funktioniert einmal. Eine neue Bestätigungs-E-Mail macht den vorherigen Link ungültig.",
       "from": {"en":"Ссылка действует {ttl} и срабатывает один раз. Новое письмо с подтверждением делает прежнюю ссылку недействительной.","de":"Ссылка действует {ttl} и срабатывает один раз. Новое письмо с подтверждением делает прежнюю ссылку недействительной."},
       "params": {"ttl":""},
-      "where": ["server/services/mail/templates.ts:77"]
+      "where": ["server/services/mail/templates.ts:84"]
     },
     "server.metaSynthesisService.andQuote": {
       "ru": "» и «",
@@ -13343,42 +13622,49 @@
       "en": "Already registered",
       "de": "Bereits registriert",
       "from": {"en":"Уже зарегистрирован","de":"Уже зарегистрирован"},
-      "where": ["server/routes/auth.ts:228"]
+      "where": ["server/routes/auth.ts:273"]
+    },
+    "server.routes.auth.emailChangeRequested": {
+      "ru": "Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час",
+      "en": "If the address is free, an email with a confirmation link has been sent to it — the link is valid for an hour",
+      "de": "Falls die Adresse frei ist, wurde eine E-Mail mit einem Bestätigungslink dorthin gesendet — der Link gilt eine Stunde",
+      "from": {"en":"Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час","de":"Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час"},
+      "where": ["server/routes/auth.ts:907"]
     },
     "server.routes.auth.emailQueueFailed": {
       "ru": "Не удалось поставить письмо в очередь — попробуйте позже",
       "en": "Failed to queue the email — try again later",
       "de": "Die E-Mail konnte nicht in die Warteschlange gestellt werden — versuchen Sie es später",
       "from": {"en":"Не удалось поставить письмо в очередь — попробуйте позже","de":"Не удалось поставить письмо в очередь — попробуйте позже"},
-      "where": ["server/routes/auth.ts:513"]
+      "where": ["server/routes/auth.ts:560"]
     },
     "server.routes.auth.emailTaken": {
       "ru": "Пользователь с таким email уже зарегистрирован",
       "en": "A user with this email is already registered",
       "de": "Ein Benutzer mit dieser E-Mail ist bereits registriert",
       "from": {"en":"Пользователь с таким email уже зарегистрирован","de":"Пользователь с таким email уже зарегистрирован"},
-      "where": ["server/routes/auth.ts:226"]
+      "where": ["server/routes/auth.ts:271"]
     },
     "server.routes.auth.expectedRole": {
       "ru": "Ожидается 'user' или 'admin'",
       "en": "'user' or 'admin' expected",
       "de": "Erwartet wird 'user' oder 'admin'",
       "from": {"en":"Ожидается 'user' или 'admin'","de":"Ожидается 'user' или 'admin'"},
-      "where": ["server/routes/auth.ts:692"]
+      "where": ["server/routes/auth.ts:747"]
     },
     "server.routes.auth.invalidEmail": {
       "ru": "Невалидный email",
       "en": "Invalid email",
       "de": "Ungültige E-Mail",
       "from": {"en":"Невалидный email","de":"Невалидный email"},
-      "where": ["server/routes/auth.ts:160","server/routes/auth.ts:547"]
+      "where": ["server/routes/auth.ts:180","server/routes/auth.ts:594","server/routes/auth.ts:864"]
     },
     "server.routes.auth.lastAdminForbidden": {
       "ru": "Нельзя понизить последнего администратора — сначала назначьте второго",
       "en": "The last administrator cannot be demoted — appoint a second one first",
       "de": "Der letzte Administrator kann nicht herabgestuft werden — ernennen Sie zuerst einen zweiten",
       "from": {"en":"Нельзя понизить последнего администратора — сначала назначьте второго","de":"Нельзя понизить последнего администратора — сначала назначьте второго"},
-      "where": ["server/routes/auth.ts:754"]
+      "where": ["server/routes/auth.ts:809"]
     },
     "server.routes.auth.maxLength": {
       "ru": "Максимальная длина — {maxLength} символов",
@@ -13386,35 +13672,42 @@
       "de": "Maximale Länge — {maxLength} Zeichen",
       "from": {"en":"Максимальная длина — {maxLength} символов","de":"Максимальная длина — {maxLength} символов"},
       "params": {"maxLength":"DISPLAY_NAME_MAX_LENGTH"},
-      "where": ["server/routes/auth.ts:438","server/routes/auth.ts:456"]
+      "where": ["server/routes/auth.ts:485","server/routes/auth.ts:503"]
     },
     "server.routes.auth.mustBeNonEmptyString": {
       "ru": "Должно быть непустой строкой",
       "en": "Must be a non-empty string",
       "de": "Muss eine nichtleere Zeichenkette sein",
       "from": {"en":"Должно быть непустой строкой","de":"Должно быть непустой строкой"},
-      "where": ["server/routes/auth.ts:455"]
+      "where": ["server/routes/auth.ts:502"]
     },
     "server.routes.auth.mustBeString": {
       "ru": "Должно быть строкой",
       "en": "Must be a string",
       "de": "Muss eine Zeichenkette sein",
       "from": {"en":"Должно быть строкой","de":"Должно быть строкой"},
-      "where": ["server/routes/auth.ts:170","server/routes/auth.ts:434"]
+      "where": ["server/routes/auth.ts:190","server/routes/auth.ts:481"]
     },
     "server.routes.auth.ownRoleForbidden": {
       "ru": "Свою роль изменить нельзя — попросите другого администратора",
       "en": "You cannot change your own role — ask another administrator",
       "de": "Die eigene Rolle lässt sich nicht ändern — bitten Sie einen anderen Administrator",
       "from": {"en":"Свою роль изменить нельзя — попросите другого администратора","de":"Свою роль изменить нельзя — попросите другого администратора"},
-      "where": ["server/routes/auth.ts:702"]
+      "where": ["server/routes/auth.ts:757"]
     },
     "server.routes.auth.requiredField": {
       "ru": "Обязательное поле",
       "en": "Required field",
       "de": "Pflichtfeld",
       "from": {"en":"Обязательное поле","de":"Обязательное поле"},
-      "where": ["server/routes/auth.ts:159","server/routes/auth.ts:162","server/routes/auth.ts:295","server/routes/auth.ts:296","server/routes/auth.ts:355","server/routes/auth.ts:461","server/routes/auth.ts:547","server/routes/auth.ts:578"]
+      "where": ["server/routes/auth.ts:179","server/routes/auth.ts:182","server/routes/auth.ts:342","server/routes/auth.ts:343","server/routes/auth.ts:402","server/routes/auth.ts:508","server/routes/auth.ts:594","server/routes/auth.ts:633","server/routes/auth.ts:863","server/routes/auth.ts:865"]
+    },
+    "server.routes.auth.sameEmail": {
+      "ru": "Это текущий адрес учётной записи",
+      "en": "This is the current address of the account",
+      "de": "Das ist die aktuelle Adresse des Kontos",
+      "from": {"en":"Это текущий адрес учётной записи","de":"Это текущий адрес учётной записи"},
+      "where": ["server/routes/auth.ts:875"]
     },
     "server.routes.auth.uiLocaleAllowed": {
       "ru": "Допустимые языки интерфейса: {locales}",
@@ -13422,28 +13715,28 @@
       "de": "Zulässige Oberflächensprachen: {locales}",
       "from": {"en":"Допустимые языки интерфейса: {locales}","de":"Допустимые языки интерфейса: {locales}"},
       "params": {"locales":""},
-      "where": ["server/routes/auth.ts:446"]
+      "where": ["server/routes/auth.ts:493"]
     },
     "server.routes.auth.wrongCredentials": {
       "ru": "Неверный email или пароль",
       "en": "Wrong email or password",
       "de": "Falsche E-Mail oder falsches Passwort",
       "from": {"en":"Неверный email или пароль","de":"Неверный email или пароль"},
-      "where": ["server/routes/auth.ts:262"]
+      "where": ["server/routes/auth.ts:309"]
     },
     "server.routes.auth.wrongCurrentPassword": {
       "ru": "Неверный текущий пароль",
       "en": "Wrong current password",
       "de": "Falsches aktuelles Passwort",
       "from": {"en":"Неверный текущий пароль","de":"Неверный текущий пароль"},
-      "where": ["server/routes/auth.ts:323"]
+      "where": ["server/routes/auth.ts:370"]
     },
     "server.routes.auth.wrongPassword": {
       "ru": "Неверный пароль",
       "en": "Wrong password",
       "de": "Falsches Passwort",
       "from": {"en":"Неверный пароль","de":"Неверный пароль"},
-      "where": ["server/routes/auth.ts:367"]
+      "where": ["server/routes/auth.ts:414","server/routes/auth.ts:904"]
     },
     "server.routes.billing.invalidParams": {
       "ru": "Невалидные параметры",
@@ -16219,91 +16512,105 @@
       "en": "Failed to delete the account",
       "de": "Konto konnte nicht gelöscht werden",
       "from": {"en":"Не удалось удалить аккаунт","de":"Не удалось удалить аккаунт"},
-      "where": ["client/src/stores/auth-store.ts:335"]
+      "where": ["client/src/stores/auth-store.ts:347"]
+    },
+    "stores.authStore.emailChangeFailed": {
+      "ru": "Не удалось сменить адрес",
+      "en": "Failed to change the address",
+      "de": "Adresse konnte nicht geändert werden",
+      "from": {"en":"Не удалось сменить адрес","de":"Не удалось сменить адрес"},
+      "where": ["client/src/stores/auth-store.ts:384"]
+    },
+    "stores.authStore.emailChangeRequestFailed": {
+      "ru": "Не удалось запросить смену адреса",
+      "en": "Failed to request the address change",
+      "de": "Adressänderung konnte nicht angefordert werden",
+      "from": {"en":"Не удалось запросить смену адреса","de":"Не удалось запросить смену адреса"},
+      "where": ["client/src/stores/auth-store.ts:372","client/src/stores/auth-store.ts:373"]
     },
     "stores.authStore.emailSendFailed": {
       "ru": "Не удалось отправить письмо",
       "en": "Failed to send the email",
       "de": "E-Mail konnte nicht gesendet werden",
       "from": {"en":"Не удалось отправить письмо","de":"Не удалось отправить письмо"},
-      "where": ["client/src/stores/auth-store.ts:278"]
+      "where": ["client/src/stores/auth-store.ts:290"]
     },
     "stores.authStore.genLangSaveFailed": {
       "ru": "Не удалось сохранить язык генерации",
       "en": "Could not save the generation language",
       "de": "Generierungssprache konnte nicht gespeichert werden",
       "from": {"en":"Не удалось сохранить язык генерации","de":"Не удалось сохранить язык генерации"},
-      "where": ["client/src/stores/auth-store.ts:256"]
+      "where": ["client/src/stores/auth-store.ts:268"]
     },
     "stores.authStore.localeSaveFailed": {
       "ru": "Не удалось сохранить язык интерфейса",
       "en": "Could not save the interface language",
       "de": "Oberflächensprache konnte nicht gespeichert werden",
       "from": {"en":"Не удалось сохранить язык интерфейса","de":"Не удалось сохранить язык интерфейса"},
-      "where": ["client/src/stores/auth-store.ts:246"]
+      "where": ["client/src/stores/auth-store.ts:258"]
     },
     "stores.authStore.loginFailed": {
       "ru": "Не удалось выполнить вход",
       "en": "Failed to log in",
       "de": "Anmeldung fehlgeschlagen",
       "from": {"en":"Не удалось выполнить вход","de":"Не удалось выполнить вход"},
-      "where": ["client/src/stores/auth-store.ts:171"]
+      "where": ["client/src/stores/auth-store.ts:183"]
     },
     "stores.authStore.passwordChangeFailed": {
       "ru": "Не удалось сменить пароль",
       "en": "Failed to change the password",
       "de": "Passwort konnte nicht geändert werden",
       "from": {"en":"Не удалось сменить пароль","de":"Не удалось сменить пароль"},
-      "where": ["client/src/stores/auth-store.ts:315","client/src/stores/auth-store.ts:355"]
+      "where": ["client/src/stores/auth-store.ts:327","client/src/stores/auth-store.ts:404"]
     },
     "stores.authStore.profileSaveFailed": {
       "ru": "Не удалось сохранить профиль",
       "en": "Failed to save the profile",
       "de": "Profil konnte nicht gespeichert werden",
       "from": {"en":"Не удалось сохранить профиль","de":"Не удалось сохранить профиль"},
-      "where": ["client/src/stores/auth-store.ts:232"]
+      "where": ["client/src/stores/auth-store.ts:244"]
     },
     "stores.authStore.registerFailed": {
       "ru": "Не удалось зарегистрироваться",
       "en": "Failed to sign up",
       "de": "Registrierung fehlgeschlagen",
       "from": {"en":"Не удалось зарегистрироваться","de":"Не удалось зарегистрироваться"},
-      "where": ["client/src/stores/auth-store.ts:195"]
+      "where": ["client/src/stores/auth-store.ts:207"]
     },
     "stores.authStore.requestFailed": {
       "ru": "Не удалось отправить запрос",
       "en": "Failed to send the request",
       "de": "Anfrage konnte nicht gesendet werden",
       "from": {"en":"Не удалось отправить запрос","de":"Не удалось отправить запрос"},
-      "where": ["client/src/stores/auth-store.ts:302"]
+      "where": ["client/src/stores/auth-store.ts:314"]
     },
     "stores.authStore.tooManyEmails": {
       "ru": "Слишком много писем за час — попробуйте позже",
       "en": "Too many emails in an hour — try again later",
       "de": "Zu viele E-Mails pro Stunde — versuchen Sie es später",
       "from": {"en":"Слишком много писем за час — попробуйте позже","de":"Слишком много писем за час — попробуйте позже"},
-      "where": ["client/src/stores/auth-store.ts:275"]
+      "where": ["client/src/stores/auth-store.ts:287","client/src/stores/auth-store.ts:370"]
     },
     "stores.authStore.verifyFailed": {
       "ru": "Не удалось подтвердить адрес",
       "en": "Failed to verify the address",
       "de": "Adresse konnte nicht bestätigt werden",
       "from": {"en":"Не удалось подтвердить адрес","de":"Не удалось подтвердить адрес"},
-      "where": ["client/src/stores/auth-store.ts:290"]
+      "where": ["client/src/stores/auth-store.ts:302"]
     },
     "stores.authStore.wrongCurrentPassword": {
       "ru": "Неверный текущий пароль",
       "en": "Wrong current password",
       "de": "Falsches aktuelles Passwort",
       "from": {"en":"Неверный текущий пароль","de":"Неверный текущий пароль"},
-      "where": ["client/src/stores/auth-store.ts:353"]
+      "where": ["client/src/stores/auth-store.ts:402"]
     },
     "stores.authStore.wrongPassword": {
       "ru": "Неверный пароль",
       "en": "Wrong password",
       "de": "Falsches Passwort",
       "from": {"en":"Неверный пароль","de":"Неверный пароль"},
-      "where": ["client/src/stores/auth-store.ts:330"]
+      "where": ["client/src/stores/auth-store.ts:342","client/src/stores/auth-store.ts:365","client/src/stores/auth-store.ts:366"]
     },
     "stores.poolStore.alreadyLoaded": {
       "ru": "» уже загружен.",
@@ -19011,7 +19318,7 @@
       "en": "checking the link…",
       "de": "Link wird geprüft…",
       "from": {"en":"проверка ссылки…","de":"проверка ссылки…"},
-      "where": ["client/src/pages/VerifyEmailPage.tsx:58"]
+      "where": ["client/src/pages/ChangeEmailPage.tsx:58","client/src/pages/VerifyEmailPage.tsx:58"]
     },
     "verifyEmailPage.resendNote": {
       "ru": "Новое письмо отправляется из полосы «Адрес не подтверждён» в шапке — после входа.",

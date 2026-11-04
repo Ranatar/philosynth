@@ -182,6 +182,23 @@ export const env = {
       .split(",")
       .map((s) => Number(s.trim()))
       .filter((n) => Number.isFinite(n) && n >= 0),
+    /** 15.3 (Д-72): срок хранения отработанных писем ('sent'/'failed', тела
+     *  уже затёрты), сут.; строки старше — удаляются проходом чистки. */
+    retentionDays: num("MAIL_RETENTION_DAYS", 30),
+    /** 15.3 (Д-72): период прохода ЧИСТКИ (mail_outbox, auth_tokens, истёкшие
+     *  сессии), мс — заведомо реже основного цикла работника; тот же работник
+     *  зовёт её на каждом N-м проходе (services/mail/maintenance.ts). */
+    maintenanceIntervalMs: num("MAINTENANCE_INTERVAL_MS", 3_600_000),
+  },
+
+  /** 15.3 (Д-72) — обслуживание доводов и выравнивание времени ответа. */
+  auth: {
+    /** Срок хранения погашенных и просроченных доводов auth_tokens, сут. */
+    tokenRetentionDays: num("AUTH_TOKEN_RETENTION_DAYS", 30),
+    /** Минимальная длительность ответа POST /auth/password-reset/request и
+     *  POST /auth/email/change/request, мс: ответ не уходит раньше при любом
+     *  исходе — время ответа не выдаёт, есть ли адрес (Д-72 п.2). 0 — выкл. */
+    minResponseMs: num("AUTH_MIN_RESPONSE_MS", 300),
   },
 
   rateLimit: {

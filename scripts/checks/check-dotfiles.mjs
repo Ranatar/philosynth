@@ -10,6 +10,7 @@
  * 13.2 (Д-67): + TRUST_PROXY и HOST в .env.example, TRUST_PROXY стенда —
  * доверие заголовкам прокси по умолчанию выключено, и потеря строки при
  * выкладке молча оставила бы установщик без переменной.
+ * 15.3 (Д-72): + сроки хранения и минимум времени ответа (четыре переменные).
  * Запуск из корня: node scripts/checks/check-dotfiles.mjs
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -30,6 +31,10 @@ for (const v of ["TRUST_PROXY", "HOST"]) {
   if (!new RegExp(`^${v}=`, "m").test(envEx)) errs.push(`.env.example без ${v}= (13.2)`);
 }
 if (!/^TRUST_PROXY=false$/m.test(envEx)) errs.push(".env.example: TRUST_PROXY обязан быть false по умолчанию (13.2)");
+// 15.3 (Д-72): сроки хранения и минимум времени ответа — та же порода правок
+for (const v of ["MAIL_RETENTION_DAYS", "AUTH_TOKEN_RETENTION_DAYS", "MAINTENANCE_INTERVAL_MS", "AUTH_MIN_RESPONSE_MS"]) {
+  if (!new RegExp(`^${v}=`, "m").test(envEx)) errs.push(`.env.example без ${v}= (15.3)`);
+}
 if (!/^dev-billing-state\/$/m.test(rd(".gitignore"))) errs.push(".gitignore без dev-billing-state/ (8.6)");
 if (!existsSync(new URL("env.local.example", ROOT))) errs.push("нет env.local.example (8.6, без точки)");
 if (existsSync(new URL(".env.local.example", ROOT))) errs.push("в дереве старый .env.local.example (8.6)");
@@ -39,6 +44,7 @@ for (const n of ["starter", "pro", "academic"]) {
 }
 if (!/^MAIL_TRANSPORT=console$/m.test(envLoc)) errs.push("env.local.example без MAIL_TRANSPORT=console (9.1)");
 if (!/^TRUST_PROXY=false$/m.test(envLoc)) errs.push("env.local.example без TRUST_PROXY=false (13.2)");
+if (!/^AUTH_MIN_RESPONSE_MS=/m.test(envLoc)) errs.push("env.local.example без AUTH_MIN_RESPONSE_MS= (15.3)");
 if (errs.length) {
   console.error("DOTFILES: правки потеряны выкладкой —\n - " + errs.join("\n - "));
   process.exit(1);

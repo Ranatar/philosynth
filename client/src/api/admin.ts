@@ -11,12 +11,14 @@
  *      400 VALIDATION_ERROR (details.role) / 404 NOT_FOUND /
  *      409 SELF_ROLE_CHANGE (своя роль) / 409 LAST_ADMIN (последний админ)
  *  - getAuditLog → GET  /auth/audit ?limit → { entries } (новые первыми)
+ *  - getMailOutbox → GET /auth/mail-outbox ?limit → { counts, rows } (15.3)
  *
  * ApiError пробрасывается как есть — вкладка показывает err.message.
  */
 import type {
   AdminAuditEntry,
   AdminUserList,
+  MailOutboxView,
   UserRole,
 } from "@philosynth/shared/types/admin";
 
@@ -55,4 +57,10 @@ export function setUserRole(userId: string, role: UserRole): Promise<SetRoleResu
 
 export function getAuditLog(limit = 50): Promise<AdminAuditEntry[]> {
   return apiGet<{ entries: AdminAuditEntry[] }>("/auth/audit", { limit }).then((r) => r.entries);
+}
+
+/** 15.3 (Д-72 п.3): очередь писем — счётчики по статусам и последние строки
+ *  без тел (GET /auth/mail-outbox ?limit=, requireAdmin). */
+export function getMailOutbox(limit = 50): Promise<MailOutboxView> {
+  return apiGet<MailOutboxView>("/auth/mail-outbox", { limit });
 }

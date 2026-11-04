@@ -126,6 +126,12 @@ CLIENT_ORIGIN=https://philosynth.example.org
 SESSION_COOKIE_SECURE=true
 HOST=127.0.0.1                        # сервер слушает только петлю — к нему ходит Caddy
 TRUST_PROXY=true                      # адрес клиента — из X-Forwarded-For, который ставит Caddy
+# 15.3 (Д-72): сроки хранения и минимум времени ответа — умолчания годятся,
+# строки нужны только чтобы их поменять (сверить после выкладки: dotfile-грабля)
+MAIL_RETENTION_DAYS=30
+AUTH_TOKEN_RETENTION_DAYS=30
+MAINTENANCE_INTERVAL_MS=3600000
+AUTH_MIN_RESPONSE_MS=300
 
 DATABASE_URL=postgres://philosynth:СИЛЬНЫЙ_ПАРОЛЬ@localhost:5432/philosynth
 REDIS_URL=redis://localhost:6379

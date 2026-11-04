@@ -41,11 +41,11 @@
  * .pool-status) + блоки 5–6 UI-кита (5 — с 5.2, 6 — перенесён этой
  * беседой в globals.css часть 3).
  */
-import type { AdminAuditEntry, AdminUserRow, UserRole } from "@philosynth/shared/types/admin";
+import type { AdminAuditEntry, AdminUserRow, MailOutboxRow, MailOutboxView, UserRole } from "@philosynth/shared/types/admin";
 import type { PromptTemplate, SynthesisConfig } from "@philosynth/shared/types/prompts";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
-import { getAuditLog, listUsers, setUserRole } from "../api/admin";
+import { getAuditLog, getMailOutbox, listUsers, setUserRole } from "../api/admin";
 import { ApiError } from "../api/client";
 import {
   type CatalogType,
@@ -68,7 +68,7 @@ import {
 } from "../api/prompts";
 import { useAuthStore } from "../stores/auth-store";
 import { useSecondStep } from "../hooks/useSecondStep";
-import { fmtDateShort } from "../utils/format";
+import { fmtDateShort, fmtInt } from "../utils/format";
 import {
   extractPlaceholders,
   missingPlaceholders,
@@ -1459,9 +1459,126 @@ function AccessTab() {
   );
 }
 
+/* ── Вкладка «Почта» (15.3, Д-72 п.3) ────────────────────────────────── */
+
+const MAIL_ROWS_LIMIT = 50;
+
+/** Подпись статуса строки очереди */
+const MAIL_STATUS_LABELS = (): Record<MailOutboxRow["status"], string> => ({
+  pending: tl("adminPromptsPage.mailPending", "ждёт"),
+  sent: tl("adminPromptsPage.mailSent", "отправлено"),
+  failed: tl("adminPromptsPage.mailFailed", "отказ"),
+});
+
+/** Класс бейджа статуса письма (литералы вне JSX — css-parity-audit) */
+function mailStatusClass(status: MailOutboxRow["status"]): string {
+  return status === "failed" ? "cert-badge mail-status-failed" : status === "sent" ? "cert-badge gold" : "cert-badge";
+}
+
+/**
+ * Очередь писем: счётчики по статусам и последние строки БЕЗ тел — тела
+ * отправленных затёрты работником (9.1), у ждущих — живая ссылка-довод.
+ * Повтора отправки нет по той же причине: показать можно, переслать нечего.
+ * overdue — ждущие с наступившим сроком: работник отстал (или мёртв).
+ */
+function MailTab() {
+  const [view, setView] = useState<MailOutboxView | null>(null);
+  const [status, setStatus] = useState<StatusMsg>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setView(await getMailOutbox(MAIL_ROWS_LIMIT));
+      setStatus(null);
+    } catch (err) {
+      setStatus({ text: errText(err, tl("adminPromptsPage.mailLoadFailed", "Не удалось загрузить очередь писем")), kind: "err" });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const counts = view?.counts;
+  return (
+    <div className="form-grid" data-testid="mail-tab">
+      <div className="form-group full">
+        <div className="form-label">{tl("adminPromptsPage.mailQueue", "Очередь писем")}</div>
+        <div className="form-sublabel">
+          {tl("adminPromptsPage.mailNote", "Письма ставятся в очередь транзакцией действия и уходят работником; тела отправленных и отказанных затёрты, у ждущих — живая ссылка, поэтому тел здесь нет и повторной отправки тоже. «Просрочено» — ждущие с наступившим сроком: работник отстал. Отработанное старше срока хранения снимает проход чистки.")}
+        </div>
+        {status && <Status msg={status} />}
+        <div className="stat-row" data-testid="mail-counts">
+          <div>
+            <div className="stat-value" data-testid="mail-count-pending">{counts ? fmtInt(counts.pending) : "—"}</div>
+            <div className="stat-label">{tl("adminPromptsPage.mailPendingLabel", "ждут")}</div>
+          </div>
+          <div>
+            <div className={counts && counts.overdue > 0 ? "stat-value mail-stat-alert" : "stat-value"} data-testid="mail-count-overdue">{counts ? fmtInt(counts.overdue) : "—"}</div>
+            <div className="stat-label">{tl("adminPromptsPage.mailOverdueLabel", "просрочено")}</div>
+          </div>
+          <div>
+            <div className="stat-value gold" data-testid="mail-count-sent">{counts ? fmtInt(counts.sent) : "—"}</div>
+            <div className="stat-label">{tl("adminPromptsPage.mailSentLabel", "отправлено")}</div>
+          </div>
+          <div>
+            <div className={counts && counts.failed > 0 ? "stat-value mail-stat-alert" : "stat-value"} data-testid="mail-count-failed">{counts ? fmtInt(counts.failed) : "—"}</div>
+            <div className="stat-label">{tl("adminPromptsPage.mailFailedLabel", "отказов")}</div>
+          </div>
+        </div>
+        <div className="data-table-wrap" data-testid="mail-rows">
+          <div className="data-table-toolbar">
+            <span className="form-sublabel">
+              {tl("adminPromptsPage.mailLastRows", "последние {limit} строк, новые первыми", { limit: MAIL_ROWS_LIMIT })}
+            </span>
+            <button type="button" className="action-btn" disabled={loading} onClick={() => void load()} data-testid="mail-refresh">
+              {loading ? tl("common.loading", "Загрузка…") : tl("adminPromptsPage.refresh", "↻ Обновить")}
+            </button>
+          </div>
+          {view === null ? (
+            <div className="pool-status">{tl("common.loading", "Загрузка…")}</div>
+          ) : view.rows.length === 0 ? (
+            <div className="data-table-empty">{tl("adminPromptsPage.mailEmpty", "очередь пуста")}</div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{tl("adminPromptsPage.mailCreated", "Поставлено")}</th>
+                  <th>{tl("adminPromptsPage.mailTo", "Кому")}</th>
+                  <th>{tl("adminPromptsPage.mailSubject", "Тема")}</th>
+                  <th>{tl("adminPromptsPage.mailStatus", "Статус")}</th>
+                  <th className="num">{tl("adminPromptsPage.mailAttempts", "Попыток")}</th>
+                  <th>{tl("adminPromptsPage.mailLastError", "Последняя ошибка")}</th>
+                  <th>{tl("adminPromptsPage.mailWhen", "Отправлено / следующая")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.rows.map((r) => (
+                  <tr key={r.id} data-testid="mail-row" data-status={r.status}>
+                    <td>{fmtDateShort(r.createdAt)}</td>
+                    <td><code>{r.toEmail}</code></td>
+                    <td>{r.subject}</td>
+                    <td><span className={mailStatusClass(r.status)}>{MAIL_STATUS_LABELS()[r.status]}</span></td>
+                    <td className="num">{r.attempts}</td>
+                    <td className="mail-error">{r.lastError ?? ""}</td>
+                    <td>{r.status === "sent" && r.sentAt ? fmtDateShort(r.sentAt) : r.status === "pending" ? fmtDateShort(r.nextAttemptAt) : ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Страница ────────────────────────────────────────────────────────── */
 
-type Tab = "templates" | "configs" | "catalogs" | "access";
+type Tab = "templates" | "configs" | "catalogs" | "access" | "mail";
 
 /** Класс кнопки-вкладки (литералы вне className — css-parity-audit ловит
  *  строки внутри выражения className как имена классов) */
@@ -1475,6 +1592,7 @@ export function AdminPromptsPage() {
   const isConfigs = tab === "configs";
   const isCatalogs = tab === "catalogs";
   const isAccess = tab === "access";
+  const isMail = tab === "mail"; // 15.3
   return (
     <div className="input-form" data-testid="admin-prompts-page">
       <h1 className="form-section-title">{tl("adminPromptsPage.promptRegistry", "Prompt Registry")}</h1>
@@ -1519,8 +1637,18 @@ export function AdminPromptsPage() {
         >
           {tl("adminPromptsPage.tabAccess", "Доступ")}
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isMail}
+          className={tabClass(isMail)}
+          onClick={() => setTab("mail")}
+          data-testid="tab-mail"
+        >
+          {tl("adminPromptsPage.tabMail", "Почта")}
+        </button>
       </div>
-      {!isCatalogs && !isAccess && (
+      {!isCatalogs && !isAccess && !isMail && (
         <div className="form-sublabel" style={{ marginBottom: 10 }}>
           {tl("adminPromptsPage.registryNote", "Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация сбрасывает кэш реестра — следующая генерация берёт новый текст.")}
         </div>
@@ -1531,6 +1659,8 @@ export function AdminPromptsPage() {
         <ConfigsTab />
       ) : isCatalogs ? (
         <CatalogsTab />
+      ) : isMail ? (
+        <MailTab />
       ) : (
         <AccessTab />
       )}

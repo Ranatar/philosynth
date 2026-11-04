@@ -120,7 +120,19 @@ interface AuthState {
   /** DELETE /auth/me { password } (7.1): аккаунт анонимизирован, сессии
    *  сброшены — при ok store переходит в anonymous */
   deleteAccount(password: string): Promise<ProfileActionResult>;
+  /** 15.3 (Д-73): POST /auth/email/change/request { newEmail, password } —
+   *  письмо со ссылкой на НОВЫЙ адрес; ответ один и тот же, занят адрес или
+   *  свободен; 401 — неверный пароль (details.password для формы) */
+  requestEmailChange(newEmail: string, password: string): Promise<EmailChangeRequestResult>;
+  /** 15.3 (Д-73): POST /auth/email/change/confirm { token } — гостевой;
+   *  при живой сессии user в store получает новый адрес */
+  confirmEmailChange(token: string): Promise<ProfileActionResult>;
 }
+
+/** Итог запроса смены адреса (15.3): message — один и тот же всегда */
+export type EmailChangeRequestResult =
+  | { ok: true; message: string }
+  | { ok: false; error: string; details?: Record<string, string> };
 
 async function fetchMe(): Promise<AuthUser> {
   const { user } = await apiGet<{ user: AuthUser }>("/auth/me");
@@ -333,6 +345,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return { ok: false, error: err.message };
       }
       return toActionFailure(err, tl("stores.authStore.deleteFailed", "Не удалось удалить аккаунт"));
+    }
+  },
+
+  async requestEmailChange(newEmail, password) {
+    try {
+      // skipUnauthorizedHandler: 401 — неверный пароль при ЖИВОЙ сессии
+      // (единый AUTH_REQUIRED, как password-change) — не выход из системы
+      const res = await api<{ ok: true; message: string }>("/auth/email/change/request", {
+        method: "POST",
+        body: { newEmail, password },
+        skipUnauthorizedHandler: true,
+      });
+      return { ok: true, message: res.message };
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "AUTH_REQUIRED") {
+        return {
+          ok: false,
+          error: tl("stores.authStore.wrongPassword", "Неверный пароль"),
+          details: { password: tl("stores.authStore.wrongPassword", "Неверный пароль") },
+        };
+      }
+      if (err instanceof ApiError && err.code === "RATE_LIMIT") {
+        return { ok: false, error: tl("stores.authStore.tooManyEmails", "Слишком много писем за час — попробуйте позже") };
+      }
+      const f = toActionFailure(err, tl("stores.authStore.emailChangeRequestFailed", "Не удалось запросить смену адреса"));
+      return f.ok ? { ok: false, error: tl("stores.authStore.emailChangeRequestFailed", "Не удалось запросить смену адреса") } : f;
+    }
+  },
+
+  async confirmEmailChange(token) {
+    try {
+      const res = await apiPost<{ ok: true; email: string }>("/auth/email/change/confirm", { token });
+      const user = get().user;
+      if (user) set({ user: { ...user, email: res.email, emailVerified: true } });
+      return { ok: true };
+    } catch (err) {
+      return toActionFailure(err, tl("stores.authStore.emailChangeFailed", "Не удалось сменить адрес"));
     }
   },
 

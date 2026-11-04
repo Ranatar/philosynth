@@ -13,7 +13,7 @@
  * точки сохранения любая ошибка INSERT переводит транзакцию PostgreSQL в
  * aborted, и «письмо не встало в очередь» стоило бы человеку регистрации.
  */
-import { and, count, eq, lte } from "drizzle-orm";
+import { and, count, desc, eq, lte } from "drizzle-orm";
 
 import { db, schema } from "../../db/index.js";
 
@@ -77,18 +77,67 @@ export interface OutboxCounts {
   pending: number;
   /** 'pending' с уже наступившим next_attempt_at — работник отстал */
   overdue: number;
+  /** 15.3 (Д-72): отправленных (тела затёрты) — пока их не снял проход чистки */
+  sent: number;
   failed: number;
 }
 
-/** Счётчики очереди: overdue > 0 дольше периода разбора — работник отстал. */
+/** Счётчики очереди по статусам: overdue > 0 дольше периода разбора — работник
+ *  отстал. 15.3 (Д-72): + sent; потребитель — вкладка «Почта» админки. */
 export async function getOutboxCounts(now: Date = new Date()): Promise<OutboxCounts> {
-  const [[p], [o], [f]] = await Promise.all([
+  const [[p], [o], [s], [f]] = await Promise.all([
     db.select({ n: count() }).from(mailOutbox).where(eq(mailOutbox.status, "pending")),
     db
       .select({ n: count() })
       .from(mailOutbox)
       .where(and(eq(mailOutbox.status, "pending"), lte(mailOutbox.nextAttemptAt, now))),
+    db.select({ n: count() }).from(mailOutbox).where(eq(mailOutbox.status, "sent")),
     db.select({ n: count() }).from(mailOutbox).where(eq(mailOutbox.status, "failed")),
   ]);
-  return { pending: Number(p?.n ?? 0), overdue: Number(o?.n ?? 0), failed: Number(f?.n ?? 0) };
+  return {
+    pending: Number(p?.n ?? 0),
+    overdue: Number(o?.n ?? 0),
+    sent: Number(s?.n ?? 0),
+    failed: Number(f?.n ?? 0),
+  };
+}
+
+/** Строка очереди БЕЗ тел (15.3, Д-72 п.3): тела отправленных затёрты
+ *  работником, у ждущих — живая ссылка-довод, которую админке видеть незачем;
+ *  повтора отправки по этой причине нет. */
+export interface OutboxRow {
+  id: string;
+  toEmail: string;
+  subject: string;
+  status: "pending" | "sent" | "failed";
+  attempts: number;
+  lastError: string | null;
+  nextAttemptAt: string;
+  createdAt: string;
+  sentAt: string | null;
+}
+
+/** Последние N строк очереди (новые первыми) без тел — вкладка «Почта». */
+export async function listOutboxRows(limit: number): Promise<OutboxRow[]> {
+  const rows = await db
+    .select({
+      id: mailOutbox.id,
+      toEmail: mailOutbox.toEmail,
+      subject: mailOutbox.subject,
+      status: mailOutbox.status,
+      attempts: mailOutbox.attempts,
+      lastError: mailOutbox.lastError,
+      nextAttemptAt: mailOutbox.nextAttemptAt,
+      createdAt: mailOutbox.createdAt,
+      sentAt: mailOutbox.sentAt,
+    })
+    .from(mailOutbox)
+    .orderBy(desc(mailOutbox.createdAt), desc(mailOutbox.id))
+    .limit(Math.max(1, Math.min(500, limit)));
+  return rows.map((r) => ({
+    ...r,
+    nextAttemptAt: r.nextAttemptAt.toISOString(),
+    createdAt: r.createdAt.toISOString(),
+    sentAt: r.sentAt ? r.sentAt.toISOString() : null,
+  }));
 }

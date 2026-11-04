@@ -63,6 +63,22 @@
  *     password-reset/request), — под отдельным лимитом scope 'mail'
  *     (RATE_LIMIT_MAIL_PER_HOUR) сверх общего rateLimiter index.ts.
  *
+ *   Беседа 15.3 (Д-72, Д-73):
+ *   POST /auth/login — для несуществующего адреса сравнение bcrypt идёт с
+ *     холостым хэшем (время ответа не выдаёт адрес); POST /auth/password-reset/
+ *     request отвечает не раньше AUTH_MIN_RESPONSE_MS при любом исходе.
+ *   POST /auth/email/change/request { newEmail, password } (requireAuth,
+ *     mailLimiter) → { ok: true, message } — довод 'email_change' с новым
+ *     адресом в строке и письмо на НОВЫЙ адрес; неверный пароль → 401
+ *     AUTH_REQUIRED; занятый адрес → тот же 200 без письма (анти-enumeration,
+ *     время — под тем же минимумом); текущий адрес → 400 details.newEmail.
+ *   POST /auth/email/change/confirm { token } → { ok: true, email } — БЕЗ
+ *     сессии; адрес сменён и подтверждён, доводы сброса пароля и
+ *     подтверждения погашены, уведомление на ПРЕЖНИЙ адрес; негодный довод
+ *     ИЛИ адрес, занятый к этому моменту, → 400 TOKEN_INVALID одним кодом.
+ *   GET /auth/mail-outbox ?limit=50 (requireAdmin) → { counts, rows } —
+ *     счётчики очереди по статусам и последние строки без тел.
+ *
  * Правила пароля/email/имени — @philosynth/shared/constants/auth (8.1 п.1:
  * второго свода правил быть не должно — bootstrap-admin проверяет то же).
  *
@@ -112,11 +128,15 @@ import {
 } from "../services/admin-audit.js"; // 8.1
 import {
   consumeToken,
+  consumeTokenRow,
   isTokenUsable,
+  queueEmailChangeMail,
+  queueEmailChangedNotice,
   queuePasswordResetMail,
   queueVerificationMail,
   revokeTokens,
-} from "../services/auth-tokens.js"; // 9.1
+} from "../services/auth-tokens.js"; // 9.1; 15.3 — смена адреса
+import { getOutboxCounts, listOutboxRows } from "../services/mail/outbox.js"; // 15.3 (Д-72 п.3)
 import { rateLimiter } from "../middleware/rate-limiter.js";
 import { tl } from "@philosynth/shared/i18n/t";
 import { currentLocale } from "../i18n/locale.js"; // 14.1 (Д-51): язык письма при регистрации
@@ -175,6 +195,31 @@ function parseCredentials(
 
   if (Object.keys(details).length > 0) return { ok: false, details };
   return { ok: true, value: { email, password, displayName } };
+}
+
+/* ── 15.3 (Д-72 п.2): время ответа не выдаёт, есть ли адрес ──────────── */
+
+/**
+ * Холостой хэш для входа по несуществующему адресу: тот же bcrypt с тем же
+ * числом раундов, что у настоящих паролей, вычислен один раз при импорте.
+ * До 15.3 вход для несуществующего адреса bcrypt не звал вовсе, и разница во
+ * времени (десятки мс против единиц) выдавала, зарегистрирован ли адрес.
+ */
+const DUMMY_PASSWORD_HASH: Promise<string> = hashPassword("philosynth-dummy-password-15.3");
+
+/**
+ * Ответ не раньше env.auth.minResponseMs от начала обработчика при ЛЮБОМ
+ * исходе. У форм, где путь существующего адреса длиннее (сброс пароля:
+ * savepoint, гашение прежних доводов, два INSERT; смена адреса: bcrypt и
+ * постановка), минимум перекрывает разницу; мерить — медианами многих
+ * прогонов, не одним (тестовый запрос 15.3).
+ */
+async function withMinResponse<T>(fn: () => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  const result = await fn();
+  const left = env.auth.minResponseMs - (Date.now() - startedAt);
+  if (left > 0) await new Promise((r) => setTimeout(r, left));
+  return result;
 }
 
 /* ── Роуты ───────────────────────────────────────────────────────────── */
@@ -253,10 +298,12 @@ authRoutes.post("/login", async (c) => {
     limit: 1,
   });
   const user = rows[0];
-  // Единый ответ для «нет такого email» и «неверный пароль»
+  // Единый ответ для «нет такого email» и «неверный пароль». 15.3 (Д-72):
+  // и единое ВРЕМЯ — у несуществующего адреса сравнение всё равно идёт, с
+  // холостым хэшем того же bcrypt; результат заведомо ложный
   const valid = user
     ? await verifyPassword(password, user.passwordHash)
-    : false;
+    : (await verifyPassword(password, await DUMMY_PASSWORD_HASH)) && false;
   if (!user || !valid) {
     return c.json(
       { error: tl("server.routes.auth.wrongCredentials", "Неверный email или пароль"), code: "AUTH_REQUIRED" },
@@ -549,21 +596,29 @@ authRoutes.post("/password-reset/request", mailLimiter, async (c) => {
       400,
     );
   }
-  if (!email.endsWith(DELETED_EMAIL_SUFFIX)) {
-    const rows = await db
-      .select({
-        id: schema.users.id,
-        email: schema.users.email,
-        displayName: schema.users.displayName,
-        uiLocale: schema.users.uiLocale, // 14.1 (Д-51): язык получателя
-      })
-      .from(schema.users)
-      .where(eq(schema.users.email, email))
-      .limit(1);
-    // Сбой постановки пишется в лог; ответ от него НЕ зависит (иначе он
-    // различал бы существующий адрес и несуществующий)
-    if (rows[0]) await queuePasswordResetMail(db, rows[0]);
-  }
+  // 15.3 (Д-72 п.2): ответ не раньше минимума при любом исходе — путь
+  // существующего адреса (savepoint, гашение прежних доводов, два INSERT)
+  // длиннее пути несуществующего (один SELECT), и время ответа выдавало адрес.
+  // Постановка письма остаётся В пути ответа: довод и письмо живут под одной
+  // точкой сохранения (9.1) — уносить письмо в фон значило бы либо выдавать
+  // довод без письма, либо заводить вторую очередь
+  await withMinResponse(async () => {
+    if (!email.endsWith(DELETED_EMAIL_SUFFIX)) {
+      const rows = await db
+        .select({
+          id: schema.users.id,
+          email: schema.users.email,
+          displayName: schema.users.displayName,
+          uiLocale: schema.users.uiLocale, // 14.1 (Д-51): язык получателя
+        })
+        .from(schema.users)
+        .where(eq(schema.users.email, email))
+        .limit(1);
+      // Сбой постановки пишется в лог; ответ от него НЕ зависит (иначе он
+      // различал бы существующий адрес и несуществующий)
+      if (rows[0]) await queuePasswordResetMail(db, rows[0]);
+    }
+  });
   // ОДИН ответ на оба случая (анти-enumeration, как login 0.2)
   return c.json({ ok: true, message: tData(PASSWORD_RESET_REQUESTED_MESSAGE) });
 });
@@ -774,4 +829,133 @@ authRoutes.post("/users/:id/role", requireAuth, requireAdmin, async (c) => {
 authRoutes.get("/audit", requireAuth, requireAdmin, async (c) => {
   const limit = parseIntParam(c.req.query("limit"), 50, 1, 500);
   return c.json({ entries: await listAudit(limit) });
+});
+
+/* ── Очередь писем — вкладка «Почта» админки (беседа 15.3, Д-72 п.3) ──── */
+
+authRoutes.get("/mail-outbox", requireAuth, requireAdmin, async (c) => {
+  // Счётчики по статусам и последние строки БЕЗ тел: тела отправленных
+  // затёрты работником (9.1), у ждущих — живая ссылка-довод; повтора
+  // отправки нет по той же причине
+  const limit = parseIntParam(c.req.query("limit"), 50, 1, 500);
+  const [counts, rows] = await Promise.all([getOutboxCounts(), listOutboxRows(limit)]);
+  return c.json({ counts, rows });
+});
+
+/* ── Смена адреса почты (беседа 15.3, Д-73) ──────────────────────────── */
+
+/**
+ * Запрос смены: текущий пароль + новый адрес → довод 'email_change' с новым
+ * адресом в строке (миграция 0015) и письмо со ссылкой на НОВЫЙ адрес.
+ * Ответ на занятый адрес НЕ отличается от ответа на свободный (ни кодом,
+ * ни телом, ни временем — withMinResponse): иначе форма — прибор для
+ * проверки, кто зарегистрирован. Письма на занятый адрес нет: его владелец
+ * не просил, а подтвердить чужой адрес всё равно нельзя — confirm проверит
+ * занятость ещё раз. admin_audit не пишется: действие самого пользователя
+ * (журнал — для администраторов и скриптов); след — строка довода с
+ * new_email и уведомление на прежний адрес после подтверждения.
+ */
+authRoutes.post("/email/change/request", mailLimiter, requireAuth, async (c) => {
+  const body = await readJson(c);
+  const details: Record<string, string> = {};
+  const newEmail = typeof body?.newEmail === "string" ? body.newEmail.trim().toLowerCase() : "";
+  const password = typeof body?.password === "string" ? body.password : "";
+  if (!newEmail) details.newEmail = tl("server.routes.auth.requiredField", "Обязательное поле");
+  else if (!EMAIL_RE.test(newEmail)) details.newEmail = tl("server.routes.auth.invalidEmail", "Невалидный email");
+  if (!password) details.password = tl("server.routes.auth.requiredField", "Обязательное поле");
+  if (Object.keys(details).length > 0) {
+    return c.json({ error: tl("common.invalidData", "Невалидные данные"), code: "VALIDATION_ERROR", details }, 400);
+  }
+  const user = c.get("user");
+  if (newEmail === user.email) {
+    return c.json(
+      {
+        error: tl("common.invalidData", "Невалидные данные"),
+        code: "VALIDATION_ERROR",
+        details: { newEmail: tl("server.routes.auth.sameEmail", "Это текущий адрес учётной записи") },
+      },
+      400,
+    );
+  }
+  const outcome = await withMinResponse(async (): Promise<"wrong_password" | "ok"> => {
+    const rows = await db.query.users.findMany({ where: (u, { eq: eqOp }) => eqOp(u.id, user.id), limit: 1 });
+    const dbUser = rows[0];
+    const valid = dbUser ? await verifyPassword(password, dbUser.passwordHash) : false;
+    if (!dbUser || !valid) return "wrong_password";
+    // Занят ли адрес — по той же колонке, что UNIQUE(email) у регистрации;
+    // исход на ответ НЕ влияет (ни кодом, ни временем: письмо под той же
+    // минимальной длительностью, что и его отсутствие)
+    const taken = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.email, newEmail))
+      .limit(1);
+    if (taken.length === 0) {
+      await queueEmailChangeMail(
+        db,
+        { id: dbUser.id, email: dbUser.email, displayName: dbUser.displayName, uiLocale: dbUser.uiLocale },
+        newEmail,
+      );
+    }
+    return "ok";
+  });
+  if (outcome === "wrong_password") {
+    // Единый 401, как у password-change (0.5) и DELETE /me (7.1)
+    return c.json({ error: tl("server.routes.auth.wrongPassword", "Неверный пароль"), code: "AUTH_REQUIRED" }, 401);
+  }
+  // ОДИН ответ на занятый и свободный адрес (анти-enumeration)
+  return c.json({ ok: true, message: tl("server.routes.auth.emailChangeRequested", "Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час") });
+});
+
+/**
+ * Подтверждение по ссылке из письма — БЕЗ сессии (ссылку открывают и в
+ * другом браузере). Одной транзакцией: довод гасится, адрес меняется и
+ * сразу считается подтверждённым (переход с нового ящика доказывает
+ * владение), доводы сброса пароля гасятся (ссылка сброса, выданная на
+ * прежний адрес, не должна остаться рабочей), на ПРЕЖНИЙ адрес — уведомление.
+ * Адрес, занятый к моменту подтверждения, → 400 TOKEN_INVALID (тем же кодом,
+ * что негодный довод: подсказывать, что адрес занят, значило бы выдавать
+ * регистрацию по ссылке); гонка двух подтверждений — UNIQUE(email) → тот же
+ * ответ. Сессии НЕ завершаются: пароль не менялся, пользователь — тот же.
+ */
+authRoutes.post("/email/change/confirm", async (c) => {
+  const body = await readJson(c);
+  const token = typeof body?.token === "string" ? body.token.trim() : "";
+  if (!token) return tokenInvalid(c);
+  let changed: { email: string } | null = null;
+  try {
+    changed = await db.transaction(async (tx) => {
+      const row = await consumeTokenRow(tx, token, "email_change");
+      if (!row || !row.newEmail) return null;
+      const [u] = await tx.select().from(schema.users).where(eq(schema.users.id, row.userId)).for("update").limit(1);
+      if (!u) return null;
+      const now = new Date();
+      const [updated] = await tx
+        .update(schema.users)
+        .set({ email: row.newEmail, emailVerifiedAt: now, updatedAt: now })
+        .where(eq(schema.users.id, u.id))
+        .returning({ email: schema.users.email });
+      if (!updated) return null;
+      await revokeTokens(tx, u.id, "password_reset", now);
+      await revokeTokens(tx, u.id, "email_verify", now);
+      await queueEmailChangedNotice(
+        tx,
+        { id: u.id, email: updated.email, displayName: u.displayName, uiLocale: u.uiLocale },
+        u.email,
+        updated.email,
+      );
+      return { email: updated.email };
+    });
+  } catch (err) {
+    // Адрес заняли между запросом и подтверждением — UNIQUE(email) 23505:
+    // транзакция откатилась, довод гасится отдельно (ссылка сгорает —
+    // новый запрос смены выдаст новую)
+    const e = err as { code?: string; cause?: { code?: string } };
+    if (e.code === "23505" || e.cause?.code === "23505") {
+      await consumeTokenRow(db, token, "email_change");
+      return tokenInvalid(c);
+    }
+    throw err;
+  }
+  return changed ? c.json({ ok: true, email: changed.email }) : tokenInvalid(c);
 });

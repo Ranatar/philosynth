@@ -26,22 +26,32 @@ import { schema } from "../db/index.js";
 import { env } from "../env.js";
 import { enqueue, underSavepoint, type MailDbExecutor } from "./mail/outbox.js";
 import { currentLocale, runWithLocale } from "../i18n/locale.js"; // 14.1 (Д-51)
-import { passwordResetLetter, verifyEmailLetter } from "./mail/templates.js";
+import {
+  emailChangeLetter,
+  emailChangedNoticeLetter,
+  passwordResetLetter,
+  verifyEmailLetter,
+} from "./mail/templates.js";
 
 const { authTokens } = schema;
 
-export type AuthTokenPurpose = "email_verify" | "password_reset";
+/** 15.3 (Д-73): + 'email_change' — смена адреса (миграция 0015). */
+export type AuthTokenPurpose = "email_verify" | "password_reset" | "email_change";
 
-/** Срок жизни довода, часов (запрос 1, п. 4): подтверждение 72, сброс 1. */
+/** Срок жизни довода, часов (запрос 1, п. 4): подтверждение 72, сброс 1;
+ *  15.3: смена адреса — 1 ч (как сброс: ссылка уходит на адрес, который
+ *  ещё не доказан своим). */
 export const TOKEN_TTL_HOURS: Readonly<Record<AuthTokenPurpose, number>> = Object.freeze({
   email_verify: 72,
   password_reset: 1,
+  email_change: 1,
 });
 
-/** Клиентские маршруты, куда ведут ссылки писем (App.tsx, 9.1 п. 6). */
+/** Клиентские маршруты, куда ведут ссылки писем (App.tsx, 9.1 п. 6; 15.3). */
 export const TOKEN_LINK_PATH: Readonly<Record<AuthTokenPurpose, string>> = Object.freeze({
   email_verify: "/verify-email/",
   password_reset: "/reset-password/",
+  email_change: "/change-email/",
 });
 
 export function generateAuthToken(): string {
@@ -65,6 +75,8 @@ export async function issueToken(
   userId: string,
   purpose: AuthTokenPurpose,
   now: Date = new Date(),
+  /** 15.3 (Д-73): новый адрес — только у 'email_change' */
+  newEmail: string | null = null,
 ): Promise<string> {
   await exec
     .update(authTokens)
@@ -77,21 +89,28 @@ export async function issueToken(
     userId,
     purpose,
     tokenHash: hashAuthToken(token),
+    newEmail: purpose === "email_change" ? newEmail : null,
     expiresAt: new Date(now.getTime() + TOKEN_TTL_HOURS[purpose] * 3_600_000),
   });
   return token;
 }
 
+/** Погашенная строка довода (15.3): у 'email_change' newEmail — новый адрес. */
+export interface ConsumedToken {
+  userId: string;
+  newEmail: string | null;
+}
+
 /**
- * Погасить довод. Атомарно: условие «не использован И не просрочен» и
- * отметка used_at — один UPDATE. → userId либо null (любой негодный довод).
+ * Погасить довод и вернуть его строку. Атомарно: условие «не использован И
+ * не просрочен» и отметка used_at — один UPDATE. null — любой негодный довод.
  */
-export async function consumeToken(
+export async function consumeTokenRow(
   exec: MailDbExecutor,
   token: string,
   purpose: AuthTokenPurpose,
   now: Date = new Date(),
-): Promise<string | null> {
+): Promise<ConsumedToken | null> {
   if (!token) return null;
   const rows = await exec
     .update(authTokens)
@@ -104,8 +123,22 @@ export async function consumeToken(
         gt(authTokens.expiresAt, now),
       ),
     )
-    .returning({ userId: authTokens.userId });
-  return rows[0]?.userId ?? null;
+    .returning({ userId: authTokens.userId, newEmail: authTokens.newEmail });
+  return rows[0] ?? null;
+}
+
+/**
+ * Погасить довод. Атомарно: условие «не использован И не просрочен» и
+ * отметка used_at — один UPDATE. → userId либо null (любой негодный довод).
+ */
+export async function consumeToken(
+  exec: MailDbExecutor,
+  token: string,
+  purpose: AuthTokenPurpose,
+  now: Date = new Date(),
+): Promise<string | null> {
+  const row = await consumeTokenRow(exec, token, purpose, now);
+  return row?.userId ?? null;
 }
 
 /** Годен ли довод СЕЙЧАС, без погашения — дешёвая предпроверка до bcrypt
@@ -165,22 +198,57 @@ async function queueTokenMail(
   exec: MailDbExecutor,
   user: MailRecipient,
   purpose: AuthTokenPurpose,
+  /** 15.3 (Д-73): у 'email_change' — новый адрес: он же адресат письма */
+  newEmail: string | null = null,
 ): Promise<boolean> {
   // 14.1 (Д-51): письмо собирается под языком ПОЛУЧАТЕЛЯ в момент постановки
   // в очередь — работник почты языка не знает, тело хранится собранным
   const id = await underSavepoint(exec, `письмо ${purpose} для ${user.id} не поставлено`, async (sp) => {
-    const token = await issueToken(sp, user.id, purpose);
+    const token = await issueToken(sp, user.id, purpose, new Date(), newEmail);
     const input = {
       displayName: user.displayName,
       link: tokenLink(purpose, token),
       ttlHours: TOKEN_TTL_HOURS[purpose],
     };
     const letter = runWithLocale(user.uiLocale ?? currentLocale(), () =>
-      purpose === "email_verify" ? verifyEmailLetter(input) : passwordResetLetter(input),
+      purpose === "email_verify"
+        ? verifyEmailLetter(input)
+        : purpose === "password_reset"
+          ? passwordResetLetter(input)
+          : emailChangeLetter({ ...input, newEmail: newEmail ?? "" }),
     );
-    return enqueue(sp, { to: user.email, ...letter });
+    // Письмо смены адреса уходит на НОВЫЙ адрес — только переход по ссылке
+    // с него доказывает, что ящик свой
+    return enqueue(sp, { to: purpose === "email_change" ? (newEmail ?? user.email) : user.email, ...letter });
   });
   return id !== null;
+}
+
+/** 15.3 (Д-73): довод + письмо со ссылкой подтверждения на НОВЫЙ адрес.
+ *  false — не поставлено (в логе). Прежние доводы смены гасятся выдачей. */
+export function queueEmailChangeMail(
+  exec: MailDbExecutor,
+  user: MailRecipient,
+  newEmail: string,
+): Promise<boolean> {
+  return queueTokenMail(exec, user, "email_change", newEmail);
+}
+
+/** 15.3 (Д-73): уведомление на СТАРЫЙ адрес после смены — без довода, в
+ *  транзакции подтверждения, под точкой сохранения (сбой постановки смену не
+ *  отменяет). false — не поставлено (в логе). */
+export function queueEmailChangedNotice(
+  exec: MailDbExecutor,
+  user: MailRecipient,
+  oldEmail: string,
+  newEmail: string,
+): Promise<boolean> {
+  return underSavepoint(exec, `уведомление о смене адреса для ${user.id} не поставлено`, (sp) => {
+    const letter = runWithLocale(user.uiLocale ?? currentLocale(), () =>
+      emailChangedNoticeLetter({ displayName: user.displayName, newEmail }),
+    );
+    return enqueue(sp, { to: oldEmail, ...letter });
+  }).then((id) => id !== null);
 }
 
 /** Довод + письмо с подтверждением адреса. false — не поставлено (в логе). */
