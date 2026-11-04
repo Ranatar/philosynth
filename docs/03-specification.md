@@ -84,6 +84,7 @@
 | E7a | Ручная правка подраздела: карандаш у заголовка, правится разметка содержимого; обёртка, `data-section` и `<h4>` неизменны; подразделы, которые служба рисует из БД, и капсула заперты (409 `SECTION_TABLE_LOCKED` с подсказкой, чем править); тело раздела целиком не правится | Фаза 9 — СДЕЛАНО 9.2; истории версий раздела в интерфейсе нет (07 §12) |
 | E8 | Автозамена имён при переименовании категории | Фаза 5 |
 | E9 | Версионирование элементов с откатом | Фаза 5 |
+| E10 | Удаление элемента (категория, тезис, термин) и подраздела — вручную (кнопка со вторым шагом, отчёт влияния) и шагом плана по рекомендации «удалить» (`delete_element` / `delete_subsection`, бесплатно); снимок версии остаётся, восстановления из него нет (Огр-13); запертые подразделы не удаляются; упоминания в тексте не вычищаются | Фаза 15 — СДЕЛАНО 15.2 |
 
 ### 1.6. Мета-синтез
 
@@ -814,6 +815,29 @@ GET    /syntheses/:id/sections/:key/subsections/:name
 
 PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
                                 → SubsectionUpdateResult
+
+// 15.2 (Д-71): удаление подраздела — тот же путь, DELETE. Только владелец
+// (403), активная операция → 409 GENERATION_IN_PROGRESS; неизвестный ключ /
+// нет раздела → 404; подраздел ищется ТОЧНО (нечёткое имя → 404 с
+// details.available); запертый подраздел ИЛИ любой вложенный в него
+// (таблица рендерера, капсула) → 409 SECTION_TABLE_LOCKED (details.reason,
+// table?, subsection, nestedOf? у вложенного). Уходит весь div с
+// вложенными; версия 'section' со снимком раздела ДО удаления, is_edited.
+// Перегенерация раздела вернёт подраздел, если он есть в карте подразделов
+// (удаление — правка текста, живёт до перегенерации); regen_subsection
+// удалённого имени тоже вернёт его в конец раздела.
+DELETE /syntheses/:id/sections/:key/subsections/:name
+                                → SubsectionDeleteResult
+                                   { ok: true, sectionKey, name,
+                                     removedNested: string[],
+                                     version: ElementVersion,
+                                     section: { key, htmlContent, isEdited,
+                                                subsections, subsectionTitles,
+                                                lockedSubsections } }
+                                // Клиент (15.2): «Удалить подраздел» в
+                                // карточке правки подраздела, второй шаг;
+                                // шаг плана delete_subsection зовёт тот же
+                                // сервис (deleteSubsection).
                                 // Только владелец (403); активная операция →
                                 // 409 GENERATION_IN_PROGRESS (гейт тот же,
                                 // что у §2.4: isGenerationActive, не статус);
@@ -1174,7 +1198,38 @@ DELETE /syntheses/:id/edges/:edgeId
                                 // графа и разделов), виды 2D/3D
                                 // пересобираются по смене data.
 
-// Все PATCH элементов, DELETE связи и rollback АДДИТИВНО несут
+// 15.2 (Д-71): удаление категории, тезиса, термина глоссария — одной
+// транзакцией со снимком версии ('manual'; шагом плана по рекомендации —
+// 'recommendation' с origin.stepType 'delete_element'). Гейты — как у PATCH
+// (владелец, активная операция → 409, не-UUID → 404, повтор → 404). Что
+// уходит вслед (каскад): рёбра категории — FK; theses.related_categories
+// без имени (версия 'cascade' у тезиса); cluster_labels без членов;
+// element_enrichments и characteristic_justifications элемента (и его
+// рёбер); recommendations.element_id → NULL («ссылка гаснет»), строки
+// new/stale → invalid (target_element_gone). Запертые таблицы
+// перерисовываются (htmlSync), упоминания имени в тексте разделов — ТОЛЬКО
+// отчётом влияния (impact.severity 'high'), сами не вычищаются.
+// element_versions остаются; восстановления удалённого из снимка НЕТ
+// (Огр-13: откат пишет UPDATE в живую строку).
+DELETE /syntheses/:id/categories/:catId
+DELETE /syntheses/:id/theses/:thesisId
+DELETE /syntheses/:id/glossary/:termId
+                                → DeleteElementResult
+                                   { ok: true,
+                                     cascade: { edgesDeleted, thesesUnlinked,
+                                                clusterLabelsDeleted,
+                                                recommendationsDetached,
+                                                enrichmentsDeleted },
+                                     impact: ImpactAnalysis,
+                                     version: ElementVersion,
+                                     htmlSync: HtmlSyncInfo }
+                                // Клиент (15.2): «Удалить» в редакторе
+                                // элемента (второй шаг, предупреждение по
+                                // виду), после — состояние «удалено» с
+                                // анализом влияния и строкой каскада;
+                                // связь удаляется прежним DELETE /edges.
+
+// Все PATCH элементов, DELETE связи и элементов, rollback АДДИТИВНО несут
 //   version: ElementVersion   — созданная версия-снимок;
 //   htmlSync: HtmlSyncInfo    — синхронизация правки с html_content
 //     (02 §3 п.4 «молча терять правку нельзя»):
@@ -1305,8 +1360,20 @@ POST   /syntheses/:id/plans    { regen: string[], remove: string[], add: string[
                                  regenSubsections?: { target: "sectionKey:имя", note? }[],
                                  elementEdits?:   { kind, elementId, field?, value }[],
                                  elementRefines?: { kind, elementId, field?, note,
-                                                    subsection? }[] }
+                                                    subsection? }[],
+                                 // 15.2 (Д-71) — удаления мельче раздела (бесплатно):
+                                 elementDeletes?:    { kind: category|thesis|glossary_term,
+                                                       elementId }[],
+                                 subsectionDeletes?: { target: "sectionKey:имя" }[] }
                                 → { plan: EditPlan }
+                                // 15.2: шаги delete_element идут ПЕРЕД правками
+                                // элементов, delete_subsection — на месте
+                                // раздела-хозяина перед его regen_subsection;
+                                // каскад — от хозяина. Отказы 400: элемент тем же
+                                // планом и правится, и удаляется; подраздел и
+                                // перегенерируется, и удаляется; вид edge (связь
+                                // удаляется своим DELETE); хозяин перегенерируется
+                                // или удаляется целиком; элемента/подраздела нет.
                                 // Сервер вычисляет каскад и возвращает полный план.
                                 // 10.2: kind — category | thesis | glossary_term | edge;
                                 // field по умолчанию — definition / formulation /
@@ -1957,8 +2024,12 @@ POST /syntheses/:id/recommendations/plan        (беседа 10.2; fields — 1
      выбирает ВСЕ строки этого номера. Развилка: оба варианта («5а» и «5б»)
      → 400; голый «5» у рекомендации-развилки → 400 «назовите вариант» —
      служба не выбирает за человека. Перевод строки в действие:
-       «удалить»                       → declined (шага удаления элемента или
-                                         подраздела у планов нет);
+       «удалить» + элемент             → delete_element (бесплатно; 15.2);
+       «удалить» без элемента          → delete_subsection адреса (бесплатно;
+                                         15.2); в разделе, идущем на regen, —
+                                         вливается в его довод; подраздел,
+                                         который тот же выбор перегенерирует,
+                                         → declined same_target;
        готовая замена + элемент        → edit_element (бесплатно);
        элемент без замены              → refine_element, довод — в context;
        без элемента, «перегенерировать» → regen РАЗДЕЛА адреса (у sum —
@@ -2298,8 +2369,12 @@ Endpoint: `wss://host/ws?token={sessionToken}`
   currentStep: number;
   steps: Array<{
     type: "delete" | "regen" | "add" | "regen_subsection" | "regen_mode"
-        | "edit_element" | "refine_element";            // 10.2
+        | "edit_element" | "refine_element"             // 10.2
+        | "delete_element" | "delete_subsection";       // 15.2 (Д-71): НЕ под
+                                   // delete — у того цель различается по «:»
     target: string;                // у шагов элемента — "kind:elementId"
+                                   // (delete_element — тоже); delete_subsection —
+                                   // "sectionKey:имя"
     status: "pending" | "confirmed" | "running" | "done" | "skipped" | "failed";
     context?: string;
     field?: string;                // 10.2: правимое поле элемента
@@ -2318,7 +2393,8 @@ Endpoint: `wss://host/ws?token={sessionToken}`
   // всё, кроме 'skipped' и 'pending'; шаги, ждущие решения, — cascadePending
   estimatedCost: number;
   // 10.2: бесплатное ОТДЕЛЬНО от платного (снятые шаги не считаются);
-  // free — delete и edit_element; paid.costUsd ≡ estimatedCost
+  // free — delete, edit_element и (15.2) delete_element, delete_subsection;
+  // paid.costUsd ≡ estimatedCost
   costBreakdown: { free: { steps: number; costUsd: 0 };
                    paid: { steps: number; costUsd: number } };
   // 12.3 (Д-7): сколько шагов ждёт решения и во что обойдётся план СВЕРХ

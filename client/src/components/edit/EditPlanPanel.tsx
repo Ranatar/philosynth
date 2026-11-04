@@ -16,11 +16,17 @@
  * у любого шага из рекомендаций — их номера и раунд; бесплатный шаг помечен.
  * Имя элемента шаг не несёт (target «kind:id») — оно приходит пропом
  * elementNames от панели рекомендаций; нет имени — показывается вид.
+ *
+ * Беседа 15.2 (Д-71): строки шагов delete_element («Удалить элемент:
+ * категория «Имя»», без поля) и delete_subsection («Удалить подраздел:
+ * Раздел → «Имя»») — бесплатные; строка помечена .plan-step-delete (красная
+ * левая кромка, блок CSS 15.2).
  */
 import {
   ELEMENT_STEP_FIELD_LABELS,
   ELEMENT_STEP_KIND_LABELS,
   defaultElementStepField,
+  isDeleteStepType,
   isElementStepType,
   isFreeStepType,
   parseElementStepTarget,
@@ -51,6 +57,9 @@ const TYPE_LABEL = (): Record<EditStep["type"], string> => ({
   // шагов элемента (поле, значение, рекомендация) — панель 10.3
   edit_element: tl("edit.editPlanPanel.applyReplacement", "Применить готовую замену"),
   refine_element: tl("edit.editPlanPanel.refineElement", "Уточнить элемент"),
+  // 15.2 (Д-71): удаления мельче раздела — бесплатные шаги
+  delete_element: tl("edit.editPlanPanel.deleteElement", "Удалить элемент"),
+  delete_subsection: tl("edit.editPlanPanel.deleteSubsection", "Удалить подраздел"),
 });
 
 function stepIcon(step: EditStep, running: boolean): string {
@@ -95,6 +104,9 @@ function targetLabel(
     const parsed = parseElementStepTarget(step.target);
     if (!parsed) return step.target;
     const name = elementNames?.[parsed.elementId];
+    // 15.2: у удаления поля нет — «категория «Имя»»
+    if (step.type === "delete_element")
+      return tData(ELEMENT_STEP_KIND_LABELS[parsed.kind]) + (name ? ` «${name}»` : "");
     const field = step.field ?? defaultElementStepField(parsed.kind);
     return (
       tData(ELEMENT_STEP_KIND_LABELS[parsed.kind]) +
@@ -154,7 +166,7 @@ export function EditPlanPanel({
             (plan.status === "draft" || isExecuting);
           const recs = step.recommendations ?? [];
           return (
-            <div key={i} data-testid="plan-step" data-step-type={step.type}>
+            <div key={i} data-testid="plan-step" data-step-type={step.type} className={isDeleteStepType(step.type) ? "plan-step-delete" : undefined}>
             <div
               style={{
                 display: "flex",

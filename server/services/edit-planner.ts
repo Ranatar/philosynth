@@ -71,12 +71,15 @@ import {
   ELEMENT_STEP_HOST,
   ELEMENT_STEP_KINDS,
   elementStepTarget,
+  isDeletableElementKind,
   isElementStepType,
   isPendingStep,
   isTakenStep,
   parseElementStepTarget,
+  parseSubsectionStepTarget,
   planCascadePending,
   planCostBreakdown,
+  type DeletableElementKind,
 } from "@philosynth/shared/constants/edit-steps";
 
 import { db } from "../db/index.js";
@@ -235,8 +238,23 @@ interface NormalizedActions {
   /** 10.2 — действия мельче раздела (уже проверенные) */
   subRegens: SubRegenAction[];
   elementSteps: ElementStepAction[];
+  /** 15.2 (Д-71) — удаления мельче раздела (уже проверенные) */
+  elementDeletes: ElementDeleteStepAction[];
+  subsectionDeletes: SubsectionDeleteStepAction[];
   /** 10.2 — рекомендации, породившие перегенерацию раздела */
   regenRecommendations: Record<string, StepRecommendationRef[]>;
+}
+
+interface ElementDeleteStepAction {
+  kind: DeletableElementKind;
+  elementId: string;
+  recommendations?: StepRecommendationRef[];
+}
+
+interface SubsectionDeleteStepAction {
+  target: string;
+  sectionKey: string;
+  recommendations?: StepRecommendationRef[];
 }
 
 interface SubRegenAction {
@@ -351,14 +369,22 @@ async function normalizeActions(
     details.modeRegen = tl("server.editPlanner.modeRegenAndRemove", "modeRegen и modeRemove одновременно для результата");
 
   /* ── 10.2: подразделы ── */
+  // 15.2: имена подразделов нужны и удалениям — читаются один раз, лениво
+  let namesOfCache: Map<string, string[]> | null = null;
+  const subsectionNames = async (): Promise<Map<string, string[]>> => {
+    if (!namesOfCache) {
+      const secRows = await db
+        .select({ key: sections.key, html: sections.htmlContent })
+        .from(sections)
+        .where(eq(sections.synthesisId, synthesisId));
+      namesOfCache = new Map(secRows.map((r) => [r.key, listSubsectionNames(r.html)]));
+    }
+    return namesOfCache;
+  };
   const subRegens: SubRegenAction[] = [];
   const rawSubs = Array.isArray(body.regenSubsections) ? body.regenSubsections : [];
   if (rawSubs.length > 0) {
-    const secRows = await db
-      .select({ key: sections.key, html: sections.htmlContent })
-      .from(sections)
-      .where(eq(sections.synthesisId, synthesisId));
-    const namesOf = new Map(secRows.map((r) => [r.key, listSubsectionNames(r.html)]));
+    const namesOf = await subsectionNames();
     const seen = new Set<string>();
     for (const a of rawSubs) {
       const target = typeof a?.target === "string" ? a.target : "";
@@ -461,6 +487,78 @@ async function normalizeActions(
   for (const a of Array.isArray(body.elementRefines) ? body.elementRefines : [])
     await takeElement("refine_element", a ?? {}, "elementRefines");
 
+  /* ── 15.2 (Д-71): удаления мельче раздела ── */
+  // Правила — те же, что у правки элемента: раздел-хозяин не перегенерируется
+  // и не удаляется этим же планом; элемент существует; один адресат — один
+  // шаг. Сверх того: удаляемый элемент НЕ правится этим же планом (правка
+  // шла бы по строке, которой не будет), вид — только удаляемый (связь
+  // удаляется своим путём, не планом).
+  const elementDeletes: ElementDeleteStepAction[] = [];
+  const seenDel = new Set<string>();
+  for (const raw of Array.isArray(body.elementDeletes) ? body.elementDeletes : []) {
+    const a = (raw ?? {}) as { kind?: unknown; elementId?: unknown; recommendations?: unknown };
+    if (!isDeletableElementKind(a.kind)) {
+      details.elementDeletes = tl("server.editPlanner.notDeletableKind", "вид «{kind}» планом не удаляется (удаляются категория, тезис, термин глоссария)", { kind: String(a.kind) });
+      continue;
+    }
+    const kind = a.kind;
+    const elementId = typeof a.elementId === "string" ? a.elementId : "";
+    const host = ELEMENT_STEP_HOST[kind];
+    if (regen.includes(host) || remove.includes(host)) {
+      details.elementDeletes = tl("server.editPlanner.hostRegeneratedByPlan", "раздел «{section}» этим же планом перегенерируется или удаляется целиком — правка элемента в нём бессмысленна", { section: secLabel(host) });
+      continue;
+    }
+    if (!(await loadStepElement(synthesisId, kind, elementId))) {
+      details.elementDeletes = tl("server.editPlanner.elementNotFound", "элемент «{kind}:{elementId}» не найден в этой концепции", { kind, elementId });
+      continue;
+    }
+    const k = `${kind}:${elementId}`;
+    if (seenDel.has(k)) continue;
+    if (elementSteps.some((e) => e.kind === kind && e.elementId === elementId)) {
+      details.elementDeletes = tl("server.editPlanner.deleteAndEditSameElement", "элемент «{kind}:{elementId}» этим же планом и правится, и удаляется", { kind, elementId });
+      continue;
+    }
+    seenDel.add(k);
+    const refs = asRefs(a.recommendations, trusted);
+    elementDeletes.push({ kind, elementId, ...(refs ? { recommendations: refs } : {}) });
+  }
+  const subsectionDeletes: SubsectionDeleteStepAction[] = [];
+  const rawSubDel = Array.isArray(body.subsectionDeletes) ? body.subsectionDeletes : [];
+  if (rawSubDel.length > 0) {
+    const namesOf = await subsectionNames();
+    const seen = new Set<string>();
+    for (const raw of rawSubDel) {
+      const a = (raw ?? {}) as { target?: unknown; recommendations?: unknown };
+      const target = typeof a.target === "string" ? a.target : "";
+      const ref = parseSubsectionStepTarget(target);
+      if (!ref) {
+        details.subsectionDeletes = tl("server.editPlanner.subsectionAddressShape", "адрес «{target}» — не «sectionKey:подраздел»", { target });
+        continue;
+      }
+      const { sectionKey, subsectionName: name } = ref;
+      if (!sectionOrder.includes(sectionKey)) {
+        details.subsectionDeletes = tl("server.editPlanner.sectionNotInDocument", "раздел «{section}» отсутствует в документе", { section: secLabel(sectionKey) });
+        continue;
+      }
+      if (!(namesOf.get(sectionKey) ?? []).includes(name)) {
+        details.subsectionDeletes = tl("server.editPlanner.subsectionNotInSection", "в разделе «{section}» нет подраздела «{subsection}»", { section: secLabel(sectionKey), subsection: name });
+        continue;
+      }
+      if (regen.includes(sectionKey) || remove.includes(sectionKey)) {
+        details.subsectionDeletes = tl("server.editPlanner.sectionRegeneratedByPlan", "раздел «{section}» этим же планом перегенерируется или удаляется целиком", { section: secLabel(sectionKey) });
+        continue;
+      }
+      if (subRegens.some((r) => r.target === target)) {
+        details.subsectionDeletes = tl("server.editPlanner.deleteAndRegenSameSubsection", "подраздел «{subsection}» раздела «{section}» этим же планом и перегенерируется, и удаляется", { section: secLabel(sectionKey), subsection: name });
+        continue;
+      }
+      if (seen.has(target)) continue;
+      seen.add(target);
+      const refs = asRefs(a.recommendations, trusted);
+      subsectionDeletes.push({ target, sectionKey, ...(refs ? { recommendations: refs } : {}) });
+    }
+  }
+
   const regenRecommendations: Record<string, StepRecommendationRef[]> = {};
   if (trusted && body.regenRecommendations && typeof body.regenRecommendations === "object") {
     for (const [k, v] of Object.entries(body.regenRecommendations)) {
@@ -491,16 +589,21 @@ async function normalizeActions(
     modeRemove,
     subRegens,
     elementSteps,
+    elementDeletes,
+    subsectionDeletes,
     regenRecommendations,
   };
 }
 
-/** 10.2: разделы, изменённые действиями мельче раздела (для каскада). */
+/** 10.2: разделы, изменённые действиями мельче раздела (для каскада).
+ *  15.2: удаления элемента и подраздела — тоже через раздел-хозяин. */
 function touchedSectionsOf(actions: NormalizedActions): string[] {
   return [
     ...new Set([
       ...actions.subRegens.map((a) => a.sectionKey),
       ...actions.elementSteps.map((a) => ELEMENT_STEP_HOST[a.kind]),
+      ...actions.elementDeletes.map((a) => ELEMENT_STEP_HOST[a.kind]),
+      ...actions.subsectionDeletes.map((a) => a.sectionKey),
     ]),
   ];
 }
@@ -508,7 +611,8 @@ function touchedSectionsOf(actions: NormalizedActions): string[] {
 function hasAnyAction(a: NormalizedActions): boolean {
   return (
     a.regen.length + a.remove.length + a.add.length + a.modeRegen.length +
-      a.modeRemove.length + a.subRegens.length + a.elementSteps.length > 0
+      a.modeRemove.length + a.subRegens.length + a.elementSteps.length +
+      a.elementDeletes.length + a.subsectionDeletes.length > 0
   );
 }
 
@@ -551,6 +655,18 @@ async function assembleSteps(
     }
   };
 
+  // 00) 15.2 (Д-71): удаления элементов — раньше всех: перегенерации и
+  //     правки ниже обязаны видеть документ без удалённого
+  for (const a of actions.elementDeletes) {
+    push({
+      type: "delete_element",
+      target: elementStepTarget(a.kind, a.elementId),
+      status: "confirmed",
+      cascadeGenerated: false,
+      ...(a.recommendations ? { recommendations: a.recommendations } : {}),
+    });
+  }
+
   // 0) 10.2: шаги элементов — ПЕРВЫМИ: перегенерации ниже обязаны видеть
   //    уже новое значение. Бесплатные (edit_element) — раньше платных.
   const elementOrdered = [
@@ -581,9 +697,13 @@ async function assembleSteps(
   const cascadeSet = new Set(cascadeRegen);
   // 10.2: разделы-хозяева подраздельных перегенераций участвуют в едином
   // топопорядке как псевдо-regen: их шаги встают НА МЕСТЕ раздела
-  const subHosts = [...new Set(actions.subRegens.map((a) => a.sectionKey))].filter(
-    (k) => k !== "sum",
-  );
+  // 15.2: хозяева удаляемых подразделов — в том же топопорядке
+  const subHosts = [
+    ...new Set([
+      ...actions.subsectionDeletes.map((a) => a.sectionKey),
+      ...actions.subRegens.map((a) => a.sectionKey),
+    ]),
+  ].filter((k) => k !== "sum");
   const order = await buildPlanOrder(
     {
       regen: [...new Set([...actions.regen, ...cascadeRegen, ...subHosts])],
@@ -594,6 +714,16 @@ async function assembleSteps(
     sectionOrder,
   );
   const pushSubRegens = (sectionKey: string): void => {
+    // 15.2: удаления подразделов раздела — перед его перегенерациями подразделов
+    for (const a of actions.subsectionDeletes.filter((x) => x.sectionKey === sectionKey)) {
+      push({
+        type: "delete_subsection",
+        target: a.target,
+        status: "confirmed",
+        cascadeGenerated: false,
+        ...(a.recommendations ? { recommendations: a.recommendations } : {}),
+      });
+    }
     for (const a of actions.subRegens.filter((x) => x.sectionKey === sectionKey)) {
       push({
         type: "regen_subsection",
@@ -705,7 +835,7 @@ function costGroupOf(steps: readonly EditStep[]): StepCostGroup {
       // обращение: SYS + узкий контекст → один абзац
       g.refineCount += 1;
     }
-    // delete — 0
+    // delete, edit_element, delete_element, delete_subsection — 0
   }
   return g;
 }
@@ -1055,7 +1185,7 @@ function subRegensFromSteps(steps: readonly EditStep[]): SubRegenAction[] {
 function elementActionsFromSteps(steps: readonly EditStep[]): ElementStepAction[] {
   const out: ElementStepAction[] = [];
   for (const s of steps) {
-    if (!isElementStepType(s.type)) continue;
+    if (!isElementStepType(s.type) || s.type === "delete_element") continue; // 15.2: удаление — своя ветка
     const ref = parseElementStepTarget(s.target);
     if (!ref || !s.field) continue;
     out.push({
@@ -1066,6 +1196,37 @@ function elementActionsFromSteps(steps: readonly EditStep[]): ElementStepAction[
       ...(s.value !== undefined ? { value: s.value } : {}),
       ...(s.context !== undefined ? { note: s.context } : {}),
       ...(s.subsection !== undefined ? { subsection: s.subsection } : {}),
+      ...(s.recommendations ? { recommendations: s.recommendations } : {}),
+    });
+  }
+  return out;
+}
+
+/* 15.2 (Д-71): обратное к сборке — удаления мельче раздела из шагов плана */
+function elementDeletesFromSteps(steps: readonly EditStep[]): ElementDeleteStepAction[] {
+  const out: ElementDeleteStepAction[] = [];
+  for (const s of steps) {
+    if (s.type !== "delete_element") continue;
+    const ref = parseElementStepTarget(s.target);
+    if (!ref || !isDeletableElementKind(ref.kind)) continue;
+    out.push({
+      kind: ref.kind,
+      elementId: ref.elementId,
+      ...(s.recommendations ? { recommendations: s.recommendations } : {}),
+    });
+  }
+  return out;
+}
+
+function subsectionDeletesFromSteps(steps: readonly EditStep[]): SubsectionDeleteStepAction[] {
+  const out: SubsectionDeleteStepAction[] = [];
+  for (const s of steps) {
+    if (s.type !== "delete_subsection") continue;
+    const ref = parseSubsectionStepTarget(s.target);
+    if (!ref) continue;
+    out.push({
+      target: s.target,
+      sectionKey: ref.sectionKey,
       ...(s.recommendations ? { recommendations: s.recommendations } : {}),
     });
   }
@@ -1159,6 +1320,9 @@ export async function updatePlan(
     // 10.2: действия мельче раздела переносятся из шагов дословно
     subRegens: subRegensFromSteps(activeBase),
     elementSteps: elementActionsFromSteps(activeBase),
+    // 15.2: удаления — так же
+    elementDeletes: elementDeletesFromSteps(activeBase),
+    subsectionDeletes: subsectionDeletesFromSteps(activeBase),
     regenRecommendations: regenRefsFromSteps(base),
   };
 
@@ -1191,6 +1355,8 @@ export async function updatePlan(
       .map((s) => pair(s.target)),
     subRegens: subRegensFromSteps(base),
     elementSteps: elementActionsFromSteps(base),
+    elementDeletes: elementDeletesFromSteps(base),
+    subsectionDeletes: subsectionDeletesFromSteps(base),
   };
 
   const p = paramsFromRow(row, philosophers);

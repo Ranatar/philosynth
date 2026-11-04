@@ -23,7 +23,15 @@ export type EditStepType =
   | "edit_element"
   /** 10.2: точечная генерация В ЭЛЕМЕНТ — модель получает узкий контекст
    *  (элемент, его подраздел, довод) и возвращает новое значение поля */
-  | "refine_element";
+  | "refine_element"
+  /** 15.2 (Д-71): удаление ЭЛЕМЕНТА (категории, тезиса, термина) — цель
+   *  «kind:elementId»; модель не зовётся, стоимость 0. Отдельный тип, не
+   *  под `delete`: у того цель различается по «:» (раздел либо результат
+   *  режима), и шаг элемента был бы принят за режимный */
+  | "delete_element"
+  /** 15.2 (Д-71): удаление ПОДРАЗДЕЛА — цель «sectionKey:подраздел»;
+   *  запертые подразделы (таблицы рендерера, капсула) не удаляются */
+  | "delete_subsection";
 
 /** Виды элементов, адресуемых шагами edit_element / refine_element.
  *  Значения и хелперы — packages/shared/constants/edit-steps.ts */
@@ -66,7 +74,8 @@ export interface EditStep {
   type: EditStepType;
   /** sectionKey или "sectionKey:subsectionName";
    *  для regen_mode — "modeKey:index";
-   *  для edit_element / refine_element — "kind:elementId" (10.2) */
+   *  для edit_element / refine_element / delete_element — "kind:elementId"
+   *  (10.2, 15.2); для delete_subsection — "sectionKey:subsectionName" */
   target: string;
   status: EditStepStatus;
   /** secCtx для этого шага; у regen_subsection — пожелание (userNote);
@@ -154,6 +163,21 @@ export interface ElementRefineAction {
   recommendations?: StepRecommendationRef[];
 }
 
+/** 15.2 (Д-71): удаление элемента шагом плана (delete_element). */
+export interface ElementDeleteAction {
+  /** Виды с собственным удалением: связь (edge) удаляется панелью графа */
+  kind: Exclude<ElementStepKind, "edge">;
+  elementId: string;
+  recommendations?: StepRecommendationRef[];
+}
+
+/** 15.2 (Д-71): удаление подраздела шагом плана (delete_subsection). */
+export interface SubsectionDeleteAction {
+  /** "sectionKey:subsectionName" */
+  target: string;
+  recommendations?: StepRecommendationRef[];
+}
+
 /** Тело POST /syntheses/:id/plans (03-spec §2.6) */
 export interface CreatePlanRequest {
   regen: string[];
@@ -167,6 +191,10 @@ export interface CreatePlanRequest {
   regenSubsections?: SubsectionRegenAction[];
   elementEdits?: ElementEditAction[];
   elementRefines?: ElementRefineAction[];
+  /** 15.2 (Д-71): удаления мельче раздела — бесплатные шаги delete_element /
+   *  delete_subsection; каскад — от раздела-хозяина, как у правок 10.2 */
+  elementDeletes?: ElementDeleteAction[];
+  subsectionDeletes?: SubsectionDeleteAction[];
   /** 10.2: рекомендации, породившие перегенерацию РАЗДЕЛА (ключ — sectionKey) */
   regenRecommendations?: Record<string, StepRecommendationRef[]>;
 }

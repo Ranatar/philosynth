@@ -19,6 +19,10 @@
  *   POST   /:id/elements/:elementType/:elementId/rollback { version }
  *   POST   /:id/elements/auto-rename { oldName, newName }
  *   PATCH  /:id/capsule { html }           (п.14 правки 2026-09-02)
+ *   DELETE /:id/categories/:catId | /:id/theses/:thesisId |
+ *          /:id/glossary/:termId → { ok, cascade, impact, version, htmlSync }
+ *          (15.2, Д-71: сервис deleteElement; гейты как у PATCH — владелец,
+ *          активная операция → 409; снимок версии остаётся)
  *
  * Доступ: чтение — владелец ИЛИ неприватная ступень (8.6: visibility; витрина → 403 на содержание) (решение аудита 2026-07-30);
  * правка — только владелец (правило edit-операций 2.1) и не во время
@@ -47,6 +51,7 @@ import {
   autoRenameReferences,
   createCategoryEdge,
   deleteCategoryEdge,
+  deleteElement,
   rollbackElement,
   toCategoryDto,
   toGlossaryDto,
@@ -336,6 +341,27 @@ elementsRoutes.delete("/:id/edges/:edgeId", requireAuth, async (c) => {
     return serviceError(c, err);
   }
 });
+
+/* ── DELETE элемента (15.2, Д-71): категория, тезис, термин ───────────── */
+
+const deleteElementHandler =
+  (kind: "category" | "thesis" | "glossary_term", param: string) =>
+  async (c: Context<AuthEnv>): Promise<Response> => {
+    const user = c.get("user");
+    const id = c.req.param("id") ?? "";
+    const gate = await ownerEditGate(c, id, user.id);
+    if (gate) return gate;
+    const elementId = c.req.param(param) ?? "";
+    if (!isUuid(elementId)) return c.json(invalidIdJson, 404);
+    try {
+      return c.json(await deleteElement(id, kind, elementId));
+    } catch (err) {
+      return serviceError(c, err);
+    }
+  };
+elementsRoutes.delete("/:id/categories/:catId", requireAuth, deleteElementHandler("category", "catId"));
+elementsRoutes.delete("/:id/theses/:thesisId", requireAuth, deleteElementHandler("thesis", "thesisId"));
+elementsRoutes.delete("/:id/glossary/:termId", requireAuth, deleteElementHandler("glossary_term", "termId"));
 
 /* ── GET /:id/theses, PATCH /:id/theses/:thesisId ────────────────────── */
 

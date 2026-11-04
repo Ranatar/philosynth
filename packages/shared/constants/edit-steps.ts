@@ -14,17 +14,50 @@ import type {
   PlanCostBreakdown,
 } from "../types/edit-plan.js";
 
-/** Шаги, которым модель не нужна: квота и резерв для них не берутся. */
-export const FREE_STEP_TYPES: readonly EditStepType[] = ["delete", "edit_element"];
+/** Шаги, которым модель не нужна: квота и резерв для них не берутся.
+ *  15.2 (Д-71): удаления мельче раздела — тоже бесплатны. */
+export const FREE_STEP_TYPES: readonly EditStepType[] = [
+  "delete",
+  "edit_element",
+  "delete_element",
+  "delete_subsection",
+];
 
 export function isFreeStepType(t: EditStepType): boolean {
   return FREE_STEP_TYPES.includes(t);
 }
 
-export const ELEMENT_STEP_TYPES: readonly EditStepType[] = ["edit_element", "refine_element"];
+/** Шаги, адресующие ЭЛЕМЕНТ (цель «kind:elementId»). 15.2: + delete_element. */
+export const ELEMENT_STEP_TYPES: readonly EditStepType[] = [
+  "edit_element",
+  "refine_element",
+  "delete_element",
+];
 
 export function isElementStepType(t: EditStepType): boolean {
   return ELEMENT_STEP_TYPES.includes(t);
+}
+
+/**
+ * 15.2 (Д-71): шаги удаления мельче раздела — НЕ под `delete` (у того цель
+ * различается по «:»: раздел либо «modeKey:index»; «category:uuid» приняли бы
+ * за результат режима). Исполнитель, планировщик (updatePlan переносит их
+ * дословно) и панель плана ветвятся по этому списку; сторож 4bj сверяет, что
+ * ветки есть у всех троих.
+ */
+export const DELETE_STEP_TYPES: readonly EditStepType[] = ["delete_element", "delete_subsection"];
+
+export function isDeleteStepType(t: EditStepType): boolean {
+  return DELETE_STEP_TYPES.includes(t);
+}
+
+/** Виды элементов, удаляемых шагом delete_element / DELETE-маршрутом 15.2
+ *  (связь удаляется своим путём — deleteCategoryEdge, панель графа). */
+export const DELETABLE_ELEMENT_KINDS = ["category", "thesis", "glossary_term"] as const;
+export type DeletableElementKind = (typeof DELETABLE_ELEMENT_KINDS)[number];
+
+export function isDeletableElementKind(k: unknown): k is DeletableElementKind {
+  return (DELETABLE_ELEMENT_KINDS as readonly unknown[]).includes(k);
 }
 
 export const ELEMENT_STEP_KINDS: readonly ElementStepKind[] = [
@@ -88,6 +121,16 @@ export function parseElementStepTarget(
   const kind = target.slice(0, i);
   if (!(ELEMENT_STEP_KINDS as readonly string[]).includes(kind)) return null;
   return { kind: kind as ElementStepKind, elementId: target.slice(i + 1) };
+}
+
+/** 15.2: цель шага подраздела (regen_subsection / delete_subsection) —
+ *  «sectionKey:подраздел»; имя подраздела само может содержать «:». */
+export function parseSubsectionStepTarget(
+  target: string,
+): { sectionKey: string; subsectionName: string } | null {
+  const i = target.indexOf(":");
+  if (i <= 0 || i === target.length - 1) return null;
+  return { sectionKey: target.slice(0, i), subsectionName: target.slice(i + 1) };
 }
 
 /**

@@ -123,8 +123,9 @@ export interface RecommendationDecline {
   id: string;
   num: string;
   position: number;
-  /** already_planned | already_done | delete_element | delete_subsection |
-   *  same_target | section_regenerated | no_element_for_replacement | no_address */
+  /** already_planned | already_done | same_target | section_regenerated |
+   *  no_element_for_replacement | no_address. Коды delete_element /
+   *  delete_subsection сняты 15.2 (Д-71): «удалить» исполняется шагами */
   code: string;
   reason: string;
 }

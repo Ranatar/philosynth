@@ -148,7 +148,7 @@ import { SYNTHESIS_VISIBILITIES } from "@philosynth/shared/types/synthesis";
 import type { SectionFull } from "@philosynth/shared/types/section";
 import { effectiveFlags, metaParentAllowed } from "@philosynth/shared/utils/visibility";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
-import { sectionTitlesOf } from "../utils/html-parser.js"; // 14.2 (Д-59)
+import { sectionTitlesOf, subsectionNamesOf as subsectionNamesOfHtml } from "../utils/html-parser.js"; // 14.2 (Д-59); 15.2 (Д-79)
 import type { PauseEstimates } from "@philosynth/shared/types/ws-messages";
 import { tl } from "@philosynth/shared/i18n/t";
 
@@ -516,24 +516,11 @@ async function loadSectionsFull(row: SynthesisRow): Promise<SectionFull[]> {
     }));
 }
 
-/** Как listSubsections в routes/sections (1.6): уникальные data-section в
- *  порядке появления, прогнанные через порт 1.4 (канонизация едина с
- *  трекингом генерации). Дублировано локально: sections.ts импортирует
- *  этот модуль — обратный импорт замкнул бы цикл. */
-function subsectionNamesOf(html: string): string[] {
-  const names: string[] = [];
-  const seen = new Set<string>();
-  const re = /data-section="([^"]+)"/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    const name = m[1] as string;
-    if (!seen.has(name)) {
-      seen.add(name);
-      names.push(name);
-    }
-  }
-  return parseSubsectionsFromHTML(html, names).map((x) => x.name);
-}
+/** Якоря второго уровня — общий помощник 15.2 (Д-79): до того копия
+ *  listSubsections из routes/sections (sections.ts импортирует этот модуль —
+ *  обратный импорт замкнул бы цикл); парсер 1.4 — параметром. */
+const subsectionNamesOf = (html: string): string[] =>
+  subsectionNamesOfHtml(html, parseSubsectionsFromHTML);
 
 /**
  * SynthesisFull (03 §2.2): строка + генеалогия + pauseEstimates.

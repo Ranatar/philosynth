@@ -512,7 +512,14 @@ CREATE TABLE element_versions (
                                -- правки; пишут updateCapsule (5.1) и updateSubsection (9.2, ручная
                                -- правка подраздела, change_source 'manual'). Откат возвращает
                                -- html_content и is_edited из снимка. Панель VersionHistory (5.2)
-                               -- версии разделов НЕ показывает — только API (находка 9.2)
+                               -- версии разделов НЕ показывает — только API (находка 9.2).
+                               -- 15.2 (Д-71): deleteSubsection пишет такую же версию перед
+                               -- удалением подраздела (откат вернёт его); deleteElement — снимок
+                               -- удалённой категории/тезиса/термина (как ребро с 5.1): строка
+                               -- версии переживает элемент, восстановления из неё НЕТ (Огр-13 —
+                               -- откат пишет UPDATE в живую строку); тезис, у которого удаление
+                               -- категории сняло имя из related_categories, получает версию
+                               -- 'cascade'
   version      INT NOT NULL,
   data         JSONB NOT NULL,  -- полный снимок элемента до изменения
   change_source TEXT NOT NULL DEFAULT 'manual',
@@ -545,7 +552,12 @@ CREATE TABLE edit_plans (
   steps         JSONB NOT NULL DEFAULT '[]',  -- массив EditStep; с 10.2 — и шаги мельче
                                               -- раздела: edit_element / refine_element
                                               -- (target «kind:elementId», field, value |
-                                              -- context, subsection, recommendations[])
+                                              -- context, subsection, recommendations[]);
+                                              -- с 15.2 — delete_element («kind:elementId»)
+                                              -- и delete_subsection («sectionKey:имя»),
+                                              -- бесплатные; черновик с шагом по уже
+                                              -- удалённому элементу не правится — шаг
+                                              -- падает NOT_FOUND при исполнении
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -1244,6 +1256,13 @@ formulation/justification; термин: term/definition/extra_columns), БЕЗ
 **Удаление.** Синтез удаляется — строки уходят каскадом. Строка `users` в
 таблице не участвует: `account-deletion` (7.1) удаляет синтезы владельца,
 вопрос 9.1 о FK на users снят. План удалён — `plan_id` обнуляется.
+**Элемент удалён (15.2, `deleteElement`)** — `element_id` → NULL («ссылка
+гаснет», строка остаётся; `element_kind` и текст `element` — как были);
+строки `new`/`stale` при этом → `invalid` кодом `target_element_gone` (их
+бы и так отверг планировщик — `sourceHashFor` → null, — но без пометки
+панель показывала бы их годными); `planned` только теряет ссылку —
+исполняющий шаг (сам `delete_element` по этой рекомендации) переведёт её в
+`done`.
 
 ## 3. Извлечение гранулярных элементов из HTML
 

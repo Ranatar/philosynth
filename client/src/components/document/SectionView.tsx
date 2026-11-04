@@ -57,6 +57,11 @@
  * последней генерации раздела; сами пометки — русская диагностика генлога,
  * не переводятся. Д-15: пометка «⟳ изменён» у раздела (.section-edited-mark).
  *
+ * Беседа 15.2 (Д-71): в строке кнопок формы — «Удалить подраздел» со вторым
+ * шагом (data-subsection-action delete-arm / delete-disarm / delete-confirm;
+ * состояние deleteArmed у хозяина, клик мимо карточки снимает — эффект
+ * SynthesisPage), предупреждение .transform-warn под кнопками.
+ *
  * Беседа 13.1 (Д-64): полнотекстовая правка. Форма 9.2 получает два вида
  * (SubsectionEditState.view): «rich» — contenteditable-блок НА МЕСТЕ
  * подраздела, в типографике документа, с панелью кнопок по общему модулю
@@ -89,7 +94,7 @@ import { EDITOR_TOOLS, type EditorToolId } from "@philosynth/shared/constants/do
 
 import type { SectionFull } from "@philosynth/shared/types/section";
 
-import type { SubsectionEditState, SubsectionEditView, SubsectionRef } from "../../utils/subsection-edit";
+import type { SubsectionDeleteStep, SubsectionEditState, SubsectionEditView, SubsectionRef } from "../../utils/subsection-edit";
 import {
   EDITOR_BODY_SELECTOR,
   TABLE_OPS,
@@ -145,6 +150,8 @@ export interface SectionViewProps {
   onSubsectionCancel?: (() => void) | undefined;
   /** 13.1: переключение вида формы (rich ↔ markup); draft — набранное на момент переключения */
   onSubsectionView?: ((view: SubsectionEditView, draft: string) => void) | undefined;
+  /** 15.2 (Д-71): второй шаг удаления подраздела из карточки правки */
+  onSubsectionDelete?: ((step: SubsectionDeleteStep) => void) | undefined;
   /** 11.3 (Д-16): пометка «разобран с потерями» — только владельцу */
   showParseWarnings?: boolean | undefined;
 }
@@ -412,11 +419,54 @@ export function renderSubsectionEditor(
   const cancel = el("button", "action-btn", tl("common.cancel", "Отмена"));
   cancel.setAttribute("type", "button");
   cancel.setAttribute("data-subsection-action", "cancel");
-  if (edit.phase === "saving") cancel.setAttribute("disabled", "");
+  if (edit.phase === "saving" || edit.phase === "deleting") cancel.setAttribute("disabled", "");
   if (!loadFailed) actions.appendChild(save);
   actions.appendChild(cancel);
   if (!loadFailed) actions.appendChild(el("span", "subsection-edit-keys", tl("document.sectionView.keysHint", "Esc — отмена · Ctrl+Enter — сохранить")));
+  // 15.2 (Д-71): удаление подраздела — второй шаг на месте кнопки (правило
+  // кита 8.4; useSecondStep здесь неприменим — кнопки часть строки HTML)
+  if (!loadFailed) {
+    const del = el("span", "subsection-delete");
+    del.setAttribute("data-subsection-delete", "1");
+    if (edit.deleteArmed || edit.phase === "deleting") {
+      const confirm = el("button", "action-btn danger", edit.phase === "deleting"
+        ? tl("document.sectionView.deleting", "Удаление…")
+        : tl("document.sectionView.deleteConfirm", "Точно удалить?"));
+      confirm.setAttribute("type", "button");
+      confirm.setAttribute("data-subsection-action", "delete-confirm");
+      confirm.setAttribute("data-testid", "subsection-delete-confirm");
+      if (edit.phase !== "ready") confirm.setAttribute("disabled", "");
+      const back = el("button", "action-btn", tl("common.cancel", "Отмена"));
+      back.setAttribute("type", "button");
+      back.setAttribute("data-subsection-action", "delete-disarm");
+      back.setAttribute("data-testid", "subsection-delete-cancel");
+      if (edit.phase === "deleting") back.setAttribute("disabled", "");
+      del.appendChild(confirm);
+      del.appendChild(back);
+    } else {
+      const arm = el("button", "action-btn danger", tl("document.sectionView.deleteSubsection", "Удалить подраздел"));
+      arm.setAttribute("type", "button");
+      arm.setAttribute("data-subsection-action", "delete-arm");
+      arm.setAttribute("data-testid", "subsection-delete");
+      arm.setAttribute("title", tl("document.sectionView.deleteSubsectionHint", "Убрать подраздел из раздела целиком (снимок версии раздела остаётся)"));
+      if (edit.phase !== "ready") arm.setAttribute("disabled", "");
+      del.appendChild(arm);
+    }
+    actions.appendChild(del);
+  }
   form.appendChild(actions);
+  if (!loadFailed && (edit.deleteArmed || edit.phase === "deleting")) {
+    const warn = el(
+      "div",
+      "transform-warn subsection-delete-warn",
+      tl("document.sectionView.deleteSubsectionWarn", "Подраздел уйдёт из раздела целиком вместе с заголовком; набранное в поле пропадёт. Снимок версии раздела сохранится, откат вернёт подраздел; перегенерация раздела тоже вернёт его, если он есть в карте подразделов.") +
+        (edit.nested.length
+          ? " " + tl("document.sectionView.deleteSubsectionNested", "Вложенные подразделы уйдут вместе с ним: {names}.", { names: edit.nested.join(", ") })
+          : ""),
+    );
+    warn.setAttribute("data-testid", "subsection-delete-warn");
+    form.appendChild(warn);
+  }
   sub.appendChild(form);
 }
 
@@ -500,6 +550,7 @@ export function SectionView({
   onSubsectionSave,
   onSubsectionCancel,
   onSubsectionView,
+  onSubsectionDelete,
   showParseWarnings = false,
 }: SectionViewProps) {
   const parseWarnings = showParseWarnings ? section.parseWarnings ?? [] : [];
@@ -671,6 +722,9 @@ export function SectionView({
         if (body) syncFromBody(body);
         const draft = readDraft(act);
         if (draft !== null) onSubsectionView?.(which === "view-markup" ? "markup" : "rich", draft);
+      } else if (which === "delete-arm" || which === "delete-disarm" || which === "delete-confirm") {
+        // 15.2: второй шаг удаления подраздела
+        onSubsectionDelete?.(which === "delete-arm" ? "arm" : which === "delete-disarm" ? "disarm" : "confirm");
       } else onSubsectionCancel?.();
       return;
     }

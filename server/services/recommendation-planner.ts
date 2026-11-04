@@ -79,9 +79,11 @@ import {
 
 import type {
   CreatePlanRequest,
+  ElementDeleteAction,
   ElementEditAction,
   ElementRefineAction,
   StepRecommendationRef,
+  SubsectionDeleteAction,
   SubsectionRegenAction,
 } from "@philosynth/shared/types/edit-plan";
 import type {
@@ -287,35 +289,28 @@ export function rowsToPlanActions(
 
   const sectionRegen = new Map<string, RecRow[]>();
   const subRegen = new Map<string, RecRow[]>();
-  const elementRows: { row: RecRow; type: "edit" | "refine" }[] = [];
+  /** 15.2: подразделы на удаление (строки «удалить» без элемента) */
+  const subDelete = new Map<string, RecRow[]>();
+  const elementRows: { row: RecRow; type: "edit" | "refine" | "delete" }[] = [];
 
   for (const r of rows) {
     const op = norm(r.op);
     const sec = r.addressSection;
     if (op === OP_DELETE) {
-      decline(
-        r,
-        r.elementId ? "delete_element" : "delete_subsection",
-        r.elementId
-          ? tl(
-              "server.recommendationPlanner.deleteElementDeclined",
-              "Удаление элемента планом не исполняется: у планов нет шага удаления {kind} (за ним тянутся связи, роли и ссылки), а пустая правка удалением не является. Перегенерируйте подраздел «{subsection}» с этим доводом либо удалите вручную.",
-              {
-                kind:
-                  r.elementKind === "category"
-                    ? tl("server.recommendationPlanner.kindCategoryGenitive", "категории")
-                    : r.elementKind === "thesis"
-                      ? tl("server.recommendationPlanner.kindThesisGenitive", "тезиса")
-                      : tl("server.recommendationPlanner.kindTermGenitive", "термина"),
-                subsection: r.addressSubsection,
-              },
-            )
-          : tl(
-              "server.recommendationPlanner.deleteSubsectionDeclined",
-              "Удаление подраздела планом не исполняется. Поправьте «{subsection}» вручную либо перегенерируйте раздел.",
-              { subsection: r.addressSubsection },
-            ),
-      );
+      // 15.2 (Д-71): «удалить» исполняется шагами delete_element /
+      // delete_subsection (бесплатно) — прежний отказ кодами delete_element /
+      // delete_subsection снят. Элемент найден → удаление элемента; иначе —
+      // удаление подраздела-адресата (адрес обязателен, как у всех)
+      if (r.elementId && r.elementKind) {
+        elementRows.push({ row: r, type: "delete" });
+        continue;
+      }
+      if (!sec) {
+        decline(r, "no_address", tl("server.recommendationPlanner.noAddressSection", "У строки нет раздела-адресата — перечитайте рекомендации"));
+        continue;
+      }
+      const target = `${sec}:${r.addressSubsection}`;
+      subDelete.set(target, [...(subDelete.get(target) ?? []), r]);
       continue;
     }
     if (!sec) {
@@ -344,6 +339,7 @@ export function rowsToPlanActions(
 
   const elementEdits: ElementEditAction[] = [];
   const elementRefines: ElementRefineAction[] = [];
+  const elementDeletes: ElementDeleteAction[] = [];
   const takenFields = new Map<string, string>(); // kind:id → № рекомендации
   const plannedIds: string[] = [];
   for (const { row: r, type } of elementRows) {
@@ -380,6 +376,12 @@ export function rowsToPlanActions(
     }
     takenFields.set(key, r.num);
     plannedIds.push(r.id);
+    if (type === "delete") {
+      // 15.2: вид — только удаляемый (recommendations.element_kind таких и
+      // хранит: category | thesis | glossary_term; связей в таблице нет)
+      elementDeletes.push({ kind, elementId: r.elementId as string, recommendations: [refOf(r)] });
+      continue;
+    }
     const field = fields.get(r.id); // 10.3: поле выбрал человек; нет — умолчание
     if (type === "edit")
       elementEdits.push({
@@ -402,6 +404,38 @@ export function rowsToPlanActions(
 
   const joinNotes = (rs: readonly RecRow[]): string =>
     rs.map((r) => buildStepNote(r, proseOf(r.num))).join("\n\n");
+
+  // 15.2: удаление подраздела — отдельный шаг; подраздел раздела, идущего на
+  // перегенерацию целиком, удалять не к чему (перегенерация его перепишет и
+  // по карте вернёт) — такие строки вливаются в довод перегенерации; подраздел,
+  // который этот же выбор перегенерирует, — отказ (нормализатор плана не
+  // пропустит оба шага; исполнять их по очереди)
+  const subsectionDeletes: SubsectionDeleteAction[] = [];
+  for (const [target, rs] of [...subDelete]) {
+    const sec = target.slice(0, target.indexOf(":"));
+    if (sectionRegen.has(sec)) {
+      sectionRegen.set(sec, [...(sectionRegen.get(sec) as RecRow[]), ...rs]);
+      subDelete.delete(target);
+      continue;
+    }
+    if (subRegen.has(target)) {
+      const holder = (subRegen.get(target) as RecRow[])[0]?.num ?? "";
+      for (const r of rs)
+        decline(
+          r,
+          "same_target",
+          tl(
+            "server.recommendationPlanner.sameSubsectionTarget",
+            "Тот же подраздел уже перегенерирует рекомендация {num} этого плана: удалять и перегенерировать его разом нельзя. Исполните их по очереди.",
+            { num: holder },
+          ),
+        );
+      subDelete.delete(target);
+      continue;
+    }
+    subsectionDeletes.push({ target, recommendations: rs.map(refOf) });
+    plannedIds.push(...rs.map((r) => r.id));
+  }
 
   const regenSubsections: SubsectionRegenAction[] = [];
   for (const [target, rs] of subRegen) {
@@ -427,6 +461,8 @@ export function rowsToPlanActions(
       regenSubsections,
       elementEdits,
       elementRefines,
+      elementDeletes,
+      subsectionDeletes,
       regenRecommendations,
     },
     plannedIds,

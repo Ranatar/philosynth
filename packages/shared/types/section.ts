@@ -96,6 +96,23 @@ export interface SubsectionSource {
   lock: SubsectionLock | null;
 }
 
+/**
+ * 15.2 (Д-71): ответ DELETE /syntheses/:id/sections/:key/subsections/:name.
+ * Подраздел убран из раздела целиком (с вложенными — они перечислены в
+ * removedNested); версия 'section' со снимком раздела ДО удаления.
+ * Перегенерация раздела вернёт подраздел, если он есть в карте подразделов
+ * (решение 15.2 п.2: удаление — правка текста, живёт до перегенерации).
+ */
+export interface SubsectionDeleteResult {
+  ok: true;
+  sectionKey: string;
+  name: string;
+  /** Вложенные подразделы, ушедшие вместе с удалённым */
+  removedNested: string[];
+  version: import("./elements.js").ElementVersion;
+  section: SubsectionUpdateResult["section"];
+}
+
 /** 9.2: ответ PATCH /syntheses/:id/sections/:key/subsections/:name */
 export interface SubsectionUpdateResult {
   /** false — присланное совпало с текущим: версии нет, раздел не тронут */

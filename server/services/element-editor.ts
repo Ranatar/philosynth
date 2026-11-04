@@ -35,14 +35,18 @@
  * импорт допустим: модуль — лист графа (его импортируют только роуты),
  * цикла нет (грабля 2.1).
  */
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import {
   categories,
   categoryEdges,
   categoryTypeCatalog,
+  characteristicJustifications,
+  clusterLabels,
+  elementEnrichments,
   glossaryTerms,
+  recommendations,
   relationshipTypeCatalog,
   sections,
   syntheses,
@@ -54,6 +58,7 @@ import {
   SubsectionHtmlError,
   listSubsectionNames,
   readSubsectionSource,
+  removeExactSubsectionHtml,
   replaceSubsectionContent,
   readThesisBlock,
   replaceThesisBlock,
@@ -89,10 +94,17 @@ import {
 import { parseThesisParagraphs, type ThesisParagraph } from "./element-parser.js";
 import { buildEditInfra, extractTitleFromNameHtml, loadSynthesis } from "./generation-service.js";
 import { buildSubsectionMap } from "./section-defs-builder.js";
+// 15.2 (Д-71): рекомендации удалённого элемента — ссылка гаснет, строка
+// 'new'/'stale' негодна кодом target_element_gone (leaf-модуль issues +
+// withIssueTexts; recommendations.ts этот модуль не импортирует — цикла нет)
+import { issue, issuesFromColumn } from "./recommendation-issues.js";
+import { withIssueTexts } from "./recommendations.js";
+import { type DeletableElementKind } from "@philosynth/shared/constants/edit-steps";
 
 import type {
   AutoRenameResult,
   CategoryUpdateInput,
+  DeleteElementResult,
   EdgeUpdateInput,
   ElementVersion,
   GlossaryTermUpdateInput,
@@ -887,6 +899,167 @@ export async function deleteCategoryEdge(
   );
   const impact = await computeElementImpact("edge", before.id, synthesisId);
   return { impact, version, htmlSync: sync };
+}
+
+/* ── deleteElement (15.2, Д-71) ──────────────────────────────────────── */
+
+export interface DeleteElementOptions {
+  /** Рекомендация «удалить», исполненная шагом плана; null — рука человека */
+  origin?: VersionOrigin | null;
+}
+
+/**
+ * Удаление категории, тезиса или термина глоссария — одной транзакцией со
+ * снимком версии ('manual'; шагом плана по рекомендации — 'recommendation' с
+ * origin). Образец — deleteCategoryEdge. Что уходит вслед (перечень п.0
+ * «По факту 15.2» — ссылки на элемент в БД):
+ *  - рёбра категории — каскадом FK (category_edges.source_id/target_id);
+ *    has_reflexive соседей пересчитывается (recomputeReflexive);
+ *  - theses.related_categories — имя категории снимается из списка (без FK,
+ *    по имени; версия 'cascade' у каждого затронутого тезиса);
+ *  - cluster_labels — метки кластеров, у которых не осталось ни одной
+ *    категории с этим индексом (кластер без членов рисовать нечем);
+ *  - element_enrichments и characteristic_justifications элемента (и его
+ *    ушедших рёбер) — удаляются: без строки-владельца их ничем не открыть;
+ *  - recommendations.element_id → NULL («ссылка гаснет», строка остаётся);
+ *    строки 'new' и 'stale' становятся 'invalid' кодом target_element_gone —
+ *    планировщик их и так отверг бы (sourceHashFor → null), но без пометки
+ *    панель показывала бы их годными; 'planned' не трогаются — исполняющий
+ *    шаг сам переведёт их в 'done' (settleStepRecommendations);
+ *  - element_versions — ОСТАЮТСЯ (история по elementId, включая снимок
+ *    удаления); restore из них не делается (Огр-13: rollbackToVersion пишет
+ *    UPDATE в живую строку — восстановление потребовало бы пути INSERT со
+ *    старым id, рёбра и обогащения всё равно не вернулись бы);
+ *  - черновики планов (edit_plans.steps[].target «kind:id») не правятся:
+ *    шаг по удалённому элементу упадёт NOT_FOUND при исполнении, как и
+ *    прежде у удалённого ребра.
+ * Запертые таблицы перерисовываются (renderTables); упоминания имени в
+ * тексте разделов и тезисов — ТОЛЬКО отчётом влияния (computeElementImpact:
+ * severity 'high'), сами не вычищаются — правило беседы 15.2.
+ */
+export async function deleteElement(
+  synthesisId: string,
+  kind: DeletableElementKind,
+  id: string,
+  opts: DeleteElementOptions = {},
+): Promise<DeleteElementResult> {
+  const origin = opts.origin ?? null;
+  const changeSource: ChangeSource = origin ? "recommendation" : "manual";
+  const cascade: DeleteElementResult["cascade"] = {
+    edgesDeleted: 0,
+    thesesUnlinked: 0,
+    clusterLabelsDeleted: 0,
+    recommendationsDetached: 0,
+    enrichmentsDeleted: 0,
+  };
+  const { version, names, reflexiveChanged } = await db.transaction(async (tx) => {
+    let version: ElementVersion;
+    let names: string[];
+    let reflexiveChanged = false;
+    const enrichmentOwners: { id: string; type: "category" | "edge" | "thesis" | "glossary_term" }[] = [
+      { id, type: kind },
+    ];
+    if (kind === "category") {
+      const before = await loadCategoryRow(synthesisId, id, tx);
+      names = [before.name];
+      version = await createVersion(synthesisId, before.id, "category", snapshotOf(before), changeSource, tx, origin);
+      // рёбра уйдут каскадом FK — соседи и id нужны до удаления
+      const edges = await tx
+        .select({ id: categoryEdges.id, s: categoryEdges.sourceId, t: categoryEdges.targetId })
+        .from(categoryEdges)
+        .where(and(
+          eq(categoryEdges.synthesisId, synthesisId),
+          or(eq(categoryEdges.sourceId, before.id), eq(categoryEdges.targetId, before.id)),
+        ));
+      cascade.edgesDeleted = edges.length;
+      for (const e of edges) enrichmentOwners.push({ id: e.id, type: "edge" });
+      const neighbours = [...new Set(edges.flatMap((e) => [e.s, e.t]))].filter((c) => c !== before.id);
+      await tx.delete(categories).where(eq(categories.id, before.id));
+      reflexiveChanged = await recomputeReflexive(synthesisId, neighbours, tx);
+      // theses.related_categories — имя снимается (сравнение без регистра и
+      // краевых пробелов; версия 'cascade' у каждого затронутого тезиса)
+      const key = before.name.trim().toLowerCase();
+      const thRows = await tx.select().from(theses).where(eq(theses.synthesisId, synthesisId));
+      for (const t of thRows) {
+        const rc = t.relatedCategories.filter((c) => c.trim().toLowerCase() !== key);
+        if (rc.length === t.relatedCategories.length) continue;
+        await createVersion(synthesisId, t.id, "thesis", snapshotOf(t), "cascade", tx);
+        await tx
+          .update(theses)
+          .set({ relatedCategories: rc, updatedAt: new Date() })
+          .where(eq(theses.id, t.id));
+        cascade.thesesUnlinked++;
+      }
+      // cluster_labels без членов
+      const rest = await tx
+        .select({ ci: categories.clusterIndices })
+        .from(categories)
+        .where(eq(categories.synthesisId, synthesisId));
+      const alive = new Set(rest.flatMap((r) => r.ci));
+      const labels = await tx
+        .select({ id: clusterLabels.id, idx: clusterLabels.clusterIndex })
+        .from(clusterLabels)
+        .where(eq(clusterLabels.synthesisId, synthesisId));
+      const orphan = labels.filter((l) => !alive.has(l.idx)).map((l) => l.id);
+      if (orphan.length) {
+        await tx.delete(clusterLabels).where(inArray(clusterLabels.id, orphan));
+        cascade.clusterLabelsDeleted = orphan.length;
+      }
+    } else if (kind === "thesis") {
+      const before = await loadThesisRow(synthesisId, id, tx);
+      names = [thesisNameOf(before)];
+      version = await createVersion(synthesisId, before.id, "thesis", snapshotOf(before), changeSource, tx, origin);
+      await tx.delete(theses).where(eq(theses.id, before.id));
+    } else {
+      const before = await loadGlossaryRow(synthesisId, id, tx);
+      names = [before.term];
+      version = await createVersion(synthesisId, before.id, "glossary_term", snapshotOf(before), changeSource, tx, origin);
+      await tx.delete(glossaryTerms).where(eq(glossaryTerms.id, before.id));
+    }
+    // обогащения и обоснования элемента (и ушедших рёбер)
+    const ownerIds = enrichmentOwners.map((o) => o.id);
+    const en = await tx
+      .delete(elementEnrichments)
+      .where(and(eq(elementEnrichments.synthesisId, synthesisId), inArray(elementEnrichments.elementId, ownerIds)))
+      .returning({ id: elementEnrichments.id });
+    const ju = await tx
+      .delete(characteristicJustifications)
+      .where(and(eq(characteristicJustifications.synthesisId, synthesisId), inArray(characteristicJustifications.elementId, ownerIds)))
+      .returning({ id: characteristicJustifications.id });
+    cascade.enrichmentsDeleted = en.length + ju.length;
+    // рекомендации: ссылка гаснет; годные к исполнению — негодны кодом
+    const recs = await tx
+      .select({ id: recommendations.id, status: recommendations.status, element: recommendations.element, issues: recommendations.issues })
+      .from(recommendations)
+      .where(and(eq(recommendations.synthesisId, synthesisId), eq(recommendations.elementId, id)));
+    for (const r of recs) {
+      if (r.status === "new" || r.status === "stale") {
+        const gone = issue("invalid", "target_element_gone", { element: r.element ?? names[0] ?? "" });
+        const notes = issuesFromColumn(r.issues).filter((x) => x.level === "warning");
+        await tx
+          .update(recommendations)
+          .set({ elementId: null, status: "invalid", ...withIssueTexts([gone, ...notes]) })
+          .where(eq(recommendations.id, r.id));
+      } else {
+        await tx.update(recommendations).set({ elementId: null }).where(eq(recommendations.id, r.id));
+      }
+      cascade.recommendationsDetached++;
+    }
+    await tx.update(syntheses).set({ updatedAt: new Date() }).where(eq(syntheses.id, synthesisId));
+    return { version, names, reflexiveChanged };
+  });
+
+  const sync = emptySync();
+  const tables: RenderableTable[] =
+    kind === "category"
+      ? ["categories", "edges", "topology"]
+      : kind === "thesis"
+        ? ["theses"]
+        : ["glossary"];
+  void reflexiveChanged; // топология у категории перерисовывается всегда
+  await renderTables(synthesisId, tables, sync);
+  const impact = await computeElementImpact(kind, id, synthesisId, names);
+  return { ok: true, cascade, impact, version, htmlSync: sync };
 }
 
 /* ── updateThesis ────────────────────────────────────────────────────── */
@@ -1868,6 +2041,103 @@ export async function updateSubsection(
     }
   }
   return out;
+}
+
+/* ── deleteSubsection (15.2, Д-71) ───────────────────────────────────── */
+
+export interface DeleteSubsectionOptions {
+  /** Рекомендация «удалить», исполненная шагом плана; null — рука человека */
+  origin?: VersionOrigin | null;
+}
+
+export interface DeleteSubsectionResult {
+  sectionKey: string;
+  name: string;
+  /** Вложенные подразделы, ушедшие вместе с удалённым */
+  removedNested: string[];
+  version: ElementVersion;
+  /** HTML раздела ПОСЛЕ удаления */
+  htmlContent: string;
+}
+
+/**
+ * Удаление ОДНОГО подраздела раздела — паритет updateSubsection: версия
+ * 'section' со снимком строки ДО правки, html_content + is_edited=true одной
+ * транзакцией под `for update`. Поиск — ТОЧНЫЙ (removeExactSubsectionHtml):
+ * нечёткий removeSubsectionHtml 1.4b унёс бы «похожий» подраздел. Уходит
+ * весь <div data-section> вместе с вложенными; заперт сам подраздел или любой
+ * вложенный (таблица рендерера, капсула) — отказ SECTION_TABLE_LOCKED, как
+ * у правки. Побочные эффекты раздела не вызываются (см. updateSubsection);
+ * строки theses при удалении подраздела раздела theses не трогаются — их
+ * таблица заперта, а проза без строки — вопрос отчёта, не данных.
+ *
+ * Перегенерация раздела ВЕРНЁТ подраздел, который требует subsection_map:
+ * раздел пишется моделью заново по карте, HTML не источник (решение 15.2
+ * п.2); regen_subsection удалённого имени тоже вернёт его — spliceSubsectionHtml
+ * при ненайденном подразделе добавляет результат в конец раздела.
+ */
+export async function deleteSubsection(
+  synthesisId: string,
+  sectionKey: string,
+  subsectionName: string,
+  opts: DeleteSubsectionOptions = {},
+): Promise<DeleteSubsectionResult> {
+  const origin = opts.origin ?? null;
+  if (sectionKey === "capsule" || subsectionName === CAPSULE_SUBSECTION)
+    throw new SubsectionEditError("SECTION_TABLE_LOCKED", capsuleLockHint(), {
+      reason: "capsule",
+      subsection: subsectionName,
+    });
+  return db.transaction(async (tx): Promise<DeleteSubsectionResult> => {
+    const [row] = await tx
+      .select()
+      .from(sections)
+      .where(and(eq(sections.synthesisId, synthesisId), eq(sections.key, sectionKey)))
+      .limit(1)
+      .for("update");
+    if (!row) throw new SubsectionEditError("NOT_FOUND", tl("common.sectionNotFound", "Раздел не найден"));
+    const removed = removeExactSubsectionHtml(row.htmlContent, subsectionName);
+    if (!removed) throw subsectionNotFound(row.htmlContent, subsectionName);
+    for (const name of [subsectionName, ...removed.removedNested]) {
+      const lock = subsectionLockOf(sectionKey, row.htmlContent, name);
+      if (lock)
+        throw new SubsectionEditError("SECTION_TABLE_LOCKED", lock.hint, {
+          reason: lock.reason,
+          ...(lock.table ? { table: lock.table } : {}),
+          subsection: name,
+          ...(name !== subsectionName ? { nestedOf: subsectionName } : {}),
+        });
+    }
+    // Заслон после удаления: ушли ровно названные (страховка от своей ошибки)
+    const gone = new Set([subsectionName, ...removed.removedNested]);
+    const expected = listSubsectionNames(row.htmlContent).filter((n) => !gone.has(n));
+    const after = listSubsectionNames(removed.html);
+    if (expected.length !== after.length || expected.some((n, i) => n !== after[i]))
+      throw new SubsectionEditError("VALIDATION_ERROR", tl("common.invalidData", "Невалидные данные"), {
+        html: tl("server.elementEditor.subsectionsChanged", "правка изменила состав подразделов раздела — не сохранено"),
+      });
+    const version = await createVersion(
+      synthesisId,
+      row.id,
+      "section",
+      snapshotOf(row),
+      origin ? "recommendation" : "manual",
+      tx,
+      origin,
+    );
+    await tx
+      .update(sections)
+      .set({ htmlContent: removed.html, isEdited: true, updatedAt: new Date() })
+      .where(eq(sections.id, row.id));
+    await tx.update(syntheses).set({ updatedAt: new Date() }).where(eq(syntheses.id, synthesisId));
+    return {
+      sectionKey,
+      name: subsectionName,
+      removedNested: removed.removedNested,
+      version,
+      htmlContent: removed.html,
+    };
+  });
 }
 
 /** Предел длины названия концепции — тот же, что у PATCH /syntheses/:id (03 §2.2). */

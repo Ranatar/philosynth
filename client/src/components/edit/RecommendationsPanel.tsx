@@ -63,9 +63,10 @@ import {
 } from "../../api/recommendations";
 import { useSynthesisStore } from "../../stores/synthesis-store";
 import {
-  COST_KIND_LABEL,
   actionTextOf,
   costKindOf,
+  costLabelOf,
+  isDeleteRow,
   elementKindText,
   estimateSelection,
   estimateText,
@@ -422,8 +423,8 @@ export function RecommendationsPanel({
             </span>
           )}
           <span className="rec-op">{tData(r.op)}</span>
-          <span className={costClass} data-testid="rec-cost" title={actionTextOf(r)}>
-            {COST_KIND_LABEL()[kind]}
+          <span className={costClass + (isDeleteRow(r) ? " delete" : "")} data-testid="rec-cost" title={actionTextOf(r)}>
+            {costLabelOf(r)}
           </span>
         </div>
         {mismatch && (
@@ -500,7 +501,6 @@ export function RecommendationsPanel({
     const prose = isOpen ? proseOf(item.num) : null;
     const itemClass = "rec-item" + (checked ? " selected" : "") + (item.selectable ? "" : " inert");
     const stale = item.rows.some((r) => r.status === "stale");
-    const manualOnly = item.costKinds.every((k) => k === "manual");
     return (
       <div className={itemClass} key={item.key} data-testid="rec-item" data-rec-num={item.num}>
         <div className="rec-item-head">
@@ -524,7 +524,6 @@ export function RecommendationsPanel({
           </span>
           {first.status === "rejected" && <span className="cert-badge">{tl("edit.recommendationsPanel.wasRejected", "отклонялась")}</span>}
           {stale && <span className="cert-badge gold">{tl("edit.recommendationsPanel.statusTextChanged", "текст изменился")}</span>}
-          {manualOnly && <span className="cert-badge">{tl("edit.recommendationsPanel.manualExecution", "исполняется вручную")}</span>}
           <button
             type="button"
             className="rec-toggle"

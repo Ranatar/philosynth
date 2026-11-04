@@ -46,6 +46,7 @@
  * .progress-pause-badge.visible.
  */
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
+import { ELEMENT_STEP_KIND_LABELS, parseElementStepTarget } from "@philosynth/shared/constants/edit-steps"; // 15.2
 import type {
   PausedState,
   PausedStateGen,
@@ -357,6 +358,27 @@ function GenFooter({
 interface PlanOp {
   action?: string;
   key?: string;
+  /** regen_subsection / delete_subsection (15.2): имя подраздела */
+  subsection?: string;
+}
+
+/** Исполнитель кладёт в op действие ТИПОМ шага (stepToOp: delete | add | regen |
+ *  regen_subsection | regen_mode | edit_element | refine_element; 15.2 —
+ *  delete_element | delete_subsection); «remove» — форма исходника [24908]. */
+const isDeletion = (a: string | undefined): boolean =>
+  a === "remove" || a === "delete" || a === "delete_element" || a === "delete_subsection";
+const isElementOp = (a: string | undefined): boolean =>
+  a === "edit_element" || a === "refine_element" || a === "delete_element";
+
+/** Цель шага словами: раздел — меткой; элемент (15.2) — видом; подраздел — через «→». */
+function planOpTarget(op: PlanOp): string {
+  const key = op.key ?? "?";
+  if (isElementOp(op.action)) {
+    const ref = parseElementStepTarget(key);
+    return ref ? tData(ELEMENT_STEP_KIND_LABELS[ref.kind]) : key;
+  }
+  const sec = tData(LABELS[key] ?? key);
+  return op.subsection ? `${sec} → «${op.subsection}»` : sec;
 }
 
 function planOpLabel(op: PlanOp | null | undefined): string {
@@ -364,11 +386,12 @@ function planOpLabel(op: PlanOp | null | undefined): string {
   const prefix =
     op.action === "add"
       ? tl("synthesis.pauseModal.stepAdd", "Добавление: ")
-      : op.action === "remove"
+      : isDeletion(op.action)
         ? tl("synthesis.pauseModal.stepDelete", "Удаление: ")
-        : tl("synthesis.pauseModal.stepRegenerate", "Перегенерация: ");
-  const key = op.key ?? "?";
-  return prefix + tData(LABELS[key] ?? key);
+        : op.action === "edit_element" || op.action === "refine_element"
+          ? tl("synthesis.pauseModal.stepElementEdit", "Правка элемента: ")
+          : tl("synthesis.pauseModal.stepRegenerate", "Перегенерация: ");
+  return prefix + planOpTarget(op);
 }
 
 function PlanContent({ ps }: { ps: PausedStatePlan }) {
@@ -378,8 +401,8 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
     .slice(0, 5)
     .map(
       (o) =>
-        (o.action === "add" ? "➕ " : o.action === "remove" ? "✕ " : "↻ ") +
-        tData(LABELS[o.key ?? ""] ?? o.key ?? "?"),
+        (o.action === "add" ? "➕ " : isDeletion(o.action) ? "✕ " : o.action === "edit_element" || o.action === "refine_element" ? "✎ " : "↻ ") +
+        planOpTarget(o),
     )
     .join(", ");
   const moreHint =

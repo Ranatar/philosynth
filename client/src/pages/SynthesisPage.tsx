@@ -93,10 +93,11 @@ import { getModes } from "../api/modes";
 import { useAuthStore } from "../stores/auth-store";
 import { useSynthesisStore } from "../stores/synthesis-store";
 import { visibilityBadge } from "../utils/visibility-text";
-import { getSubsectionSource, updateSubsection } from "../api/sections";
+import { deleteSubsection, getSubsectionSource, updateSubsection } from "../api/sections";
 import {
   subsectionEditNotes,
   subsectionErrorText,
+  type SubsectionDeleteStep,
   type SubsectionEditState,
   type SubsectionEditView,
   type SubsectionRef,
@@ -287,6 +288,15 @@ export function SynthesisPage() {
     [id],
   );
 
+  const refreshGraphData = useCallback(async () => {
+    if (!id) return;
+    try {
+      setGraphData(await getCategories(id));
+    } catch {
+      /* граф — вторичное представление; сбой перечитки не критичен */
+    }
+  }, [id]);
+
   // После PATCH/отката: элемент в редакторе — из ответа, разделы —
   // транспортом чтения (html_content перерисован сервером 5.1)
   const handleInlineSaved = useCallback(
@@ -303,8 +313,11 @@ export function SynthesisPage() {
           : cur,
       );
       void reloadSections();
+      // 15.2 (Д-71): удалённая категория — граф перечитывается (его данные
+      // живут в graphData страницы и без перечитки показали бы удалённый узел)
+      if (outcome.deleted && outcome.kind === "category") void refreshGraphData();
     },
-    [reloadSections],
+    [reloadSections, refreshGraphData],
   );
 
   const handleRegenerateAffected = useCallback((keys: string[]) => {
@@ -313,15 +326,6 @@ export function SynthesisPage() {
     setEditInitialRegen(keys);
     setEditOpen(true);
   }, []);
-
-  const refreshGraphData = useCallback(async () => {
-    if (!id) return;
-    try {
-      setGraphData(await getCategories(id));
-    } catch {
-      /* граф — вторичное представление; сбой перечитки не критичен */
-    }
-  }, [id]);
 
   const handleGraphElementSaved = useCallback(() => {
     void reloadSections();
@@ -433,6 +437,48 @@ export function SynthesisPage() {
     },
     [id, subEdit, reloadSections, applySynthesis],
   );
+  // 15.2 (Д-71): удаление подраздела из карточки правки — второй шаг
+  // (deleteArmed) и DELETE; после — перечитка разделов, правки больше нет
+  const deleteSubsectionStep = useCallback(
+    async (step: SubsectionDeleteStep) => {
+      const cur = subEdit;
+      if (!id || !cur || subEditBusyRef.current) return;
+      if (step === "arm") {
+        if (cur.phase === "ready") setSubEdit({ ...cur, deleteArmed: true, error: null });
+        return;
+      }
+      if (step === "disarm") {
+        setSubEdit({ ...cur, deleteArmed: false });
+        return;
+      }
+      if (cur.phase !== "ready" || !cur.deleteArmed) return;
+      subEditBusyRef.current = true;
+      setSubEdit({ ...cur, phase: "deleting", error: null });
+      try {
+        await deleteSubsection(id, cur.sectionKey, cur.name);
+        await reloadSections();
+        setSubEdit(null);
+      } catch (err) {
+        setSubEdit({ ...cur, phase: "ready", deleteArmed: false, error: subsectionErrorText(err, "delete") });
+      } finally {
+        subEditBusyRef.current = false;
+      }
+    },
+    [id, subEdit, reloadSections],
+  );
+  // клик мимо карточки правки снимает второй шаг (правило кита 8.4 / useSecondStep)
+  const subDeleteArmed = !!subEdit?.deleteArmed && subEdit.phase === "ready";
+  useEffect(() => {
+    if (!subDeleteArmed || typeof document === "undefined") return;
+    const onDown = (ev: MouseEvent) => {
+      const t = ev.target instanceof Element ? ev.target : null;
+      if (t?.closest("[data-subsection-editor]")) return;
+      setSubEdit((c) => (c && c.deleteArmed ? { ...c, deleteArmed: false } : c));
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [subDeleteArmed]);
+
   // Фокус в поле, когда исходник приехал (поле — часть строки HTML раздела);
   // 13.1: в виде rich — в редактор, в markup — в поле; смена вида — тоже фокус
   const subEditReadyKey =
@@ -970,6 +1016,7 @@ export function SynthesisPage() {
         onSubsectionSave={(html) => void saveSubsectionEdit(html)}
         onSubsectionCancel={cancelSubsectionEdit}
         onSubsectionView={viewSubsectionEdit}
+        onSubsectionDelete={(step) => void deleteSubsectionStep(step)}
         sectionActionsFor={(key) =>
           isOwner && !live ? (
             <>

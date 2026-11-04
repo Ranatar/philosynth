@@ -5679,11 +5679,9 @@ font-size: 14px;
     background: var(--blue-corp);
   }
 
-  .rec-cost.manual {
-    border-color: var(--rule-strong);
-    color: var(--ink-dim);
-    background: transparent;
-  }
+  /* .rec-cost.manual («вручную») снят беседой 15.2 (Д-71): с неё планом
+     исполняется любая годная строка, пометка «удаление · бесплатно» —
+     .rec-cost.free.delete в блоке 15.2 */
 
   .rec-mismatch {
     margin-top: 4px;
@@ -6459,6 +6457,64 @@ font-size: 14px;
     border-color: var(--rule-strong);
     background: var(--white);
     color: var(--ink);
+  }
+}
+
+/* ═══ Беседа 15.2 — удаление элементов и подразделов (Д-71) ═══════════════
+ * В исходнике удаления нет вовсе (ни элементов, ни подразделов), классов
+ * нет. Своего здесь мало — всё собрано из готового: кнопка опасного
+ * действия .action-btn.danger (8.4), предупреждение второго шага
+ * .transform-warn (5.5), строка-итог .pool-status.ok. Новые правила:
+ * (1) .element-delete — группа кнопок удаления в строке действий редактора
+ *     элемента, прижата вправо (второй шаг встаёт на её месте);
+ * (2) .element-delete-warn / .subsection-delete-warn — отступ
+ *     предупреждения под строкой кнопок;
+ * (3) .subsection-delete — то же в карточке правки подраздела (кнопки —
+ *     часть строки HTML раздела, см. SectionView);
+ * (4) .plan-step-delete — строка шага удаления в панели плана: красная
+ *     левая кромка (каскад — золотая, 2.3), чтобы необратимый шаг был
+ *     виден до подтверждения;
+ * (5) .rec-cost.free.delete — пометка «удаление · бесплатно» в панели
+ *     рекомендаций: бесплатно (зелёный контур 10.3), но контур красный —
+ *     необратимо. Новых hex нет, углы прямые, теней нет.
+ * ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* (1) группа кнопок удаления элемента — вправо */
+  .element-delete {
+    margin-left: auto;
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  /* (2) предупреждение второго шага под строкой кнопок */
+  .element-delete-warn,
+  .subsection-delete-warn {
+    margin-top: 8px;
+  }
+
+  .element-delete-cascade {
+    margin-bottom: 6px;
+  }
+
+  /* (3) карточка правки подраздела */
+  .subsection-delete {
+    margin-left: auto;
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  /* (4) строка шага удаления в панели плана */
+  .plan-step-delete > div:first-child {
+    border-left: 3px solid var(--red);
+  }
+
+  /* (5) пометка «удаление · бесплатно» */
+  .rec-cost.free.delete {
+    border-color: var(--red);
+    color: var(--red);
+    background: transparent;
   }
 }
 

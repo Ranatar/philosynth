@@ -18,16 +18,20 @@
  *  - getSubsectionSource → GET …/sections/:key/subsections/:name →
  *      SubsectionSource (разметка содержимого без обёртки и <h4>, замок);
  *  - updateSubsection → PATCH тот же путь { html } → SubsectionUpdateResult.
+ *
+ * Беседа 15.2 (Д-71): deleteSubsection → DELETE тот же путь →
+ * SubsectionDeleteResult (запертый подраздел — 409 SECTION_TABLE_LOCKED).
  */
 import type {
   SectionContextPreview,
   SectionFull,
   SectionSummary,
+  SubsectionDeleteResult,
   SubsectionSource,
   SubsectionUpdateResult,
 } from "@philosynth/shared/types/section";
 
-import { apiGet, apiPatch } from "./client";
+import { apiDelete, apiGet, apiPatch } from "./client";
 
 function subsectionPath(synthesisId: string, key: string, name: string): string {
   return `/syntheses/${encodeURIComponent(synthesisId)}/sections/${encodeURIComponent(key)}/subsections/${encodeURIComponent(name)}`;
@@ -48,6 +52,14 @@ export function updateSubsection(
   html: string,
 ): Promise<SubsectionUpdateResult> {
   return apiPatch<SubsectionUpdateResult>(subsectionPath(synthesisId, key, name), { html });
+}
+
+export function deleteSubsection(
+  synthesisId: string,
+  key: string,
+  name: string,
+): Promise<SubsectionDeleteResult> {
+  return apiDelete<SubsectionDeleteResult>(subsectionPath(synthesisId, key, name));
 }
 
 export function getSections(synthesisId: string): Promise<SectionSummary[]> {

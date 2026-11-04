@@ -96,8 +96,10 @@ export interface VersionOrigin {
   rationale: string;
   planId: string | null;
   stepIndex: number | null;
-  /** 'edit_element' — готовая замена; 'refine_element' — точечная генерация */
-  stepType: "edit_element" | "refine_element";
+  /** 'edit_element' — готовая замена; 'refine_element' — точечная генерация;
+   *  15.2: 'delete_element' / 'delete_subsection' — удаление по рекомендации
+   *  «удалить» (версия-снимок удалённого элемента / раздела до удаления) */
+  stepType: "edit_element" | "refine_element" | "delete_element" | "delete_subsection";
 }
 
 /** Строка таблицы element_versions */
@@ -209,6 +211,33 @@ export interface HtmlSyncInfo {
   pending: string[];
   /** Раздел-хозяин отсутствует в sections — правка только в таблице БД */
   sectionMissing: boolean;
+}
+
+/**
+ * 15.2 (Д-71): ответ DELETE /syntheses/:id/{categories|theses|glossary}/:id
+ * (сервис deleteElement). Строка удалена; версия-снимок 'manual' остаётся в
+ * element_versions по elementId (историю удалённого видно, восстановления из
+ * снимка нет — Огр-13: rollbackToVersion пишет UPDATE в живую строку).
+ */
+export interface DeleteElementResult {
+  ok: true;
+  /** Что ещё изменилось в данных вслед за удалением (каскад без FK) */
+  cascade: {
+    /** Рёбра, ушедшие каскадом FK (только у категории) */
+    edgesDeleted: number;
+    /** Тезисы, у которых из related_categories снято имя категории */
+    thesesUnlinked: number;
+    /** Метки кластеров, оставшихся без членов (только у категории) */
+    clusterLabelsDeleted: number;
+    /** Рекомендации критики, потерявшие элемент (element_id → null);
+     *  строки 'new'/'stale' при этом помечены 'invalid' */
+    recommendationsDetached: number;
+    /** Обогащения и обоснования характеристик, удалённые вместе с элементом */
+    enrichmentsDeleted: number;
+  };
+  impact: ImpactAnalysis;
+  version: ElementVersion;
+  htmlSync: HtmlSyncInfo;
 }
 
 /** POST /syntheses/:id/elements/auto-rename */

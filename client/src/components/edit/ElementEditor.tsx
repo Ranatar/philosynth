@@ -43,6 +43,14 @@
  *    кнопка «?» (обоснование); канал доставки — собственное WS-соединение
  *    useEnrichmentStream (доставка по userId, паритет ModeModal 4.1),
  *    открывается только пока редактор смонтирован.
+ *
+ * Беседа 15.2 (Д-71): кнопка «Удалить» в режиме просмотра у категории,
+ * тезиса и термина (связь удаляется панелью связи графа, 8.4) — второй шаг
+ * (useSecondStep 12.4: «Точно удалить?» + «Отмена», клик мимо снимает),
+ * DELETE через api deleteElement; после — редактор в состоянии «удалено»:
+ * сводки и кнопок правки нет, блок анализа влияния с каскадом (что ушло
+ * вслед) и «Перегенерировать затронутые»; хозяин получает onSaved с
+ * deleted: true и перечитывает разделы/граф.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -60,6 +68,7 @@ import type {
 import { ApiError } from "../../api/client";
 import {
   autoRename,
+  deleteElement,
   updateCategory,
   updateEdge,
   updateGlossaryTerm,
@@ -68,6 +77,9 @@ import {
   type RollbackResponse,
 } from "../../api/elements";
 import { useEnrichmentStream } from "../../hooks/useEnrichmentStream";
+import { useSecondStep } from "../../hooks/useSecondStep"; // 15.2 (Д-71)
+import type { DeleteElementResult } from "@philosynth/shared/types/elements";
+import { isDeletableElementKind } from "@philosynth/shared/constants/edit-steps";
 import {
   CategoryEditor,
   categoryDiff,
@@ -160,6 +172,10 @@ export interface SaveOutcome extends Omit<ElementMutationMeta, "version"> {
   element: Category | CategoryEdge | Thesis | GlossaryTerm;
   /** Категория переименована — доступна автозамена */
   renamed?: { oldName: string; newName: string } | undefined;
+  /** 15.2: элемент удалён (DELETE); element — снимок до удаления */
+  deleted?: true | undefined;
+  /** 15.2: что ушло вслед за удалением (каскад без FK) */
+  cascade?: DeleteElementResult["cascade"] | undefined;
 }
 
 export interface ElementEditorProps {
@@ -268,6 +284,10 @@ export function ElementEditor({
   const [renaming, setRenaming] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
+  // 15.2 (Д-71): удаление — второй шаг и состояние «удалено»
+  const [deleting, setDeleting] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const deleteStep = useSecondStep(deleting);
 
   // Новый элемент (или обновлённый хозяином после PATCH) → свежий черновик
   useEffect(() => {
@@ -391,6 +411,36 @@ export function ElementEditor({
     [target.kind, onSaved],
   );
 
+  // 15.2 (Д-71): DELETE элемента — после взведённого второго шага
+  const doDelete = useCallback(async () => {
+    if (deleting || deleted || !isDeletableElementKind(target.kind)) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await deleteElement(synthesisId, target.kind, elementId);
+      const out: SaveOutcome = {
+        kind: target.kind,
+        element: target.element,
+        impact: res.impact,
+        version: res.version,
+        htmlSync: res.htmlSync,
+        deleted: true,
+        cascade: res.cascade,
+      };
+      deleteStep.disarm();
+      setDeleted(true);
+      setHistoryOpen(false);
+      setOutcome(out);
+      setRenameResult(null);
+      onSaved?.(out);
+    } catch (err) {
+      deleteStep.disarm();
+      setError(messageOf(err));
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleting, deleted, target, synthesisId, elementId, onSaved, deleteStep]);
+
   const doAutoRename = useCallback(async () => {
     if (!outcome?.renamed || renaming) return;
     setRenaming(true);
@@ -456,6 +506,56 @@ export function ElementEditor({
       />
     );
 
+  /* 15.2 (Д-71): удаление — второй шаг; кнопка стоит в обоих режимах
+     (инлайн-редактор открывается сразу в правке, «Отмена» там закрывает его —
+     иначе до кнопки было бы не добраться без сохранения) */
+  const deleteControls = isDeletableElementKind(target.kind) && !deleted ? (
+    <span className="element-delete" ref={deleteStep.ref as React.RefObject<HTMLSpanElement>}>
+      {deleteStep.armed ? (
+        <>
+          <button
+            type="button"
+            className="action-btn danger"
+            disabled={disabled || deleting || saving}
+            onClick={() => void doDelete()}
+            data-testid="element-delete-confirm"
+          >
+            {deleting ? tl("edit.elementEditor.deleting", "Удаление…") : tl("edit.elementEditor.deleteConfirm", "Точно удалить?")}
+          </button>
+          <button
+            type="button"
+            className="action-btn"
+            disabled={deleting}
+            onClick={deleteStep.disarm}
+            data-testid="element-delete-cancel"
+          >
+            {tl("common.cancel", "Отмена")}
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="action-btn danger"
+          disabled={disabled || saving}
+          onClick={() => deleteStep.arm(true)}
+          data-testid="element-delete"
+          title={tl("edit.elementEditor.deleteHint", "Удалить элемент из данных концепции (снимок версии остаётся)")}
+        >
+          {tl("common.delete", "Удалить")}
+        </button>
+      )}
+    </span>
+  ) : null;
+  const deleteWarn = deleteStep.armed && !deleted ? (
+    <div className="transform-warn element-delete-warn" data-testid="element-delete-warn">
+      {target.kind === "category"
+        ? tl("edit.elementEditor.deleteWarnCategory", "Категория уйдёт из таблиц графа вместе со своими связями; имя снимется из связанных категорий тезисов, рекомендации на неё станут негодными. Упоминания в тексте разделов останутся — их покажет анализ влияния. Снимок версии сохранится, но восстановить удалённое из него нельзя.")
+        : target.kind === "thesis"
+          ? tl("edit.elementEditor.deleteWarnThesis", "Тезис уйдёт из сводной таблицы; его абзац в тексте раздела и упоминания в других разделах останутся — их покажет анализ влияния. Снимок версии сохранится, но восстановить удалённое из него нельзя.")
+          : tl("edit.elementEditor.deleteWarnTerm", "Термин уйдёт из таблицы определений; упоминания в тексте разделов останутся — их покажет анализ влияния. Снимок версии сохранится, но восстановить удалённое из него нельзя.")}
+    </div>
+  ) : null;
+
   const body = (
     <div data-element-editor={target.kind}>
       {variant === "inline" && (
@@ -485,7 +585,12 @@ export function ElementEditor({
         </div>
       )}
 
-      {editing ? (
+      {deleted ? (
+        <div className="callout note" data-testid="element-deleted">
+          <span className="callout-label">{tl("edit.elementEditor.deletedLabel", "Удалено")}</span>
+          {tl("edit.elementEditor.deletedNote", "Элемент удалён из данных; таблицы раздела перерисованы, снимок версии остаётся в истории. Упоминания в тексте разделов не вычищались — см. анализ влияния.")}
+        </div>
+      ) : editing ? (
         <>
           {form}
           <div className="inline-edit-actions">
@@ -506,7 +611,9 @@ export function ElementEditor({
               {tl("common.cancel", "Отмена")}
             </button>
             {dirty && <span className="inline-edit-dirty">{tl("edit.elementEditor.unsavedChanges", "есть несохранённые правки")}</span>}
+            {deleteControls}
           </div>
+          {deleteWarn}
         </>
       ) : (
         <>
@@ -531,7 +638,9 @@ export function ElementEditor({
             >
               {tl("edit.elementEditor.versionHistory", "◷ История версий")}
             </button>
+            {deleteControls}
           </div>
+          {deleteWarn}
         </>
       )}
 
@@ -553,11 +662,12 @@ export function ElementEditor({
           onDismiss={() => {
             setOutcome(null);
             setRenameResult(null);
+            if (deleted) onClose?.(); // 15.2: после удаления редактору нечего показывать
           }}
         />
       )}
 
-      {enrichable && !editing && (
+      {enrichable && !editing && !deleted && (
         <div style={{ marginTop: 12 }}>
           <EnrichmentPanel
             stream={stream}
@@ -575,7 +685,7 @@ export function ElementEditor({
         </div>
       )}
 
-      {historyOpen && (
+      {historyOpen && !deleted && (
         <div style={{ marginTop: 12 }}>
           <VersionHistory
             synthesisId={synthesisId}
@@ -760,6 +870,17 @@ function ImpactPanel({
     <div className="cascade-panel visible" data-element-impact style={{ marginTop: 12 }}>
       <div className="cascade-title">{tl("edit.elementEditor.impactAnalysis", "Анализ влияния")}</div>
       <div className="cascade-desc">{SEVERITY_TEXT()[impact.severity]}</div>
+      {outcome.deleted && outcome.cascade && (
+        <div className="pool-status ok element-delete-cascade" data-testid="element-delete-cascade">
+          {tl("edit.elementEditor.deleteCascade", "✓ Удалено. Вслед: связей — {edges}, тезисов отвязано — {theses}, меток кластеров — {clusters}, рекомендаций отвязано — {recs}, обогащений и обоснований — {enrich}.", {
+            edges: outcome.cascade.edgesDeleted,
+            theses: outcome.cascade.thesesUnlinked,
+            clusters: outcome.cascade.clusterLabelsDeleted,
+            recs: outcome.cascade.recommendationsDetached,
+            enrich: outcome.cascade.enrichmentsDeleted,
+          })}
+        </div>
+      )}
 
       {sync.rendered.length > 0 && (
         <div className="pool-status ok" style={{ marginBottom: 6 }}>

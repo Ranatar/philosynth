@@ -9,7 +9,8 @@
  * (server/services/recommendation-planner.ts, rowsToPlanActions) — клиент их
  * не исполняет, а лишь предсказывает, чтобы человек до выбора видел, что
  * бесплатно, что стоит обращения к модели, а что планом не исполняется:
- *   «удалить»                        → вручную (шага удаления у планов нет);
+ *   «удалить» + найденный элемент    → удаление элемента, бесплатно (delete_element, 15.2);
+ *   «удалить» без элемента           → удаление подраздела, бесплатно (delete_subsection, 15.2);
  *   готовая замена + найденный элемент → правка, бесплатно (edit_element);
  *   найденный элемент без замены     → генерация в элемент (refine_element);
  *   без элемента, «перегенерировать» → перегенерация раздела (у sum — подраздела);
@@ -51,9 +52,10 @@ export const numKey = (num: string): string => norm(num).replace(/\s+/g, "");
 
 /* ══ Вид исполнения строки ════════════════════════════════════════════ */
 
-/** free — правка готовым текстом; paid — обращение к модели; manual — планом
- *  не исполняется (долг §12 беседы 10.2: показывать как исполняемое вручную). */
-export type RecommendationCostKind = "free" | "paid" | "manual";
+/** free — без обращения к модели (правка готовым текстом, удаление — 15.2);
+ *  paid — обращение к модели. Вида «manual» («вручную», 10.3) больше нет:
+ *  с 15.2 (Д-71) планом исполняется любая годная строка. */
+export type RecommendationCostKind = "free" | "paid";
 
 /* Операции контракта таблицы рекомендаций (shared/constants/recommendations,
    10.1) — МАШИННЫЕ значения, сравниваются с row.op сервера; через tl() не
@@ -61,18 +63,21 @@ export type RecommendationCostKind = "free" | "paid" | "manual";
 const OP_DELETE = "удалить";
 const OP_REGENERATE = "перегенерировать";
 
+/** Строка «удалить» (15.2): исполняется шагом удаления, модель не нужна. */
+export const isDeleteRow = (row: Recommendation): boolean => norm(row.op) === OP_DELETE;
+
 export function costKindOf(row: Recommendation): RecommendationCostKind {
-  if (norm(row.op) === OP_DELETE) return "manual";
+  if (isDeleteRow(row)) return "free";
   return row.elementId && row.elementKind && row.replacement ? "free" : "paid";
 }
 
 /** Что именно сделает план со строкой — подпись под пометкой. */
 export function actionTextOf(row: Recommendation): string {
   const kind = costKindOf(row);
-  if (kind === "manual")
-    return row.elementId
-      ? tl("utils.recommendations.elementDeletionManual", "планом не исполняется: удаление элемента — вручную либо перегенерацией подраздела")
-      : tl("utils.recommendations.subsectionDeletionManual", "планом не исполняется: удаление подраздела — вручную");
+  if (isDeleteRow(row))
+    return row.elementId && row.elementKind
+      ? tl("utils.recommendations.elementDeleted", "элемент будет удалён (снимок версии остаётся; связи, роли и ссылки уйдут каскадом)")
+      : tl("utils.recommendations.subsectionDeleted", "подраздел будет удалён из раздела (снимок версии раздела остаётся)");
   if (kind === "free") return tl("utils.recommendations.replacementWritten", "готовая замена будет вписана в поле элемента");
   if (row.elementId && row.elementKind) return tl("utils.recommendations.modelWritesValue", "новое значение поля напишет модель");
   if (norm(row.op) === OP_REGENERATE && row.addressSection && row.addressSection !== "sum")
@@ -83,12 +88,16 @@ export function actionTextOf(row: Recommendation): string {
 export const COST_KIND_LABEL = (): Record<RecommendationCostKind, string> => ({
   free: tl("utils.recommendations.editFree", "правка · бесплатно"),
   paid: tl("utils.recommendations.generation", "генерация"),
-  manual: tl("utils.recommendations.manually", "вручную"),
 });
 
-/** Выбирать можно только то, что план исполнит: годные строки вне работы. */
+/** Пометка строки «удалить» — отдельным словом (15.2): бесплатно, но не правка. */
+export const costLabelOf = (row: Recommendation): string =>
+  isDeleteRow(row) ? tl("utils.recommendations.deleteFree", "удаление · бесплатно") : COST_KIND_LABEL()[costKindOf(row)];
+
+/** Выбирать можно только то, что план исполнит: годные строки вне работы.
+ *  15.2: строки «удалить» — тоже (шаги delete_element / delete_subsection). */
 export function isSelectableRow(row: Recommendation): boolean {
-  return (row.status === "new" || row.status === "rejected") && costKindOf(row) !== "manual";
+  return row.status === "new" || row.status === "rejected";
 }
 
 /* ══ Группы панели ════════════════════════════════════════════════════ */
@@ -227,9 +236,11 @@ export function estimateSelection(
   const chosen = rows.filter((r) => selected.has(numKey(r.num)) && isSelectableRow(r));
   const sectionRegen = new Set<string>();
   const subRegen = new Set<string>();
+  const subDelete = new Map<string, string>(); // 15.2: цель → № строки
   const elementRows: Recommendation[] = [];
   for (const r of chosen) {
     if (r.elementId && r.elementKind) elementRows.push(r);
+    else if (isDeleteRow(r)) subDelete.set(`${r.addressSection ?? ""}:${r.addressSubsection}`, r.num);
     else if (norm(r.op) === OP_REGENERATE && r.addressSection && r.addressSection !== "sum")
       sectionRegen.add(r.addressSection);
     else subRegen.add(`${r.addressSection ?? ""}:${r.addressSubsection}`);
@@ -239,6 +250,17 @@ export function estimateSelection(
   let free = 0;
   let paid = sectionRegen.size + subRegen.size;
   const conflicts: string[] = [];
+  // 15.2: удаление подраздела — бесплатный шаг; в разделе, идущем на
+  // перегенерацию, вливается в неё; подраздел того же выбора на
+  // перегенерацию — конфликт (сервер отклонит удаление: same_target)
+  for (const [t, num] of subDelete) {
+    if (sectionRegen.has(t.slice(0, t.indexOf(":")))) continue;
+    if (subRegen.has(t)) {
+      conflicts.push(tl("utils.recommendations.conflictDeleteRegenSubsection", "Рекомендация {num}: её подраздел этим же выбором перегенерируется — удалять и перегенерировать разом нельзя, исполните по очереди", { num }));
+      continue;
+    }
+    free += 1;
+  }
   const taken = new Map<string, string>();
   for (const r of elementRows) {
     const host = ELEMENT_STEP_HOST[r.elementKind as NonNullable<Recommendation["elementKind"]>];
@@ -253,7 +275,7 @@ export function estimateSelection(
       continue;
     }
     taken.set(key, r.num);
-    if (r.replacement) free += 1;
+    if (isDeleteRow(r) || r.replacement) free += 1; // 15.2: удаление элемента — бесплатно
     else paid += 1;
   }
   return { free, paid, conflicts };

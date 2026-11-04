@@ -914,6 +914,30 @@ export function listSubsectionNames(sectionHtml: string): string[] {
   return out;
 }
 
+/**
+ * 15.2 (Д-71): удаление подраздела ПО ТОЧНОМУ имени — для ручного удаления и
+ * шага delete_subsection. removeSubsectionHtml (порт обрывочного div 1.4b)
+ * ищет нечётко («Анализ» нашёл бы «Анализ рисков»), ручному действию такое
+ * не годится. Уходит весь <div data-section> с вложенными подразделами —
+ * их имена возвращаются (removedNested), чтобы служба проверила их замки и
+ * сказала человеку, что ушло вместе. null — подраздела с таким именем нет.
+ */
+export function removeExactSubsectionHtml(
+  sectionHtml: string,
+  subsectionName: string,
+): { html: string; removedNested: string[] } | null {
+  const root = parseEditable(sectionHtml);
+  const sub = findExactSubsection(root, subsectionName);
+  if (!sub) return null;
+  const removedNested: string[] = [];
+  for (const el of sub.querySelectorAll("[data-section]")) {
+    const n = el.getAttribute("data-section");
+    if (n && n !== subsectionName && !removedNested.includes(n)) removedNested.push(n);
+  }
+  sub.remove();
+  return { html: root.innerHTML, removedNested };
+}
+
 /** Вложенные подразделы первого уровня (ближайший предок-подраздел — host). */
 function nestedSubsections(host: EditElement): EditElement[] {
   const out: EditElement[] = [];
@@ -1428,6 +1452,36 @@ export interface SectionTitles {
  * оглавления в заголовок не попадают; ключи остаются машинными (сравнения,
  * адреса, якоря), перевода ключей по таблице нет.
  */
+/**
+ * 15.2 (Д-79): якоря второго уровня раздела для API (SectionSummary /
+ * SectionFull / вложенные sections синтеза) — уникальные data-section в
+ * порядке появления, прогнанные через порт 1.4 parseSubsectionsFromHTML
+ * (канонизация порядка и статусов едина с трекингом генерации). До 15.2 жил
+ * двумя копиями: listSubsections (routes/sections) и subsectionNamesOf
+ * (routes/syntheses — дублирован из-за цикла импортов). Парсер 1.4 —
+ * параметром: generation-service импортирует этот модуль, обратный импорт
+ * замкнул бы цикл. Нечётный путь — regex, не DOM: так считали обе копии с
+ * 1.6, и так же читает стрим трекинг генерации.
+ */
+export function subsectionNamesOf(
+  html: string,
+  parse: (html: string, expected: readonly string[]) => readonly { name: string }[],
+): string[] {
+  if (!html) return [];
+  const names: string[] = [];
+  const seen = new Set<string>();
+  const rx = /data-section="([^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = rx.exec(html)) !== null) {
+    const name = m[1] as string;
+    if (!seen.has(name)) {
+      seen.add(name);
+      names.push(name);
+    }
+  }
+  return parse(html, names).map((s) => s.name);
+}
+
 export function sectionTitlesOf(html: string): SectionTitles {
   const out: SectionTitles = { sectionTitle: null, subsectionTitles: {} };
   if (!html) return out;

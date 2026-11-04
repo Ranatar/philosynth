@@ -271,6 +271,9 @@ export default function GraphModal({
       // граф перечитает хозяин по onElementSaved (getCategories → data)
       if (outcome.kind === "category") setEditCategory(outcome.element as Category);
       if (outcome.kind === "edge") setEditEdge(outcome.element as CategoryEdge);
+      // 15.2 (Д-71): категория удалена — панель узла закрывается (узла больше
+      // нет), редактор остаётся с отчётом влияния до «Ничего»/закрытия
+      if (outcome.deleted) setPanel(null);
       onElementSaved?.(outcome);
     },
     [onElementSaved],

@@ -303,7 +303,9 @@ export function VersionHistory({
                 {" · "}
                 {v.origin.stepType === "edit_element"
                   ? tl("edit.versionHistory.replacementInserted", "вписана готовая замена")
-                  : tl("edit.versionHistory.valueByModel", "значение написано моделью")}
+                  : v.origin.stepType === "delete_element" || v.origin.stepType === "delete_subsection"
+                    ? tl("edit.versionHistory.deletedByRecommendation", "удалено (снимок — состояние до удаления)") // 15.2 (Д-71)
+                    : tl("edit.versionHistory.valueByModel", "значение написано моделью")}
               </div>
             )}
             </Fragment>

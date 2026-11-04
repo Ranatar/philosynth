@@ -61,8 +61,10 @@ import { and, asc, eq, inArray, sql as dsql } from "drizzle-orm";
 
 import {
   ELEMENT_STEP_HOST,
+  isDeletableElementKind,
   isFreeStepType,
   parseElementStepTarget,
+  parseSubsectionStepTarget,
 } from "@philosynth/shared/constants/edit-steps";
 
 import { db } from "../db/index.js";
@@ -85,6 +87,7 @@ import {
   toApiPlan,
 } from "./edit-planner.js";
 import { applyElementEdit, refineElement } from "./element-step.js";
+import { deleteElement, deleteSubsection } from "./element-editor.js"; // 15.2 (Д-71)
 import {
   addSection,
   deleteSection,
@@ -97,7 +100,6 @@ import {
 } from "./generation-service.js";
 import {
   createPausedState,
-  logPauseEvent,
   setPlanResumeExecutor,
 } from "./pause-resume-service.js";
 import { STRUCTURE_SUBSECTION } from "./structure-tracker.js";
@@ -111,6 +113,7 @@ import type {
   StepResult,
 } from "@philosynth/shared/types/edit-plan";
 import type { PauseReasonKind } from "@philosynth/shared/types/synthesis";
+import type { VersionOrigin } from "@philosynth/shared/types/elements"; // 15.2
 import { tl } from "@philosynth/shared/i18n/t";
 
 type PlanRow = typeof editPlans.$inferSelect;
@@ -246,8 +249,11 @@ async function settleStepRecommendations(
 
 /** Раздел, чьё содержание меняет шаг мельче раздела (для каскада). */
 function touchedSectionOf(step: EditStep): string | null {
-  if (step.type === "regen_subsection") return step.target.slice(0, step.target.indexOf(":"));
-  if (step.type === "edit_element" || step.type === "refine_element") {
+  // 15.2 (Д-71): удаление подраздела / элемента меняет раздел-хозяин так же,
+  // как перегенерация подраздела / правка элемента — каскад считается от него
+  if (step.type === "regen_subsection" || step.type === "delete_subsection")
+    return step.target.slice(0, step.target.indexOf(":"));
+  if (step.type === "edit_element" || step.type === "refine_element" || step.type === "delete_element") {
     const ref = parseElementStepTarget(step.target);
     return ref ? ELEMENT_STEP_HOST[ref.kind] : null;
   }
@@ -286,10 +292,10 @@ function planSummaryFromSteps(steps: EditStep[]): {
 }
 
 function stepToOp(step: EditStep): Record<string, unknown> {
-  if (step.type === "regen_subsection") {
+  if (step.type === "regen_subsection" || step.type === "delete_subsection") {
     const i = step.target.indexOf(":");
     return {
-      action: "regen_subsection",
+      action: step.type,
       key: step.target.slice(0, i),
       subsection: step.target.slice(i + 1),
     };
@@ -380,6 +386,28 @@ async function bumpVersionsForPlan(
 
 /* ══ Исполнение одного шага ═══════════════════════════════════════════ */
 
+/** 15.2: «почему удалено» — снимок рекомендации «удалить» в версии-снимке
+ *  (паритет originOf element-step для правок 10.2); без рекомендации — null. */
+function deleteOriginOf(
+  step: EditStep,
+  planId: string,
+  stepIndex: number,
+): VersionOrigin | null {
+  const rec = step.recommendations?.[0];
+  if (!rec) return null;
+  return {
+    kind: "recommendation",
+    recommendationId: rec.id,
+    round: rec.round,
+    num: rec.num,
+    op: rec.op,
+    rationale: rec.rationale,
+    planId,
+    stepIndex,
+    stepType: step.type === "delete_subsection" ? "delete_subsection" : "delete_element",
+  };
+}
+
 async function runStep(
   handle: GenerationSlotHandle,
   step: EditStep,
@@ -433,6 +461,35 @@ async function runStep(
       // 10.2: точечная генерация в элемент — под слотом плана
       const r = await refineElement(handle, step, planId, stepIndex);
       return usageToResult(r.usage, r.outputChars);
+    }
+    case "delete_element": {
+      // 15.2 (Д-71): тот же сервис, что у кнопки «Удалить» редактора (5.1 →
+      // 15.2); модель не зовётся, стоимость 0. Каскад — от раздела-хозяина
+      // (touchedSectionOf), как у правки элемента
+      const ref = parseElementStepTarget(step.target);
+      if (!ref || !isDeletableElementKind(ref.kind))
+        throw new PlanError(
+          "VALIDATION_ERROR",
+          tl("server.planExecutor.badDeleteElementTarget", "Цель шага delete_element не «вид:id» удаляемого элемента: {target}", { target: step.target }),
+        );
+      await deleteElement(synthesisId, ref.kind, ref.elementId, {
+        origin: deleteOriginOf(step, planId, stepIndex),
+      });
+      return ZERO_RESULT;
+    }
+    case "delete_subsection": {
+      // 15.2 (Д-71): тот же сервис, что у «Удалить подраздел» в карточке
+      // правки; запертый подраздел — отказ SECTION_TABLE_LOCKED (шаг падает)
+      const ref = parseSubsectionStepTarget(step.target);
+      if (!ref)
+        throw new PlanError(
+          "VALIDATION_ERROR",
+          tl("server.planExecutor.badDeleteSubsectionTarget", "Цель шага delete_subsection не «раздел:подраздел»: {target}", { target: step.target }),
+        );
+      await deleteSubsection(synthesisId, ref.sectionKey, ref.subsectionName, {
+        origin: deleteOriginOf(step, planId, stepIndex),
+      });
+      return ZERO_RESULT;
     }
     case "regen_mode": {
       if (!modeRegenerator) {
@@ -488,7 +545,7 @@ async function runPlanSteps(
       continue;
     }
     if (
-      step.type === "regen_subsection" &&
+      (step.type === "regen_subsection" || step.type === "delete_subsection") &&
       !sectionOrder.includes(step.target.split(":")[0] as string)
     ) {
       step.status = "skipped";
@@ -556,12 +613,8 @@ async function runPlanSteps(
         reasonKind: (e.kind || "partial") as PauseReasonKind,
       });
       await setPlanStatus(planId, "paused");
-      await logPauseEvent(synthesisId, "pause_marker", {
-        kind: "plan",
-        stepIdx: i,
-        totalSteps: steps.length,
-        reasonKind: ps.reasonKind,
-      });
+      // 15.2 (Д-78): маркер паузы пишет createPausedState — один pause_marker
+      // с полями причины (reasonKind, rawMessage, числа); второго здесь нет
       if (ps.reasonKind !== "user-abort") {
         sendToUser(userId, {
           type: "generation_paused",

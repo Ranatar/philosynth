@@ -7,6 +7,7 @@
  *   GET /syntheses/:id/sections/:key/context → SectionContextPreview
  *   GET   /syntheses/:id/sections/:key/subsections/:name → SubsectionSource (9.2)
  *   PATCH /syntheses/:id/sections/:key/subsections/:name { html }        (9.2)
+ *   DELETE /syntheses/:id/sections/:key/subsections/:name → SubsectionDeleteResult (15.2, Д-71)
  *
  * Беседа 9.2 — ручная правка. ЕДИНИЦА ПРАВКИ — ПОДРАЗДЕЛ: маршрута на тело
  * раздела целиком здесь НЕТ и заводить его нельзя. Разметка раздела несущая:
@@ -46,7 +47,7 @@ import { db } from "../db/index.js";
 import { generationLog, sections, synthesisLineage } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
-import { sectionTitlesOf } from "../utils/html-parser.js"; // 14.2 (Д-59)
+import { sectionTitlesOf, subsectionNamesOf } from "../utils/html-parser.js"; // 14.2 (Д-59); 15.2 (Д-79)
 import { getSectionContextQualityMap } from "../services/context-quality.js";
 import { loadConceptParticipants } from "../services/meta-synthesis-service.js";
 import { buildContextForSection } from "../services/context-builder.js";
@@ -57,6 +58,7 @@ import {
 import { isSectionKey } from "@philosynth/shared/constants/section-labels";
 import {
   SubsectionEditError,
+  deleteSubsection,
   getSubsectionSource,
   lockedSubsectionNames,
   updateSubsection,
@@ -77,31 +79,18 @@ import type {
   SectionFull,
   SectionSummary,
   SubsectionSource,
+  SubsectionDeleteResult,
   SubsectionUpdateResult,
 } from "@philosynth/shared/types/section";
 import { tl } from "@philosynth/shared/i18n/t";
 
 export const sectionsRoutes = new Hono<AuthEnv>();
 
-/** Имена data-section из HTML — фактические якоря второго уровня. */
-function listSubsections(html: string): string[] {
-  if (!html) return [];
-  const names: string[] = [];
-  const seen = new Set<string>();
-  const rx = /data-section="([^"]+)"/g;
-  let m: RegExpExecArray | null;
-  while ((m = rx.exec(html)) !== null) {
-    const name = m[1] as string;
-    if (!seen.has(name)) {
-      seen.add(name);
-      names.push(name);
-    }
-  }
-  // Прогон через порт 1.4 (решение аудита: «subsections заполняются
-  // parseSubsectionsFromHTML») — канонизация порядка/статусов едина
-  // с трекингом генерации
-  return parseSubsectionsFromHTML(html, names).map((s) => s.name);
-}
+/** Имена data-section из HTML — фактические якоря второго уровня.
+ *  15.2 (Д-79): одно перечисление для обоих роутов — subsectionNamesOf
+ *  (html-parser), парсер 1.4 — параметром (цикл импортов). */
+const listSubsections = (html: string): string[] =>
+  subsectionNamesOf(html, parseSubsectionsFromHTML);
 
 type SectionRow = typeof sections.$inferSelect;
 
@@ -305,6 +294,38 @@ sectionsRoutes.patch("/:id/sections/:key/subsections/:name", requireAuth, async 
         isEdited: r.changed ? true : undefined,
         subsections: listSubsections(r.htmlContent),
         subsectionTitles: sectionTitlesOf(r.htmlContent).subsectionTitles, // 14.2 (Д-59)
+        lockedSubsections: lockedSubsectionNames(r.sectionKey, r.htmlContent),
+      },
+    };
+    return c.json(result);
+  } catch (err) {
+    return subsectionError(c, err);
+  }
+});
+
+/** 15.2 (Д-71): удаление подраздела. Только владелец, не под активной
+ *  операцией; запертый (таблица рендерера, капсула) — 409 SECTION_TABLE_LOCKED. */
+sectionsRoutes.delete("/:id/sections/:key/subsections/:name", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const gate = await ownerEditGate(c, id, user.id);
+  if (gate) return gate;
+  const key = c.req.param("key");
+  if (!isSectionKey(key)) return c.json(unknownSectionJson, 404);
+  try {
+    const r = await deleteSubsection(id, key, c.req.param("name"));
+    const result: SubsectionDeleteResult = {
+      ok: true,
+      sectionKey: r.sectionKey,
+      name: r.name,
+      removedNested: r.removedNested,
+      version: r.version,
+      section: {
+        key: r.sectionKey,
+        htmlContent: r.htmlContent,
+        isEdited: true,
+        subsections: listSubsections(r.htmlContent),
+        subsectionTitles: sectionTitlesOf(r.htmlContent).subsectionTitles,
         lockedSubsections: lockedSubsectionNames(r.sectionKey, r.htmlContent),
       },
     };

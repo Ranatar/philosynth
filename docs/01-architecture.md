@@ -276,9 +276,10 @@ interface EditPlan {
 
 interface EditStep {
   type: "delete" | "regen" | "add" | "regen_subsection" | "regen_mode"
-      | "edit_element" | "refine_element";     // 10.2 — шаги мельче раздела
+      | "edit_element" | "refine_element"      // 10.2 — шаги мельче раздела
+      | "delete_element" | "delete_subsection"; // 15.2 — удаления мельче раздела
   target: string;          // sectionKey | "sectionKey:subsectionName" |
-                           // "modeKey:index" | "kind:elementId" (10.2)
+                           // "modeKey:index" | "kind:elementId" (10.2, 15.2)
   status: "pending" | "confirmed" | "running" | "done" | "skipped" | "failed";
   context?: string;        // secCtx шага; у regen_subsection — пожелание;
                            // у refine_element — довод рекомендации
@@ -295,6 +296,22 @@ interface EditStep {
   cascadeGenerated: boolean; // true = шаг добавлен автоматически каскадом
 }
 ```
+
+**Удаления мельче раздела (беседа 15.2, Д-71).** `delete_element`
+(категория, тезис, термин глоссария — цель «kind:elementId») и
+`delete_subsection` («sectionKey:имя») — отдельные типы, НЕ под `delete`:
+у того цель различается по «:» (раздел либо результат режима), и шаг
+элемента был бы принят за режимный. Оба бесплатны (`FREE_STEP_TYPES`),
+зовут те же сервисы, что кнопки редактора (`deleteElement` — транзакция со
+снимком версии и каскадом по ссылкам без FK; `deleteSubsection` — точное
+имя, замки вложенных, версия раздела); каскад — от раздела-хозяина;
+`delete_element` исполняется раньше правок элементов, `delete_subsection`
+— на месте хозяина перед его `regen_subsection`. Рекомендация «удалить»
+исполняется ими. Запрещено одним планом: правка и удаление одного
+элемента, перегенерация и удаление одного подраздела, удаление в разделе,
+который тот же план перегенерирует или удаляет целиком. Восстановления
+удалённого элемента из снимка нет (Огр-13); удалённый подраздел
+перегенерация раздела возвращает по карте подразделов.
 
 **Шаги мельче раздела (беседа 10.2).** `edit_element` применяет ГОТОВЫЙ текст к
 полю элемента: модель не зовётся, квота не расходуется, стоимость 0.

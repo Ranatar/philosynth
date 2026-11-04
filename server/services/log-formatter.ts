@@ -334,9 +334,10 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         const idx = s.indexOf(": ");
         const kind = idx > 0 ? s.slice(0, idx) : s;
         const label = idx > 0 ? s.slice(idx + 2) : s;
-        if (kind === "delete") acts.remove.push(label);
+        if (kind === "delete" || kind === "delete_element" || kind === "delete_subsection")
+          acts.remove.push(label); // 15.2: удаления мельче раздела — тоже «Удалено»
         else if (kind === "add") acts.add.push(label);
-        else acts.regen.push(label); // regen | regen_subsection | regen_mode
+        else acts.regen.push(label); // regen | regen_subsection | regen_mode | edit/refine_element
       }
       if (acts.regen.length) lines.push(tl("server.logFormatter.regenerated", "  Перегенерировано: ") + acts.regen.join(", "));
       if (acts.remove.length) lines.push(tl("server.logFormatter.deleted", "  Удалено: ") + acts.remove.join(", "));

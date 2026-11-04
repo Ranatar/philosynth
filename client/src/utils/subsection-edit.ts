@@ -19,6 +19,11 @@
  * передаёт draft в onSubsectionView. Клиент по-прежнему ничего не собирает
  * сверх ядра санитайзера, общего с сервером (packages/shared/utils/
  * doc-markup-sanitize.ts); сервер чистит повторно.
+ *
+ * 15.2 (Д-71): «Удалить подраздел» в карточке правки — второй шаг
+ * (deleteArmed: «Точно удалить?» + «Отмена», клик мимо карточки снимает) и
+ * фаза deleting (DELETE идёт). Удалённый подраздел исчезает из раздела —
+ * после перечитки разделов правке нечего рисовать (состояние снимается).
  */
 import { ApiError } from "../api/client";
 import { tl } from "@philosynth/shared/i18n/t";
@@ -31,8 +36,9 @@ export interface SubsectionEditState {
   sectionKey: string;
   name: string;
   /** loading — исходник ещё едет; ready — поле открыто; saving — PATCH идёт;
-   *  saved — сохранено, но серверу было что сказать (warnings) */
-  phase: "loading" | "ready" | "saving" | "saved";
+   *  saved — сохранено, но серверу было что сказать (warnings);
+   *  deleting — DELETE идёт (15.2) */
+  phase: "loading" | "ready" | "saving" | "saved" | "deleting";
   /** Разметка в поле (исходник либо то, что человек успел набрать) */
   draft: string;
   /** Вложенные подразделы, стоящие в исходнике строками-ссылками */
@@ -46,7 +52,13 @@ export interface SubsectionEditState {
   notes?: string[] | undefined;
   /** 13.1: вид формы; нет поля — rich */
   view?: SubsectionEditView | undefined;
+  /** 15.2: второй шаг удаления взведён («Точно удалить?» на месте кнопки) */
+  deleteArmed?: boolean | undefined;
 }
+
+/** 15.2: ход второго шага удаления из карточки правки (кнопки — часть строки
+ *  HTML раздела, обработчики — делегированием в SectionView) */
+export type SubsectionDeleteStep = "arm" | "disarm" | "confirm";
 
 export interface SubsectionRef {
   sectionKey: string;
@@ -60,9 +72,13 @@ function detailOf(err: ApiError, field: string): string | null {
 }
 
 /** Текст отказа по кодам 03 §4.3; у SECTION_TABLE_LOCKED сообщение сервера
- *  уже говорит, ЧЕМ править, — его и показываем. */
-export function subsectionErrorText(err: unknown): string {
-  if (!(err instanceof ApiError)) return tl("utils.subsectionEdit.saveFailed", "Не удалось сохранить подраздел.");
+ *  уже говорит, ЧЕМ править, — его и показываем. 15.2: те же коды у
+ *  удаления (verb — «удалить»). */
+export function subsectionErrorText(err: unknown, verb: "save" | "delete" = "save"): string {
+  const failed = verb === "delete"
+    ? tl("utils.subsectionEdit.deleteFailed", "Не удалось удалить подраздел.")
+    : tl("utils.subsectionEdit.saveFailed", "Не удалось сохранить подраздел.");
+  if (!(err instanceof ApiError)) return failed;
   if (err.code === "GENERATION_IN_PROGRESS")
     return tl("utils.subsectionEdit.lockedGenerating", "Генерация ещё идёт — правка подраздела заблокирована.");
   if (err.code === "FORBIDDEN") return tl("utils.subsectionEdit.ownerOnly", "Править концепцию может только владелец.");
@@ -74,7 +90,7 @@ export function subsectionErrorText(err: unknown): string {
   }
   if (err.code === "NOT_FOUND")
     return tl("utils.subsectionEdit.subsectionGone", "Подраздел не найден — документ изменился. Закройте правку и откройте её заново.");
-  return err.message || tl("utils.subsectionEdit.saveFailed", "Не удалось сохранить подраздел.");
+  return err.message || failed;
 }
 
 /** 12.4 (Д-34): заметки о побочных следствиях правки (ответ 12.1) */

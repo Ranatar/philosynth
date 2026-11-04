@@ -14,6 +14,8 @@
  *      PATCH …; ответ несёт элемент, impact, АДДИТИВНО version и htmlSync
  *      (какие таблицы перерисованы, какие поля до документа не дошли);
  *  - deleteEdge → DELETE /edges/:edgeId → { ok, impact, version, htmlSync };
+ *  - deleteElement(kind) → DELETE /categories/:id | /theses/:id | /glossary/:id →
+ *      DeleteElementResult { ok, cascade, impact, version, htmlSync } (15.2, Д-71);
  *  - createEdge → POST /edges { sourceId, targetId, … } → 201 { edge, impact,
  *      htmlSync } (7.1; version нет — состояния «до» у новой строки нет);
  *  - getVersionHistory → GET /elements/:type/:elementId/versions →
@@ -40,6 +42,7 @@ import type {
   AutoRenameInput,
   AutoRenameResult,
   CategoryUpdateInput,
+  DeleteElementResult,
   EdgeCreateInput,
   EdgeUpdateInput,
   ElementVersion,
@@ -53,6 +56,7 @@ import type {
 } from "@philosynth/shared/types/elements";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
+import type { DeletableElementKind } from "@philosynth/shared/constants/edit-steps";
 
 const base = (synthesisId: string): string =>
   `/syntheses/${encodeURIComponent(synthesisId)}`;
@@ -155,6 +159,22 @@ export function deleteEdge(
 ): Promise<DeleteEdgeResponse> {
   return apiDelete<DeleteEdgeResponse>(
     `${base(synthesisId)}/edges/${encodeURIComponent(edgeId)}`,
+  );
+}
+
+/** 15.2 (Д-71): удаление категории / тезиса / термина (связь — deleteEdge). */
+const DELETE_PATH: Record<DeletableElementKind, string> = {
+  category: "categories",
+  thesis: "theses",
+  glossary_term: "glossary",
+};
+export function deleteElement(
+  synthesisId: string,
+  kind: DeletableElementKind,
+  elementId: string,
+): Promise<DeleteElementResult> {
+  return apiDelete<DeleteElementResult>(
+    `${base(synthesisId)}/${DELETE_PATH[kind]}/${encodeURIComponent(elementId)}`,
   );
 }
 
