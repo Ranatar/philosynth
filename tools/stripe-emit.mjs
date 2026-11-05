@@ -8,7 +8,7 @@
  * 6.1). Этот скрипт и есть «Stripe, который прислал событие».
  *
  *   node tools/stripe-emit.mjs invoice.paid                  <sub_…>
- *   node tools/stripe-emit.mjs customer.subscription.updated <sub_…> [--status active] [--cancel-at-period-end]
+ *   node tools/stripe-emit.mjs customer.subscription.updated <sub_…> [--status active] [--cancel-at-period-end] [--price price_…]
  *   node tools/stripe-emit.mjs customer.subscription.deleted <sub_…>
  *   node tools/stripe-emit.mjs payment_intent.succeeded      <pi_…>   (сервер отвечает 200 handled:false —
  *                                                                        пополнение подтверждает /topup/confirm, а не webhook)
@@ -18,6 +18,8 @@
  *        --period-start S --period-end S   (unix-секунды, перебивают --period-days)
  *        --status S        (subscription.updated: active|past_due|canceled|trialing|incomplete|unpaid; умолчание active)
  *        --cancel-at-period-end            (subscription.updated: флаг true)
+ *        --price <price_…>  (subscription.updated: items.data[0].price.id — 15.4 Д-75: сервер
+ *                            переносит plan_id на план с этим stripe_price_id; без опции items нет)
  *        --dry-run         (напечатать тело и подпись, не отправлять)
  *
  * Подпись Stripe-Signature ставится, если задан STRIPE_WEBHOOK_SECRET
@@ -59,6 +61,7 @@ export function buildEvent(type, id, opts = {}) {
     case "customer.subscription.updated":
       object = { id, object: "subscription", status: opts.status ?? "active", current_period_start: start, current_period_end: end,
         cancel_at_period_end: Boolean(opts.cancelAtPeriodEnd) };
+      if (opts.price) object.items = { object: "list", data: [{ id: `si_${randomBytes(6).toString("hex")}`, object: "subscription_item", price: { id: opts.price, object: "price" } }] };
       break;
     case "customer.subscription.deleted":
       object = { id, object: "subscription", status: "canceled", current_period_start: start, current_period_end: end,
@@ -97,6 +100,7 @@ function parseArgs(argv) {
     else if (a === "--period-end") o.periodEnd = Number(take());
     else if (a === "--status") o.status = take();
     else if (a === "--cancel-at-period-end") o.cancelAtPeriodEnd = true;
+    else if (a === "--price") o.price = take();
     else if (a === "--dry-run") o.dryRun = true;
     else if (a === "--help" || a === "-h") o.help = true;
     else if (a.startsWith("--")) { console.error(`stripe-emit: неизвестная опция ${a}`); process.exit(2); }
@@ -111,7 +115,7 @@ if (isMain) {
   const [type, id] = args.positional;
   if (args.help || !type || !id) {
     console.log(`Отправщик webhook-событий Stripe на стенд.
-  node tools/stripe-emit.mjs <событие> <id> [--url …] [--period-days N] [--status S] [--cancel-at-period-end] [--dry-run]
+  node tools/stripe-emit.mjs <событие> <id> [--url …] [--period-days N] [--status S] [--cancel-at-period-end] [--price price_…] [--dry-run]
   события: ${EVENTS.join(", ")}
   id: sub_… для invoice/subscription, pi_… для payment_intent
   подпись ставится при непустом STRIPE_WEBHOOK_SECRET; иначе — без подписи (сервер вне production её не требует).`);

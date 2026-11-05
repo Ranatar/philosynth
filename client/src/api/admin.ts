@@ -12,6 +12,13 @@
  *      409 SELF_ROLE_CHANGE (своя роль) / 409 LAST_ADMIN (последний админ)
  *  - getAuditLog → GET  /auth/audit ?limit → { entries } (новые первыми)
  *  - getMailOutbox → GET /auth/mail-outbox ?limit → { counts, rows } (15.3)
+ *  - 15.4 (Д-74), вкладка «Тарифы» (server/routes/billing.ts, requireAdmin):
+ *    listAdminPlans → GET /billing/admin/plans → { plans: AdminPlanRow[] }
+ *    updatePlan     → PATCH /billing/admin/plans/:id PlanUpdateInput → AdminPlanResult
+ *        409 PLAN_HAS_SUBSCRIPTIONS (details.lockedFields) / 400 VALIDATION_ERROR
+ *        (details по полям, economics) / 503 STRIPE_UNAVAILABLE
+ *    createPlanEdition → POST /billing/admin/plans/:id/editions PlanEditionInput → AdminPlanResult
+ *    createPlan     → POST /billing/admin/plans PlanCreateInput → AdminPlanResult
  *
  * ApiError пробрасывается как есть — вкладка показывает err.message.
  */
@@ -21,8 +28,16 @@ import type {
   MailOutboxView,
   UserRole,
 } from "@philosynth/shared/types/admin";
+import type {
+  AdminPlanResult,
+  AdminPlanRow,
+  AdminPlansView,
+  PlanCreateInput,
+  PlanEditionInput,
+  PlanUpdateInput,
+} from "@philosynth/shared/types/billing";
 
-import { apiGet, apiPost } from "./client";
+import { apiGet, apiPatch, apiPost } from "./client";
 
 export interface ListUsersQuery {
   query?: string;
@@ -63,4 +78,22 @@ export function getAuditLog(limit = 50): Promise<AdminAuditEntry[]> {
  *  без тел (GET /auth/mail-outbox ?limit=, requireAdmin). */
 export function getMailOutbox(limit = 50): Promise<MailOutboxView> {
   return apiGet<MailOutboxView>("/auth/mail-outbox", { limit });
+}
+
+/* ── 15.4 (Д-74): тарифы админкой и редакциями ─────────────────────────── */
+
+export function listAdminPlans(): Promise<AdminPlanRow[]> {
+  return apiGet<AdminPlansView>("/billing/admin/plans").then((r) => r.plans);
+}
+
+export function updatePlan(planId: string, input: PlanUpdateInput): Promise<AdminPlanResult> {
+  return apiPatch<AdminPlanResult>(`/billing/admin/plans/${encodeURIComponent(planId)}`, input);
+}
+
+export function createPlanEdition(planId: string, input: PlanEditionInput): Promise<AdminPlanResult> {
+  return apiPost<AdminPlanResult>(`/billing/admin/plans/${encodeURIComponent(planId)}/editions`, input);
+}
+
+export function createPlan(input: PlanCreateInput): Promise<AdminPlanResult> {
+  return apiPost<AdminPlanResult>("/billing/admin/plans", input);
 }

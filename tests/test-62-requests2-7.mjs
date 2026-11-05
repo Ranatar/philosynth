@@ -557,7 +557,7 @@ try {
   }
   await db.delete(subscriptionPlans).where(eq(subscriptionPlans.name, "starter62"));
   const [plan] = await db.insert(subscriptionPlans).values({
-    name: "starter62", displayName: "Starter62", priceUsd: "9.00", billingPeriod: "month",
+    name: "starter62", family: "starter62", displayName: "Starter62", priceUsd: "9.00", billingPeriod: "month",
     quotaSyntheses: 3, quotaRegenerations: 10, quotaModes: 5, quotaEnrichments: 20, stripePriceId: "price_starter_62",
   }).returning();
   await logout();

@@ -42,10 +42,11 @@
  * беседой в globals.css часть 3).
  */
 import type { AdminAuditEntry, AdminUserRow, MailOutboxRow, MailOutboxView, UserRole } from "@philosynth/shared/types/admin";
+import type { AdminPlanRow, BillingPeriod, PlanCreateInput, PlanFieldsInput } from "@philosynth/shared/types/billing";
 import type { PromptTemplate, SynthesisConfig } from "@philosynth/shared/types/prompts";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
-import { getAuditLog, getMailOutbox, listUsers, setUserRole } from "../api/admin";
+import { createPlan, createPlanEdition, getAuditLog, getMailOutbox, listAdminPlans, listUsers, setUserRole, updatePlan } from "../api/admin";
 import { ApiError } from "../api/client";
 import {
   type CatalogType,
@@ -68,7 +69,8 @@ import {
 } from "../api/prompts";
 import { useAuthStore } from "../stores/auth-store";
 import { useSecondStep } from "../hooks/useSecondStep";
-import { fmtDateShort, fmtInt } from "../utils/format";
+import { periodWord } from "../components/billing/PlansTable";
+import { fmtDateShort, fmtInt, fmtMoney } from "../utils/format";
 import {
   extractPlaceholders,
   missingPlaceholders,
@@ -1196,6 +1198,11 @@ const ACTION_LABELS = (): Record<string, string> => ({
   "user.role.changed": tl("adminPromptsPage.auditRoleChanged", "роль изменена"),
   "user.bootstrapped": tl("adminPromptsPage.auditFirstAdmin", "первый администратор заведён"),
   "account.deleted": tl("adminPromptsPage.auditAccountDeleted", "аккаунт удалён"),
+  // 15.4 (Д-74): тарифы; plan.seeded — посев 8.3 (actor пуст)
+  "plan.seeded": tl("adminPromptsPage.auditPlanSeeded", "тариф посеян"),
+  "plan.created": tl("adminPromptsPage.auditPlanCreated", "тариф создан"),
+  "plan.updated": tl("adminPromptsPage.auditPlanUpdated", "тариф изменён"),
+  "plan.edition": tl("adminPromptsPage.auditPlanEdition", "новая редакция тарифа"),
 });
 
 /** Класс бейджа роли (литералы вне JSX — css-parity-audit) */
@@ -1576,9 +1583,461 @@ function MailTab() {
   );
 }
 
+/* ── Вкладка «Тарифы» (15.4, Д-74/Д-75) ──────────────────────────────── */
+
+/** Поля формы тарифа — строками (как в input), числа разбираются при отправке */
+interface PlanFormState {
+  displayName: string;
+  priceUsd: string;
+  billingPeriod: BillingPeriod;
+  quotaSyntheses: string;
+  quotaRegenerations: string;
+  quotaModes: string;
+  quotaEnrichments: string;
+  isActive: boolean;
+}
+
+type PlanNumField = "priceUsd" | "quotaSyntheses" | "quotaRegenerations" | "quotaModes" | "quotaEnrichments";
+/** Поля, запертые при живых подписках (= PLAN_LOCKED_FIELDS сервера) */
+const PLAN_LOCKED: readonly (PlanNumField | "billingPeriod")[] = ["priceUsd", "billingPeriod", "quotaSyntheses", "quotaRegenerations", "quotaModes", "quotaEnrichments"];
+
+const QUOTA_FIELDS: readonly { key: Exclude<PlanNumField, "priceUsd">; label: () => string }[] = [
+  { key: "quotaSyntheses", label: () => tl("adminPromptsPage.planQuotaSyntheses", "Синтезов") },
+  { key: "quotaRegenerations", label: () => tl("adminPromptsPage.planQuotaRegenerations", "Перегенераций") },
+  { key: "quotaModes", label: () => tl("adminPromptsPage.planQuotaModes", "Режимов") },
+  { key: "quotaEnrichments", label: () => tl("adminPromptsPage.planQuotaEnrichments", "Обогащений") },
+];
+
+function planFormOf(p: AdminPlanRow): PlanFormState {
+  return {
+    displayName: p.displayName,
+    priceUsd: p.priceUsd.toFixed(2),
+    billingPeriod: p.billingPeriod,
+    quotaSyntheses: String(p.quotaSyntheses),
+    quotaRegenerations: String(p.quotaRegenerations),
+    quotaModes: String(p.quotaModes),
+    quotaEnrichments: String(p.quotaEnrichments),
+    isActive: p.isActive,
+  };
+}
+
+const EMPTY_PLAN_FORM: PlanFormState = {
+  displayName: "", priceUsd: "", billingPeriod: "month",
+  quotaSyntheses: "", quotaRegenerations: "", quotaModes: "", quotaEnrichments: "", isActive: true,
+};
+
+/** Числа формы → PlanFieldsInput; пустое поле не шлётся (сервер берёт прежнее) */
+function planFieldsOf(f: PlanFormState): PlanFieldsInput {
+  const out: PlanFieldsInput = { displayName: f.displayName.trim(), billingPeriod: f.billingPeriod };
+  if (f.priceUsd.trim() !== "") out.priceUsd = Number(f.priceUsd);
+  for (const q of QUOTA_FIELDS) if (f[q.key].trim() !== "") out[q.key] = Number(f[q.key]);
+  return out;
+}
+
+function quotasText(p: AdminPlanRow): string {
+  return `${fmtInt(p.quotaSyntheses)} / ${fmtInt(p.quotaRegenerations)} / ${fmtInt(p.quotaModes)} / ${fmtInt(p.quotaEnrichments)}`;
+}
+
+/** Класс бейджа «открыт/закрыт» (литералы вне JSX — css-parity-audit) */
+function planOpenClass(open: boolean): string {
+  return open ? "cert-badge gold" : "cert-badge";
+}
+
+/** Поля тарифа одной формой: правка на месте, новая редакция, новое семейство.
+ *  lockedHint — подсказка у запертых полей (живые подписки) */
+function PlanFields({
+  form, onChange, locked, lockedHint, busy, idPrefix, withActive,
+}: {
+  form: PlanFormState;
+  onChange: (next: PlanFormState) => void;
+  locked: boolean;
+  lockedHint?: string;
+  busy: boolean;
+  idPrefix: string;
+  withActive: boolean;
+}) {
+  const lockedTitle = locked ? lockedHint : undefined;
+  const isLocked = (k: PlanNumField | "billingPeriod") => locked && PLAN_LOCKED.includes(k);
+  return (
+    <div className="form-grid" data-testid={`${idPrefix}-fields`}>
+      <div className="form-group">
+        <label className="form-label" htmlFor={`${idPrefix}-displayName`}>{tl("adminPromptsPage.planDisplayName", "Название")}</label>
+        <input
+          id={`${idPrefix}-displayName`}
+          className="form-input"
+          value={form.displayName}
+          maxLength={60}
+          disabled={busy}
+          onChange={(e) => onChange({ ...form, displayName: e.target.value })}
+          data-testid={`${idPrefix}-displayName`}
+        />
+      </div>
+      <div className="form-group">
+        <label className="form-label" htmlFor={`${idPrefix}-priceUsd`}>{tl("adminPromptsPage.planPrice", "Цена, $ за период")}</label>
+        <div className="plan-field-row">
+          <input
+            id={`${idPrefix}-priceUsd`}
+            className="form-input"
+            type="number"
+            min={0.01}
+            step={0.01}
+            value={form.priceUsd}
+            disabled={busy || isLocked("priceUsd")}
+            title={isLocked("priceUsd") ? lockedTitle : undefined}
+            onChange={(e) => onChange({ ...form, priceUsd: e.target.value })}
+            data-testid={`${idPrefix}-priceUsd`}
+            data-locked={isLocked("priceUsd") ? "1" : undefined}
+          />
+          <select
+            className="form-select"
+            value={form.billingPeriod}
+            disabled={busy || isLocked("billingPeriod")}
+            title={isLocked("billingPeriod") ? lockedTitle : undefined}
+            onChange={(e) => onChange({ ...form, billingPeriod: e.target.value as BillingPeriod })}
+            aria-label={tl("adminPromptsPage.planPeriod", "Период")}
+            data-testid={`${idPrefix}-billingPeriod`}
+            data-locked={isLocked("billingPeriod") ? "1" : undefined}
+          >
+            <option value="month">{tl("adminPromptsPage.planPerMonth", "в месяц")}</option>
+            <option value="year">{tl("adminPromptsPage.planPerYear", "в год")}</option>
+          </select>
+        </div>
+      </div>
+      {QUOTA_FIELDS.map((q) => (
+        <div className="form-group" key={q.key}>
+          <label className="form-label" htmlFor={`${idPrefix}-${q.key}`}>{q.label()}</label>
+          <input
+            id={`${idPrefix}-${q.key}`}
+            className="form-input"
+            type="number"
+            min={0}
+            step={1}
+            value={form[q.key]}
+            disabled={busy || isLocked(q.key)}
+            title={isLocked(q.key) ? lockedTitle : undefined}
+            onChange={(e) => onChange({ ...form, [q.key]: e.target.value })}
+            data-testid={`${idPrefix}-${q.key}`}
+            data-locked={isLocked(q.key) ? "1" : undefined}
+          />
+        </div>
+      ))}
+      {withActive && (
+        <div className="form-group full">
+          <label className="visibility-flag" data-testid={`${idPrefix}-isActive-label`}>
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              disabled={busy}
+              onChange={(e) => onChange({ ...form, isActive: e.target.checked })}
+              data-testid={`${idPrefix}-isActive`}
+            />
+            <span>{tl("adminPromptsPage.planOpenForPurchase", "Открыт для покупки (виден на странице биллинга, подписка оформляется)")}</span>
+          </label>
+        </div>
+      )}
+      {locked && (
+        <div className="form-group full">
+          <div className="form-sublabel" data-testid={`${idPrefix}-locked-note`}>{lockedHint}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlansTab() {
+  const [plans, setPlans] = useState<AdminPlanRow[] | null>(null);
+  const [status, setStatus] = useState<StatusMsg>(null);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  /** Открытая форма: правка / новая редакция у строки, либо новое семейство */
+  const [open, setOpen] = useState<{ kind: "edit" | "edition"; id: string } | { kind: "create" } | null>(null);
+  const [form, setForm] = useState<PlanFormState>(EMPTY_PLAN_FORM);
+  const [newName, setNewName] = useState("");
+  const editionStep = useSecondStep<true>(busy);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setPlans(await listAdminPlans());
+    } catch (err) {
+      setStatus({ text: errText(err, tl("adminPromptsPage.plansLoadFailed", "Не удалось загрузить тарифы")), kind: "err" });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const lockedHint = tl("adminPromptsPage.planLockedHint", "У тарифа есть живые подписки: цена, период и квоты правятся только новой редакцией — подписчики дорабатывают на своих условиях.");
+
+  function startEdit(p: AdminPlanRow): void {
+    setStatus(null);
+    editionStep.disarm();
+    setForm(planFormOf(p));
+    setOpen({ kind: "edit", id: p.id });
+  }
+  function startEdition(p: AdminPlanRow): void {
+    setStatus(null);
+    editionStep.disarm();
+    setForm({ ...planFormOf(p), isActive: true });
+    setOpen({ kind: "edition", id: p.id });
+  }
+  function startCreate(): void {
+    setStatus(null);
+    editionStep.disarm();
+    setForm(EMPTY_PLAN_FORM);
+    setNewName("");
+    setOpen({ kind: "create" });
+  }
+  function closeForm(): void {
+    editionStep.disarm();
+    setOpen(null);
+  }
+
+  async function submitEdit(p: AdminPlanRow): Promise<void> {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const r = await updatePlan(p.id, { ...planFieldsOf(form), isActive: form.isActive });
+      await load();
+      setOpen(null);
+      setStatus({
+        text: r.retiredPriceId
+          ? tl("adminPromptsPage.planSavedNewPrice", "{name}: сохранено; в Stripe заведён новый Price, прежний {retired} выключен", { name: r.plan.name, retired: r.retiredPriceId })
+          : tl("adminPromptsPage.planSaved", "{name}: сохранено", { name: r.plan.name }),
+        kind: "ok",
+      });
+    } catch (err) {
+      setStatus({ text: errText(err, tl("adminPromptsPage.planSaveFailed", "Не удалось сохранить тариф")), kind: "err" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitEdition(p: AdminPlanRow): Promise<void> {
+    if (editionStep.armed !== true) {
+      editionStep.arm(true);
+      return;
+    }
+    setBusy(true);
+    setStatus(null);
+    try {
+      const r = await createPlanEdition(p.id, planFieldsOf(form));
+      await load();
+      editionStep.disarm();
+      setOpen(null);
+      setStatus({
+        text: tl("adminPromptsPage.planEditionCreated", "Редакция {name} заведена и открыта для покупки; {previous} закрыта, её подписчики ({live}) остаются на своих условиях", {
+          name: r.plan.name, previous: r.previous?.name ?? p.name, live: r.previous?.liveSubscriptions ?? p.liveSubscriptions,
+        }),
+        kind: "ok",
+      });
+    } catch (err) {
+      setStatus({ text: errText(err, tl("adminPromptsPage.planEditionFailed", "Не удалось завести редакцию")), kind: "err" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitCreate(): Promise<void> {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const f = planFieldsOf(form);
+      const input: PlanCreateInput = {
+        name: newName.trim(),
+        displayName: f.displayName ?? "",
+        priceUsd: f.priceUsd ?? 0,
+        billingPeriod: f.billingPeriod ?? "month",
+        quotaSyntheses: f.quotaSyntheses ?? 0,
+        quotaRegenerations: f.quotaRegenerations ?? 0,
+        quotaModes: f.quotaModes ?? 0,
+        quotaEnrichments: f.quotaEnrichments ?? 0,
+        isActive: form.isActive,
+      };
+      const r = await createPlan(input);
+      await load();
+      setOpen(null);
+      setStatus({ text: tl("adminPromptsPage.planCreated", "Тариф {name} заведён (Product и Price в Stripe созданы)", { name: r.plan.name }), kind: "ok" });
+    } catch (err) {
+      setStatus({ text: errText(err, tl("adminPromptsPage.planCreateFailed", "Не удалось завести тариф")), kind: "err" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const openCount = (plans ?? []).filter((p) => p.isActive).length;
+
+  return (
+    <div className="form-grid" data-testid="plans-tab">
+      <div className="form-group full">
+        <div className="form-label">{tl("adminPromptsPage.plansTitle", "Тарифы и редакции")}</div>
+        <div className="form-sublabel">
+          {tl("adminPromptsPage.plansNote", "Источник истины о тарифах — эта таблица, не код: посев заводит только отсутствующие. Название и «открыт для покупки» правятся на месте; цена, период и квоты — на месте лишь у тарифа без живых подписок (новая цена заводит новый Price в Stripe, прежний выключается). У тарифа с подписчиками — «Новая редакция»: новая строка и новый Price, прежняя закрывается для покупки, её подписчики дорабатывают на своих условиях. Квоты: синтезов / перегенераций / режимов / обогащений за период.")}
+        </div>
+        {status && <Status msg={status} />}
+        <div
+          className="data-table-wrap"
+          data-testid="plans-table"
+          ref={(el) => {
+            editionStep.ref.current = el;
+          }}
+        >
+          <div className="data-table-toolbar">
+            <span className="form-sublabel" data-testid="plans-count">
+              {plans ? tl("adminPromptsPage.plansCount", "редакций: {total}, открыто для покупки: {open}", { total: plans.length, open: openCount }) : ""}
+            </span>
+            <span className="plan-toolbar-btns">
+              <button type="button" className="action-btn" disabled={loading || busy} onClick={() => void load()} data-testid="plans-refresh">
+                {loading ? tl("common.loading", "Загрузка…") : tl("adminPromptsPage.refresh", "↻ Обновить")}
+              </button>{" "}
+              <button type="button" className="action-btn" disabled={busy} onClick={startCreate} data-testid="plans-new-family">
+                {tl("adminPromptsPage.planNewFamily", "+ Новый тариф")}
+              </button>
+            </span>
+          </div>
+          {open?.kind === "create" && (
+            <div className="plan-form" data-testid="plan-create-form">
+              <div className="form-grid">
+                <div className="form-group full">
+                  <label className="form-label" htmlFor="plan-create-name">{tl("adminPromptsPage.planName", "Имя (идентификатор семейства)")}</label>
+                  <input
+                    id="plan-create-name"
+                    className="form-input"
+                    value={newName}
+                    maxLength={40}
+                    disabled={busy}
+                    placeholder={tl("adminPromptsPage.planNamePlaceholder", "латиница, цифры, «-» и «_»: team, pro-plus…")}
+                    onChange={(e) => setNewName(e.target.value)}
+                    data-testid="plan-create-name"
+                  />
+                </div>
+              </div>
+              <PlanFields form={form} onChange={setForm} locked={false} busy={busy} idPrefix="plan-create" withActive />
+              <div className="inline-edit-actions">
+                <button type="button" className="action-btn primary" disabled={busy} onClick={() => void submitCreate()} data-testid="plan-create-submit">
+                  {busy ? tl("common.loading", "Загрузка…") : tl("adminPromptsPage.planCreateSubmit", "Завести тариф")}
+                </button>{" "}
+                <button type="button" className="action-btn" disabled={busy} onClick={closeForm} data-testid="plan-create-cancel">
+                  {tl("common.cancel", "Отмена")}
+                </button>
+              </div>
+            </div>
+          )}
+          {plans === null ? (
+            <div className="pool-status">{tl("common.loading", "Загрузка…")}</div>
+          ) : plans.length === 0 ? (
+            <div className="data-table-empty">{tl("adminPromptsPage.plansEmpty", "тарифов нет — посейте (npm run seed:plans) или заведите здесь")}</div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{tl("adminPromptsPage.planFamilyCol", "Семейство / редакция")}</th>
+                  <th>{tl("adminPromptsPage.planDisplayName", "Название")}</th>
+                  <th>{tl("adminPromptsPage.planPriceCol", "Цена")}</th>
+                  <th>{tl("adminPromptsPage.planQuotasCol", "Квоты")}</th>
+                  <th className="num">{tl("adminPromptsPage.planLiveCol", "Живых подписок")}</th>
+                  <th>{tl("adminPromptsPage.planOpenCol", "Покупка")}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {plans.map((p) => {
+                  const isEdit = open?.kind === "edit" && open.id === p.id;
+                  const isEdition = open?.kind === "edition" && open.id === p.id;
+                  const locked = p.liveSubscriptions > 0;
+                  return (
+                    <Fragment key={p.id}>
+                      <tr data-testid={`plan-row-${p.name}`} data-live={p.liveSubscriptions} data-open={p.isActive ? "1" : "0"}>
+                        <td className="plan-cell-name">
+                          <code>{p.name}</code>{" "}
+                          <span className="cert-badge">{tl("adminPromptsPage.planEditionBadge", "ред. {n}", { n: p.edition })}</span>
+                        </td>
+                        <td>{p.displayName}</td>
+                        <td className="plan-cell-price">{fmtMoney(p.priceUsd)} / {periodWord(p.billingPeriod)}</td>
+                        <td className="plan-quotas">{quotasText(p)}</td>
+                        <td className="num" data-testid={`plan-live-${p.name}`}>{fmtInt(p.liveSubscriptions)}</td>
+                        <td>
+                          <span className={planOpenClass(p.isActive)}>
+                            {p.isActive ? tl("adminPromptsPage.planOpen", "открыт") : tl("adminPromptsPage.planClosed", "закрыт")}
+                          </span>
+                        </td>
+                        <td className="num">
+                          <div className="plan-cell-actions">
+                            <button type="button" className="action-btn" disabled={busy} onClick={() => (isEdit ? closeForm() : startEdit(p))} data-testid={`plan-edit-${p.name}`}>
+                              {tl("adminPromptsPage.planEditBtn", "✎ Править")}
+                            </button>
+                            <button type="button" className={locked ? "action-btn primary" : "action-btn"} disabled={busy} onClick={() => (isEdition ? closeForm() : startEdition(p))} data-testid={`plan-edition-${p.name}`}>
+                              {tl("adminPromptsPage.planEditionBtn", "⧉ Новая редакция")}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isEdit && (
+                        <tr data-testid={`plan-edit-form-${p.name}`}>
+                          <td colSpan={7}>
+                            <div className="plan-form">
+                              <PlanFields form={form} onChange={setForm} locked={locked} lockedHint={lockedHint} busy={busy} idPrefix={`plan-edit-${p.name}`} withActive />
+                              <div className="inline-edit-actions">
+                                <button type="button" className="action-btn primary" disabled={busy} onClick={() => void submitEdit(p)} data-testid={`plan-edit-submit-${p.name}`}>
+                                  {busy ? tl("common.loading", "Загрузка…") : tl("common.save", "Сохранить")}
+                                </button>{" "}
+                                <button type="button" className="action-btn" disabled={busy} onClick={closeForm} data-testid={`plan-edit-cancel-${p.name}`}>
+                                  {tl("common.cancel", "Отмена")}
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {isEdition && (
+                        <tr data-testid={`plan-edition-form-${p.name}`}>
+                          <td colSpan={7}>
+                            <div className="plan-form">
+                              <div className="form-sublabel">
+                                {tl("adminPromptsPage.planEditionNote", "Новая редакция семейства «{family}»: поля ниже предзаполнены прежней редакцией. Будет создана строка {next} и новый Price в Stripe; {name} закроется для покупки.", {
+                                  family: p.family, next: `${p.family}-v${Math.max(...plans.filter((x) => x.family === p.family).map((x) => x.edition)) + 1}`, name: p.name,
+                                })}
+                              </div>
+                              <PlanFields form={form} onChange={setForm} locked={false} busy={busy} idPrefix={`plan-edition-${p.name}`} withActive={false} />
+                              {editionStep.armed === true && (
+                                <div className="transform-warn" data-testid={`plan-edition-warn-${p.name}`}>
+                                  {tl("adminPromptsPage.planEditionWarn", "Точно завести новую редакцию? Прежняя закроется для покупки, а её подписчики ({live}) останутся на прежних цене и квотах — на новую редакцию их никто не переводит.", { live: p.liveSubscriptions })}
+                                </div>
+                              )}
+                              <div className="inline-edit-actions">
+                                <button type="button" className={editionStep.armed === true ? "action-btn danger" : "action-btn primary"} disabled={busy} onClick={() => void submitEdition(p)} data-testid={`plan-edition-submit-${p.name}`}>
+                                  {busy
+                                    ? tl("common.loading", "Загрузка…")
+                                    : editionStep.armed === true
+                                      ? tl("adminPromptsPage.planEditionConfirm", "Точно завести?")
+                                      : tl("adminPromptsPage.planEditionSubmit", "Завести редакцию")}
+                                </button>{" "}
+                                <button type="button" className="action-btn" disabled={busy} onClick={closeForm} data-testid={`plan-edition-cancel-${p.name}`}>
+                                  {tl("common.cancel", "Отмена")}
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Страница ────────────────────────────────────────────────────────── */
 
-type Tab = "templates" | "configs" | "catalogs" | "access" | "mail";
+type Tab = "templates" | "configs" | "catalogs" | "access" | "mail" | "plans";
 
 /** Класс кнопки-вкладки (литералы вне className — css-parity-audit ловит
  *  строки внутри выражения className как имена классов) */
@@ -1593,6 +2052,7 @@ export function AdminPromptsPage() {
   const isCatalogs = tab === "catalogs";
   const isAccess = tab === "access";
   const isMail = tab === "mail"; // 15.3
+  const isPlans = tab === "plans"; // 15.4
   return (
     <div className="input-form" data-testid="admin-prompts-page">
       <h1 className="form-section-title">{tl("adminPromptsPage.promptRegistry", "Prompt Registry")}</h1>
@@ -1647,8 +2107,18 @@ export function AdminPromptsPage() {
         >
           {tl("adminPromptsPage.tabMail", "Почта")}
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isPlans}
+          className={tabClass(isPlans)}
+          onClick={() => setTab("plans")}
+          data-testid="tab-plans"
+        >
+          {tl("adminPromptsPage.tabPlans", "Тарифы")}
+        </button>
       </div>
-      {!isCatalogs && !isAccess && !isMail && (
+      {!isCatalogs && !isAccess && !isMail && !isPlans && (
         <div className="form-sublabel" style={{ marginBottom: 10 }}>
           {tl("adminPromptsPage.registryNote", "Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация сбрасывает кэш реестра — следующая генерация берёт новый текст.")}
         </div>
@@ -1661,6 +2131,8 @@ export function AdminPromptsPage() {
         <CatalogsTab />
       ) : isMail ? (
         <MailTab />
+      ) : isPlans ? (
+        <PlansTab />
       ) : (
         <AccessTab />
       )}

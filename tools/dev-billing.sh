@@ -251,14 +251,15 @@ step_vite() {
 step_seeds() {
   head_ "Посевы и администратор"
   if node -e 'const p=require("./package.json");process.exit(p.scripts&&p.scripts["seed:plans"]?0:1)' 2>/dev/null; then
-    # 8.3: посев идемпотентен (created/updated/skip/fail) — повторный запуск стенда обязан
-    # давать skip, иначе «одни skip» второго старта недостижимы (test-82 R3).
+    # 8.3: посев идемпотентен (created/skip/fail; 15.4: существующие строки не
+    # переписываются, `updated` нет) — повторный запуск стенда обязан давать
+    # skip, иначе «одни skip» второго старта недостижимы (test-82 R3).
     local seed_out seed_rc
     seed_out="$(npm run -s seed:plans 2>&1)"; seed_rc=$?
     printf '%s\n' "$seed_out" | sed 's/^/    /'
     if [ "$seed_rc" -ne 0 ]; then
       fail "npm run seed:plans завершился с ошибкой — см. вывод выше"
-    elif printf '%s' "$seed_out" | grep -Eq 'created=0, updated=0,'; then
+    elif printf '%s' "$seed_out" | grep -Eq 'created=0, skip='; then
       skip "тарифы уже посеяны (npm run seed:plans — skip)"
     else
       ok "тарифы посеяны (npm run seed:plans)"

@@ -91,6 +91,8 @@ export function toPlanDto(p: PlanRow): SubscriptionPlan {
   return {
     id: p.id,
     name: p.name,
+    family: p.family,
+    edition: p.edition,
     displayName: p.displayName,
     priceUsd: Number(p.priceUsd),
     billingPeriod: p.billingPeriod,
@@ -586,7 +588,8 @@ function invoicePeriod(inv: StripeInvoice): { start: Date; end: Date } | null {
 /**
  * invoice.paid → новый период: сброс счётчиков + границы периода +
  *   status='active' (первая оплата переводит 'incomplete' → 'active');
- * customer.subscription.updated → status/period/cancel_at_period_end;
+ * customer.subscription.updated → status/period/cancel_at_period_end и
+ *   (15.4, Д-75) plan_id по Price события — items.data[0].price.id;
  * customer.subscription.deleted → status='canceled'.
  * Неизвестная подписка/тип → handled:false (200 Stripe всё равно нужен).
  */
@@ -617,9 +620,32 @@ export async function handleStripeWebhook(event: StripeEvent): Promise<WebhookRe
       const sub = event.data.object as unknown as StripeSubscription;
       const row = await findByStripeId(sub.id);
       if (!row) return { handled: false };
+      // 15.4 (Д-75 п.2): Price из события → план по stripe_price_id. Найден и
+      // отличается от row.plan_id — подписка переносится на этот план (Stripe —
+      // источник истины о том, за что списывают); Price службе неизвестен —
+      // предупреждение в журнал, plan_id не трогается.
+      const priceId = sub.items?.data?.[0]?.price?.id ?? null;
+      let planId = row.planId;
+      let planChanged = false;
+      if (priceId) {
+        const [plan] = await db
+          .select({ id: subscriptionPlans.id, name: subscriptionPlans.name })
+          .from(subscriptionPlans)
+          .where(eq(subscriptionPlans.stripePriceId, priceId))
+          .limit(1);
+        if (!plan) {
+          console.warn(
+            `[billing] webhook customer.subscription.updated ${sub.id}: Price ${priceId} не соответствует ни одному тарифу subscription_plans — plan_id оставлен ${row.planId}`,
+          );
+        } else if (plan.id !== row.planId) {
+          planId = plan.id;
+          planChanged = true;
+        }
+      }
       await db
         .update(userSubscriptions)
         .set({
+          planId,
           status: mapStripeStatus(sub.status),
           currentPeriodStart: tsToDate(sub.current_period_start, row.currentPeriodStart),
           currentPeriodEnd: tsToDate(sub.current_period_end, row.currentPeriodEnd),
@@ -627,7 +653,7 @@ export async function handleStripeWebhook(event: StripeEvent): Promise<WebhookRe
           updatedAt: new Date(),
         })
         .where(eq(userSubscriptions.id, row.id));
-      return { handled: true, action: "updated", subscriptionId: row.id };
+      return { handled: true, action: planChanged ? "updated_plan" : "updated", subscriptionId: row.id };
     }
     case "customer.subscription.deleted": {
       const sub = event.data.object as unknown as StripeSubscription;

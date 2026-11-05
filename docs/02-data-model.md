@@ -825,11 +825,34 @@ CREATE INDEX idx_usage_synthesis ON api_usage(synthesis_id);
 > (ставки cost-estimator 1.1, верхняя модель) × BILLING_MARKUP ≤ price_usd`,
 > иначе fail — убыточный тариф не заводится. Каждая created/updated пишет
 > `admin_audit` `plan.seeded` (actor_id NULL, §2.29).
+>
+> **15.4 (2026-11-05, Д-74/Д-75) — источник истины о тарифах — ЭТА ТАБЛИЦА,
+> правка админкой и редакциями.** `plans.ts` — только начальный посев: сид
+> создаёт отсутствующие строки (`family = name`, `edition = 1`) и
+> существующие НЕ переписывает ни при каком расхождении (исхода `updated`
+> нет; расхождение — предупреждением по полям). Редакция тарифа — строка:
+> `family` — семейство (`starter`), `edition` — номер в семействе (1, 2, …;
+> `UNIQUE (family, edition)`), `name` — уникальное имя редакции (редакция 1
+> носит имя семейства, следующие — `<family>-v<N>`). Product в Stripe —
+> один на семейство (`metadata.philosynth_plan = family`), Price — на
+> редакцию (`lookup_key = philosynth_<name>`). Админка (03 §2.10,
+> `services/plan-admin.ts`): название и `is_active` («открыт для покупки»)
+> правятся на месте; цена, период и квоты — на месте только у редакции без
+> живых подписок (`status ≠ canceled`; новая цена/период → новый Price,
+> прежний выключается); у редакции с подписками — «новая редакция»: новая
+> строка с новым Price, прежняя `is_active=false`, её подписчики
+> дорабатывают на своих квотах и цене (`plan_id` не меняется; Price
+> прежней редакции в Stripe остаётся активным — по нему продлеваются).
+> Экономика и структура — одной функцией с сидом
+> (`config/plan-economics.ts`). След — `admin_audit` `plan.created` /
+> `plan.updated` / `plan.edition` (§2.29).
 
 ```sql
 CREATE TABLE subscription_plans (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name             TEXT NOT NULL UNIQUE,   -- 'starter', 'pro', 'academic'
+  name             TEXT NOT NULL UNIQUE,   -- имя РЕДАКЦИИ: 'starter' (ред. 1), 'starter-v2' … (15.4)
+  family           TEXT NOT NULL,          -- 15.4 (0016): семейство; у строк до миграции = name
+  edition          INT  NOT NULL DEFAULT 1, -- 15.4 (0016): номер редакции в семействе
   display_name     TEXT NOT NULL,          -- 'Starter', 'Pro', 'Academic'
   price_usd        NUMERIC(10, 2) NOT NULL,
   billing_period   TEXT NOT NULL DEFAULT 'month',  -- 'month'|'year'
@@ -837,15 +860,22 @@ CREATE TABLE subscription_plans (
   quota_regenerations INT NOT NULL,  -- перегенераций разделов за период
   quota_modes         INT NOT NULL,  -- запусков режимов за период
   quota_enrichments   INT NOT NULL,  -- обогащений элементов за период
-  stripe_price_id  TEXT NOT NULL,    -- Stripe Price ID
-  is_active        BOOLEAN NOT NULL DEFAULT true,
+  stripe_price_id  TEXT NOT NULL,    -- Stripe Price ID (Price редакции)
+  is_active        BOOLEAN NOT NULL DEFAULT true,  -- «открыт для покупки» (15.4)
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE UNIQUE INDEX uq_subscription_plans_family_edition ON subscription_plans(family, edition);  -- 15.4
 ```
 
 ### 2.23. user_subscriptions
 
 Активные подписки пользователей.
+
+> **15.4 (Д-75):** `plan_id` следует за Price подписки в Stripe: вебхук
+> `customer.subscription.updated` берёт `items.data[0].price.id`, находит
+> план по `stripe_price_id` и переносит `plan_id`, если он отличается;
+> неизвестный Price — предупреждение в журнал сервера, `plan_id` на месте.
+> Новая редакция тарифа (§2.22) подписчиков НЕ переводит — только Stripe.
 
 ```sql
 CREATE TABLE user_subscriptions (
@@ -1026,7 +1056,10 @@ CREATE TABLE admin_audit (
     -- prompt.version.activated, config.version.created,
     -- config.version.activated, taxonomy.type.updated,
     -- taxonomy.type.deleted, user.role.changed, user.bootstrapped,
-    -- account.deleted, plan.seeded (8.3: посев тарифов, actor_id NULL)
+    -- account.deleted, plan.seeded (8.3: посев тарифов, actor_id NULL),
+    -- plan.created, plan.updated, plan.edition (15.4: тарифы админкой;
+    -- target_id = name редакции; details — changed {поле: {from, to}},
+    -- previousPriceId / previousName, edition, stripePriceId)
   target_type TEXT NOT NULL,   -- 'prompt_template'|'synthesis_config'|'taxonomy_type'|'user'
                                -- |'subscription_plan' (8.3; target_id = name плана)
   target_id   TEXT,            -- ключ шаблона/конфига, id типа, id пользователя

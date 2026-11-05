@@ -30,23 +30,36 @@
  * Запуск: STRIPE_SECRET_KEY=sk_… npm run stripe:create-prices [-- --transfer]
  *   (или: npx tsx scripts/stripe-create-prices.ts). Код возврата: 1 при fail.
  * БД скрипту не нужна.
+ *
+ * 15.4 (Д-74): скрипт заводит Prices ТОЛЬКО для тарифов посева (plans.ts —
+ * редакция 1 каждого семейства); цены новых редакций и правок заводит
+ * админка (services/plan-admin.ts) теми же функциями plan-stripe.ts.
  */
 import {
   PLANS,
   priceEnvVarFor,
-  stripeIntervalFor,
   stripeLookupKeyFor,
-  stripeProductNameFor,
   type PlanDefinition,
 } from "../../server/config/plans.js";
 import { env } from "../../server/env.js";
+import {
+  STRIPE_PRODUCT_META_KEY,
+  createPriceForPlan,
+  ensureProductForFamily,
+  priceCents,
+  priceMatchesPlan,
+  stripeProductDescriptionFor,
+} from "../../server/services/plan-stripe.js";
 import {
   StripeError,
   isStripeConfigured,
   stripe,
   type StripePrice,
-  type StripeProduct,
 } from "../../server/services/stripe-client.js";
+
+// 15.4 (Д-74): устройство Product/Price вынесено в server/services/plan-stripe.ts —
+// общий слой с админкой тарифов; прежние экспорты скрипта сохранены (сторожа 4al/2av)
+export { STRIPE_PRODUCT_META_KEY, priceCents, priceMatchesPlan, stripeProductDescriptionFor };
 
 export type PriceOutcome = "created" | "skip" | "fail";
 
@@ -75,66 +88,17 @@ export interface CreatePricesOptions {
   plans?: readonly PlanDefinition[];
 }
 
-export const STRIPE_PRODUCT_META_KEY = "philosynth_plan";
-
-/** Цена плана в центах (NUMERIC(10,2) → целое). */
-export function priceCents(plan: PlanDefinition): number {
-  return Math.round(plan.priceUsd * 100);
-}
-
-/** Совпадает ли Price с описанием тарифа (сумма, валюта, период). */
-export function priceMatchesPlan(price: StripePrice, plan: PlanDefinition): boolean {
-  return (
-    price.unit_amount === priceCents(plan) &&
-    price.currency.toLowerCase() === "usd" &&
-    price.recurring !== null &&
-    price.recurring.interval === stripeIntervalFor(plan.billingPeriod) &&
-    (price.recurring.interval_count ?? 1) === 1
-  );
-}
-
 function describePrice(price: StripePrice): string {
   const amount = price.unit_amount === null ? "—" : `$${(price.unit_amount / 100).toFixed(2)}`;
   const period = price.recurring ? `/${price.recurring.interval}` : " (one_time)";
   return `${price.id}: ${amount} ${price.currency.toUpperCase()}${period}${price.active ? "" : ", inactive"}`;
 }
 
-async function findProduct(plan: PlanDefinition): Promise<StripeProduct | undefined> {
-  const list = await stripe.listProducts({ active: true, limit: 100 });
-  return list.data.find((p) => p.metadata?.[STRIPE_PRODUCT_META_KEY] === plan.name);
-}
-
-/**
- * 14.1 (Д-61): описание продукта — АНГЛИЙСКОЕ, одно на все языки (решение
- * владельца 2026-10-13): у Stripe одно описание на продукт, его видит любой
- * покупатель на странице оплаты и в счетах; tl() здесь неуместен — это не
- * текст ответа, а значение в чужой системе.
- */
-export function stripeProductDescriptionFor(plan: PlanDefinition): string {
-  return (
-    `PhiloSynth "${plan.displayName}" subscription: ${plan.quotaSyntheses} syntheses, ` +
-    `${plan.quotaRegenerations} regenerations, ${plan.quotaModes} modes, ` +
-    `${plan.quotaEnrichments} enrichments per ${plan.billingPeriod}`
-  );
-}
-
-/** Существующий продукт: описание (и имя) приводятся к plans.ts
- *  (POST /v1/products/:id) — прежде найденный продукт пропускался целиком,
- *  и русское описание 8.3 оставалось в Stripe навсегда (14.1, Д-61). */
-async function ensureProduct(plan: PlanDefinition): Promise<{ product: StripeProduct; updated: boolean }> {
-  const found = await findProduct(plan);
-  const name = stripeProductNameFor(plan);
-  const description = stripeProductDescriptionFor(plan);
-  if (found) {
-    if (found.description === description && found.name === name) return { product: found, updated: false };
-    return { product: await stripe.updateProduct(found.id, { name, description }), updated: true };
-  }
-  const product = await stripe.createProduct({
-    name,
-    description,
-    metadata: { [STRIPE_PRODUCT_META_KEY]: plan.name },
-  });
-  return { product, updated: false };
+/** Product семейства = name тарифа посева (редакция 1); описание — к plans.ts
+ *  (14.1, Д-61) — общий ensureProductForFamily (plan-stripe). */
+async function ensureProduct(plan: PlanDefinition): Promise<{ product: { id: string }; updated: boolean }> {
+  const r = await ensureProductForFamily(plan.name, plan);
+  return { product: r.product, updated: r.updated };
 }
 
 async function ensurePrice(plan: PlanDefinition, transfer: boolean): Promise<PlanPriceResult> {
@@ -165,16 +129,7 @@ async function ensurePrice(plan: PlanDefinition, transfer: boolean): Promise<Pla
           `будет заведена новая цена, ключ переедет на неё, прежняя станет inactive (оформленные подписки не тронуты).`,
       };
     }
-    const fresh = await stripe.createPrice({
-      productId: found.product,
-      unitAmountCents: priceCents(plan),
-      currency: "usd",
-      interval: stripeIntervalFor(plan.billingPeriod),
-      lookupKey,
-      transferLookupKey: true,
-      nickname: plan.displayName,
-      metadata: { [STRIPE_PRODUCT_META_KEY]: plan.name },
-    });
+    const fresh = await createPriceForPlan(found.product, plan, { transfer: true });
     if (found.active) await stripe.updatePrice(found.id, { active: false });
     return {
       name: plan.name,
@@ -187,15 +142,7 @@ async function ensurePrice(plan: PlanDefinition, transfer: boolean): Promise<Pla
   }
 
   const { product, updated: productUpdated } = await ensureProduct(plan);
-  const price = await stripe.createPrice({
-    productId: product.id,
-    unitAmountCents: priceCents(plan),
-    currency: "usd",
-    interval: stripeIntervalFor(plan.billingPeriod),
-    lookupKey,
-    nickname: plan.displayName,
-    metadata: { [STRIPE_PRODUCT_META_KEY]: plan.name },
-  });
+  const price = await createPriceForPlan(product.id, plan);
   return { name: plan.name, outcome: "created", envVar, priceId: price.id, productId: product.id, productUpdated };
 }
 

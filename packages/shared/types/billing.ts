@@ -71,8 +71,14 @@ export type SubscriptionStatus =
 /** Строка subscription_plans */
 export interface SubscriptionPlan {
   id: string;
-  /** 'starter', 'pro', 'academic' */
+  /** Уникальный идентификатор РЕДАКЦИИ: 'starter' (редакция 1),
+   *  'starter-v2' (редакция 2) … — 15.4 (Д-74) */
   name: string;
+  /** 15.4 (Д-74): семейство тарифа — у всех редакций одно ('starter');
+   *  редакция 1 посеяна из plans.ts, следующие заводит админка */
+  family: string;
+  /** 15.4 (Д-74): номер редакции в семействе, с 1 */
+  edition: number;
   displayName: string;
   priceUsd: number;
   billingPeriod: BillingPeriod;
@@ -81,8 +87,73 @@ export interface SubscriptionPlan {
   quotaModes: number;
   quotaEnrichments: number;
   stripePriceId: string;
+  /** «открыт для покупки»: только такие отдаёт GET /billing/plans и
+   *  принимает POST /billing/subscribe; закрытая редакция живёт ради
+   *  своих подписчиков (15.4) */
   isActive: boolean;
   createdAt: string;
+}
+
+/* ── Админка тарифов (беседа 15.4, Д-74) ───────────────────────────────── */
+
+/** Строка вкладки «Тарифы»: план + число живых подписок (status ≠ canceled —
+ *  те, что держат Price и квоты; GET /billing/admin/plans). */
+export interface AdminPlanRow extends SubscriptionPlan {
+  liveSubscriptions: number;
+}
+
+/** Ответ GET /billing/admin/plans — все редакции всех семейств,
+ *  открытые и закрытые, по семейству и номеру редакции. */
+export interface AdminPlansView {
+  plans: AdminPlanRow[];
+}
+
+/** Поля тарифа, которые правит человек (без name/family/edition/price id). */
+export interface PlanFieldsInput {
+  displayName?: string;
+  priceUsd?: number;
+  billingPeriod?: BillingPeriod;
+  quotaSyntheses?: number;
+  quotaRegenerations?: number;
+  quotaModes?: number;
+  quotaEnrichments?: number;
+}
+
+/** PATCH /billing/admin/plans/:id — правка на месте. displayName и isActive
+ *  правятся всегда; цена, период и квоты — только у плана БЕЗ живых подписок
+ *  (иначе 409 PLAN_HAS_SUBSCRIPTIONS с details.lockedFields). Новая цена или
+ *  период — новый Stripe Price, прежний выключается. */
+export interface PlanUpdateInput extends PlanFieldsInput {
+  isActive?: boolean;
+}
+
+/** POST /billing/admin/plans/:id/editions — новая редакция семейства:
+ *  поля по умолчанию берутся у прежней редакции; name и edition назначает
+ *  сервер; прежняя редакция закрывается для покупки, её подписчики
+ *  дорабатывают на своей. */
+export type PlanEditionInput = PlanFieldsInput;
+
+/** POST /billing/admin/plans — новое семейство (редакция 1); isActive по
+ *  умолчанию true (Price заводится тут же). */
+export interface PlanCreateInput {
+  name: string;
+  isActive?: boolean;
+  displayName: string;
+  priceUsd: number;
+  billingPeriod: BillingPeriod;
+  quotaSyntheses: number;
+  quotaRegenerations: number;
+  quotaModes: number;
+  quotaEnrichments: number;
+}
+
+/** Ответ PATCH / POST редакции / POST семейства: план после записи;
+ *  previous — закрытая прежняя редакция (только у новой редакции). */
+export interface AdminPlanResult {
+  plan: AdminPlanRow;
+  previous?: AdminPlanRow;
+  /** id Stripe Price, выключенного при смене цены (PATCH) */
+  retiredPriceId?: string | null;
 }
 
 /** Строка user_subscriptions */

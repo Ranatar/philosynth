@@ -16,6 +16,13 @@
  *   POST   /billing/webhook          (Stripe, без сессии; подпись)
  *   GET    /billing/transactions     ?page&limit → { items, total }
  *
+ * 15.4 (Д-74), под requireAdmin — тарифы админкой и редакциями
+ * (services/plan-admin.ts; 03 §2.10):
+ *   GET    /billing/admin/plans              → { plans: AdminPlanRow[] } (все редакции + живые подписки)
+ *   POST   /billing/admin/plans              PlanCreateInput → AdminPlanResult (новое семейство, 201)
+ *   PATCH  /billing/admin/plans/:id          PlanUpdateInput → AdminPlanResult (на месте; 409 PLAN_HAS_SUBSCRIPTIONS)
+ *   POST   /billing/admin/plans/:id/editions PlanEditionInput → AdminPlanResult (новая редакция, 201)
+ *
  * Решения:
  *  - тело POST /api-key принимает `key` (текст 6.1) И `encryptedKey`
  *    (03 §2.10 — имя вводит в заблуждение: клиент шлёт ОТКРЫТЫЙ ключ по
@@ -31,7 +38,9 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 
+import { requireAdmin } from "../middleware/admin-only.js";
 import { optionalAuth, requireAuth, type AuthEnv } from "../middleware/auth.js";
+import { clientIpOf } from "../services/admin-audit.js";
 import {
   ApiKeyError,
   deleteApiKey,
@@ -46,6 +55,14 @@ import {
   getTransactionHistory,
   getUsageHistory,
 } from "../services/billing-service.js";
+import {
+  createPlanEdition,
+  createPlanFamily,
+  listPlansForAdmin,
+  PlanAdminError,
+  planAdminErrorStatus,
+  updatePlan,
+} from "../services/plan-admin.js";
 import {
   constructWebhookEvent,
   StripeError,
@@ -80,6 +97,12 @@ function errorResponse(c: Context<AuthEnv>, err: unknown): Response {
     return c.json(
       { error: err.message, code: err.code, ...(err.details !== undefined ? { details: err.details } : {}) },
       status,
+    );
+  }
+  if (err instanceof PlanAdminError) {
+    return c.json(
+      { error: err.message, code: err.code, ...(err.details !== undefined ? { details: err.details } : {}) },
+      planAdminErrorStatus(err.code),
     );
   }
   if (err instanceof StripeError) {
@@ -279,6 +302,90 @@ billingRoutes.post("/subscription/resume", async (c) => {
   const user = c.get("user");
   try {
     return c.json({ subscription: await resumeSubscription(user.id) });
+  } catch (err) {
+    return errorResponse(c, err);
+  }
+});
+
+/* ── 15.4 (Д-74): тарифы админкой — под requireAdmin ─────────────────── */
+
+billingRoutes.use("/admin/*", requireAdmin);
+
+type PlanBody = Record<string, unknown>;
+
+/** Поля тарифа из тела: заданные — приводятся к числу/строке, незаданные —
+ *  опускаются (сервис сам валидирует общей функцией plan-economics). */
+function planFieldsOf(body: PlanBody): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const num = (k: string) => {
+    if (body[k] === undefined || body[k] === null || body[k] === "") return;
+    out[k] = typeof body[k] === "number" ? body[k] : Number(body[k]);
+  };
+  if (typeof body.displayName === "string") out.displayName = body.displayName;
+  num("priceUsd");
+  if (body.billingPeriod !== undefined) out.billingPeriod = body.billingPeriod;
+  for (const k of ["quotaSyntheses", "quotaRegenerations", "quotaModes", "quotaEnrichments"]) num(k);
+  return out;
+}
+
+function planIdParam(c: Context<AuthEnv>): string | Response {
+  const id = c.req.param("id") ?? "";
+  if (!UUID_RE.test(id)) {
+    return c.json(
+      { error: tl("server.routes.billing.planIdMissing", "planId не задан"), code: "VALIDATION_ERROR", details: { planId: tl("server.routes.billing.planUuidExpected", "ожидается UUID тарифа") } },
+      400,
+    );
+  }
+  return id;
+}
+
+billingRoutes.get("/admin/plans", async (c) => {
+  return c.json({ plans: await listPlansForAdmin() });
+});
+
+billingRoutes.post("/admin/plans", async (c) => {
+  const user = c.get("user");
+  const body = await readJson(c);
+  const fields = planFieldsOf(body);
+  try {
+    const result = await createPlanFamily(
+      {
+        name: typeof body.name === "string" ? body.name : "",
+        ...(fields as Omit<Parameters<typeof createPlanFamily>[0], "name">),
+        ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
+      },
+      { id: user.id, ip: clientIpOf(c) },
+    );
+    return c.json(result, 201);
+  } catch (err) {
+    return errorResponse(c, err);
+  }
+});
+
+billingRoutes.patch("/admin/plans/:id", async (c) => {
+  const user = c.get("user");
+  const id = planIdParam(c);
+  if (typeof id !== "string") return id;
+  const body = await readJson(c);
+  const input = {
+    ...planFieldsOf(body),
+    ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
+  } as Parameters<typeof updatePlan>[1];
+  try {
+    return c.json(await updatePlan(id, input, { id: user.id, ip: clientIpOf(c) }));
+  } catch (err) {
+    return errorResponse(c, err);
+  }
+});
+
+billingRoutes.post("/admin/plans/:id/editions", async (c) => {
+  const user = c.get("user");
+  const id = planIdParam(c);
+  if (typeof id !== "string") return id;
+  const body = await readJson(c);
+  const input = planFieldsOf(body) as Parameters<typeof createPlanEdition>[1];
+  try {
+    return c.json(await createPlanEdition(id, input, { id: user.id, ip: clientIpOf(c) }), 201);
   } catch (err) {
     return errorResponse(c, err);
   }

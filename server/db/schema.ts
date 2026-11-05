@@ -948,10 +948,20 @@ export const apiUsage = pgTable(
 
 /* ──────────────────────── 2.22. subscription_plans ──────────────────── */
 
-export const subscriptionPlans = pgTable("subscription_plans", {
+export const subscriptionPlans = pgTable(
+  "subscription_plans",
+  {
   id: uuid("id").primaryKey().defaultRandom(),
-  /** 'starter', 'pro', 'academic' */
+  /** Уникальный идентификатор РЕДАКЦИИ тарифа: 'starter' (редакция 1),
+   *  'starter-v2' (редакция 2) … (15.4, Д-74). Редакция 1 семейства носит
+   *  имя семейства — так посеянные 8.3 строки остались собой. */
   name: text("name").notNull().unique(),
+  /** 15.4 (Д-74, миграция 0016): семейство тарифа — одно у всех редакций
+   *  ('starter'); у строк до миграции = name. Product в Stripe — один на
+   *  семейство, Price — на редакцию. */
+  family: text("family").notNull(),
+  /** 15.4: номер редакции в семействе, с 1; новая редакция — max+1 */
+  edition: integer("edition").notNull().default(1),
   /** 'Starter', 'Pro', 'Academic' */
   displayName: text("display_name").notNull(),
   priceUsd: numeric("price_usd", { precision: 10, scale: 2 }).notNull(),
@@ -968,11 +978,18 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   quotaEnrichments: integer("quota_enrichments").notNull(),
   /** Stripe Price ID */
   stripePriceId: text("stripe_price_id").notNull(),
+  /** «открыт для покупки» (15.4): GET /billing/plans и POST /subscribe видят
+   *  только такие; закрытая редакция держит квоты своих подписчиков */
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+  },
+  (t) => [
+    // 15.4: одна строка на номер редакции в семействе
+    uniqueIndex("uq_subscription_plans_family_edition").on(t.family, t.edition),
+  ],
+);
 
 /* ─────────────────────── 2.23. user_subscriptions ───────────────────── */
 

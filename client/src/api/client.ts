@@ -41,6 +41,7 @@ export type ApiErrorCode =
   | "LINEAGE_CYCLE" // 8.5: родитель среди потомков — цикл родословной (409)
   | "LINEAGE_EXISTS" // 8.5: пара уже есть — идемпотентный отказ (409)
   | "LINEAGE_NODE_UNAVAILABLE" // 15.1: узел дерева файла перекрыт / философ / нет позиции (409; details.reason)
+  | "PLAN_HAS_SUBSCRIPTIONS" // 15.4: цена/период/квоты тарифа с живыми подписками — только новой редакцией (409; details.lockedFields)
   | "LINEAGE_GENERATED" // 15.1: родитель без узла файла — по нему сгенерирован документ, не отвязывается (409)
   | "META_NOT_ALLOWED" // 8.6: автор не разрешил чужой мета-синтез (403; details.title)
   | "SECTION_TABLE_LOCKED" // 9.2: подраздел рисуется из БД либо это капсула (409; details.reason)

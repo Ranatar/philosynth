@@ -15,6 +15,8 @@
  * listPrices (lookup_keys[] — обе записи списка Stripe принимает и
  * мок 8.2). Те же приёмы: encodeForm, STRIPE_API_BASE, StripeError.
  * GET с параметрами — через query-строку в том же формате `a[0]=…`.
+ * 15.4 (Д-74): + retrievePrice — админка тарифов (services/plan-admin.ts)
+ * находит Product семейства и выключает прежний Price по id из строки плана.
  *
  * Пустой STRIPE_SECRET_KEY → StripeError STRIPE_UNAVAILABLE (роуты
  * пополнения/подписки отвечают 503; BYO-Key и баланс, начисленный
@@ -141,6 +143,10 @@ export interface StripeSubscription {
   current_period_end: number;
   cancel_at_period_end: boolean;
   latest_invoice?: string | StripeInvoice | null;
+  /** 15.4 (Д-75): позиции подписки — Stripe кладёт в событие
+   *  customer.subscription.updated объект Price каждой позиции; у службы
+   *  позиция одна, её price.id — ключ смены тарифа в Dashboard */
+  items?: { data: { price?: { id: string } | null }[] } | null;
   metadata?: Record<string, string>;
 }
 
@@ -394,6 +400,12 @@ export const stripe = {
       ...(params.nickname ? { nickname: params.nickname } : {}),
       metadata: params.metadata ?? {},
     });
+  },
+
+  /** 15.4 (Д-74): Price по id — продукт семейства и активность прежней цены
+   *  узнаются по сохранённому stripe_price_id строки плана. */
+  retrievePrice(id: string): Promise<StripePrice> {
+    return request<StripePrice>("GET", `/v1/prices/${encodeURIComponent(id)}`);
   },
 
   /** Правка Price: у Stripe изменяемы только active/nickname/metadata/lookup_key

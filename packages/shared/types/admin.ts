@@ -20,7 +20,10 @@ export type AdminAction =
   | "user.role.changed"
   | "user.bootstrapped"
   | "account.deleted"
-  | "plan.seeded";
+  | "plan.seeded"
+  | "plan.created" // 15.4 (Д-74): новое семейство тарифов заведено админкой
+  | "plan.updated" // 15.4 (Д-74): правка плана на месте (название, открыт/закрыт, цена, период, квоты)
+  | "plan.edition"; // 15.4 (Д-74): новая редакция семейства, прежняя закрыта для покупки
 
 /** Род цели действия (admin_audit.target_type). */
 export type AdminAuditTargetType =

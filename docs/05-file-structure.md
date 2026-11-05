@@ -180,6 +180,8 @@ philosynth-service/
 │   │       │                           #  индекс uq_lineage_parent_pair; генерат, тег переименован
 │   │       ├── 0015_email_change.sql   # 15.3 (Д-73): auth_tokens.purpose += email_change (пара
 │   │       │                           #  DROP/ADD CONSTRAINT), new_email text; генерат, тег переименован
+│   │       ├── 0016_plan_editions.sql  # 15.4 (Д-74): subscription_plans.family (backfill = name, NOT NULL),
+│   │       │                           #  edition (DEFAULT 1), UNIQUE (family, edition); рукой, снимок генератом
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -364,7 +366,17 @@ philosynth-service/
 │   │   │                               #  разъёма streaming-manager)
 │   │   ├── subscription-service.ts    # Stripe Subscriptions: планы, квоты, счётчики, webhook
 │   │   │                               # (СДЕЛАНО 6.1: + consumeQuota — атомарная проверка+инкремент;
-│   │   │                               #  7.1: ensureStripeCustomer — один Customer на пользователя)
+│   │   │                               #  7.1: ensureStripeCustomer — один Customer на пользователя;
+│   │   │                               #  15.4 (Д-75): вебхук subscription.updated переносит plan_id по Price)
+│   │   ├── plan-stripe.ts             # 15.4: Product/Price тарифов — общий слой сида цен и админки
+│   │   │                               # (ensureProductForFamily — один Product на семейство по metadata,
+│   │   │                               #  createPriceForPlan — Price редакции с lookup_key, retirePrice,
+│   │   │                               #  stripeProductDescriptionFor — английское, из скрипта 8.3/14.1)
+│   │   ├── plan-admin.ts              # 15.4 (Д-74): тарифы админкой и редакциями — listPlansForAdmin
+│   │   │                               # (живые подписки), updatePlan (на месте; заслон 409
+│   │   │                               #  PLAN_HAS_SUBSCRIPTIONS; новый Price → прежний выключен),
+│   │   │                               #  createPlanEdition (<family>-v<N>, прежняя закрыта),
+│   │   │                               #  createPlanFamily; admin_audit plan.* той же транзакцией
 │   │   ├── account-deletion.ts        # 7.1: DELETE /auth/me — анонимизация users при сохранённой
 │   │   │                               # RESTRICT-истории, удаление сессий/ключей/синтезов, отмена подписки
 │   │   │                               # 8.1: заслон LAST_ADMIN, строка account.deleted, actor_id → NULL
@@ -394,7 +406,8 @@ philosynth-service/
 │   │   ├── stripe-client.ts            # Тонкий fetch-клиент Stripe REST + проверка подписи
 │   │   │                               # webhook; STRIPE_API_BASE для мока (НОВОЕ 6.1, без SDK)
 │   │   │                               # 8.3: + Products/Prices (createProduct, listProducts,
-│   │   │                               # createPrice, updatePrice, listPrices) для заведения тарифов
+│   │   │                               # createPrice, updatePrice, listPrices) для заведения тарифов;
+│   │   │                               # 15.4: + retrievePrice, StripeSubscription.items (Price события)
 │   │   │
 │   │   ├── api-key-service.ts          # Шифрование/дешифрование, проксирование (НОВОЕ)
 │   │   │                               # (СДЕЛАНО 6.1: активный ключ один)
@@ -459,9 +472,13 @@ philosynth-service/
 │   │   ├── cardinality-prompts.ts     # MD_BY_CARD (6×3), SD_BY_CARD (3×3) (v11)
 │   │   ├── mode-deps.ts               # MODE_DEPS (v11)
 │   │   ├── plans.ts                   # 8.3: тарифы БЕЗ stripe_price_id (PLANS: starter/pro/
-│   │   │                              # academic), priceEnvVarFor, stripeLookupKeyFor,
+│   │   │                              # academic), priceEnvVarFor, stripeLookupKeyFor;
+│   │   │                              # 15.4: ТОЛЬКО начальный посев (БД — источник истины);
+│   │   │                              # экономика реэкспортируется из plan-economics.ts
+│   │   ├── plan-economics.ts          # 15.4: ОБЩИЙ модуль сида и сервера — PlanSpec, validatePlanSpec,
 │   │   │                              # опорные стоимости операций из констант cost-estimator,
-│   │   │                              # assertPlanEconomics (цена ≥ Σ квот × cost × наценка)
+│   │   │                              # computePlanEconomics / assertPlanEconomics (цена ≥ Σ квот ×
+│   │   │                              # cost × наценка), PlanEconomicsError, PLAN_QUOTA_FIELDS
 │   │   ├── enrichment-templates.ts    # 6 шаблонов enrichment.* (5.3; новые тексты,
 │   │   │                              # не из исходника; JUSTIFICATION_SECTIONS)
 │   │   ├── transform-templates.ts     # 2 шаблона transform.* (5.5; новые тексты —
@@ -542,7 +559,8 @@ philosynth-service/
 │   │   │   ├── lineage.ts              # 3.2: ancestors/descendants/search; 8.5: + linkParent
 │   │   │   ├── billing.ts              # 7 функций §2.10: ключ, пополнение, истории (6.2 СДЕЛАНО 2026-09-07)
 │   │   │   ├── admin.ts                # 8.1: listUsers / setUserRole / getAuditLog (вкладка «Доступ»);
-│   │   │   │                           # 15.3: getMailOutbox (вкладка «Почта»)
+│   │   │   │                           # 15.3: getMailOutbox (вкладка «Почта»); 15.4: listAdminPlans /
+│   │   │   │                           # updatePlan / createPlanEdition / createPlan (вкладка «Тарифы»)
 │   │   │   ├── subscription.ts         # 5 функций §2.10: подписка/тарифы/subscribe/cancel/resume (6.2 СДЕЛАНО)
 │   │   │   ├── recommendations.ts      # 10.3: list / parse / extract / plan (+ withBusyRetry на 409 после done)
 │   │   │   └── export.ts
@@ -600,7 +618,7 @@ philosynth-service/
 │   │   │   ├── BillingPage.tsx         # 6.2 СДЕЛАНО: секции API-ключ / баланс (Stripe Elements или dev-режим) / подписка / история использования / транзакции
 │   │   │   ├── ProfilePage.tsx         # Профиль: displayName + смена пароля (A3, беседа 0.6); 7.1: + удаление аккаунта (DELETE /auth/me);
 │   │   │   │                           #  11.3: секция «Язык» — LanguageSwitch variant="form" + строка языка генерации по умолчанию
-│   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin; 7.1: + вкладка «Каталоги» (типы категорий/связей, правка и удаление пользовательских); 8.1: + вкладка «Доступ» (поиск пользователей, роль с подтверждением, последние 50 строк admin_audit); 15.3: + вкладка «Почта» (MailTab — четыре счётчика очереди, последние 50 строк без тел, «Обновить»; повтора нет)
+│   │   │   └── AdminPromptsPage.tsx    # 6.2 СДЕЛАНО: вкладки «Шаблоны» (дерево, редактор, плейсхолдеры, предпросмотр, версии/diff/откат) и «Конфиги» (JSON-редактор); под RequireAdmin; 7.1: + вкладка «Каталоги» (типы категорий/связей, правка и удаление пользовательских); 8.1: + вкладка «Доступ» (поиск пользователей, роль с подтверждением, последние 50 строк admin_audit); 15.3: + вкладка «Почта» (MailTab — четыре счётчика очереди, последние 50 строк без тел, «Обновить»; повтора нет); 15.4: + вкладка «Тарифы» (PlansTab — редакции с живыми подписками, правка на месте с запертыми полями, «Новая редакция» со вторым шагом, «Новый тариф»; карта журнала += plan.*)
 │   │   │
 │   │   ├── components/
 │   │   │   ├── layout/
@@ -778,7 +796,9 @@ philosynth-service/
 │   │   │                               # (явное подключение Redis; недоступен — строка отчёта)
 │   │   ├── seed-plans.ts               # 8.3: subscription_plans из config/plans.ts;
 │   │   │                               # stripe_price_id из STRIPE_PRICE_*, без них
-│   │   │                               # is_active=false + громкое предупреждение
+│   │   │                               # is_active=false + громкое предупреждение;
+│   │   │                               # 15.4 (Д-75): created/skip/fail — существующие НЕ
+│   │   │                               # переписывает, расхождение с plans.ts — предупреждением
 │   │   ├── bootstrap-admin.ts          # 8.1: первый администратор (npm run seed:admin);
 │   │   │                               # пароль из BOOTSTRAP_ADMIN_PASSWORD, заслон
 │   │   │                               # «другой админ уже есть»
@@ -829,7 +849,7 @@ philosynth-service/
 │   │   ├── extract-section-templates.mjs
 │   │   └── extract-export-assets.mjs
 │   ├── patches/                        # идемпотентные патчи доков по итогам бесед (по одному
-│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv153)
+│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv154)
 │   │   ├── patch-docs-*.py             # запускаются ИЗ КОРНЯ репозитория;
 │   │   │                               # осторожно с повторным прогоном старого патча:
 │   │   │                               # доки с тех пор менялись, и якорь может совпасть
@@ -843,7 +863,8 @@ philosynth-service/
 │   │                                   # вынесен из test-61, + /v1/products и /v1/prices под 8.3
 │   ├── stripe-emit.mjs                 # отправщик webhook-событий invoice.paid /
 │   │                                   # customer.subscription.updated|deleted (подпись при
-│   │                                   # непустом STRIPE_WEBHOOK_SECRET)
+│   │                                   # непустом STRIPE_WEBHOOK_SECRET); 15.4: --price кладёт
+│   │                                   # items.data[0].price.id (перенос plan_id)
 │   └── dev-billing.sh                  # стенд: .env.local → мок → сервер :3000 → vite :5199;
 │                                       # заслон sk_live_, --stop / --status, created/skip/fail;
 │                                       # 8.3: зовёт npm run seed:plans (STRIPE_PRICE_* из .env.local),
@@ -969,6 +990,18 @@ philosynth-service/
     │                                   #  R3 смена адреса end-to-end по-немецки (письма из лога, вход новым адресом,
     │                                   #  повтор, занятый к подтверждению); R4 браузер — форма, /change-email/:token
     │                                   #  вошедшему и гостю, вкладка «Почта» с «Обновить», пользователю закрыто
+    │                                   # test-154-requests2-4 — 15.4: живой сервер + мок Stripe в процессе харнесса +
+    │                                   #  сборка под preview :5230 + Chrome 131; R2 Д-74 на моке (цена без подписок,
+    │                                   #  409 с подпиской, редакция -v2, подписчик/новый покупатель, admin_audit);
+    │                                   #  R3 Д-75 (seed:plans CLI с расхождением, seedPlans с квотами, stripe-emit
+    │                                   #  --price неизвестный/редакции 2/без); R4 браузер — вкладка «Тарифы», запертые
+    │                                   #  поля, второй шаг редакции, журнал, стартовая и BillingPage без закрытых
+    │                                   # smoke-154-request1 — 15.4: экономика одной функцией, схема/0016, сид без
+    │                                   #  updated, stripe-emit --price, клиент/коды/доки/deploy/CSS/ключи; живьём
+    │                                   #  через app.request + мок Stripe в процессе: 401/403/200, семейство →
+    │                                   #  Product/Price, 409 с lockedFields, название на месте, редакция -v2,
+    │                                   #  GET /plans без закрытых, вебхук (неизвестный/редакции 2/без items),
+    │                                   #  новый Price после canceled, сид skip + diverged, admin_audit plan.*
     │                                   # smoke-153-request1 — 15.3: maintenanceDue, письма 15.3 (ссылка только в
     │                                   #  первом, de под runWithLocale), TTL/путь довода, исходники (auth.ts,
     │                                   #  worker, схема/0015, env, клиент, CSS, ключи); живая БД — runMaintenance

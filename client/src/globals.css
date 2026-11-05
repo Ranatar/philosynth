@@ -6555,6 +6555,94 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 15.4 — тарифы: вкладка «Тарифы» админки (Д-74, Д-75) ═══════
+ * В исходнике тарифов нет. Вкладка собрана из готового: таблица .data-table
+ * (блок 3), поля .form-grid/.form-group/.form-input/.form-select, бейджи
+ * .cert-badge (gold — «открыт»), второй шаг — .transform-warn и
+ * .inline-edit-actions, флажок — .visibility-flag (8.6). Своих правил пять,
+ * все раскладочные:
+ * (1) .plan-form — форма под строкой таблицы (правка / новая редакция /
+ *     новое семейство): отступ и линейка сверху, чтобы форма читалась как
+ *     часть строки, а не как отдельный блок;
+ * (2) .plan-form .form-grid — сетка полей внутри формы без нижнего отступа
+ *     сетки страницы (24px) — кнопки стоят сразу под полями;
+ * (3) .plan-field-row — цена и период в одну строку;
+ * (4) .plan-quotas — четыре числа квот моноширинно, не переносятся;
+ * (5) .plan-toolbar-btns — кнопки тулбара таблицы справа;
+ * (6) .plan-form [data-locked] — запертое поле (живые подписки): у
+ *     .form-input/.form-select нет своего :disabled в исходнике, и
+ *     запертое поле было неотличимо от живого (снимок R4 test-154) —
+ *     приглушённый фон --off, цвет --ink-dim, курсор not-allowed;
+ * (7) .plan-cell-name .cert-badge / .plan-cell-price — бейдж редакции и
+ *     цена с периодом не переносятся (бейдж «ред. 2» рвался на две строки);
+ *     само имя переносится, иначе таблица вылезала за рамку;
+ * (8) .plan-cell-actions — две кнопки строки столбиком (в одну строку они
+ *     выталкивали таблицу за рамку при 1400px).
+ * Новых hex нет, углы прямые, теней нет.
+ * ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* (1) форма под строкой таблицы */
+  .plan-form {
+    padding: 10px 0 4px;
+    border-top: 1px solid var(--rule);
+  }
+
+  /* (2) сетка полей внутри формы */
+  .plan-form .form-grid {
+    margin-bottom: 12px;
+  }
+
+  /* (3) цена и период в одну строку */
+  .plan-field-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .plan-field-row .form-input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .plan-field-row .form-select {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  /* (4) квоты одной строкой */
+  .plan-quotas {
+    font-family: var(--mono);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  /* (5) кнопки тулбара */
+  .plan-toolbar-btns {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+  }
+
+  /* (6) запертое поле */
+  .plan-form [data-locked] {
+    background: var(--off);
+    color: var(--ink-dim);
+    cursor: not-allowed;
+  }
+
+  /* (7) бейдж редакции и цена с периодом — одной строкой */
+  .plan-cell-name .cert-badge,
+  .plan-cell-price {
+    white-space: nowrap;
+  }
+
+  /* (8) кнопки строки столбиком */
+  .plan-cell-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+}
+
 @media (max-width: 600px) {
   .gm-body .gm-hint {
     display: none;

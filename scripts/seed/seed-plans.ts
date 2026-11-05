@@ -1,47 +1,51 @@
 /**
- * scripts/seed-plans.ts — ЧЕТВЁРТЫЙ сид: тарифы subscription_plans из
- * server/config/plans.ts (беседа 8.3, запрос 1, п. 2; 02-data-model §2.22,
- * 03-specification §2.10). До него таблица не сеялась ничем — раздел
- * «Подписка» BillingPage был пуст на любой свежей базе.
+ * scripts/seed-plans.ts — ЧЕТВЁРТЫЙ сид: НАЧАЛЬНЫЙ посев тарифов
+ * subscription_plans из server/config/plans.ts (беседа 8.3, запрос 1, п. 2;
+ * 02-data-model §2.22, 03-specification §2.10).
  *
- * Откуда что берётся:
+ * 15.4 (Д-74, Д-75 п.1; решение пользователя 2026-10-14 «источник истины —
+ * БД»): сид СОЗДАЁТ отсутствующие планы и НЕ ПЕРЕПИСЫВАЕТ существующие.
+ * До 15.4 расхождение строки с plans.ts давало `updated` — новые квоты
+ * действовали для всех подписчиков посреди оплаченного периода, цена в БД
+ * менялась, а Stripe списывал по прежнему Price (Д-75). Теперь строка,
+ * которая уже есть, — skip при любом расхождении; расхождение печатается
+ * ПРЕДУПРЕЖДЕНИЕМ (поле, в БД, в plans.ts) — править тариф после первого
+ * посева надо админкой (вкладка «Тарифы»: правка на месте без живых
+ * подписок, иначе новая редакция). Исхода `updated` у сида больше нет.
+ *
+ * Откуда что берётся у СОЗДАВАЕМОЙ строки:
+ *   - family = name (редакция 1 семейства), edition = 1;
  *   - displayName / priceUsd / billingPeriod / квоты — из PLANS (код);
  *   - stripe_price_id — ТОЛЬКО из окружения: STRIPE_PRICE_<NAME_UPPER>
  *     (STRIPE_PRICE_STARTER, STRIPE_PRICE_PRO, STRIPE_PRICE_ACADEMIC —
  *     priceEnvVarFor). Price существует лишь в аккаунте Stripe владельца;
  *     заводит его scripts/stripe-create-prices.ts и печатает эти строки.
  *
- * Переменной нет → план заводится/остаётся с is_active=false и ГРОМКИМ
- * предупреждением в выводе (п. 2b): молча неактивный план неотличим от
- * «скрипт не запускали». Уже сохранённый stripe_price_id при этом НЕ
- * затирается (колонка NOT NULL; знание не уничтожается забывчивостью
- * одного запуска) — но плана в GET /billing/plans не будет, пока
- * переменная не вернётся.
+ * Переменной нет → план заводится с is_active=false (пустой
+ * stripe_price_id) и ГРОМКИМ предупреждением в выводе (п. 2b): молча
+ * неактивный план неотличим от «скрипт не запускали». Существующую строку
+ * без переменной сид с 15.4 НЕ трогает (ни price, ни is_active) —
+ * открывает/закрывает тариф админка.
  *
  * Идемпотентность (образцы seed-taxonomy / bootstrap-admin — created /
- * updated / skip / fail; повторный прогон — skip). Ключ — name (UNIQUE):
+ * skip / fail; повторный прогон — skip). Ключ — name (UNIQUE):
  *   - строки нет                                   → created;
- *   - расходятся displayName/цена/период/квоты/активность/price → updated;
- *   - всё совпадает                                → skip;
- *   - stripe_price_id меняется у плана с ДЕЙСТВУЮЩИМИ подписками (статус
- *     любой, кроме canceled — incomplete тоже ждёт оплаты по прежнему
- *     Price)                                       → fail с объяснением:
- *     сменить Price у живой подписки нельзя, FK user_subscriptions →
- *     subscription_plans (09 §3, 6.1) держит план на месте; заводите
- *     новый план либо дождитесь окончания подписок;
- *   - квоты дороже цены при текущем BILLING_MARKUP (assertPlanEconomics,
- *     plans.ts) → fail, строка не пишется и не правится.
+ *   - строка есть (совпадает или расходится)       → skip (+ предупреждение
+ *     о расхождениях; «расходятся» считаются displayName/цена/период/квоты/
+ *     stripe_price_id/активность);
+ *   - описание невалидно / квоты дороже цены при текущем BILLING_MARKUP
+ *     (общий модуль plan-economics) → fail, строка не пишется.
  *
- * Каждая created/updated — строка admin_audit plan.seeded (actor_id NULL:
- * действие скрипта; детали — outcome и изменённые поля) той же
- * транзакцией (8.1: журнал и дело неразделимы); skip строки не даёт.
+ * Каждая created — строка admin_audit plan.seeded (actor_id NULL: действие
+ * скрипта) той же транзакцией (8.1: журнал и дело неразделимы); skip и
+ * fail строк не дают.
  *
  * Запуск: STRIPE_PRICE_STARTER=price_… … npm run seed:plans
- *   (или: npx tsx scripts/seed-plans.ts). Код возврата: 1 при любом fail.
+ *   (или: npx tsx scripts/seed/seed-plans.ts). Код возврата: 1 при любом fail.
  * Переменные читаются из process.env в момент запуска (не через env.ts —
  * 09 §5 6.1: тот читается один раз при импорте), наценка — env.stripe.billingMarkup.
  */
-import { and, eq, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import {
   PLANS,
@@ -55,18 +59,25 @@ import { closeDb, db, schema } from "../../server/db/index.js";
 import { env } from "../../server/env.js";
 import { ADMIN_ACTIONS, writeAudit } from "../../server/services/admin-audit.js";
 
-const { subscriptionPlans, userSubscriptions } = schema;
+const { subscriptionPlans } = schema;
 
-export type SeedOutcome = "created" | "updated" | "skip" | "fail";
+export type SeedOutcome = "created" | "skip" | "fail";
+
+/** Расхождение существующей строки с описанием посева (skip с предупреждением). */
+export interface PlanDivergence {
+  field: string;
+  inDb: string;
+  inCode: string;
+}
 
 export interface PlanSeedResult {
   name: string;
   outcome: SeedOutcome;
-  /** Поля, которые изменились (updated) */
-  changed?: string[];
+  /** skip: чем строка БД расходится с plans.ts (пусто — совпадает) */
+  diverged?: PlanDivergence[];
   /** Причина fail */
   error?: string;
-  /** Переменная STRIPE_PRICE_* не задана → план неактивен */
+  /** Переменная STRIPE_PRICE_* не задана → созданный план неактивен */
   priceMissing: boolean;
   isActive: boolean;
   stripePriceId: string;
@@ -74,9 +85,11 @@ export interface PlanSeedResult {
 
 export interface SeedPlansReport {
   results: PlanSeedResult[];
-  /** Планы без переменной окружения — для громкого предупреждения */
+  /** Планы, СОЗДАННЫЕ без переменной окружения — для громкого предупреждения */
   missingPriceVars: { name: string; envVar: string }[];
   counts: Record<SeedOutcome, number>;
+  /** Число skip с расхождениями */
+  divergedCount: number;
   markup: number;
 }
 
@@ -96,33 +109,22 @@ function priceString(usd: number): string {
   return usd.toFixed(2);
 }
 
-/** Расхождения строки с описанием (имена полей DTO). */
-function diffFields(
-  row: PlanRow,
-  plan: PlanDefinition,
-  stripePriceId: string,
-  isActive: boolean,
-): string[] {
-  const changed: string[] = [];
-  if (row.displayName !== plan.displayName) changed.push("displayName");
-  if (Number(row.priceUsd) !== plan.priceUsd) changed.push("priceUsd");
-  if (row.billingPeriod !== plan.billingPeriod) changed.push("billingPeriod");
-  if (row.quotaSyntheses !== plan.quotaSyntheses) changed.push("quotaSyntheses");
-  if (row.quotaRegenerations !== plan.quotaRegenerations) changed.push("quotaRegenerations");
-  if (row.quotaModes !== plan.quotaModes) changed.push("quotaModes");
-  if (row.quotaEnrichments !== plan.quotaEnrichments) changed.push("quotaEnrichments");
-  if (row.stripePriceId !== stripePriceId) changed.push("stripePriceId");
-  if (row.isActive !== isActive) changed.push("isActive");
-  return changed;
-}
-
-/** Число подписок плана, кроме canceled — те, что держат Price. */
-async function countLiveSubscriptions(planId: string): Promise<number> {
-  const rows = await db
-    .select({ id: userSubscriptions.id })
-    .from(userSubscriptions)
-    .where(and(eq(userSubscriptions.planId, planId), ne(userSubscriptions.status, "canceled")));
-  return rows.length;
+/** Расхождения строки с описанием (имена полей DTO) — только отчёт. */
+export function diffFields(row: PlanRow, plan: PlanDefinition, priceFromEnv: string): PlanDivergence[] {
+  const d: PlanDivergence[] = [];
+  const cmp = (field: string, inDb: unknown, inCode: unknown) => {
+    if (String(inDb) !== String(inCode)) d.push({ field, inDb: String(inDb), inCode: String(inCode) });
+  };
+  cmp("displayName", row.displayName, plan.displayName);
+  cmp("priceUsd", Number(row.priceUsd), plan.priceUsd);
+  cmp("billingPeriod", row.billingPeriod, plan.billingPeriod);
+  cmp("quotaSyntheses", row.quotaSyntheses, plan.quotaSyntheses);
+  cmp("quotaRegenerations", row.quotaRegenerations, plan.quotaRegenerations);
+  cmp("quotaModes", row.quotaModes, plan.quotaModes);
+  cmp("quotaEnrichments", row.quotaEnrichments, plan.quotaEnrichments);
+  if (priceFromEnv !== "") cmp("stripePriceId", row.stripePriceId, priceFromEnv);
+  cmp("isActive", row.isActive, priceFromEnv !== "");
+  return d;
 }
 
 async function seedOne(
@@ -155,70 +157,43 @@ async function seedOne(
     .where(eq(subscriptionPlans.name, plan.name))
     .limit(1);
 
-  // Без переменной сохранённый Price остаётся, активность снимается.
-  const stripePriceId = priceMissing ? existing?.stripePriceId ?? "" : priceFromEnv;
+  if (existing) {
+    // 15.4: существующее не переписывается — только отчёт о расхождениях
+    return {
+      ...base,
+      outcome: "skip",
+      diverged: diffFields(existing, plan, priceFromEnv),
+      isActive: existing.isActive,
+      stripePriceId: existing.stripePriceId,
+    };
+  }
+
+  const stripePriceId = priceFromEnv;
   const isActive = !priceMissing;
-
-  const values = {
-    displayName: plan.displayName,
-    priceUsd: priceString(plan.priceUsd),
-    billingPeriod: plan.billingPeriod,
-    quotaSyntheses: plan.quotaSyntheses,
-    quotaRegenerations: plan.quotaRegenerations,
-    quotaModes: plan.quotaModes,
-    quotaEnrichments: plan.quotaEnrichments,
-    stripePriceId,
-    isActive,
-  };
-
-  if (!existing) {
-    await db.transaction(async (tx) => {
-      await tx.insert(subscriptionPlans).values({ name: plan.name, ...values });
-      await writeAudit(tx, {
-        actorId: null,
-        action: ADMIN_ACTIONS.PLAN_SEEDED,
-        targetType: "subscription_plan",
-        targetId: plan.name,
-        details: { outcome: "created", isActive, priceMissing },
-      });
-    });
-    return { ...base, outcome: "created", isActive, stripePriceId };
-  }
-
-  const changed = diffFields(existing, plan, stripePriceId, isActive);
-  if (changed.length === 0) {
-    return { ...base, outcome: "skip", isActive, stripePriceId };
-  }
-
-  // Заслон: Price у плана с действующими подписками не меняется.
-  if (changed.includes("stripePriceId") && existing.stripePriceId !== "") {
-    const live = await countLiveSubscriptions(existing.id);
-    if (live > 0) {
-      return {
-        ...base,
-        outcome: "fail",
-        isActive: existing.isActive,
-        stripePriceId: existing.stripePriceId,
-        error:
-          `stripe_price_id плана «${plan.name}» уже ${existing.stripePriceId}, а ${envVar}=${stripePriceId}; ` +
-          `на плане ${live} действующих подписок (статус ≠ canceled) — сменить Price у живой подписки нельзя ` +
-          `(Stripe тарифицирует по Price подписки, FK user_subscriptions → subscription_plans держит план). ` +
-          `Дождитесь окончания подписок либо заведите новый тариф с другим name; строка не тронута.`,
-      };
-    }
-  }
-
   await db.transaction(async (tx) => {
-    await tx.update(subscriptionPlans).set(values).where(eq(subscriptionPlans.id, existing.id));
+    await tx.insert(subscriptionPlans).values({
+      name: plan.name,
+      family: plan.name,
+      edition: 1,
+      displayName: plan.displayName,
+      priceUsd: priceString(plan.priceUsd),
+      billingPeriod: plan.billingPeriod,
+      quotaSyntheses: plan.quotaSyntheses,
+      quotaRegenerations: plan.quotaRegenerations,
+      quotaModes: plan.quotaModes,
+      quotaEnrichments: plan.quotaEnrichments,
+      stripePriceId,
+      isActive,
+    });
     await writeAudit(tx, {
       actorId: null,
       action: ADMIN_ACTIONS.PLAN_SEEDED,
       targetType: "subscription_plan",
       targetId: plan.name,
-      details: { outcome: "updated", changed, isActive, priceMissing },
+      details: { outcome: "created", isActive, priceMissing },
     });
   });
-  return { ...base, outcome: "updated", changed, isActive, stripePriceId };
+  return { ...base, outcome: "created", isActive, stripePriceId };
 }
 
 /**
@@ -246,12 +221,13 @@ export async function seedPlans(opts: SeedPlansOptions = {}): Promise<SeedPlansR
       });
     }
   }
-  const counts: Record<SeedOutcome, number> = { created: 0, updated: 0, skip: 0, fail: 0 };
+  const counts: Record<SeedOutcome, number> = { created: 0, skip: 0, fail: 0 };
   for (const r of results) counts[r.outcome] += 1;
   const missingPriceVars = results
-    .filter((r) => r.priceMissing)
+    .filter((r) => r.outcome === "created" && r.priceMissing)
     .map((r) => ({ name: r.name, envVar: priceEnvVarFor(r.name) }));
-  return { results, missingPriceVars, counts, markup };
+  const divergedCount = results.filter((r) => r.outcome === "skip" && (r.diverged?.length ?? 0) > 0).length;
+  return { results, missingPriceVars, counts, divergedCount, markup };
 }
 
 const BOLD = "\x1b[1m";
@@ -262,7 +238,8 @@ const RESET = "\x1b[0m";
 export function printReport(report: SeedPlansReport): void {
   const c = report.counts;
   console.log(
-    `subscription_plans: created=${c.created}, updated=${c.updated}, skip=${c.skip}, fail=${c.fail}` +
+    `subscription_plans: created=${c.created}, skip=${c.skip}` +
+      `${report.divergedCount ? ` (расходятся с plans.ts: ${report.divergedCount})` : ""}, fail=${c.fail}` +
       ` (BILLING_MARKUP=${report.markup})`,
   );
   for (const r of report.results) {
@@ -270,16 +247,32 @@ export function printReport(report: SeedPlansReport): void {
     const price = r.stripePriceId || "—";
     switch (r.outcome) {
       case "created":
-      case "skip":
-        console.log(`  ${r.outcome.padEnd(7)} ${r.name}: ${active}, stripe_price_id=${price}`);
+        console.log(`  created ${r.name}: ${active}, stripe_price_id=${price}`);
         break;
-      case "updated":
-        console.log(`  updated ${r.name}: ${active}, stripe_price_id=${price}; изменены: ${(r.changed ?? []).join(", ")}`);
+      case "skip":
+        console.log(`  skip    ${r.name}: ${active}, stripe_price_id=${price}${r.diverged?.length ? "; расходится с plans.ts — см. ниже" : ""}`);
         break;
       case "fail":
         console.error(`  ${RED}FAIL${RESET}    ${r.name}: ${r.error}`);
         break;
     }
+  }
+  const diverged = report.results.filter((r) => r.outcome === "skip" && r.diverged?.length);
+  if (diverged.length) {
+    console.warn("");
+    console.warn(
+      `${BOLD}${YELLOW}ПРЕДУПРЕЖДЕНИЕ: ${diverged.length} из ${report.results.length} тарифов в БД расходятся с server/config/plans.ts — ` +
+        `строки НЕ переписаны: источник истины — БД (15.4).${RESET}`,
+    );
+    for (const r of diverged) {
+      for (const d of r.diverged ?? []) {
+        console.warn(`${YELLOW}  ${r.name}.${d.field}: в БД ${d.inDb}, в plans.ts ${d.inCode}${RESET}`);
+      }
+    }
+    console.warn(
+      `${YELLOW}  Тариф после первого посева правится админкой (вкладка «Тарифы»): название и «открыт для покупки» — на месте, ` +
+        `цена/период/квоты — на месте без живых подписок, иначе новой редакцией. plans.ts — только начальный посев.${RESET}`,
+    );
   }
   if (report.missingPriceVars.length) {
     console.warn("");
@@ -292,17 +285,18 @@ export function printReport(report: SeedPlansReport): void {
     }
     console.warn(
       `${YELLOW}  Заведите Prices ключом владельца: npm run stripe:create-prices — скрипт напечатает строки ` +
-        `STRIPE_PRICE_* для .env; затем повторите npm run seed:plans. Пока этого нет, раздел «Подписка» показывает «тарифов нет» — это НЕ означает, что посев не запускался.${RESET}`,
+        `STRIPE_PRICE_* для .env; затем откройте тариф в админке («Тарифы» → цена Price, «открыт для покупки») либо удалите строку и повторите посев. ` +
+        `Пока этого нет, раздел «Подписка» показывает «тарифов нет» — это НЕ означает, что посев не запускался.${RESET}`,
     );
   }
 }
 
 async function main(): Promise<void> {
-  console.log(`Посев тарифов: ${PLANS.length} планов из server/config/plans.ts…`);
+  console.log(`Посев тарифов: ${PLANS.length} планов из server/config/plans.ts (создаются отсутствующие; существующие не переписываются)…`);
   const report = await seedPlans();
   printReport(report);
   const total = await db.$count(subscriptionPlans);
-  console.log(`\nВ БД: subscription_plans=${total} (из них по описанию: ${PLANS.length})`);
+  console.log(`\nВ БД: subscription_plans=${total} (из них по описанию посева: ${PLANS.length})`);
   if (report.counts.fail > 0) process.exitCode = 1;
 }
 

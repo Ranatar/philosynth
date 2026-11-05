@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-11-04T18:33:49.893Z",
-    "imported": "2026-11-04T19:03:44.470Z"
+    "synced": "2026-11-05T03:58:28.430Z",
+    "imported": "2026-11-05T03:59:09.450Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -30,56 +30,56 @@
       "en": "— (account deleted)",
       "de": "— (Konto gelöscht)",
       "from": {"en":"— (аккаунт удалён)","de":"— (аккаунт удалён)"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1217"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1224"]
     },
     "adminPromptsPage.action": {
       "ru": "Действие",
       "en": "Action",
       "de": "Aktion",
       "from": {"en":"Действие","de":"Действие"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1433"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1440"]
     },
     "adminPromptsPage.activate": {
       "ru": "Активировать",
       "en": "Activate",
       "de": "Aktivieren",
       "from": {"en":"Активировать","de":"Активировать"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:512","client/src/pages/AdminPromptsPage.tsx:823"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:514","client/src/pages/AdminPromptsPage.tsx:825"]
     },
     "adminPromptsPage.activateFailed": {
       "ru": "Не удалось активировать",
       "en": "Failed to activate",
       "de": "Aktivierung fehlgeschlagen",
       "from": {"en":"Не удалось активировать","de":"Не удалось активировать"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:401","client/src/pages/AdminPromptsPage.tsx:733"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:403","client/src/pages/AdminPromptsPage.tsx:735"]
     },
     "adminPromptsPage.activateVersionHint": {
       "ru": "Активировать эту версию (откат)",
       "en": "Activate this version (rollback)",
       "de": "Diese Version aktivieren (Rollback)",
       "from": {"en":"Активировать эту версию (откат)","de":"Активировать эту версию (откат)"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:233"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:235"]
     },
     "adminPromptsPage.activeOnly": {
       "ru": "только активные версии",
       "en": "active versions only",
       "de": "nur aktive Versionen",
       "from": {"en":"только активные версии","de":"только активные версии"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:443"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:445"]
     },
     "adminPromptsPage.activePrefix": {
       "ru": "активна · ",
       "en": "active · ",
       "de": "aktiv · ",
       "from": {"en":"активна · ","de":"активна · "},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:212"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:214"]
     },
     "adminPromptsPage.activeSuffix": {
       "ru": " · активна",
       "en": " · active",
       "de": " · aktiv",
       "from": {"en":" · активна","de":" · активна"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:466","client/src/pages/AdminPromptsPage.tsx:788"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:468","client/src/pages/AdminPromptsPage.tsx:790"]
     },
     "adminPromptsPage.activeWithDraft": {
       "ru": "v{version} · черновик v{maxV}",
@@ -87,70 +87,70 @@
       "de": "v{version} · Entwurf v{maxV}",
       "from": {"en":"v{version} · черновик v{maxV}","de":"v{version} · черновик v{maxV}"},
       "params": {"version":"active.version","maxV":"maxV"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:317"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:319"]
     },
     "adminPromptsPage.adminNote": {
       "ru": "Администратор правит шаблоны промптов — активированная версия меняет генерацию у всех.",
       "en": "An administrator edits prompt templates — an activated version changes generation for everyone.",
       "de": "Der Administrator bearbeitet die Prompt-Vorlagen — eine aktivierte Version ändert die Generierung für alle.",
       "from": {"en":"Администратор правит шаблоны промптов — активированная версия меняет генерацию у всех.","de":"Администратор правит шаблоны промптов — активированная версия меняет генерацию у всех."},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1264"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1271"]
     },
     "adminPromptsPage.adminRequired": {
       "ru": "Требуются права администратора",
       "en": "Administrator rights required",
       "de": "Administratorrechte erforderlich",
       "from": {"en":"Требуются права администратора","de":"Требуются права администратора"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:87"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:89"]
     },
     "adminPromptsPage.auditAccountDeleted": {
       "ru": "аккаунт удалён",
       "en": "account deleted",
       "de": "Konto gelöscht",
       "from": {"en":"аккаунт удалён","de":"аккаунт удалён"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1198"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1200"]
     },
     "adminPromptsPage.auditConfigActivated": {
       "ru": "версия конфига активирована",
       "en": "config version activated",
       "de": "Konfigurationsversion aktiviert",
       "from": {"en":"версия конфига активирована","de":"версия конфига активирована"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1193"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1195"]
     },
     "adminPromptsPage.auditConfigCreated": {
       "ru": "версия конфига создана",
       "en": "config version created",
       "de": "Konfigurationsversion erstellt",
       "from": {"en":"версия конфига создана","de":"версия конфига создана"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1192"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1194"]
     },
     "adminPromptsPage.auditEmpty": {
       "ru": "журнал пуст",
       "en": "the log is empty",
       "de": "Protokoll ist leer",
       "from": {"en":"журнал пуст","de":"журнал пуст"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1426"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1433"]
     },
     "adminPromptsPage.auditFirstAdmin": {
       "ru": "первый администратор заведён",
       "en": "first administrator created",
       "de": "erster Administrator angelegt",
       "from": {"en":"первый администратор заведён","de":"первый администратор заведён"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1197"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1199"]
     },
     "adminPromptsPage.auditLoadFailed": {
       "ru": "Не удалось загрузить журнал",
       "en": "Failed to load the log",
       "de": "Protokoll konnte nicht geladen werden",
       "from": {"en":"Не удалось загрузить журнал","de":"Не удалось загрузить журнал"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1252"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1259"]
     },
     "adminPromptsPage.auditLog": {
       "ru": "Журнал действий",
       "en": "Action log",
       "de": "Aktionsprotokoll",
       "from": {"en":"Журнал действий","de":"Журнал действий"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1418"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1425"]
     },
     "adminPromptsPage.auditNote": {
       "ru": "Последние {limit} строк admin_audit: версии шаблонов и конфигов, правки каталогов, смены ролей, удаления аккаунтов. Строка пишется той же транзакцией, что и действие.",
@@ -158,91 +158,119 @@
       "de": "Die letzten {limit} Zeilen von admin_audit: Vorlagen- und Konfigurationsversionen, Katalogänderungen, Rollenwechsel, Kontolöschungen. Die Zeile wird in derselben Transaktion wie die Aktion geschrieben.",
       "from": {"en":"Последние {limit} строк admin_audit: версии шаблонов и конфигов, правки каталогов, смены ролей, удаления аккаунтов. Строка пишется той же транзакцией, что и действие.","de":"Последние {limit} строк admin_audit: версии шаблонов и конфигов, правки каталогов, смены ролей, удаления аккаунтов. Строка пишется той же транзакцией, что и действие."},
       "params": {"limit":"AUDIT_LIMIT"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1420"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1427"]
+    },
+    "adminPromptsPage.auditPlanCreated": {
+      "ru": "тариф создан",
+      "en": "plan created",
+      "de": "Tarif angelegt",
+      "from": {"en":"тариф создан","de":"тариф создан"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1203"]
+    },
+    "adminPromptsPage.auditPlanEdition": {
+      "ru": "новая редакция тарифа",
+      "en": "new plan edition",
+      "de": "neue Tarif-Edition",
+      "from": {"en":"новая редакция тарифа","de":"новая редакция тарифа"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1205"]
+    },
+    "adminPromptsPage.auditPlanSeeded": {
+      "ru": "тариф посеян",
+      "en": "plan seeded",
+      "de": "Tarif eingespielt",
+      "from": {"en":"тариф посеян","de":"тариф посеян"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1202"]
+    },
+    "adminPromptsPage.auditPlanUpdated": {
+      "ru": "тариф изменён",
+      "en": "plan changed",
+      "de": "Tarif geändert",
+      "from": {"en":"тариф изменён","de":"тариф изменён"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1204"]
     },
     "adminPromptsPage.auditRoleChanged": {
       "ru": "роль изменена",
       "en": "role changed",
       "de": "Rolle geändert",
       "from": {"en":"роль изменена","de":"роль изменена"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1196"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1198"]
     },
     "adminPromptsPage.auditTemplateActivated": {
       "ru": "версия шаблона активирована",
       "en": "template version activated",
       "de": "Vorlagenversion aktiviert",
       "from": {"en":"версия шаблона активирована","de":"версия шаблона активирована"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1191"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1193"]
     },
     "adminPromptsPage.auditTemplateCreated": {
       "ru": "версия шаблона создана",
       "en": "template version created",
       "de": "Vorlagenversion erstellt",
       "from": {"en":"версия шаблона создана","de":"версия шаблона создана"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1190"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1192"]
     },
     "adminPromptsPage.auditTypeChanged": {
       "ru": "тип каталога изменён",
       "en": "catalog type changed",
       "de": "Katalogtyp geändert",
       "from": {"en":"тип каталога изменён","de":"тип каталога изменён"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1194"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1196"]
     },
     "adminPromptsPage.auditTypeDeleted": {
       "ru": "тип каталога удалён",
       "en": "catalog type deleted",
       "de": "Katalogtyp gelöscht",
       "from": {"en":"тип каталога удалён","de":"тип каталога удалён"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1195"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1197"]
     },
     "adminPromptsPage.catalogLoadFailed": {
       "ru": "Не удалось загрузить каталог",
       "en": "Failed to load the catalog",
       "de": "Katalog konnte nicht geladen werden",
       "from": {"en":"Не удалось загрузить каталог","de":"Не удалось загрузить каталог"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:908"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:910"]
     },
     "adminPromptsPage.categoriesGen": {
       "ru": "категорий",
       "en": "categories",
       "de": "Kategorien",
       "from": {"en":"категорий","de":"категорий"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:973"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:975"]
     },
     "adminPromptsPage.categoriesWord": {
       "ru": "категории",
       "en": "categories",
       "de": "Kategorien",
       "from": {"en":"категории","de":"категории"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:957"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:959"]
     },
     "adminPromptsPage.categoryTypes": {
       "ru": "Типы категорий",
       "en": "Category types",
       "de": "Kategorietypen",
       "from": {"en":"Типы категорий","de":"Типы категорий"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1168"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1170"]
     },
     "adminPromptsPage.chooseConfigLeft": {
       "ru": "выберите конфиг слева",
       "en": "choose a config on the left",
       "de": "Konfiguration links auswählen",
       "from": {"en":"выберите конфиг слева","de":"выберите конфиг слева"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:780"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:782"]
     },
     "adminPromptsPage.chooseKeyLeft": {
       "ru": "выберите ключ слева",
       "en": "choose a key on the left",
       "de": "Schlüssel links auswählen",
       "from": {"en":"выберите ключ слева","de":"выберите ключ слева"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:458"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:460"]
     },
     "adminPromptsPage.chooseOtherVersion": {
       "ru": "Для сравнения выберите другую версию (⇄)",
       "en": "Choose another version to compare (⇄)",
       "de": "Zum Vergleich eine andere Version auswählen (⇄)",
       "from": {"en":"Для сравнения выберите другую версию (⇄)","de":"Для сравнения выберите другую версию (⇄)"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:564"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:566"]
     },
     "adminPromptsPage.compare": {
       "ru": "Сравнение: {olderLabel} → {newerLabel}",
@@ -250,14 +278,14 @@
       "de": "Vergleich: {olderLabel} → {newerLabel}",
       "from": {"en":"Сравнение: {olderLabel} → {newerLabel}","de":"Сравнение: {olderLabel} → {newerLabel}"},
       "params": {"olderLabel":"olderLabel","newerLabel":"newerLabel"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:256"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:258"]
     },
     "adminPromptsPage.compareWithSelected": {
       "ru": "Сравнить с выбранной версией",
       "en": "Compare with the selected version",
       "de": "Mit der gewählten Version vergleichen",
       "from": {"en":"Сравнить с выбранной версией","de":"Сравнить с выбранной версией"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:218"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:220"]
     },
     "adminPromptsPage.configActivated": {
       "ru": "Версия v{version} конфига «{key}» активирована; кэш сброшен",
@@ -265,35 +293,35 @@
       "de": "Version v{version} der Konfiguration „{key}“ aktiviert; Cache geleert",
       "from": {"en":"Версия v{version} конфига «{key}» активирована; кэш сброшен","de":"Версия v{version} конфига «{key}» активирована; кэш сброшен"},
       "params": {"version":"c.version","key":"c.key"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:718"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:720"]
     },
     "adminPromptsPage.configJson": {
       "ru": "JSON конфига",
       "en": "Config JSON",
       "de": "Konfigurations-JSON",
       "from": {"en":"JSON конфига","de":"JSON конфига"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:797"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:799"]
     },
     "adminPromptsPage.configKeys": {
       "ru": "Ключи конфигов",
       "en": "Config keys",
       "de": "Konfigurationsschlüssel",
       "from": {"en":"Ключи конфигов","de":"Ключи конфигов"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:758"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:760"]
     },
     "adminPromptsPage.configVersionDescription": {
       "ru": "Описание версии конфига",
       "en": "Config version description",
       "de": "Beschreibung der Konfigurationsversion",
       "from": {"en":"Описание версии конфига","de":"Описание версии конфига"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:809"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:811"]
     },
     "adminPromptsPage.configsLoadFailed": {
       "ru": "Не удалось загрузить конфиги",
       "en": "Failed to load the configs",
       "de": "Konfigurationen konnten nicht geladen werden",
       "from": {"en":"Не удалось загрузить конфиги","de":"Не удалось загрузить конфиги"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:640"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:642"]
     },
     "adminPromptsPage.confirmActivateConfig": {
       "ru": "Активировать версию v{version} конфига «{selectedKey}»?",
@@ -301,7 +329,7 @@
       "de": "Version v{version} der Konfiguration „{selectedKey}“ aktivieren?",
       "from": {"en":"Активировать версию v{version} конфига «{selectedKey}»?","de":"Активировать версию v{version} конфига «{selectedKey}»?"},
       "params": {"version":"version","selectedKey":"selectedKey"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:741"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:743"]
     },
     "adminPromptsPage.confirmActivateTemplate": {
       "ru": "Активировать версию v{version} шаблона «{selectedKey}»?",
@@ -309,7 +337,7 @@
       "de": "Version v{version} der Vorlage „{selectedKey}“ aktivieren?",
       "from": {"en":"Активировать версию v{version} шаблона «{selectedKey}»?","de":"Активировать версию v{version} шаблона «{selectedKey}»?"},
       "params": {"version":"version","selectedKey":"selectedKey"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:409"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:411"]
     },
     "adminPromptsPage.confirmDeleteType": {
       "ru": "Удалить тип «{key}» ({nameRu})? Ссылающиеся {isRel} сохранят текст типа, но потеряют привязку к каталогу.",
@@ -317,42 +345,42 @@
       "de": "Typ „{key}“ ({nameRu}) löschen? Verweisende {isRel} behalten den Typtext, verlieren aber die Katalogbindung.",
       "from": {"en":"Удалить тип «{key}» ({nameRu})? Ссылающиеся {isRel} сохранят текст типа, но потеряют привязку к каталогу.","de":"Удалить тип «{key}» ({nameRu})? Ссылающиеся {isRel} сохранят текст типа, но потеряют привязку к каталогу."},
       "params": {"key":"t.key","nameRu":"t.nameRu","isRel":"isRel ? \"связи\" : \"категории\""},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:957"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:959"]
     },
     "adminPromptsPage.custom": {
       "ru": "пользовательский",
       "en": "custom",
       "de": "benutzerdefiniert",
       "from": {"en":"пользовательский","de":"пользовательский"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1072","client/src/pages/AdminPromptsPage.tsx:1099"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1074","client/src/pages/AdminPromptsPage.tsx:1101"]
     },
     "adminPromptsPage.defaultDirection": {
       "ru": "Направление по умолчанию",
       "en": "Default direction",
       "de": "Standardrichtung",
       "from": {"en":"Направление по умолчанию","de":"Направление по умолчанию"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1060"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1062"]
     },
     "adminPromptsPage.deleteIcon": {
       "ru": "✕ Удалить",
       "en": "✕ Delete",
       "de": "✕ Löschen",
       "from": {"en":"✕ Удалить","de":"✕ Удалить"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1141"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1143"]
     },
     "adminPromptsPage.details": {
       "ru": "Подробности",
       "en": "Details",
       "de": "Details",
       "from": {"en":"Подробности","de":"Подробности"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1435"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1442"]
     },
     "adminPromptsPage.draftSaveFailed": {
       "ru": "Не удалось сохранить черновик",
       "en": "Failed to save the draft",
       "de": "Entwurf konnte nicht gespeichert werden",
       "from": {"en":"Не удалось сохранить черновик","de":"Не удалось сохранить черновик"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:375","client/src/pages/AdminPromptsPage.tsx:707"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:377","client/src/pages/AdminPromptsPage.tsx:709"]
     },
     "adminPromptsPage.draftSaved": {
       "ru": "Черновик сохранён как v{version} (не активен)",
@@ -360,56 +388,56 @@
       "de": "Entwurf als v{version} gespeichert (nicht aktiv)",
       "from": {"en":"Черновик сохранён как v{version} (не активен)","de":"Черновик сохранён как v{version} (не активен)"},
       "params": {"version":"created.version"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:372","client/src/pages/AdminPromptsPage.tsx:704"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:374","client/src/pages/AdminPromptsPage.tsx:706"]
     },
     "adminPromptsPage.draftSuffix": {
       "ru": " · черновик",
       "en": " · draft",
       "de": " · Entwurf",
       "from": {"en":" · черновик","de":" · черновик"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:466","client/src/pages/AdminPromptsPage.tsx:788"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:468","client/src/pages/AdminPromptsPage.tsx:790"]
     },
     "adminPromptsPage.edgeTypes": {
       "ru": "Типы связей",
       "en": "Relation types",
       "de": "Beziehungstypen",
       "from": {"en":"Типы связей","de":"Типы связей"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1175"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1177"]
     },
     "adminPromptsPage.edgesGen": {
       "ru": "связей",
       "en": "relations",
       "de": "Beziehungen",
       "from": {"en":"связей","de":"связей"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:973"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:975"]
     },
     "adminPromptsPage.edgesWord": {
       "ru": "связи",
       "en": "relations",
       "de": "Beziehungen",
       "from": {"en":"связи","de":"связи"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:957"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:959"]
     },
     "adminPromptsPage.editIcon": {
       "ru": "✎ Изменить",
       "en": "✎ Edit",
       "de": "✎ Bearbeiten",
       "from": {"en":"✎ Изменить","de":"✎ Изменить"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1132"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1134"]
     },
     "adminPromptsPage.emptyJson": {
       "ru": "пустой JSON",
       "en": "empty JSON",
       "de": "leeres JSON",
       "from": {"en":"пустой JSON","de":"пустой JSON"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:596"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:598"]
     },
     "adminPromptsPage.format": {
       "ru": "Форматировать",
       "en": "Format",
       "de": "Formatieren",
       "from": {"en":"Форматировать","de":"Форматировать"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:826"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:828"]
     },
     "adminPromptsPage.jsonErrorAt": {
       "ru": "{message} (строка {line}, столбец {column})",
@@ -417,7 +445,7 @@
       "de": "{message} (Zeile {line}, Spalte {column})",
       "from": {"en":"{message} (строка {line}, столбец {column})","de":"{message} (строка {line}, столбец {column})"},
       "params": {"message":"short.replace(/\\s*\\(line \\d+ column \\d+\\)/i, \"\")","line":"lc[1]","column":"lc[2]"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:604"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:606"]
     },
     "adminPromptsPage.jsonInvalid": {
       "ru": "JSON невалиден: {error}",
@@ -425,21 +453,21 @@
       "de": "JSON ist ungültig: {error}",
       "from": {"en":"JSON невалиден: {error}","de":"JSON невалиден: {error}"},
       "params": {"error":"parsed.error"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:689"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:691"]
     },
     "adminPromptsPage.jsonValid": {
       "ru": "✓ JSON валиден",
       "en": "✓ JSON is valid",
       "de": "✓ JSON ist gültig",
       "from": {"en":"✓ JSON валиден","de":"✓ JSON валиден"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:801"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:803"]
     },
     "adminPromptsPage.key": {
       "ru": "Ключ",
       "en": "Key",
       "de": "Schlüssel",
       "from": {"en":"Ключ","de":"Ключ"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1019"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1021"]
     },
     "adminPromptsPage.keysCount": {
       "ru": "{keysCount} ключей",
@@ -447,7 +475,7 @@
       "de": "{keysCount} Schlüssel",
       "from": {"en":"{keysCount} ключей","de":"{keysCount} ключей"},
       "params": {"keysCount":"keys.length"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:451"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:453"]
     },
     "adminPromptsPage.lineColumn": {
       "ru": "строка {line}, столбец {col}",
@@ -455,56 +483,56 @@
       "de": "Zeile {line}, Spalte {col}",
       "from": {"en":"строка {line}, столбец {col}","de":"строка {line}, столбец {col}"},
       "params": {"line":"line","col":"col"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:585"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:587"]
     },
     "adminPromptsPage.loadingVersions": {
       "ru": "Загрузка версий…",
       "en": "Loading versions…",
       "de": "Versionen werden geladen…",
       "from": {"en":"Загрузка версий…","de":"Загрузка версий…"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:460","client/src/pages/AdminPromptsPage.tsx:782"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:462","client/src/pages/AdminPromptsPage.tsx:784"]
     },
     "adminPromptsPage.mailAttempts": {
       "ru": "Попыток",
       "en": "Attempts",
       "de": "Versuche",
       "from": {"en":"Попыток","de":"Попыток"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1553"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1560"]
     },
     "adminPromptsPage.mailCreated": {
       "ru": "Поставлено",
       "en": "Queued",
       "de": "Eingestellt",
       "from": {"en":"Поставлено","de":"Поставлено"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1549"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1556"]
     },
     "adminPromptsPage.mailEmpty": {
       "ru": "очередь пуста",
       "en": "the queue is empty",
       "de": "Warteschlange ist leer",
       "from": {"en":"очередь пуста","de":"очередь пуста"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1544"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1551"]
     },
     "adminPromptsPage.mailFailed": {
       "ru": "отказ",
       "en": "failed",
       "de": "fehlgeschlagen",
       "from": {"en":"отказ","de":"отказ"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1470"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1477"]
     },
     "adminPromptsPage.mailFailedLabel": {
       "ru": "отказов",
       "en": "failed",
       "de": "fehlgeschlagen",
       "from": {"en":"отказов","de":"отказов"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1529"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1536"]
     },
     "adminPromptsPage.mailLastError": {
       "ru": "Последняя ошибка",
       "en": "Last error",
       "de": "Letzter Fehler",
       "from": {"en":"Последняя ошибка","de":"Последняя ошибка"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1554"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1561"]
     },
     "adminPromptsPage.mailLastRows": {
       "ru": "последние {limit} строк, новые первыми",
@@ -512,126 +540,126 @@
       "de": "die letzten {limit} Zeilen, neueste zuerst",
       "from": {"en":"последние {limit} строк, новые первыми","de":"последние {limit} строк, новые первыми"},
       "params": {"limit":""},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1535"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1542"]
     },
     "adminPromptsPage.mailLoadFailed": {
       "ru": "Не удалось загрузить очередь писем",
       "en": "Failed to load the mail queue",
       "de": "Die E-Mail-Warteschlange konnte nicht geladen werden",
       "from": {"en":"Не удалось загрузить очередь писем","de":"Не удалось загрузить очередь писем"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1495"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1502"]
     },
     "adminPromptsPage.mailNote": {
       "ru": "Письма ставятся в очередь транзакцией действия и уходят работником; тела отправленных и отказанных затёрты, у ждущих — живая ссылка, поэтому тел здесь нет и повторной отправки тоже. «Просрочено» — ждущие с наступившим сроком: работник отстал. Отработанное старше срока хранения снимает проход чистки.",
       "en": "Emails are queued in the transaction of the action and sent by the worker; the bodies of sent and failed emails are scrubbed, and waiting ones carry a live link, so there are no bodies here and no resending either. “Overdue” — waiting emails whose time has come: the worker is behind. Processed emails older than the retention period are removed by the cleanup pass.",
       "de": "E-Mails werden in der Transaktion der Aktion in die Warteschlange gestellt und vom Worker gesendet; die Inhalte gesendeter und fehlgeschlagener E-Mails sind gelöscht, wartende enthalten einen gültigen Link — deshalb gibt es hier weder Inhalte noch erneutes Senden. „Überfällig“ — wartende E-Mails, deren Zeitpunkt gekommen ist: der Worker hinkt hinterher. Abgearbeitete E-Mails, die älter als die Aufbewahrungsfrist sind, entfernt der Bereinigungslauf.",
       "from": {"en":"Письма ставятся в очередь транзакцией действия и уходят работником; тела отправленных и отказанных затёрты, у ждущих — живая ссылка, поэтому тел здесь нет и повторной отправки тоже. «Просрочено» — ждущие с наступившим сроком: работник отстал. Отработанное старше срока хранения снимает проход чистки.","de":"Письма ставятся в очередь транзакцией действия и уходят работником; тела отправленных и отказанных затёрты, у ждущих — живая ссылка, поэтому тел здесь нет и повторной отправки тоже. «Просрочено» — ждущие с наступившим сроком: работник отстал. Отработанное старше срока хранения снимает проход чистки."},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1511"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1518"]
     },
     "adminPromptsPage.mailOverdueLabel": {
       "ru": "просрочено",
       "en": "overdue",
       "de": "überfällig",
       "from": {"en":"просрочено","de":"просрочено"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1521"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1528"]
     },
     "adminPromptsPage.mailPending": {
       "ru": "ждёт",
       "en": "waiting",
       "de": "wartet",
       "from": {"en":"ждёт","de":"ждёт"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1468"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1475"]
     },
     "adminPromptsPage.mailPendingLabel": {
       "ru": "ждут",
       "en": "waiting",
       "de": "wartend",
       "from": {"en":"ждут","de":"ждут"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1517"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1524"]
     },
     "adminPromptsPage.mailQueue": {
       "ru": "Очередь писем",
       "en": "Mail queue",
       "de": "E-Mail-Warteschlange",
       "from": {"en":"Очередь писем","de":"Очередь писем"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1509"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1516"]
     },
     "adminPromptsPage.mailSent": {
       "ru": "отправлено",
       "en": "sent",
       "de": "gesendet",
       "from": {"en":"отправлено","de":"отправлено"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1469"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1476"]
     },
     "adminPromptsPage.mailSentLabel": {
       "ru": "отправлено",
       "en": "sent",
       "de": "gesendet",
       "from": {"en":"отправлено","de":"отправлено"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1525"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1532"]
     },
     "adminPromptsPage.mailStatus": {
       "ru": "Статус",
       "en": "Status",
       "de": "Status",
       "from": {"en":"Статус","de":"Статус"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1552"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1559"]
     },
     "adminPromptsPage.mailSubject": {
       "ru": "Тема",
       "en": "Subject",
       "de": "Betreff",
       "from": {"en":"Тема","de":"Тема"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1551"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1558"]
     },
     "adminPromptsPage.mailTo": {
       "ru": "Кому",
       "en": "To",
       "de": "An",
       "from": {"en":"Кому","de":"Кому"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1550"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1557"]
     },
     "adminPromptsPage.mailWhen": {
       "ru": "Отправлено / следующая",
       "en": "Sent / next attempt",
       "de": "Gesendet / nächster Versuch",
       "from": {"en":"Отправлено / следующая","de":"Отправлено / следующая"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1555"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1562"]
     },
     "adminPromptsPage.makeAdmin": {
       "ru": "Назначить администратором",
       "en": "Make administrator",
       "de": "Zum Administrator ernennen",
       "from": {"en":"Назначить администратором","de":"Назначить администратором"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1261"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1268"]
     },
     "adminPromptsPage.makeAdminConfirm": {
       "ru": "Точно назначить?",
       "en": "Really make admin?",
       "de": "Wirklich ernennen?",
       "from": {"en":"Точно назначить?","de":"Точно назначить?"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1376"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1383"]
     },
     "adminPromptsPage.makeAdminIcon": {
       "ru": "↑ Назначить администратором",
       "en": "↑ Make administrator",
       "de": "↑ Zum Administrator ernennen",
       "from": {"en":"↑ Назначить администратором","de":"↑ Назначить администратором"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1396"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1403"]
     },
     "adminPromptsPage.modifiedSuffix": {
       "ru": " · изменено",
       "en": " · modified",
       "de": " · geändert",
       "from": {"en":" · изменено","de":" · изменено"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:467","client/src/pages/AdminPromptsPage.tsx:789"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:469","client/src/pages/AdminPromptsPage.tsx:791"]
     },
     "adminPromptsPage.name": {
       "ru": "Имя",
       "en": "Name",
       "de": "Name",
       "from": {"en":"Имя","de":"Имя"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1343"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1350"]
     },
     "adminPromptsPage.noActive": {
       "ru": "нет активной · v{maxV}",
@@ -639,42 +667,42 @@
       "de": "keine aktive · v{maxV}",
       "from": {"en":"нет активной · v{maxV}","de":"нет активной · v{maxV}"},
       "params": {"maxV":"maxV"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:318"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:320"]
     },
     "adminPromptsPage.noKeys": {
       "ru": "ключей нет",
       "en": "no keys",
       "de": "keine Schlüssel",
       "from": {"en":"ключей нет","de":"ключей нет"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:136"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:138"]
     },
     "adminPromptsPage.noPlaceholders": {
       "ru": "плейсхолдеров нет",
       "en": "no placeholders",
       "de": "keine Platzhalter",
       "from": {"en":"плейсхолдеров нет","de":"плейсхолдеров нет"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:480"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:482"]
     },
     "adminPromptsPage.noTypes": {
       "ru": "типов нет",
       "en": "no types",
       "de": "keine Typen",
       "from": {"en":"типов нет","de":"типов нет"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1014"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1016"]
     },
     "adminPromptsPage.noUsers": {
       "ru": "пользователей нет",
       "en": "no users",
       "de": "keine Benutzer",
       "from": {"en":"пользователей нет","de":"пользователей нет"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1337"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1344"]
     },
     "adminPromptsPage.notSaved": {
       "ru": "не сохранено",
       "en": "not saved",
       "de": "nicht gespeichert",
       "from": {"en":"не сохранено","de":"не сохранено"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:514","client/src/pages/AdminPromptsPage.tsx:828"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:516","client/src/pages/AdminPromptsPage.tsx:830"]
     },
     "adminPromptsPage.placeholdersRecognized": {
       "ru": "✓ плейсхолдеры распознаны: {placeholdersCount}{missingCount}",
@@ -682,84 +710,379 @@
       "de": "✓ Platzhalter erkannt: {placeholdersCount}{missingCount}",
       "from": {"en":"✓ плейсхолдеры распознаны: {placeholdersCount}{missingCount}","de":"✓ плейсхолдеры распознаны: {placeholdersCount}{missingCount}"},
       "params": {"placeholdersCount":"placeholders.length","missingCount":"missing.length ? ` · без тестового значения: ${missing.length}` : \"\""},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:481"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:483"]
+    },
+    "adminPromptsPage.planClosed": {
+      "ru": "закрыт",
+      "en": "closed",
+      "de": "geschlossen",
+      "from": {"en":"закрыт","de":"закрыт"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1964"]
+    },
+    "adminPromptsPage.planCreateFailed": {
+      "ru": "Не удалось завести тариф",
+      "en": "Could not create the plan",
+      "de": "Tarif konnte nicht angelegt werden",
+      "from": {"en":"Не удалось завести тариф","de":"Не удалось завести тариф"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1865"]
+    },
+    "adminPromptsPage.planCreateSubmit": {
+      "ru": "Завести тариф",
+      "en": "Create plan",
+      "de": "Tarif anlegen",
+      "from": {"en":"Завести тариф","de":"Завести тариф"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1921"]
+    },
+    "adminPromptsPage.planCreated": {
+      "ru": "Тариф {name} заведён (Product и Price в Stripe созданы)",
+      "en": "Plan {name} created (Product and Price created in Stripe)",
+      "de": "Tarif {name} angelegt (Product und Price in Stripe erstellt)",
+      "from": {"en":"Тариф {name} заведён (Product и Price в Stripe созданы)","de":"Тариф {name} заведён (Product и Price в Stripe созданы)"},
+      "params": {"name":""},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1863"]
+    },
+    "adminPromptsPage.planDisplayName": {
+      "ru": "Название",
+      "en": "Name",
+      "de": "Bezeichnung",
+      "from": {"en":"Название","de":"Название"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1664","client/src/pages/AdminPromptsPage.tsx:1938"]
+    },
+    "adminPromptsPage.planEditBtn": {
+      "ru": "✎ Править",
+      "en": "✎ Edit",
+      "de": "✎ Bearbeiten",
+      "from": {"en":"✎ Править","de":"✎ Править"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1969"]
+    },
+    "adminPromptsPage.planEditionBadge": {
+      "ru": "ред. {n}",
+      "en": "ed. {n}",
+      "de": "Ed. {n}",
+      "from": {"en":"ред. {n}","de":"ред. {n}"},
+      "params": {"n":""},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1956"]
+    },
+    "adminPromptsPage.planEditionBtn": {
+      "ru": "⧉ Новая редакция",
+      "en": "⧉ New edition",
+      "de": "⧉ Neue Edition",
+      "from": {"en":"⧉ Новая редакция","de":"⧉ Новая редакция"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1972"]
+    },
+    "adminPromptsPage.planEditionConfirm": {
+      "ru": "Точно завести?",
+      "en": "Really create?",
+      "de": "Wirklich anlegen?",
+      "from": {"en":"Точно завести?","de":"Точно завести?"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2013"]
+    },
+    "adminPromptsPage.planEditionCreated": {
+      "ru": "Редакция {name} заведена и открыта для покупки; {previous} закрыта, её подписчики ({live}) остаются на своих условиях",
+      "en": "Edition {name} created and open for purchase; {previous} closed, its subscribers ({live}) keep their terms",
+      "de": "Edition {name} angelegt und zum Kauf geöffnet; {previous} geschlossen, ihre Abonnenten ({live}) behalten ihre Konditionen",
+      "from": {"en":"Редакция {name} заведена и открыта для покупки; {previous} закрыта, её подписчики ({live}) остаются на своих условиях","de":"Редакция {name} заведена и открыта для покупки; {previous} закрыта, её подписчики ({live}) остаются на своих условиях"},
+      "params": {"name":"","previous":"","live":""},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1832"]
+    },
+    "adminPromptsPage.planEditionFailed": {
+      "ru": "Не удалось завести редакцию",
+      "en": "Could not create the edition",
+      "de": "Edition konnte nicht angelegt werden",
+      "from": {"en":"Не удалось завести редакцию","de":"Не удалось завести редакцию"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1838"]
+    },
+    "adminPromptsPage.planEditionNote": {
+      "ru": "Новая редакция семейства «{family}»: поля ниже предзаполнены прежней редакцией. Будет создана строка {next} и новый Price в Stripe; {name} закроется для покупки.",
+      "en": "New edition of the “{family}” family: the fields below are pre-filled from the previous edition. A row {next} and a new Price in Stripe will be created; {name} will be closed for purchase.",
+      "de": "Neue Edition der Familie „{family}“: die Felder unten sind mit der vorherigen Edition vorbelegt. Es werden die Zeile {next} und ein neuer Price in Stripe angelegt; {name} wird für den Kauf geschlossen.",
+      "from": {"en":"Новая редакция семейства «{family}»: поля ниже предзаполнены прежней редакцией. Будет создана строка {next} и новый Price в Stripe; {name} закроется для покупки.","de":"Новая редакция семейства «{family}»: поля ниже предзаполнены прежней редакцией. Будет создана строка {next} и новый Price в Stripe; {name} закроется для покупки."},
+      "params": {"family":"","next":"","name":""},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1998"]
+    },
+    "adminPromptsPage.planEditionSubmit": {
+      "ru": "Завести редакцию",
+      "en": "Create edition",
+      "de": "Edition anlegen",
+      "from": {"en":"Завести редакцию","de":"Завести редакцию"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2014"]
+    },
+    "adminPromptsPage.planEditionWarn": {
+      "ru": "Точно завести новую редакцию? Прежняя закроется для покупки, а её подписчики ({live}) останутся на прежних цене и квотах — на новую редакцию их никто не переводит.",
+      "en": "Really create a new edition? The previous one will be closed for purchase, and its subscribers ({live}) keep their previous price and quotas — nobody moves them to the new edition.",
+      "de": "Wirklich eine neue Edition anlegen? Die bisherige wird für den Kauf geschlossen, ihre Abonnenten ({live}) behalten den bisherigen Preis und die Kontingente — niemand überführt sie in die neue Edition.",
+      "from": {"en":"Точно завести новую редакцию? Прежняя закроется для покупки, а её подписчики ({live}) останутся на прежних цене и квотах — на новую редакцию их никто не переводит.","de":"Точно завести новую редакцию? Прежняя закроется для покупки, а её подписчики ({live}) останутся на прежних цене и квотах — на новую редакцию их никто не переводит."},
+      "params": {"live":""},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2005"]
+    },
+    "adminPromptsPage.planFamilyCol": {
+      "ru": "Семейство / редакция",
+      "en": "Family / edition",
+      "de": "Familie / Edition",
+      "from": {"en":"Семейство / редакция","de":"Семейство / редакция"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1937"]
+    },
+    "adminPromptsPage.planLiveCol": {
+      "ru": "Живых подписок",
+      "en": "Live subscriptions",
+      "de": "Aktive Abos",
+      "from": {"en":"Живых подписок","de":"Живых подписок"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1941"]
+    },
+    "adminPromptsPage.planLockedHint": {
+      "ru": "У тарифа есть живые подписки: цена, период и квоты правятся только новой редакцией — подписчики дорабатывают на своих условиях.",
+      "en": "This plan has live subscriptions: price, period and quotas can only be changed by a new edition — subscribers keep their terms.",
+      "de": "Dieser Tarif hat aktive Abos: Preis, Periode und Kontingente lassen sich nur über eine neue Edition ändern — Abonnenten behalten ihre Konditionen.",
+      "from": {"en":"У тарифа есть живые подписки: цена, период и квоты правятся только новой редакцией — подписчики дорабатывают на своих условиях.","de":"У тарифа есть живые подписки: цена, период и квоты правятся только новой редакцией — подписчики дорабатывают на своих условиях."},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1773"]
+    },
+    "adminPromptsPage.planName": {
+      "ru": "Имя (идентификатор семейства)",
+      "en": "Name (family identifier)",
+      "de": "Name (Kennung der Familie)",
+      "from": {"en":"Имя (идентификатор семейства)","de":"Имя (идентификатор семейства)"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1905"]
+    },
+    "adminPromptsPage.planNamePlaceholder": {
+      "ru": "латиница, цифры, «-» и «_»: team, pro-plus…",
+      "en": "latin letters, digits, “-” and “_”: team, pro-plus…",
+      "de": "lateinische Buchstaben, Ziffern, „-“ und „_“: team, pro-plus…",
+      "from": {"en":"латиница, цифры, «-» и «_»: team, pro-plus…","de":"латиница, цифры, «-» и «_»: team, pro-plus…"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1912"]
+    },
+    "adminPromptsPage.planNewFamily": {
+      "ru": "+ Новый тариф",
+      "en": "+ New plan",
+      "de": "+ Neuer Tarif",
+      "from": {"en":"+ Новый тариф","de":"+ Новый тариф"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1897"]
+    },
+    "adminPromptsPage.planOpen": {
+      "ru": "открыт",
+      "en": "open",
+      "de": "offen",
+      "from": {"en":"открыт","de":"открыт"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1964"]
+    },
+    "adminPromptsPage.planOpenCol": {
+      "ru": "Покупка",
+      "en": "Purchase",
+      "de": "Kauf",
+      "from": {"en":"Покупка","de":"Покупка"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1942"]
+    },
+    "adminPromptsPage.planOpenForPurchase": {
+      "ru": "Открыт для покупки (виден на странице биллинга, подписка оформляется)",
+      "en": "Open for purchase (shown on the billing page, subscriptions can be taken out)",
+      "de": "Zum Kauf geöffnet (auf der Abrechnungsseite sichtbar, Abo abschließbar)",
+      "from": {"en":"Открыт для покупки (виден на странице биллинга, подписка оформляется)","de":"Открыт для покупки (виден на странице биллинга, подписка оформляется)"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1734"]
+    },
+    "adminPromptsPage.planPerMonth": {
+      "ru": "в месяц",
+      "en": "per month",
+      "de": "pro Monat",
+      "from": {"en":"в месяц","de":"в месяц"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1701"]
+    },
+    "adminPromptsPage.planPerYear": {
+      "ru": "в год",
+      "en": "per year",
+      "de": "pro Jahr",
+      "from": {"en":"в год","de":"в год"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1702"]
+    },
+    "adminPromptsPage.planPeriod": {
+      "ru": "Период",
+      "en": "Period",
+      "de": "Periode",
+      "from": {"en":"Период","de":"Период"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1697"]
+    },
+    "adminPromptsPage.planPrice": {
+      "ru": "Цена, $ за период",
+      "en": "Price, $ per period",
+      "de": "Preis, $ pro Periode",
+      "from": {"en":"Цена, $ за период","de":"Цена, $ за период"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1676"]
+    },
+    "adminPromptsPage.planPriceCol": {
+      "ru": "Цена",
+      "en": "Price",
+      "de": "Preis",
+      "from": {"en":"Цена","de":"Цена"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1939"]
+    },
+    "adminPromptsPage.planQuotaEnrichments": {
+      "ru": "Обогащений",
+      "en": "Enrichments",
+      "de": "Anreicherungen",
+      "from": {"en":"Обогащений","de":"Обогащений"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1608"]
+    },
+    "adminPromptsPage.planQuotaModes": {
+      "ru": "Режимов",
+      "en": "Modes",
+      "de": "Modi",
+      "from": {"en":"Режимов","de":"Режимов"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1607"]
+    },
+    "adminPromptsPage.planQuotaRegenerations": {
+      "ru": "Перегенераций",
+      "en": "Regenerations",
+      "de": "Neugenerierungen",
+      "from": {"en":"Перегенераций","de":"Перегенераций"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1606"]
+    },
+    "adminPromptsPage.planQuotaSyntheses": {
+      "ru": "Синтезов",
+      "en": "Syntheses",
+      "de": "Synthesen",
+      "from": {"en":"Синтезов","de":"Синтезов"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1605"]
+    },
+    "adminPromptsPage.planQuotasCol": {
+      "ru": "Квоты",
+      "en": "Quotas",
+      "de": "Kontingente",
+      "from": {"en":"Квоты","de":"Квоты"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1940"]
+    },
+    "adminPromptsPage.planSaveFailed": {
+      "ru": "Не удалось сохранить тариф",
+      "en": "Could not save the plan",
+      "de": "Tarif konnte nicht gespeichert werden",
+      "from": {"en":"Не удалось сохранить тариф","de":"Не удалось сохранить тариф"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1813"]
+    },
+    "adminPromptsPage.planSaved": {
+      "ru": "{name}: сохранено",
+      "en": "{name}: saved",
+      "de": "{name}: gespeichert",
+      "from": {"en":"{name}: сохранено","de":"{name}: сохранено"},
+      "params": {"name":""},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1809"]
+    },
+    "adminPromptsPage.planSavedNewPrice": {
+      "ru": "{name}: сохранено; в Stripe заведён новый Price, прежний {retired} выключен",
+      "en": "{name}: saved; a new Price was created in Stripe, the previous one {retired} is disabled",
+      "de": "{name}: gespeichert; in Stripe wurde ein neuer Price angelegt, der bisherige {retired} ist deaktiviert",
+      "from": {"en":"{name}: сохранено; в Stripe заведён новый Price, прежний {retired} выключен","de":"{name}: сохранено; в Stripe заведён новый Price, прежний {retired} выключен"},
+      "params": {"name":"","retired":""},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1808"]
+    },
+    "adminPromptsPage.plansCount": {
+      "ru": "редакций: {total}, открыто для покупки: {open}",
+      "en": "editions: {total}, open for purchase: {open}",
+      "de": "Editionen: {total}, zum Kauf offen: {open}",
+      "from": {"en":"редакций: {total}, открыто для покупки: {open}","de":"редакций: {total}, открыто для покупки: {open}"},
+      "params": {"total":"","open":""},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1890"]
+    },
+    "adminPromptsPage.plansEmpty": {
+      "ru": "тарифов нет — посейте (npm run seed:plans) или заведите здесь",
+      "en": "no plans — seed them (npm run seed:plans) or create one here",
+      "de": "keine Tarife — einspielen (npm run seed:plans) oder hier anlegen",
+      "from": {"en":"тарифов нет — посейте (npm run seed:plans) или заведите здесь","de":"тарифов нет — посейте (npm run seed:plans) или заведите здесь"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1932"]
+    },
+    "adminPromptsPage.plansLoadFailed": {
+      "ru": "Не удалось загрузить тарифы",
+      "en": "Could not load the plans",
+      "de": "Tarife konnten nicht geladen werden",
+      "from": {"en":"Не удалось загрузить тарифы","de":"Не удалось загрузить тарифы"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1763"]
+    },
+    "adminPromptsPage.plansNote": {
+      "ru": "Источник истины о тарифах — эта таблица, не код: посев заводит только отсутствующие. Название и «открыт для покупки» правятся на месте; цена, период и квоты — на месте лишь у тарифа без живых подписок (новая цена заводит новый Price в Stripe, прежний выключается). У тарифа с подписчиками — «Новая редакция»: новая строка и новый Price, прежняя закрывается для покупки, её подписчики дорабатывают на своих условиях. Квоты: синтезов / перегенераций / режимов / обогащений за период.",
+      "en": "The source of truth for plans is this table, not the code: seeding only creates missing ones. The name and “open for purchase” are edited in place; price, period and quotas in place only for a plan without live subscriptions (a new price creates a new Price in Stripe and disables the previous one). For a plan with subscribers use “New edition”: a new row and a new Price, the previous one is closed for purchase and its subscribers keep their terms. Quotas: syntheses / regenerations / modes / enrichments per period.",
+      "de": "Die Quelle der Wahrheit für Tarife ist diese Tabelle, nicht der Code: das Einspielen legt nur fehlende an. Bezeichnung und „zum Kauf geöffnet“ werden direkt bearbeitet; Preis, Periode und Kontingente nur bei einem Tarif ohne aktive Abos (ein neuer Preis legt einen neuen Price in Stripe an und deaktiviert den bisherigen). Bei einem Tarif mit Abonnenten: „Neue Edition“ — neue Zeile und neuer Price, die bisherige wird für den Kauf geschlossen, ihre Abonnenten behalten ihre Konditionen. Kontingente: Synthesen / Neugenerierungen / Modi / Anreicherungen pro Periode.",
+      "from": {"en":"Источник истины о тарифах — эта таблица, не код: посев заводит только отсутствующие. Название и «открыт для покупки» правятся на месте; цена, период и квоты — на месте лишь у тарифа без живых подписок (новая цена заводит новый Price в Stripe, прежний выключается). У тарифа с подписчиками — «Новая редакция»: новая строка и новый Price, прежняя закрывается для покупки, её подписчики дорабатывают на своих условиях. Квоты: синтезов / перегенераций / режимов / обогащений за период.","de":"Источник истины о тарифах — эта таблица, не код: посев заводит только отсутствующие. Название и «открыт для покупки» правятся на месте; цена, период и квоты — на месте лишь у тарифа без живых подписок (новая цена заводит новый Price в Stripe, прежний выключается). У тарифа с подписчиками — «Новая редакция»: новая строка и новый Price, прежняя закрывается для покупки, её подписчики дорабатывают на своих условиях. Квоты: синтезов / перегенераций / режимов / обогащений за период."},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1878"]
+    },
+    "adminPromptsPage.plansTitle": {
+      "ru": "Тарифы и редакции",
+      "en": "Plans and editions",
+      "de": "Tarife und Editionen",
+      "from": {"en":"Тарифы и редакции","de":"Тарифы и редакции"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1876"]
     },
     "adminPromptsPage.previewTestValues": {
       "ru": "Предпросмотр (тестовые значения)",
       "en": "Preview (test values)",
       "de": "Vorschau (Testwerte)",
       "from": {"en":"Предпросмотр (тестовые значения)","de":"Предпросмотр (тестовые значения)"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:518"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:520"]
     },
     "adminPromptsPage.promptRegistry": {
       "ru": "Prompt Registry",
       "en": "Prompt Registry",
       "de": "Prompt Registry",
       "from": {"en":"Prompt Registry","de":"Prompt Registry"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1598"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2056"]
     },
     "adminPromptsPage.refresh": {
       "ru": "↻ Обновить",
       "en": "↻ Refresh",
       "de": "↻ Aktualisieren",
       "from": {"en":"↻ Обновить","de":"↻ Обновить"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1538"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1894"]
     },
     "adminPromptsPage.registered": {
       "ru": "Зарегистрирован",
       "en": "Registered",
       "de": "Registriert",
       "from": {"en":"Зарегистрирован","de":"Зарегистрирован"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1345"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1352"]
     },
     "adminPromptsPage.registryNote": {
       "ru": "Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация сбрасывает кэш реестра — следующая генерация берёт новый текст.",
       "en": "Saving creates a new draft version; generation uses only the active one. Activation resets the registry cache — the next generation takes the new text.",
       "de": "Speichern erzeugt eine neue Entwurfsversion; die Generierung verwendet nur die aktive. Aktivierung leert den Registry-Cache — die nächste Generierung nimmt den neuen Text.",
       "from": {"en":"Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация сбрасывает кэш реестра — следующая генерация берёт новый текст.","de":"Сохранение создаёт новую версию-черновик; генерация использует только активную. Активация сбрасывает кэш реестра — следующая генерация берёт новый текст."},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1653"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2121"]
     },
     "adminPromptsPage.revoke": {
       "ru": "↓ Снять права",
       "en": "↓ Revoke rights",
       "de": "↓ Rechte entziehen",
       "from": {"en":"↓ Снять права","de":"↓ Снять права"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1396"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1403"]
     },
     "adminPromptsPage.revokeAdminFrom": {
       "ru": "Снять права администратора у",
       "en": "Revoke administrator rights from",
       "de": "Administratorrechte entziehen für",
       "from": {"en":"Снять права администратора у","de":"Снять права администратора у"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1261"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1268"]
     },
     "adminPromptsPage.revokeConfirm": {
       "ru": "Точно снять права?",
       "en": "Really revoke rights?",
       "de": "Rechte wirklich entziehen?",
       "from": {"en":"Точно снять права?","de":"Точно снять права?"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1375"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1382"]
     },
     "adminPromptsPage.revokeNote": {
       "ru": "Пользователь потеряет доступ к админке; синтезы и баланс не затрагиваются.",
       "en": "The user will lose access to the admin panel; syntheses and balance are not affected.",
       "de": "Der Benutzer verliert den Zugang zur Verwaltung; Synthesen und Guthaben bleiben unberührt.",
       "from": {"en":"Пользователь потеряет доступ к админке; синтезы и баланс не затрагиваются.","de":"Пользователь потеряет доступ к админке; синтезы и баланс не затрагиваются."},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1265"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1272"]
     },
     "adminPromptsPage.role": {
       "ru": "Роль",
       "en": "Role",
       "de": "Rolle",
       "from": {"en":"Роль","de":"Роль"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1344"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1351"]
     },
     "adminPromptsPage.roleAdmin": {
       "ru": "администратор",
       "en": "administrator",
       "de": "Administrator",
       "from": {"en":"администратор","de":"администратор"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1187"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1189"]
     },
     "adminPromptsPage.roleAlready": {
       "ru": "{email}: роль уже была «{role}»",
@@ -767,14 +1090,14 @@
       "de": "{email}: Rolle war bereits „{role}“",
       "from": {"en":"{email}: роль уже была «{role}»","de":"{email}: роль уже была «{role}»"},
       "params": {"email":"r.user.email","role":"ROLE_LABELS[r.user.role]"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1286"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1293"]
     },
     "adminPromptsPage.roleChangeFailed": {
       "ru": "Не удалось изменить роль",
       "en": "Failed to change the role",
       "de": "Rolle konnte nicht geändert werden",
       "from": {"en":"Не удалось изменить роль","de":"Не удалось изменить роль"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1290"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1297"]
     },
     "adminPromptsPage.roleNow": {
       "ru": "{email}: роль теперь «{role}»",
@@ -782,112 +1105,112 @@
       "de": "{email}: Rolle ist jetzt „{role}“",
       "from": {"en":"{email}: роль теперь «{role}»","de":"{email}: роль теперь «{role}»"},
       "params": {"email":"r.user.email","role":"ROLE_LABELS[r.user.role]"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1285"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1292"]
     },
     "adminPromptsPage.roleUser": {
       "ru": "пользователь",
       "en": "user",
       "de": "Benutzer",
       "from": {"en":"пользователь","de":"пользователь"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1187"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1189"]
     },
     "adminPromptsPage.rolesNote": {
       "ru": "Ролей две: пользователь и администратор. Свою роль изменить нельзя — единственный администратор не может понизить сам себя; последнего администратора не понизит никто. Первый администратор заводится только скриптом",
       "en": "There are two roles: user and administrator. You cannot change your own role — the only administrator cannot demote themselves; nobody can demote the last administrator. The first administrator is created only by the script",
       "de": "Es gibt zwei Rollen: Benutzer und Administrator. Die eigene Rolle lässt sich nicht ändern — der einzige Administrator kann sich nicht selbst herabstufen; den letzten Administrator stuft niemand herab. Der erste Administrator wird nur per Skript angelegt",
       "from": {"en":"Ролей две: пользователь и администратор. Свою роль изменить нельзя — единственный администратор не может понизить сам себя; последнего администратора не понизит никто. Первый администратор заводится только скриптом","de":"Ролей две: пользователь и администратор. Свою роль изменить нельзя — единственный администратор не может понизить сам себя; последнего администратора не понизит никто. Первый администратор заводится только скриптом"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1303"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1310"]
     },
     "adminPromptsPage.rollback": {
       "ru": "Откатить",
       "en": "Roll back",
       "de": "Zurücksetzen",
       "from": {"en":"Откатить","de":"Откатить"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:240"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:242"]
     },
     "adminPromptsPage.rollbackFailed": {
       "ru": "Не удалось откатить",
       "en": "Failed to roll back",
       "de": "Zurücksetzen fehlgeschlagen",
       "from": {"en":"Не удалось откатить","de":"Не удалось откатить"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:415","client/src/pages/AdminPromptsPage.tsx:747"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:417","client/src/pages/AdminPromptsPage.tsx:749"]
     },
     "adminPromptsPage.russianNameRequired": {
       "ru": "Русское название типа обязательно",
       "en": "The Russian type name is required",
       "de": "Der russische Typname ist erforderlich",
       "from": {"en":"Русское название типа обязательно","de":"Русское название типа обязательно"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:932"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:934"]
     },
     "adminPromptsPage.saveAndActivate": {
       "ru": "Сохранить и активировать",
       "en": "Save and activate",
       "de": "Speichern und aktivieren",
       "from": {"en":"Сохранить и активировать","de":"Сохранить и активировать"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:512","client/src/pages/AdminPromptsPage.tsx:823"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:514","client/src/pages/AdminPromptsPage.tsx:825"]
     },
     "adminPromptsPage.saveDraft": {
       "ru": "Сохранить как черновик",
       "en": "Save as draft",
       "de": "Als Entwurf speichern",
       "from": {"en":"Сохранить как черновик","de":"Сохранить как черновик"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:503","client/src/pages/AdminPromptsPage.tsx:814"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:505","client/src/pages/AdminPromptsPage.tsx:816"]
     },
     "adminPromptsPage.searchCatalog": {
       "ru": "Поиск по каталогу",
       "en": "Catalog search",
       "de": "Katalog durchsuchen",
       "from": {"en":"Поиск по каталогу","de":"Поиск по каталогу"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:999"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1001"]
     },
     "adminPromptsPage.searchCatalogPlaceholder": {
       "ru": "поиск по ключу или названию…",
       "en": "search by key or name…",
       "de": "Suche nach Schlüssel oder Name…",
       "from": {"en":"поиск по ключу или названию…","de":"поиск по ключу или названию…"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:996"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:998"]
     },
     "adminPromptsPage.searchConfigKey": {
       "ru": "Поиск по ключу конфига",
       "en": "Search by config key",
       "de": "Suche nach Konfigurationsschlüssel",
       "from": {"en":"Поиск по ключу конфига","de":"Поиск по ключу конфига"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:764"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:766"]
     },
     "adminPromptsPage.searchKey": {
       "ru": "Поиск по ключу",
       "en": "Search by key",
       "de": "Suche nach Schlüssel",
       "from": {"en":"Поиск по ключу","de":"Поиск по ключу"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:433"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:435"]
     },
     "adminPromptsPage.searchKeyPlaceholder": {
       "ru": "поиск по ключу…",
       "en": "search by key…",
       "de": "Suche nach Schlüssel…",
       "from": {"en":"поиск по ключу…","de":"поиск по ключу…"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:430","client/src/pages/AdminPromptsPage.tsx:761"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:432","client/src/pages/AdminPromptsPage.tsx:763"]
     },
     "adminPromptsPage.searchUsers": {
       "ru": "Поиск пользователей",
       "en": "User search",
       "de": "Benutzer suchen",
       "from": {"en":"Поиск пользователей","de":"Поиск пользователей"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1318"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1325"]
     },
     "adminPromptsPage.searchUsersPlaceholder": {
       "ru": "поиск по email или имени…",
       "en": "search by email or name…",
       "de": "Suche nach E-Mail oder Name…",
       "from": {"en":"поиск по email или имени…","de":"поиск по email или имени…"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1315"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1322"]
     },
     "adminPromptsPage.seedAdminCommand": {
       "ru": "npm run seed:admin",
       "en": "npm run seed:admin",
       "de": "npm run seed:admin",
       "from": {"en":"npm run seed:admin","de":"npm run seed:admin"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1303"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1310"]
     },
     "adminPromptsPage.shownOf": {
       "ru": "показано {usersCount} из {total}, администраторов в выдаче: {admins}",
@@ -895,56 +1218,63 @@
       "de": "angezeigt {usersCount} von {total}, Administratoren im Ergebnis: {admins}",
       "from": {"en":"показано {usersCount} из {total}, администраторов в выдаче: {admins}","de":"показано {usersCount} из {total}, администраторов в выдаче: {admins}"},
       "params": {"usersCount":"users.length","total":"total","admins":"admins"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1322"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1329"]
     },
     "adminPromptsPage.system": {
       "ru": "системный",
       "en": "system",
       "de": "systemseitig",
       "from": {"en":"системный","de":"системный"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1072","client/src/pages/AdminPromptsPage.tsx:1099"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1074","client/src/pages/AdminPromptsPage.tsx:1101"]
     },
     "adminPromptsPage.tabAccess": {
       "ru": "Доступ",
       "en": "Access",
       "de": "Zugang",
       "from": {"en":"Доступ","de":"Доступ"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1638"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2096"]
     },
     "adminPromptsPage.tabCatalogs": {
       "ru": "Каталоги",
       "en": "Catalogs",
       "de": "Kataloge",
       "from": {"en":"Каталоги","de":"Каталоги"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1628"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2086"]
     },
     "adminPromptsPage.tabConfigs": {
       "ru": "Конфиги",
       "en": "Configs",
       "de": "Konfigurationen",
       "from": {"en":"Конфиги","de":"Конфиги"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1618"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2076"]
     },
     "adminPromptsPage.tabMail": {
       "ru": "Почта",
       "en": "Mail",
       "de": "E-Mail",
       "from": {"en":"Почта","de":"Почта"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1648"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2106"]
+    },
+    "adminPromptsPage.tabPlans": {
+      "ru": "Тарифы",
+      "en": "Plans",
+      "de": "Tarife",
+      "from": {"en":"Тарифы","de":"Тарифы"},
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2116"]
     },
     "adminPromptsPage.tabTemplates": {
       "ru": "Шаблоны",
       "en": "Templates",
       "de": "Vorlagen",
       "from": {"en":"Шаблоны","de":"Шаблоны"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1608"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:2066"]
     },
     "adminPromptsPage.target": {
       "ru": "Цель",
       "en": "Target",
       "de": "Ziel",
       "from": {"en":"Цель","de":"Цель"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1434"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1441"]
     },
     "adminPromptsPage.templateActivated": {
       "ru": "Версия v{version} шаблона «{key}» активирована; кэш реестра сброшен",
@@ -952,42 +1282,42 @@
       "de": "Version v{version} der Vorlage „{key}“ aktiviert; Registry-Cache geleert",
       "from": {"en":"Версия v{version} шаблона «{key}» активирована; кэш реестра сброшен","de":"Версия v{version} шаблона «{key}» активирована; кэш реестра сброшен"},
       "params": {"version":"t.version","key":"t.key"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:386"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:388"]
     },
     "adminPromptsPage.templateBody": {
       "ru": "Тело шаблона",
       "en": "Template body",
       "de": "Vorlagentext",
       "from": {"en":"Тело шаблона","de":"Тело шаблона"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:475"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:477"]
     },
     "adminPromptsPage.templateBodyEmpty": {
       "ru": "Тело шаблона пусто",
       "en": "The template body is empty",
       "de": "Der Vorlagentext ist leer",
       "from": {"en":"Тело шаблона пусто","de":"Тело шаблона пусто"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:357"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:359"]
     },
     "adminPromptsPage.templateKeys": {
       "ru": "Ключи шаблонов",
       "en": "Template keys",
       "de": "Vorlagenschlüssel",
       "from": {"en":"Ключи шаблонов","de":"Ключи шаблонов"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:427"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:429"]
     },
     "adminPromptsPage.templatesLoadFailed": {
       "ru": "Не удалось загрузить шаблоны",
       "en": "Failed to load the templates",
       "de": "Vorlagen konnten nicht geladen werden",
       "from": {"en":"Не удалось загрузить шаблоны","de":"Не удалось загрузить шаблоны"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:296"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:298"]
     },
     "adminPromptsPage.typeDeleteFailed": {
       "ru": "Не удалось удалить тип",
       "en": "Failed to delete the type",
       "de": "Typ konnte nicht gelöscht werden",
       "from": {"en":"Не удалось удалить тип","de":"Не удалось удалить тип"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:977"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:979"]
     },
     "adminPromptsPage.typeDeleted": {
       "ru": "Тип «{key}» удалён; отвязано {isRel}: {unlinked}",
@@ -995,28 +1325,28 @@
       "de": "Typ „{key}“ gelöscht; Bindung aufgehoben bei {isRel}: {unlinked}",
       "from": {"en":"Тип «{key}» удалён; отвязано {isRel}: {unlinked}","de":"Тип «{key}» удалён; отвязано {isRel}: {unlinked}"},
       "params": {"key":"t.key","isRel":"isRel ? \"связей\" : \"категорий\"","unlinked":"r.unlinked"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:973"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:975"]
     },
     "adminPromptsPage.typeDescription": {
       "ru": "Описание типа",
       "en": "Type description",
       "de": "Typbeschreibung",
       "from": {"en":"Описание типа","de":"Описание типа"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1048"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1050"]
     },
     "adminPromptsPage.typeName": {
       "ru": "Название типа",
       "en": "Type name",
       "de": "Typname",
       "from": {"en":"Название типа","de":"Название типа"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1039"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1041"]
     },
     "adminPromptsPage.typeSaveFailed": {
       "ru": "Не удалось сохранить тип",
       "en": "Failed to save the type",
       "de": "Typ konnte nicht gespeichert werden",
       "from": {"en":"Не удалось сохранить тип","de":"Не удалось сохранить тип"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:947"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:949"]
     },
     "adminPromptsPage.typeSaved": {
       "ru": "Тип «{key}» сохранён; кэш каталога сброшен",
@@ -1024,7 +1354,7 @@
       "de": "Typ „{key}“ gespeichert; Katalog-Cache geleert",
       "from": {"en":"Тип «{key}» сохранён; кэш каталога сброшен","de":"Тип «{key}» сохранён; кэш каталога сброшен"},
       "params": {"key":"t.key"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:945"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:947"]
     },
     "adminPromptsPage.typesCount": {
       "ru": "{rowsCount} типов, системных: {isSystemCount}",
@@ -1032,49 +1362,49 @@
       "de": "{rowsCount} Typen, davon systemseitig: {isSystemCount}",
       "from": {"en":"{rowsCount} типов, системных: {isSystemCount}","de":"{rowsCount} типов, системных: {isSystemCount}"},
       "params": {"rowsCount":"rows.length","isSystemCount":"rows.filter((t) => t.isSystem).length"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1003"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1005"]
     },
     "adminPromptsPage.typesNote": {
       "ru": "Системные типы (посев 0.3b) неизменяемы; пользовательские — созданные из TaxonomySelector — можно переименовать или удалить. Ключ типа не меняется: на него завязаны алиасы нормализации.",
       "en": "System types (seed 0.3b) are immutable; custom ones — created from the TaxonomySelector — can be renamed or deleted. The type key does not change: normalization aliases depend on it.",
       "de": "Systemtypen (Seed 0.3b) sind unveränderlich; benutzerdefinierte — im TaxonomySelector erstellte — lassen sich umbenennen oder löschen. Der Typschlüssel ändert sich nicht: an ihn sind die Normalisierungs-Aliasse gebunden.",
       "from": {"en":"Системные типы (посев 0.3b) неизменяемы; пользовательские — созданные из TaxonomySelector — можно переименовать или удалить. Ключ типа не меняется: на него завязаны алиасы нормализации.","de":"Системные типы (посев 0.3b) неизменяемы; пользовательские — созданные из TaxonomySelector — можно переименовать или удалить. Ключ типа не меняется: на него завязаны алиасы нормализации."},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1170"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1172"]
     },
     "adminPromptsPage.unsavedLost": {
       "ru": "Несохранённые правки будут потеряны. Перейти к версии?",
       "en": "Unsaved edits will be lost. Go to the version?",
       "de": "Ungespeicherte Änderungen gehen verloren. Zur Version wechseln?",
       "from": {"en":"Несохранённые правки будут потеряны. Перейти к версии?","de":"Несохранённые правки будут потеряны. Перейти к версии?"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:546","client/src/pages/AdminPromptsPage.tsx:845"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:548","client/src/pages/AdminPromptsPage.tsx:847"]
     },
     "adminPromptsPage.usersAndRoles": {
       "ru": "Пользователи и роли",
       "en": "Users and roles",
       "de": "Benutzer und Rollen",
       "from": {"en":"Пользователи и роли","de":"Пользователи и роли"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1301"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1308"]
     },
     "adminPromptsPage.usersLoadFailed": {
       "ru": "Не удалось загрузить пользователей",
       "en": "Failed to load users",
       "de": "Benutzer konnten nicht geladen werden",
       "from": {"en":"Не удалось загрузить пользователей","de":"Не удалось загрузить пользователей"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1244"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1251"]
     },
     "adminPromptsPage.versionDescription": {
       "ru": "Описание версии",
       "en": "Version description",
       "de": "Versionsbeschreibung",
       "from": {"en":"Описание версии","de":"Описание версии"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:498"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:500"]
     },
     "adminPromptsPage.versionDescriptionPlaceholder": {
       "ru": "описание версии (необязательно)",
       "en": "version description (optional)",
       "de": "Versionsbeschreibung (optional)",
       "from": {"en":"описание версии (необязательно)","de":"описание версии (необязательно)"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:494","client/src/pages/AdminPromptsPage.tsx:805"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:496","client/src/pages/AdminPromptsPage.tsx:807"]
     },
     "adminPromptsPage.versionLabel": {
       "ru": "v{version}",
@@ -1082,35 +1412,35 @@
       "de": "v{version}",
       "from": {"en":"v{version}","de":"v{version}"},
       "params": {"version":"v.version"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:206"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:208"]
     },
     "adminPromptsPage.versions": {
       "ru": "Версии",
       "en": "Versions",
       "de": "Versionen",
       "from": {"en":"Версии","de":"Версии"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:533","client/src/pages/AdminPromptsPage.tsx:832"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:535","client/src/pages/AdminPromptsPage.tsx:834"]
     },
     "adminPromptsPage.versionsLoadFailed": {
       "ru": "Не удалось загрузить версии",
       "en": "Failed to load the versions",
       "de": "Versionen konnten nicht geladen werden",
       "from": {"en":"Не удалось загрузить версии","de":"Не удалось загрузить версии"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:338","client/src/pages/AdminPromptsPage.tsx:672"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:340","client/src/pages/AdminPromptsPage.tsx:674"]
     },
     "adminPromptsPage.when": {
       "ru": "Когда",
       "en": "When",
       "de": "Wann",
       "from": {"en":"Когда","de":"Когда"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1431"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1438"]
     },
     "adminPromptsPage.who": {
       "ru": "Кто",
       "en": "Who",
       "de": "Wer",
       "from": {"en":"Кто","de":"Кто"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1432"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1439"]
     },
     "adminPromptsPage.withoutTestValue": {
       "ru": " · без тестового значения: {missingCount}",
@@ -1118,21 +1448,21 @@
       "de": " · ohne Testwert: {missingCount}",
       "from": {"en":" · без тестового значения: {missingCount}","de":" · без тестового значения: {missingCount}"},
       "params": {"missingCount":"missing.length"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:481"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:483"]
     },
     "adminPromptsPage.you": {
       "ru": "(вы)",
       "en": "(you)",
       "de": "(Sie)",
       "from": {"en":"(вы)","de":"(вы)"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1357"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1364"]
     },
     "api.client.nonJsonResponse": {
       "ru": "Сервер вернул не-JSON ответ",
       "en": "The server returned a non-JSON response",
       "de": "Der Server hat keine JSON-Antwort zurückgegeben",
       "from": {"en":"Сервер вернул не-JSON ответ","de":"Сервер вернул не-JSON ответ"},
-      "where": ["client/src/api/client.ts:155"]
+      "where": ["client/src/api/client.ts:156"]
     },
     "api.client.requestFailedHttp": {
       "ru": "Ошибка запроса (HTTP {status})",
@@ -1140,14 +1470,14 @@
       "de": "Anfragefehler (HTTP {status})",
       "from": {"en":"Ошибка запроса (HTTP {status})","de":"Ошибка запроса (HTTP {status})"},
       "params": {"status":"response.status"},
-      "where": ["client/src/api/client.ts:175"]
+      "where": ["client/src/api/client.ts:176"]
     },
     "api.client.serverUnavailable": {
       "ru": "Сервер недоступен. Проверьте соединение.",
       "en": "Server unavailable. Check your connection.",
       "de": "Server nicht erreichbar. Prüfen Sie die Verbindung.",
       "from": {"en":"Сервер недоступен. Проверьте соединение.","de":"Сервер недоступен. Проверьте соединение."},
-      "where": ["client/src/api/client.ts:138"]
+      "where": ["client/src/api/client.ts:139"]
     },
     "api.import.nonJsonResponse": {
       "ru": "Сервер вернул не-JSON ответ",
@@ -2554,7 +2884,7 @@
       "en": "Cancel",
       "de": "Abbrechen",
       "from": {"en":"Отмена","de":"Отмена"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:331","client/src/components/catalog/SynthesisCard.tsx:397","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:419","client/src/components/document/SectionView.tsx:439","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:532","client/src/components/edit/ElementEditor.tsx:611","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/pages/AdminPromptsPage.tsx:1085","client/src/pages/AdminPromptsPage.tsx:1120","client/src/pages/AdminPromptsPage.tsx:1385","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:427"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:331","client/src/components/catalog/SynthesisCard.tsx:397","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:419","client/src/components/document/SectionView.tsx:439","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:532","client/src/components/edit/ElementEditor.tsx:611","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1924","client/src/pages/AdminPromptsPage.tsx:1986","client/src/pages/AdminPromptsPage.tsx:2017","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:427"]
     },
     "common.capsule": {
       "ru": "Капсула",
@@ -2610,7 +2940,7 @@
       "en": "Really delete?",
       "de": "Wirklich löschen?",
       "from": {"en":"Точно удалить?","de":"Точно удалить?"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:385","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1111","client/src/pages/BillingPage.tsx:358","client/src/pages/ProfilePage.tsx:416"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:385","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1113","client/src/pages/BillingPage.tsx:358","client/src/pages/ProfilePage.tsx:416"]
     },
     "common.createAccount": {
       "ru": "Создать аккаунт",
@@ -2652,7 +2982,7 @@
       "en": "Description",
       "de": "Beschreibung",
       "from": {"en":"Описание","de":"Описание"},
-      "where": ["client/src/components/edit/EdgeEditor.tsx:158","client/src/components/edit/ElementEditor.tsx:781","client/src/components/edit/EnrichmentPanel.tsx:43","client/src/components/edit/EnrichmentPanel.tsx:59","client/src/components/edit/TaxonomySelector.tsx:465","client/src/pages/AdminPromptsPage.tsx:1021"]
+      "where": ["client/src/components/edit/EdgeEditor.tsx:158","client/src/components/edit/ElementEditor.tsx:781","client/src/components/edit/EnrichmentPanel.tsx:43","client/src/components/edit/EnrichmentPanel.tsx:59","client/src/components/edit/TaxonomySelector.tsx:465","client/src/pages/AdminPromptsPage.tsx:1023"]
     },
     "common.dialectical": {
       "ru": "Диалектический",
@@ -2666,28 +2996,28 @@
       "en": "Direction",
       "de": "Richtung",
       "from": {"en":"Направление","de":"Направление"},
-      "where": ["client/src/components/edit/EdgeEditor.tsx:137","client/src/components/edit/ElementEditor.tsx:780","client/src/components/edit/VersionHistory.tsx:90","client/src/pages/AdminPromptsPage.tsx:1022"]
+      "where": ["client/src/components/edit/EdgeEditor.tsx:137","client/src/components/edit/ElementEditor.tsx:780","client/src/components/edit/VersionHistory.tsx:90","client/src/pages/AdminPromptsPage.tsx:1024"]
     },
     "common.directionOneWay": {
       "ru": "однонаправленная",
       "en": "one-way",
       "de": "einseitig",
       "from": {"en":"однонаправленная","de":"однонаправленная"},
-      "where": ["client/src/components/edit/TaxonomySelector.tsx:96","client/src/components/graph/EdgePanel.tsx:224","client/src/pages/AdminPromptsPage.tsx:874"]
+      "where": ["client/src/components/edit/TaxonomySelector.tsx:96","client/src/components/graph/EdgePanel.tsx:224","client/src/pages/AdminPromptsPage.tsx:876"]
     },
     "common.directionReflexive": {
       "ru": "рефлексивная",
       "en": "reflexive",
       "de": "reflexiv",
       "from": {"en":"рефлексивная","de":"рефлексивная"},
-      "where": ["client/src/components/edit/TaxonomySelector.tsx:98","client/src/components/graph/EdgePanel.tsx:221","client/src/pages/AdminPromptsPage.tsx:876"]
+      "where": ["client/src/components/edit/TaxonomySelector.tsx:98","client/src/components/graph/EdgePanel.tsx:221","client/src/pages/AdminPromptsPage.tsx:878"]
     },
     "common.directionTwoWay": {
       "ru": "двунаправленная",
       "en": "two-way",
       "de": "wechselseitig",
       "from": {"en":"двунаправленная","de":"двунаправленная"},
-      "where": ["client/src/components/edit/TaxonomySelector.tsx:97","client/src/components/graph/EdgePanel.tsx:223","client/src/pages/AdminPromptsPage.tsx:875","client/src/utils/template-placeholders.ts:94"]
+      "where": ["client/src/components/edit/TaxonomySelector.tsx:97","client/src/components/graph/EdgePanel.tsx:223","client/src/pages/AdminPromptsPage.tsx:877","client/src/utils/template-placeholders.ts:94"]
     },
     "common.edgeType": {
       "ru": "Тип связи",
@@ -2716,7 +3046,7 @@
       "en": "Email",
       "de": "E-Mail",
       "from": {"en":"Email","de":"Email"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/LoginPage.tsx:54","client/src/pages/ProfilePage.tsx:206","client/src/pages/RegisterPage.tsx:43"]
+      "where": ["client/src/pages/AdminPromptsPage.tsx:1349","client/src/pages/LoginPage.tsx:54","client/src/pages/ProfilePage.tsx:206","client/src/pages/RegisterPage.tsx:43"]
     },
     "common.error": {
       "ru": "Ошибка",
@@ -2821,7 +3151,7 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:375","client/src/components/document/SectionView.tsx:391","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:446","client/src/pages/AdminPromptsPage.tsx:769","client/src/pages/AdminPromptsPage.tsx:1012","client/src/pages/AdminPromptsPage.tsx:1335","client/src/pages/AdminPromptsPage.tsx:1424","client/src/pages/AdminPromptsPage.tsx:1538","client/src/pages/AdminPromptsPage.tsx:1542","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:882"]
+      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:375","client/src/components/document/SectionView.tsx:391","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1894","client/src/pages/AdminPromptsPage.tsx:1921","client/src/pages/AdminPromptsPage.tsx:1930","client/src/pages/AdminPromptsPage.tsx:1983","client/src/pages/AdminPromptsPage.tsx:2011","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:882"]
     },
     "common.logIn": {
       "ru": "Войти",
@@ -2857,7 +3187,7 @@
       "en": "Origin",
       "de": "Herkunft",
       "from": {"en":"Происхождение","de":"Происхождение"},
-      "where": ["client/src/components/edit/CategoryEditor.tsx:125","client/src/components/edit/ElementEditor.tsx:770","client/src/components/edit/VersionHistory.tsx:79","client/src/pages/AdminPromptsPage.tsx:1023","client/src/utils/template-placeholders.ts:79"]
+      "where": ["client/src/components/edit/CategoryEditor.tsx:125","client/src/components/edit/ElementEditor.tsx:770","client/src/components/edit/VersionHistory.tsx:79","client/src/pages/AdminPromptsPage.tsx:1025","client/src/utils/template-placeholders.ts:79"]
     },
     "common.peripheral": {
       "ru": "Периферийная",
@@ -2906,7 +3236,7 @@
       "en": "Save",
       "de": "Speichern",
       "from": {"en":"Сохранить","de":"Сохранить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:320","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/pages/AdminPromptsPage.tsx:1082","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:240"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:320","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1983","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:240"]
     },
     "common.saving": {
       "ru": "Сохранение…",
@@ -2977,7 +3307,7 @@
       "en": "Title",
       "de": "Titel",
       "from": {"en":"Название","de":"Название"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:282","client/src/components/edit/ElementEditor.tsx:760","client/src/components/edit/TaxonomySelector.tsx:436","client/src/components/edit/VersionHistory.tsx:74","client/src/pages/AdminPromptsPage.tsx:1020"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:282","client/src/components/edit/ElementEditor.tsx:760","client/src/components/edit/TaxonomySelector.tsx:436","client/src/components/edit/VersionHistory.tsx:74","client/src/pages/AdminPromptsPage.tsx:1022"]
     },
     "common.toHome": {
       "ru": "На главную",
@@ -2998,7 +3328,7 @@
       "en": "User not found",
       "de": "Benutzer nicht gefunden",
       "from": {"en":"Пользователь не найден","de":"Пользователь не найден"},
-      "where": ["server/routes/auth.ts:738","server/routes/auth.ts:804","server/services/account-deletion.ts:107","server/services/account-deletion.ts:140","server/services/billing-service.ts:132","server/services/billing-service.ts:242","server/services/billing-service.ts:290","server/services/subscription-service.ts:304"]
+      "where": ["server/routes/auth.ts:738","server/routes/auth.ts:804","server/services/account-deletion.ts:107","server/services/account-deletion.ts:140","server/services/billing-service.ts:132","server/services/billing-service.ts:242","server/services/billing-service.ts:290","server/services/subscription-service.ts:306"]
     },
     "common.verifying": {
       "ru": "Верифицирующая",
@@ -13743,7 +14073,7 @@
       "en": "Invalid parameters",
       "de": "Ungültige Parameter",
       "from": {"en":"Невалидные параметры","de":"Невалидные параметры"},
-      "where": ["server/routes/billing.ts:223"]
+      "where": ["server/routes/billing.ts:246"]
     },
     "server.routes.billing.isoDateExpected": {
       "ru": "{name}: ожидается ISO-дата",
@@ -13751,35 +14081,35 @@
       "de": "{name}: ISO-Datum erwartet",
       "from": {"en":"{name}: ожидается ISO-дата","de":"{name}: ожидается ISO-дата"},
       "params": {"name":"name"},
-      "where": ["server/routes/billing.ts:209"]
+      "where": ["server/routes/billing.ts:232"]
     },
     "server.routes.billing.keyNotFound": {
       "ru": "Ключ не найден",
       "en": "Key not found",
       "de": "Schlüssel nicht gefunden",
       "from": {"en":"Ключ не найден","de":"Ключ не найден"},
-      "where": ["server/routes/billing.ts:161"]
+      "where": ["server/routes/billing.ts:184"]
     },
     "server.routes.billing.planIdMissing": {
       "ru": "planId не задан",
       "en": "planId is not set",
       "de": "planId nicht gesetzt",
       "from": {"en":"planId не задан","de":"planId не задан"},
-      "where": ["server/routes/billing.ts:257"]
+      "where": ["server/routes/billing.ts:280","server/routes/billing.ts:335"]
     },
     "server.routes.billing.planUuidExpected": {
       "ru": "ожидается UUID тарифа",
       "en": "a plan UUID is expected",
       "de": "UUID des Tarifs erwartet",
       "from": {"en":"ожидается UUID тарифа","de":"ожидается UUID тарифа"},
-      "where": ["server/routes/billing.ts:257"]
+      "where": ["server/routes/billing.ts:280","server/routes/billing.ts:335"]
     },
     "server.routes.billing.uuidExpected": {
       "ru": "ожидается UUID",
       "en": "a UUID is expected",
       "de": "erwartet wird eine UUID",
       "from": {"en":"ожидается UUID","de":"ожидается UUID"},
-      "where": ["server/routes/billing.ts:221"]
+      "where": ["server/routes/billing.ts:244"]
     },
     "server.routes.elements.integerAtLeastOne": {
       "ru": "целое ≥ 1",
@@ -14352,6 +14682,55 @@
       "from": {"en":"subsection_map: base.critique пуст или отсутствует","de":"subsection_map: base.critique пуст или отсутствует"},
       "where": ["server/services/section-defs-builder.ts:186"]
     },
+    "server.services.planAdmin.activeNeedsPrice": {
+      "ru": "Открыть тариф для покупки нельзя: у него нет Stripe Price — задайте цену",
+      "en": "The plan cannot be opened for purchase: it has no Stripe Price — set a price",
+      "de": "Der Tarif kann nicht zum Kauf geöffnet werden: er hat keinen Stripe Price — Preis festlegen",
+      "from": {"en":"Открыть тариф для покупки нельзя: у него нет Stripe Price — задайте цену","de":"Открыть тариф для покупки нельзя: у него нет Stripe Price — задайте цену"},
+      "where": ["server/services/plan-admin.ts:224"]
+    },
+    "server.services.planAdmin.activeNeedsPriceField": {
+      "ru": "нет Stripe Price",
+      "en": "no Stripe Price",
+      "de": "kein Stripe Price",
+      "from": {"en":"нет Stripe Price","de":"нет Stripe Price"},
+      "where": ["server/services/plan-admin.ts:225"]
+    },
+    "server.services.planAdmin.economics": {
+      "ru": "Квоты дороже цены при текущей наценке: уменьшите квоты или поднимите цену",
+      "en": "Quotas cost more than the price at the current markup: reduce the quotas or raise the price",
+      "de": "Die Kontingente kosten beim aktuellen Aufschlag mehr als der Preis: Kontingente senken oder Preis erhöhen",
+      "from": {"en":"Квоты дороже цены при текущей наценке: уменьшите квоты или поднимите цену","de":"Квоты дороже цены при текущей наценке: уменьшите квоты или поднимите цену"},
+      "where": ["server/services/plan-admin.ts:151"]
+    },
+    "server.services.planAdmin.hasSubscriptions": {
+      "ru": "У тарифа есть живые подписки: цена, период и квоты правятся новой редакцией",
+      "en": "The plan has live subscriptions: price, period and quotas are changed by a new edition",
+      "de": "Der Tarif hat aktive Abos: Preis, Periode und Kontingente werden über eine neue Edition geändert",
+      "from": {"en":"У тарифа есть живые подписки: цена, период и квоты правятся новой редакцией","de":"У тарифа есть живые подписки: цена, период и квоты правятся новой редакцией"},
+      "where": ["server/services/plan-admin.ts:197","server/services/plan-admin.ts:239"]
+    },
+    "server.services.planAdmin.invalidSpec": {
+      "ru": "Описание тарифа невалидно",
+      "en": "The plan description is invalid",
+      "de": "Die Tarifbeschreibung ist ungültig",
+      "from": {"en":"Описание тарифа невалидно","de":"Описание тарифа невалидно"},
+      "where": ["server/services/plan-admin.ts:141"]
+    },
+    "server.services.planAdmin.nameTaken": {
+      "ru": "Тариф с таким именем уже есть",
+      "en": "A plan with this name already exists",
+      "de": "Ein Tarif mit diesem Namen existiert bereits",
+      "from": {"en":"Тариф с таким именем уже есть","de":"Тариф с таким именем уже есть"},
+      "where": ["server/services/plan-admin.ts:396"]
+    },
+    "server.services.planAdmin.notFound": {
+      "ru": "Тариф не найден",
+      "en": "Plan not found",
+      "de": "Tarif nicht gefunden",
+      "from": {"en":"Тариф не найден","de":"Тариф не найден"},
+      "where": ["server/services/plan-admin.ts:116","server/services/plan-admin.ts:233","server/services/plan-admin.ts:326"]
+    },
     "server.streamingManager.emptyResponseBody": {
       "ru": "Пустое тело ответа API",
       "en": "Empty API response body",
@@ -14386,49 +14765,49 @@
       "en": "The webhook body is not a Stripe event",
       "de": "Der Webhook-Körper ist kein Stripe-Ereignis",
       "from": {"en":"Тело webhook — не событие Stripe","de":"Тело webhook — не событие Stripe"},
-      "where": ["server/services/stripe-client.ts:493"]
+      "where": ["server/services/stripe-client.ts:505"]
     },
     "server.stripeClient.bodyNotJson": {
       "ru": "Тело webhook — не JSON",
       "en": "The webhook body is not JSON",
       "de": "Der Webhook-Körper ist kein JSON",
       "from": {"en":"Тело webhook — не JSON","de":"Тело webhook — не JSON"},
-      "where": ["server/services/stripe-client.ts:490"]
+      "where": ["server/services/stripe-client.ts:502"]
     },
     "server.stripeClient.signatureExpired": {
       "ru": "Подпись webhook устарела",
       "en": "The webhook signature is outdated",
       "de": "Die Webhook-Signatur ist veraltet",
       "from": {"en":"Подпись webhook устарела","de":"Подпись webhook устарела"},
-      "where": ["server/services/stripe-client.ts:472"]
+      "where": ["server/services/stripe-client.ts:484"]
     },
     "server.stripeClient.signatureHeaderMissing": {
       "ru": "Нет заголовка Stripe-Signature",
       "en": "No Stripe-Signature header",
       "de": "Kein Header Stripe-Signature",
       "from": {"en":"Нет заголовка Stripe-Signature","de":"Нет заголовка Stripe-Signature"},
-      "where": ["server/services/stripe-client.ts:459"]
+      "where": ["server/services/stripe-client.ts:471"]
     },
     "server.stripeClient.signatureIncomplete": {
       "ru": "Неполная подпись webhook",
       "en": "Incomplete webhook signature",
       "de": "Unvollständige Webhook-Signatur",
       "from": {"en":"Неполная подпись webhook","de":"Неполная подпись webhook"},
-      "where": ["server/services/stripe-client.ts:469"]
+      "where": ["server/services/stripe-client.ts:481"]
     },
     "server.stripeClient.signatureMismatch": {
       "ru": "Подпись webhook не сходится",
       "en": "The webhook signature does not match",
       "de": "Die Webhook-Signatur stimmt nicht",
       "from": {"en":"Подпись webhook не сходится","de":"Подпись webhook не сходится"},
-      "where": ["server/services/stripe-client.ts:483"]
+      "where": ["server/services/stripe-client.ts:495"]
     },
     "server.stripeClient.stripeNotConfigured": {
       "ru": "Stripe не настроен (STRIPE_SECRET_KEY пуст)",
       "en": "Stripe is not configured (STRIPE_SECRET_KEY is empty)",
       "de": "Stripe ist nicht eingerichtet (STRIPE_SECRET_KEY leer)",
       "from": {"en":"Stripe не настроен (STRIPE_SECRET_KEY пуст)","de":"Stripe не настроен (STRIPE_SECRET_KEY пуст)"},
-      "where": ["server/services/stripe-client.ts:210"]
+      "where": ["server/services/stripe-client.ts:216"]
     },
     "server.stripeClient.stripeUnavailable": {
       "ru": "Stripe недоступен: {message}",
@@ -14436,42 +14815,42 @@
       "de": "Stripe nicht erreichbar: {message}",
       "from": {"en":"Stripe недоступен: {message}","de":"Stripe недоступен: {message}"},
       "params": {"message":"(err as Error).message"},
-      "where": ["server/services/stripe-client.ts:232"]
+      "where": ["server/services/stripe-client.ts:238"]
     },
     "server.stripeClient.webhookSecretMissing": {
       "ru": "STRIPE_WEBHOOK_SECRET не задан",
       "en": "STRIPE_WEBHOOK_SECRET is not set",
       "de": "STRIPE_WEBHOOK_SECRET nicht gesetzt",
       "from": {"en":"STRIPE_WEBHOOK_SECRET не задан","de":"STRIPE_WEBHOOK_SECRET не задан"},
-      "where": ["server/services/stripe-client.ts:454"]
+      "where": ["server/services/stripe-client.ts:466"]
     },
     "server.subscriptionService.alreadySubscribed": {
       "ru": "У пользователя уже есть активная подписка",
       "en": "The user already has an active subscription",
       "de": "Der Benutzer hat bereits ein aktives Abonnement",
       "from": {"en":"У пользователя уже есть активная подписка","de":"У пользователя уже есть активная подписка"},
-      "where": ["server/services/subscription-service.ts:399"]
+      "where": ["server/services/subscription-service.ts:401"]
     },
     "server.subscriptionService.noActiveSubscription": {
       "ru": "Активной подписки нет",
       "en": "There is no active subscription",
       "de": "Kein aktives Abonnement",
       "from": {"en":"Активной подписки нет","de":"Активной подписки нет"},
-      "where": ["server/services/subscription-service.ts:449"]
+      "where": ["server/services/subscription-service.ts:451"]
     },
     "server.subscriptionService.planNotFound": {
       "ru": "Тариф не найден",
       "en": "Plan not found",
       "de": "Tarif nicht gefunden",
       "from": {"en":"Тариф не найден","de":"Тариф не найден"},
-      "where": ["server/services/subscription-service.ts:393"]
+      "where": ["server/services/subscription-service.ts:395"]
     },
     "server.subscriptionService.subscriptionNotFound": {
       "ru": "Подписка не найдена",
       "en": "Subscription not found",
       "de": "Abonnement nicht gefunden",
       "from": {"en":"Подписка не найдена","de":"Подписка не найдена"},
-      "where": ["server/services/subscription-service.ts:494"]
+      "where": ["server/services/subscription-service.ts:496"]
     },
     "server.utils.htmlParser.anchorNotAllowed": {
       "ru": "Атрибут data-section здесь нельзя: по нему служба находит подразделы, заводить и переименовывать их правкой нельзя",

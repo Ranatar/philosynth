@@ -52,6 +52,11 @@ export const ADMIN_ACTIONS = Object.freeze({
   /** 8.3: строка subscription_plans создана/обновлена посевом seed-plans
    *  (actor_id NULL — действие скрипта, не пользователя; skip строки не даёт) */
   PLAN_SEEDED: "plan.seeded",
+  /** 15.4 (Д-74): тарифы в админке — новое семейство, правка на месте, новая
+   *  редакция; target_id — name редакции; actor — администратор */
+  PLAN_CREATED: "plan.created",
+  PLAN_UPDATED: "plan.updated",
+  PLAN_EDITION: "plan.edition",
 } as const satisfies Record<string, AdminAction>);
 
 /** Все значения ADMIN_ACTIONS — для проверок и фильтров. */
@@ -64,8 +69,8 @@ export function isAdminAction(v: unknown): v is AdminAction {
 }
 
 export interface AuditInput {
-  /** Кто сделал; null — действие без актора (в проекте таких точек нет,
-   *  но тип допускает: скрипт с actor_id = самому себе пишет id) */
+  /** Кто сделал; null — действие без актора (посев тарифов 8.3 —
+   *  plan.seeded; bootstrap пишет actor_id = самому себе) */
   actorId: string | null;
   action: AdminAction;
   targetType: AdminAuditTargetType;

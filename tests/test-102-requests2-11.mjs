@@ -188,7 +188,8 @@ try {
   if (!(await waitHealth())) throw new Error("сервер не поднялся");
   const A = await account("a"), B = await account("b"), C = await account("c");
   // A — подписчик: квота regenerations видна счётчиком
-  const [pl] = await sql`insert into subscription_plans (name, display_name, price_usd, quota_syntheses, quota_regenerations, quota_modes, quota_enrichments, stripe_price_id, is_active) values (${"t102plan" + Date.now()}, 'T102', 10, 5, 50, 5, 5, 'price_t102', false) returning id`;
+  const planNamet102 = "t102plan" + Date.now();
+  const [pl] = await sql`insert into subscription_plans (name, family, display_name, price_usd, quota_syntheses, quota_regenerations, quota_modes, quota_enrichments, stripe_price_id, is_active) values (${planNamet102}, ${planNamet102}, 'T102', 10, 5, 50, 5, 5, 'price_t102', false) returning id`;
   await sql`insert into user_subscriptions (user_id, plan_id, stripe_subscription_id, status, current_period_start, current_period_end) values (${A.id}, ${pl.id}, ${"sub_t102_" + Date.now()}, 'active', now() - interval '1 day', now() + interval '20 days')`;
 
   /* ════ R2 ════ */

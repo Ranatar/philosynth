@@ -284,7 +284,8 @@ try {
   await sql`update users set role='admin' where id=${ADM.id}`;
   await sql`update users set balance_usd = 50 where id in (${A.id}, ${B.id}, ${ADM.id})`;
   // A — подписчик: расход квоты regenerations виден счётчиком
-  const [pl] = await sql`insert into subscription_plans (name, display_name, price_usd, quota_syntheses, quota_regenerations, quota_modes, quota_enrichments, stripe_price_id, is_active) values (${"t123plan" + Date.now()}, 'T123', 10, 50, 500, 5, 5, 'price_t123', true) returning id`;
+  const planNamet123 = "t123plan" + Date.now();
+  const [pl] = await sql`insert into subscription_plans (name, family, display_name, price_usd, quota_syntheses, quota_regenerations, quota_modes, quota_enrichments, stripe_price_id, is_active) values (${planNamet123}, ${planNamet123}, 'T123', 10, 50, 500, 5, 5, 'price_t123', true) returning id`;
   await sql`insert into user_subscriptions (user_id, plan_id, stripe_subscription_id, status, current_period_start, current_period_end) values (${A.id}, ${pl.id}, ${"sub_t123_" + Date.now()}, 'active', now() - interval '1 day', now() + interval '20 days')`;
   const wsA = wsOf(A); await wsA.open;
 

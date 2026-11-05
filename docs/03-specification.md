@@ -145,7 +145,7 @@
 | B2 | Отображение стоимости в реальном времени (tokenы + USD) | MVP |
 | B3 | История использования API (по синтезам, разделам) | MVP — сервер 6.1, UI СДЕЛАН 6.2 (фильтры период/синтез, итоги, byMode) |
 | B4 | Баланс сервиса (pay-as-you-go): пополнение, списание, история транзакций | Фаза 6 — сервер СДЕЛАН 6.1 (2026-09-06), UI СДЕЛАН 6.2 (Stripe Payment Element при `VITE_STRIPE_PUBLISHABLE_KEY`, иначе dev-режим подтверждения) |
-| B6 | Подписки (Stripe Subscriptions): тарифные планы, квоты, управление подпиской | Фаза 6 — сервер СДЕЛАН 6.1 (квота потребляется один раз на операцию при взятии слота), UI СДЕЛАН 6.2 (секция «Подписка») |
+| B6 | Подписки (Stripe Subscriptions): тарифные планы, квоты, управление подпиской; 15.4 (Д-74): тарифы правятся админкой и редакциями (`/billing/admin/plans`), источник истины — БД | Фаза 6 — сервер СДЕЛАН 6.1 (квота потребляется один раз на операцию при взятии слота), UI СДЕЛАН 6.2 (секция «Подписка») |
 | B7 | Приоритет биллинга: BYO-Key → подписка → баланс → ошибка | Фаза 6 — СДЕЛАНО 6.1 (`resolveBilling`: middleware — предпроверка, generation-слот — гейт для HTTP и WS; `BILLING_ENFORCE=false` вне production — режим balance в долг) |
 | B8 | Webhook Stripe: обработка invoice.paid, subscription.updated/deleted | Фаза 6 — СДЕЛАНО 6.1 |
 | B5 | Rate limiting по пользователю | MVP — per-IP с 0.2; per-session (≡ per-user) с 6.1 |
@@ -1719,6 +1719,11 @@ GET    /billing/plans            → { plans: SubscriptionPlan[] }
                                 // из npm run seed:plans (02 §2.22).
                                 // POST /subscribe на неактивный/неизвестный
                                 // planId → 404 NOT_FOUND (6.1).
+                                // 15.4: is_active = «открыт для покупки»;
+                                // закрытые редакции (02 §2.22) сюда не
+                                // попадают — BillingPage/LandingPage видят
+                                // только открытые. SubscriptionPlan += family,
+                                // edition.
 
 POST   /billing/subscribe        { planId: string }
                                 → { clientSecret: string, subscriptionId: string }
@@ -1738,11 +1743,48 @@ POST   /billing/webhook          (Stripe webhook endpoint; БЕЗ сессии �
                                 // { received, handled, action? } и на необработанные)
                                 // invoice.paid → сброс счётчиков при новом периоде
                                 //   (ретрай того же периода — already_current)
-                                // customer.subscription.updated → обновить статус
+                                // customer.subscription.updated → обновить статус;
+                                //   15.4 (Д-75): items.data[0].price.id → план по
+                                //   stripe_price_id → plan_id (action updated_plan);
+                                //   неизвестный Price → предупреждение, plan_id цел
                                 // customer.subscription.deleted → status = 'canceled'
 
 GET    /billing/transactions    ?page=1&limit=50
                                 → { items: Transaction[], total: number }
+
+// 15.4 (Д-74): тарифы админкой и редакциями — requireAuth + requireAdmin
+// (403 FORBIDDEN пользователю; услуги — services/plan-admin.ts; Stripe не
+// настроен → 503 STRIPE_UNAVAILABLE; экономика и структура — одной функцией с
+// сидом, нарушения → 400 VALIDATION_ERROR с details по полям / details.economics)
+GET    /billing/admin/plans     → { plans: AdminPlanRow[] }
+                                // ВСЕ редакции всех семейств (и закрытые), по
+                                // семейству и номеру; AdminPlanRow = SubscriptionPlan
+                                // + liveSubscriptions (status ≠ canceled)
+POST   /billing/admin/plans     PlanCreateInput { name, displayName, priceUsd,
+                                  billingPeriod, quota*, isActive? }
+                                → AdminPlanResult { plan }   // 201: новое семейство
+                                // (редакция 1): Product + Price в Stripe; занятое
+                                // имя/семейство → 400
+PATCH  /billing/admin/plans/:id PlanUpdateInput { displayName?, priceUsd?,
+                                  billingPeriod?, quota*?, isActive? }
+                                → AdminPlanResult { plan, retiredPriceId? }
+                                // правка НА МЕСТЕ: displayName/isActive — всегда;
+                                // цена, период, квоты — только без живых подписок,
+                                // иначе 409 PLAN_HAS_SUBSCRIPTIONS (details:
+                                // lockedFields — изменённые из запертых,
+                                // liveSubscriptions); новая цена/период → новый
+                                // Price (lookup_key переезжает), прежний выключен
+                                // (retiredPriceId; отказ Stripe там → null);
+                                // isActive=true без Price → 400; admin_audit
+                                // plan.updated
+POST   /billing/admin/plans/:id/editions  PlanEditionInput (поля PATCH без isActive;
+                                  незаданные — у прежней редакции)
+                                → AdminPlanResult { plan, previous }   // 201
+                                // новая редакция семейства: строка
+                                // <family>-v<N>, Price редакции под Product
+                                // семейства, открыта; prev is_active=false,
+                                // её подписчики и Price не тронуты; admin_audit
+                                // plan.edition
 ```
 
 ### 2.11. Export
@@ -2468,6 +2510,10 @@ BILLING_REQUIRED    — нет ни ключа, ни подписки, ни ба
 STRIPE_UNAVAILABLE  — Stripe не настроен (STRIPE_SECRET_KEY пуст) — 503 у
                       пополнения/подписки (6.1)
 WEBHOOK_SIGNATURE_INVALID — подпись Stripe webhook не сходится — 400 (6.1)
+PLAN_HAS_SUBSCRIPTIONS — PATCH /billing/admin/plans/:id: цена, период или квоты у
+                      редакции с живыми подписками (status ≠ canceled) — 409;
+                      details: { lockedFields: string[], liveSubscriptions };
+                      путь — «новая редакция» (15.4, Д-74)
 GENERATION_PAUSED   — генерация в pausedState; действия — через resume_generation (v11)
 RESUME_INVALID      — resume_generation/resume_plan без pausedState или с чужим mode (v11)
 NO_PARTICIPANTS_SEED_REQUIRED — свободный синтез без seed (v11)
