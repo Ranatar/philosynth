@@ -147,6 +147,8 @@ import type {
 import { SYNTHESIS_VISIBILITIES } from "@philosynth/shared/types/synthesis";
 import type { SectionFull } from "@philosynth/shared/types/section";
 import { effectiveFlags, metaParentAllowed } from "@philosynth/shared/utils/visibility";
+import type { Capabilities } from "@philosynth/shared/types/discussion"; // 16.1
+import { canManageSynthesis, capabilitiesFor, capabilitiesOfRow } from "../services/capabilities.js"; // 16.1
 import { parseSubsectionsFromHTML } from "../services/generation-service.js";
 import { sectionTitlesOf, subsectionNamesOf as subsectionNamesOfHtml } from "../utils/html-parser.js"; // 14.2 (Д-59); 15.2 (Д-79)
 import type { PauseEstimates } from "@philosynth/shared/types/ws-messages";
@@ -218,6 +220,8 @@ export type ReadAccess =
       row: SynthesisRow;
       viewer: SynthesisViewer;
       scope: SynthesisScope;
+      /** 16.1: права смотрящего (одна проверка — services/capabilities) */
+      capabilities: Capabilities;
     }
   | { access: "notfound" }
   | { access: "forbidden" };
@@ -226,6 +230,10 @@ export type ReadAccess =
  * Загрузка синтеза + проверка доступа на ЧТЕНИЕ (правило одно на весь
  * транспорт; беседа 8.6 переписала правило 1.6 «владелец ИЛИ is_public»):
  *  - владелец → 'ok' / viewer 'owner' / scope 'full' при любой ступени;
+ *  - 16.1: действующий участник (рецензент/редактор) → 'ok' / viewer 'user'
+ *    / scope 'full' при ЛЮБОЙ ступени, и приватной (врезка «Фаза 16»); кто
+ *    владелец и кто участник, решает ТОЛЬКО модуль прав
+ *    (services/capabilities) — здесь сравнения с владельцем нет;
  *  - visibility='private' и не владелец → 'forbidden';
  *  - 'showcase' → 'ok' со scope 'showcase' (содержание не отдаётся);
  *  - 'full' → 'ok' со scope 'full';
@@ -244,15 +252,19 @@ export async function loadSynthesisForRead(
     .where(eq(syntheses.id, id))
     .limit(1);
   if (!row) return { access: "notfound" };
-  if (userId !== null && row.userId === userId) {
-    return { access: "ok", row, viewer: "owner", scope: "full" };
+  const capabilities = await capabilitiesOfRow(row, userId);
+  if (capabilities.role === "owner") {
+    return { access: "ok", row, viewer: "owner", scope: "full", capabilities };
   }
-  if (row.visibility === "private") return { access: "forbidden" };
+  if (!capabilities.read) return { access: "forbidden" };
+  // 16.1: участник видит концепцию целиком на любой ступени
+  const member = capabilities.role === "reviewer" || capabilities.role === "editor";
   return {
     access: "ok",
     row,
     viewer: userId === null ? "guest" : "user",
-    scope: row.visibility === "showcase" ? "showcase" : "full",
+    scope: !member && row.visibility === "showcase" ? "showcase" : "full",
+    capabilities,
   };
 }
 
@@ -531,7 +543,10 @@ async function buildSynthesisFull(
   row: SynthesisRow,
   viewerUserId: string | null,
   scope: SynthesisScope = "full",
+  capabilities?: Capabilities,
 ): Promise<SynthesisFull> {
+  // 16.1: права смотрящего — одна проверка; isOwner и ownerView читаются из неё
+  const caps = capabilities ?? (await capabilitiesOfRow(row, viewerUserId));
   const lineageRows = await db
     .select()
     .from(synthesisLineage)
@@ -581,7 +596,7 @@ async function buildSynthesisFull(
   // 13.2 (Д-65): оценки паузы считаются только владельцу — невладельцу
   // projectSynthesis всё равно обнулит pausedState/pauseEstimates, а
   // computePauseEstimates собирает промпты из содержимого родителей
-  const ownerView = viewerUserId !== null && row.userId === viewerUserId;
+  const ownerView = caps.role === "owner";
   const ps = ownerView ? ((row.pausedState ?? null) as PausedState | null) : null;
   let pauseEstimates: PauseEstimates | null = null;
   if (ps) {
@@ -615,7 +630,9 @@ async function buildSynthesisFull(
     // Беседа 5.2 («По факту 5.2»): признак владения для клиентских гейтов
     // (✎ редактора, «Изменить», режимы). Именно флаг, а не userId — у
     // публичного синтеза id владельца читателю не раскрывается.
-    isOwner: viewerUserId !== null && row.userId === viewerUserId,
+    isOwner: ownerView,
+    // 16.1: права смотрящего рядом с isOwner (клиент 16.3/17.2 переходит на них)
+    capabilities: caps,
     docNum: row.docNum,
     sectionOrder: row.sectionOrder,
     version: {
@@ -649,7 +666,7 @@ async function respondSynthesisFull(
   res: Extract<ReadAccess, { access: "ok" }>,
   viewerUserId: string | null,
 ): Promise<SynthesisFull> {
-  const full = await buildSynthesisFull(res.row, viewerUserId, res.scope);
+  const full = await buildSynthesisFull(res.row, viewerUserId, res.scope, res.capabilities);
   const flags = effectiveFlags(res.row);
   const extra: { authorName?: string | null; sections?: SectionFull[] } = {
     authorName: flags.showAuthor ? await authorNameOf(res.row) : null,
@@ -1579,7 +1596,7 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
     .where(eq(syntheses.id, id))
     .limit(1);
   if (!row) return c.json(notFoundJson, 404);
-  if (row.userId !== user.id) return c.json(forbiddenJson, 403);
+  if (!canManageSynthesis(row, user.id)) return c.json(forbiddenJson, 403); // 16.1: manage — владелец
 
   const [updated] = await db
     .update(syntheses)
@@ -1589,7 +1606,7 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
   const urow = updated as SynthesisRow;
   return c.json({
     synthesis: await respondSynthesisFull(
-      { access: "ok", row: urow, viewer: "owner", scope: "full" },
+      { access: "ok", row: urow, viewer: "owner", scope: "full", capabilities: capabilitiesFor(urow, user.id) },
       user.id,
     ),
   });
@@ -1608,7 +1625,7 @@ synthesesRoutes.delete("/:id", requireAuth, async (c) => {
     .where(eq(syntheses.id, id))
     .limit(1);
   if (!row) return c.json(notFoundJson, 404);
-  if (row.userId !== user.id) return c.json(forbiddenJson, 403);
+  if (!canManageSynthesis(row, user.id)) return c.json(forbiddenJson, 403); // 16.1: manage — владелец
 
   // Активную генерацию копить в удалённой строке нельзя
   if (isGenerationActive(id)) {
@@ -1642,7 +1659,7 @@ synthesesRoutes.post("/:id/duplicate", requireAuth, async (c) => {
   if (!row) return c.json(notFoundJson, 404);
   // Решение беседы: duplicate — только владелец (как PATCH/DELETE);
   // «форк» чужого публичного синтеза протоколом не оговорён.
-  if (row.userId !== user.id) return c.json(forbiddenJson, 403);
+  if (!canManageSynthesis(row, user.id)) return c.json(forbiddenJson, 403); // 16.1: manage — владелец
   if (row.status === "generating" || isGenerationActive(id)) {
     return c.json(
       {

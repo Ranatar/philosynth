@@ -2,8 +2,10 @@
  * PhiloSynth Service — Drizzle-схема БД.
  * Источник истины: docs/02-data-model.md (ревизия 2026-07-22, v11).
  *
- * 32 таблицы (§2.1–2.32; admin_audit — беседа 8.1; auth_tokens и
- * mail_outbox — беседа 9.1; recommendations — беседа 10.1):
+ * 37 таблиц (§2.1–2.37; admin_audit — беседа 8.1; auth_tokens и
+ * mail_outbox — беседа 9.1; recommendations — беседа 10.1;
+ * synthesis_members, comments, reviews, review_revisions, review_findings —
+ * беседа 16.1, миграция 0017):
  *   users, sessions, syntheses, synthesis_lineage, sections,
  *   categories, category_edges, cluster_labels, theses, glossary_terms,
  *   dialogue_turns, element_versions, edit_plans, mode_results,
@@ -12,7 +14,8 @@
  *   user_subscriptions, category_type_catalog, relationship_type_catalog,
  *   element_enrichments, characteristic_justifications,
  *   representation_transforms, admin_audit, auth_tokens, mail_outbox,
- *   recommendations.
+ *   recommendations, synthesis_members, comments, reviews,
+ *   review_revisions, review_findings.
  *
  * v10: ext_graph_metrics, structure_sections (syntheses);
  *      clarity, breadth, depth_score, applicability (categories);
@@ -25,6 +28,7 @@
  */
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   check,
   customType,
@@ -57,6 +61,12 @@ import type { EditStep } from "@philosynth/shared/types/edit-plan";
 import type { VersionOrigin } from "@philosynth/shared/types/elements";
 import type { FileGenealogyNode } from "@philosynth/shared/types/lineage";
 import type { RecommendationIssue } from "@philosynth/shared/types/recommendations";
+import type {
+  DiscussionAddress,
+  ReviewDocVersion,
+  ReviewFields,
+  ReviewFinding,
+} from "@philosynth/shared/types/discussion"; // 16.1
 import type {
   ContextEntry as ContextLogEntry,
   ParentSpecLog,
@@ -1415,6 +1425,233 @@ export const recommendations = pgTable(
     check(
       "recommendations_status_check",
       sql`${t.status} IN ('new','planned','done','rejected','invalid','stale')`,
+    ),
+  ],
+);
+
+/* ──────────────────── 2.33. synthesis_members (16.1) ───────────────────── */
+
+/**
+ * Участники синтеза (беседа 16.1, миграция 0017; врезка «Фаза 16» в 07).
+ * Круг — ТОЛЬКО приглашённые владельцем (решение пользователя 2026-11-05):
+ * рецензентов «с улицы» нет. Роль editor заводится сразу, её права
+ * действуют с Фазы 17 (в 16.1 edit = владелец). status 'invited' — строка
+ * приглашения до принятия (приглашения — 16.2), 'active' — участие
+ * действует: участник читает концепцию на любой ступени видимости и
+ * обсуждает её. Владелец — не строка таблицы, а syntheses.user_id.
+ * Одна строка на пару (synthesis_id, user_id). user_id — CASCADE; 7.1
+ * анонимизирует users вместо удаления, поэтому account-deletion снимает
+ * участие явно (урок 8.1/9.1).
+ */
+export const synthesisMembers = pgTable(
+  "synthesis_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["reviewer", "editor"] }).notNull(),
+    status: text("status", { enum: ["invited", "active"] })
+      .notNull()
+      .default("invited"),
+    /** Кто пригласил (владелец); SET NULL — след участия переживает актора */
+    invitedBy: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+    /** Когда участие стало действующим (принятие приглашения — 16.2) */
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_synthesis_members_pair").on(t.synthesisId, t.userId),
+    index("idx_synthesis_members_user").on(t.userId),
+    check("synthesis_members_role_check", sql`${t.role} IN ('reviewer','editor')`),
+    check("synthesis_members_status_check", sql`${t.status} IN ('invited','active')`),
+  ],
+);
+
+/* ───────────────────────── 2.34. comments (16.1) ───────────────────────── */
+
+/**
+ * Комментарии к объектам концепции (беседа 16.1, миграция 0017). Обсуждение
+ * документ НЕ меняет. Адрес — устойчивый (`DiscussionAddress`: вид + ключ +
+ * id + хэш содержимого + версия элемента), рядом — address_kind/address_key
+ * колонками для отбора и сводки, и выдержка объекта «как было» (обычный
+ * текст ≤ ADDRESS_EXCERPT_MAX). Состояние адреса (current/outdated/deleted)
+ * вычисляется при чтении и не хранится. Ветка плоская: parent_id — всегда
+ * корень; статус ветки живёт у корня (у ответов 'open'). Скрытие владельцем
+ * (status 'hidden') и удаление автором (deleted_at, body = '') — не удаление
+ * строки: пометка видна, ветка не рвётся. body — ОБЫЧНЫЙ ТЕКСТ без HTML
+ * (нового входа разметки после 13.1 не открывается; клиент экранирует).
+ * author_id — SET NULL на случай физического удаления строки users; штатно
+ * (7.1) строка анонимизируется, и автор показывается как «удалённый
+ * пользователь» по признаку анонимизации. Удаление синтеза — CASCADE.
+ */
+export const comments = pgTable(
+  "comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+    /** Полный адрес (shared DiscussionAddress) на момент записи */
+    address: jsonb("address").$type<DiscussionAddress>().notNull(),
+    /** Дубли полей адреса колонками — отбор по адресу и сводка */
+    addressKind: text("address_kind").notNull(),
+    addressKey: text("address_key").notNull(),
+    excerpt: text("excerpt").notNull().default(""),
+    /** Корень ветки; null — сам корень. CASCADE: ответы уходят с корнем
+     *  (строка корня при удалении автором не удаляется — см. deleted_at) */
+    parentId: uuid("parent_id").references((): AnyPgColumn => comments.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["question", "objection", "source", "unclear"] }),
+    body: text("body").notNull(),
+    status: text("status", { enum: ["open", "resolved", "hidden"] })
+      .notNull()
+      .default("open"),
+    resolvedBy: uuid("resolved_by").references(() => users.id, { onDelete: "set null" }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    /** Скрыт владельцем — кем и когда (status = 'hidden') */
+    hiddenBy: uuid("hidden_by").references(() => users.id, { onDelete: "set null" }),
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+    /** Удалён автором: тело стёрто, строка остаётся заглушкой, пока есть
+     *  ответы (без ответов в списках не показывается) */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_comments_synthesis_created").on(t.synthesisId, t.createdAt),
+    index("idx_comments_address").on(t.synthesisId, t.addressKind, t.addressKey),
+    index("idx_comments_parent").on(t.parentId),
+    index("idx_comments_author").on(t.authorId),
+    check("comments_status_check", sql`${t.status} IN ('open','resolved','hidden')`),
+    check(
+      "comments_kind_check",
+      sql`${t.kind} IS NULL OR ${t.kind} IN ('question','objection','source','unclear')`,
+    ),
+  ],
+);
+
+/* ────────────────────────── 2.35. reviews (16.1) ───────────────────────── */
+
+/**
+ * Рецензии (беседа 16.1, миграция 0017). Семь текстовых полей — обычный
+ * текст; версия документа (четыре числа version_*) — к какой редакции
+ * концепции писалась; status: draft (виден только автору) → published →
+ * withdrawn (остаётся видимой с пометкой). Правка опубликованной — новая
+ * редакция в review_revisions (прежняя сохраняется); revision — номер
+ * текущей (0 — ещё не публиковалась). Замечания — review_findings.
+ */
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+    versionBase: integer("version_base").notNull().default(1),
+    versionSub: integer("version_sub").notNull().default(0),
+    versionModes: integer("version_modes").notNull().default(0),
+    versionModeRegen: integer("version_mode_regen").notNull().default(0),
+    title: text("title").notNull().default(""),
+    summary: text("summary").notNull().default(""),
+    strengths: text("strengths").notNull().default(""),
+    objections: text("objections").notNull().default(""),
+    minor: text("minor").notNull().default(""),
+    questions: text("questions").notNull().default(""),
+    conclusion: text("conclusion").notNull().default(""),
+    status: text("status", { enum: ["draft", "published", "withdrawn"] })
+      .notNull()
+      .default("draft"),
+    revision: integer("revision").notNull().default(0),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_reviews_synthesis").on(t.synthesisId, t.status),
+    index("idx_reviews_author").on(t.authorId),
+    check("reviews_status_check", sql`${t.status} IN ('draft','published','withdrawn')`),
+  ],
+);
+
+/* ─────────────────────── 2.36. review_revisions (16.1) ─────────────────── */
+
+/** Редакции опубликованной рецензии: снимок полей, версии документа и
+ *  замечаний на момент публикации/правки. UNIQUE(review_id, revision). */
+export const reviewRevisions = pgTable(
+  "review_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reviewId: uuid("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    docVersion: jsonb("doc_version").$type<ReviewDocVersion>().notNull(),
+    fields: jsonb("fields").$type<ReviewFields>().notNull(),
+    findings: jsonb("findings")
+      .$type<Omit<ReviewFinding, "resolution">[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex("uq_review_revisions_review_revision").on(t.reviewId, t.revision)],
+);
+
+/* ──────────────────────── 2.37. review_findings (16.1) ─────────────────── */
+
+/** Замечания рецензии — адрес (как у комментария), выдержка, текст, вид.
+ *  synthesis_id дублируется для сводки по адресам одним запросом. */
+export const reviewFindings = pgTable(
+  "review_findings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reviewId: uuid("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
+    address: jsonb("address").$type<DiscussionAddress>().notNull(),
+    addressKind: text("address_kind").notNull(),
+    addressKey: text("address_key").notNull(),
+    excerpt: text("excerpt").notNull().default(""),
+    body: text("body").notNull(),
+    kind: text("kind", { enum: ["question", "objection", "source", "unclear"] }),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_review_findings_review").on(t.reviewId, t.position),
+    index("idx_review_findings_address").on(t.synthesisId, t.addressKind, t.addressKey),
+    check(
+      "review_findings_kind_check",
+      sql`${t.kind} IS NULL OR ${t.kind} IN ('question','objection','source','unclear')`,
     ),
   ],
 );

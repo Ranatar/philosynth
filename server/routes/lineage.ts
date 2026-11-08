@@ -75,6 +75,7 @@ import {
   toPreview,
 } from "./syntheses.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { canManageSynthesis } from "../services/capabilities.js"; // 16.1: родословная — manage (владелец)
 
 /** depth из query: невалидный/отсутствующий → дефолт (clamp — в сервисе). */
 function depthParam(raw: string | undefined, fallback: number): number {
@@ -191,7 +192,7 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
   // — публичный чужой синтез править нельзя)
   const child = await loadSynthesisForRead(id, user.id);
   if (child.access === "notfound") return c.json(notFoundJson, 404);
-  if (child.access === "forbidden" || child.row.userId !== user.id)
+  if (child.access === "forbidden" || !canManageSynthesis(child.row, user.id))
     return c.json(forbiddenJson, 403);
 
   if (id === parentSynthesisId) {
@@ -224,7 +225,7 @@ lineageRoutes.post("/:id/lineage/link", requireAuth, async (c) => {
       404,
     );
   }
-  if (parent.userId !== user.id) {
+  if (!canManageSynthesis(parent, user.id)) {
     return c.json(
       {
         error: tl("server.routes.lineage.foreignParent", "Концепция-родитель принадлежит другому пользователю"),
@@ -274,7 +275,7 @@ lineageRoutes.get("/:id/lineage/file-node/:position/candidates", requireAuth, as
   // среди ЕГО синтезов, чужому читателю эта выборка не нужна
   const child = await loadSynthesisForRead(id, user.id);
   if (child.access === "notfound") return c.json(notFoundJson, 404);
-  if (child.access === "forbidden" || child.row.userId !== user.id)
+  if (child.access === "forbidden" || !canManageSynthesis(child.row, user.id))
     return c.json(forbiddenJson, 403);
 
   try {
@@ -295,7 +296,7 @@ lineageRoutes.delete("/:id/lineage/link/:parentSynthesisId", requireAuth, async 
 
   const child = await loadSynthesisForRead(id, user.id);
   if (child.access === "notfound") return c.json(notFoundJson, 404);
-  if (child.access === "forbidden" || child.row.userId !== user.id)
+  if (child.access === "forbidden" || !canManageSynthesis(child.row, user.id))
     return c.json(forbiddenJson, 403);
   // Активная операция над ребёнком — как у прочих правок (ownerEditGate)
   if (isGenerationActive(id)) {

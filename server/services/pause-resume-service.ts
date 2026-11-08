@@ -119,6 +119,7 @@ import {
 } from "./streaming-manager.js";
 import { buildEffectiveDeps, resolveContextDeps } from "./synthesis-engine.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { canEditSynthesis } from "./capabilities.js"; // 16.1
 
 /* ══ Константы ════════════════════════════════════════════════════════ */
 
@@ -546,7 +547,7 @@ export async function resumeGeneration(
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
   if (!row) throw new PauseResumeError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
-  if (row.userId !== userId) {
+  if (!canEditSynthesis(row, userId)) { // 16.1: одна проверка прав
     throw new PauseResumeError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
   }
   if (isGenerationActive(synthesisId)) {
@@ -926,7 +927,7 @@ export async function resumePlan(
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
   if (!row) throw new PauseResumeError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
-  if (row.userId !== userId) {
+  if (!canEditSynthesis(row, userId)) { // 16.1: одна проверка прав
     throw new PauseResumeError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
   }
   const ps = row.pausedState;

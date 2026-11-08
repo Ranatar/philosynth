@@ -15,7 +15,7 @@
  *  R3  Д-70: два одновременных POST /lineage/link → одна строка, второй —
  *      409 LINEAGE_EXISTS; миграция на КОПИИ БД (pg_dump → philosynth_t151)
  *      с откатом 0014 и подсаженным дублем → дубль снят (осталась меньшая
- *      позиция), индекс создан, журнал миграций вырос на одну; копия
+ *      позиция), индекс создан (с 16.1 — файлом миграции через psql, журнал цел); копия
  *      импортированного синтеза (POST /:id/duplicate) несёт file_genealogy
  *      и узлы файла в древе; удалённый родитель — бейдж каталога
  *      (hasConceptParents) и шапка концепции (parentSyntheses ∪
@@ -253,23 +253,25 @@ try {
     ok(copyMade && dump.status === 0, "копия БД снята (pg_dump → philosynth_t151)", (cr.stderr ?? "") + (dump.stderr ?? ""));
     const csql = postgres(COPY_URL, { onnotice: () => {} });
     try {
-      // откат 0014: снять индекс и последнюю запись журнала drizzle; подсадить дубль и ещё один дубль с бо́льшей позицией
+      // откат 0014: снять индекс; подсадить дубль и ещё один дубль с бо́льшей позицией.
+      // 16.1: миграция применяется её ФАЙЛОМ через psql, а не «drizzle-kit migrate
+      // после снятия последней записи журнала» — последняя с 15.3 уже не 0014
+      // (урок 09 §2, беседа 9.1: место миграции, а не «последняя — N»); журнал
+      // drizzle при этом не трогается и не проверяется.
       await csql`drop index if exists uq_lineage_parent_pair`;
-      const [last] = await csql`select id from drizzle.__drizzle_migrations order by id desc limit 1`;
-      await csql`delete from drizzle.__drizzle_migrations where id=${last.id}`;
       const [{ n: journalBefore }] = await csql`select count(*)::int as n from drizzle.__drizzle_migrations`;
       await csql`insert into synthesis_lineage (synthesis_id, parent_type, parent_synthesis_id, position) values (${C}, 'synthesis', ${P1}, 7), (${C}, 'synthesis', ${P1}, 9)`;
       // две строки философа с одним именем — не пара, миграция их не трогает
       await csql`insert into synthesis_lineage (synthesis_id, parent_type, parent_name, position) values (${C}, 'philosopher', 'Кант', 11)`;
       const [{ n: before }] = await csql`select count(*)::int as n from synthesis_lineage where synthesis_id=${C} and parent_synthesis_id=${P1}`;
-      const mig = spawnSync(ROOT + "node_modules/.bin/drizzle-kit", ["migrate"], { cwd: ROOT, encoding: "utf8", env: { ...process.env, DATABASE_URL: COPY_URL } });
+      const mig = spawnSync("psql", ["-q", "-v", "ON_ERROR_STOP=1", "-f", ROOT + "server/db/migrations/0014_lineage_parent_unique.sql", COPY_URL], { encoding: "utf8" });
       const [{ n: after }] = await csql`select count(*)::int as n from synthesis_lineage where synthesis_id=${C} and parent_synthesis_id=${P1}`;
       const kept = await csql`select position from synthesis_lineage where synthesis_id=${C} and parent_synthesis_id=${P1}`;
       const [{ n: idx }] = await csql`select count(*)::int as n from pg_indexes where indexname='uq_lineage_parent_pair'`;
       const [{ n: journalAfter }] = await csql`select count(*)::int as n from drizzle.__drizzle_migrations`;
       const [{ n: phils }] = await csql`select count(*)::int as n from synthesis_lineage where synthesis_id=${C} and parent_type='philosopher'`;
-      ok(mig.status === 0 && before === 3 && after === 1 && kept[0]?.position === 0 && idx === 1 && journalAfter === journalBefore + 1 && phils === 2,
-        "миграция 0014 на копии: 3 строки пары → 1 (позиция 0), индекс создан, журнал +1, строки философов не тронуты", { status: mig.status, before, after, kept, idx, journalBefore, journalAfter, phils, out: (mig.stdout + mig.stderr).slice(-300) });
+      ok(mig.status === 0 && before === 3 && after === 1 && kept[0]?.position === 0 && idx === 1 && journalAfter === journalBefore && phils === 2,
+        "миграция 0014 (файлом, psql) на копии: 3 строки пары → 1 (позиция 0), индекс создан, журнал не тронут, строки философов не тронуты", { status: mig.status, before, after, kept, idx, journalBefore, journalAfter, phils, out: (mig.stdout + mig.stderr).slice(-300) });
       const dupTry = await csql`insert into synthesis_lineage (synthesis_id, parent_type, parent_synthesis_id, position) values (${C}, 'synthesis', ${P1}, 5)`.then(() => null).catch((e) => e.code);
       ok(dupTry === "23505", "после миграции дубль пары в копии отвергается 23505");
     } finally { await csql.end({ timeout: 2 }); }

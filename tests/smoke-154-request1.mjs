@@ -86,7 +86,7 @@ console.log("\n■ A. Исходники и чистые функции");
   ok(/family: text\("family"\)\.notNull\(\)/.test(schemaS) && /edition: integer\("edition"\)\.notNull\(\)\.default\(1\)/.test(schemaS) && /uq_subscription_plans_family_edition/.test(schemaS), "A5 schema: family NOT NULL, edition default 1, unique(family, edition)");
   ok(mig.indexOf('ADD COLUMN "family" text;') < mig.indexOf('SET "family" = "name"') && mig.indexOf('SET "family" = "name"') < mig.indexOf('ALTER COLUMN "family" SET NOT NULL') && /DEFAULT 1 NOT NULL/.test(mig) && /CREATE UNIQUE INDEX "uq_subscription_plans_family_edition"/.test(mig), "A6 миграция 0016: ADD → backfill family = name → NOT NULL; edition; индекс");
   const journal = JSON.parse(rd("server/db/migrations/meta/_journal.json"));
-  ok(journal.entries.length === 17 && journal.entries[16].tag === "0016_plan_editions", "A7 журнал миграций — 0016_plan_editions семнадцатой");
+  ok(journal.entries.length >= 17 && journal.entries[16].tag === "0016_plan_editions", "A7 журнал миграций — 0016_plan_editions семнадцатой (16.1: далее 0017)");
   ok(!/outcome: "updated"/.test(seedS) && !/\.update\(subscriptionPlans\)/.test(seedS) && /diverged: diffFields\(/.test(seedS) && /family: plan\.name,\s*edition: 1,/.test(seedS), "A8 сид: без updated, без UPDATE таблицы, diverged в отчёте, family/edition у созданной строки");
   ok(/created=0, skip=/.test(rd("tools/dev-billing.sh")) && !/created=0, updated=0/.test(rd("tools/dev-billing.sh")), "A9 dev-billing.sh ждёт «created=0, skip=» (без updated)");
   const emit = rd("tools/stripe-emit.mjs");

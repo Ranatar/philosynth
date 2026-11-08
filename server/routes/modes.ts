@@ -27,7 +27,6 @@
  *    2.1 и delete-шагов plan-executor 2.2); вне диапазона → 404.
  */
 import { Hono } from "hono";
-import type { Context } from "hono";
 import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "../db/index.js";
@@ -35,7 +34,6 @@ import { modeResults, syntheses } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { billingCheck } from "../middleware/billing-check.js"; // 6.1
 import {
-  isGenerationActive,
   loadSynthesis,
 } from "../services/generation-service.js";
 import {
@@ -47,7 +45,6 @@ import {
 } from "../services/mode-service.js";
 import {
   forbiddenJson,
-  isUuid,
   loadSynthesisForRead,
   notFoundJson,
   showcaseForbiddenJson,
@@ -56,6 +53,7 @@ import {
 import type { GenerationOrder } from "@philosynth/shared/types/synthesis";
 import type { ModeResult } from "@philosynth/shared/types/modes";
 import { tl } from "@philosynth/shared/i18n/t";
+import { editGate } from "./edit-gate.js"; // 16.1
 
 export const modesRoutes = new Hono<AuthEnv>();
 
@@ -93,29 +91,8 @@ async function loadModeRowsAsc(
     .orderBy(asc(modeResults.createdAt));
 }
 
-/** Владелец + существование + отсутствие активной генерации (edit-гейт,
- *  паритет ownerGate routes/generation 2.2). null = гейты пройдены. */
-async function ownerEditGate(
-  c: Context,
-  id: string,
-  userId: string,
-): Promise<Response | null> {
-  if (!isUuid(id)) return c.json(notFoundJson, 404);
-  const [row] = await db
-    .select({ userId: syntheses.userId })
-    .from(syntheses)
-    .where(eq(syntheses.id, id))
-    .limit(1);
-  if (!row) return c.json(notFoundJson, 404);
-  if (row.userId !== userId) return c.json(forbiddenJson, 403);
-  if (isGenerationActive(id)) {
-    return c.json(
-      { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" },
-      409,
-    );
-  }
-  return null;
-}
+/* Гейт правки — общий `editGate` (routes/edit-gate.ts, беседа 16.1); своя
+   копия ownerEditGate снята. */
 
 const modeNotFoundJson = { error: tl("server.routes.modes.modeNotFound", "Режим не найден"), code: "NOT_FOUND" } as const;
 
@@ -177,7 +154,7 @@ modesRoutes.post("/:id/modes/:modeKey/run", requireAuth, billingCheck({ quota: "
   const user = c.get("user");
   const id = c.req.param("id");
   const modeKey = c.req.param("modeKey");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   if (!getModeConfig(modeKey)) return c.json(modeNotFoundJson, 404);
 
@@ -217,7 +194,7 @@ modesRoutes.delete("/:id/modes/:modeKey/:index", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const modeKey = c.req.param("modeKey");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   if (!getModeConfig(modeKey)) return c.json(modeNotFoundJson, 404);
 
@@ -246,7 +223,7 @@ modesRoutes.post(
     const user = c.get("user");
     const id = c.req.param("id");
     const modeKey = c.req.param("modeKey");
-    const gate = await ownerEditGate(c, id, user.id);
+    const gate = await editGate(c, id, user.id);
     if (gate) return gate;
     if (!getModeConfig(modeKey)) return c.json(modeNotFoundJson, 404);
 

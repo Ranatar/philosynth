@@ -45,7 +45,6 @@ import {
   validateJustifyInput,
   type EnrichableType,
 } from "../services/element-enrichment.js";
-import { isGenerationActive } from "../services/generation-service.js";
 import {
   forbiddenJson,
   isUuid,
@@ -54,32 +53,14 @@ import {
   showcaseForbiddenJson,
 } from "./syntheses.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { editGate } from "./edit-gate.js"; // 16.1
 
 export const enrichmentRoutes = new Hono<AuthEnv>();
 
 const elementNotFoundJson = { error: tl("common.elementNotFound", "Элемент не найден"), code: "NOT_FOUND" } as const;
 
-/** Гейт запуска: не-UUID/нет → 404, чужой → 403, активная операция → 409. */
-async function ownerEditGate(
-  c: Context,
-  id: string,
-  userId: string,
-): Promise<Response | null> {
-  if (!isUuid(id)) return c.json(notFoundJson, 404);
-  const [row] = await db
-    .select({ userId: syntheses.userId })
-    .from(syntheses)
-    .where(eq(syntheses.id, id))
-    .limit(1);
-  if (!row) return c.json(notFoundJson, 404);
-  if (row.userId !== userId) return c.json(forbiddenJson, 403);
-  if (isGenerationActive(id))
-    return c.json(
-      { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" },
-      409,
-    );
-  return null;
-}
+/* Гейт правки — общий `editGate` (routes/edit-gate.ts, беседа 16.1); своя
+   копия ownerEditGate снята. */
 
 async function readJson(c: Context): Promise<unknown> {
   try {
@@ -128,7 +109,7 @@ enrichmentRoutes.post("/:id/enrich/category/:catId", requireAuth, billingCheck({
   const user = c.get("user");
   const id = c.req.param("id");
   const catId = c.req.param("catId");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
 
   const body = (await readJson(c)) as { type?: unknown } | undefined;
@@ -151,7 +132,7 @@ enrichmentRoutes.post("/:id/enrich/edge/:edgeId", requireAuth, billingCheck({ qu
   const user = c.get("user");
   const id = c.req.param("id");
   const edgeId = c.req.param("edgeId");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
 
   const body = (await readJson(c)) as { type?: unknown } | undefined;
@@ -173,7 +154,7 @@ enrichmentRoutes.post("/:id/enrich/edge/:edgeId", requireAuth, billingCheck({ qu
 enrichmentRoutes.post("/:id/justify-characteristic", requireAuth, billingCheck({ quota: "enrichments" }), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
 
   const body = await readJson(c);

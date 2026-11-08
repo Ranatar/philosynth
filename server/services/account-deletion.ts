@@ -15,7 +15,9 @@
  *    уносит разделы/элементы/логи/планы; `api_usage`/`transactions.
  *    synthesis_id` → SET NULL по миграции 0002; `prompt_templates` и
  *    каталоги типов `created_by` → SET NULL по 0003 — но строка users
- *    остаётся, так что FK и не срабатывает);
+ *    остаётся, так что FK и не срабатывает); участие в чужих концепциях
+ *    (synthesis_members, 16.1) — явно; комментарии и рецензии остаются у
+ *    концепции под подписью «удалённый пользователь»;
  *  - подписка: активная — cancel_at_period_end в Stripe (fail-open: сбой
  *    Stripe логируется, удаление не останавливает), строки
  *    user_subscriptions → status 'canceled'.
@@ -50,7 +52,7 @@ import { hasActiveGenerationForUser } from "./generation-service.js";
 import { cancelSubscription, SubscriptionError } from "./subscription-service.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
-const { users, sessions, apiKeys, syntheses, userSubscriptions, adminAudit, authTokens } = schema;
+const { users, sessions, apiKeys, syntheses, userSubscriptions, adminAudit, authTokens, synthesisMembers } = schema;
 
 export class AccountDeletionError extends Error {
   constructor(
@@ -153,6 +155,11 @@ export async function deleteAccount(
     // (урок 8.1) — а живой довод сброса пароля вернул бы доступ к удалённой
     // учётной записи. Снимаем явно, той же транзакцией.
     await tx.delete(authTokens).where(eq(authTokens.userId, userId));
+    // 16.1: участие в чужих концепциях (synthesis_members.user_id CASCADE
+    // при анонимизации тоже не срабатывает) — снимаем явно. Комментарии и
+    // рецензии ОСТАЮТСЯ (author_id — на анонимизированную строку; показ
+    // «удалённый пользователь»): обсуждение принадлежит концепции.
+    await tx.delete(synthesisMembers).where(eq(synthesisMembers.userId, userId));
     await tx
       .update(userSubscriptions)
       .set({ status: "canceled", cancelAtPeriodEnd: true, updatedAt: new Date() })

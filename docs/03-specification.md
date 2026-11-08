@@ -567,6 +567,16 @@ GET    /syntheses/:id          → { synthesis: SynthesisFull }
                                 //   'showcase' → ok со scope 'showcase';
                                 //   'full' → ok со scope 'full';
                                 //   userId=null → viewer 'guest'.
+                                // 16.1: решает ОДИН модуль прав
+                                // services/capabilities (capabilitiesOfRow →
+                                // { read, discuss, edit, manage, role }):
+                                // активный участник (synthesis_members
+                                // reviewer | editor) → ok, viewer 'user',
+                                // scope 'full' на ЛЮБОЙ ступени (приватная
+                                // и витрина — целиком; стоимость/токены как
+                                // любому зарегистрированному, логи — флагами
+                                // 8.6); приглашённый (invited) — как чужой.
+                                // Ответ несёт capabilities рядом с isOwner.
                                 // Отсечение полей — ОДНОЙ функцией
                                 // projectSynthesis(full, viewer, flags):
                                 //   13.2 (Д-65): pausedState/pauseEstimates — ТОЛЬКО владельцу
@@ -758,6 +768,13 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
                                         // вместо оптимизма «403 решит».
                                         // Флаг, а не userId — публичный
                                         // синтез владельца не раскрывает
+  capabilities: Capabilities;           // 16.1: { read, discuss, edit, manage,
+                                        // role: owner | reviewer | editor |
+                                        // reader | guest } — права смотрящего
+                                        // из services/capabilities; isOwner =
+                                        // role === 'owner'. В 16.1 edit = owner
+                                        // (редактор получает его в 17.1);
+                                        // клиент переходит на поле в 16.3/17.2.
   docNum: string;                       // «PS-NNNN-XXXX» — заполняется при
                                         // создании записи (формат исходника
                                         // [12110]); шапка документа
@@ -2050,7 +2067,8 @@ POST /syntheses/:id/recommendations/parse
      404: 'no_critique' | 'no_table' (текст подсказывает …/extract).
      422 RECOMMENDATIONS_TABLE_INVALID: details.problem
        'no_table_element' | 'missing_columns' (details.missing, .found) | 'no_rows'.
-     409 GENERATION_IN_PROGRESS — активная операция (ownerEditGate, как правка 9.2).
+     409 GENERATION_IN_PROGRESS — активная операция (editGate, как правка 9.2;
+     до 16.1 — ownerEditGate).
 
 GET  /syntheses/:id/recommendations/extract/estimate     (12.3, Д-20)
      → { estimate: { inTokens, outTokens, cost },
@@ -2170,6 +2188,70 @@ interface Recommendation {        // packages/shared/types/recommendations.ts
 разобранная до 12.3, отдаёт сохранённый русский текст. Отказы постановки
 плана (`declined[].reason`) и подсказка `hint` — тоже на языке запроса,
 метка раздела — `tData(KEY_LABELS[…])`.
+
+---
+
+### 2.17. Обсуждение и рецензии (беседа 16.1)
+
+```
+GET    /syntheses/:id/comments               ?kind&key&status&author&cursor&limit
+                                             → { comments: Comment[], nextCursor }
+POST   /syntheses/:id/comments               { target | parentId, body, kind? } → Comment (201)
+PATCH  /syntheses/:id/comments/:cid          { body?, kind? } → Comment        (автор)
+DELETE /syntheses/:id/comments/:cid          → { ok, removed }                  (автор)
+POST   /syntheses/:id/comments/:cid/resolve  → Comment     (автор ветки или владелец)
+POST   /syntheses/:id/comments/:cid/reopen   → Comment     (автор ветки или владелец)
+POST   /syntheses/:id/comments/:cid/hide     → Comment     (владелец — manage)
+POST   /syntheses/:id/comments/:cid/unhide   → Comment     (владелец — manage)
+GET    /syntheses/:id/reviews                → Review[]    (черновики — только свои)
+POST   /syntheses/:id/reviews                ReviewUpsertInput → Review (201, draft)
+GET    /syntheses/:id/reviews/:rid           → Review      (чужой черновик — 404)
+PATCH  /syntheses/:id/reviews/:rid           ReviewUpsertInput → Review (автор; опубликованная → новая редакция)
+DELETE /syntheses/:id/reviews/:rid           → { ok }      (автор; только черновик, иначе 409)
+POST   /syntheses/:id/reviews/:rid/publish   → Review      (редакция 1; версия документа — на момент публикации)
+POST   /syntheses/:id/reviews/:rid/withdraw  → Review      (только опубликованную)
+GET    /syntheses/:id/reviews/:rid/revisions → ReviewRevision[] (новые первыми)
+POST   /syntheses/:id/reviews/:rid/findings  { target, body, kind? } → Review (201)
+PATCH  /syntheses/:id/reviews/:rid/findings/:fid  { body?, kind? } → Review
+DELETE /syntheses/:id/reviews/:rid/findings/:fid  → Review
+GET    /syntheses/:id/discussion/summary     → { byAddress: AddressCounts[],
+                                                 totals: { openComments, findings, reviews } }
+```
+
+**Доступ — всегда через синтез и модуль прав** (`routes/discussion.ts`,
+`discussGate`): гость → 401; не-UUID / нет строки → 404; нет права
+`discuss` (владелец или активный участник) → 403 `FORBIDDEN` — и на
+публичной концепции: читатель обсуждения не видит (решение 16.1: участники
+только по приглашению). Скрытие — право `manage`. Автор ли это — решает
+сервис по строке. Активная операция над синтезом обсуждению не мешает
+(409 `GENERATION_IN_PROGRESS` нет): документ отсюда не меняется.
+
+**Адрес цели** (`target`): `{ kind, id?, key? }` — `kind` ∈ synthesis |
+section | subsection | category | edge | thesis | glossary_term; `id` —
+строка таблицы (сначала), `key` — устойчивый ключ (имя категории/термина,
+`src→tgt|type`, `label`/номер тезиса, ключ раздела, `sectionKey:dataSection`);
+у synthesis ни то, ни другое не нужно. Объекта нет → 404. В ответе адрес
+несёт `id`, `key`, `hash`, `version` на момент записи, `excerpt` — выдержку,
+`resolution` — вычисленное состояние `{ state: current | outdated |
+deleted, currentId, currentHash, currentVersion }` (02 §2.34).
+
+**Тела** — обычный текст (`plainText`), разметка не принимается и не
+чистится; пределы: комментарий и замечание ≤ 10 000, поле рецензии
+≤ 20 000, заголовок ≤ 300, выдержка ≤ 300. Список комментариев — плоский
+по времени (клиент собирает ветки по `parentId`), страница `limit`
+1…200 (умолчание 50), `cursor` — непрозрачный (id последней строки).
+
+**Ошибки**: `VALIDATION_ERROR` 400 (`details` по полям: пустое тело,
+неизвестный `kind`/вид адреса, ответ на ответ, статус у ответа, негодный
+курсор), `NOT_FOUND` 404, `FORBIDDEN` 403 (чужая правка/удаление,
+resolve не автором и не владельцем, hide не владельцем), `CONFLICT` 409
+(ответ в удалённую/скрытую ветку, правка удалённого/скрытого, повторная
+публикация, правка/замечание у отозванной, удаление опубликованной) —
+`error` объясняет причину.
+
+**Автор**: `{ id, name, deleted, isOwner }`; удалённый аккаунт (7.1) —
+`id: null`, `deleted: true`, `name` = «удалённый пользователь» на языке
+запроса. `isOwner` автора — через модуль прав.
 
 ---
 
@@ -2544,6 +2626,11 @@ TOKEN_INVALID       — довод из письма (подтверждение
                       моменту подтверждения (15.3)
 LAST_ADMIN          — понижение или удаление аккаунта последнего администратора —
                       409 (8.1; подсказка «сначала назначьте второго»)
+CONFLICT            — обсуждение (16.1, §2.17): действие против состояния
+                      строки — ответ в удалённую/скрытую ветку, правка
+                      удалённого/скрытого комментария, повторная публикация,
+                      правка или замечание у отозванной рецензии, удаление
+                      опубликованной — 409; один код, причина — в error
 SELF_ROLE_CHANGE    — POST /auth/users/:id/role на самого себя — 409 (8.1)
 LINEAGE_SELF        — POST /lineage/link: концепция — собственный родитель — 400 (8.5)
 LINEAGE_CYCLE       — POST /lineage/link: родитель среди потомков — 409 (8.5)

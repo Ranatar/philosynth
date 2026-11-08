@@ -25,13 +25,11 @@
  */
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { eq } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { syntheses } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { billingCheck } from "../middleware/billing-check.js"; // 6.1
-import { isGenerationActive } from "../services/generation-service.js";
 import {
   TransformError,
   emptySourceMessage,
@@ -48,23 +46,12 @@ import {
   showcaseForbiddenJson,
 } from "./syntheses.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { editGate } from "./edit-gate.js"; // 16.1
 
 export const transformRoutes = new Hono<AuthEnv>();
 
-/** Гейт правки: не-UUID/нет → 404, чужой → 403, активная операция → 409. */
-async function ownerEditGate(c: Context, id: string, userId: string): Promise<Response | null> {
-  if (!isUuid(id)) return c.json(notFoundJson, 404);
-  const [row] = await db
-    .select({ userId: syntheses.userId })
-    .from(syntheses)
-    .where(eq(syntheses.id, id))
-    .limit(1);
-  if (!row) return c.json(notFoundJson, 404);
-  if (row.userId !== userId) return c.json(forbiddenJson, 403);
-  if (isGenerationActive(id))
-    return c.json({ error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" }, 409);
-  return null;
-}
+/* Гейт правки — общий `editGate` (routes/edit-gate.ts, беседа 16.1); своя
+   копия ownerEditGate снята. */
 
 function fireAndForget(label: string, p: Promise<void>): void {
   void p.catch((err) => console.error(`${label}:`, err));
@@ -76,7 +63,7 @@ async function postTransform(
   direction: "graph_to_theses" | "theses_to_graph",
 ): Promise<Response> {
   const user = c.get("user");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   if (!(await hasSourceRepresentation(id, direction))) {
     return c.json(
@@ -114,7 +101,7 @@ transformRoutes.post("/:id/transforms/:transformId/rollback", requireAuth, async
   const user = c.get("user");
   const id = c.req.param("id");
   const transformId = c.req.param("transformId");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   if (!isUuid(transformId))
     return c.json({ error: tl("server.routes.transforms.transformNotFound", "Трансформация не найдена"), code: "NOT_FOUND" }, 404);

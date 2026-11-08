@@ -77,6 +77,7 @@ import {
 import { connectionManager } from "./connection-manager.js";
 import { getStreamState } from "./stream-state.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { canEditSynthesis } from "../services/capabilities.js"; // 16.1
 import { runWithLocale } from "../i18n/locale.js"; // 14.1 (Д-53): язык пользователя в обработчиках WS
 
 /** Типы клиентских сообщений (валидация до диспетчеризации). */
@@ -154,7 +155,7 @@ async function handleSubscribeGeneration(
   }
 
   const [row] = await db
-    .select({ userId: syntheses.userId, status: syntheses.status })
+    .select({ userId: syntheses.userId, visibility: syntheses.visibility, status: syntheses.status })
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
@@ -167,7 +168,7 @@ async function handleSubscribeGeneration(
     });
     return;
   }
-  if (row.userId !== user.id) {
+  if (!canEditSynthesis(row, user.id)) { // 16.1: одна проверка прав
     connectionManager.send(ws, {
       type: "stream_error",
       synthesisId,
@@ -239,6 +240,7 @@ async function handleResume(
   const [row] = await db
     .select({
       userId: syntheses.userId,
+      visibility: syntheses.visibility,
       status: syntheses.status,
       pausedState: syntheses.pausedState,
       totalInputTokens: syntheses.totalInputTokens,
@@ -248,7 +250,7 @@ async function handleResume(
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
-  if (!row || row.userId !== user.id) return; // чужой/несуществующий — молча
+  if (!row || !canEditSynthesis(row, user.id)) return; // чужой/несуществующий — молча (16.1: одна проверка прав)
 
   const state = await getStreamState(synthesisId);
   if (state) {
@@ -453,7 +455,7 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
       return;
 
     // Обогащение элемента — беседа 5.3 (element-enrichment). Владелец
-    // проверяется явно (паритет ownerEditGate роута §2.14): слот сам
+    // проверяется явно (паритет editGate роута §2.14; 16.1): слот сам
     // владение не проверяет. 409 при активной операции даёт слот →
     // stream_error (идемпотентность п.5 03 §3.1).
     case "start_enrichment":
@@ -466,12 +468,12 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
           if (!isUuid(msg.synthesisId) || !isUuid(msg.elementId))
             throw new GenerationError("NOT_FOUND", tl("server.ws.handler.synthesisOrElementNotFound", "Синтез или элемент не найден"));
           const [row] = await db
-            .select({ userId: syntheses.userId })
+            .select({ userId: syntheses.userId, visibility: syntheses.visibility })
             .from(syntheses)
             .where(eq(syntheses.id, msg.synthesisId))
             .limit(1);
           if (!row) throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
-          if (row.userId !== user.id)
+          if (!canEditSynthesis(row, user.id)) // 16.1: одна проверка прав
             throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
           await startEnrichment(
             msg.synthesisId, user.id, msg.elementType, msg.elementId, msg.enrichmentType,
@@ -481,7 +483,7 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
       return;
 
     // Трансформация представлений — беседа 5.5 (representation-transformer).
-    // Владелец проверяется явно (паритет ownerEditGate роута §2.15);
+    // Владелец проверяется явно (паритет editGate роута §2.15; 16.1);
     // пустой источник даст stream_error из start-обёртки (VALIDATION_ERROR).
     case "start_transform":
       void handleBackground(
@@ -493,12 +495,12 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
           if (!isUuid(msg.synthesisId))
             throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
           const [row] = await db
-            .select({ userId: syntheses.userId })
+            .select({ userId: syntheses.userId, visibility: syntheses.visibility })
             .from(syntheses)
             .where(eq(syntheses.id, msg.synthesisId))
             .limit(1);
           if (!row) throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
-          if (row.userId !== user.id)
+          if (!canEditSynthesis(row, user.id)) // 16.1: одна проверка прав
             throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
           await startTransform(msg.synthesisId, user.id, msg.direction);
         },

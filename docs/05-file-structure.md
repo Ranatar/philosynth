@@ -60,6 +60,8 @@ philosynth-service/
 │       │   ├── section-labels.ts       # KEY_LABELS, SECTION_LABELS (KEY_LABELS, SECTION_LABELS)
 │       │   ├── ctx-keys.ts             # CTX_LABELS (ALL_CTX_KEYS удалён в v11; перечень ключей — из CTX_LABELS)
 │       │   ├── phil-filename.ts        # PHIL_FILENAME (PHIL_FILENAME)
+│       │   ├── discussion.ts           # 16.1: MEMBER_ROLES/STATUSES, ADDRESS_KINDS/STATES, COMMENT_KINDS/
+│       │   │                           #  STATUSES, REVIEW_STATUSES, REVIEW_TEXT_FIELDS, пределы текстов и страниц
 │       │   ├── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (METHOD_CODE, LEVEL_CODE)
 │       │   ├── characteristics.ts      # Характеристики категорий (8) и связей (6) с
 │       │   │                           # диапазонами, resolveCharacteristic (алиасы
@@ -100,6 +102,8 @@ philosynth-service/
 │       │   ├── graph.ts                # Category, CategoryEdge, ClusterLabel, TopologyInfo
 │       │   ├── elements.ts             # Thesis, GlossaryTerm, DialogueTurn
 │       │   ├── lineage.ts              # LineageNode, ParticipantInput
+│       │   ├── discussion.ts           # 16.1: Capabilities, SynthesisRole, DiscussionAddress/Resolution,
+│       │   │                           #  Comment*, Review*, ReviewRevision, ReviewFinding, DiscussionSummary
 │       │   ├── edit-plan.ts            # EditPlan, EditStep, StepResult
 │       │   ├── generation.ts           # GenLogEntry, CtxLogEntry, ContextEntry
 │       │   ├── modes.ts                # ModeConfig, ModeResult
@@ -124,6 +128,9 @@ philosynth-service/
 │           │                           # hasConceptParticipants (v11, 01 §4.14)
 │           ├── colorize-log.ts         # colorizeLog() — единая реализация (2.4;
 │           │                           # клиент реэкспортирует)
+│           ├── discussion-address.ts   # 16.1: ключи адресов (categoryKey, edgeKey, thesisKey, termKey,
+│           │                           #  subsectionKey), canonicalJson → sha256 contentHash, plainText,
+│           │                           #  excerptOf, buildAddress, resolutionOf (current|outdated|deleted)
 │           └── visibility.ts           # 8.6: effectiveFlags(row) — ОДНА функция действенности
 │                                       # флагов публичности (сервер и клиент 8.7); isPublicOf
 │
@@ -182,6 +189,9 @@ philosynth-service/
 │   │       │                           #  DROP/ADD CONSTRAINT), new_email text; генерат, тег переименован
 │   │       ├── 0016_plan_editions.sql  # 15.4 (Д-74): subscription_plans.family (backfill = name, NOT NULL),
 │   │       │                           #  edition (DEFAULT 1), UNIQUE (family, edition); рукой, снимок генератом
+│   │       ├── 0017_discussion.sql     # 16.1: synthesis_members, comments, reviews, review_revisions,
+│   │       │                           #  review_findings (CASCADE по синтезу, author_id SET NULL); drizzle-kit,
+│   │       │                           #  тег переименован
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -211,6 +221,12 @@ philosynth-service/
 │   │   │                               # (создаёт беседа 1.6 — до 2026-07-30
 │   │   │                               #  модуль не был назначен ни одной беседе)
 │   │   ├── elements.ts                 # GET/PATCH categories, theses, glossary
+│   │   ├── edit-gate.ts                # 16.1: editGate(c, id, userId, { activeOp? }) — ОДИН гейт правки
+│   │   │                               #  (404 до БД → 404 → 403 по capabilities.edit → 409) вместо четырёх
+│   │   │                               #  ownerEditGate, ownerGate, ownerReadGate (= activeOp: false)
+│   │   ├── discussion.ts               # 16.1: 18 маршрутов /syntheses/:id/comments|reviews|discussion/summary
+│   │   │                               #  (03 §2.17) под requireAuth + discussGate (404 → 403 по discuss);
+│   │   │                               #  hide/unhide — manage; DiscussionError → 400/403/404/409
 │   │   │                               # GET /categories — беседа 1.6 (нужен 1.7);
 │   │   │                               # остальное СДЕЛАНО 5.1: PATCH категорий/
 │   │   │                               # связей/тезисов/глоссария, DELETE связи,
@@ -286,6 +302,19 @@ philosynth-service/
 │   │   │                               # (computeDependents … computeFactualDependents)
 │   │   │
 │   │   ├── edit-planner.ts             # createPlan, updatePlan, addCascadeSteps
+│   │   ├── capabilities.ts             # 16.1: ЕДИНСТВЕННОЕ сравнение «владелец ли это» (isOwner);
+│   │   │                               #  capabilitiesFor(row, userId, membership) → { read, discuss, edit,
+│   │   │                               #  manage, role }; editCapability = owner (17.1 меняет здесь);
+│   │   │                               #  canEdit/canManage/canDiscussSynthesis, loadMembership,
+│   │   │                               #  loadCapabilities, capabilitiesOfRow
+│   │   ├── discussion-address.ts       # 16.1: индекс адресуемых объектов концепции (loadAddressIndex —
+│   │   │                               #  разделы, категории, рёбра, тезисы, термины, max element_versions;
+│   │   │                               #  подразделы лениво через html-parser), findTarget (id → ключ),
+│   │   │                               #  addressOf, resolveAddress; только чтение
+│   │   ├── discussion.ts               # 16.1: комментарии (плоские ветки, курсор, resolve/hide, мягкое
+│   │   │                               #  удаление), рецензии (draft → publish → редакции → withdraw),
+│   │   │                               #  замечания, сводка по адресам; plainText; автор «удалённый
+│   │   │                               #  пользователь» по анонимизированному email 7.1; в документ не пишет
 │   │   │                               # Адаптация recalcEditPlan (recalcEditPlan()),
 │   │   │                               # updateLiveCascade (updateLiveCascade())
 │   │   │
@@ -380,6 +409,7 @@ philosynth-service/
 │   │   ├── account-deletion.ts        # 7.1: DELETE /auth/me — анонимизация users при сохранённой
 │   │   │                               # RESTRICT-истории, удаление сессий/ключей/синтезов, отмена подписки
 │   │   │                               # 8.1: заслон LAST_ADMIN, строка account.deleted, actor_id → NULL
+│   │   │                               # 16.1: synthesis_members снимаются явно; комментарии/рецензии остаются
 │   │   ├── admin-audit.ts             # 8.1: writeAudit(exec, …) — db или tx вызывающего, ADMIN_ACTIONS
 │   │   │                               # (замороженный список), listAudit, ADMIN_SET_LOCK_KEY
 │   │   ├── auth-tokens.ts             # 9.1: одноразовые доводы из писем (sha256 в БД): issueToken
@@ -849,7 +879,7 @@ philosynth-service/
 │   │   ├── extract-section-templates.mjs
 │   │   └── extract-export-assets.mjs
 │   ├── patches/                        # идемпотентные патчи доков по итогам бесед (по одному
-│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv154)
+│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv161)
 │   │   ├── patch-docs-*.py             # запускаются ИЗ КОРНЯ репозитория;
 │   │   │                               # осторожно с повторным прогоном старого патча:
 │   │   │                               # доки с тех пор менялись, и якорь может совпасть
@@ -996,6 +1026,20 @@ philosynth-service/
     │                                   #  R3 Д-75 (seed:plans CLI с расхождением, seedPlans с квотами, stripe-emit
     │                                   #  --price неизвестный/редакции 2/без); R4 браузер — вкладка «Тарифы», запертые
     │                                   #  поля, второй шаг редакции, журнал, стартовая и BillingPage без закрытых
+    │                                   # test-161-requests2-4 — 16.1: живой сервер + мок Claude в процессе (перегенерация
+    │                                   #  раздела отдаёт заданный HTML); R2 права шести смотрящих × три ступени, прямой
+    │                                   #  id комментария и id под чужим синтезом, прочие маршруты, копия/выгрузка без
+    │                                   #  обсуждения; R3 адреса — перегенерация графа (изменённое/прежнее определение),
+    │                                   #  theses, удаление, ручная правка подраздела (выдержка прежняя); R4 ветки,
+    │                                   #  статусы, скрытие, удаление, рецензии/редакции/отзыв, DELETE /auth/me, каскад
+    │                                   # smoke-161-request1 — 16.1: матрица прав (capabilitiesFor), ключи и хэши
+    │                                   #  адресов, plainText/excerpt, сравнения владельца только в белом списке,
+    │                                   #  журнал 0017; живьём через app.request (импорт sample/ владельцем):
+    │                                   #  владелец/рецензент/редактор/приглашённый/чужой/гость на private, full,
+    │                                   #  showcase; участник не правит (403); 401/403/404 обсуждения; комментарии,
+    │                                   #  ветки, курсор, статусы, скрытие, удаление с заглушкой; адреса
+    │                                   #  outdated → saveGraphToDb → current с новым id → deleted; ребро, тезис;
+    │                                   #  рецензии/редакции/отзыв/сводка; deleteAccount участника; каскад синтеза
     │                                   # smoke-154-request1 — 15.4: экономика одной функцией, схема/0016, сид без
     │                                   #  updated, stripe-emit --price, клиент/коды/доки/deploy/CSS/ключи; живьём
     │                                   #  через app.request + мок Stripe в процессе: 401/403/200, семейство →

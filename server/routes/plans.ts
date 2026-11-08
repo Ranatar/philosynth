@@ -53,6 +53,7 @@ import type {
   UpdatePlanRequest,
 } from "@philosynth/shared/types/edit-plan";
 import { tl } from "@philosynth/shared/i18n/t";
+import { canEditSynthesis } from "../services/capabilities.js"; // 16.1
 
 export const plansRoutes = new Hono<AuthEnv>();
 
@@ -209,7 +210,7 @@ plansRoutes.post("/:id/plans/impact", requireAuth, async (c) => {
   try {
     // Владельческий гейт (превью каскада — edit-операция, правило 2.1)
     const { row, philosophers } = await loadSynthesis(id);
-    if (row.userId !== user.id)
+    if (!canEditSynthesis(row, user.id)) // 16.1: одна проверка прав
       return c.json({ error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"), code: "FORBIDDEN" }, 403);
 
     const impact = await analyzeImpact(id, { regen, remove, add });

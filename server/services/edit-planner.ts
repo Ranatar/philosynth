@@ -145,6 +145,7 @@ import type { PromptParams } from "./prompt-builder.js";
 import type { SectionDefFull } from "./section-defs-builder.js";
 import type { CascadeWaveEntry } from "./cost-estimator.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { canEditSynthesis } from "./capabilities.js"; // 16.1
 import { tData } from "@philosynth/shared/i18n/data"; // 14.1 (Д-52)
 import { KEY_LABELS, isSectionKey } from "@philosynth/shared/constants/section-labels"; // 14.1 (Д-52)
 
@@ -1082,7 +1083,7 @@ export async function createPlan(
   opts: CreatePlanOptions = {},
 ): Promise<EditPlan> {
   const { row, philosophers } = await loadSynthesis(synthesisId);
-  if (row.userId !== userId)
+  if (!canEditSynthesis(row, userId)) // 16.1: одна проверка прав
     throw new PlanError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
 
   const sectionOrder: readonly string[] = row.sectionOrder ?? [];

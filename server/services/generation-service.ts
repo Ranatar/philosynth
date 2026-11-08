@@ -156,6 +156,7 @@ import {
   saveElementsToDb,
 } from "./element-parser.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { canEditSynthesis } from "./capabilities.js"; // 16.1
 import { pw, renderParseWarningsRu, sanitizeParseWarnings } from "./parse-warnings.js"; // 14.2 (Д-55): коды предупреждений
 import { streamLogError } from "./gen-log-labels.js"; // 14.2 (Д-62): коды подписей и ошибок журнала
 import type { GenLogLabel } from "@philosynth/shared/types/generation";
@@ -860,7 +861,7 @@ export async function generateSynthesis(
     userId,
     async (handle) => {
       const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
-      if (row.userId !== userId) {
+      if (!canEditSynthesis(row, userId)) { // 16.1: одна проверка прав
         throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
       }
       Object.assign(secCtx, opts.sectionContexts ?? {});
@@ -899,7 +900,7 @@ export async function resumeSynthesisFromPass(
     userId,
     async (handle) => {
       const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
-      if (row.userId !== userId) {
+      if (!canEditSynthesis(row, userId)) { // 16.1: одна проверка прав
         throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
       }
       Object.assign(secCtx, opts.sectionContexts ?? {});

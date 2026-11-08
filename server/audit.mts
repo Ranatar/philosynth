@@ -47,6 +47,8 @@ const PAIRS: Pair[] = [
       "pauseEstimates",
       // 5.2: признак владения — userId === viewer, колонки нет (userId — schemaOnly)
       "isOwner",
+      // 16.1: права смотрящего — services/capabilities (владелец/участник/читатель), колонки нет
+      "capabilities",
       // 8.6: authorName — users.display_name при действенном show_author;
       // scope — объём смотрящего (loadSynthesisForRead);
       // sections — тела разделов гостю при scope='full' (документ одним ответом).

@@ -68,7 +68,6 @@ import {
   isVersionedElementType,
   loadElementRow,
 } from "../services/element-versioning.js";
-import { isGenerationActive } from "../services/generation-service.js";
 import {
   forbiddenJson,
   isUuid,
@@ -85,6 +84,7 @@ import type {
   TopologyInfo,
 } from "@philosynth/shared/types/graph";
 import { tl } from "@philosynth/shared/i18n/t";
+import { editGate } from "./edit-gate.js"; // 16.1
 
 export const elementsRoutes = new Hono<AuthEnv>();
 
@@ -207,28 +207,9 @@ elementsRoutes.get("/:id/categories", requireAuth, async (c) => {
 
 /* ══ Беседа 5.1 ═══════════════════════════════════════════════════════ */
 
-/** Гейт правки: не-UUID/нет → 404, чужой → 403, генерация → 409. */
-/** Экспорт — беседа 9.2: тем же гейтом закрыт PATCH подраздела (routes/sections). */
-export async function ownerEditGate(
-  c: Context,
-  id: string,
-  userId: string,
-): Promise<Response | null> {
-  if (!isUuid(id)) return c.json(notFoundJson, 404);
-  const [row] = await db
-    .select({ userId: syntheses.userId })
-    .from(syntheses)
-    .where(eq(syntheses.id, id))
-    .limit(1);
-  if (!row) return c.json(notFoundJson, 404);
-  if (row.userId !== userId) return c.json(forbiddenJson, 403);
-  if (isGenerationActive(id))
-    return c.json(
-      { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" },
-      409,
-    );
-  return null;
-}
+/* Гейт правки — общий `editGate` (routes/edit-gate.ts, беседа 16.1): прежняя
+   копия ownerEditGate 5.1 (её же брали sections 9.2 и recommendations 10.1)
+   снята; кто имеет право edit — модуль прав services/capabilities. */
 
 async function readJson(c: Context): Promise<unknown> {
   try {
@@ -283,7 +264,7 @@ elementsRoutes.get("/:id/categories/:catId", requireAuth, async (c) => {
 elementsRoutes.patch("/:id/categories/:catId", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   const catId = c.req.param("catId");
   if (!isUuid(catId)) return c.json(invalidIdJson, 404);
@@ -300,7 +281,7 @@ elementsRoutes.patch("/:id/categories/:catId", requireAuth, async (c) => {
 elementsRoutes.post("/:id/edges", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   try {
     const result = await createCategoryEdge(id, await readJson(c));
@@ -315,7 +296,7 @@ elementsRoutes.post("/:id/edges", requireAuth, async (c) => {
 elementsRoutes.patch("/:id/edges/:edgeId", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   const edgeId = c.req.param("edgeId");
   if (!isUuid(edgeId)) return c.json(invalidIdJson, 404);
@@ -330,7 +311,7 @@ elementsRoutes.patch("/:id/edges/:edgeId", requireAuth, async (c) => {
 elementsRoutes.delete("/:id/edges/:edgeId", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   const edgeId = c.req.param("edgeId");
   if (!isUuid(edgeId)) return c.json(invalidIdJson, 404);
@@ -349,7 +330,7 @@ const deleteElementHandler =
   async (c: Context<AuthEnv>): Promise<Response> => {
     const user = c.get("user");
     const id = c.req.param("id") ?? "";
-    const gate = await ownerEditGate(c, id, user.id);
+    const gate = await editGate(c, id, user.id);
     if (gate) return gate;
     const elementId = c.req.param(param) ?? "";
     if (!isUuid(elementId)) return c.json(invalidIdJson, 404);
@@ -383,7 +364,7 @@ elementsRoutes.get("/:id/theses", requireAuth, async (c) => {
 elementsRoutes.patch("/:id/theses/:thesisId", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   const thesisId = c.req.param("thesisId");
   if (!isUuid(thesisId)) return c.json(invalidIdJson, 404);
@@ -415,7 +396,7 @@ elementsRoutes.get("/:id/glossary", requireAuth, async (c) => {
 elementsRoutes.patch("/:id/glossary/:termId", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   const termId = c.req.param("termId");
   if (!isUuid(termId)) return c.json(invalidIdJson, 404);
@@ -463,7 +444,7 @@ elementsRoutes.post(
   async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
-    const gate = await ownerEditGate(c, id, user.id);
+    const gate = await editGate(c, id, user.id);
     if (gate) return gate;
     const elementType = c.req.param("elementType");
     const elementId = c.req.param("elementId");
@@ -495,7 +476,7 @@ elementsRoutes.post(
 elementsRoutes.post("/:id/elements/auto-rename", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   const body = await readJson(c);
   const b = (body && typeof body === "object" ? body : {}) as {
@@ -519,7 +500,7 @@ elementsRoutes.post("/:id/elements/auto-rename", requireAuth, async (c) => {
 elementsRoutes.patch("/:id/capsule", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   const body = await readJson(c);
   const html =

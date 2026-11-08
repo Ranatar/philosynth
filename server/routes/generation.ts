@@ -17,8 +17,6 @@
  *  - add/delete разделов намеренно НЕ здесь: только через планы (§2.6).
  */
 import { Hono } from "hono";
-import type { Context } from "hono";
-import { eq } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { syntheses } from "../db/schema.js";
@@ -35,7 +33,6 @@ import { estimateSubsectionCost } from "../services/cost-estimator.js";
 import {
   GenerationError,
   buildEditInfra,
-  isGenerationActive,
   loadSynthesis,
   startSectionRegeneration,
   startSubsectionRegeneration,
@@ -57,34 +54,13 @@ import type {
   SubsectionImpactResponse,
 } from "@philosynth/shared/types/edit-plan";
 import { tl } from "@philosynth/shared/i18n/t";
+import { editGate } from "./edit-gate.js"; // 16.1
+import { canEditSynthesis } from "../services/capabilities.js"; // 16.1
 
 export const generationRoutes = new Hono<AuthEnv>();
 
-/** Владелец и существование; null = гейты пройдены. */
-async function ownerGate(
-  c: Context,
-  id: string,
-  userId: string,
-): Promise<Response | null> {
-  if (!isUuid(id))
-    return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
-  const [row] = await db
-    .select({ userId: syntheses.userId })
-    .from(syntheses)
-    .where(eq(syntheses.id, id))
-    .limit(1);
-  if (!row)
-    return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
-  if (row.userId !== userId)
-    return c.json({ error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"), code: "FORBIDDEN" }, 403);
-  if (isGenerationActive(id)) {
-    return c.json(
-      { error: tl("common.generationInProgress", "Генерация уже идёт"), code: "GENERATION_IN_PROGRESS" },
-      409,
-    );
-  }
-  return null;
-}
+/* Гейт правки — общий `editGate` (routes/edit-gate.ts, беседа 16.1); прежний
+   ownerGate 2.2 снят. */
 
 /* ── POST /syntheses/:id/regenerate/:sectionKey ──────────────────────── */
 
@@ -96,7 +72,7 @@ generationRoutes.post(
     const user = c.get("user");
     const id = c.req.param("id");
     const sectionKey = c.req.param("sectionKey");
-    const gate = await ownerGate(c, id, user.id);
+    const gate = await editGate(c, id, user.id);
     if (gate) return gate;
 
     let context: string | undefined;
@@ -121,7 +97,7 @@ generationRoutes.post(
   async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
-    const gate = await ownerGate(c, id, user.id);
+    const gate = await editGate(c, id, user.id);
     if (gate) return gate;
 
     let body: {
@@ -206,7 +182,7 @@ generationRoutes.post("/:id/subsection-impact", requireAuth, async (c) => {
 
   try {
     const { row, philosophers, secCtx } = await loadSynthesis(id);
-    if (row.userId !== user.id)
+    if (!canEditSynthesis(row, user.id)) // 16.1: одна проверка прав
       return c.json({ error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"), code: "FORBIDDEN" }, 403);
 
     const sectionOrder: readonly string[] = row.sectionOrder ?? [];

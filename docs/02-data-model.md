@@ -30,7 +30,17 @@ users ─────────────┐
   ├── transactions
   ├── api_usage
   ├── auth_tokens (одноразовые доводы из писем; CASCADE; 9.1)
-  └── admin_audit (actor_id → users, SET NULL; 8.1)
+  ├── admin_audit (actor_id → users, SET NULL; 8.1)
+  │
+  ├── synthesis_members (16.1: участники синтеза — reviewer | editor;
+  │                      CASCADE по синтезу и пользователю; при 7.1 —
+  │                      снимаются явно)
+  ├── comments          (16.1: author_id → users SET NULL; CASCADE по
+  │     └── comments    синтезу; parent_id → корень ветки, CASCADE)
+  └── reviews           (16.1: author_id → users SET NULL; CASCADE по синтезу)
+        ├── review_revisions   (снимки редакций; CASCADE)
+        └── review_findings    (замечания с адресами; CASCADE по рецензии
+                                и синтезу)
 
 mail_outbox ───────── (очередь писем; с пользователем НЕ связана; 9.1)
   
@@ -1325,6 +1335,186 @@ formulation/justification; термин: term/definition/extra_columns), БЕЗ
 панель показывала бы их годными); `planned` только теряет ссылку —
 исполняющий шаг (сам `delete_element` по этой рекомендации) переведёт её в
 `done`.
+
+### 2.33. synthesis_members
+
+Участники синтеза (беседа 16.1, миграция `0017_discussion`; врезка «Фаза
+16» в 07). Владелец — `syntheses.user_id`, строки у него нет. Роль `editor`
+заведена сразу, права её действуют с Фазы 17 (в 16.x редактор = рецензент).
+Приглашения и принятие (`status`) — беседа 16.2; в 16.1 строки заводит
+только оснастка/тесты. Права по строке считает ОДИН модуль —
+`server/services/capabilities.ts` (`{ read, discuss, edit, manage, role }`):
+активный участник читает концепцию на любой ступени видимости и обсуждает;
+приглашённый (`invited`) — как читатель.
+
+```sql
+CREATE TABLE synthesis_members (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  synthesis_id  UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
+  user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role          TEXT NOT NULL CHECK (role IN ('reviewer', 'editor')),
+  status        TEXT NOT NULL DEFAULT 'invited' CHECK (status IN ('invited', 'active')),
+  invited_by    UUID REFERENCES users(id) ON DELETE SET NULL,
+  accepted_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_synthesis_members_pair UNIQUE (synthesis_id, user_id)
+);
+CREATE INDEX idx_synthesis_members_user ON synthesis_members(user_id);
+```
+
+**Удаление аккаунта (7.1)** анонимизирует строку `users` — CASCADE не
+срабатывает, поэтому `account-deletion` удаляет строки участия явно той же
+транзакцией. Удаление синтеза — каскад.
+
+### 2.34. comments
+
+Комментарии к концепции и её элементам (беседа 16.1). Документ ими не
+меняется: ни одна функция обсуждения не пишет в `sections` и гранулярные
+таблицы. Тексты — обычный текст (`plainText`: переводы строк LF,
+управляющие сняты, разметка НЕ разбирается и не вырезается — экранирует
+показ клиент).
+
+```sql
+CREATE TABLE comments (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  synthesis_id  UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
+  author_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+  address       JSONB NOT NULL,          -- DiscussionAddress: { kind, key, id, hash, version }
+  address_kind  TEXT NOT NULL,           -- копия address.kind — для индексов и сводки
+  address_key   TEXT NOT NULL,           -- копия address.key
+  excerpt       TEXT NOT NULL DEFAULT '',-- выдержка объекта на момент записи (≤ 300)
+  parent_id     UUID REFERENCES comments(id) ON DELETE CASCADE, -- ТОЛЬКО корень ветки
+  kind          TEXT CHECK (kind IN ('question', 'objection', 'source', 'unclear')), -- NULL — без вида
+  body          TEXT NOT NULL,           -- ≤ 10 000; у удалённой заглушки — ''
+  status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'hidden')),
+  resolved_by   UUID REFERENCES users(id) ON DELETE SET NULL,
+  resolved_at   TIMESTAMPTZ,
+  hidden_by     UUID REFERENCES users(id) ON DELETE SET NULL,
+  hidden_at     TIMESTAMPTZ,
+  deleted_at    TIMESTAMPTZ,             -- заглушка: корень удалён автором, ответы живы
+  edited_at     TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_comments_synthesis_created ON comments(synthesis_id, created_at);
+CREATE INDEX idx_comments_address ON comments(synthesis_id, address_kind, address_key);
+CREATE INDEX idx_comments_parent ON comments(parent_id);
+CREATE INDEX idx_comments_author ON comments(author_id);
+```
+
+**Адрес** (`packages/shared/utils/discussion-address.ts`): вид ∈ synthesis |
+section | subsection | category | edge | thesis | glossary_term; ключ —
+устойчивое имя (категория/термин — `normalizeName` в нижнем регистре, ребро
+— `src→tgt|type`, тезис — `label ?? thesis_num`, подраздел —
+`sectionKey:dataSection`, раздел — ключ, синтез — id); `id` — строка на
+момент записи; `hash` — sha256 канонического содержимого (у synthesis —
+пустой); `version` — `max(element_versions.version)` на момент записи.
+Состояние адреса **вычисляется при чтении** (`resolveAddress`: id → ключ →
+нет): `current` (хэш сошёлся — и после пересоздания с новым id), `outdated`
+(объект на месте, содержимое иное: «относится к прежней версии»),
+`deleted`. В БД состояние не хранится; комментарий никуда не переносится.
+
+**Ветки плоские**: `parent_id` указывает только на корень (ответ на ответ
+— 400); ответ наследует адрес корня; статус — у корня. **Удаление
+автором**: корень с живыми ответами → заглушка (`deleted_at`, `body = ''`);
+без ответов и любой ответ → строка удаляется; заглушка, у которой не
+осталось живых ответов, в списке не отдаётся. **Скрытие владельцем** —
+`status = 'hidden'` (`hidden_by/at`): виден всем как «скрыто владельцем» с
+пустым телом, тело — автору и владельцу; возврат — `resolved`, если
+`resolved_at` стоит, иначе `open`. Автор удалённого аккаунта (7.1,
+`email = deleted-<id>@deleted.invalid`) показывается как «удалённый
+пользователь» (`author.id = null`, `deleted: true`).
+
+### 2.35. reviews
+
+Рецензии (беседа 16.1). Версия документа — четыре `version_*` синтеза на
+момент создания черновика, **обновляются при публикации**. Семь текстовых
+полей — обычный текст (`title` ≤ 300, прочие ≤ 20 000).
+
+```sql
+CREATE TABLE reviews (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  synthesis_id      UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
+  author_id         UUID REFERENCES users(id) ON DELETE SET NULL,
+  version_base      INTEGER NOT NULL,
+  version_sub       INTEGER NOT NULL,
+  version_modes     INTEGER NOT NULL,
+  version_mode_regen INTEGER NOT NULL,
+  title             TEXT NOT NULL DEFAULT '',
+  summary           TEXT NOT NULL DEFAULT '',
+  strengths         TEXT NOT NULL DEFAULT '',
+  objections        TEXT NOT NULL DEFAULT '',
+  minor             TEXT NOT NULL DEFAULT '',
+  questions         TEXT NOT NULL DEFAULT '',
+  conclusion        TEXT NOT NULL DEFAULT '',
+  status            TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'withdrawn')),
+  revision          INTEGER NOT NULL DEFAULT 0,  -- 0 у черновика; publish → 1; правка опубликованной → +1
+  published_at      TIMESTAMPTZ,
+  withdrawn_at      TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_reviews_synthesis ON reviews(synthesis_id, created_at);
+CREATE INDEX idx_reviews_author ON reviews(author_id);
+```
+
+**Жизненный цикл.** `draft` — виден и правится только автором (чужому —
+**404**, наличие черновика не раскрывается), удаляется; `publish` →
+`published`, редакция 1 (повторная публикация отозванной — следующая);
+любая правка опубликованной — полей или замечаний — новая редакция той же
+транзакцией, прежняя сохраняется; `withdraw` → `withdrawn` — остаётся
+видимой с пометкой, не правится; опубликованную удалить нельзя (409 —
+отзывают). Удаление аккаунта автора рецензию не трогает.
+
+### 2.36. review_revisions
+
+Снимки редакций опубликованной рецензии (беседа 16.1): поля, версия
+документа и замечания (без состояния адреса — оно вычисляется при чтении
+живой рецензии, а снимок — история).
+
+```sql
+CREATE TABLE review_revisions (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  review_id    UUID NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+  revision     INTEGER NOT NULL,
+  doc_version  JSONB NOT NULL,           -- { base, sub, modes, modeRegen }
+  fields       JSONB NOT NULL,           -- ReviewFields (семь текстов)
+  findings     JSONB NOT NULL DEFAULT '[]', -- ReviewFinding[] без resolution
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_review_revisions_review_revision UNIQUE (review_id, revision)
+);
+```
+
+### 2.37. review_findings
+
+Замечания рецензии с адресами (беседа 16.1). Живут у рецензии (не у
+редакции): правка замечания опубликованной рецензии = новая редакция.
+Адрес, выдержка и состояние — как у комментариев (§2.34).
+
+```sql
+CREATE TABLE review_findings (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  review_id     UUID NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+  synthesis_id  UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
+  address       JSONB NOT NULL,
+  address_kind  TEXT NOT NULL,
+  address_key   TEXT NOT NULL,
+  excerpt       TEXT NOT NULL DEFAULT '',
+  body          TEXT NOT NULL,           -- ≤ 10 000
+  kind          TEXT CHECK (kind IN ('question', 'objection', 'source', 'unclear')),
+  position      INTEGER NOT NULL DEFAULT 0,  -- порядок в рецензии (max + 1 при добавлении)
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_review_findings_review ON review_findings(review_id, position);
+CREATE INDEX idx_review_findings_address ON review_findings(synthesis_id, address_kind, address_key);
+```
+
+**Сводка для документа** (`GET /syntheses/:id/discussion/summary`, 03
+§2.17) считает по `(address_kind, address_key)` открытые корни комментариев
+(не удалённые) и замечания ОПУБЛИКОВАННЫХ рецензий — двумя сгруппированными
+запросами; для пометок у элементов в 16.3.
 
 ## 3. Извлечение гранулярных элементов из HTML
 

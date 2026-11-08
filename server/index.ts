@@ -38,6 +38,7 @@ import { importRoutes } from "./routes/import.js";
 import { billingRoutes } from "./routes/billing.js"; // беседа 6.1
 import { promptsRoutes } from "./routes/prompts.js"; // беседа 6.1
 import { recommendationsRoutes } from "./routes/recommendations.js"; // беседа 10.1
+import { discussionRoutes } from "./routes/discussion.js"; // беседа 16.1
 import { warmCache } from "./services/prompt-registry.js";
 import { closeTransport } from "./services/mail/transport.js"; // беседа 9.1
 import { startMailWorker, stopMailWorker } from "./services/mail/worker.js"; // беседа 9.1
@@ -123,6 +124,7 @@ app.route("/api/v1/syntheses", enrichmentRoutes); // беседа 5.3 (03 §2.14
 app.route("/api/v1/taxonomy", taxonomyRoutes); // беседа 5.3 (03 §2.13; дыра 0.3b)
 app.route("/api/v1/syntheses", transformRoutes); // беседа 5.5 (03 §2.15)
 app.route("/api/v1/syntheses", recommendationsRoutes); // беседа 10.1 (03 §2.16)
+app.route("/api/v1/syntheses", discussionRoutes); // беседа 16.1 (03 §2.17)
 app.route("/api/v1/billing", billingRoutes); // беседа 6.1 (03 §2.10; /webhook без сессии)
 app.route("/api/v1", promptsRoutes); // беседа 6.1 (03 §2.9: /prompts, /configs — admin)
 

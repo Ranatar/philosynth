@@ -63,7 +63,7 @@ import {
   lockedSubsectionNames,
   updateSubsection,
 } from "../services/element-editor.js";
-import { ownerEditGate } from "./elements.js";
+import { editGate } from "./edit-gate.js"; // 16.1
 import { logsAllowed } from "./logs.js";
 import { parseWarningsFromMetadata, renderParseWarnings } from "../services/parse-warnings.js"; // 14.2 (Д-55)
 import {
@@ -267,7 +267,7 @@ sectionsRoutes.get("/:id/sections/:key/subsections/:name", requireAuth, async (c
 sectionsRoutes.patch("/:id/sections/:key/subsections/:name", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   const key = c.req.param("key");
   if (!isSectionKey(key)) return c.json(unknownSectionJson, 404);
@@ -308,7 +308,7 @@ sectionsRoutes.patch("/:id/sections/:key/subsections/:name", requireAuth, async 
 sectionsRoutes.delete("/:id/sections/:key/subsections/:name", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   const key = c.req.param("key");
   if (!isSectionKey(key)) return c.json(unknownSectionJson, 404);

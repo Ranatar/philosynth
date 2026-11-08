@@ -26,10 +26,7 @@
  * документа. Отказы биллинга и занятый слот — обычными кодами §4.3.
  */
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
 
-import { db } from "../db/index.js";
-import { syntheses } from "../db/schema.js";
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
 import { billingCheck } from "../middleware/billing-check.js";
 import { PlanError } from "../services/edit-planner.js";
@@ -43,26 +40,18 @@ import {
   parseAndStore,
 } from "../services/recommendations.js";
 import { StreamError } from "../services/streaming-manager.js";
-import { ownerEditGate } from "./elements.js";
-import { forbiddenJson, isUuid, notFoundJson } from "./syntheses.js";
+import { editGate } from "./edit-gate.js"; // 16.1
 
 import type { Context } from "hono";
 import { tl } from "@philosynth/shared/i18n/t";
 
 export const recommendationsRoutes = new Hono<AuthEnv>();
 
-/** Гейт чтения: владелец, без проверки активной операции. */
-async function ownerReadGate(c: Context, id: string, userId: string): Promise<Response | null> {
-  if (!isUuid(id)) return c.json(notFoundJson, 404);
-  const [row] = await db
-    .select({ userId: syntheses.userId })
-    .from(syntheses)
-    .where(eq(syntheses.id, id))
-    .limit(1);
-  if (!row) return c.json(notFoundJson, 404);
-  if (row.userId !== userId) return c.json(forbiddenJson, 403);
-  return null;
-}
+/* Гейты — общий `editGate` (routes/edit-gate.ts, беседа 16.1): чтение
+   рекомендаций — тем же правом edit, но без проверки активной операции
+   (`{ activeOp: false }` — прежний ownerReadGate 10.1); разбор, ретрофит,
+   постановка плана — с ней (прежний ownerEditGate). */
+const readGate = (c: Context, id: string, userId: string) => editGate(c, id, userId, { activeOp: false });
 
 const BILLING_403 = new Set([
   "BILLING_REQUIRED",
@@ -120,7 +109,7 @@ function serviceError(c: Context, err: unknown): Response {
 recommendationsRoutes.get("/:id/recommendations", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerReadGate(c, id, user.id);
+  const gate = await readGate(c, id, user.id);
   if (gate) return gate;
   const q = c.req.query("round");
   let round: number | undefined;
@@ -144,7 +133,7 @@ recommendationsRoutes.get("/:id/recommendations", requireAuth, async (c) => {
 recommendationsRoutes.post("/:id/recommendations/parse", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   try {
     return c.json(await parseAndStore(id));
@@ -165,7 +154,7 @@ recommendationsRoutes.post("/:id/recommendations/parse", requireAuth, async (c) 
 recommendationsRoutes.get("/:id/recommendations/extract/estimate", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerReadGate(c, id, user.id);
+  const gate = await readGate(c, id, user.id);
   if (gate) return gate;
   try {
     return c.json(await estimateExtractCost(id));
@@ -183,7 +172,7 @@ recommendationsRoutes.post(
   async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
-    const gate = await ownerEditGate(c, id, user.id);
+    const gate = await editGate(c, id, user.id);
     if (gate) return gate;
     try {
       return c.json(await extractRecommendationsTable(id, user.id));
@@ -205,7 +194,7 @@ recommendationsRoutes.post(
 recommendationsRoutes.post("/:id/recommendations/plan", requireAuth, async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const gate = await ownerEditGate(c, id, user.id);
+  const gate = await editGate(c, id, user.id);
   if (gate) return gate;
   let body: unknown;
   try {

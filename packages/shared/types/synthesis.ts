@@ -7,6 +7,7 @@
 import type { ParticipantInput } from "./lineage.js";
 import type { SectionFull } from "./section.js";
 import type { PauseEstimates } from "./ws-messages.js";
+import type { Capabilities } from "./discussion.js"; // 16.1
 
 /* ── Перечисления параметров (enum-колонки syntheses) ─────────────────── */
 
@@ -234,6 +235,10 @@ export interface SynthesisFull {
    *  клиентские гейты правок вместо оптимизма «покажем всем, 403 решит».
    *  Флаг, а не userId — публичный синтез не раскрывает владельца. */
   isOwner: boolean;
+  /** 16.1: права смотрящего одной проверкой (services/capabilities) — read /
+   *  discuss / edit / manage и роль (owner | reviewer | editor | reader |
+   *  guest). isOwner остаётся: клиент 16.3/17.2 переходит на capabilities. */
+  capabilities: Capabilities;
   docNum: string;
   sectionOrder: string[];
   version: DocVersion;
