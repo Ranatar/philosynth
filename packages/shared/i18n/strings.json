@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-11-09T07:45:54.112Z",
-    "imported": "2026-11-09T07:47:13.792Z"
+    "synced": "2026-11-09T12:30:18.596Z",
+    "imported": "2026-11-09T12:30:19.322Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -1506,7 +1506,7 @@
       "en": "checking session…",
       "de": "Sitzung wird geprüft…",
       "from": {"en":"проверка сессии…","de":"проверка сессии…"},
-      "where": ["client/src/App.tsx:81"]
+      "where": ["client/src/App.tsx:82"]
     },
     "billing.plansTable.enrichments": {
       "ru": "Обогащения",
@@ -2898,7 +2898,7 @@
       "en": "Cancel",
       "de": "Abbrechen",
       "from": {"en":"Отмена","de":"Отмена"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:336","client/src/components/catalog/SynthesisCard.tsx:402","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:419","client/src/components/document/SectionView.tsx:439","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:532","client/src/components/edit/ElementEditor.tsx:611","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1924","client/src/pages/AdminPromptsPage.tsx:1988","client/src/pages/AdminPromptsPage.tsx:2019","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:336","client/src/components/catalog/SynthesisCard.tsx:402","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/discussion/CommentThread.tsx:130","client/src/components/discussion/CommentThread.tsx:151","client/src/components/discussion/CommentThread.tsx:284","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:426","client/src/components/document/SectionView.tsx:446","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:532","client/src/components/edit/ElementEditor.tsx:611","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1924","client/src/pages/AdminPromptsPage.tsx:1988","client/src/pages/AdminPromptsPage.tsx:2019","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434","client/src/pages/ReviewPage.tsx:116","client/src/pages/ReviewPage.tsx:134","client/src/pages/ReviewPage.tsx:334"]
     },
     "common.capsule": {
       "ru": "Капсула",
@@ -2940,7 +2940,7 @@
       "en": "Close",
       "de": "Schließen",
       "from": {"en":"Закрыть","de":"Закрыть"},
-      "where": ["client/src/components/edit/EdgeCreateForm.tsx:143","client/src/components/edit/ElementEditor.tsx:572","client/src/components/edit/ElementEditor.tsx:719","client/src/components/edit/ElementEditor.tsx:726","client/src/components/edit/SectionHistory.tsx:66","client/src/components/edit/TransformPanel.tsx:175","client/src/components/lineage/LineageNodeActions.tsx:233","client/src/components/synthesis/PauseModal.tsx:796","client/src/components/synthesis/PauseModal.tsx:797","client/src/pages/BillingPage.tsx:810"]
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:180","client/src/components/edit/EdgeCreateForm.tsx:143","client/src/components/edit/ElementEditor.tsx:572","client/src/components/edit/ElementEditor.tsx:719","client/src/components/edit/ElementEditor.tsx:726","client/src/components/edit/SectionHistory.tsx:66","client/src/components/edit/TransformPanel.tsx:175","client/src/components/lineage/LineageNodeActions.tsx:233","client/src/components/synthesis/PauseModal.tsx:796","client/src/components/synthesis/PauseModal.tsx:797","client/src/pages/BillingPage.tsx:810"]
     },
     "common.closeWithIcon": {
       "ru": "✕ Закрыть",
@@ -2961,7 +2961,7 @@
       "en": "Create account",
       "de": "Konto erstellen",
       "from": {"en":"Создать аккаунт","de":"Создать аккаунт"},
-      "where": ["client/src/pages/CatalogPage.tsx:371","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:152","client/src/pages/SynthesisPage.tsx:868"]
+      "where": ["client/src/pages/CatalogPage.tsx:371","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:152","client/src/pages/SynthesisPage.tsx:980"]
     },
     "common.creating": {
       "ru": "Создание…",
@@ -3067,7 +3067,7 @@
       "en": "Error",
       "de": "Fehler",
       "from": {"en":"Ошибка","de":"Ошибка"},
-      "where": ["client/src/components/synthesis/MembersPanel.tsx:224","client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:450","client/src/pages/SynthesisPage.tsx:841"]
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:224","client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:450","client/src/pages/SynthesisPage.tsx:951"]
     },
     "common.fillParameter": {
       "ru": "Заполните параметр.",
@@ -3165,7 +3165,7 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:375","client/src/components/document/SectionView.tsx:391","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1894","client/src/pages/AdminPromptsPage.tsx:1921","client/src/pages/AdminPromptsPage.tsx:1930","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/AdminPromptsPage.tsx:2013","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:926"]
+      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/discussion/DiscussionPanel.tsx:198","client/src/components/discussion/DiscussionTab.tsx:121","client/src/components/discussion/ReviewsTab.tsx:76","client/src/components/document/SectionView.tsx:382","client/src/components/document/SectionView.tsx:398","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1894","client/src/pages/AdminPromptsPage.tsx:1921","client/src/pages/AdminPromptsPage.tsx:1930","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/AdminPromptsPage.tsx:2013","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:1083"]
     },
     "common.logIn": {
       "ru": "Войти",
@@ -3250,14 +3250,14 @@
       "en": "Save",
       "de": "Speichern",
       "from": {"en":"Сохранить","de":"Сохранить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:325","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:244"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:325","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/discussion/CommentThread.tsx:127","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:422","client/src/components/edit/ElementEditor.tsx:603","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:244","client/src/pages/ReviewPage.tsx:113"]
     },
     "common.saving": {
       "ru": "Сохранение…",
       "en": "Saving…",
       "de": "Wird gespeichert…",
       "from": {"en":"Сохранение…","de":"Сохранение…"},
-      "where": ["client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/components/synthesis/PauseModal.tsx:629","client/src/pages/ProfilePage.tsx:244"]
+      "where": ["client/src/components/document/SectionView.tsx:422","client/src/components/edit/ElementEditor.tsx:603","client/src/components/synthesis/PauseModal.tsx:629","client/src/pages/ProfilePage.tsx:244"]
     },
     "common.sectionNotFound": {
       "ru": "Раздел не найден",
@@ -4530,6 +4530,621 @@
       "data": true,
       "where": ["scripts/seed/seed-taxonomy.ts:47"]
     },
+    "discussion.addressMarks.openHint": {
+      "ru": "{title} — {n, plural, one {# запись} few {# записи} many {# записей} other {# записи}} обсуждения и рецензий",
+      "en": "{title} — {n, plural, one {# entry} other {# entries}} in discussion and reviews",
+      "de": "{title} — {n, plural, one {# Eintrag} other {# Einträge}} in Diskussion und Rezensionen",
+      "from": {"en":"{title} — {n, plural, one {# запись} few {# записи} many {# записей} other {# записи}} обсуждения и рецензий","de":"{title} — {n, plural, one {# запись} few {# записи} many {# записей} other {# записи}} обсуждения и рецензий"},
+      "params": {"title":"","n":""},
+      "where": ["client/src/components/discussion/AddressMarks.tsx:182"]
+    },
+    "discussion.addressMarks.startHint": {
+      "ru": "{title} — обсудить",
+      "en": "{title} — discuss",
+      "de": "{title} — diskutieren",
+      "from": {"en":"{title} — обсудить","de":"{title} — обсудить"},
+      "params": {"title":""},
+      "where": ["client/src/components/discussion/AddressMarks.tsx:182"]
+    },
+    "discussion.commentThread.delete": {
+      "ru": "удалить",
+      "en": "delete",
+      "de": "löschen",
+      "from": {"en":"удалить","de":"удалить"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:156"]
+    },
+    "discussion.commentThread.deleteConfirm": {
+      "ru": "точно удалить?",
+      "en": "really delete?",
+      "de": "wirklich löschen?",
+      "from": {"en":"точно удалить?","de":"точно удалить?"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:148"]
+    },
+    "discussion.commentThread.deleteFailed": {
+      "ru": "Не удалось удалить.",
+      "en": "Could not delete.",
+      "de": "Löschen fehlgeschlagen.",
+      "from": {"en":"Не удалось удалить.","de":"Не удалось удалить."},
+      "where": ["client/src/components/discussion/CommentThread.tsx:147"]
+    },
+    "discussion.commentThread.deletedByAuthor": {
+      "ru": "удалено автором",
+      "en": "deleted by author",
+      "de": "vom Autor gelöscht",
+      "from": {"en":"удалено автором","de":"удалено автором"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:106"]
+    },
+    "discussion.commentThread.edit": {
+      "ru": "править",
+      "en": "edit",
+      "de": "bearbeiten",
+      "from": {"en":"править","de":"править"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:141"]
+    },
+    "discussion.commentThread.edited": {
+      "ru": "изменён",
+      "en": "edited",
+      "de": "bearbeitet",
+      "from": {"en":"изменён","de":"изменён"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:75"]
+    },
+    "discussion.commentThread.hiddenByOwner": {
+      "ru": "скрыто владельцем",
+      "en": "hidden by owner",
+      "de": "vom Eigentümer verborgen",
+      "from": {"en":"скрыто владельцем","de":"скрыто владельцем"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:103"]
+    },
+    "discussion.commentThread.hiddenMark": {
+      "ru": "скрыто владельцем — видно вам и автору",
+      "en": "hidden by owner — visible to you and the author",
+      "de": "vom Eigentümer verborgen — sichtbar für Sie und den Autor",
+      "from": {"en":"скрыто владельцем — видно вам и автору","de":"скрыто владельцем — видно вам и автору"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:110"]
+    },
+    "discussion.commentThread.hide": {
+      "ru": "скрыть",
+      "en": "hide",
+      "de": "verbergen",
+      "from": {"en":"скрыть","de":"скрыть"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:166"]
+    },
+    "discussion.commentThread.hideFailed": {
+      "ru": "Не удалось скрыть.",
+      "en": "Could not hide.",
+      "de": "Verbergen fehlgeschlagen.",
+      "from": {"en":"Не удалось скрыть.","de":"Не удалось скрыть."},
+      "where": ["client/src/components/discussion/CommentThread.tsx:165"]
+    },
+    "discussion.commentThread.kind": {
+      "ru": "Вид",
+      "en": "Kind",
+      "de": "Art",
+      "from": {"en":"Вид","de":"Вид"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:55"]
+    },
+    "discussion.commentThread.kindNone": {
+      "ru": "без вида",
+      "en": "no kind",
+      "de": "ohne Art",
+      "from": {"en":"без вида","de":"без вида"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:56"]
+    },
+    "discussion.commentThread.objectDeleted": {
+      "ru": "объект удалён",
+      "en": "object deleted",
+      "de": "Objekt gelöscht",
+      "from": {"en":"объект удалён","de":"объект удалён"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:206"]
+    },
+    "discussion.commentThread.outdated": {
+      "ru": "прежняя версия",
+      "en": "earlier version",
+      "de": "frühere Version",
+      "from": {"en":"прежняя версия","de":"прежняя версия"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:206"]
+    },
+    "discussion.commentThread.reopen": {
+      "ru": "переоткрыть",
+      "en": "reopen",
+      "de": "wieder öffnen",
+      "from": {"en":"переоткрыть","de":"переоткрыть"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:247"]
+    },
+    "discussion.commentThread.reopenFailed": {
+      "ru": "Не удалось переоткрыть.",
+      "en": "Could not reopen.",
+      "de": "Wiederöffnen fehlgeschlagen.",
+      "from": {"en":"Не удалось переоткрыть.","de":"Не удалось переоткрыть."},
+      "where": ["client/src/components/discussion/CommentThread.tsx:246"]
+    },
+    "discussion.commentThread.replies": {
+      "ru": "{n, plural, one {# ответ} few {# ответа} many {# ответов} other {# ответа}}",
+      "en": "{n, plural, one {# reply} other {# replies}}",
+      "de": "{n, plural, one {# Antwort} other {# Antworten}}",
+      "from": {"en":"{n, plural, one {# ответ} few {# ответа} many {# ответов} other {# ответа}}","de":"{n, plural, one {# ответ} few {# ответа} many {# ответов} other {# ответа}}"},
+      "params": {"n":""},
+      "where": ["client/src/components/discussion/CommentThread.tsx:222"]
+    },
+    "discussion.commentThread.reply": {
+      "ru": "ответить",
+      "en": "reply",
+      "de": "antworten",
+      "from": {"en":"ответить","de":"ответить"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:241"]
+    },
+    "discussion.commentThread.replyFailed": {
+      "ru": "Не удалось ответить.",
+      "en": "Could not reply.",
+      "de": "Antworten fehlgeschlagen.",
+      "from": {"en":"Не удалось ответить.","de":"Не удалось ответить."},
+      "where": ["client/src/components/discussion/CommentThread.tsx:278"]
+    },
+    "discussion.commentThread.replyPlaceholder": {
+      "ru": "Ответ…",
+      "en": "Reply…",
+      "de": "Antwort…",
+      "from": {"en":"Ответ…","de":"Ответ…"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:263"]
+    },
+    "discussion.commentThread.resolve": {
+      "ru": "решить",
+      "en": "resolve",
+      "de": "lösen",
+      "from": {"en":"решить","de":"решить"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:251"]
+    },
+    "discussion.commentThread.resolveFailed": {
+      "ru": "Не удалось решить.",
+      "en": "Could not resolve.",
+      "de": "Lösen fehlgeschlagen.",
+      "from": {"en":"Не удалось решить.","de":"Не удалось решить."},
+      "where": ["client/src/components/discussion/CommentThread.tsx:250"]
+    },
+    "discussion.commentThread.saveFailed": {
+      "ru": "Не удалось сохранить.",
+      "en": "Could not save.",
+      "de": "Speichern fehlgeschlagen.",
+      "from": {"en":"Не удалось сохранить.","de":"Не удалось сохранить."},
+      "where": ["client/src/components/discussion/CommentThread.tsx:124"]
+    },
+    "discussion.commentThread.send": {
+      "ru": "Отправить",
+      "en": "Send",
+      "de": "Senden",
+      "from": {"en":"Отправить","de":"Отправить"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:281"]
+    },
+    "discussion.commentThread.statusOpen": {
+      "ru": "открыто",
+      "en": "open",
+      "de": "offen",
+      "from": {"en":"открыто","de":"открыто"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:202"]
+    },
+    "discussion.commentThread.statusResolved": {
+      "ru": "решено",
+      "en": "resolved",
+      "de": "gelöst",
+      "from": {"en":"решено","de":"решено"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:202"]
+    },
+    "discussion.commentThread.unhide": {
+      "ru": "показать",
+      "en": "show",
+      "de": "anzeigen",
+      "from": {"en":"показать","de":"показать"},
+      "where": ["client/src/components/discussion/CommentThread.tsx:162"]
+    },
+    "discussion.commentThread.unhideFailed": {
+      "ru": "Не удалось показать.",
+      "en": "Could not show.",
+      "de": "Anzeigen fehlgeschlagen.",
+      "from": {"en":"Не удалось показать.","de":"Не удалось показать."},
+      "where": ["client/src/components/discussion/CommentThread.tsx:161"]
+    },
+    "discussion.discussionPanel.addedToReview": {
+      "ru": "Замечание добавлено в вашу рецензию «{title}».",
+      "en": "Finding added to your review “{title}”.",
+      "de": "Anmerkung in Ihre Rezension „{title}“ aufgenommen.",
+      "from": {"en":"Замечание добавлено в вашу рецензию «{title}».","de":"Замечание добавлено в вашу рецензию «{title}»."},
+      "params": {"title":""},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:158"]
+    },
+    "discussion.discussionPanel.adding": {
+      "ru": "Добавление…",
+      "en": "Adding…",
+      "de": "Wird hinzugefügt…",
+      "from": {"en":"Добавление…","de":"Добавление…"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:236"]
+    },
+    "discussion.discussionPanel.aria": {
+      "ru": "Обсуждение адреса",
+      "en": "Discussion of the address",
+      "de": "Diskussion der Adresse",
+      "from": {"en":"Обсуждение адреса","de":"Обсуждение адреса"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:171"]
+    },
+    "discussion.discussionPanel.asItWas": {
+      "ru": "Как было",
+      "en": "As it was",
+      "de": "Wie es war",
+      "from": {"en":"Как было","de":"Как было"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:186"]
+    },
+    "discussion.discussionPanel.critique": {
+      "ru": "Встроенная критика",
+      "en": "Built-in critique",
+      "de": "Eingebaute Kritik",
+      "from": {"en":"Встроенная критика","de":"Встроенная критика"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:268"]
+    },
+    "discussion.discussionPanel.critiqueNote": {
+      "ru": "Исполнение рекомендаций — в панели критики (10.3); отсюда документ не меняется.",
+      "en": "Recommendations are carried out in the critique panel (10.3); the document is not changed from here.",
+      "de": "Empfehlungen werden im Kritik-Panel (10.3) umgesetzt; von hier aus wird das Dokument nicht geändert.",
+      "from": {"en":"Исполнение рекомендаций — в панели критики (10.3); отсюда документ не меняется.","de":"Исполнение рекомендаций — в панели критики (10.3); отсюда документ не меняется."},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:284"]
+    },
+    "discussion.discussionPanel.findingFailed": {
+      "ru": "Не удалось добавить в рецензию.",
+      "en": "Could not add to the review.",
+      "de": "Konnte nicht in die Rezension aufgenommen werden.",
+      "from": {"en":"Не удалось добавить в рецензию.","de":"Не удалось добавить в рецензию."},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:164"]
+    },
+    "discussion.discussionPanel.findings": {
+      "ru": "Замечания рецензий",
+      "en": "Review findings",
+      "de": "Anmerkungen der Rezensionen",
+      "from": {"en":"Замечания рецензий","de":"Замечания рецензий"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:246"]
+    },
+    "discussion.discussionPanel.kicker": {
+      "ru": "Обсуждение",
+      "en": "Discussion",
+      "de": "Diskussion",
+      "from": {"en":"Обсуждение","de":"Обсуждение"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:174"]
+    },
+    "discussion.discussionPanel.kind": {
+      "ru": "Вид",
+      "en": "Kind",
+      "de": "Art",
+      "from": {"en":"Вид","de":"Вид"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:217"]
+    },
+    "discussion.discussionPanel.kindNone": {
+      "ru": "без вида",
+      "en": "no kind",
+      "de": "ohne Art",
+      "from": {"en":"без вида","de":"без вида"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:218"]
+    },
+    "discussion.discussionPanel.loadFailed": {
+      "ru": "Не удалось загрузить обсуждение.",
+      "en": "Could not load the discussion.",
+      "de": "Diskussion konnte nicht geladen werden.",
+      "from": {"en":"Не удалось загрузить обсуждение.","de":"Не удалось загрузить обсуждение."},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:110"]
+    },
+    "discussion.discussionPanel.noCritique": {
+      "ru": "Рекомендаций критики по этому адресу нет.",
+      "en": "No critique recommendations for this address.",
+      "de": "Keine Kritik-Empfehlungen zu dieser Adresse.",
+      "from": {"en":"Рекомендаций критики по этому адресу нет.","de":"Рекомендаций критики по этому адресу нет."},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:271"]
+    },
+    "discussion.discussionPanel.noFindings": {
+      "ru": "Опубликованные рецензии об этом месте не говорят.",
+      "en": "Published reviews say nothing about this place.",
+      "de": "Veröffentlichte Rezensionen sagen nichts zu dieser Stelle.",
+      "from": {"en":"Опубликованные рецензии об этом месте не говорят.","de":"Опубликованные рецензии об этом месте не говорят."},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:249"]
+    },
+    "discussion.discussionPanel.noThreads": {
+      "ru": "Об этом месте ещё не говорили.",
+      "en": "Nobody has discussed this place yet.",
+      "de": "Zu dieser Stelle wurde noch nichts gesagt.",
+      "from": {"en":"Об этом месте ещё не говорили.","de":"Об этом месте ещё не говорили."},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:199"]
+    },
+    "discussion.discussionPanel.placeholder": {
+      "ru": "Замечание, вопрос, источник… Абзацы — пустой строкой.",
+      "en": "A remark, a question, a source… Paragraphs — by a blank line.",
+      "de": "Anmerkung, Frage, Quelle… Absätze — durch eine Leerzeile.",
+      "from": {"en":"Замечание, вопрос, источник… Абзацы — пустой строкой.","de":"Замечание, вопрос, источник… Абзацы — пустой строкой."},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:212"]
+    },
+    "discussion.discussionPanel.sectionHint": {
+      "ru": "Раздел: {section}",
+      "en": "Section: {section}",
+      "de": "Abschnitt: {section}",
+      "from": {"en":"Раздел: {section}","de":"Раздел: {section}"},
+      "params": {"section":""},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:287"]
+    },
+    "discussion.discussionPanel.send": {
+      "ru": "Отправить",
+      "en": "Send",
+      "de": "Senden",
+      "from": {"en":"Отправить","de":"Отправить"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:226"]
+    },
+    "discussion.discussionPanel.sendFailed": {
+      "ru": "Не удалось отправить.",
+      "en": "Could not send.",
+      "de": "Senden fehlgeschlagen.",
+      "from": {"en":"Не удалось отправить.","de":"Не удалось отправить."},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:164"]
+    },
+    "discussion.discussionPanel.sending": {
+      "ru": "Отправка…",
+      "en": "Sending…",
+      "de": "Wird gesendet…",
+      "from": {"en":"Отправка…","de":"Отправка…"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:226"]
+    },
+    "discussion.discussionPanel.threads": {
+      "ru": "Ветки",
+      "en": "Threads",
+      "de": "Stränge",
+      "from": {"en":"Ветки","de":"Ветки"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:194"]
+    },
+    "discussion.discussionPanel.toReview": {
+      "ru": "В мою рецензию",
+      "en": "To my review",
+      "de": "In meine Rezension",
+      "from": {"en":"В мою рецензию","de":"В мою рецензию"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:236"]
+    },
+    "discussion.discussionPanel.toReviewHint": {
+      "ru": "Записать набранное замечанием в мою рецензию (черновик создастся, если его нет)",
+      "en": "Save the typed text as a finding in my review (a draft is created if there is none)",
+      "de": "Den eingegebenen Text als Anmerkung in meine Rezension aufnehmen (ein Entwurf wird angelegt, falls keiner existiert)",
+      "from": {"en":"Записать набранное замечанием в мою рецензию (черновик создастся, если его нет)","de":"Записать набранное замечанием в мою рецензию (черновик создастся, если его нет)"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:234"]
+    },
+    "discussion.discussionPanel.untitledReview": {
+      "ru": "без названия",
+      "en": "untitled",
+      "de": "ohne Titel",
+      "from": {"en":"без названия","de":"без названия"},
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:158","client/src/components/discussion/DiscussionPanel.tsx:254"]
+    },
+    "discussion.discussionTab.allAddresses": {
+      "ru": "все адреса",
+      "en": "all addresses",
+      "de": "alle Adressen",
+      "from": {"en":"все адреса","de":"все адреса"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:90"]
+    },
+    "discussion.discussionTab.allAuthors": {
+      "ru": "все авторы",
+      "en": "all authors",
+      "de": "alle Autoren",
+      "from": {"en":"все авторы","de":"все авторы"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:112"]
+    },
+    "discussion.discussionTab.allKinds": {
+      "ru": "все виды",
+      "en": "all kinds",
+      "de": "alle Arten",
+      "from": {"en":"все виды","de":"все виды"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:98"]
+    },
+    "discussion.discussionTab.allStatuses": {
+      "ru": "все статусы",
+      "en": "all statuses",
+      "de": "alle Status",
+      "from": {"en":"все статусы","de":"все статусы"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:106"]
+    },
+    "discussion.discussionTab.empty": {
+      "ru": "Обсуждение ещё не начато: пометки ◉ у разделов, подразделов и строк таблиц открывают панель.",
+      "en": "No discussion yet: the ◉ marks next to sections, subsections and table rows open the panel.",
+      "de": "Noch keine Diskussion: die ◉-Markierungen neben Abschnitten, Unterabschnitten und Tabellenzeilen öffnen das Panel.",
+      "from": {"en":"Обсуждение ещё не начато: пометки ◉ у разделов, подразделов и строк таблиц открывают панель.","de":"Обсуждение ещё не начато: пометки ◉ у разделов, подразделов и строк таблиц открывают панель."},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:124"]
+    },
+    "discussion.discussionTab.fAddress": {
+      "ru": "Адрес",
+      "en": "Address",
+      "de": "Adresse",
+      "from": {"en":"Адрес","de":"Адрес"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:89"]
+    },
+    "discussion.discussionTab.fAuthor": {
+      "ru": "Автор",
+      "en": "Author",
+      "de": "Autor",
+      "from": {"en":"Автор","de":"Автор"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:111"]
+    },
+    "discussion.discussionTab.fKind": {
+      "ru": "Вид",
+      "en": "Kind",
+      "de": "Art",
+      "from": {"en":"Вид","de":"Вид"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:97"]
+    },
+    "discussion.discussionTab.fStatus": {
+      "ru": "Статус",
+      "en": "Status",
+      "de": "Status",
+      "from": {"en":"Статус","de":"Статус"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:105"]
+    },
+    "discussion.discussionTab.loadFailed": {
+      "ru": "Не удалось загрузить обсуждение.",
+      "en": "Could not load the discussion.",
+      "de": "Diskussion konnte nicht geladen werden.",
+      "from": {"en":"Не удалось загрузить обсуждение.","de":"Не удалось загрузить обсуждение."},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:48"]
+    },
+    "discussion.discussionTab.noneMatch": {
+      "ru": "Под фильтры не подходит ни одна ветка.",
+      "en": "No thread matches the filters.",
+      "de": "Kein Strang passt zu den Filtern.",
+      "from": {"en":"Под фильтры не подходит ни одна ветка.","de":"Под фильтры не подходит ни одна ветка."},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:124"]
+    },
+    "discussion.discussionTab.statusHidden": {
+      "ru": "скрытые",
+      "en": "hidden",
+      "de": "verborgene",
+      "from": {"en":"скрытые","de":"скрытые"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:109"]
+    },
+    "discussion.discussionTab.statusOpen": {
+      "ru": "открытые",
+      "en": "open",
+      "de": "offene",
+      "from": {"en":"открытые","de":"открытые"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:107"]
+    },
+    "discussion.discussionTab.statusResolved": {
+      "ru": "решённые",
+      "en": "resolved",
+      "de": "gelöste",
+      "from": {"en":"решённые","de":"решённые"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:108"]
+    },
+    "discussion.discussionTab.title": {
+      "ru": "Обсуждение концепции",
+      "en": "Discussion of the concept",
+      "de": "Diskussion des Konzepts",
+      "from": {"en":"Обсуждение концепции","de":"Обсуждение концепции"},
+      "where": ["client/src/components/discussion/DiscussionTab.tsx:87"]
+    },
+    "discussion.reviewsTab.colAuthor": {
+      "ru": "Автор",
+      "en": "Author",
+      "de": "Autor",
+      "from": {"en":"Автор","de":"Автор"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:83"]
+    },
+    "discussion.reviewsTab.colFindings": {
+      "ru": "Замечаний",
+      "en": "Findings",
+      "de": "Anmerkungen",
+      "from": {"en":"Замечаний","de":"Замечаний"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:86"]
+    },
+    "discussion.reviewsTab.colStatus": {
+      "ru": "Статус",
+      "en": "Status",
+      "de": "Status",
+      "from": {"en":"Статус","de":"Статус"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:84"]
+    },
+    "discussion.reviewsTab.colTitle": {
+      "ru": "Рецензия",
+      "en": "Review",
+      "de": "Rezension",
+      "from": {"en":"Рецензия","de":"Рецензия"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:82"]
+    },
+    "discussion.reviewsTab.colVersion": {
+      "ru": "Версия документа",
+      "en": "Document version",
+      "de": "Dokumentversion",
+      "from": {"en":"Версия документа","de":"Версия документа"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:85"]
+    },
+    "discussion.reviewsTab.colWhen": {
+      "ru": "Дата",
+      "en": "Date",
+      "de": "Datum",
+      "from": {"en":"Дата","de":"Дата"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:87"]
+    },
+    "discussion.reviewsTab.continueDraft": {
+      "ru": "Продолжить мой черновик",
+      "en": "Continue my draft",
+      "de": "Meinen Entwurf fortsetzen",
+      "from": {"en":"Продолжить мой черновик","de":"Продолжить мой черновик"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:68"]
+    },
+    "discussion.reviewsTab.createFailed": {
+      "ru": "Не удалось завести черновик.",
+      "en": "Could not create a draft.",
+      "de": "Entwurf konnte nicht angelegt werden.",
+      "from": {"en":"Не удалось завести черновик.","de":"Не удалось завести черновик."},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:57"]
+    },
+    "discussion.reviewsTab.empty": {
+      "ru": "Рецензий пока нет.",
+      "en": "No reviews yet.",
+      "de": "Noch keine Rezensionen.",
+      "from": {"en":"Рецензий пока нет.","de":"Рецензий пока нет."},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:77"]
+    },
+    "discussion.reviewsTab.lead": {
+      "ru": "Рецензия — отдельный документ участника о версии концепции: поля и замечания к конкретным местам. Черновик виден только автору; опубликованная — всем участникам; встроенная критика (раздел документа) — отдельно, в панели критики.",
+      "en": "A review is a participant's separate document about a version of the concept: fields and findings tied to specific places. A draft is visible only to its author; a published review — to all participants; the built-in critique (a section of the document) is kept apart, in the critique panel.",
+      "de": "Eine Rezension ist ein eigenes Dokument eines Teilnehmers zu einer Version des Konzepts: Felder und Anmerkungen zu konkreten Stellen. Ein Entwurf ist nur für den Autor sichtbar; eine veröffentlichte Rezension für alle Teilnehmer; die eingebaute Kritik (ein Abschnitt des Dokuments) bleibt getrennt, im Kritik-Panel.",
+      "from": {"en":"Рецензия — отдельный документ участника о версии концепции: поля и замечания к конкретным местам. Черновик виден только автору; опубликованная — всем участникам; встроенная критика (раздел документа) — отдельно, в панели критики.","de":"Рецензия — отдельный документ участника о версии концепции: поля и замечания к конкретным местам. Черновик виден только автору; опубликованная — всем участникам; встроенная критика (раздел документа) — отдельно, в панели критики."},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:72"]
+    },
+    "discussion.reviewsTab.owner": {
+      "ru": "владелец",
+      "en": "owner",
+      "de": "Eigentümer",
+      "from": {"en":"владелец","de":"владелец"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:100"]
+    },
+    "discussion.reviewsTab.revision": {
+      "ru": "ред. {n}",
+      "en": "rev. {n}",
+      "de": "Fassung {n}",
+      "from": {"en":"ред. {n}","de":"ред. {n}"},
+      "params": {"n":""},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:104"]
+    },
+    "discussion.reviewsTab.start": {
+      "ru": "Начать рецензию",
+      "en": "Start a review",
+      "de": "Rezension beginnen",
+      "from": {"en":"Начать рецензию","de":"Начать рецензию"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:68"]
+    },
+    "discussion.reviewsTab.statusDraft": {
+      "ru": "черновик",
+      "en": "draft",
+      "de": "Entwurf",
+      "from": {"en":"черновик","de":"черновик"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:22"]
+    },
+    "discussion.reviewsTab.statusPublished": {
+      "ru": "опубликована",
+      "en": "published",
+      "de": "veröffentlicht",
+      "from": {"en":"опубликована","de":"опубликована"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:24"]
+    },
+    "discussion.reviewsTab.statusWithdrawn": {
+      "ru": "отозвана",
+      "en": "withdrawn",
+      "de": "zurückgezogen",
+      "from": {"en":"отозвана","de":"отозвана"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:26"]
+    },
+    "discussion.reviewsTab.title": {
+      "ru": "Рецензии",
+      "en": "Reviews",
+      "de": "Rezensionen",
+      "from": {"en":"Рецензии","de":"Рецензии"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:66"]
+    },
+    "discussion.reviewsTab.untitled": {
+      "ru": "без названия",
+      "en": "untitled",
+      "de": "ohne Titel",
+      "from": {"en":"без названия","de":"без названия"},
+      "where": ["client/src/components/discussion/ReviewsTab.tsx:95"]
+    },
     "document.documentFooter.aiGenerated": {
       "ru": "Документ сгенерирован на основе анализа ИИ (Claude)",
       "en": "The document was generated from an AI analysis (Claude)",
@@ -4808,35 +5423,35 @@
       "en": "Showcase",
       "de": "Schaufenster",
       "from": {"en":"Витрина","de":"Витрина"},
-      "where": ["client/src/components/document/DocumentView.tsx:99"]
+      "where": ["client/src/components/document/DocumentView.tsx:103"]
     },
     "document.documentView.showcaseNote": {
       "ru": "Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора.",
       "en": "The author has opened only the showcase of this concept: the capsule, metadata and participants. Section bodies, the category graph, theses and glossary are closed to everyone except the author.",
       "de": "Der Autor hat nur das Schaufenster dieses Konzepts geöffnet: Kapsel, Metadaten und Teilnehmer. Abschnittstexte, Kategoriegraph, Thesen und Glossar sind für alle außer dem Autor geschlossen.",
       "from": {"en":"Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора.","de":"Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора."},
-      "where": ["client/src/components/document/DocumentView.tsx:100"]
+      "where": ["client/src/components/document/DocumentView.tsx:104"]
     },
     "document.sectionView.deleteConfirm": {
       "ru": "Точно удалить?",
       "en": "Really delete?",
       "de": "Wirklich löschen?",
       "from": {"en":"Точно удалить?","de":"Точно удалить?"},
-      "where": ["client/src/components/document/SectionView.tsx:434"]
+      "where": ["client/src/components/document/SectionView.tsx:441"]
     },
     "document.sectionView.deleteSubsection": {
       "ru": "Удалить подраздел",
       "en": "Delete subsection",
       "de": "Unterabschnitt löschen",
       "from": {"en":"Удалить подраздел","de":"Удалить подраздел"},
-      "where": ["client/src/components/document/SectionView.tsx:447"]
+      "where": ["client/src/components/document/SectionView.tsx:454"]
     },
     "document.sectionView.deleteSubsectionHint": {
       "ru": "Убрать подраздел из раздела целиком (снимок версии раздела остаётся)",
       "en": "Remove the whole subsection from the section (a version snapshot of the section is kept)",
       "de": "Den ganzen Unterabschnitt aus dem Abschnitt entfernen (ein Versionsschnappschuss des Abschnitts bleibt erhalten)",
       "from": {"en":"Убрать подраздел из раздела целиком (снимок версии раздела остаётся)","de":"Убрать подраздел из раздела целиком (снимок версии раздела остаётся)"},
-      "where": ["client/src/components/document/SectionView.tsx:451"]
+      "where": ["client/src/components/document/SectionView.tsx:458"]
     },
     "document.sectionView.deleteSubsectionNested": {
       "ru": "Вложенные подразделы уйдут вместе с ним: {names}.",
@@ -4844,112 +5459,112 @@
       "de": "Verschachtelte Unterabschnitte gehen mit ihm: {names}.",
       "from": {"en":"Вложенные подразделы уйдут вместе с ним: {names}.","de":"Вложенные подразделы уйдут вместе с ним: {names}."},
       "params": {"names":""},
-      "where": ["client/src/components/document/SectionView.tsx:464"]
+      "where": ["client/src/components/document/SectionView.tsx:471"]
     },
     "document.sectionView.deleteSubsectionWarn": {
       "ru": "Подраздел уйдёт из раздела целиком вместе с заголовком; набранное в поле пропадёт. Снимок версии раздела сохранится, откат вернёт подраздел; перегенерация раздела тоже вернёт его, если он есть в карте подразделов.",
       "en": "The subsection will be removed from the section entirely, heading included; what you typed in the field will be lost. A version snapshot of the section is kept and a rollback brings the subsection back; regenerating the section also brings it back if it is in the subsection map.",
       "de": "Der Unterabschnitt wird samt Überschrift vollständig aus dem Abschnitt entfernt; das im Feld Eingegebene geht verloren. Ein Versionsschnappschuss des Abschnitts bleibt erhalten, ein Rollback bringt den Unterabschnitt zurück; das Neugenerieren des Abschnitts bringt ihn ebenfalls zurück, wenn er in der Unterabschnittskarte steht.",
       "from": {"en":"Подраздел уйдёт из раздела целиком вместе с заголовком; набранное в поле пропадёт. Снимок версии раздела сохранится, откат вернёт подраздел; перегенерация раздела тоже вернёт его, если он есть в карте подразделов.","de":"Подраздел уйдёт из раздела целиком вместе с заголовком; набранное в поле пропадёт. Снимок версии раздела сохранится, откат вернёт подраздел; перегенерация раздела тоже вернёт его, если он есть в карте подразделов."},
-      "where": ["client/src/components/document/SectionView.tsx:462"]
+      "where": ["client/src/components/document/SectionView.tsx:469"]
     },
     "document.sectionView.deleting": {
       "ru": "Удаление…",
       "en": "Deleting…",
       "de": "Wird gelöscht…",
       "from": {"en":"Удаление…","de":"Удаление…"},
-      "where": ["client/src/components/document/SectionView.tsx:433"]
+      "where": ["client/src/components/document/SectionView.tsx:440"]
     },
     "document.sectionView.edit": {
       "ru": "Правка",
       "en": "Edit",
       "de": "Bearbeiten",
       "from": {"en":"Правка","de":"Правка"},
-      "where": ["client/src/components/document/SectionView.tsx:193"]
+      "where": ["client/src/components/document/SectionView.tsx:200"]
     },
     "document.sectionView.editSubsection": {
       "ru": "Править подраздел",
       "en": "Edit subsection",
       "de": "Unterabschnitt bearbeiten",
       "from": {"en":"Править подраздел","de":"Править подраздел"},
-      "where": ["client/src/components/document/SectionView.tsx:243"]
+      "where": ["client/src/components/document/SectionView.tsx:250"]
     },
     "document.sectionView.editTerm": {
       "ru": "Редактировать термин",
       "en": "Edit term",
       "de": "Begriff bearbeiten",
       "from": {"en":"Редактировать термин","de":"Редактировать термин"},
-      "where": ["client/src/components/document/SectionView.tsx:204"]
+      "where": ["client/src/components/document/SectionView.tsx:211"]
     },
     "document.sectionView.editThesis": {
       "ru": "Редактировать тезис",
       "en": "Edit thesis",
       "de": "These bearbeiten",
       "from": {"en":"Редактировать тезис","de":"Редактировать тезис"},
-      "where": ["client/src/components/document/SectionView.tsx:204"]
+      "where": ["client/src/components/document/SectionView.tsx:211"]
     },
     "document.sectionView.edited": {
       "ru": "⟳ изменён",
       "en": "⟳ edited",
       "de": "⟳ geändert",
       "from": {"en":"⟳ изменён","de":"⟳ изменён"},
-      "where": ["client/src/components/document/SectionView.tsx:764"]
+      "where": ["client/src/components/document/SectionView.tsx:774"]
     },
     "document.sectionView.editedHint": {
       "ru": "Раздел изменён после генерации: перегенерация, правка таблицы или подраздела",
       "en": "Section changed after generation: regeneration, a table edit or a subsection edit",
       "de": "Abschnitt nach der Generierung geändert: Neugenerierung, Tabellen- oder Unterabschnittsänderung",
       "from": {"en":"Раздел изменён после генерации: перегенерация, правка таблицы или подраздела","de":"Раздел изменён после генерации: перегенерация, правка таблицы или подраздела"},
-      "where": ["client/src/components/document/SectionView.tsx:761"]
+      "where": ["client/src/components/document/SectionView.tsx:771"]
     },
     "document.sectionView.gotIt": {
       "ru": "Понятно",
       "en": "Got it",
       "de": "Verstanden",
       "from": {"en":"Понятно","de":"Понятно"},
-      "where": ["client/src/components/document/SectionView.tsx:300"]
+      "where": ["client/src/components/document/SectionView.tsx:307"]
     },
     "document.sectionView.headingNotEditable": {
       "ru": "Заголовок подраздела здесь не правится.",
       "en": "The subsection heading is not edited here.",
       "de": "Die Überschrift des Unterabschnitts wird hier nicht bearbeitet.",
       "from": {"en":"Заголовок подраздела здесь не правится.","de":"Заголовок подраздела здесь не правится."},
-      "where": ["client/src/components/document/SectionView.tsx:400"]
+      "where": ["client/src/components/document/SectionView.tsx:407"]
     },
     "document.sectionView.keysHint": {
       "ru": "Esc — отмена · Ctrl+Enter — сохранить",
       "en": "Esc — cancel · Ctrl+Enter — save",
       "de": "Esc — abbrechen · Ctrl+Enter — speichern",
       "from": {"en":"Esc — отмена · Ctrl+Enter — сохранить","de":"Esc — отмена · Ctrl+Enter — сохранить"},
-      "where": ["client/src/components/document/SectionView.tsx:425"]
+      "where": ["client/src/components/document/SectionView.tsx:432"]
     },
     "document.sectionView.markupHelp": {
       "ru": "Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. ",
       "en": "Editable markup: <p> — paragraph, <strong> — emphasis, <ul>/<ol> with <li> — lists, <h5> — subheading, <table> — table. ",
       "de": "Bearbeitet wird das Markup: <p> — Absatz, <strong> — Hervorhebung, <ul>/<ol> mit <li> — Listen, <h5> — Zwischenüberschrift, <table> — Tabelle. ",
       "from": {"en":"Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. ","de":"Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. "},
-      "where": ["client/src/components/document/SectionView.tsx:399"]
+      "where": ["client/src/components/document/SectionView.tsx:406"]
     },
     "document.sectionView.nestedSubsectionLine": {
       "ru": " Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять.",
       "en": " The line “subsection N” marks a nested subsection: it has its own editing, do not delete the line.",
       "de": " Die Zeile „Unterabschnitt N“ markiert die Stelle eines eingebetteten Unterabschnitts: er wird separat bearbeitet, die Zeile nicht löschen.",
       "from": {"en":" Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять.","de":" Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять."},
-      "where": ["client/src/components/document/SectionView.tsx:404"]
+      "where": ["client/src/components/document/SectionView.tsx:411"]
     },
     "document.sectionView.nestedSubsectionPlaque": {
       "ru": " Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить.",
       "en": " The “nested subsection” plaque marks a nested subsection: it has its own editor; the plaque cannot be deleted or moved.",
       "de": " Die Plakette „verschachtelter Unterabschnitt“ markiert einen verschachtelten Unterabschnitt: er wird gesondert bearbeitet; die Plakette kann weder gelöscht noch verschoben werden.",
       "from": {"en":" Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить.","de":" Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить."},
-      "where": ["client/src/components/document/SectionView.tsx:403"]
+      "where": ["client/src/components/document/SectionView.tsx:410"]
     },
     "document.sectionView.parseWarningsLead": {
       "ru": "Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте.",
       "en": "What the service noticed while accepting the model's answer: substitutions during analysis into tables (a value recognised by position or replaced with a default) and omissions — subsections missing from the answer. The section is kept as is; check what is named below and regenerate if needed.",
       "de": "Was der Dienst beim Annehmen der Modellantwort bemerkt hat: Ersetzungen bei der Auswertung in Tabellen (ein Wert nach Position erkannt oder durch einen Standardwert ersetzt) und Auslassungen — Unterabschnitte, die in der Antwort fehlten. Der Abschnitt bleibt, wie er ist; prüfen Sie das unten Genannte und generieren Sie bei Bedarf neu.",
       "from": {"en":"Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте.","de":"Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте."},
-      "where": ["client/src/components/document/SectionView.tsx:789"]
+      "where": ["client/src/components/document/SectionView.tsx:802"]
     },
     "document.sectionView.parsedWithLosses": {
       "ru": "⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})",
@@ -4957,91 +5572,91 @@
       "de": "⚠ Anmerkungen zur letzten Generierung ({n, plural, one {# Anmerkung} other {# Anmerkungen}})",
       "from": {"en":"⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})","de":"⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})"},
       "params": {"n":""},
-      "where": ["client/src/components/document/SectionView.tsx:785"]
+      "where": ["client/src/components/document/SectionView.tsx:798"]
     },
     "document.sectionView.richBodyLabel": {
       "ru": "Текст подраздела",
       "en": "Subsection text",
       "de": "Text des Unterabschnitts",
       "from": {"en":"Текст подраздела","de":"Текст подраздела"},
-      "where": ["client/src/components/document/SectionView.tsx:374"]
+      "where": ["client/src/components/document/SectionView.tsx:381"]
     },
     "document.sectionView.richHelp": {
       "ru": "Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. ",
       "en": "Edit the text in place: the panel buttons insert a paragraph, subheading, emphasis, lists, a table, callouts and risk labels — exactly what the document markup allows; pasted content is reduced to the same set. ",
       "de": "Der Text wird an Ort und Stelle bearbeitet: Die Schaltflächen setzen Absatz, Zwischenüberschrift, Hervorhebung, Listen, Tabelle, Hinweiskästen und Risikomarken — genau das, was die Dokumentauszeichnung zulässt; Eingefügtes wird auf dieselbe Menge zurückgeführt. ",
       "from": {"en":"Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. ","de":"Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. "},
-      "where": ["client/src/components/document/SectionView.tsx:398"]
+      "where": ["client/src/components/document/SectionView.tsx:405"]
     },
     "document.sectionView.savedServerFixedMarkup": {
       "ru": "Сохранено. Сервер поправил разметку:",
       "en": "Saved. The server corrected the markup:",
       "de": "Gespeichert. Der Server hat das Markup korrigiert:",
       "from": {"en":"Сохранено. Сервер поправил разметку:","de":"Сохранено. Сервер поправил разметку:"},
-      "where": ["client/src/components/document/SectionView.tsx:294"]
+      "where": ["client/src/components/document/SectionView.tsx:301"]
     },
     "document.sectionView.savedWithNotes": {
       "ru": "Сохранено.",
       "en": "Saved.",
       "de": "Gespeichert.",
       "from": {"en":"Сохранено.","de":"Сохранено."},
-      "where": ["client/src/components/document/SectionView.tsx:286"]
+      "where": ["client/src/components/document/SectionView.tsx:293"]
     },
     "document.sectionView.sectionExtraContext": {
       "ru": "Дополнительный контекст раздела",
       "en": "Additional section context",
       "de": "Zusätzlicher Kontext des Abschnitts",
       "from": {"en":"Дополнительный контекст раздела","de":"Дополнительный контекст раздела"},
-      "where": ["client/src/components/document/SectionView.tsx:806"]
+      "where": ["client/src/components/document/SectionView.tsx:819"]
     },
     "document.sectionView.serverFixedMarkup": {
       "ru": "Сервер поправил разметку:",
       "en": "The server adjusted the markup:",
       "de": "Der Server hat das Markup angepasst:",
       "from": {"en":"Сервер поправил разметку:","de":"Сервер поправил разметку:"},
-      "where": ["client/src/components/document/SectionView.tsx:293"]
+      "where": ["client/src/components/document/SectionView.tsx:300"]
     },
     "document.sectionView.subsectionMarkup": {
       "ru": "Разметка подраздела",
       "en": "Subsection markup",
       "de": "Markup des Unterabschnitts",
       "from": {"en":"Разметка подраздела","de":"Разметка подраздела"},
-      "where": ["client/src/components/document/SectionView.tsx:379"]
+      "where": ["client/src/components/document/SectionView.tsx:386"]
     },
     "document.sectionView.toContents": {
       "ru": "К содержанию",
       "en": "To contents",
       "de": "Zum Inhalt",
       "from": {"en":"К содержанию","de":"К содержанию"},
-      "where": ["client/src/components/document/SectionView.tsx:479"]
+      "where": ["client/src/components/document/SectionView.tsx:486"]
     },
     "document.sectionView.viewMarkup": {
       "ru": "Разметка",
       "en": "Markup",
       "de": "Auszeichnung",
       "from": {"en":"Разметка","de":"Разметка"},
-      "where": ["client/src/components/document/SectionView.tsx:357"]
+      "where": ["client/src/components/document/SectionView.tsx:364"]
     },
     "document.sectionView.viewMarkupHint": {
       "ru": "Показать разметку подраздела полем (прежний вид правки)",
       "en": "Show the subsection markup in a field (the previous editing view)",
       "de": "Auszeichnung des Unterabschnitts als Feld anzeigen (bisherige Bearbeitungsansicht)",
       "from": {"en":"Показать разметку подраздела полем (прежний вид правки)","de":"Показать разметку подраздела полем (прежний вид правки)"},
-      "where": ["client/src/components/document/SectionView.tsx:361"]
+      "where": ["client/src/components/document/SectionView.tsx:368"]
     },
     "document.sectionView.viewRich": {
       "ru": "Текст",
       "en": "Text",
       "de": "Text",
       "from": {"en":"Текст","de":"Текст"},
-      "where": ["client/src/components/document/SectionView.tsx:357"]
+      "where": ["client/src/components/document/SectionView.tsx:364"]
     },
     "document.sectionView.viewRichHint": {
       "ru": "Вернуться к правке текста на месте",
       "en": "Back to editing the text in place",
       "de": "Zurück zur Bearbeitung des Textes an Ort und Stelle",
       "from": {"en":"Вернуться к правке текста на месте","de":"Вернуться к правке текста на месте"},
-      "where": ["client/src/components/document/SectionView.tsx:362"]
+      "where": ["client/src/components/document/SectionView.tsx:369"]
     },
     "document.tableOfContents.contents": {
       "ru": "Содержание",
@@ -10699,6 +11314,361 @@
       "de": "Wird gesendet…",
       "from": {"en":"Отправка…","de":"Отправка…"},
       "where": ["client/src/pages/ResetPasswordPage.tsx:104"]
+    },
+    "reviewPage.asItWas": {
+      "ru": "Как было",
+      "en": "As it was",
+      "de": "Wie es war",
+      "from": {"en":"Как было","de":"Как было"},
+      "where": ["client/src/pages/ReviewPage.tsx:96"]
+    },
+    "reviewPage.backTo": {
+      "ru": "← {title}",
+      "en": "← {title}",
+      "de": "← {title}",
+      "from": {"en":"← {title}","de":"← {title}"},
+      "params": {"title":""},
+      "where": ["client/src/pages/ReviewPage.tsx:236"]
+    },
+    "reviewPage.backToConcept": {
+      "ru": "← К концепции",
+      "en": "← To the concept",
+      "de": "← Zum Konzept",
+      "from": {"en":"← К концепции","de":"← К концепции"},
+      "where": ["client/src/pages/ReviewPage.tsx:200"]
+    },
+    "reviewPage.deleteConfirm": {
+      "ru": "Точно удалить черновик?",
+      "en": "Really delete the draft?",
+      "de": "Entwurf wirklich löschen?",
+      "from": {"en":"Точно удалить черновик?","de":"Точно удалить черновик?"},
+      "where": ["client/src/pages/ReviewPage.tsx:331"]
+    },
+    "reviewPage.deleteDraft": {
+      "ru": "Удалить черновик",
+      "en": "Delete draft",
+      "de": "Entwurf löschen",
+      "from": {"en":"Удалить черновик","de":"Удалить черновик"},
+      "where": ["client/src/pages/ReviewPage.tsx:339"]
+    },
+    "reviewPage.deleteFailed": {
+      "ru": "Не удалось удалить черновик.",
+      "en": "Could not delete the draft.",
+      "de": "Entwurf konnte nicht gelöscht werden.",
+      "from": {"en":"Не удалось удалить черновик.","de":"Не удалось удалить черновик."},
+      "where": ["client/src/pages/ReviewPage.tsx:330"]
+    },
+    "reviewPage.deleteWarn": {
+      "ru": "Черновик и его замечания исчезнут без следа.",
+      "en": "The draft and its findings will vanish without a trace.",
+      "de": "Der Entwurf und seine Anmerkungen verschwinden spurlos.",
+      "from": {"en":"Черновик и его замечания исчезнут без следа.","de":"Черновик и его замечания исчезнут без следа."},
+      "where": ["client/src/pages/ReviewPage.tsx:343"]
+    },
+    "reviewPage.docVersionHint": {
+      "ru": "база.подверсия[.режимы][-перегенерации режимов]; при публикации берётся текущая",
+      "en": "base.sub[.modes][-mode regenerations]; the current one is taken at publication",
+      "de": "Basis.Unterversion[.Modi][-Modus-Regenerierungen]; bei Veröffentlichung wird die aktuelle übernommen",
+      "from": {"en":"база.подверсия[.режимы][-перегенерации режимов]; при публикации берётся текущая","de":"база.подверсия[.режимы][-перегенерации режимов]; при публикации берётся текущая"},
+      "where": ["client/src/pages/ReviewPage.tsx:255"]
+    },
+    "reviewPage.draftNote": {
+      "ru": "Черновик видите только вы. Поля сохраняются кнопкой; замечания к местам добавляются из панели обсуждения («В мою рецензию»).",
+      "en": "Only you can see the draft. Fields are saved with the button; findings tied to places are added from the discussion panel (“To my review”).",
+      "de": "Den Entwurf sehen nur Sie. Felder werden per Schaltfläche gespeichert; Anmerkungen zu Stellen werden aus dem Diskussions-Panel hinzugefügt („In meine Rezension“).",
+      "from": {"en":"Черновик видите только вы. Поля сохраняются кнопкой; замечания к местам добавляются из панели обсуждения («В мою рецензию»).","de":"Черновик видите только вы. Поля сохраняются кнопкой; замечания к местам добавляются из панели обсуждения («В мою рецензию»)."},
+      "where": ["client/src/pages/ReviewPage.tsx:264"]
+    },
+    "reviewPage.fieldConclusion": {
+      "ru": "Заключение",
+      "en": "Conclusion",
+      "de": "Fazit",
+      "from": {"en":"Заключение","de":"Заключение"},
+      "where": ["client/src/pages/ReviewPage.tsx:54"]
+    },
+    "reviewPage.fieldMinor": {
+      "ru": "Частные замечания",
+      "en": "Minor remarks",
+      "de": "Kleinere Anmerkungen",
+      "from": {"en":"Частные замечания","de":"Частные замечания"},
+      "where": ["client/src/pages/ReviewPage.tsx:50"]
+    },
+    "reviewPage.fieldObjections": {
+      "ru": "Возражения",
+      "en": "Objections",
+      "de": "Einwände",
+      "from": {"en":"Возражения","de":"Возражения"},
+      "where": ["client/src/pages/ReviewPage.tsx:48"]
+    },
+    "reviewPage.fieldPlaceholder": {
+      "ru": "Абзацы — пустой строкой.",
+      "en": "Paragraphs — by a blank line.",
+      "de": "Absätze — durch eine Leerzeile.",
+      "from": {"en":"Абзацы — пустой строкой.","de":"Абзацы — пустой строкой."},
+      "where": ["client/src/pages/ReviewPage.tsx:276"]
+    },
+    "reviewPage.fieldQuestions": {
+      "ru": "Вопросы",
+      "en": "Questions",
+      "de": "Fragen",
+      "from": {"en":"Вопросы","de":"Вопросы"},
+      "where": ["client/src/pages/ReviewPage.tsx:52"]
+    },
+    "reviewPage.fieldStrengths": {
+      "ru": "Сильные стороны",
+      "en": "Strengths",
+      "de": "Stärken",
+      "from": {"en":"Сильные стороны","de":"Сильные стороны"},
+      "where": ["client/src/pages/ReviewPage.tsx:46"]
+    },
+    "reviewPage.fieldSummary": {
+      "ru": "Общая оценка",
+      "en": "Overall assessment",
+      "de": "Gesamteinschätzung",
+      "from": {"en":"Общая оценка","de":"Общая оценка"},
+      "where": ["client/src/pages/ReviewPage.tsx:44"]
+    },
+    "reviewPage.fieldTitle": {
+      "ru": "Название",
+      "en": "Title",
+      "de": "Titel",
+      "from": {"en":"Название","de":"Название"},
+      "where": ["client/src/pages/ReviewPage.tsx:42"]
+    },
+    "reviewPage.findingDelete": {
+      "ru": "удалить",
+      "en": "delete",
+      "de": "löschen",
+      "from": {"en":"удалить","de":"удалить"},
+      "where": ["client/src/pages/ReviewPage.tsx:139"]
+    },
+    "reviewPage.findingDeleteConfirm": {
+      "ru": "точно удалить?",
+      "en": "really delete?",
+      "de": "wirklich löschen?",
+      "from": {"en":"точно удалить?","de":"точно удалить?"},
+      "where": ["client/src/pages/ReviewPage.tsx:131"]
+    },
+    "reviewPage.findingDeleteFailed": {
+      "ru": "Не удалось удалить замечание.",
+      "en": "Could not delete the finding.",
+      "de": "Anmerkung konnte nicht gelöscht werden.",
+      "from": {"en":"Не удалось удалить замечание.","de":"Не удалось удалить замечание."},
+      "where": ["client/src/pages/ReviewPage.tsx:130"]
+    },
+    "reviewPage.findingEdit": {
+      "ru": "править",
+      "en": "edit",
+      "de": "bearbeiten",
+      "from": {"en":"править","de":"править"},
+      "where": ["client/src/pages/ReviewPage.tsx:126"]
+    },
+    "reviewPage.findingSaveFailed": {
+      "ru": "Не удалось сохранить замечание.",
+      "en": "Could not save the finding.",
+      "de": "Anmerkung konnte nicht gespeichert werden.",
+      "from": {"en":"Не удалось сохранить замечание.","de":"Не удалось сохранить замечание."},
+      "where": ["client/src/pages/ReviewPage.tsx:112"]
+    },
+    "reviewPage.findings": {
+      "ru": "Замечания к местам",
+      "en": "Findings tied to places",
+      "de": "Anmerkungen zu Stellen",
+      "from": {"en":"Замечания к местам","de":"Замечания к местам"},
+      "where": ["client/src/pages/ReviewPage.tsx:297"]
+    },
+    "reviewPage.formerMember": {
+      "ru": "бывший участник",
+      "en": "former participant",
+      "de": "ehemaliger Teilnehmer",
+      "from": {"en":"бывший участник","de":"бывший участник"},
+      "where": ["client/src/pages/ReviewPage.tsx:247"]
+    },
+    "reviewPage.kicker": {
+      "ru": "Рецензия",
+      "en": "Review",
+      "de": "Rezension",
+      "from": {"en":"Рецензия","de":"Рецензия"},
+      "where": ["client/src/pages/ReviewPage.tsx:240"]
+    },
+    "reviewPage.kindNone": {
+      "ru": "без вида",
+      "en": "no kind",
+      "de": "ohne Art",
+      "from": {"en":"без вида","de":"без вида"},
+      "where": ["client/src/pages/ReviewPage.tsx:105"]
+    },
+    "reviewPage.loadFailed": {
+      "ru": "Не удалось загрузить рецензию.",
+      "en": "Could not load the review.",
+      "de": "Rezension konnte nicht geladen werden.",
+      "from": {"en":"Не удалось загрузить рецензию.","de":"Не удалось загрузить рецензию."},
+      "where": ["client/src/pages/ReviewPage.tsx:187"]
+    },
+    "reviewPage.metaAuthor": {
+      "ru": "Автор",
+      "en": "Author",
+      "de": "Autor",
+      "from": {"en":"Автор","de":"Автор"},
+      "where": ["client/src/pages/ReviewPage.tsx:243"]
+    },
+    "reviewPage.metaDate": {
+      "ru": "Дата",
+      "en": "Date",
+      "de": "Datum",
+      "from": {"en":"Дата","de":"Дата"},
+      "where": ["client/src/pages/ReviewPage.tsx:256"]
+    },
+    "reviewPage.metaDocVersion": {
+      "ru": "Версия концепции",
+      "en": "Concept version",
+      "de": "Konzeptversion",
+      "from": {"en":"Версия концепции","de":"Версия концепции"},
+      "where": ["client/src/pages/ReviewPage.tsx:254"]
+    },
+    "reviewPage.metaStatus": {
+      "ru": "Статус",
+      "en": "Status",
+      "de": "Status",
+      "from": {"en":"Статус","de":"Статус"},
+      "where": ["client/src/pages/ReviewPage.tsx:249"]
+    },
+    "reviewPage.noFindings": {
+      "ru": "Замечаний к местам нет.",
+      "en": "No findings tied to places.",
+      "de": "Keine Anmerkungen zu Stellen.",
+      "from": {"en":"Замечаний к местам нет.","de":"Замечаний к местам нет."},
+      "where": ["client/src/pages/ReviewPage.tsx:304"]
+    },
+    "reviewPage.noFindingsEditable": {
+      "ru": "Замечаний пока нет: откройте концепцию, нажмите пометку ◉ у нужного места и выберите «В мою рецензию».",
+      "en": "No findings yet: open the concept, click the ◉ mark next to the place and choose “To my review”.",
+      "de": "Noch keine Anmerkungen: öffnen Sie das Konzept, klicken Sie die ◉-Markierung neben der Stelle und wählen Sie „In meine Rezension“.",
+      "from": {"en":"Замечаний пока нет: откройте концепцию, нажмите пометку ◉ у нужного места и выберите «В мою рецензию».","de":"Замечаний пока нет: откройте концепцию, нажмите пометку ◉ у нужного места и выберите «В мою рецензию»."},
+      "where": ["client/src/pages/ReviewPage.tsx:303"]
+    },
+    "reviewPage.notFound": {
+      "ru": "Рецензия не найдена или недоступна.",
+      "en": "The review was not found or is not available.",
+      "de": "Die Rezension wurde nicht gefunden oder ist nicht verfügbar.",
+      "from": {"en":"Рецензия не найдена или недоступна.","de":"Рецензия не найдена или недоступна."},
+      "where": ["client/src/pages/ReviewPage.tsx:187"]
+    },
+    "reviewPage.owner": {
+      "ru": "владелец",
+      "en": "owner",
+      "de": "Eigentümer",
+      "from": {"en":"владелец","de":"владелец"},
+      "where": ["client/src/pages/ReviewPage.tsx:246"]
+    },
+    "reviewPage.publish": {
+      "ru": "Опубликовать",
+      "en": "Publish",
+      "de": "Veröffentlichen",
+      "from": {"en":"Опубликовать","de":"Опубликовать"},
+      "where": ["client/src/pages/ReviewPage.tsx:319"]
+    },
+    "reviewPage.publishFailed": {
+      "ru": "Не удалось опубликовать.",
+      "en": "Could not publish.",
+      "de": "Veröffentlichen fehlgeschlagen.",
+      "from": {"en":"Не удалось опубликовать.","de":"Не удалось опубликовать."},
+      "where": ["client/src/pages/ReviewPage.tsx:318"]
+    },
+    "reviewPage.publishedEditNote": {
+      "ru": "Рецензия опубликована: каждое сохранение полей или замечаний даёт новую редакцию.",
+      "en": "The review is published: every save of fields or findings creates a new revision.",
+      "de": "Die Rezension ist veröffentlicht: jedes Speichern von Feldern oder Anmerkungen erzeugt eine neue Fassung.",
+      "from": {"en":"Рецензия опубликована: каждое сохранение полей или замечаний даёт новую редакцию.","de":"Рецензия опубликована: каждое сохранение полей или замечаний даёт новую редакцию."},
+      "where": ["client/src/pages/ReviewPage.tsx:265"]
+    },
+    "reviewPage.republish": {
+      "ru": "Опубликовать снова",
+      "en": "Publish again",
+      "de": "Erneut veröffentlichen",
+      "from": {"en":"Опубликовать снова","de":"Опубликовать снова"},
+      "where": ["client/src/pages/ReviewPage.tsx:319"]
+    },
+    "reviewPage.revisionFindings": {
+      "ru": "{n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}}",
+      "en": "{n, plural, one {# finding} other {# findings}}",
+      "de": "{n, plural, one {# Anmerkung} other {# Anmerkungen}}",
+      "from": {"en":"{n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}}","de":"{n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}}"},
+      "params": {"n":""},
+      "where": ["client/src/pages/ReviewPage.tsx:357"]
+    },
+    "reviewPage.revisionN": {
+      "ru": "редакция {n}",
+      "en": "revision {n}",
+      "de": "Fassung {n}",
+      "from": {"en":"редакция {n}","de":"редакция {n}"},
+      "params": {"n":""},
+      "where": ["client/src/pages/ReviewPage.tsx:252","client/src/pages/ReviewPage.tsx:355"]
+    },
+    "reviewPage.revisions": {
+      "ru": "Редакции ({n})",
+      "en": "Revisions ({n})",
+      "de": "Fassungen ({n})",
+      "from": {"en":"Редакции ({n})","de":"Редакции ({n})"},
+      "params": {"n":""},
+      "where": ["client/src/pages/ReviewPage.tsx:350"]
+    },
+    "reviewPage.saveFailed": {
+      "ru": "Не удалось сохранить.",
+      "en": "Could not save.",
+      "de": "Speichern fehlgeschlagen.",
+      "from": {"en":"Не удалось сохранить.","de":"Не удалось сохранить."},
+      "where": ["client/src/pages/ReviewPage.tsx:231"]
+    },
+    "reviewPage.saveFields": {
+      "ru": "Сохранить поля",
+      "en": "Save fields",
+      "de": "Felder speichern",
+      "from": {"en":"Сохранить поля","de":"Сохранить поля"},
+      "where": ["client/src/pages/ReviewPage.tsx:289"]
+    },
+    "reviewPage.saved": {
+      "ru": "Сохранено.",
+      "en": "Saved.",
+      "de": "Gespeichert.",
+      "from": {"en":"Сохранено.","de":"Сохранено."},
+      "where": ["client/src/pages/ReviewPage.tsx:291"]
+    },
+    "reviewPage.saving": {
+      "ru": "Сохранение…",
+      "en": "Saving…",
+      "de": "Wird gespeichert…",
+      "from": {"en":"Сохранение…","de":"Сохранение…"},
+      "where": ["client/src/pages/ReviewPage.tsx:289"]
+    },
+    "reviewPage.untitled": {
+      "ru": "без названия",
+      "en": "untitled",
+      "de": "ohne Titel",
+      "from": {"en":"без названия","de":"без названия"},
+      "where": ["client/src/pages/ReviewPage.tsx:241"]
+    },
+    "reviewPage.withdraw": {
+      "ru": "Отозвать",
+      "en": "Withdraw",
+      "de": "Zurückziehen",
+      "from": {"en":"Отозвать","de":"Отозвать"},
+      "where": ["client/src/pages/ReviewPage.tsx:324"]
+    },
+    "reviewPage.withdrawFailed": {
+      "ru": "Не удалось отозвать.",
+      "en": "Could not withdraw.",
+      "de": "Zurückziehen fehlgeschlagen.",
+      "from": {"en":"Не удалось отозвать.","de":"Не удалось отозвать."},
+      "where": ["client/src/pages/ReviewPage.tsx:323"]
+    },
+    "reviewPage.withdrawnAt": {
+      "ru": "отозвана {when}",
+      "en": "withdrawn {when}",
+      "de": "zurückgezogen {when}",
+      "from": {"en":"отозвана {when}","de":"отозвана {when}"},
+      "params": {"when":""},
+      "where": ["client/src/pages/ReviewPage.tsx:257"]
     },
     "server.accountDeletion.lastAdmin": {
       "ru": "Вы единственный администратор — сначала назначьте второго (POST /auth/users/:id/role)",
@@ -19592,161 +20562,175 @@
       "de": " · Autor: {authorName}",
       "from": {"en":" · автор: {authorName}","de":" · автор: {authorName}"},
       "params": {"authorName":"synthesis.authorName"},
-      "where": ["client/src/pages/SynthesisPage.tsx:864"]
+      "where": ["client/src/pages/SynthesisPage.tsx:976"]
     },
     "synthesisPage.descendantsInCatalog": {
       "ru": "◈ Потомки этой концепции в каталоге",
       "en": "◈ Descendants of this concept in the catalog",
       "de": "◈ Nachkommen dieses Konzepts im Katalog",
       "from": {"en":"◈ Потомки этой концепции в каталоге","de":"◈ Потомки этой концепции в каталоге"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1183"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1359"]
+    },
+    "synthesisPage.discussSynthesis": {
+      "ru": "◉ Обсудить концепцию",
+      "en": "◉ Discuss the concept",
+      "de": "◉ Konzept diskutieren",
+      "from": {"en":"◉ Обсудить концепцию","de":"◉ Обсудить концепцию"},
+      "where": ["client/src/pages/SynthesisPage.tsx:1178"]
+    },
+    "synthesisPage.discussSynthesisTitle": {
+      "ru": "Концепция",
+      "en": "Concept",
+      "de": "Konzept",
+      "from": {"en":"Концепция","de":"Концепция"},
+      "where": ["client/src/pages/SynthesisPage.tsx:1176"]
     },
     "synthesisPage.editIcon": {
       "ru": "✎ Изменить",
       "en": "✎ Edit",
       "de": "✎ Bearbeiten",
       "from": {"en":"✎ Изменить","de":"✎ Изменить"},
-      "where": ["client/src/pages/SynthesisPage.tsx:936"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1093"]
     },
     "synthesisPage.editor": {
       "ru": "Редактор",
       "en": "Editor",
       "de": "Editor",
       "from": {"en":"Редактор","de":"Редактор"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1045"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1213"]
     },
     "synthesisPage.editorOpenFailed": {
       "ru": "Не удалось открыть редактор",
       "en": "Failed to open the editor",
       "de": "Editor konnte nicht geöffnet werden",
       "from": {"en":"Не удалось открыть редактор","de":"Не удалось открыть редактор"},
-      "where": ["client/src/pages/SynthesisPage.tsx:290"]
+      "where": ["client/src/pages/SynthesisPage.tsx:314"]
     },
     "synthesisPage.export": {
       "ru": "⤓ Экспорт",
       "en": "⤓ Export",
       "de": "⤓ Export",
       "from": {"en":"⤓ Экспорт","de":"⤓ Экспорт"},
-      "where": ["client/src/pages/SynthesisPage.tsx:980"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1137"]
     },
     "synthesisPage.genealogyTree": {
       "ru": "Генеалогическое древо",
       "en": "Genealogical tree",
       "de": "Genealogischer Stammbaum",
       "from": {"en":"Генеалогическое древо","de":"Генеалогическое древо"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1149"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1325"]
     },
     "synthesisPage.generatedBadge": {
       "ru": "ДОКУМЕНТ СГЕНЕРИРОВАН",
       "en": "DOCUMENT GENERATED",
       "de": "DOKUMENT GENERIERT",
       "from": {"en":"ДОКУМЕНТ СГЕНЕРИРОВАН","de":"ДОКУМЕНТ СГЕНЕРИРОВАН"},
-      "where": ["client/src/pages/SynthesisPage.tsx:915"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1072"]
     },
     "synthesisPage.generatingBadge": {
       "ru": "ГЕНЕРАЦИЯ ДОКУМЕНТА",
       "en": "DOCUMENT GENERATION",
       "de": "DOKUMENT WIRD GENERIERT",
       "from": {"en":"ГЕНЕРАЦИЯ ДОКУМЕНТА","de":"ГЕНЕРАЦИЯ ДОКУМЕНТА"},
-      "where": ["client/src/pages/SynthesisPage.tsx:914"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1071"]
     },
     "synthesisPage.generationError": {
       "ru": "Ошибка генерации",
       "en": "Generation error",
       "de": "Generierungsfehler",
       "from": {"en":"Ошибка генерации","de":"Ошибка генерации"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1036"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1204"]
     },
     "synthesisPage.glossaryRowNotFound": {
       "ru": "Строка глоссария не найдена в данных синтеза",
       "en": "The glossary row was not found in the synthesis data",
       "de": "Glossarzeile in den Synthesedaten nicht gefunden",
       "from": {"en":"Строка глоссария не найдена в данных синтеза","de":"Строка глоссария не найдена в данных синтеза"},
-      "where": ["client/src/pages/SynthesisPage.tsx:276"]
+      "where": ["client/src/pages/SynthesisPage.tsx:300"]
     },
     "synthesisPage.graph": {
       "ru": "◈ Граф",
       "en": "◈ Graph",
       "de": "◈ Graph",
       "from": {"en":"◈ Граф","de":"◈ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:926"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1083"]
     },
     "synthesisPage.ifYoursLead": {
       "ru": "Если это ваша концепция —",
       "en": "If this is your concept —",
       "de": "Wenn dies Ihr Konzept ist —",
       "from": {"en":"Если это ваша концепция —","de":"Если это ваша концепция —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:826"]
+      "where": ["client/src/pages/SynthesisPage.tsx:936"]
     },
     "synthesisPage.loadFailed": {
       "ru": "Не удалось загрузить синтез.",
       "en": "Failed to load the synthesis.",
       "de": "Synthese konnte nicht geladen werden.",
       "from": {"en":"Не удалось загрузить синтез.","de":"Не удалось загрузить синтез."},
-      "where": ["client/src/pages/SynthesisPage.tsx:841"]
+      "where": ["client/src/pages/SynthesisPage.tsx:951"]
     },
     "synthesisPage.loading": {
       "ru": "загрузка синтеза…",
       "en": "loading synthesis…",
       "de": "Synthese wird geladen…",
       "from": {"en":"загрузка синтеза…","de":"загрузка синтеза…"},
-      "where": ["client/src/pages/SynthesisPage.tsx:845"]
+      "where": ["client/src/pages/SynthesisPage.tsx:955"]
     },
     "synthesisPage.logInLower": {
       "ru": "войдите",
       "en": "log in",
       "de": "melden Sie sich an",
       "from": {"en":"войдите","de":"войдите"},
-      "where": ["client/src/pages/SynthesisPage.tsx:832"]
+      "where": ["client/src/pages/SynthesisPage.tsx:942"]
     },
     "synthesisPage.notFoundOrDeleted": {
       "ru": "Синтез не найден или был удалён.",
       "en": "The synthesis was not found or has been deleted.",
       "de": "Die Synthese wurde nicht gefunden oder gelöscht.",
       "from": {"en":"Синтез не найден или был удалён.","de":"Синтез не найден или был удалён."},
-      "where": ["client/src/pages/SynthesisPage.tsx:807"]
+      "where": ["client/src/pages/SynthesisPage.tsx:917"]
     },
     "synthesisPage.otherwise": {
       "ru": ". Иначе —",
       "en": ". Otherwise —",
       "de": ". Andernfalls —",
       "from": {"en":". Иначе —","de":". Иначе —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:834"]
+      "where": ["client/src/pages/SynthesisPage.tsx:944"]
     },
     "synthesisPage.parentConcepts": {
       "ru": "Родительские концепции:",
       "en": "Parent concepts:",
       "de": "Elternkonzepte:",
       "from": {"en":"Родительские концепции:","de":"Родительские концепции:"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1164"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1340"]
     },
     "synthesisPage.print": {
       "ru": "Распечатать",
       "en": "Print",
       "de": "Drucken",
       "from": {"en":"Распечатать","de":"Распечатать"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1019"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1187"]
     },
     "synthesisPage.privateConcept": {
       "ru": "Эта концепция приватна: автор не открыл её посторонним.",
       "en": "This concept is private: the author has not opened it to others.",
       "de": "Dieses Konzept ist privat: der Autor hat es Außenstehenden nicht geöffnet.",
       "from": {"en":"Эта концепция приватна: автор не открыл её посторонним.","de":"Эта концепция приватна: автор не открыл её посторонним."},
-      "where": ["client/src/pages/SynthesisPage.tsx:819"]
+      "where": ["client/src/pages/SynthesisPage.tsx:929"]
     },
     "synthesisPage.privateSynthesis": {
       "ru": "Этот синтез приватный: доступен только владельцу.",
       "en": "This synthesis is private: available only to the owner.",
       "de": "Diese Synthese ist privat: nur dem Eigentümer zugänglich.",
       "from": {"en":"Этот синтез приватный: доступен только владельцу.","de":"Этот синтез приватный: доступен только владельцу."},
-      "where": ["client/src/pages/SynthesisPage.tsx:820"]
+      "where": ["client/src/pages/SynthesisPage.tsx:930"]
     },
     "synthesisPage.publicCatalogLower": {
       "ru": "публичный каталог",
       "en": "the public catalog",
       "de": "öffentlicher Katalog",
       "from": {"en":"публичный каталог","de":"публичный каталог"},
-      "where": ["client/src/pages/SynthesisPage.tsx:834"]
+      "where": ["client/src/pages/SynthesisPage.tsx:944"]
     },
     "synthesisPage.recommendations": {
       "ru": "◈ Рекомендации{recCount}",
@@ -19754,70 +20738,91 @@
       "de": "◈ Empfehlungen{recCount}",
       "from": {"en":"◈ Рекомендации{recCount}","de":"◈ Рекомендации{recCount}"},
       "params": {"recCount":"recCount !== null ? ` · ${recCount}` : \"\""},
-      "where": ["client/src/pages/SynthesisPage.tsx:1075"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1251"]
     },
     "synthesisPage.recommendationsHint": {
       "ru": "Рекомендации критики: что исполнять, решаете вы — поштучно",
       "en": "Critique recommendations: you decide what to execute — one by one",
       "de": "Empfehlungen der Kritik: was ausgeführt wird, entscheiden Sie — einzeln",
       "from": {"en":"Рекомендации критики: что исполнять, решаете вы — поштучно","de":"Рекомендации критики: что исполнять, решаете вы — поштучно"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1072"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1248"]
+    },
+    "synthesisPage.reviewsLoadFailed": {
+      "ru": "Не удалось загрузить рецензии.",
+      "en": "Could not load the reviews.",
+      "de": "Rezensionen konnten nicht geladen werden.",
+      "from": {"en":"Не удалось загрузить рецензии.","de":"Не удалось загрузить рецензии."},
+      "where": ["client/src/pages/SynthesisPage.tsx:683"]
     },
     "synthesisPage.sectionHistory": {
       "ru": "◷ История",
       "en": "◷ History",
       "de": "◷ Verlauf",
       "from": {"en":"◷ История","de":"◷ История"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1100"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1276"]
     },
     "synthesisPage.sectionHistoryHint": {
       "ru": "Версии раздела до каждой правки и откат",
       "en": "Section versions before each edit, and rollback",
       "de": "Abschnittsversionen vor jeder Änderung und Rollback",
       "from": {"en":"Версии раздела до каждой правки и откат","de":"Версии раздела до каждой правки и откат"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1097"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1273"]
     },
     "synthesisPage.showcaseParen": {
       "ru": " (витрина)",
       "en": " (showcase)",
       "de": " (Schaufenster)",
       "from": {"en":" (витрина)","de":" (витрина)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:863"]
+      "where": ["client/src/pages/SynthesisPage.tsx:975"]
+    },
+    "synthesisPage.tabDiscussion": {
+      "ru": "Обсуждение",
+      "en": "Discussion",
+      "de": "Diskussion",
+      "from": {"en":"Обсуждение","de":"Обсуждение"},
+      "where": ["client/src/pages/SynthesisPage.tsx:1007"]
     },
     "synthesisPage.tabDocument": {
       "ru": "Документ",
       "en": "Document",
       "de": "Dokument",
       "from": {"en":"Документ","de":"Документ"},
-      "where": ["client/src/pages/SynthesisPage.tsx:884"]
+      "where": ["client/src/pages/SynthesisPage.tsx:998"]
     },
     "synthesisPage.tabMembers": {
       "ru": "Участники",
       "en": "Participants",
       "de": "Teilnehmer",
       "from": {"en":"Участники","de":"Участники"},
-      "where": ["client/src/pages/SynthesisPage.tsx:892"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1029"]
+    },
+    "synthesisPage.tabReviews": {
+      "ru": "Рецензии",
+      "en": "Reviews",
+      "de": "Rezensionen",
+      "from": {"en":"Рецензии","de":"Рецензии"},
+      "where": ["client/src/pages/SynthesisPage.tsx:1018"]
     },
     "synthesisPage.thesisRowNotFound": {
       "ru": "Строка тезиса не найдена в данных синтеза",
       "en": "The thesis row was not found in the synthesis data",
       "de": "Thesenzeile in den Synthesedaten nicht gefunden",
       "from": {"en":"Строка тезиса не найдена в данных синтеза","de":"Строка тезиса не найдена в данных синтеза"},
-      "where": ["client/src/pages/SynthesisPage.tsx:261"]
+      "where": ["client/src/pages/SynthesisPage.tsx:285"]
     },
     "synthesisPage.toGraph": {
       "ru": "→ Граф",
       "en": "→ Graph",
       "de": "→ Graph",
       "from": {"en":"→ Граф","de":"→ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1086"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1262"]
     },
     "synthesisPage.toGraphHint": {
       "ru": "Трансформировать тезисы в граф (Representation Transformer)",
       "en": "Transform the theses into a graph (Representation Transformer)",
       "de": "Thesen in einen Graphen transformieren (Representation Transformer)",
       "from": {"en":"Трансформировать тезисы в граф (Representation Transformer)","de":"Трансформировать тезисы в граф (Representation Transformer)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1083"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1259"]
     },
     "synthesisPage.viewModeBadge": {
       "ru": "РЕЖИМ ПРОСМОТРА · {visibility}",
@@ -19825,7 +20830,7 @@
       "de": "ANSICHTSMODUS · {visibility}",
       "from": {"en":"РЕЖИМ ПРОСМОТРА · {visibility}","de":"РЕЖИМ ПРОСМОТРА · {visibility}"},
       "params": {"visibility":"visibilityBadge(synthesis.visibility).toUpperCase()"},
-      "where": ["client/src/pages/SynthesisPage.tsx:916"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1073"]
     },
     "synthesisPage.viewingAsMember": {
       "ru": "Вы участник концепции · роль: {role}",
@@ -19833,14 +20838,14 @@
       "de": "Sie sind Teilnehmer der Konzeption · Rolle: {role}",
       "from": {"en":"Вы участник концепции · роль: {role}","de":"Вы участник концепции · роль: {role}"},
       "params": {"role":""},
-      "where": ["client/src/pages/SynthesisPage.tsx:861"]
+      "where": ["client/src/pages/SynthesisPage.tsx:973"]
     },
     "synthesisPage.viewingPublic": {
       "ru": "Вы смотрите публичную концепцию",
       "en": "You are viewing a public concept",
       "de": "Sie betrachten ein öffentliches Konzept",
       "from": {"en":"Вы смотрите публичную концепцию","de":"Вы смотрите публичную концепцию"},
-      "where": ["client/src/pages/SynthesisPage.tsx:862"]
+      "where": ["client/src/pages/SynthesisPage.tsx:974"]
     },
     "utils.conceptFile.addMissingSections": {
       "ru": ". Откройте документ, добавьте недостающие разделы и сохраните заново.",
@@ -19975,6 +20980,125 @@
       "de": "Das Konzept ist für die Meta-Synthese ungeeignet. Fehlende Abschnitte: ",
       "from": {"en":"Концепция не пригодна для мета-синтеза. Отсутствуют разделы: ","de":"Концепция не пригодна для мета-синтеза. Отсутствуют разделы: "},
       "where": ["client/src/utils/concept-file.ts:636"]
+    },
+    "utils.discussion.addrCategory": {
+      "ru": "Категория",
+      "en": "Category",
+      "de": "Kategorie",
+      "from": {"en":"Категория","de":"Категория"},
+      "where": ["client/src/utils/discussion.ts:157"]
+    },
+    "utils.discussion.addrEdge": {
+      "ru": "Связь",
+      "en": "Edge",
+      "de": "Verbindung",
+      "from": {"en":"Связь","de":"Связь"},
+      "where": ["client/src/utils/discussion.ts:159"]
+    },
+    "utils.discussion.addrSection": {
+      "ru": "Раздел",
+      "en": "Section",
+      "de": "Abschnitt",
+      "from": {"en":"Раздел","de":"Раздел"},
+      "where": ["client/src/utils/discussion.ts:153"]
+    },
+    "utils.discussion.addrSubsection": {
+      "ru": "Подраздел",
+      "en": "Subsection",
+      "de": "Unterabschnitt",
+      "from": {"en":"Подраздел","de":"Подраздел"},
+      "where": ["client/src/utils/discussion.ts:155"]
+    },
+    "utils.discussion.addrSynthesis": {
+      "ru": "Концепция",
+      "en": "Concept",
+      "de": "Konzept",
+      "from": {"en":"Концепция","de":"Концепция"},
+      "where": ["client/src/utils/discussion.ts:151"]
+    },
+    "utils.discussion.addrTerm": {
+      "ru": "Термин",
+      "en": "Term",
+      "de": "Begriff",
+      "from": {"en":"Термин","de":"Термин"},
+      "where": ["client/src/utils/discussion.ts:163"]
+    },
+    "utils.discussion.addrThesis": {
+      "ru": "Тезис",
+      "en": "Thesis",
+      "de": "These",
+      "from": {"en":"Тезис","de":"Тезис"},
+      "where": ["client/src/utils/discussion.ts:161"]
+    },
+    "utils.discussion.authorDeleted": {
+      "ru": "удалённый пользователь",
+      "en": "deleted user",
+      "de": "gelöschter Nutzer",
+      "from": {"en":"удалённый пользователь","de":"удалённый пользователь"},
+      "where": ["client/src/utils/discussion.ts:213"]
+    },
+    "utils.discussion.authorFormer": {
+      "ru": "бывший участник",
+      "en": "former participant",
+      "de": "ehemaliger Teilnehmer",
+      "from": {"en":"бывший участник","de":"бывший участник"},
+      "where": ["client/src/utils/discussion.ts:215"]
+    },
+    "utils.discussion.authorOwner": {
+      "ru": "владелец",
+      "en": "owner",
+      "de": "Eigentümer",
+      "from": {"en":"владелец","de":"владелец"},
+      "where": ["client/src/utils/discussion.ts:214"]
+    },
+    "utils.discussion.kindObjection": {
+      "ru": "возражение",
+      "en": "objection",
+      "de": "Einwand",
+      "from": {"en":"возражение","de":"возражение"},
+      "where": ["client/src/utils/discussion.ts:138"]
+    },
+    "utils.discussion.kindQuestion": {
+      "ru": "вопрос",
+      "en": "question",
+      "de": "Frage",
+      "from": {"en":"вопрос","de":"вопрос"},
+      "where": ["client/src/utils/discussion.ts:136"]
+    },
+    "utils.discussion.kindSource": {
+      "ru": "источник",
+      "en": "source",
+      "de": "Quelle",
+      "from": {"en":"источник","de":"источник"},
+      "where": ["client/src/utils/discussion.ts:140"]
+    },
+    "utils.discussion.kindUnclear": {
+      "ru": "неясность",
+      "en": "unclear",
+      "de": "Unklarheit",
+      "from": {"en":"неясность","de":"неясность"},
+      "where": ["client/src/utils/discussion.ts:142"]
+    },
+    "utils.discussion.stateCurrent": {
+      "ru": "текущая версия",
+      "en": "current version",
+      "de": "aktuelle Version",
+      "from": {"en":"текущая версия","de":"текущая версия"},
+      "where": ["client/src/utils/discussion.ts:170"]
+    },
+    "utils.discussion.stateDeleted": {
+      "ru": "объект удалён",
+      "en": "object deleted",
+      "de": "Objekt gelöscht",
+      "from": {"en":"объект удалён","de":"объект удалён"},
+      "where": ["client/src/utils/discussion.ts:174"]
+    },
+    "utils.discussion.stateOutdated": {
+      "ru": "относится к прежней версии",
+      "en": "refers to an earlier version",
+      "de": "bezieht sich auf eine frühere Version",
+      "from": {"en":"относится к прежней версии","de":"относится к прежней версии"},
+      "where": ["client/src/utils/discussion.ts:172"]
     },
     "utils.genealogy.andQuote": {
       "ru": "» и «",

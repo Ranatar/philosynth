@@ -88,6 +88,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  type RefObject,
 } from "react";
 
 import { EDITOR_TOOLS, type EditorToolId } from "@philosynth/shared/constants/doc-markup";
@@ -154,6 +155,12 @@ export interface SectionViewProps {
   onSubsectionDelete?: ((step: SubsectionDeleteStep) => void) | undefined;
   /** 11.3 (Д-16): пометка «разобран с потерями» — только владельцу */
   showParseWarnings?: boolean | undefined;
+  /** 16.3: пометки обсуждения у места — НАЛОЖЕНИЕ над телом раздела, а не
+   *  часть строки HTML (ссылка { __html } не меняется — грабля 9.2).
+   *  Получает хозяина тела (.doc-body-host, position: relative) и строку
+   *  раздела как повод перемерить; рендерится компонентом-соседом с
+   *  собственным useLayoutEffect (здесь эффекты запрещены — сторож 4p) */
+  marks?: ((ctx: { host: RefObject<HTMLDivElement | null>; html: string }) => ReactNode) | undefined;
 }
 
 /** Таблица тезисов: подраздел «Сводная таблица тезисов» (locatorsFor
@@ -552,7 +559,10 @@ export function SectionView({
   onSubsectionView,
   onSubsectionDelete,
   showParseWarnings = false,
+  marks,
 }: SectionViewProps) {
+  // 16.3: хозяин тела раздела — для пометок-наложения (ref, не эффект)
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const parseWarnings = showParseWarnings ? section.parseWarnings ?? [] : [];
   // Замки — из GET /sections/:key (вычисляемый заслон сервера). Нет поля
   // (вложенные разделы гостя) — карандашей нет вовсе: гадать клиент не вправе
@@ -767,17 +777,20 @@ export function SectionView({
           {actions}
         </div>
       )}
-      <div
-        dangerouslySetInnerHTML={innerHtmlProp}
-        onClick={handleClick}
-        onMouseDown={handleMouseDown}
-        onKeyDown={handleKeyDown}
-        onInput={handleInput}
-        onPaste={handlePaste}
-        onCut={handleCut}
-        onDragStart={handleDragStart}
-        onDrop={handleDrop}
-      />
+      <div className="doc-body-host" ref={hostRef}>
+        <div
+          dangerouslySetInnerHTML={innerHtmlProp}
+          onClick={handleClick}
+          onMouseDown={handleMouseDown}
+          onKeyDown={handleKeyDown}
+          onInput={handleInput}
+          onPaste={handlePaste}
+          onCut={handleCut}
+          onDragStart={handleDragStart}
+          onDrop={handleDrop}
+        />
+        {marks?.({ host: hostRef, html: enrichedHtml })}
+      </div>
       {inlineEditor}
       {parseWarnings.length > 0 && (
         <details className="sec-disclosure parse-warnings" data-testid={`parse-warnings-${section.key}`}>

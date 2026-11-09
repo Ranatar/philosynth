@@ -119,6 +119,7 @@ try {
   ok(await exists(po, T("tab-members")) && !(await exists(po, T("view-banner"))), "владельцу — вкладки «Документ | Участники», полосы просмотра нет");
   await click(po, T("tab-members"));
   await waitSel(po, T("members-panel"));
+  await waitSel(po, T("members-empty")); // список приезжает отдельным запросом — ждать элемент фазы, не контейнер (09 §4 16.2)
   ok(await exists(po, T("members-empty")) && await exists(po, T("invite-form")), "вкладка «Участники»: форма приглашения, список пуст");
   await typeInto(po, T("invite-email"), rev.email);
   await po.select(T("invite-role"), "reviewer");
@@ -160,7 +161,7 @@ try {
   ok(!(await exists(pr, T("notification-count"))), "счётчик колокольчика обнулился (клик по строке пометил прочитанным)");
   await click(pr, T("invitation-open"));
   await waitSel(pr, T("view-banner"));
-  ok((await pr.$eval(T("view-banner"), (el) => el.dataset.viewer)) === "member" && /роль: рецензент/.test(await text(pr, T("view-banner"))) && !(await exists(pr, T("page-tabs"))), "страница концепции участнику: полоса «Вы участник · роль: рецензент», вкладок владельца нет");
+  ok((await pr.$eval(T("view-banner"), (el) => el.dataset.viewer)) === "member" && /роль: рецензент/.test(await text(pr, T("view-banner"))) && !(await exists(pr, T("tab-members"))), "страница концепции участнику: полоса «Вы участник · роль: рецензент», вкладки «Участники» нет (16.3: свои вкладки участника — есть)");
 
   /* ── U1b: владелец видит участника, меняет роль, исключает со вторым шагом ── */
   console.log("\n■ U1b: роль и исключение со вторым шагом");
@@ -209,8 +210,12 @@ try {
   ok((await count(p2, `${T("profile-notifications")} input[type=checkbox]`)) === 6 && (await p2.$eval(T("notif-cat-comments"), (el) => el.dataset.enabled)) === "1", "раздел: 5 категорий + сводка, все включены");
   await click(p2, `${T("notif-cat-comments")} input`);
   await p2.waitForFunction((s) => document.querySelector(s)?.dataset.enabled === "0", { timeout: 10000 }, T("notif-cat-comments"));
+  // PATCH первого переключателя ещё в пути (чекбоксы disabled, busy): второй клик — только после его ответа
+  await p2.waitForFunction((s) => !document.querySelector(`${s} input`)?.disabled, { timeout: 10000 }, T("notif-digest"));
   await click(p2, `${T("notif-digest")} input`);
   await p2.waitForFunction((s) => document.querySelector(s)?.dataset.enabled === "0", { timeout: 10000 }, T("notif-digest"));
+  // data-enabled меняется оптимистично до ответа сервера — БД читать после снятия busy (чекбокс снова enabled)
+  await p2.waitForFunction((s) => !document.querySelector(`${s} input`)?.disabled, { timeout: 10000 }, T("notif-digest"));
   const [st] = await sql`select muted_categories, email_digest from notification_settings where user_id=${rev2.id}`;
   ok(J(st?.muted_categories) === '["comments"]' && st?.email_digest === false, "переключатели сохранены сервером (muted comments, сводка выключена)", st);
   ok(p2.errors.length === 0 && pr.errors.length === 0, "страницы участников без ошибок JS", [...p2.errors, ...pr.errors]);

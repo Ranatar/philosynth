@@ -66,6 +66,7 @@ import {
   ResetPasswordRequestPage,
 } from "./pages/ResetPasswordPage";
 import { SynthesisPage } from "./pages/SynthesisPage";
+import { ReviewPage } from "./pages/ReviewPage"; // 16.3
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { useAuthStore } from "./stores/auth-store";
 import { tl } from "@philosynth/shared/i18n/t";
@@ -161,6 +162,16 @@ export function App() {
             element={
               <RequireAuth>
                 <BillingPage />
+              </RequireAuth>
+            }
+          />
+          {/* 16.3: рецензия — отдельная страница-документ, под входом
+              (чужому/гостю сервер отвечает 404 — страница показывает отказ) */}
+          <Route
+            path="/synthesis/:id/reviews/:rid"
+            element={
+              <RequireAuth>
+                <ReviewPage />
               </RequireAuth>
             }
           />

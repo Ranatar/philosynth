@@ -6894,6 +6894,521 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 16.3 — обсуждение и рецензии (первый запрос) ═══════════════
+ * В исходнике ни обсуждения, ни рецензий нет. Вкладки, панель, страница
+ * рецензии собраны из готового (.input-form, .form-section-title,
+ * .form-textarea/.form-select/.form-input, .action-btn, .callout.note,
+ * .sec-disclosure/.disclosure-body, .data-table, .cert-badge,
+ * .version-list/.version-item, .transform-warn, .page-tab 16.2). Своих
+ * правил — девять групп:
+ * (1) .doc-body-host — хозяин тела раздела (position: relative): точка
+ *     отсчёта для пометок-наложения; .addr-mark — пометка у места: кнопка
+ *     абсолютным позиционированием в правом поле .doc-section, моно, мелко;
+ *     с записями — --gold с числом, пустая — бледная (--ink-dim) и
+ *     проявляется при наведении на цель (.faint → opacity 0), активная —
+ *     --blue-corp. Текст раздела не трогается (ссылка { __html } прежняя);
+ * (2) .page-tab-count — счётчик на вкладке (моно, --gold);
+ * (3) .discuss-dock — пристыкованная панель адреса: position: fixed справа,
+ *     ширина 420px, бумага, рамка --rule слева, прокрутка внутри; при
+ *     открытой панели странице даётся правое поле (.discuss-dock-open);
+ *     на ≤ 900px — во весь экран. Второе после колокольчика 16.2
+ *     исключение из «раскрытия на месте»: раскрытие под разделом сдвигало
+ *     бы документ и терялось при переходе к другому адресу;
+ * (4) .discuss-kicker/.discuss-count/.discuss-muted/.discuss-fine/
+ *     .discuss-error/.discuss-ok/.discuss-state — служебные подписи: моно
+ *     8.5–10px прописными (язык меток кита), --red/--green-check для исхода;
+ * (5) .discuss-thread и внутренности — ветка: рамка --rule, корень/ответы,
+ *     ответ с левым отступом и линией --rule; решённая — <details>
+ *     .sec-disclosure с нашей шапкой; .discuss-byline — автор · вид · время;
+ *     .discuss-kind-chip — вид комментария как .compat-chip (моно, рамка);
+ * (6) .discuss-link — действие строкой (моно, без рамки, подчёркивание на
+ *     наведении), .danger — --red; .discuss-form/.discuss-form-row — форма
+ *     с видом и кнопками в ряд;
+ * (7) .user-text — текст пользователя: абзацы <p>, white-space: pre-wrap
+ *     (переводы строки внутри абзаца сохраняются), без разметки;
+ * (8) .discuss-tab/.discuss-filters/.reviews-table/.review-status — вкладки
+ *     «Обсуждение» и «Рецензии»: фильтры в ряд, таблица рецензий, статус
+ *     как .cert-badge (опубликована — .gold);
+ * (9) .review-page/.review-doc/.review-meta/.review-field/.review-finding —
+ *     страница рецензии: шапка с dl-метаданными (моно-термины), поля
+ *     рецензии, нумерованные замечания с состоянием адреса.
+ * Новых hex нет (только переменные), углы прямые, теней нет.
+ * ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* (1) хозяин тела раздела и пометки у места */
+  .doc-body-host {
+    position: relative;
+  }
+  .addr-mark {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 4px;
+    font-family: var(--mono);
+    font-size: 9px;
+    line-height: 1.4;
+    letter-spacing: 0.5px;
+    color: var(--ink-dim);
+    background: var(--paper);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+    z-index: 2;
+  }
+  .addr-mark.has {
+    color: var(--gold);
+    border-color: var(--rule);
+  }
+  .addr-mark.active {
+    color: var(--blue-corp);
+    border-color: var(--blue-corp);
+  }
+  .addr-mark.faint {
+    opacity: 0;
+  }
+  .addr-mark:hover,
+  .addr-mark:focus-visible {
+    opacity: 1;
+    color: var(--blue-corp);
+    border-color: var(--blue-corp);
+  }
+  .addr-mark-glyph {
+    font-size: 10px;
+  }
+  .addr-mark-count {
+    font-weight: 600;
+  }
+
+  /* (2) счётчик на вкладке */
+  .page-tab-count {
+    margin-left: 6px;
+    font-weight: 600;
+    color: var(--gold);
+  }
+  .page-tab.active .page-tab-count {
+    color: var(--gold-light);
+  }
+
+  /* (3) пристыкованная панель адреса */
+  .synthesis-page {
+    transition: padding-right 0.15s;
+  }
+  .discuss-dock-open {
+    padding-right: 440px;
+  }
+  .discuss-dock {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 420px;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    border-left: 1px solid var(--rule);
+    z-index: 40;
+  }
+  .discuss-dock-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .discuss-dock-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .discuss-dock-title strong {
+    font-family: var(--serif);
+    font-size: 15px;
+    color: var(--blue-corp);
+    overflow-wrap: anywhere;
+  }
+  .discuss-dock-kicker {
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+  .discuss-close {
+    padding: 4px 10px;
+    flex: 0 0 auto;
+  }
+  .discuss-dock-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 12px 18px 24px;
+  }
+  .discuss-excerpt {
+    margin: 12px 18px 0;
+  }
+  .discuss-block {
+    margin-bottom: 20px;
+  }
+  .discuss-beside {
+    border-top: 1px solid var(--rule);
+    padding-top: 12px;
+  }
+  .discuss-compose {
+    border-top: 1px solid var(--rule);
+    padding-top: 12px;
+  }
+
+  /* (4) служебные подписи */
+  .discuss-kicker {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .discuss-count {
+    font-weight: 600;
+    color: var(--gold);
+  }
+  .discuss-muted {
+    font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+  }
+  .discuss-fine {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    margin-top: 8px;
+  }
+  .discuss-error {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    margin-top: 6px;
+  }
+  .discuss-ok {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green-check);
+    margin-top: 6px;
+  }
+  .discuss-state {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--green-check);
+  }
+  .discuss-state.warn {
+    color: var(--red);
+  }
+  .discuss-mono {
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  /* (5) ветка */
+  .discuss-thread {
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background: var(--white);
+  }
+  .discuss-thread.resolved {
+    background: var(--off);
+    margin-bottom: 10px;
+  }
+  .discuss-thread.sec-disclosure summary.discuss-thread-summary {
+    padding: 0;
+    background: transparent;
+    border: none;
+  }
+  .discuss-thread-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 6px;
+  }
+  .discuss-thread.resolved .disclosure-body {
+    padding: 8px 0 0;
+  }
+  .discuss-status {
+    color: var(--gold);
+    font-weight: 600;
+  }
+  .discuss-status.resolved {
+    color: var(--green-check);
+  }
+  .discuss-note {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    color: var(--ink-dim);
+  }
+  .discuss-note.warn {
+    color: var(--red);
+  }
+  .discuss-address {
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .discuss-byline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .discuss-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .discuss-kind-chip {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1px solid var(--rule-strong);
+    padding: 1px 6px;
+    color: var(--ink-mid);
+  }
+  .discuss-when {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink-dim);
+  }
+  .discuss-body.is-hidden {
+    opacity: 0.7;
+  }
+  .discuss-hidden {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin: 4px 0;
+  }
+  .discuss-reply {
+    margin: 8px 0 0 14px;
+    padding-left: 10px;
+    border-left: 2px solid var(--rule);
+  }
+  .discuss-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .discuss-thread-actions {
+    margin-top: 8px;
+  }
+  .discuss-finding {
+    border-top: 1px solid var(--rule);
+    padding: 8px 0;
+  }
+  .discuss-finding:first-of-type {
+    border-top: none;
+  }
+  .discuss-replacement {
+    border-left: 2px solid var(--gold);
+    padding-left: 10px;
+    margin-top: 4px;
+  }
+
+  /* (6) действие строкой и форма */
+  .discuss-link {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--blue-corp);
+    cursor: pointer;
+  }
+  .discuss-link:hover {
+    text-decoration: underline;
+  }
+  .discuss-link:disabled {
+    color: var(--ink-dim);
+    cursor: default;
+  }
+  .discuss-link.danger {
+    color: var(--red);
+  }
+  .discuss-form {
+    margin-top: 8px;
+  }
+  .discuss-form .form-textarea {
+    min-height: 72px;
+  }
+  .discuss-form-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .discuss-form-row .form-select.discuss-kind {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  /* (7) текст пользователя */
+  .user-text p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--ink-mid);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin: 0 0 8px;
+  }
+  .user-text p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* (8) вкладки «Обсуждение» и «Рецензии» */
+  .discuss-tab {
+    margin-bottom: 24px;
+  }
+  .discuss-tab-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .discuss-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 16px;
+  }
+  .discuss-filters .form-select {
+    width: auto;
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+  .discuss-tab-list .discuss-thread {
+    margin-bottom: 12px;
+  }
+  .reviews-table {
+    margin-top: 16px;
+  }
+  .review-status.published {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .review-status.withdrawn {
+    color: var(--ink-dim);
+  }
+
+  /* (9) страница рецензии */
+  .review-page {
+    max-width: 900px;
+  }
+  .review-doc {
+    border-top-color: var(--blue-corp);
+  }
+  .review-back {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .review-head {
+    margin-bottom: 20px;
+  }
+  .review-title {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--blue-corp);
+    margin: 4px 0 12px;
+  }
+  .review-meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 16px;
+    font-size: 12px;
+    color: var(--ink-mid);
+  }
+  .review-meta dt {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    padding-top: 2px;
+  }
+  .review-editor-note {
+    margin-bottom: 20px;
+  }
+  .review-field {
+    margin-bottom: 18px;
+  }
+  .review-field .form-textarea {
+    min-height: 96px;
+  }
+  .review-save-row {
+    margin-bottom: 24px;
+  }
+  .review-findings {
+    border-top: 1px solid var(--rule);
+    padding-top: 16px;
+    margin-bottom: 20px;
+  }
+  .review-finding-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .review-finding {
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background: var(--white);
+  }
+  .review-actions {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .review-revisions {
+    margin-top: 16px;
+  }
+}
+
+@media (max-width: 900px) {
+  .discuss-dock-open {
+    padding-right: 0;
+  }
+  .discuss-dock {
+    width: 100%;
+  }
+}
+@media (max-width: 600px) {
+  .discuss-filters .form-select {
+    flex-basis: 100%;
+  }
+  .review-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;

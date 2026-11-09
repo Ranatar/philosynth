@@ -113,6 +113,18 @@ import {
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
 import { MembersPanel, roleLabel } from "../components/synthesis/MembersPanel"; // 16.2
+// 16.3: обсуждение и рецензии
+import { AddressMarks } from "../components/discussion/AddressMarks";
+import { DiscussionPanel } from "../components/discussion/DiscussionPanel";
+import { DiscussionTab } from "../components/discussion/DiscussionTab";
+import { ReviewsTab } from "../components/discussion/ReviewsTab";
+import { errorText as discussErrorText } from "../components/discussion/CommentThread";
+import { addFinding, createReview, getDiscussionSummary, listReviews } from "../api/discussion";
+import { addressKeyOfTarget, summaryMap, targetFromAddress, targetOf, type MarkTarget } from "../utils/discussion";
+import type { Comment as DiscussionComment, DiscussionSummary, Review } from "@philosynth/shared/types/discussion";
+import type { Recommendation } from "@philosynth/shared/types/recommendations";
+import type { CommentKind } from "@philosynth/shared/constants/discussion";
+import { isAddressKind } from "@philosynth/shared/constants/discussion";
 
 /** Метка тезиса, как её показывает документ (рендерер 5.1: label ?? номер) */
 export function thesisLabelOf(t: { label: string | null; thesisNum: number }): string {
@@ -200,11 +212,23 @@ export function SynthesisPage() {
 
   // Беседа 1.7: граф категорий — данные грузятся по клику на кнопку
   const [graphOpen, setGraphOpen] = useState(false);
-  // 16.2: вкладка владельца «Документ | Участники»
-  const [pageTab, setPageTab] = useState<"document" | "members">("document");
-  const pageTabCls = (k: "document" | "members") => (pageTab === k ? "action-btn page-tab active" : "action-btn page-tab");
+  // 16.2: вкладка владельца «Документ | Участники»; 16.3: «Обсуждение |
+  // Рецензии» — участникам (capabilities.discuss)
+  type PageTab = "document" | "discussion" | "reviews" | "members";
+  const [pageTab, setPageTab] = useState<PageTab>("document");
+  const pageTabCls = (k: PageTab) => (pageTab === k ? "action-btn page-tab active" : "action-btn page-tab");
   const documentTabCls = pageTabCls("document");
   const membersTabCls = pageTabCls("members");
+  const discussionTabCls = pageTabCls("discussion");
+  const reviewsTabCls = pageTabCls("reviews");
+  // 16.3: сводка пометок, рецензии, открытая панель адреса, рекомендации (владельцу)
+  const [discussSummary, setDiscussSummary] = useState<DiscussionSummary | null>(null);
+  const [reviews, setReviews] = useState<Review[] | null>(null);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [discussTarget, setDiscussTarget] = useState<MarkTarget | null>(null);
+  const [discussFocus, setDiscussFocus] = useState<{ key: string; nonce: number } | null>(null);
+  const [discussVersion, setDiscussVersion] = useState(0);
+  const [recRows, setRecRows] = useState<Recommendation[] | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [graphLoading, setGraphLoading] = useState(false);
   // Беседа 4.2: выпадающее меню «⤓ Экспорт» (HTML/MD/Mermaid/PNG/JSON)
@@ -362,6 +386,12 @@ export function SynthesisPage() {
   );
   const sectionLabelOf = (key: string): string =>
     tData((KEY_LABELS as Record<string, string>)[key] ?? key);
+  // 16.3: подписи разделов для адресов обсуждения
+  const sectionTitlesMap = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const key of synthesis?.sectionOrder ?? []) out[key] = tData((KEY_LABELS as Record<string, string>)[key] ?? key);
+    return out;
+  }, [synthesis?.sectionOrder]);
 
   /* ── Беседа 9.2: ручная правка подраздела. Карандаш у заголовка →
      исходник с сервера (GET …/subsections/:name: разметка содержимого без
@@ -621,6 +651,80 @@ export function SynthesisPage() {
   // 16.2: роль участника из capabilities (reviewer | editor); иначе null
   const capRole = synthesis?.capabilities?.role;
   const memberRole = capRole === "reviewer" || capRole === "editor" ? capRole : null;
+  // 16.3: обсуждение — владельцу и действующим участникам (одна проверка
+  // сервера, 16.1); гостю и чужому зарегистрированному — ничего не рисуется
+  const canDiscuss = synthesis?.capabilities?.discuss ?? false;
+  const canManage = synthesis?.capabilities?.manage ?? isOwner;
+  const discussSynthesisId = canDiscuss ? synthesis?.id ?? null : null;
+  const meId = useAuthStore((s) => s.user?.id ?? null);
+  const discussChanged = useCallback(() => setDiscussVersion((v) => v + 1), []);
+  useEffect(() => {
+    if (!discussSynthesisId) {
+      setDiscussSummary(null);
+      setReviews(null);
+      return;
+    }
+    let cancelled = false;
+    getDiscussionSummary(discussSynthesisId)
+      .then((sum) => {
+        if (!cancelled) setDiscussSummary(sum);
+      })
+      .catch(() => {
+        if (!cancelled) setDiscussSummary(null);
+      });
+    listReviews(discussSynthesisId)
+      .then((rows) => {
+        if (!cancelled) {
+          setReviews(rows);
+          setReviewsError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setReviewsError(discussErrorText(err, tl("synthesisPage.reviewsLoadFailed", "Не удалось загрузить рецензии.")));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [discussSynthesisId, discussVersion]);
+  const discussCounts = useMemo(() => summaryMap(discussSummary), [discussSummary]);
+  const activeAddressKey = discussTarget ? addressKeyOfTarget(discussTarget) : null;
+  // ?discuss=вид:ключ — переход со страницы рецензии: открыть панель и
+  // прокрутить к месту (адрес берётся из записей сводки/рецензий)
+  const discussParam = new URLSearchParams(location.search).get("discuss");
+  useEffect(() => {
+    if (!discussParam || !canDiscuss || !synthesis) return;
+    const i = discussParam.indexOf(":");
+    const kind = i > 0 ? discussParam.slice(0, i) : discussParam;
+    const key = i > 0 ? discussParam.slice(i + 1) : "";
+    if (!isAddressKind(kind)) return;
+    const title = kind === "synthesis" ? synthesis.title : key;
+    const t = targetOf(kind, kind === "synthesis" ? synthesis.id : key, kind === "section" ? key : kind === "subsection" ? (key.split(":")[0] ?? null) : null, title);
+    // у категорий/терминов ключ в адресе уже нормализован — серверу уходит он же
+    setPageTab("document");
+    setDiscussTarget({ ...t, target: kind === "synthesis" ? { kind } : { kind, key } });
+    setDiscussFocus({ key: `${kind}:${key}`, nonce: Date.now() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discussParam, canDiscuss, synthesis?.id]);
+  /** Переход к адресу из вкладки «Обсуждение» (панель + прокрутка) */
+  const jumpToComment = useCallback(
+    (c: DiscussionComment) => {
+      const t = targetFromAddress(c, sectionTitlesMap);
+      setPageTab("document");
+      setDiscussTarget(t);
+      setDiscussFocus({ key: addressKeyOfTarget(t), nonce: Date.now() });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  /** «В мою рецензию»: замечание в мой черновик (черновик заводится при нужде) */
+  const addToMyReview = useCallback(
+    async (t: MarkTarget, body: string, kind: CommentKind | null): Promise<Review> => {
+      if (!discussSynthesisId) throw new Error("no synthesis");
+      const mine = (reviews ?? []).find((r) => r.status === "draft" && r.author.id === meId) ?? (await createReview(discussSynthesisId));
+      return addFinding(discussSynthesisId, mine.id, { target: t.target, body, kind });
+    },
+    [discussSynthesisId, reviews, meId],
+  );
 
   // 15.1 (Д-68/Д-69): контекст действий у узлов древа. Перечитка после
   // действия — неразрушающая (applySynthesis, не store.load — грабля R3
@@ -658,10 +762,16 @@ export function SynthesisPage() {
     let cancelled = false;
     listRecommendations(recSynthesisId)
       .then((res) => {
-        if (!cancelled) setRecCount(res.round > 0 ? pendingCount(res.rows) : null);
+        if (!cancelled) {
+          setRecCount(res.round > 0 ? pendingCount(res.rows) : null);
+          setRecRows(res.rows); // 16.3: строки — панели обсуждения («рядом»)
+        }
       })
       .catch(() => {
-        if (!cancelled) setRecCount(null);
+        if (!cancelled) {
+          setRecCount(null);
+          setRecRows(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -846,7 +956,9 @@ export function SynthesisPage() {
   }
 
   return (
-    <div>
+    // 16.3: при открытой панели адреса страница получает правое поле под
+    // пристыкованную панель (класс, не inline — css-parity)
+    <div className={discussTarget ? "synthesis-page discuss-dock-open" : "synthesis-page"}>
       {/* Беседа 8.7 (п. 4a): полоса режима просмотра у невладельца;
           16.2: участнику — его роль вместо «публичная концепция» */}
       {!isOwner && (
@@ -871,8 +983,10 @@ export function SynthesisPage() {
         </div>
       )}
 
-      {/* 16.2: вкладки владельца — документ / участники */}
-      {isOwner && (
+      {/* 16.2: вкладки владельца — документ / участники; 16.3: обсуждение и
+          рецензии — всем с capabilities.discuss (владелец, действующие
+          участники); гостю и чужому — вкладок нет вовсе */}
+      {(isOwner || canDiscuss) && (
         <div className="actions-bar page-tabs" data-testid="page-tabs">
           <div className="actions-bar-btns">
             <button
@@ -883,19 +997,62 @@ export function SynthesisPage() {
             >
               {tl("synthesisPage.tabDocument", "Документ")}
             </button>
-            <button
-              type="button"
-              className={membersTabCls}
-              onClick={() => setPageTab("members")}
-              data-testid="tab-members"
-            >
-              {tl("synthesisPage.tabMembers", "Участники")}
-            </button>
+            {canDiscuss && (
+              <button
+                type="button"
+                className={discussionTabCls}
+                onClick={() => setPageTab("discussion")}
+                data-testid="tab-discussion"
+              >
+                {tl("synthesisPage.tabDiscussion", "Обсуждение")}
+                {discussSummary && discussSummary.totals.openComments > 0 && <span className="page-tab-count">{discussSummary.totals.openComments}</span>}
+              </button>
+            )}
+            {canDiscuss && (
+              <button
+                type="button"
+                className={reviewsTabCls}
+                onClick={() => setPageTab("reviews")}
+                data-testid="tab-reviews"
+              >
+                {tl("synthesisPage.tabReviews", "Рецензии")}
+                {discussSummary && discussSummary.totals.reviews > 0 && <span className="page-tab-count">{discussSummary.totals.reviews}</span>}
+              </button>
+            )}
+            {isOwner && (
+              <button
+                type="button"
+                className={membersTabCls}
+                onClick={() => setPageTab("members")}
+                data-testid="tab-members"
+              >
+                {tl("synthesisPage.tabMembers", "Участники")}
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {isOwner && pageTab === "members" && <MembersPanel synthesisId={synthesis.id} />}
+      {canDiscuss && pageTab === "discussion" && (
+        <DiscussionTab synthesisId={synthesis.id} me={meId} canManage={canManage} sectionTitles={sectionTitlesMap} onJump={jumpToComment} version={discussVersion} onChanged={discussChanged} />
+      )}
+      {canDiscuss && pageTab === "reviews" && <ReviewsTab synthesisId={synthesis.id} me={meId} reviews={reviews} error={reviewsError} onChanged={discussChanged} />}
+      {canDiscuss && discussTarget && (
+        <DiscussionPanel
+          synthesisId={synthesis.id}
+          target={discussTarget}
+          me={meId}
+          canManage={canManage}
+          sectionTitles={sectionTitlesMap}
+          reviews={reviews ?? []}
+          recommendations={isOwner ? recRows : null}
+          onAddToMyReview={addToMyReview}
+          onChanged={discussChanged}
+          onClose={() => setDiscussTarget(null)}
+          version={discussVersion}
+        />
+      )}
 
       {pageTab === "document" && (<>
       {/* actions-bar [4134] — минимум 1.6b; 8.7: у гостя и на витрине
@@ -1011,6 +1168,17 @@ export function SynthesisPage() {
               )}
             </div>
           )}
+          {canDiscuss && (
+            <button
+              type="button"
+              className={activeAddressKey === `synthesis:${synthesis.id}` ? "action-btn page-tab active" : "action-btn"}
+              data-testid="discuss-synthesis"
+              onClick={() => setDiscussTarget(targetOf("synthesis", synthesis.id, null, `${tl("synthesisPage.discussSynthesisTitle", "Концепция")}: ${synthesis.title}`))}
+            >
+              {tl("synthesisPage.discussSynthesis", "◉ Обсудить концепцию")}
+              {(discussCounts.get(`synthesis:${synthesis.id}`)?.openComments ?? 0) > 0 ? ` (${discussCounts.get(`synthesis:${synthesis.id}`)?.openComments})` : ""}
+            </button>
+          )}
           <button
             type="button"
             className="action-btn"
@@ -1061,6 +1229,14 @@ export function SynthesisPage() {
         onSubsectionCancel={cancelSubsectionEdit}
         onSubsectionView={viewSubsectionEdit}
         onSubsectionDelete={(step) => void deleteSubsectionStep(step)}
+        sectionMarksFor={
+          canDiscuss
+            ? (key) =>
+                ({ host, html }) => (
+                  <AddressMarks sectionKey={key} host={host} html={html} counts={discussCounts} activeKey={activeAddressKey} focus={discussFocus} onOpen={setDiscussTarget} />
+                )
+            : undefined
+        }
         sectionActionsFor={(key) =>
           isOwner && !live ? (
             <>

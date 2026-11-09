@@ -23,7 +23,7 @@ import type { SubsectionDeleteStep, SubsectionEditState, SubsectionEditView, Sub
 
 import { DocumentFooter } from "./DocumentFooter";
 import { DocumentHeader } from "./DocumentHeader";
-import { SectionView, type EditableRowRef } from "./SectionView";
+import { SectionView, type EditableRowRef, type SectionViewProps } from "./SectionView";
 import { TableOfContents } from "./TableOfContents";
 import { tl } from "@philosynth/shared/i18n/t";
 
@@ -45,6 +45,9 @@ export interface DocumentViewProps {
   inlineEditorFor?: ((sectionKey: string) => React.ReactNode) | undefined;
   /** Беседа 5.5 (п. 7): строка действий над разделом («→ Граф» у theses) */
   sectionActionsFor?: ((sectionKey: string) => React.ReactNode) | undefined;
+  /** 16.3: пометки обсуждения у места — наложение над телом раздела
+   *  (SectionViewProps.marks); участникам с capabilities.discuss */
+  sectionMarksFor?: ((sectionKey: string) => SectionViewProps["marks"]) | undefined;
   /** Беседа 9.2: ручная правка подраздела — карандаши у заголовков <h4>
    *  незапертых подразделов и форма правки на месте подраздела */
   subsectionEditable?: boolean | undefined;
@@ -68,6 +71,7 @@ export function DocumentView({
   onRowEdit,
   inlineEditorFor,
   sectionActionsFor,
+  sectionMarksFor,
   subsectionEditable = false,
   subsectionEdit,
   onSubsectionEdit,
@@ -113,6 +117,7 @@ export function DocumentView({
               onRowEdit={onRowEdit}
               inlineEditor={inlineEditorFor?.(section.key)}
               actions={sectionActionsFor?.(section.key)}
+              marks={sectionMarksFor?.(section.key)}
               subsectionEditable={subsectionEditable}
               subsectionEdit={
                 subsectionEdit && subsectionEdit.sectionKey === section.key
