@@ -29,29 +29,43 @@ import { currentLocale, runWithLocale } from "../i18n/locale.js"; // 14.1 (Д-51
 import {
   emailChangeLetter,
   emailChangedNoticeLetter,
+  memberInviteRegisterLetter,
   passwordResetLetter,
   verifyEmailLetter,
 } from "./mail/templates.js";
+import {
+  MEMBER_INVITE_TOKEN_PURPOSE,
+  MEMBER_INVITE_TTL_HOURS,
+} from "@philosynth/shared/constants/notifications"; // 16.2
+import type { MemberRole } from "@philosynth/shared/constants/discussion";
 
 const { authTokens } = schema;
 
-/** 15.3 (Д-73): + 'email_change' — смена адреса (миграция 0015). */
-export type AuthTokenPurpose = "email_verify" | "password_reset" | "email_change";
+/** 15.3 (Д-73): + 'email_change' — смена адреса (миграция 0015).
+ *  16.2: + 'member_invite' — приглашение участника на адрес БЕЗ аккаунта
+ *  (миграция 0018): довод принадлежит ПРИГЛАСИВШЕМУ (user_id), несёт синтез,
+ *  роль и адрес; регистрация по ссылке гасит его и заводит участника. */
+export type AuthTokenPurpose = "email_verify" | "password_reset" | "email_change" | "member_invite";
 
 /** Срок жизни довода, часов (запрос 1, п. 4): подтверждение 72, сброс 1;
  *  15.3: смена адреса — 1 ч (как сброс: ссылка уходит на адрес, который
- *  ещё не доказан своим). */
+ *  ещё не доказан своим); 16.2: приглашение на регистрацию — 72 ч (как
+ *  подтверждение адреса: человеку надо дойти до почты и зарегистрироваться). */
 export const TOKEN_TTL_HOURS: Readonly<Record<AuthTokenPurpose, number>> = Object.freeze({
   email_verify: 72,
   password_reset: 1,
   email_change: 1,
+  member_invite: MEMBER_INVITE_TTL_HOURS,
 });
 
-/** Клиентские маршруты, куда ведут ссылки писем (App.tsx, 9.1 п. 6; 15.3). */
+/** Клиентские маршруты, куда ведут ссылки писем (App.tsx, 9.1 п. 6; 15.3;
+ *  16.2 — регистрация с приглашением: довод в query, RegisterPage читает
+ *  `?invite=`). */
 export const TOKEN_LINK_PATH: Readonly<Record<AuthTokenPurpose, string>> = Object.freeze({
   email_verify: "/verify-email/",
   password_reset: "/reset-password/",
   email_change: "/change-email/",
+  member_invite: "/register?invite=",
 });
 
 export function generateAuthToken(): string {
@@ -78,6 +92,10 @@ export async function issueToken(
   /** 15.3 (Д-73): новый адрес — только у 'email_change' */
   newEmail: string | null = null,
 ): Promise<string> {
+  // 16.2: у приглашений своя выдача (гашение — по синтезу и адресу, а не по
+  // пользователю: владелец приглашает многих) — issueMemberInviteToken
+  if (purpose === MEMBER_INVITE_TOKEN_PURPOSE)
+    throw new Error("issueToken: member_invite is issued by issueMemberInviteToken");
   await exec
     .update(authTokens)
     .set({ usedAt: now })
@@ -259,4 +277,221 @@ export function queueVerificationMail(exec: MailDbExecutor, user: MailRecipient)
 /** Довод + письмо сброса пароля. false — не поставлено (в логе). */
 export function queuePasswordResetMail(exec: MailDbExecutor, user: MailRecipient): Promise<boolean> {
   return queueTokenMail(exec, user, "password_reset");
+}
+
+/* ── 16.2: доводы приглашения адреса БЕЗ аккаунта ─────────────────────── */
+
+export interface MemberInviteTokenInput {
+  /** Пригласивший (владелец синтеза) — хозяин строки auth_tokens */
+  inviterId: string;
+  synthesisId: string;
+  /** Приглашаемый адрес (нормализованный, нижний регистр) */
+  email: string;
+  role: MemberRole;
+}
+
+export interface MemberInviteTokenRow {
+  id: string;
+  inviterId: string;
+  synthesisId: string;
+  email: string;
+  role: MemberRole;
+  expiresAt: Date;
+  createdAt: Date;
+}
+
+/**
+ * Выдать довод приглашения: прежние непогашенные доводы ЭТОГО синтеза на ЭТОТ
+ * адрес гасятся (повтор письма = новая ссылка, старая мертва), новая строка —
+ * с synthesis_id, member_role и new_email. Возвращает сам довод.
+ */
+export async function issueMemberInviteToken(
+  exec: MailDbExecutor,
+  input: MemberInviteTokenInput,
+  now: Date = new Date(),
+): Promise<string> {
+  await exec
+    .update(authTokens)
+    .set({ usedAt: now })
+    .where(
+      and(
+        eq(authTokens.purpose, MEMBER_INVITE_TOKEN_PURPOSE),
+        eq(authTokens.synthesisId, input.synthesisId),
+        eq(authTokens.newEmail, input.email),
+        isNull(authTokens.usedAt),
+      ),
+    );
+  const token = generateAuthToken();
+  await exec.insert(authTokens).values({
+    userId: input.inviterId,
+    purpose: MEMBER_INVITE_TOKEN_PURPOSE,
+    tokenHash: hashAuthToken(token),
+    newEmail: input.email,
+    synthesisId: input.synthesisId,
+    memberRole: input.role,
+    expiresAt: new Date(now.getTime() + MEMBER_INVITE_TTL_HOURS * 3_600_000),
+  });
+  return token;
+}
+
+function inviteRowOf(r: {
+  id: string;
+  userId: string;
+  synthesisId: string | null;
+  newEmail: string | null;
+  memberRole: "reviewer" | "editor" | null;
+  expiresAt: Date;
+  createdAt: Date;
+}): MemberInviteTokenRow | null {
+  if (!r.synthesisId || !r.newEmail || !r.memberRole) return null;
+  return {
+    id: r.id,
+    inviterId: r.userId,
+    synthesisId: r.synthesisId,
+    email: r.newEmail,
+    role: r.memberRole,
+    expiresAt: r.expiresAt,
+    createdAt: r.createdAt,
+  };
+}
+
+/** Что говорит ссылка приглашения — БЕЗ погашения (RegisterPage показывает
+ *  концепцию и роль до регистрации). null — любой негодный довод. */
+export async function peekMemberInviteToken(
+  exec: MailDbExecutor,
+  token: string,
+  now: Date = new Date(),
+): Promise<MemberInviteTokenRow | null> {
+  if (!token) return null;
+  const [r] = await exec
+    .select()
+    .from(authTokens)
+    .where(
+      and(
+        eq(authTokens.tokenHash, hashAuthToken(token)),
+        eq(authTokens.purpose, MEMBER_INVITE_TOKEN_PURPOSE),
+        isNull(authTokens.usedAt),
+        gt(authTokens.expiresAt, now),
+      ),
+    )
+    .limit(1);
+  return r ? inviteRowOf(r) : null;
+}
+
+/** Погасить довод приглашения (регистрация по ссылке) — один условный UPDATE,
+ *  как consumeTokenRow. null — негодный довод. */
+export async function consumeMemberInviteToken(
+  exec: MailDbExecutor,
+  token: string,
+  now: Date = new Date(),
+): Promise<MemberInviteTokenRow | null> {
+  if (!token) return null;
+  const rows = await exec
+    .update(authTokens)
+    .set({ usedAt: now })
+    .where(
+      and(
+        eq(authTokens.tokenHash, hashAuthToken(token)),
+        eq(authTokens.purpose, MEMBER_INVITE_TOKEN_PURPOSE),
+        isNull(authTokens.usedAt),
+        gt(authTokens.expiresAt, now),
+      ),
+    )
+    .returning();
+  return rows[0] ? inviteRowOf(rows[0]) : null;
+}
+
+/** Ждущие (непогашенные, непросроченные) приглашения синтеза — вкладка
+ *  «Участники»: адреса без аккаунта, строки участника у них ещё нет. */
+export async function listMemberInviteTokens(
+  exec: MailDbExecutor,
+  synthesisId: string,
+  now: Date = new Date(),
+): Promise<MemberInviteTokenRow[]> {
+  const rows = await exec
+    .select()
+    .from(authTokens)
+    .where(
+      and(
+        eq(authTokens.purpose, MEMBER_INVITE_TOKEN_PURPOSE),
+        eq(authTokens.synthesisId, synthesisId),
+        isNull(authTokens.usedAt),
+        gt(authTokens.expiresAt, now),
+      ),
+    );
+  return rows.map(inviteRowOf).filter((r): r is MemberInviteTokenRow => r !== null);
+}
+
+/** Ждущее приглашение по id строки (владелец отзывает / повторяет письмо). */
+export async function findMemberInviteToken(
+  exec: MailDbExecutor,
+  synthesisId: string,
+  tokenId: string,
+  now: Date = new Date(),
+): Promise<MemberInviteTokenRow | null> {
+  const [r] = await exec
+    .select()
+    .from(authTokens)
+    .where(
+      and(
+        eq(authTokens.id, tokenId),
+        eq(authTokens.purpose, MEMBER_INVITE_TOKEN_PURPOSE),
+        eq(authTokens.synthesisId, synthesisId),
+        isNull(authTokens.usedAt),
+        gt(authTokens.expiresAt, now),
+      ),
+    )
+    .limit(1);
+  return r ? inviteRowOf(r) : null;
+}
+
+/** Отозвать приглашение: погасить довод (ссылка из письма мертва). */
+export async function revokeMemberInviteToken(
+  exec: MailDbExecutor,
+  tokenId: string,
+  now: Date = new Date(),
+): Promise<boolean> {
+  const rows = await exec
+    .update(authTokens)
+    .set({ usedAt: now })
+    .where(and(eq(authTokens.id, tokenId), eq(authTokens.purpose, MEMBER_INVITE_TOKEN_PURPOSE), isNull(authTokens.usedAt)))
+    .returning({ id: authTokens.id });
+  return rows.length > 0;
+}
+
+export interface MemberInviteMailInput {
+  inviter: MailRecipient;
+  synthesisId: string;
+  synthesisTitle: string;
+  email: string;
+  role: MemberRole;
+}
+
+/**
+ * 16.2: довод приглашения + письмо со ссылкой на регистрацию — одним шагом
+ * под точкой сохранения (как queueTokenMail). Язык письма — язык ЗАПРОСА:
+ * у адресата аккаунта нет, выбора языка тоже (правило 14.1 для регистрации).
+ * false — не поставлено (в логе).
+ */
+export async function queueMemberInviteRegisterMail(
+  exec: MailDbExecutor,
+  input: MemberInviteMailInput,
+): Promise<boolean> {
+  const id = await underSavepoint(exec, `письмо-приглашение для ${input.email} не поставлено`, async (sp) => {
+    const token = await issueMemberInviteToken(sp, {
+      inviterId: input.inviter.id,
+      synthesisId: input.synthesisId,
+      email: input.email,
+      role: input.role,
+    });
+    const letter = memberInviteRegisterLetter({
+      inviterName: input.inviter.displayName?.trim() || input.inviter.email,
+      synthesisTitle: input.synthesisTitle,
+      role: input.role,
+      link: tokenLink(MEMBER_INVITE_TOKEN_PURPOSE, token),
+      ttlHours: MEMBER_INVITE_TTL_HOURS,
+    });
+    return enqueue(sp, { to: input.email, ...letter });
+  });
+  return id !== null;
 }

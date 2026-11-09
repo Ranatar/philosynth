@@ -62,6 +62,8 @@ philosynth-service/
 │       │   ├── phil-filename.ts        # PHIL_FILENAME (PHIL_FILENAME)
 │       │   ├── discussion.ts           # 16.1: MEMBER_ROLES/STATUSES, ADDRESS_KINDS/STATES, COMMENT_KINDS/
 │       │   │                           #  STATUSES, REVIEW_STATUSES, REVIEW_TEXT_FIELDS, пределы текстов и страниц
+│       │   ├── notifications.ts        # 16.2: NOTIFICATION_TYPES (11) / CATEGORIES (5) / CATEGORY_OF, REF_KINDS,
+│       │   │                           #  страницы, MEMBER_INVITE_TOKEN_PURPOSE, MEMBER_INVITE_TTL_HOURS
 │       │   ├── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (METHOD_CODE, LEVEL_CODE)
 │       │   ├── characteristics.ts      # Характеристики категорий (8) и связей (6) с
 │       │   │                           # диапазонами, resolveCharacteristic (алиасы
@@ -103,7 +105,11 @@ philosynth-service/
 │       │   ├── elements.ts             # Thesis, GlossaryTerm, DialogueTurn
 │       │   ├── lineage.ts              # LineageNode, ParticipantInput
 │       │   ├── discussion.ts           # 16.1: Capabilities, SynthesisRole, DiscussionAddress/Resolution,
-│       │   │                           #  Comment*, Review*, ReviewRevision, ReviewFinding, DiscussionSummary
+│       │   │                           #  Comment*, Review*, ReviewRevision, ReviewFinding, DiscussionSummary;
+│       │   │                           #  16.2: DiscussionAuthor.formerMember
+│       │   ├── notifications.ts        # 16.2: MemberView, PendingInvitation, MembersView, MemberInviteResult,
+│       │   │                           #  MyMembership, InvitationInfo, SharedSynthesisPreview, Notification*,
+│       │   │                           #  NotificationList, NotificationSettings
 │       │   ├── edit-plan.ts            # EditPlan, EditStep, StepResult
 │       │   ├── generation.ts           # GenLogEntry, CtxLogEntry, ContextEntry
 │       │   ├── modes.ts                # ModeConfig, ModeResult
@@ -192,6 +198,9 @@ philosynth-service/
 │   │       ├── 0017_discussion.sql     # 16.1: synthesis_members, comments, reviews, review_revisions,
 │   │       │                           #  review_findings (CASCADE по синтезу, author_id SET NULL); drizzle-kit,
 │   │       │                           #  тег переименован
+│   │       ├── 0018_members_notifications.sql  # 16.2: notifications, notification_settings; auth_tokens +=
+│   │       │                           #  purpose member_invite, synthesis_id (CASCADE), member_role (CHECK);
+│   │       │                           #  частичный уникальный индекс dedupe; drizzle-kit, тег переименован
 │   │       └── meta/
 │   │
 │   ├── middleware/
@@ -227,6 +236,11 @@ philosynth-service/
 │   │   ├── discussion.ts               # 16.1: 18 маршрутов /syntheses/:id/comments|reviews|discussion/summary
 │   │   │                               #  (03 §2.17) под requireAuth + discussGate (404 → 403 по discuss);
 │   │   │                               #  hide/unhide — manage; DiscussionError → 400/403/404/409
+│   │   ├── members.ts                  # 16.2: 11 маршрутов участников (03 §2.18): GET /shared (ДО /:id),
+│   │   │                               #  /:id/members[/:mid[/resend]], /:id/invitations/:tid[/resend],
+│   │   │                               #  /:id/membership[/accept|/decline]; письма — под mailLimiter
+│   │   ├── notifications.ts            # 16.2: 6 маршрутов /notifications (03 §2.19): список с курсором,
+│   │   │                               #  unread-count (опрос), read / read-all, settings GET/PATCH
 │   │   │                               # GET /categories — беседа 1.6 (нужен 1.7);
 │   │   │                               # остальное СДЕЛАНО 5.1: PATCH категорий/
 │   │   │                               # связей/тезисов/глоссария, DELETE связи,
@@ -314,7 +328,22 @@ philosynth-service/
 │   │   ├── discussion.ts               # 16.1: комментарии (плоские ветки, курсор, resolve/hide, мягкое
 │   │   │                               #  удаление), рецензии (draft → publish → редакции → withdraw),
 │   │   │                               #  замечания, сводка по адресам; plainText; автор «удалённый
-│   │   │                               #  пользователь» по анонимизированному email 7.1; в документ не пишет
+│   │   │                               #  пользователь» по анонимизированному email 7.1; в документ не пишет;
+│   │   │                               #  16.2: уведомления comment_new/comment_reply/review_published,
+│   │   │                               #  formerMember автора при чтении (activeMemberIds)
+│   │   ├── members.ts                  # 16.2: участники — приглашение (аккаунт → строка invited + письмо
+│   │   │                               #  под языком получателя; без аккаунта → довод member_invite + письмо
+│   │   │                               #  на регистрацию), роль, отзыв/исключение, повтор письма, принятие/
+│   │   │                               #  отклонение, invitationInfo, applyInviteOnRegister (транзакция
+│   │   │                               #  register); все управляющие — loadManaged → canManageSynthesis;
+│   │   │                               #  MembersError → 400/403/404/409
+│   │   ├── notifications.ts            # 16.2: notify (одна точка записи: актор исключён, отключённые
+│   │   │                               #  категории не пишутся; код + ссылки + payload, фраза при чтении —
+│   │   │                               #  14.2), список/курсор/непрочитанное/прочитать, настройки,
+│   │   │                               #  notificationText (сводка), scanOutdatedAddresses (проход сверки
+│   │   │                               #  адресов, dedupe по хэшу), runNotificationDigest (сводка по почте
+│   │   │                               #  под языком получателя, NOTIFY_DIGEST_INTERVAL_HOURS),
+│   │   │                               #  maybeRunNotificationPasses — тик работника почты
 │   │   │                               # Адаптация recalcEditPlan (recalcEditPlan()),
 │   │   │                               # updateLiveCascade (updateLiveCascade())
 │   │   │
@@ -593,6 +622,8 @@ philosynth-service/
 │   │   │   │                           # updatePlan / createPlanEdition / createPlan (вкладка «Тарифы»)
 │   │   │   ├── subscription.ts         # 5 функций §2.10: подписка/тарифы/subscribe/cancel/resume (6.2 СДЕЛАНО)
 │   │   │   ├── recommendations.ts      # 10.3: list / parse / extract / plan (+ withBusyRetry на 409 после done)
+│   │   │   ├── members.ts              # 16.2: участники (§2.18) + listSharedSyntheses + getInvitationInfo
+│   │   │   ├── notifications.ts        # 16.2: список/unread-count/read/read-all/settings (§2.19)
 │   │   │   └── export.ts
 │   │   │
 │   │   ├── i18n/                       # 11.3: язык интерфейса на клиенте
@@ -628,6 +659,8 @@ philosynth-service/
 │   │   │   ├── RegisterPage.tsx
 │   │   │   ├── ResetPasswordPage.tsx   # 9.1: «/reset-password» (форма с адресом, ответ всегда один) и
 │   │   │   │                           #  «/reset-password/:token» (новый пароль → /login с пояснением)
+│   │   │   ├── InvitationPage.tsx      # 16.2: «/invitations/:synthesisId» (RequireAuth, внутри Layout) —
+│   │   │   │                           #  принять / отклонить / открыть концепцию; 404 — «приглашения нет»
 │   │   │   ├── VerifyEmailPage.tsx     # 9.1: «/verify-email/:token» — подтверждение, затем каталог
 │   │   │   │                           #  (гостю — вход с пояснением); довод гасится один раз
 │   │   │   ├── ChangeEmailPage.tsx     # 15.3 (Д-73): «/change-email/:token» — подтверждение смены адреса
@@ -652,6 +685,11 @@ philosynth-service/
 │   │   │
 │   │   ├── components/
 │   │   │   ├── layout/
+│   │   │   │   ├── NotificationBell.tsx    # 16.2: колокольчик — опрос unread-count (30 с, видимая вкладка),
+│   │   │   │   │                           #  выпадающий список с курсором, клик → прочитано + переход,
+│   │   │   │   │                           #  «Прочитать всё»; клик мимо закрывает
+│   │   │   │   ├── NotificationSettings.tsx # 16.2: раздел «Уведомления» профиля — категории и сводка,
+│   │   │   │   │                           #  PATCH /notifications/settings сразу
 │   │   │   │   ├── LanguageSwitch.tsx      # 11.3: переключатель ru/en/de (topbar | form); самоназвания; setUiLocale/setLocale
 │   │   │   │   ├── Header.tsx              # 8.7: гостю «Войти · Регистрация», бренд → «/», выход → «/»;
 │   │   │   │   │                           # 11.3: LanguageSwitch в .topbar-right гостю и вошедшему, useT()
@@ -785,6 +823,8 @@ philosynth-service/
 │   │   └── utils/
 │   │       ├── concept-file.ts             # Парсинг концепт-файлов пула (1.5b, клиентские порты;
 │   │       │                               # 3.2: += catalogPreviewToPoolEntry, genealogy заполняется)
+│   │       ├── notification-text.ts        # 16.2: фраза уведомления по type/payload на языке интерфейса
+│   │       │                               #  (зеркало серверного notificationText; 14.2) + notificationLink
 │   │       ├── visibility-text.ts          # 8.7: тексты ступеней/галочек, flagsShownFor,
 │   │       │                               #  audienceText (через effectiveFlags shared), visibilityBadge
 │   │       ├── capsule-html.ts             # 8.4: пересборка HTML капсулы из текста
@@ -879,7 +919,7 @@ philosynth-service/
 │   │   ├── extract-section-templates.mjs
 │   │   └── extract-export-assets.mjs
 │   ├── patches/                        # идемпотентные патчи доков по итогам бесед (по одному
-│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv161)
+│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv162)
 │   │   ├── patch-docs-*.py             # запускаются ИЗ КОРНЯ репозитория;
 │   │   │                               # осторожно с повторным прогоном старого патча:
 │   │   │                               # доки с тех пор менялись, и якорь может совпасть
@@ -1032,6 +1072,30 @@ philosynth-service/
     │                                   #  обсуждения; R3 адреса — перегенерация графа (изменённое/прежнее определение),
     │                                   #  theses, удаление, ручная правка подраздела (выдержка прежняя); R4 ветки,
     │                                   #  статусы, скрытие, удаление, рецензии/редакции/отзыв, DELETE /auth/me, каскад
+    │                                   # smoke-162-request1 — 16.2: константы уведомлений, маршруты под requireAuth,
+    │                                   #  миграция 0018, env, CSS-блок, i18n; живьём по HTTP (app.request):
+    │                                   #  гейты 401/403/404/409, приглашение → письмо (en) → member_invited →
+    │                                   #  принятие → роль → комментарии/уведомления → настройки → курсор/read →
+    │                                   #  устаревание и сводка → довод и регистрация → исключение (49 ✓)
+    │                                   # test-162-requests2-4 — 16.2: живой сервер :3000 (почта в консоль, работник
+    │                                   #  и проход уведомлений раз в секунду), preview :5231, Chrome 131: R2
+    │                                   #  приглашения (письмо de, регистрация по ссылке, отзыв/роль/исключение,
+    │                                   #  «бывший участник»), R3 уведомления на каждое событие не автору,
+    │                                   #  finding_outdated проходом работника, счётчик/read-all, сводка под языком
+    │                                   #  получателя без отключённых категорий, R4 браузер (72 ✓ ×2)
+    │                                   # test-162-request1-ui — 16.2: сборка клиента под vite preview :5231 +
+    │                                   #  Chrome 131: вкладка «Участники» (409 под формой, второй шаг
+    │                                   #  исключения), колокольчик → страница принятия → полоса роли, «Со мной
+    │                                   #  поделились», профиль «Уведомления», /register?invite= (32 ✓)
+    │                                   # smoke-162-request1 — 16.2: константы уведомлений, маршруты под requireAuth,
+    │                                   #  миграция 0018, env, CSS-блок, i18n; живьём по HTTP (app.request):
+    │                                   #  гейты 401/403/404/409, приглашение → письмо (en) → member_invited →
+    │                                   #  принятие → роль → комментарии/уведомления → настройки → курсор/read →
+    │                                   #  устаревание и сводка → довод и регистрация → исключение (49 ✓)
+    │                                   # test-162-request1-ui — 16.2: сборка клиента под vite preview :5231 +
+    │                                   #  Chrome 131: вкладка «Участники» (409 под формой, второй шаг
+    │                                   #  исключения), колокольчик → страница принятия → полоса роли, «Со мной
+    │                                   #  поделились», профиль «Уведомления», /register?invite= (32 ✓)
     │                                   # smoke-161-request1 — 16.1: матрица прав (capabilitiesFor), ключи и хэши
     │                                   #  адресов, plainText/excerpt, сравнения владельца только в белом списке,
     │                                   #  журнал 0017; живьём через app.request (импорт sample/ владельцем):

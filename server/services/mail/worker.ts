@@ -27,6 +27,7 @@ import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import { env } from "../../env.js";
 import { maintenanceDue, runMaintenance } from "./maintenance.js"; // 15.3 (Д-72)
+import { maybeRunNotificationPasses } from "../notifications.js"; // 16.2
 import { sendMail, type OutgoingMail, type SendResult } from "./transport.js";
 
 const { mailOutbox } = schema;
@@ -195,6 +196,10 @@ async function maybeMaintain(now: number = Date.now()): Promise<void> {
 
 async function tick(): Promise<void> {
   await maybeMaintain();
+  // 16.2: проход уведомлений (сверка адресов открытых замечаний, сводки по
+  // почте) — тем же тиком, своим интервалом (NOTIFY_SCAN_INTERVAL_MS),
+  // своим try/catch внутри; сводки ставятся в mail_outbox и уходят ниже.
+  await maybeRunNotificationPasses();
   try {
     const r = await processOutbox();
     if (r.taken > 0) {

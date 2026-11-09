@@ -199,8 +199,16 @@
 ### 2.1. Auth
 
 ```
-POST   /auth/register          { email, password, displayName? }
-                                → { user: { id, email, displayName } }
+POST   /auth/register          { email, password, displayName?, inviteToken? }
+                                → { user: { id, email, displayName }, invitation: { synthesisId } | null }
+                                // 16.2: inviteToken — довод приглашения из
+                                // /register?invite=…: гасится и строка
+                                // synthesis_members 'invited' заводится ТОЙ ЖЕ
+                                // транзакцией; адрес регистрации ≠ адресу
+                                // приглашения → довод цел, invitation null
+GET    /auth/invitations/:token → InvitationInfo { synthesisId, synthesisTitle, role, email, inviterName }
+                                // 16.2: врезка страницы регистрации; без сессии;
+                                // негодный довод → 400 TOKEN_INVALID
                                 // 9.1: письмо с подтверждением адреса
                                 // ставится в mail_outbox В ТОЙ ЖЕ транзакции,
                                 // что и строка users, под точкой сохранения:
@@ -2249,9 +2257,94 @@ resolve не автором и не владельцем, hide не владел
 публикация, правка/замечание у отозванной, удаление опубликованной) —
 `error` объясняет причину.
 
-**Автор**: `{ id, name, deleted, isOwner }`; удалённый аккаунт (7.1) —
-`id: null`, `deleted: true`, `name` = «удалённый пользователь» на языке
-запроса. `isOwner` автора — через модуль прав.
+**Автор**: `{ id, name, deleted, isOwner, formerMember }`; удалённый аккаунт
+(7.1) — `id: null`, `deleted: true`, `name` = «удалённый пользователь» на
+языке запроса. `isOwner` автора — через модуль прав; `formerMember` (16.2)
+— автор не владелец и не действующий участник (исключён либо отклонил),
+вычисляется при чтении.
+
+### 2.18. Участники и приглашения (беседа 16.2)
+
+```
+GET    /syntheses/shared                       → { items: SharedSynthesisPreview[] }  (мои участия любого статуса, с myRole/myStatus)
+GET    /syntheses/:id/members                  → MembersView { members: MemberView[], invitations: PendingInvitation[] }  (владелец)
+POST   /syntheses/:id/members                  { email, role: reviewer | editor } → MemberInviteResult (201; владелец; mailLimiter)
+                                                 kind 'member'     — аккаунт есть: строка invited + письмо + уведомление
+                                                 kind 'invitation' — аккаунта нет: довод member_invite + письмо на регистрацию
+PATCH  /syntheses/:id/members/:mid             { role } → MemberView                 (владелец; активному — member_role_changed)
+DELETE /syntheses/:id/members/:mid             → { ok, removed: invited | active }   (владелец: отзыв приглашения / исключение → member_removed)
+POST   /syntheses/:id/members/:mid/resend      → { ok, sent }                        (владелец; только invited; mailLimiter)
+DELETE /syntheses/:id/invitations/:tid         → { ok }                              (владелец; довод гасится)
+POST   /syntheses/:id/invitations/:tid/resend  → { ok, sent, invitation }            (владелец; новый довод, прежний гаснет; mailLimiter)
+GET    /syntheses/:id/membership               → MyMembership                        (приглашённый/участник; нет строки → 404)
+POST   /syntheses/:id/membership/accept        → MyMembership                        (invited → active; владельцу — member_accepted)
+POST   /syntheses/:id/membership/decline       → { ok }                              (строка удаляется; владельцу — member_declined)
+```
+
+**Доступ**: гость → 401; не-UUID / нет строки → 404; управляющие маршруты
+— только владелец (`loadManaged` → `canManageSynthesis`; сторож 4bn) →
+иначе 403 `FORBIDDEN`. `GET /shared` монтируется ДО `GET /:id` (как
+`/public`). Участники — только по приглашению владельца (решение
+пользователя); приглашённый до принятия — читатель (16.1).
+
+**Конфликты** — 409 `CONFLICT` с причиной в `error`: владелец приглашает
+себя; адрес уже участник; уже приглашён (аккаунт — строка invited; без
+аккаунта — ждущий довод) — «можно повторить письмо»; повторное принятие;
+отклонение действующего («выйти может только владелец исключением»);
+повтор письма действующему. Роль вне reviewer | editor и негодный адрес —
+400 `VALIDATION_ERROR` (`details.role` / `details.email`).
+
+**Письма** — шаблонами 14.1 под языком ПОЛУЧАТЕЛЯ (`users.ui_locale`;
+адресу без аккаунта — язык запроса): приглашённому с аккаунтом — ссылка
+на страницу принятия `/invitations/:synthesisId`; без аккаунта — ссылка
+`/register?invite=<довод>` (72 ч, одноразовая; новое приглашение адресу
+гасит прежнюю). Постановка под точкой сохранения — сбой письма действие
+не отменяет (`sent: false`).
+
+**Исключение участника** (DELETE активного): строка снимается; его
+комментарии и рецензии ОСТАЮТСЯ, автор показывается `formerMember: true`
+(вычисляется при чтении: не владелец и не действующий участник).
+**Правило для 17.1**: открытые предложения исключённого закрываются с
+причиной «участник исключён» той же транзакцией (`removeMember`; метка
+в коде). Отзыв приглашённого (строка invited) уведомления не даёт.
+
+**Клиент**: вкладка «Документ | Участники» страницы концепции (владельцу;
+`MembersPanel`: приглашение email + роль, 409 строкой под формой, `<select>`
+роли с PATCH сразу, «Письмо ещё раз» / «Отозвать» у приглашённого,
+«Исключить» со вторым шагом `useSecondStep`, ждущие приглашения адресам
+без аккаунта отдельными строками); `InvitationPage` `/invitations/:synthesisId`
+(RequireAuth); каталог — вкладка «Со мной поделились» с бейджем роли;
+полоса страницы концепции участнику — его роль; `RegisterPage` с
+`?invite=` — врезка приглашения, адрес подставлен и заперт, после
+регистрации — на страницу принятия.
+
+### 2.19. Уведомления (беседа 16.2)
+
+```
+GET    /notifications                 ?unread=1&limit=30&cursor → NotificationList { items: Notification[], unread, nextCursor }
+GET    /notifications/unread-count    → { unread }                                   (опрос колокольчика, 30 с, только видимая вкладка)
+POST   /notifications/read-all        → { ok, marked }
+POST   /notifications/:id/read        → Notification                                 (только своя; чужая/не-UUID → 404)
+GET    /notifications/settings        → NotificationSettings { mutedCategories, emailDigest }
+PATCH  /notifications/settings        { mutedCategories?, emailDigest? } → NotificationSettings
+                                        // категория вне списка / не-boolean → 400 VALIDATION_ERROR
+```
+
+`Notification { id, type, category, synthesisId, synthesisTitle, actor:
+{ id | null, name } | null, address, refKind, refId, payload: { role?,
+excerpt? }, readAt, createdAt }` — фраза НЕ передаётся (14.2): клиент
+собирает её по `type`/`payload` (`utils/notification-text.ts`), сводка по
+почте — сервер под языком получателя. События и получатели: member_invited
+(приглашённому), member_accepted / member_declined (владельцу),
+member_role_changed / member_removed (участнику), comment_new (владелец +
+действующие участники, кроме автора; при ответе — всем, кроме автора
+корня), comment_reply (автору корня ветки), review_published (всем, кроме
+автора), finding_outdated (автору открытого корня / замечания
+опубликованной рецензии — проходом, один раз на текущий хэш объекта),
+proposal_created / proposal_decided — заведены, пишет 17.1. Актор своего
+события не получает; отключённая категория не пишется вовсе. Доставка —
+опросом (без WebSocket) и сводкой по почте не чаще `NOTIFY_DIGEST_INTERVAL_HOURS`
+(02 §2.39). Страница ≤ 200 (умолчание 30), курсор — id последней строки.
 
 ---
 
@@ -2630,7 +2723,10 @@ CONFLICT            — обсуждение (16.1, §2.17): действие п
                       строки — ответ в удалённую/скрытую ветку, правка
                       удалённого/скрытого комментария, повторная публикация,
                       правка или замечание у отозванной рецензии, удаление
-                      опубликованной — 409; один код, причина — в error
+                      опубликованной — 409; один код, причина — в error;
+                      16.2 (§2.18): владелец приглашает себя, адрес уже
+                      участник / уже приглашён, повторное принятие,
+                      отклонение действующего, повтор письма действующему
 SELF_ROLE_CHANGE    — POST /auth/users/:id/role на самого себя — 409 (8.1)
 LINEAGE_SELF        — POST /lineage/link: концепция — собственный родитель — 400 (8.5)
 LINEAGE_CYCLE       — POST /lineage/link: родитель среди потомков — 409 (8.5)

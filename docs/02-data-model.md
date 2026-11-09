@@ -29,8 +29,13 @@ users ─────────────┐
   ├── api_keys (encrypted)
   ├── transactions
   ├── api_usage
-  ├── auth_tokens (одноразовые доводы из писем; CASCADE; 9.1)
+  ├── auth_tokens (одноразовые доводы из писем; CASCADE; 9.1;
+  │                16.2: довод приглашения member_invite — на приглашающего,
+  │                адрес в new_email, synthesis_id → syntheses CASCADE)
   ├── admin_audit (actor_id → users, SET NULL; 8.1)
+  ├── notifications (16.2: получатель user_id CASCADE; actor_id SET NULL;
+  │                  synthesis_id CASCADE; при 7.1 — снимаются явно)
+  ├── notification_settings (16.2: user_id PK, CASCADE; при 7.1 — явно)
   │
   ├── synthesis_members (16.1: участники синтеза — reviewer | editor;
   │                      CASCADE по синтезу и пользователю; при 7.1 —
@@ -1106,18 +1111,34 @@ email вместо uuid.
 CREATE TABLE auth_tokens (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  purpose     TEXT NOT NULL CHECK (purpose IN ('email_verify','password_reset','email_change')),
-                                 -- email_change — 15.3 (миграция 0015)
+  purpose     TEXT NOT NULL CHECK (purpose IN ('email_verify','password_reset','email_change','member_invite')),
+                                 -- email_change — 15.3 (миграция 0015); member_invite — 16.2 (0018)
   token_hash  TEXT NOT NULL,     -- sha256(довод), hex; сам довод — только в письме
-  expires_at  TIMESTAMPTZ NOT NULL,  -- email_verify: +72 ч; password_reset, email_change: +1 ч
-  new_email   TEXT,              -- 15.3: адрес, на который переводится запись (только email_change)
+  expires_at  TIMESTAMPTZ NOT NULL,  -- email_verify, member_invite: +72 ч; password_reset, email_change: +1 ч
+  new_email   TEXT,              -- 15.3: адрес, на который переводится запись (email_change);
+                                 -- 16.2: адрес приглашённого без аккаунта (member_invite)
+  synthesis_id UUID REFERENCES syntheses(id) ON DELETE CASCADE,  -- 16.2: концепция приглашения (member_invite)
+  member_role TEXT CHECK (member_role IS NULL OR member_role IN ('reviewer','editor')),  -- 16.2
   used_at     TIMESTAMPTZ,       -- погашен переходом ЛИБО выдачей следующего
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_auth_tokens_user_purpose ON auth_tokens(user_id, purpose);
 CREATE INDEX idx_auth_tokens_hash ON auth_tokens(token_hash);
+CREATE INDEX idx_auth_tokens_synthesis ON auth_tokens(synthesis_id);  -- 16.2
 ```
+
+**Приглашение адресу без аккаунта (16.2).** `user_id NOT NULL`, а
+приглашённого ещё нет — довод `member_invite` висит на ПРИГЛАШАЮЩЕМ
+(владельце), адрес — в `new_email`, концепция и роль — в `synthesis_id` /
+`member_role`. Выдача — своя (`issueMemberInviteToken`): гасит прежние
+непогашенные доводы того же (синтез, адрес), а не (пользователь,
+назначение) — владелец зовёт многих; `issueToken` на `member_invite`
+бросает. Регистрация с `inviteToken` одной транзакцией гасит довод
+(`consumeMemberInviteToken`, один условный UPDATE) и заводит строку
+`synthesis_members` 'invited' — только если адрес регистрации совпал с
+`new_email`. Ждущие доводы синтеза — «приглашения адресам без аккаунта»
+во вкладке «Участники» (отзыв = гашение, повтор письма = новый довод).
 
 В базе лежит ХЭШ, а не довод: утечка таблицы не должна давать ни входа, ни
 подтверждения (тот же принцип, что `sessions.id`, 0.2). `issueToken` гасит
@@ -1515,6 +1536,78 @@ CREATE INDEX idx_review_findings_address ON review_findings(synthesis_id, addres
 §2.17) считает по `(address_kind, address_key)` открытые корни комментариев
 (не удалённые) и замечания ОПУБЛИКОВАННЫХ рецензий — двумя сгруппированными
 запросами; для пометок у элементов в 16.3.
+
+### 2.38. notifications
+
+Уведомления получателю (беседа 16.2; миграция `0018_members_notifications`).
+Пишутся ОДНОЙ точкой `services/notifications.ts: notify` исполнителем
+вызывающего под точкой сохранения (сбой записи действие не отменяет);
+актор своего события строки не получает; категория, отключённая
+получателем (§2.39), не пишется вовсе. Фраза НЕ хранится (правило 14.2):
+только код `type`, ссылки и параметры — клиент собирает её `tl()` на
+языке интерфейса, сводка по почте — под языком получателя при постановке
+письма. Доставка в приложении — опросом `unread-count` (без WebSocket),
+по почте — сводкой (проход работника почты, `emailed_at`).
+
+```sql
+CREATE TABLE notifications (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,      -- получатель
+  type          TEXT NOT NULL CHECK (type IN ('member_invited','member_accepted','member_declined',
+                  'member_role_changed','member_removed','comment_new','comment_reply',
+                  'review_published','finding_outdated','proposal_created','proposal_decided')),
+  synthesis_id  UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
+  actor_id      UUID REFERENCES users(id) ON DELETE SET NULL,              -- кто совершил; null — служба
+  address       JSONB,                   -- DiscussionAddress объекта (комментарий, замечание)
+  ref_kind      TEXT CHECK (ref_kind IS NULL OR ref_kind IN ('member','comment','review','finding','proposal')),
+  ref_id        UUID,                    -- id объекта (без FK: объект может исчезнуть)
+  payload       JSONB NOT NULL DEFAULT '{}',  -- { role?, excerpt? } — параметры фразы
+  dedupe_key    TEXT,                    -- finding_outdated: outdated:<refKind>:<refId>:<hash>:<userId>
+  read_at       TIMESTAMPTZ,
+  emailed_at    TIMESTAMPTZ,             -- вошла в сводку по почте
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_notifications_user_created ON notifications(user_id, created_at);
+CREATE INDEX idx_notifications_user_unread ON notifications(user_id) WHERE read_at IS NULL;
+CREATE INDEX idx_notifications_synthesis ON notifications(synthesis_id);
+CREATE UNIQUE INDEX uq_notifications_dedupe ON notifications(dedupe_key) WHERE dedupe_key IS NOT NULL;
+```
+
+Категория типа (`NOTIFICATION_CATEGORY_OF`, shared): membership (member_*),
+comments (comment_new, comment_reply), reviews (review_published), outdated
+(finding_outdated), proposals (proposal_*; пишет 17.1). Список —
+новые первыми, курсор — id последней строки, сравнение кортежем
+`(created_at, id)` в PG (урок 16.1). «Объект моего открытого замечания
+изменился» вычисляется ПРОХОДОМ `scanOutdatedAddresses` (не каждая
+мутация документа двигает `syntheses.updated_at`): открытые корни
+комментариев и замечания опубликованных рецензий сверяются
+`resolveAddress`, у `outdated` — строка автору (если он ещё участник) один
+раз на текущий хэш (`ON CONFLICT DO NOTHING` по частичному индексу).
+Удаление аккаунта снимает строки получателя явно (7.1: CASCADE при
+анонимизации молчит); строки, где удаляемый — актор, остаются.
+
+### 2.39. notification_settings
+
+Настройки получателя (беседа 16.2): отключённые категории и почтовая
+сводка. Строки нет — всё включено.
+
+```sql
+CREATE TABLE notification_settings (
+  user_id           UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  muted_categories  JSONB NOT NULL DEFAULT '[]',   -- NotificationCategory[]
+  email_digest      BOOLEAN NOT NULL DEFAULT true,
+  digest_sent_at    TIMESTAMPTZ,                   -- когда уходила прежняя сводка
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+Сводка (`runNotificationDigest`, тик работника почты): получатели — с
+непрочитанным и `emailed_at IS NULL`, `email_digest` не выключен,
+`digest_sent_at` старше `NOTIFY_DIGEST_INTERVAL_HOURS` (6; 0 — сводок нет);
+письмо под языком получателя (до 20 строк + «…и ещё N»), строки помечаются
+`emailed_at`, `digest_sent_at` ставится — той же транзакцией, что
+постановка письма. Отключённые категории в сводку не входят (и
+помечаются вошедшими — иначе держали бы получателя кандидатом).
 
 ## 3. Извлечение гранулярных элементов из HTML
 

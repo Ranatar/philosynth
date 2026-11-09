@@ -109,6 +109,9 @@ export interface SynthesisCardProps {
   visibility?: SynthesisCardVisibility | undefined;
   /** Беседа 8.4: действия владельца (только на вкладке «Мои») */
   actions?: SynthesisCardActions | undefined;
+  /** Беседа 16.2: дополнительный бейдж (вкладка «Со мной поделились» —
+   *  моя роль/статус участия); рисуется первым в header-badges */
+  badge?: React.ReactNode;
 }
 
 type Mode =
@@ -132,6 +135,7 @@ export function SynthesisCard({
   synthesis,
   visibility,
   actions,
+  badge,
 }: SynthesisCardProps) {
   const phil =
     synthesis.philosophers.length > 0
@@ -227,6 +231,7 @@ export function SynthesisCard({
           {synthesis.title}
         </div>
         <span className="header-badges" style={{ flexDirection: "row", gap: 6 }}>
+          {badge}
           {/* Беседа 3.2 (п. 5): бейдж мета-синтеза (родители-концепции
               в генеалогии — SynthesisPreview.hasConceptParents) */}
           {synthesis.hasConceptParents && (

@@ -146,3 +146,104 @@ export function emailChangedNoticeLetter(input: EmailChangedNoticeInput): Letter
   const html = htmlShell(subject, [esc(greeting(input.displayName)), esc(lead)], null, "", tail.map(esc));
   return { subject, text, html };
 }
+
+/* 16.2: участники и уведомления — три письма. Приглашение адресу С аккаунтом
+ * ведёт на страницу принятия (/invitations/:synthesisId, под входом); адресу
+ * БЕЗ аккаунта — на регистрацию с доводом в ссылке (ссылка одноразовая,
+ * 72 ч). Сводка непрочитанного — один список строк, собранный под языком
+ * ПОЛУЧАТЕЛЯ при постановке (services/notifications.ts), без ссылок на
+ * отдельные объекты — одна ссылка на концепцию у каждой строки. */
+
+/** Название роли для письма (тексты интерфейса — те же слова). */
+export function memberRoleLabel(role: "reviewer" | "editor"): string {
+  return role === "editor"
+    ? tl("server.mail.templates.roleEditor", "редактор")
+    : tl("server.mail.templates.roleReviewer", "рецензент");
+}
+
+export interface MemberInviteLetterInput {
+  displayName?: string | null | undefined;
+  inviterName: string;
+  synthesisTitle: string;
+  role: "reviewer" | "editor";
+  /** Ссылка на страницу принятия (/invitations/:synthesisId) */
+  link: string;
+}
+
+/** Приглашение адресу С аккаунтом: принять или отклонить — на странице под входом. */
+export function memberInviteLetter(input: MemberInviteLetterInput): Letter {
+  const subject = tl("server.mail.templates.inviteSubject", "{service}: приглашение в концепцию «{title}»", { service: SERVICE_NAME, title: input.synthesisTitle });
+  const lead = tl("server.mail.templates.inviteLead", "{inviter} приглашает вас участвовать в обсуждении концепции «{title}» в роли «{role}». Принять или отклонить приглашение можно на странице:", { inviter: input.inviterName, title: input.synthesisTitle, role: memberRoleLabel(input.role) });
+  const tail = [
+    tl("server.mail.templates.inviteTail", "Участник видит концепцию целиком, в том числе приватную, и может комментировать и рецензировать её; документ обсуждением не меняется."),
+    tl("server.mail.templates.inviteIgnore", "Если приглашение вам не нужно, ничего делать не обязательно — его можно отклонить на той же странице."),
+  ];
+  const text = [greeting(input.displayName), "", lead, "", input.link, "", ...tail, "", `— ${SERVICE_NAME}`].join("\n");
+  const html = htmlShell(subject, [esc(greeting(input.displayName)), esc(lead)], input.link, tl("server.mail.templates.inviteButton", "Открыть приглашение"), tail);
+  return { subject, text, html };
+}
+
+export interface MemberInviteRegisterLetterInput {
+  inviterName: string;
+  synthesisTitle: string;
+  role: "reviewer" | "editor";
+  /** Ссылка на регистрацию с доводом (/register?invite=…) */
+  link: string;
+  ttlHours: number;
+}
+
+/** Приглашение адресу БЕЗ аккаунта: регистрация по одноразовой ссылке. */
+export function memberInviteRegisterLetter(input: MemberInviteRegisterLetterInput): Letter {
+  const ttl = hoursPhrase(input.ttlHours);
+  const subject = tl("server.mail.templates.inviteSubject", "{service}: приглашение в концепцию «{title}»", { service: SERVICE_NAME, title: input.synthesisTitle });
+  const lead = tl("server.mail.templates.inviteRegisterLead", "{inviter} приглашает вас участвовать в обсуждении концепции «{title}» в службе {service} в роли «{role}». Учётной записи на этот адрес ещё нет — зарегистрируйтесь по ссылке, и приглашение будет ждать вас в каталоге:", { inviter: input.inviterName, title: input.synthesisTitle, service: SERVICE_NAME, role: memberRoleLabel(input.role) });
+  const tail = [
+    tl("server.mail.templates.inviteRegisterTtl", "Ссылка действует {ttl} и срабатывает один раз. Новое приглашение на этот адрес делает прежнюю ссылку недействительной.", { ttl }),
+    tl("server.mail.templates.inviteRegisterIgnore", "Если вы не ждёте приглашения, ничего делать не нужно: без регистрации по ссылке участие не возникает."),
+  ];
+  const text = [greeting(null), "", lead, "", input.link, "", ...tail, "", `— ${SERVICE_NAME}`].join("\n");
+  const html = htmlShell(subject, [esc(greeting(null)), esc(lead)], input.link, tl("server.mail.templates.inviteRegisterButton", "Зарегистрироваться по приглашению"), tail);
+  return { subject, text, html };
+}
+
+export interface DigestLine {
+  /** Готовая фраза уведомления на языке получателя */
+  text: string;
+  /** Ссылка на концепцию */
+  link: string;
+}
+
+export interface DigestLetterInput {
+  displayName?: string | null | undefined;
+  lines: DigestLine[];
+  /** Сколько непрочитанного всего (больше, чем строк, если список обрезан) */
+  unreadTotal: number;
+  /** Ссылка на список уведомлений в приложении */
+  link: string;
+}
+
+/** Сводка непрочитанных уведомлений — не чаще раза в N часов одному получателю. */
+export function notificationDigestLetter(input: DigestLetterInput): Letter {
+  const n = input.unreadTotal;
+  const subject = tl("server.mail.templates.digestSubject", "{service}: {n, plural, one {# новое уведомление} few {# новых уведомления} many {# новых уведомлений} other {# новых уведомления}}", { service: SERVICE_NAME, n });
+  const lead = tl("server.mail.templates.digestLead", "Пока вас не было, в концепциях, где вы участвуете, произошло следующее:");
+  const more = input.unreadTotal > input.lines.length
+    ? [tl("server.mail.templates.digestMore", "…и ещё {n, plural, one {# уведомление} few {# уведомления} many {# уведомлений} other {# уведомления}} — все в приложении.", { n: input.unreadTotal - input.lines.length })]
+    : [];
+  const tail = [
+    tl("server.mail.templates.digestTail", "Сводка приходит не чаще раза в несколько часов и только при непрочитанном; отключить её или отдельные категории можно в профиле."),
+  ];
+  const text = [
+    greeting(input.displayName), "", lead, "",
+    ...input.lines.map((l) => `— ${l.text}\n  ${l.link}`),
+    ...more.map((m) => `\n${m}`),
+    "", input.link, "", ...tail, "", `— ${SERVICE_NAME}`,
+  ].join("\n");
+  // Каждая строка сводки — свой абзац (htmlShell оборачивает в <p>; список
+  // внутри <p> был бы невалидной разметкой)
+  const items = input.lines.map(
+    (l) => `— ${esc(l.text)} — <a href="${esc(l.link)}" style="color:#1a1814;">${esc(tl("server.mail.templates.digestOpen", "открыть"))}</a>`,
+  );
+  const html = htmlShell(subject, [esc(greeting(input.displayName)), esc(lead), ...items, ...more.map(esc)], input.link, tl("server.mail.templates.digestButton", "Открыть уведомления"), tail);
+  return { subject, text, html };
+}

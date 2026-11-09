@@ -84,11 +84,17 @@ interface AuthState {
   pending: boolean;
 
   login(email: string, password: string): Promise<boolean>;
+  /** 16.2: inviteToken — довод приглашения из /register?invite=…; после
+   *  регистрации сервер заводит участие 'invited' (ответ invitation) */
   register(
     email: string,
     password: string,
     displayName?: string,
+    inviteToken?: string,
   ): Promise<boolean>;
+  /** 16.2: id концепции из приглашения, применённого при последней
+   *  регистрации (RegisterPage ведёт на страницу принятия); null — не было */
+  registeredInvitation: { synthesisId: string } | null;
   logout(): Promise<void>;
   /** Восстановление сессии по cookie (GET /auth/me); вызывать один раз из App */
   restore(): Promise<void>;
@@ -186,14 +192,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  async register(email, password, displayName) {
-    set({ pending: true, error: null });
+  registeredInvitation: null,
+
+  async register(email, password, displayName, inviteToken) {
+    set({ pending: true, error: null, registeredInvitation: null });
     try {
-      await apiPost<{ user: AuthUser }>("/auth/register", {
+      const res = await apiPost<{ user: AuthUser; invitation?: { synthesisId: string } | null }>("/auth/register", {
         email,
         password,
         ...(displayName ? { displayName } : {}),
+        ...(inviteToken ? { inviteToken } : {}),
       });
+      set({ registeredInvitation: res.invitation ?? null });
       // Register не выдаёт сессию (03-spec: отдельный login после регистрации
       // не специфицирован; server/routes/auth.ts сессию на register не ставит) —
       // логинимся сразу теми же кредами.

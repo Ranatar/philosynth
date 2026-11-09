@@ -35,6 +35,9 @@
  * элементы <Route element={…}> создаются заново, и каждый компонент, звущий
  * tl() при отрисовке, получает текст нового языка без перезагрузки страницы.
  * Провайдер каталога для tl() ставит сам модуль i18n-store при импорте.
+ *
+ * Беседа 16.2: «/invitations/:synthesisId» — страница принятия приглашения
+ * (под RequireAuth; гостя ведёт на «/» с from — после входа вернётся).
  */
 import { useEffect } from "react";
 import {
@@ -52,6 +55,7 @@ import { CatalogPage } from "./pages/CatalogPage";
 import { ChangeEmailPage } from "./pages/ChangeEmailPage"; // 15.3 (Д-73)
 import { CreateSynthesisPage } from "./pages/CreateSynthesisPage";
 import { ImportPage } from "./pages/ImportPage";
+import { InvitationPage } from "./pages/InvitationPage"; // 16.2
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -157,6 +161,15 @@ export function App() {
             element={
               <RequireAuth>
                 <BillingPage />
+              </RequireAuth>
+            }
+          />
+          {/* 16.2: страница принятия приглашения — под входом, внутри Layout */}
+          <Route
+            path="/invitations/:synthesisId"
+            element={
+              <RequireAuth>
+                <InvitationPage />
               </RequireAuth>
             }
           />

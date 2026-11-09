@@ -6649,6 +6649,251 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 16.2 — участники и уведомления (первый запрос) ═══════════════
+ * В исходнике ни участников, ни уведомлений нет. Вкладка «Участники»,
+ * страница приглашения и раздел профиля собраны из готового (.input-form,
+ * .form-section-title, .data-table, .cert-badge, .action-btn, .callout,
+ * .transform-warn). Своих правил — восемь групп:
+ * (1) .page-tabs/.page-tab — вкладки «Документ | Участники» на странице
+ *     концепции: активная вкладка красится --blue-corp (как tabBtn каталога
+ *     1.6b, но классом вместо inline-стиля);
+ * (2) .members-invite-row — форма приглашения в одну строку (поле, роль,
+ *     кнопка); на узких экранах — столбиком;
+ * (3) .members-who/.members-email/.members-dates/.members-actions —
+ *     ячейки таблицы участников: имя над адресом, даты моноширинные мелкие,
+ *     кнопки строки в ряд с переносом;
+ * (4) .members-row-note — строка исхода действия под кнопками; .warn — --red;
+ * (5) .invitation-card — карточка страницы приглашения: ограничена по
+ *     ширине, иначе .input-form тянется на всю колонку;
+ * (6) .notif-root/.notif-btn/.notif-count — колокольчик в .topbar: позиция
+ *     для выпадающего списка; счётчик — тот же язык, что .topbar-badge
+ *     (моно, прописные), на --gold по тёмному фону полосы;
+ * (7) .notif-dropdown и внутренности — выпадающий список: бумага, рамка
+ *     --rule, фиксированная ширина, прокрутка; непрочитанная строка —
+ *     левая полоса --gold и фон --blue-light; текст — .notif-text, время —
+ *     моно --ink-dim;
+ * (8) .notif-settings-list/.notif-settings-row — раздел «Уведомления»
+ *     профиля: чекбоксы столбиком.
+ * Новых hex нет (только переменные), углы прямые, теней нет.
+ * ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* (1) вкладки страницы концепции */
+  .page-tabs {
+    margin-bottom: 12px;
+  }
+  .page-tab.active {
+    background: var(--blue-corp);
+    color: var(--white);
+    border-color: var(--blue-corp);
+  }
+
+  /* (2) панель и форма приглашения */
+  .members-panel {
+    margin-bottom: 24px;
+  }
+  .members-invite-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .members-invite-row .form-input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .members-invite-row .form-select {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  /* (3) ячейки таблицы участников */
+  .members-who {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .members-email {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+  }
+  .members-dates {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mid);
+    white-space: nowrap;
+  }
+  .members-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+  .members-table .form-select {
+    width: auto;
+  }
+
+  /* (4) исход действия под кнопками строки */
+  .members-row-note {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mid);
+    text-align: right;
+  }
+  .members-row-note.warn {
+    color: var(--red);
+  }
+
+  /* (5) карточка страницы приглашения */
+  .invitation-card {
+    max-width: 640px;
+  }
+
+  /* (6) колокольчик в полосе */
+  .notif-root {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .notif-btn {
+    position: relative;
+  }
+  .notif-count {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    min-width: 16px;
+    padding: 0 4px;
+    font-family: var(--mono);
+    font-size: 9px;
+    line-height: 16px;
+    text-align: center;
+    letter-spacing: 0.5px;
+    background: var(--gold);
+    color: var(--ink);
+  }
+
+  /* (7) выпадающий список */
+  .notif-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 40;
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    max-height: 70vh;
+    overflow-y: auto;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    text-align: left;
+  }
+  .notif-head,
+  .notif-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .notif-foot {
+    border-bottom: none;
+    border-top: 1px solid var(--rule);
+    justify-content: center;
+  }
+  .notif-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .notif-empty {
+    margin: 0;
+    padding: 16px 10px;
+    font-size: 12px;
+    color: var(--ink-dim);
+    text-align: center;
+  }
+  .notif-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .notif-item {
+    border-bottom: 1px solid var(--rule);
+    border-left: 3px solid transparent;
+  }
+  .notif-item:last-child {
+    border-bottom: none;
+  }
+  .notif-item.unread {
+    border-left-color: var(--gold);
+    background: var(--blue-light);
+  }
+  .notif-item-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .notif-item-btn:hover {
+    background: var(--off);
+  }
+  .notif-text {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .notif-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-dim);
+  }
+
+  /* (8) раздел «Уведомления» профиля */
+  .notif-settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 8px 0;
+  }
+  .notif-settings-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .notif-settings-row input {
+    margin-top: 3px;
+  }
+  .notif-settings-digest {
+    padding-top: 8px;
+    border-top: 1px solid var(--rule);
+  }
+}
+
+@media (max-width: 600px) {
+  .members-invite-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .members-invite-row .form-select {
+    width: 100%;
+  }
+  .members-dates {
+    white-space: normal;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;

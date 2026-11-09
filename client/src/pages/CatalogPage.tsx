@@ -42,6 +42,12 @@
  *    после успеха список перечитывается (грабля 6.2: статус — после
  *    перечитки, не до).
  *
+ * Беседа 16.2 (п. 3): вкладка «Со мной поделились» — GET /syntheses/shared
+ * (концепции, где я участник или приглашён), бейдж роли/статуса в карточке
+ * (проп badgeOf списка); карточка приглашённого ведёт на концепцию — доступ
+ * решает сервер (приглашённый ещё читатель), принять — со страницы
+ * приглашения (ссылка из письма или колокольчика).
+ *
  * Беседа 8.7 (п. 3): проп publicOnly — режим «/explore»: только публичный
  * каталог (GET /syntheses/public — гостевой путь 8.6), без вкладки «Мои»,
  * кнопки «Новый синтез» и поиска по генеалогии (/lineage/search под
@@ -53,9 +59,11 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import type { LineageNode } from "@philosynth/shared/types/lineage";
 import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
+import type { SharedSynthesisPreview } from "@philosynth/shared/types/notifications";
 
 import { ApiError } from "../api/client";
 import { getDescendants } from "../api/lineage";
+import { listSharedSyntheses } from "../api/members"; // 16.2
 import {
   deleteSynthesis,
   duplicateSynthesis,
@@ -72,13 +80,25 @@ import type {
 import { SynthesisList } from "../components/catalog/SynthesisList";
 import { LineageSearch } from "../components/lineage/LineageSearch";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
+import { memberStatusLabel, roleLabel } from "../components/synthesis/MembersPanel"; // 16.2
 import { useAuthStore } from "../stores/auth-store";
 import { tl } from "@philosynth/shared/i18n/t";
 
 const PAGE_LIMIT = 20;
 const SEARCH_DEBOUNCE_MS = 400;
 
-type CatalogTab = "mine" | "public";
+type CatalogTab = "mine" | "public" | "shared";
+
+/** 16.2: роль/статус участия по карточке вкладки «Со мной поделились» */
+function sharedBadge(s: SynthesisPreview): React.ReactNode {
+  const sh = s as SharedSynthesisPreview;
+  if (!sh.myRole) return null;
+  return (
+    <span className={sh.myStatus === "active" ? "cert-badge gold" : "cert-badge"} data-testid="card-my-role">
+      {sh.myStatus === "active" ? roleLabel(sh.myRole) : `${memberStatusLabel("invited")} · ${roleLabel(sh.myRole)}`}
+    </span>
+  );
+}
 
 /** Собрать id всех узлов-концепций из леса потомков (беседа 3.2) */
 function collectDescendantIds(nodes: readonly LineageNode[]): Set<string> {
@@ -190,10 +210,19 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
         limit: PAGE_LIMIT,
         ...(search ? { search } : {}),
       };
+      // 16.2: «Со мной поделились» — мои участия (любого статуса) одним
+      // списком без страниц; поиск — по названию на клиенте (список короткий)
       const result =
         tab === "mine"
           ? await listSyntheses(params)
-          : await listPublicSyntheses(params);
+          : tab === "public"
+            ? await listPublicSyntheses(params)
+            : await listSharedSyntheses().then((r) => {
+                const items = search
+                  ? r.items.filter((it) => it.title.toLowerCase().includes(search.toLowerCase()))
+                  : r.items;
+                return { items, total: items.length };
+              });
       if (seq !== reqSeq.current) return;
       setItems(result.items);
       setTotal(result.total);
@@ -353,6 +382,7 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
         <div className="actions-bar-btns">
           {!publicOnly && tabBtn("mine", tl("catalogPage.tabMine", "Мои"))}
           {!publicOnly && tabBtn("public", tl("catalogPage.tabPublic", "Публичные"))}
+          {!publicOnly && tabBtn("shared", tl("catalogPage.tabShared", "Со мной поделились"))}
         </div>
         <div className="actions-bar-btns">
           {/* Поиск по генеалогии — /lineage/search под requireAuth: гостю
@@ -430,10 +460,13 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
                   ? tl("catalogPage.nothingFound", "Ничего не найдено по запросу.")
                   : tab === "mine"
                     ? tl("catalogPage.noSynthesesYet", "У вас пока нет синтезов — начните с «Новый синтез».")
-                    : tl("catalogPage.noPublicSyntheses", "Публичных синтезов пока нет.")
+                    : tab === "shared"
+                      ? tl("catalogPage.noShared", "С вами пока никто не делился концепциями — участие возникает по приглашению владельца.")
+                      : tl("catalogPage.noPublicSyntheses", "Публичных синтезов пока нет.")
             }
             visibility={tab === "mine" ? cardVisibility : undefined}
             actions={tab === "mine" ? cardActions : undefined}
+            badgeOf={tab === "shared" ? sharedBadge : undefined}
           />
         )}
       </div>

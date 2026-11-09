@@ -22,6 +22,8 @@ export interface SynthesisListProps {
   visibility?: SynthesisCardVisibility | undefined;
   /** Беседа 8.4: действия владельца (переименовать/дублировать/удалить) */
   actions?: SynthesisCardActions | undefined;
+  /** Беседа 16.2: бейдж по карточке (вкладка «Со мной поделились» — роль) */
+  badgeOf?: ((s: SynthesisPreview) => React.ReactNode) | undefined;
 }
 
 export function SynthesisList({
@@ -29,6 +31,7 @@ export function SynthesisList({
   emptyText,
   visibility,
   actions,
+  badgeOf,
 }: SynthesisListProps) {
   if (items.length === 0) {
     return <p className="pool-status" style={{ textAlign: "center", padding: "32px 0" }}>{emptyText}</p>;
@@ -41,6 +44,7 @@ export function SynthesisList({
           synthesis={s}
           visibility={visibility}
           actions={actions}
+          badge={badgeOf ? badgeOf(s) : undefined}
         />
       ))}
     </div>

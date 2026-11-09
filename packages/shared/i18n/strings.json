@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-11-08T18:36:33.171Z",
-    "imported": "2026-11-08T19:24:10.341Z"
+    "synced": "2026-11-09T07:45:54.112Z",
+    "imported": "2026-11-09T07:47:13.792Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -1462,7 +1462,7 @@
       "en": "The server returned a non-JSON response",
       "de": "Der Server hat keine JSON-Antwort zurückgegeben",
       "from": {"en":"Сервер вернул не-JSON ответ","de":"Сервер вернул не-JSON ответ"},
-      "where": ["client/src/api/client.ts:156"]
+      "where": ["client/src/api/client.ts:157"]
     },
     "api.client.requestFailedHttp": {
       "ru": "Ошибка запроса (HTTP {status})",
@@ -1470,14 +1470,14 @@
       "de": "Anfragefehler (HTTP {status})",
       "from": {"en":"Ошибка запроса (HTTP {status})","de":"Ошибка запроса (HTTP {status})"},
       "params": {"status":"response.status"},
-      "where": ["client/src/api/client.ts:176"]
+      "where": ["client/src/api/client.ts:177"]
     },
     "api.client.serverUnavailable": {
       "ru": "Сервер недоступен. Проверьте соединение.",
       "en": "Server unavailable. Check your connection.",
       "de": "Server nicht erreichbar. Prüfen Sie die Verbindung.",
       "from": {"en":"Сервер недоступен. Проверьте соединение.","de":"Сервер недоступен. Проверьте соединение."},
-      "where": ["client/src/api/client.ts:139"]
+      "where": ["client/src/api/client.ts:140"]
     },
     "api.import.nonJsonResponse": {
       "ru": "Сервер вернул не-JSON ответ",
@@ -1506,7 +1506,7 @@
       "en": "checking session…",
       "de": "Sitzung wird geprüft…",
       "from": {"en":"проверка сессии…","de":"проверка сессии…"},
-      "where": ["client/src/App.tsx:77"]
+      "where": ["client/src/App.tsx:81"]
     },
     "billing.plansTable.enrichments": {
       "ru": "Обогащения",
@@ -2409,14 +2409,14 @@
       "de": "Autor: {authorName}",
       "from": {"en":"Автор: {authorName}","de":"Автор: {authorName}"},
       "params": {"authorName":"synthesis.authorName"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:255"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:260"]
     },
     "catalog.synthesisCard.countingDescendants": {
       "ru": "Считаю потомков…",
       "en": "Counting descendants…",
       "de": "Nachkommen werden gezählt…",
       "from": {"en":"Считаю потомков…","de":"Считаю потомков…"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:344"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:349"]
     },
     "catalog.synthesisCard.deleteIrreversible": {
       "ru": "Удаление необратимо: разделы, элементы, логи и родословная концепции будут стёрты.",
@@ -2459,21 +2459,21 @@
       "en": "Duplicate",
       "de": "Duplizieren",
       "from": {"en":"Дублировать","de":"Дублировать"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:424"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:429"]
     },
     "catalog.synthesisCard.duplicating": {
       "ru": "Дублирую…",
       "en": "Duplicating…",
       "de": "Wird dupliziert…",
       "from": {"en":"Дублирую…","de":"Дублирую…"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:424"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:429"]
     },
     "catalog.synthesisCard.metaSynthesisBadge": {
       "ru": "◈ мета-синтез",
       "en": "◈ meta-synthesis",
       "de": "◈ Meta-Synthese",
       "from": {"en":"◈ мета-синтез","de":"◈ мета-синтез"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:233"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:238"]
     },
     "catalog.synthesisCard.noDescendants": {
       "ru": "{base} Потомков у концепции нет.",
@@ -2488,7 +2488,7 @@
       "en": "Rename",
       "de": "Umbenennen",
       "from": {"en":"Переименовать","de":"Переименовать"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:412"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:417"]
     },
     "catalog.synthesisCard.statusDraft": {
       "ru": "черновик",
@@ -2530,7 +2530,7 @@
       "en": "Visibility",
       "de": "Sichtbarkeit",
       "from": {"en":"Публичность","de":"Публичность"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:370"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:375"]
     },
     "catalog.visibilityControl.costNote": {
       "ru": "Стоимость и токены галочкой не управляются: их видит любой зарегистрированный, гость — никогда.",
@@ -2572,49 +2572,49 @@
       "en": "← Back",
       "de": "← Zurück",
       "from": {"en":"← Назад","de":"← Назад"},
-      "where": ["client/src/pages/CatalogPage.tsx:449"]
+      "where": ["client/src/pages/CatalogPage.tsx:482"]
     },
     "catalogPage.catalogLoadFailed": {
       "ru": "Не удалось загрузить каталог.",
       "en": "Failed to load the catalog.",
       "de": "Katalog konnte nicht geladen werden.",
       "from": {"en":"Не удалось загрузить каталог.","de":"Не удалось загрузить каталог."},
-      "where": ["client/src/pages/CatalogPage.tsx:205"]
+      "where": ["client/src/pages/CatalogPage.tsx:234"]
     },
     "catalogPage.conceptCatalog": {
       "ru": "Каталог концепций",
       "en": "Concept catalog",
       "de": "Konzeptkatalog",
       "from": {"en":"Каталог концепций","de":"Каталог концепций"},
-      "where": ["client/src/pages/CatalogPage.tsx:333"]
+      "where": ["client/src/pages/CatalogPage.tsx:362"]
     },
     "catalogPage.copyFailed": {
       "ru": "Не удалось создать копию.",
       "en": "Failed to create a copy.",
       "de": "Kopie konnte nicht erstellt werden.",
       "from": {"en":"Не удалось создать копию.","de":"Не удалось создать копию."},
-      "where": ["client/src/pages/CatalogPage.tsx:273"]
+      "where": ["client/src/pages/CatalogPage.tsx:302"]
     },
     "catalogPage.deleteFailed": {
       "ru": "Не удалось удалить концепцию.",
       "en": "Failed to delete the concept.",
       "de": "Konzept konnte nicht gelöscht werden.",
       "from": {"en":"Не удалось удалить концепцию.","de":"Не удалось удалить концепцию."},
-      "where": ["client/src/pages/CatalogPage.tsx:282"]
+      "where": ["client/src/pages/CatalogPage.tsx:311"]
     },
     "catalogPage.descendantsLoadFailed": {
       "ru": "⚠ Не удалось загрузить потомков — фильтр не применён.",
       "en": "⚠ Failed to load descendants — the filter was not applied.",
       "de": "⚠ Nachkommen konnten nicht geladen werden — Filter nicht angewendet.",
       "from": {"en":"⚠ Не удалось загрузить потомков — фильтр не применён.","de":"⚠ Не удалось загрузить потомков — фильтр не применён."},
-      "where": ["client/src/pages/CatalogPage.tsx:391"]
+      "where": ["client/src/pages/CatalogPage.tsx:421"]
     },
     "catalogPage.forward": {
       "ru": "Вперёд →",
       "en": "Forward →",
       "de": "Weiter →",
       "from": {"en":"Вперёд →","de":"Вперёд →"},
-      "where": ["client/src/pages/CatalogPage.tsx:460"]
+      "where": ["client/src/pages/CatalogPage.tsx:493"]
     },
     "catalogPage.genealogyToggle": {
       "ru": "{lineageSearchOpen} Генеалогия",
@@ -2622,105 +2622,112 @@
       "de": "{lineageSearchOpen} Genealogie",
       "from": {"en":"{lineageSearchOpen} Генеалогия","de":"{lineageSearchOpen} Генеалогия"},
       "params": {"lineageSearchOpen":"lineageSearchOpen ? \"▾\" : \"▸\""},
-      "where": ["client/src/pages/CatalogPage.tsx:367"]
+      "where": ["client/src/pages/CatalogPage.tsx:397"]
     },
     "catalogPage.generationRunning": {
       "ru": "Генерация ещё идёт — дождитесь завершения или остановите её.",
       "en": "Generation is still running — wait for it to finish or stop it.",
       "de": "Die Generierung läuft noch — warten Sie auf den Abschluss oder stoppen Sie sie.",
       "from": {"en":"Генерация ещё идёт — дождитесь завершения или остановите её.","de":"Генерация ещё идёт — дождитесь завершения или остановите её."},
-      "where": ["client/src/pages/CatalogPage.tsx:111"]
+      "where": ["client/src/pages/CatalogPage.tsx:131"]
     },
     "catalogPage.lineageSearchHint": {
       "ru": "Поиск концепций по философам-предкам",
       "en": "Search concepts by ancestor philosophers",
       "de": "Konzepte nach Vorfahren-Philosophen suchen",
       "from": {"en":"Поиск концепций по философам-предкам","de":"Поиск концепций по философам-предкам"},
-      "where": ["client/src/pages/CatalogPage.tsx:365"]
+      "where": ["client/src/pages/CatalogPage.tsx:395"]
     },
     "catalogPage.loadingCatalog": {
       "ru": "загрузка каталога…",
       "en": "loading catalog…",
       "de": "Katalog wird geladen…",
       "from": {"en":"загрузка каталога…","de":"загрузка каталога…"},
-      "where": ["client/src/pages/CatalogPage.tsx:417"]
+      "where": ["client/src/pages/CatalogPage.tsx:447"]
     },
     "catalogPage.loadingDescendants": {
       "ru": "Загрузка потомков…",
       "en": "Loading descendants…",
       "de": "Nachkommen werden geladen…",
       "from": {"en":"Загрузка потомков…","de":"Загрузка потомков…"},
-      "where": ["client/src/pages/CatalogPage.tsx:393"]
+      "where": ["client/src/pages/CatalogPage.tsx:423"]
     },
     "catalogPage.myCatalog": {
       "ru": "Мой каталог",
       "en": "My catalog",
       "de": "Mein Katalog",
       "from": {"en":"Мой каталог","de":"Мой каталог"},
-      "where": ["client/src/pages/CatalogPage.tsx:338"]
+      "where": ["client/src/pages/CatalogPage.tsx:367"]
     },
     "catalogPage.newSynthesis": {
       "ru": "Новый синтез",
       "en": "New synthesis",
       "de": "Neue Synthese",
       "from": {"en":"Новый синтез","de":"Новый синтез"},
-      "where": ["client/src/pages/CatalogPage.tsx:347"]
+      "where": ["client/src/pages/CatalogPage.tsx:376"]
     },
     "catalogPage.noDescendantsInTab": {
       "ru": "На этой вкладке потомков выбранной концепции нет.",
       "en": "There are no descendants of the selected concept on this tab.",
       "de": "Auf diesem Tab gibt es keine Nachkommen des gewählten Konzepts.",
       "from": {"en":"На этой вкладке потомков выбранной концепции нет.","de":"На этой вкладке потомков выбранной концепции нет."},
-      "where": ["client/src/pages/CatalogPage.tsx:428"]
+      "where": ["client/src/pages/CatalogPage.tsx:458"]
     },
     "catalogPage.noPublicSyntheses": {
       "ru": "Публичных синтезов пока нет.",
       "en": "There are no public syntheses yet.",
       "de": "Noch keine öffentlichen Synthesen.",
       "from": {"en":"Публичных синтезов пока нет.","de":"Публичных синтезов пока нет."},
-      "where": ["client/src/pages/CatalogPage.tsx:433"]
+      "where": ["client/src/pages/CatalogPage.tsx:465"]
+    },
+    "catalogPage.noShared": {
+      "ru": "С вами пока никто не делился концепциями — участие возникает по приглашению владельца.",
+      "en": "No one has shared a concept with you yet — participation starts with an owner's invitation.",
+      "de": "Bisher hat niemand eine Konzeption mit Ihnen geteilt — die Teilnahme beginnt mit einer Einladung des Eigentümers.",
+      "from": {"en":"С вами пока никто не делился концепциями — участие возникает по приглашению владельца.","de":"С вами пока никто не делился концепциями — участие возникает по приглашению владельца."},
+      "where": ["client/src/pages/CatalogPage.tsx:464"]
     },
     "catalogPage.noSynthesesYet": {
       "ru": "У вас пока нет синтезов — начните с «Новый синтез».",
       "en": "You have no syntheses yet — start with “New synthesis”.",
       "de": "Sie haben noch keine Synthesen — beginnen Sie mit „Neue Synthese“.",
       "from": {"en":"У вас пока нет синтезов — начните с «Новый синтез».","de":"У вас пока нет синтезов — начните с «Новый синтез»."},
-      "where": ["client/src/pages/CatalogPage.tsx:432"]
+      "where": ["client/src/pages/CatalogPage.tsx:462"]
     },
     "catalogPage.noVisibleDescendants": {
       "ru": "У этой концепции нет потомков (видимых вам).",
       "en": "This concept has no descendants (visible to you).",
       "de": "Dieses Konzept hat keine (für Sie sichtbaren) Nachkommen.",
       "from": {"en":"У этой концепции нет потомков (видимых вам).","de":"У этой концепции нет потомков (видимых вам)."},
-      "where": ["client/src/pages/CatalogPage.tsx:395"]
+      "where": ["client/src/pages/CatalogPage.tsx:425"]
     },
     "catalogPage.nothingFound": {
       "ru": "Ничего не найдено по запросу.",
       "en": "Nothing found for the query.",
       "de": "Zur Anfrage wurde nichts gefunden.",
       "from": {"en":"Ничего не найдено по запросу.","de":"Ничего не найдено по запросу."},
-      "where": ["client/src/pages/CatalogPage.tsx:430"]
+      "where": ["client/src/pages/CatalogPage.tsx:460"]
     },
     "catalogPage.onlyDescendantsLead": {
       "ru": "Показаны только потомки концепции (",
       "en": "Only the descendants of the concept are shown (",
       "de": "Angezeigt werden nur Nachkommen des Konzepts (",
       "from": {"en":"Показаны только потомки концепции (","de":"Показаны только потомки концепции ("},
-      "where": ["client/src/pages/CatalogPage.tsx:396"]
+      "where": ["client/src/pages/CatalogPage.tsx:426"]
     },
     "catalogPage.onlyDescendantsTail": {
       "ru": ") — пересечение с текущей вкладкой.",
       "en": ") — intersected with the current tab.",
       "de": ") — Schnittmenge mit dem aktuellen Tab.",
       "from": {"en":") — пересечение с текущей вкладкой.","de":") — пересечение с текущей вкладкой."},
-      "where": ["client/src/pages/CatalogPage.tsx:398"]
+      "where": ["client/src/pages/CatalogPage.tsx:428"]
     },
     "catalogPage.ownerOnlyAction": {
       "ru": "Действие доступно только владельцу.",
       "en": "The action is available only to the owner.",
       "de": "Die Aktion ist nur dem Eigentümer verfügbar.",
       "from": {"en":"Действие доступно только владельцу.","de":"Действие доступно только владельцу."},
-      "where": ["client/src/pages/CatalogPage.tsx:112"]
+      "where": ["client/src/pages/CatalogPage.tsx:132"]
     },
     "catalogPage.pageOfTotal": {
       "ru": "стр. {page} / {totalPages} · всего {total}",
@@ -2728,49 +2735,56 @@
       "de": "S. {page} / {totalPages} · insgesamt {total}",
       "from": {"en":"стр. {page} / {totalPages} · всего {total}","de":"стр. {page} / {totalPages} · всего {total}"},
       "params": {"page":"page","totalPages":"totalPages","total":"total"},
-      "where": ["client/src/pages/CatalogPage.tsx:452"]
+      "where": ["client/src/pages/CatalogPage.tsx:485"]
     },
     "catalogPage.publicConcepts": {
       "ru": "Публичные концепции",
       "en": "Public concepts",
       "de": "Öffentliche Konzepte",
       "from": {"en":"Публичные концепции","de":"Публичные концепции"},
-      "where": ["client/src/pages/CatalogPage.tsx:333"]
+      "where": ["client/src/pages/CatalogPage.tsx:362"]
     },
     "catalogPage.renameFailed": {
       "ru": "Не удалось переименовать.",
       "en": "Failed to rename.",
       "de": "Umbenennen fehlgeschlagen.",
       "from": {"en":"Не удалось переименовать.","de":"Не удалось переименовать."},
-      "where": ["client/src/pages/CatalogPage.tsx:264"]
+      "where": ["client/src/pages/CatalogPage.tsx:293"]
     },
     "catalogPage.resetFilter": {
       "ru": "✕ Сбросить фильтр",
       "en": "✕ Reset filter",
       "de": "✕ Filter zurücksetzen",
       "from": {"en":"✕ Сбросить фильтр","de":"✕ Сбросить фильтр"},
-      "where": ["client/src/pages/CatalogPage.tsx:410"]
+      "where": ["client/src/pages/CatalogPage.tsx:440"]
     },
     "catalogPage.searchByTitle": {
       "ru": "Поиск по названию…",
       "en": "Search by title…",
       "de": "Suche nach Titel…",
       "from": {"en":"Поиск по названию…","de":"Поиск по названию…"},
-      "where": ["client/src/pages/CatalogPage.tsx:374"]
+      "where": ["client/src/pages/CatalogPage.tsx:404"]
     },
     "catalogPage.tabMine": {
       "ru": "Мои",
       "en": "Mine",
       "de": "Meine",
       "from": {"en":"Мои","de":"Мои"},
-      "where": ["client/src/pages/CatalogPage.tsx:354"]
+      "where": ["client/src/pages/CatalogPage.tsx:383"]
     },
     "catalogPage.tabPublic": {
       "ru": "Публичные",
       "en": "Public",
       "de": "Öffentliche",
       "from": {"en":"Публичные","de":"Публичные"},
-      "where": ["client/src/pages/CatalogPage.tsx:355"]
+      "where": ["client/src/pages/CatalogPage.tsx:384"]
+    },
+    "catalogPage.tabShared": {
+      "ru": "Со мной поделились",
+      "en": "Shared with me",
+      "de": "Mit mir geteilt",
+      "from": {"en":"Со мной поделились","de":"Со мной поделились"},
+      "where": ["client/src/pages/CatalogPage.tsx:385"]
     },
     "catalogPage.titleValue": {
       "ru": "Название: {title}",
@@ -2778,28 +2792,28 @@
       "de": "Titel: {title}",
       "from": {"en":"Название: {title}","de":"Название: {title}"},
       "params": {"title":"v"},
-      "where": ["client/src/pages/CatalogPage.tsx:108"]
+      "where": ["client/src/pages/CatalogPage.tsx:128"]
     },
     "catalogPage.toConcept": {
       "ru": "◈ к концепции",
       "en": "◈ to the concept",
       "de": "◈ zum Konzept",
       "from": {"en":"◈ к концепции","de":"◈ к концепции"},
-      "where": ["client/src/pages/CatalogPage.tsx:399"]
+      "where": ["client/src/pages/CatalogPage.tsx:429"]
     },
     "catalogPage.visibilityChangeFailed": {
       "ru": "Не удалось изменить публичность.",
       "en": "Failed to change the visibility.",
       "de": "Sichtbarkeit konnte nicht geändert werden.",
       "from": {"en":"Не удалось изменить публичность.","de":"Не удалось изменить публичность."},
-      "where": ["client/src/pages/CatalogPage.tsx:119","client/src/pages/CatalogPage.tsx:126"]
+      "where": ["client/src/pages/CatalogPage.tsx:139","client/src/pages/CatalogPage.tsx:146"]
     },
     "catalogPage.visibilityOwnerOnly": {
       "ru": "Публичность меняет только владелец.",
       "en": "Only the owner changes the visibility.",
       "de": "Die Sichtbarkeit ändert nur der Eigentümer.",
       "from": {"en":"Публичность меняет только владелец.","de":"Публичность меняет только владелец."},
-      "where": ["client/src/pages/CatalogPage.tsx:125"]
+      "where": ["client/src/pages/CatalogPage.tsx:145"]
     },
     "catalogPage.visibilityValue": {
       "ru": "Публичность: {visibility}",
@@ -2807,7 +2821,7 @@
       "de": "Sichtbarkeit: {visibility}",
       "from": {"en":"Публичность: {visibility}","de":"Публичность: {visibility}"},
       "params": {"visibility":"v"},
-      "where": ["client/src/pages/CatalogPage.tsx:123"]
+      "where": ["client/src/pages/CatalogPage.tsx:143"]
     },
     "changeEmailPage.changeLower": {
       "ru": "смена адреса",
@@ -2856,21 +2870,21 @@
       "en": "Authorization required",
       "de": "Anmeldung erforderlich",
       "from": {"en":"Требуется авторизация","de":"Требуется авторизация"},
-      "where": ["server/middleware/auth.ts:237","server/middleware/billing-check.ts:62","server/routes/auth.ts:523","server/ws/handler.ts:600"]
+      "where": ["server/middleware/auth.ts:237","server/middleware/billing-check.ts:62","server/routes/auth.ts:544","server/ws/handler.ts:600"]
     },
     "common.brandPhilo": {
       "ru": "Philo",
       "en": "Philo",
       "de": "Philo",
       "from": {"en":"Philo","de":"Philo"},
-      "where": ["client/src/components/layout/Header.tsx:169","client/src/pages/ChangeEmailPage.tsx:52","client/src/pages/LoginPage.tsx:38","client/src/pages/RegisterPage.tsx:32","client/src/pages/ResetPasswordPage.tsx:29","client/src/pages/VerifyEmailPage.tsx:52"]
+      "where": ["client/src/components/layout/Header.tsx:176","client/src/pages/ChangeEmailPage.tsx:52","client/src/pages/LoginPage.tsx:38","client/src/pages/RegisterPage.tsx:69","client/src/pages/ResetPasswordPage.tsx:29","client/src/pages/VerifyEmailPage.tsx:52"]
     },
     "common.brandSynth": {
       "ru": "Synth",
       "en": "Synth",
       "de": "Synth",
       "from": {"en":"Synth","de":"Synth"},
-      "where": ["client/src/components/layout/Header.tsx:169","client/src/pages/ChangeEmailPage.tsx:52","client/src/pages/LoginPage.tsx:38","client/src/pages/RegisterPage.tsx:32","client/src/pages/ResetPasswordPage.tsx:29","client/src/pages/VerifyEmailPage.tsx:52"]
+      "where": ["client/src/components/layout/Header.tsx:176","client/src/pages/ChangeEmailPage.tsx:52","client/src/pages/LoginPage.tsx:38","client/src/pages/RegisterPage.tsx:69","client/src/pages/ResetPasswordPage.tsx:29","client/src/pages/VerifyEmailPage.tsx:52"]
     },
     "common.bridge": {
       "ru": "Мост",
@@ -2884,7 +2898,7 @@
       "en": "Cancel",
       "de": "Abbrechen",
       "from": {"en":"Отмена","de":"Отмена"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:331","client/src/components/catalog/SynthesisCard.tsx:397","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:419","client/src/components/document/SectionView.tsx:439","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:532","client/src/components/edit/ElementEditor.tsx:611","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1924","client/src/pages/AdminPromptsPage.tsx:1988","client/src/pages/AdminPromptsPage.tsx:2019","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:427"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:336","client/src/components/catalog/SynthesisCard.tsx:402","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/document/DocumentHeader.tsx:370","client/src/components/document/SectionView.tsx:419","client/src/components/document/SectionView.tsx:439","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:532","client/src/components/edit/ElementEditor.tsx:611","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1924","client/src/pages/AdminPromptsPage.tsx:1988","client/src/pages/AdminPromptsPage.tsx:2019","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434"]
     },
     "common.capsule": {
       "ru": "Капсула",
@@ -2940,21 +2954,21 @@
       "en": "Really delete?",
       "de": "Wirklich löschen?",
       "from": {"en":"Точно удалить?","de":"Точно удалить?"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:385","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1113","client/src/pages/BillingPage.tsx:358","client/src/pages/ProfilePage.tsx:416"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:390","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1113","client/src/pages/BillingPage.tsx:358","client/src/pages/ProfilePage.tsx:423"]
     },
     "common.createAccount": {
       "ru": "Создать аккаунт",
       "en": "Create account",
       "de": "Konto erstellen",
       "from": {"en":"Создать аккаунт","de":"Создать аккаунт"},
-      "where": ["client/src/pages/CatalogPage.tsx:342","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:96","client/src/pages/SynthesisPage.tsx:851"]
+      "where": ["client/src/pages/CatalogPage.tsx:371","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:152","client/src/pages/SynthesisPage.tsx:868"]
     },
     "common.creating": {
       "ru": "Создание…",
       "en": "Creating…",
       "de": "Wird erstellt…",
       "from": {"en":"Создание…","de":"Создание…"},
-      "where": ["client/src/components/edit/EdgeCreateForm.tsx:228","client/src/components/edit/TaxonomySelector.tsx:499","client/src/pages/RegisterPage.tsx:96"]
+      "where": ["client/src/components/edit/EdgeCreateForm.tsx:228","client/src/components/edit/TaxonomySelector.tsx:499","client/src/pages/RegisterPage.tsx:152"]
     },
     "common.definition": {
       "ru": "Определение",
@@ -2975,7 +2989,7 @@
       "en": "Delete",
       "de": "Löschen",
       "from": {"en":"Удалить","de":"Удалить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:436","client/src/components/edit/EditPlanPanel.tsx:52","client/src/components/edit/EditSectionCard.tsx:236","client/src/components/edit/ElementEditor.tsx:544","client/src/components/edit/ModeResultsPanel.tsx:121","client/src/pages/BillingPage.tsx:347"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:441","client/src/components/edit/EditPlanPanel.tsx:52","client/src/components/edit/EditSectionCard.tsx:236","client/src/components/edit/ElementEditor.tsx:544","client/src/components/edit/ModeResultsPanel.tsx:121","client/src/pages/BillingPage.tsx:347"]
     },
     "common.description": {
       "ru": "Описание",
@@ -3046,14 +3060,14 @@
       "en": "Email",
       "de": "E-Mail",
       "from": {"en":"Email","de":"Email"},
-      "where": ["client/src/pages/AdminPromptsPage.tsx:1349","client/src/pages/LoginPage.tsx:54","client/src/pages/ProfilePage.tsx:206","client/src/pages/RegisterPage.tsx:43"]
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:184","client/src/pages/AdminPromptsPage.tsx:1349","client/src/pages/LoginPage.tsx:54","client/src/pages/ProfilePage.tsx:210","client/src/pages/RegisterPage.tsx:97"]
     },
     "common.error": {
       "ru": "Ошибка",
       "en": "Error",
       "de": "Fehler",
       "from": {"en":"Ошибка","de":"Ошибка"},
-      "where": ["client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:420","client/src/pages/SynthesisPage.tsx:832"]
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:224","client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:450","client/src/pages/SynthesisPage.tsx:841"]
     },
     "common.fillParameter": {
       "ru": "Заполните параметр.",
@@ -3081,7 +3095,7 @@
       "en": "free synthesis",
       "de": "freie Synthese",
       "from": {"en":"свободный синтез","de":"свободный синтез"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:139","client/src/components/document/DocumentFooter.tsx:41","client/src/components/pool/ConceptPool.tsx:298"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:143","client/src/components/document/DocumentFooter.tsx:41","client/src/components/pool/ConceptPool.tsx:298"]
     },
     "common.generationInProgress": {
       "ru": "Генерация уже идёт",
@@ -3123,14 +3137,14 @@
       "en": "Invalid data",
       "de": "Ungültige Daten",
       "from": {"en":"Невалидные данные","de":"Невалидные данные"},
-      "where": ["server/routes/auth.ts:234","server/routes/auth.ts:287","server/routes/auth.ts:349","server/routes/auth.ts:402","server/routes/auth.ts:511","server/routes/auth.ts:592","server/routes/auth.ts:638","server/routes/auth.ts:745","server/routes/auth.ts:867","server/routes/auth.ts:873","server/routes/discussion.ts:97","server/routes/enrichment.ts:74","server/routes/modes.ts:174","server/routes/recommendations.ts:120","server/routes/taxonomy.ts:70","server/services/element-editor.ts:230","server/services/element-editor.ts:1871","server/services/element-editor.ts:1903","server/services/element-editor.ts:1926","server/services/element-editor.ts:2116","server/services/element-enrichment.ts:670","server/services/element-enrichment.ts:726"]
+      "where": ["server/routes/auth.ts:240","server/routes/auth.ts:308","server/routes/auth.ts:370","server/routes/auth.ts:423","server/routes/auth.ts:532","server/routes/auth.ts:613","server/routes/auth.ts:659","server/routes/auth.ts:766","server/routes/auth.ts:888","server/routes/auth.ts:894","server/routes/discussion.ts:97","server/routes/enrichment.ts:74","server/routes/members.ts:71","server/routes/modes.ts:174","server/routes/notifications.ts:38","server/routes/recommendations.ts:120","server/routes/taxonomy.ts:70","server/services/element-editor.ts:230","server/services/element-editor.ts:1871","server/services/element-editor.ts:1903","server/services/element-editor.ts:1926","server/services/element-editor.ts:2116","server/services/element-enrichment.ts:670","server/services/element-enrichment.ts:726","server/services/members.ts:120","server/services/members.ts:129","server/services/notifications.ts:308","server/services/notifications.ts:316","server/services/notifications.ts:323"]
     },
     "common.invalidJson": {
       "ru": "Невалидный JSON",
       "en": "Invalid JSON",
       "de": "Ungültiges JSON",
       "from": {"en":"Невалидный JSON","de":"Невалидный JSON"},
-      "where": ["server/routes/discussion.ts:100","server/routes/generation.ts:112","server/routes/generation.ts:167","server/routes/plans.ts:98","server/routes/plans.ts:139","server/routes/plans.ts:192","server/routes/recommendations.ts:203","server/routes/syntheses.ts:690","server/routes/syntheses.ts:1033","server/routes/syntheses.ts:1241","server/routes/syntheses.ts:1535"]
+      "where": ["server/routes/discussion.ts:100","server/routes/generation.ts:112","server/routes/generation.ts:167","server/routes/members.ts:74","server/routes/notifications.ts:41","server/routes/plans.ts:98","server/routes/plans.ts:139","server/routes/plans.ts:192","server/routes/recommendations.ts:203","server/routes/syntheses.ts:690","server/routes/syntheses.ts:1033","server/routes/syntheses.ts:1241","server/routes/syntheses.ts:1535"]
     },
     "common.justification": {
       "ru": "Обоснование",
@@ -3151,14 +3165,14 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:375","client/src/components/document/SectionView.tsx:391","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1894","client/src/pages/AdminPromptsPage.tsx:1921","client/src/pages/AdminPromptsPage.tsx:1930","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/AdminPromptsPage.tsx:2013","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:882"]
+      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/document/SectionView.tsx:375","client/src/components/document/SectionView.tsx:391","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1894","client/src/pages/AdminPromptsPage.tsx:1921","client/src/pages/AdminPromptsPage.tsx:1930","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/AdminPromptsPage.tsx:2013","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:926"]
     },
     "common.logIn": {
       "ru": "Войти",
       "en": "Log in",
       "de": "Anmelden",
       "from": {"en":"Войти","de":"Войти"},
-      "where": ["client/src/components/layout/Header.tsx:152","client/src/pages/ChangeEmailPage.tsx:72","client/src/pages/LandingPage.tsx:137","client/src/pages/LoginPage.tsx:95","client/src/pages/RegisterPage.tsx:100","client/src/pages/ResetPasswordPage.tsx:43","client/src/pages/VerifyEmailPage.tsx:72"]
+      "where": ["client/src/components/layout/Header.tsx:159","client/src/pages/ChangeEmailPage.tsx:72","client/src/pages/LandingPage.tsx:137","client/src/pages/LoginPage.tsx:95","client/src/pages/RegisterPage.tsx:156","client/src/pages/ResetPasswordPage.tsx:43","client/src/pages/VerifyEmailPage.tsx:72"]
     },
     "common.noGraph": {
       "ru": "Нет графа.",
@@ -3236,14 +3250,14 @@
       "en": "Save",
       "de": "Speichern",
       "from": {"en":"Сохранить","de":"Сохранить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:320","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:240"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:325","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/document/DocumentHeader.tsx:362","client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:244"]
     },
     "common.saving": {
       "ru": "Сохранение…",
       "en": "Saving…",
       "de": "Wird gespeichert…",
       "from": {"en":"Сохранение…","de":"Сохранение…"},
-      "where": ["client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/components/synthesis/PauseModal.tsx:629","client/src/pages/ProfilePage.tsx:240"]
+      "where": ["client/src/components/document/SectionView.tsx:415","client/src/components/edit/ElementEditor.tsx:603","client/src/components/synthesis/PauseModal.tsx:629","client/src/pages/ProfilePage.tsx:244"]
     },
     "common.sectionNotFound": {
       "ru": "Раздел не найден",
@@ -3307,14 +3321,14 @@
       "en": "Title",
       "de": "Titel",
       "from": {"en":"Название","de":"Название"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:282","client/src/components/edit/ElementEditor.tsx:760","client/src/components/edit/TaxonomySelector.tsx:436","client/src/components/edit/VersionHistory.tsx:74","client/src/pages/AdminPromptsPage.tsx:1022"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:287","client/src/components/edit/ElementEditor.tsx:760","client/src/components/edit/TaxonomySelector.tsx:436","client/src/components/edit/VersionHistory.tsx:74","client/src/pages/AdminPromptsPage.tsx:1022"]
     },
     "common.toHome": {
       "ru": "На главную",
       "en": "To the main page",
       "de": "Zur Startseite",
       "from": {"en":"На главную","de":"На главную"},
-      "where": ["client/src/pages/ChangeEmailPage.tsx:74","client/src/pages/LoginPage.tsx:105","client/src/pages/RegisterPage.tsx:102","client/src/pages/ResetPasswordPage.tsx:45","client/src/pages/VerifyEmailPage.tsx:74"]
+      "where": ["client/src/pages/ChangeEmailPage.tsx:74","client/src/pages/LoginPage.tsx:105","client/src/pages/RegisterPage.tsx:158","client/src/pages/ResetPasswordPage.tsx:45","client/src/pages/VerifyEmailPage.tsx:74"]
     },
     "common.type": {
       "ru": "Тип",
@@ -3328,7 +3342,7 @@
       "en": "User not found",
       "de": "Benutzer nicht gefunden",
       "from": {"en":"Пользователь не найден","de":"Пользователь не найден"},
-      "where": ["server/routes/auth.ts:738","server/routes/auth.ts:804","server/services/account-deletion.ts:109","server/services/account-deletion.ts:142","server/services/billing-service.ts:132","server/services/billing-service.ts:242","server/services/billing-service.ts:290","server/services/subscription-service.ts:306"]
+      "where": ["server/routes/auth.ts:759","server/routes/auth.ts:825","server/services/account-deletion.ts:109","server/services/account-deletion.ts:142","server/services/billing-service.ts:132","server/services/billing-service.ts:242","server/services/billing-service.ts:290","server/services/subscription-service.ts:306"]
     },
     "common.verifying": {
       "ru": "Верифицирующая",
@@ -8560,6 +8574,113 @@
       "params": {"message":"w.message"},
       "where": ["client/src/pages/ImportPage.tsx:361"]
     },
+    "invitationPage.accept": {
+      "ru": "Принять",
+      "en": "Accept",
+      "de": "Annehmen",
+      "from": {"en":"Принять","de":"Принять"},
+      "where": ["client/src/pages/InvitationPage.tsx:149"]
+    },
+    "invitationPage.acceptFailed": {
+      "ru": "Не удалось принять приглашение.",
+      "en": "Could not accept the invitation.",
+      "de": "Die Einladung konnte nicht angenommen werden.",
+      "from": {"en":"Не удалось принять приглашение.","de":"Не удалось принять приглашение."},
+      "where": ["client/src/pages/InvitationPage.tsx:65"]
+    },
+    "invitationPage.accepting": {
+      "ru": "Принятие…",
+      "en": "Accepting…",
+      "de": "Wird angenommen…",
+      "from": {"en":"Принятие…","de":"Принятие…"},
+      "where": ["client/src/pages/InvitationPage.tsx:149"]
+    },
+    "invitationPage.alreadyMember": {
+      "ru": "Вы участник этой концепции · роль: {role} · владелец: {owner}",
+      "en": "You are a participant of this concept · role: {role} · owner: {owner}",
+      "de": "Sie sind Teilnehmer dieser Konzeption · Rolle: {role} · Eigentümer: {owner}",
+      "from": {"en":"Вы участник этой концепции · роль: {role} · владелец: {owner}","de":"Вы участник этой концепции · роль: {role} · владелец: {owner}"},
+      "params": {"role":"","owner":""},
+      "where": ["client/src/pages/InvitationPage.tsx:127"]
+    },
+    "invitationPage.decline": {
+      "ru": "Отклонить",
+      "en": "Decline",
+      "de": "Ablehnen",
+      "from": {"en":"Отклонить","de":"Отклонить"},
+      "where": ["client/src/pages/InvitationPage.tsx:152"]
+    },
+    "invitationPage.declineFailed": {
+      "ru": "Не удалось отклонить приглашение.",
+      "en": "Could not decline the invitation.",
+      "de": "Die Einladung konnte nicht abgelehnt werden.",
+      "from": {"en":"Не удалось отклонить приглашение.","de":"Не удалось отклонить приглашение."},
+      "where": ["client/src/pages/InvitationPage.tsx:79"]
+    },
+    "invitationPage.declined": {
+      "ru": "Приглашение отклонено. Владелец сможет пригласить вас снова.",
+      "en": "Invitation declined. The owner can invite you again.",
+      "de": "Einladung abgelehnt. Der Eigentümer kann Sie erneut einladen.",
+      "from": {"en":"Приглашение отклонено. Владелец сможет пригласить вас снова.","de":"Приглашение отклонено. Владелец сможет пригласить вас снова."},
+      "where": ["client/src/pages/InvitationPage.tsx:114"]
+    },
+    "invitationPage.declining": {
+      "ru": "Отклонение…",
+      "en": "Declining…",
+      "de": "Wird abgelehnt…",
+      "from": {"en":"Отклонение…","de":"Отклонение…"},
+      "where": ["client/src/pages/InvitationPage.tsx:152"]
+    },
+    "invitationPage.lead": {
+      "ru": "{owner} приглашает вас участвовать в обсуждении концепции в роли «{role}». Участник видит концепцию целиком, в том числе приватную, может комментировать и рецензировать; документ обсуждением не меняется.",
+      "en": "{owner} invites you to take part in discussing the concept as “{role}”. A participant sees the whole concept, including a private one, and can comment and review it; the discussion does not change the document.",
+      "de": "{owner} lädt Sie ein, an der Diskussion der Konzeption in der Rolle „{role}“ teilzunehmen. Ein Teilnehmer sieht die gesamte Konzeption, auch eine private, und kann sie kommentieren und rezensieren; die Diskussion verändert das Dokument nicht.",
+      "from": {"en":"{owner} приглашает вас участвовать в обсуждении концепции в роли «{role}». Участник видит концепцию целиком, в том числе приватную, может комментировать и рецензировать; документ обсуждением не меняется.","de":"{owner} приглашает вас участвовать в обсуждении концепции в роли «{role}». Участник видит концепцию целиком, в том числе приватную, может комментировать и рецензировать; документ обсуждением не меняется."},
+      "params": {"owner":"","role":""},
+      "where": ["client/src/pages/InvitationPage.tsx:131"]
+    },
+    "invitationPage.loadFailed": {
+      "ru": "Не удалось загрузить приглашение.",
+      "en": "Could not load the invitation.",
+      "de": "Die Einladung konnte nicht geladen werden.",
+      "from": {"en":"Не удалось загрузить приглашение.","de":"Не удалось загрузить приглашение."},
+      "where": ["client/src/pages/InvitationPage.tsx:50"]
+    },
+    "invitationPage.loading": {
+      "ru": "загрузка приглашения…",
+      "en": "loading invitation…",
+      "de": "Einladung wird geladen…",
+      "from": {"en":"загрузка приглашения…","de":"загрузка приглашения…"},
+      "where": ["client/src/pages/InvitationPage.tsx:92"]
+    },
+    "invitationPage.missing": {
+      "ru": "Приглашения в эту концепцию у вас нет — возможно, владелец его отозвал или оно уже отклонено.",
+      "en": "You have no invitation to this concept — the owner may have revoked it, or it has already been declined.",
+      "de": "Sie haben keine Einladung zu dieser Konzeption — der Eigentümer hat sie möglicherweise zurückgezogen, oder sie wurde bereits abgelehnt.",
+      "from": {"en":"Приглашения в эту концепцию у вас нет — возможно, владелец его отозвал или оно уже отклонено.","de":"Приглашения в эту концепцию у вас нет — возможно, владелец его отозвал или оно уже отклонено."},
+      "where": ["client/src/pages/InvitationPage.tsx:97"]
+    },
+    "invitationPage.openConcept": {
+      "ru": "Открыть концепцию",
+      "en": "Open concept",
+      "de": "Konzeption öffnen",
+      "from": {"en":"Открыть концепцию","de":"Открыть концепцию"},
+      "where": ["client/src/pages/InvitationPage.tsx:144"]
+    },
+    "invitationPage.title": {
+      "ru": "Приглашение в концепцию",
+      "en": "Invitation to a concept",
+      "de": "Einladung zu einer Konzeption",
+      "from": {"en":"Приглашение в концепцию","de":"Приглашение в концепцию"},
+      "where": ["client/src/pages/InvitationPage.tsx:88"]
+    },
+    "invitationPage.toCatalog": {
+      "ru": "В каталог",
+      "en": "To catalog",
+      "de": "Zum Katalog",
+      "from": {"en":"В каталог","de":"В каталог"},
+      "where": ["client/src/pages/InvitationPage.tsx:100","client/src/pages/InvitationPage.tsx:117","client/src/pages/InvitationPage.tsx:157"]
+    },
     "landingPage.allPublic": {
       "ru": "Все публичные →",
       "en": "All public →",
@@ -8768,35 +8889,35 @@
       "en": "★ AI-POWERED SYNTHESIS",
       "de": "★ AI-POWERED SYNTHESIS",
       "from": {"en":"★ AI-POWERED SYNTHESIS","de":"★ AI-POWERED SYNTHESIS"},
-      "where": ["client/src/components/layout/Header.tsx:180"]
+      "where": ["client/src/components/layout/Header.tsx:187"]
     },
     "layout.header.badgeGraph": {
       "ru": "THREE.JS + D3.JS GRAPH",
       "en": "THREE.JS + D3.JS GRAPH",
       "de": "THREE.JS + D3.JS GRAPH",
       "from": {"en":"THREE.JS + D3.JS GRAPH","de":"THREE.JS + D3.JS GRAPH"},
-      "where": ["client/src/components/layout/Header.tsx:181"]
+      "where": ["client/src/components/layout/Header.tsx:188"]
     },
     "layout.header.badgeStreaming": {
       "ru": "STREAMING OUTPUT",
       "en": "STREAMING OUTPUT",
       "de": "STREAMING OUTPUT",
       "from": {"en":"STREAMING OUTPUT","de":"STREAMING OUTPUT"},
-      "where": ["client/src/components/layout/Header.tsx:182"]
+      "where": ["client/src/components/layout/Header.tsx:189"]
     },
     "layout.header.brand": {
       "ru": "PhiloSynth Pro™",
       "en": "PhiloSynth Pro™",
       "de": "PhiloSynth Pro™",
       "from": {"en":"PhiloSynth Pro™","de":"PhiloSynth Pro™"},
-      "where": ["client/src/components/layout/Header.tsx:128"]
+      "where": ["client/src/components/layout/Header.tsx:133"]
     },
     "layout.header.emailSent": {
       "ru": "Письмо отправлено — проверьте почту",
       "en": "Email sent — check your inbox",
       "de": "E-Mail gesendet — prüfen Sie Ihr Postfach",
       "from": {"en":"Письмо отправлено — проверьте почту","de":"Письмо отправлено — проверьте почту"},
-      "where": ["client/src/components/layout/Header.tsx:84"]
+      "where": ["client/src/components/layout/Header.tsx:89"]
     },
     "layout.header.emailUnverified": {
       "ru": "Адрес не подтверждён · {email}{error}",
@@ -8804,77 +8925,77 @@
       "de": "Adresse nicht bestätigt · {email}{error}",
       "from": {"en":"Адрес не подтверждён · {email}{error}","de":"Адрес не подтверждён · {email}{error}"},
       "params": {"email":"email","error":"error ? ` · ${error}` : \"\""},
-      "where": ["client/src/components/layout/Header.tsx:80"]
+      "where": ["client/src/components/layout/Header.tsx:85"]
     },
     "layout.header.engineVersion": {
       "ru": "Synthesis Engine v1.0",
       "en": "Synthesis Engine v1.0",
       "de": "Synthesis Engine v1.0",
       "from": {"en":"Synthesis Engine v1.0","de":"Synthesis Engine v1.0"},
-      "where": ["client/src/components/layout/Header.tsx:129"]
+      "where": ["client/src/components/layout/Header.tsx:134"]
     },
     "layout.header.heroText": {
       "ru": "Платформа для автоматизированного синтеза, анализа и формализации философских концепций на основе выбранных философских традиций. Генерация графов категорий с интерактивной 3D/2D-визуализацией, тезисов, диалогов, исторической контекстуализации и критического анализа — в формате единого структурированного документа.",
       "en": "A platform for automated synthesis, analysis and formalization of philosophical concepts based on selected philosophical traditions. Generation of category graphs with interactive 3D/2D visualization, theses, dialogues, historical contextualization and critical analysis — in the form of a single structured document.",
       "de": "Plattform für die automatisierte Synthese, Analyse und Formalisierung philosophischer Konzepte auf Grundlage gewählter philosophischer Traditionen. Generierung von Kategoriegraphen mit interaktiver 3D/2D-Visualisierung, Thesen, Dialogen, historischer Kontextualisierung und kritischer Analyse — im Format eines einheitlichen strukturierten Dokuments.",
       "from": {"en":"Платформа для автоматизированного синтеза, анализа и формализации философских концепций на основе выбранных философских традиций. Генерация графов категорий с интерактивной 3D/2D-визуализацией, тезисов, диалогов, исторической контекстуализации и критического анализа — в формате единого структурированного документа.","de":"Платформа для автоматизированного синтеза, анализа и формализации философских концепций на основе выбранных философских традиций. Генерация графов категорий с интерактивной 3D/2D-визуализацией, тезисов, диалогов, исторической контекстуализации и критического анализа — в формате единого структурированного документа."},
-      "where": ["client/src/components/layout/Header.tsx:176"]
+      "where": ["client/src/components/layout/Header.tsx:183"]
     },
     "layout.header.heroTitle": {
       "ru": "Система Синтеза Философских Концепций · Professional Grade",
       "en": "Philosophical Concept Synthesis System · Professional Grade",
       "de": "System zur Synthese philosophischer Konzepte · Professional Grade",
       "from": {"en":"Система Синтеза Философских Концепций · Professional Grade","de":"Система Синтеза Философских Концепций · Professional Grade"},
-      "where": ["client/src/components/layout/Header.tsx:173"]
+      "where": ["client/src/components/layout/Header.tsx:180"]
     },
     "layout.header.logOut": {
       "ru": "Выйти",
       "en": "Log out",
       "de": "Abmelden",
       "from": {"en":"Выйти","de":"Выйти"},
-      "where": ["client/src/components/layout/Header.tsx:146"]
+      "where": ["client/src/components/layout/Header.tsx:153"]
     },
     "layout.header.openMenu": {
       "ru": "Открыть меню",
       "en": "Open menu",
       "de": "Menü öffnen",
       "from": {"en":"Открыть меню","de":"Открыть меню"},
-      "where": ["client/src/components/layout/Header.tsx:122"]
+      "where": ["client/src/components/layout/Header.tsx:127"]
     },
     "layout.header.profile": {
       "ru": "Профиль",
       "en": "Profile",
       "de": "Profil",
       "from": {"en":"Профиль","de":"Профиль"},
-      "where": ["client/src/components/layout/Header.tsx:138"]
+      "where": ["client/src/components/layout/Header.tsx:145"]
     },
     "layout.header.register": {
       "ru": "Регистрация",
       "en": "Sign up",
       "de": "Registrierung",
       "from": {"en":"Регистрация","de":"Регистрация"},
-      "where": ["client/src/components/layout/Header.tsx:156"]
+      "where": ["client/src/components/layout/Header.tsx:163"]
     },
     "layout.header.resendEmail": {
       "ru": "Отправить письмо ещё раз",
       "en": "Send the email again",
       "de": "E-Mail erneut senden",
       "from": {"en":"Отправить письмо ещё раз","de":"Отправить письмо ещё раз"},
-      "where": ["client/src/components/layout/Header.tsx:94"]
+      "where": ["client/src/components/layout/Header.tsx:99"]
     },
     "layout.header.sending": {
       "ru": "Отправка…",
       "en": "Sending…",
       "de": "Wird gesendet…",
       "from": {"en":"Отправка…","de":"Отправка…"},
-      "where": ["client/src/components/layout/Header.tsx:94"]
+      "where": ["client/src/components/layout/Header.tsx:99"]
     },
     "layout.header.tagline": {
       "ru": "Платформа синтеза философских концепций · Claude-Powered · 3D/2D Graph",
       "en": "Philosophical concept synthesis platform · Claude-Powered · 3D/2D Graph",
       "de": "Plattform zur Synthese philosophischer Konzepte · Claude-Powered · 3D/2D Graph",
       "from": {"en":"Платформа синтеза философских концепций · Claude-Powered · 3D/2D Graph","de":"Платформа синтеза философских концепций · Claude-Powered · 3D/2D Graph"},
-      "where": ["client/src/components/layout/Header.tsx:131"]
+      "where": ["client/src/components/layout/Header.tsx:136"]
     },
     "layout.languageSwitch.label": {
       "ru": "Язык интерфейса",
@@ -9278,6 +9399,278 @@
       "from": {"en":"Элемент #root не найден в index.html","de":"Элемент #root не найден в index.html"},
       "where": ["client/src/main.tsx:13"]
     },
+    "members.acceptedAt": {
+      "ru": "принял {date}",
+      "en": "accepted {date}",
+      "de": "angenommen am {date}",
+      "from": {"en":"принял {date}","de":"принял {date}"},
+      "params": {"date":""},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:282"]
+    },
+    "members.colDates": {
+      "ru": "Даты",
+      "en": "Dates",
+      "de": "Daten",
+      "from": {"en":"Даты","de":"Даты"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:244"]
+    },
+    "members.colRole": {
+      "ru": "Роль",
+      "en": "Role",
+      "de": "Rolle",
+      "from": {"en":"Роль","de":"Роль"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:242"]
+    },
+    "members.colStatus": {
+      "ru": "Статус",
+      "en": "Status",
+      "de": "Status",
+      "from": {"en":"Статус","de":"Статус"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:243"]
+    },
+    "members.colWho": {
+      "ru": "Кто",
+      "en": "Who",
+      "de": "Wer",
+      "from": {"en":"Кто","de":"Кто"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:241"]
+    },
+    "members.empty": {
+      "ru": "Участников пока нет — пригласите первого по адресу выше.",
+      "en": "No participants yet — invite the first one by email above.",
+      "de": "Noch keine Teilnehmer — laden Sie den ersten oben per E-Mail ein.",
+      "from": {"en":"Участников пока нет — пригласите первого по адресу выше.","de":"Участников пока нет — пригласите первого по адресу выше."},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:234"]
+    },
+    "members.exclude": {
+      "ru": "Исключить",
+      "en": "Exclude",
+      "de": "Ausschließen",
+      "from": {"en":"Исключить","de":"Исключить"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:308"]
+    },
+    "members.excludeConfirm": {
+      "ru": "Точно исключить?",
+      "en": "Really exclude?",
+      "de": "Wirklich ausschließen?",
+      "from": {"en":"Точно исключить?","de":"Точно исключить?"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:300"]
+    },
+    "members.excludeWarn": {
+      "ru": "Участник потеряет доступ к приватной концепции и обсуждению; его комментарии и рецензии останутся с пометкой «бывший участник».",
+      "en": "The participant will lose access to the private concept and the discussion; their comments and reviews remain, marked “former participant”.",
+      "de": "Der Teilnehmer verliert den Zugang zur privaten Konzeption und zur Diskussion; seine Kommentare und Rezensionen bleiben mit dem Vermerk „ehemaliger Teilnehmer“ erhalten.",
+      "from": {"en":"Участник потеряет доступ к приватной концепции и обсуждению; его комментарии и рецензии останутся с пометкой «бывший участник».","de":"Участник потеряет доступ к приватной концепции и обсуждению; его комментарии и рецензии останутся с пометкой «бывший участник»."},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:314"]
+    },
+    "members.excluding": {
+      "ru": "Исключение…",
+      "en": "Excluding…",
+      "de": "Wird ausgeschlossen…",
+      "from": {"en":"Исключение…","de":"Исключение…"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:300"]
+    },
+    "members.expiresAt": {
+      "ru": "до {date}",
+      "en": "until {date}",
+      "de": "bis {date}",
+      "from": {"en":"до {date}","de":"до {date}"},
+      "params": {"date":""},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:340"]
+    },
+    "members.inviteBtn": {
+      "ru": "Пригласить",
+      "en": "Invite",
+      "de": "Einladen",
+      "from": {"en":"Пригласить","de":"Пригласить"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:205"]
+    },
+    "members.inviteFailed": {
+      "ru": "Не удалось пригласить.",
+      "en": "Could not invite.",
+      "de": "Einladung fehlgeschlagen.",
+      "from": {"en":"Не удалось пригласить.","de":"Не удалось пригласить."},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:113"]
+    },
+    "members.inviteHint": {
+      "ru": "Участник видит концепцию целиком, в том числе приватную, может комментировать и рецензировать; документ обсуждением не меняется. Адресу без аккаунта уйдёт ссылка для регистрации.",
+      "en": "A participant sees the whole concept, including a private one, and can comment and review it; the discussion does not change the document. An address without an account receives a registration link.",
+      "de": "Ein Teilnehmer sieht die gesamte Konzeption, auch eine private, und kann sie kommentieren und rezensieren; die Diskussion verändert das Dokument nicht. Eine Adresse ohne Konto erhält einen Registrierungslink.",
+      "from": {"en":"Участник видит концепцию целиком, в том числе приватную, может комментировать и рецензировать; документ обсуждением не меняется. Адресу без аккаунта уйдёт ссылка для регистрации.","de":"Участник видит концепцию целиком, в том числе приватную, может комментировать и рецензировать; документ обсуждением не меняется. Адресу без аккаунта уйдёт ссылка для регистрации."},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:177"]
+    },
+    "members.inviteLinkNoMail": {
+      "ru": "Приглашение создано, но письмо не поставлено — повторите письмо из списка",
+      "en": "Invitation created, but the letter was not queued — resend it from the list",
+      "de": "Einladung erstellt, aber der Brief wurde nicht eingereiht — senden Sie ihn aus der Liste erneut",
+      "from": {"en":"Приглашение создано, но письмо не поставлено — повторите письмо из списка","de":"Приглашение создано, но письмо не поставлено — повторите письмо из списка"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:109"]
+    },
+    "members.inviteLinkSent": {
+      "ru": "На {email} отправлена ссылка для регистрации",
+      "en": "A registration link has been sent to {email}",
+      "de": "Ein Registrierungslink wurde an {email} gesendet",
+      "from": {"en":"На {email} отправлена ссылка для регистрации","de":"На {email} отправлена ссылка для регистрации"},
+      "params": {"email":""},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:108"]
+    },
+    "members.inviteTitle": {
+      "ru": "Пригласить участника",
+      "en": "Invite a participant",
+      "de": "Teilnehmer einladen",
+      "from": {"en":"Пригласить участника","de":"Пригласить участника"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:175"]
+    },
+    "members.invitedAt": {
+      "ru": "приглашён {date}",
+      "en": "invited {date}",
+      "de": "eingeladen am {date}",
+      "from": {"en":"приглашён {date}","de":"приглашён {date}"},
+      "params": {"date":""},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:281","client/src/components/synthesis/MembersPanel.tsx:339"]
+    },
+    "members.invitedNoMail": {
+      "ru": "Участник приглашён, но письмо не поставлено — повторите письмо из списка",
+      "en": "Participant invited, but the letter was not queued — resend it from the list",
+      "de": "Teilnehmer eingeladen, aber der Brief wurde nicht eingereiht — senden Sie ihn aus der Liste erneut",
+      "from": {"en":"Участник приглашён, но письмо не поставлено — повторите письмо из списка","de":"Участник приглашён, но письмо не поставлено — повторите письмо из списка"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:106"]
+    },
+    "members.invitedSent": {
+      "ru": "Приглашение отправлено: {email}",
+      "en": "Invitation sent: {email}",
+      "de": "Einladung gesendet: {email}",
+      "from": {"en":"Приглашение отправлено: {email}","de":"Приглашение отправлено: {email}"},
+      "params": {"email":""},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:105"]
+    },
+    "members.inviting": {
+      "ru": "Отправка…",
+      "en": "Sending…",
+      "de": "Wird gesendet…",
+      "from": {"en":"Отправка…","de":"Отправка…"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:205"]
+    },
+    "members.letterNotQueued": {
+      "ru": "Письмо не поставлено — попробуйте позже",
+      "en": "Letter not queued — try again later",
+      "de": "Brief nicht eingereiht — versuchen Sie es später erneut",
+      "from": {"en":"Письмо не поставлено — попробуйте позже","de":"Письмо не поставлено — попробуйте позже"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:150","client/src/components/synthesis/MembersPanel.tsx:162"]
+    },
+    "members.letterSent": {
+      "ru": "Письмо отправлено",
+      "en": "Letter sent",
+      "de": "Brief gesendet",
+      "from": {"en":"Письмо отправлено","de":"Письмо отправлено"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:150","client/src/components/synthesis/MembersPanel.tsx:162"]
+    },
+    "members.listTitle": {
+      "ru": "Участники ({count})",
+      "en": "Participants ({count})",
+      "de": "Teilnehmer ({count})",
+      "from": {"en":"Участники ({count})","de":"Участники ({count})"},
+      "params": {"count":""},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:230"]
+    },
+    "members.loadFailed": {
+      "ru": "Не удалось загрузить участников.",
+      "en": "Could not load participants.",
+      "de": "Teilnehmer konnten nicht geladen werden.",
+      "from": {"en":"Не удалось загрузить участников.","de":"Не удалось загрузить участников."},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:83"]
+    },
+    "members.loading": {
+      "ru": "загрузка участников…",
+      "en": "loading participants…",
+      "de": "Teilnehmer werden geladen…",
+      "from": {"en":"загрузка участников…","de":"загрузка участников…"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:221"]
+    },
+    "members.noAccountYet": {
+      "ru": "аккаунта ещё нет",
+      "en": "no account yet",
+      "de": "noch kein Konto",
+      "from": {"en":"аккаунта ещё нет","de":"аккаунта ещё нет"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:329"]
+    },
+    "members.removeFailed": {
+      "ru": "Не удалось удалить участника.",
+      "en": "Could not remove the participant.",
+      "de": "Teilnehmer konnte nicht entfernt werden.",
+      "from": {"en":"Не удалось удалить участника.","de":"Не удалось удалить участника."},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:145"]
+    },
+    "members.resend": {
+      "ru": "Письмо ещё раз",
+      "en": "Resend letter",
+      "de": "Brief erneut senden",
+      "from": {"en":"Письмо ещё раз","de":"Письмо ещё раз"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:289","client/src/components/synthesis/MembersPanel.tsx:345"]
+    },
+    "members.resendFailed": {
+      "ru": "Не удалось отправить письмо.",
+      "en": "Could not send the letter.",
+      "de": "Brief konnte nicht gesendet werden.",
+      "from": {"en":"Не удалось отправить письмо.","de":"Не удалось отправить письмо."},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:151","client/src/components/synthesis/MembersPanel.tsx:163"]
+    },
+    "members.revoke": {
+      "ru": "Отозвать",
+      "en": "Revoke",
+      "de": "Zurückziehen",
+      "from": {"en":"Отозвать","de":"Отозвать"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:292","client/src/components/synthesis/MembersPanel.tsx:348"]
+    },
+    "members.revokeFailed": {
+      "ru": "Не удалось отозвать приглашение.",
+      "en": "Could not revoke the invitation.",
+      "de": "Einladung konnte nicht zurückgezogen werden.",
+      "from": {"en":"Не удалось отозвать приглашение.","de":"Не удалось отозвать приглашение."},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:157"]
+    },
+    "members.roleChangeFailed": {
+      "ru": "Не удалось сменить роль.",
+      "en": "Could not change the role.",
+      "de": "Rolle konnte nicht geändert werden.",
+      "from": {"en":"Не удалось сменить роль.","de":"Не удалось сменить роль."},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:139"]
+    },
+    "members.roleEditor": {
+      "ru": "редактор",
+      "en": "editor",
+      "de": "Redakteur",
+      "from": {"en":"редактор","de":"редактор"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:38"]
+    },
+    "members.roleReviewer": {
+      "ru": "рецензент",
+      "en": "reviewer",
+      "de": "Rezensent",
+      "from": {"en":"рецензент","de":"рецензент"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:38"]
+    },
+    "members.statusActive": {
+      "ru": "участник",
+      "en": "participant",
+      "de": "Teilnehmer",
+      "from": {"en":"участник","de":"участник"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:42"]
+    },
+    "members.statusInvited": {
+      "ru": "приглашён",
+      "en": "invited",
+      "de": "eingeladen",
+      "from": {"en":"приглашён","de":"приглашён"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:42"]
+    },
+    "members.statusLinkSent": {
+      "ru": "ссылка отправлена",
+      "en": "link sent",
+      "de": "Link gesendet",
+      "from": {"en":"ссылка отправлена","de":"ссылка отправлена"},
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:335"]
+    },
     "modes.modeModal.chars": {
       "ru": "{runChars} симв.",
       "en": "{runChars} chars",
@@ -9578,6 +9971,148 @@
       "from": {"en":"на главную","de":"на главную"},
       "where": ["client/src/pages/NotFoundPage.tsx:14"]
     },
+    "notificationBell.ariaLabel": {
+      "ru": "Уведомления",
+      "en": "Notifications",
+      "de": "Benachrichtigungen",
+      "from": {"en":"Уведомления","de":"Уведомления"},
+      "where": ["client/src/components/layout/NotificationBell.tsx:140","client/src/components/layout/NotificationBell.tsx:142"]
+    },
+    "notificationBell.empty": {
+      "ru": "Уведомлений нет",
+      "en": "No notifications",
+      "de": "Keine Benachrichtigungen",
+      "from": {"en":"Уведомлений нет","de":"Уведомлений нет"},
+      "where": ["client/src/components/layout/NotificationBell.tsx:167"]
+    },
+    "notificationBell.hoursAgo": {
+      "ru": "{n} ч назад",
+      "en": "{n} h ago",
+      "de": "vor {n} Std.",
+      "from": {"en":"{n} ч назад","de":"{n} ч назад"},
+      "params": {"n":""},
+      "where": ["client/src/components/layout/NotificationBell.tsx:39"]
+    },
+    "notificationBell.justNow": {
+      "ru": "только что",
+      "en": "just now",
+      "de": "gerade eben",
+      "from": {"en":"только что","de":"только что"},
+      "where": ["client/src/components/layout/NotificationBell.tsx:36"]
+    },
+    "notificationBell.loadFailed": {
+      "ru": "Не удалось загрузить уведомления.",
+      "en": "Could not load notifications.",
+      "de": "Benachrichtigungen konnten nicht geladen werden.",
+      "from": {"en":"Не удалось загрузить уведомления.","de":"Не удалось загрузить уведомления."},
+      "where": ["client/src/components/layout/NotificationBell.tsx:96"]
+    },
+    "notificationBell.minutesAgo": {
+      "ru": "{n} мин назад",
+      "en": "{n} min ago",
+      "de": "vor {n} Min.",
+      "from": {"en":"{n} мин назад","de":"{n} мин назад"},
+      "params": {"n":""},
+      "where": ["client/src/components/layout/NotificationBell.tsx:37"]
+    },
+    "notificationBell.more": {
+      "ru": "Ещё",
+      "en": "More",
+      "de": "Mehr",
+      "from": {"en":"Ещё","de":"Ещё"},
+      "where": ["client/src/components/layout/NotificationBell.tsx:183"]
+    },
+    "notificationBell.readAll": {
+      "ru": "Прочитать всё",
+      "en": "Mark all read",
+      "de": "Alle als gelesen markieren",
+      "from": {"en":"Прочитать всё","de":"Прочитать всё"},
+      "where": ["client/src/components/layout/NotificationBell.tsx:157"]
+    },
+    "notificationBell.readAllFailed": {
+      "ru": "Не удалось пометить прочитанным.",
+      "en": "Could not mark as read.",
+      "de": "Konnte nicht als gelesen markiert werden.",
+      "from": {"en":"Не удалось пометить прочитанным.","de":"Не удалось пометить прочитанным."},
+      "where": ["client/src/components/layout/NotificationBell.tsx:129"]
+    },
+    "notificationBell.title": {
+      "ru": "Уведомления",
+      "en": "Notifications",
+      "de": "Benachrichtigungen",
+      "from": {"en":"Уведомления","de":"Уведомления"},
+      "where": ["client/src/components/layout/NotificationBell.tsx:155"]
+    },
+    "notificationSettings.catComments": {
+      "ru": "Комментарии: новые и ответы в моих ветках",
+      "en": "Comments: new ones and replies in my threads",
+      "de": "Kommentare: neue und Antworten in meinen Threads",
+      "from": {"en":"Комментарии: новые и ответы в моих ветках","de":"Комментарии: новые и ответы в моих ветках"},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:22"]
+    },
+    "notificationSettings.catMembership": {
+      "ru": "Участие: приглашения, принятие, роль, исключение",
+      "en": "Participation: invitations, acceptance, role, exclusion",
+      "de": "Teilnahme: Einladungen, Annahme, Rolle, Ausschluss",
+      "from": {"en":"Участие: приглашения, принятие, роль, исключение","de":"Участие: приглашения, принятие, роль, исключение"},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:20"]
+    },
+    "notificationSettings.catOutdated": {
+      "ru": "Устаревание: объект моего открытого замечания изменился",
+      "en": "Outdated: the object of my open finding has changed",
+      "de": "Veraltet: das Objekt meiner offenen Anmerkung hat sich geändert",
+      "from": {"en":"Устаревание: объект моего открытого замечания изменился","de":"Устаревание: объект моего открытого замечания изменился"},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:26"]
+    },
+    "notificationSettings.catProposals": {
+      "ru": "Предложения изменений (Фаза 17)",
+      "en": "Change proposals (Phase 17)",
+      "de": "Änderungsvorschläge (Phase 17)",
+      "from": {"en":"Предложения изменений (Фаза 17)","de":"Предложения изменений (Фаза 17)"},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:28"]
+    },
+    "notificationSettings.catReviews": {
+      "ru": "Рецензии: публикация",
+      "en": "Reviews: publication",
+      "de": "Rezensionen: Veröffentlichung",
+      "from": {"en":"Рецензии: публикация","de":"Рецензии: публикация"},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:24"]
+    },
+    "notificationSettings.digest": {
+      "ru": "Присылать сводку непрочитанного по почте (не чаще раза в несколько часов)",
+      "en": "Email me a digest of unread notifications (at most once every few hours)",
+      "de": "Zusammenfassung ungelesener Benachrichtigungen per E-Mail senden (höchstens alle paar Stunden)",
+      "from": {"en":"Присылать сводку непрочитанного по почте (не чаще раза в несколько часов)","de":"Присылать сводку непрочитанного по почте (не чаще раза в несколько часов)"},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:97"]
+    },
+    "notificationSettings.hint": {
+      "ru": "Отключённая категория не записывается вовсе — ни в колокольчик, ни в почтовую сводку.",
+      "en": "A disabled category is not recorded at all — neither in the bell nor in the email digest.",
+      "de": "Eine deaktivierte Kategorie wird gar nicht aufgezeichnet — weder in der Glocke noch in der E-Mail-Zusammenfassung.",
+      "from": {"en":"Отключённая категория не записывается вовсе — ни в колокольчик, ни в почтовую сводку.","de":"Отключённая категория не записывается вовсе — ни в колокольчик, ни в почтовую сводку."},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:82"]
+    },
+    "notificationSettings.loadFailed": {
+      "ru": "Не удалось загрузить настройки уведомлений.",
+      "en": "Could not load notification settings.",
+      "de": "Benachrichtigungseinstellungen konnten nicht geladen werden.",
+      "from": {"en":"Не удалось загрузить настройки уведомлений.","de":"Не удалось загрузить настройки уведомлений."},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:44"]
+    },
+    "notificationSettings.saveFailed": {
+      "ru": "Не удалось сохранить настройки.",
+      "en": "Could not save the settings.",
+      "de": "Einstellungen konnten nicht gespeichert werden.",
+      "from": {"en":"Не удалось сохранить настройки.","de":"Не удалось сохранить настройки."},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:61"]
+    },
+    "notificationSettings.title": {
+      "ru": "Уведомления",
+      "en": "Notifications",
+      "de": "Benachrichtigungen",
+      "from": {"en":"Уведомления","de":"Уведомления"},
+      "where": ["client/src/components/layout/NotificationSettings.tsx:77"]
+    },
     "pool.conceptPool.addToPool": {
       "ru": "+ в пул",
       "en": "+ to the pool",
@@ -9830,105 +10365,105 @@
       "en": "An email with a link will be sent to the new address; the address changes after you follow it (the link is valid for an hour). A notice about the change is sent to the previous address.",
       "de": "An die neue Adresse wird eine E-Mail mit einem Link gesendet; die Adresse wird nach dem Aufruf geändert (der Link gilt eine Stunde). An die bisherige Adresse geht eine Benachrichtigung über die Änderung.",
       "from": {"en":"На новый адрес придёт письмо со ссылкой; адрес сменится после перехода по ней (ссылка действует час). На прежний адрес придёт уведомление о смене.","de":"На новый адрес придёт письмо со ссылкой; адрес сменится после перехода по ней (ссылка действует час). На прежний адрес придёт уведомление о смене."},
-      "where": ["client/src/pages/ProfilePage.tsx:248"]
+      "where": ["client/src/pages/ProfilePage.tsx:252"]
     },
     "profilePage.changeEmailTitle": {
       "ru": "Смена адреса",
       "en": "Change email address",
       "de": "Adressänderung",
       "from": {"en":"Смена адреса","de":"Смена адреса"},
-      "where": ["client/src/pages/ProfilePage.tsx:246"]
+      "where": ["client/src/pages/ProfilePage.tsx:250"]
     },
     "profilePage.changePassword": {
       "ru": "Сменить пароль",
       "en": "Change password",
       "de": "Passwort ändern",
       "from": {"en":"Сменить пароль","de":"Сменить пароль"},
-      "where": ["client/src/pages/ProfilePage.tsx:367"]
+      "where": ["client/src/pages/ProfilePage.tsx:374"]
     },
     "profilePage.changePasswordTitle": {
       "ru": "Смена пароля",
       "en": "Change password",
       "de": "Passwortänderung",
       "from": {"en":"Смена пароля","de":"Смена пароля"},
-      "where": ["client/src/pages/ProfilePage.tsx:314"]
+      "where": ["client/src/pages/ProfilePage.tsx:321"]
     },
     "profilePage.changing": {
       "ru": "Смена…",
       "en": "Changing…",
       "de": "Wird geändert…",
       "from": {"en":"Смена…","de":"Смена…"},
-      "where": ["client/src/pages/ProfilePage.tsx:367"]
+      "where": ["client/src/pages/ProfilePage.tsx:374"]
     },
     "profilePage.confirmDeleteLead": {
       "ru": "Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, ",
       "en": "Delete the account? All your syntheses will be deleted irreversibly, sessions ended, ",
       "de": "Konto löschen? Alle Ihre Synthesen werden unwiderruflich gelöscht, Sitzungen beendet, ",
       "from": {"en":"Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, ","de":"Удалить аккаунт? Все ваши синтезы будут удалены безвозвратно, сессии завершены, "},
-      "where": ["client/src/pages/ProfilePage.tsx:402"]
+      "where": ["client/src/pages/ProfilePage.tsx:409"]
     },
     "profilePage.confirmDeleteTail": {
       "ru": "подписка отменена. История платежей сохраняется обезличенной.",
       "en": "the subscription canceled. The payment history is kept anonymized.",
       "de": "das Abonnement gekündigt. Der Zahlungsverlauf bleibt anonymisiert erhalten.",
       "from": {"en":"подписка отменена. История платежей сохраняется обезличенной.","de":"подписка отменена. История платежей сохраняется обезличенной."},
-      "where": ["client/src/pages/ProfilePage.tsx:403"]
+      "where": ["client/src/pages/ProfilePage.tsx:410"]
     },
     "profilePage.currentPassword": {
       "ru": "Текущий пароль",
       "en": "Current password",
       "de": "Aktuelles Passwort",
       "from": {"en":"Текущий пароль","de":"Текущий пароль"},
-      "where": ["client/src/pages/ProfilePage.tsx:263","client/src/pages/ProfilePage.tsx:316"]
+      "where": ["client/src/pages/ProfilePage.tsx:267","client/src/pages/ProfilePage.tsx:323"]
     },
     "profilePage.data": {
       "ru": "Данные",
       "en": "Data",
       "de": "Daten",
       "from": {"en":"Данные","de":"Данные"},
-      "where": ["client/src/pages/ProfilePage.tsx:204"]
+      "where": ["client/src/pages/ProfilePage.tsx:208"]
     },
     "profilePage.deleteAccount": {
       "ru": "✕ Удалить аккаунт",
       "en": "✕ Delete account",
       "de": "✕ Konto löschen",
       "from": {"en":"✕ Удалить аккаунт","de":"✕ Удалить аккаунт"},
-      "where": ["client/src/pages/ProfilePage.tsx:417"]
+      "where": ["client/src/pages/ProfilePage.tsx:424"]
     },
     "profilePage.deleteAccountNote": {
       "ru": "Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история платежей и использования остаётся обезличенной. Действие необратимо.",
       "en": "Syntheses are deleted, sessions and API keys are reset, the subscription is canceled; the payment and usage history remains anonymized. The action is irreversible.",
       "de": "Synthesen werden gelöscht, Sitzungen und API-Schlüssel zurückgesetzt, das Abonnement gekündigt; Zahlungs- und Nutzungsverlauf bleiben anonymisiert erhalten. Die Aktion ist unwiderruflich.",
       "from": {"en":"Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история платежей и использования остаётся обезличенной. Действие необратимо.","de":"Синтезы удаляются, сессии и API-ключи сбрасываются, подписка отменяется; история платежей и использования остаётся обезличенной. Действие необратимо."},
-      "where": ["client/src/pages/ProfilePage.tsx:382"]
+      "where": ["client/src/pages/ProfilePage.tsx:389"]
     },
     "profilePage.deleteAccountTitle": {
       "ru": "Удаление аккаунта",
       "en": "Account deletion",
       "de": "Kontolöschung",
       "from": {"en":"Удаление аккаунта","de":"Удаление аккаунта"},
-      "where": ["client/src/pages/ProfilePage.tsx:380"]
+      "where": ["client/src/pages/ProfilePage.tsx:387"]
     },
     "profilePage.deleting": {
       "ru": "Удаление…",
       "en": "Deleting…",
       "de": "Wird gelöscht…",
       "from": {"en":"Удаление…","de":"Удаление…"},
-      "where": ["client/src/pages/ProfilePage.tsx:414"]
+      "where": ["client/src/pages/ProfilePage.tsx:421"]
     },
     "profilePage.displayName": {
       "ru": "Отображаемое имя",
       "en": "Display name",
       "de": "Anzeigename",
       "from": {"en":"Отображаемое имя","de":"Отображаемое имя"},
-      "where": ["client/src/pages/ProfilePage.tsx:213"]
+      "where": ["client/src/pages/ProfilePage.tsx:217"]
     },
     "profilePage.enterPasswordToConfirm": {
       "ru": "Введите пароль для подтверждения",
       "en": "Enter the password to confirm",
       "de": "Geben Sie zur Bestätigung das Passwort ein",
       "from": {"en":"Введите пароль для подтверждения","de":"Введите пароль для подтверждения"},
-      "where": ["client/src/pages/ProfilePage.tsx:95"]
+      "where": ["client/src/pages/ProfilePage.tsx:99"]
     },
     "profilePage.genLangNote": {
       "ru": "Язык генерации по умолчанию: {lang} — задаётся в форме создания синтеза; смена языка интерфейса переключает его на соответствующий.",
@@ -9936,105 +10471,134 @@
       "de": "Standardsprache der Generierung: {lang} — wird im Formular zum Erstellen einer Synthese festgelegt; ein Wechsel der Oberflächensprache schaltet sie auf die entsprechende um.",
       "from": {"en":"Язык генерации по умолчанию: {lang} — задаётся в форме создания синтеза; смена языка интерфейса переключает его на соответствующий.","de":"Язык генерации по умолчанию: {lang} — задаётся в форме создания синтеза; смена языка интерфейса переключает его на соответствующий."},
       "params": {"lang":""},
-      "where": ["client/src/pages/ProfilePage.tsx:303"]
+      "where": ["client/src/pages/ProfilePage.tsx:307"]
     },
     "profilePage.languageTitle": {
       "ru": "Язык",
       "en": "Language",
       "de": "Sprache",
       "from": {"en":"Язык","de":"Язык"},
-      "where": ["client/src/pages/ProfilePage.tsx:297"]
+      "where": ["client/src/pages/ProfilePage.tsx:301"]
     },
     "profilePage.newEmail": {
       "ru": "Новый адрес",
       "en": "New address",
       "de": "Neue Adresse",
       "from": {"en":"Новый адрес","de":"Новый адрес"},
-      "where": ["client/src/pages/ProfilePage.tsx:251"]
+      "where": ["client/src/pages/ProfilePage.tsx:255"]
     },
     "profilePage.newPassword": {
       "ru": "Новый пароль",
       "en": "New password",
       "de": "Neues Passwort",
       "from": {"en":"Новый пароль","de":"Новый пароль"},
-      "where": ["client/src/pages/ProfilePage.tsx:328"]
+      "where": ["client/src/pages/ProfilePage.tsx:335"]
     },
     "profilePage.newPasswordAgain": {
       "ru": "Новый пароль ещё раз",
       "en": "New password again",
       "de": "Neues Passwort wiederholen",
       "from": {"en":"Новый пароль ещё раз","de":"Новый пароль ещё раз"},
-      "where": ["client/src/pages/ProfilePage.tsx:340"]
+      "where": ["client/src/pages/ProfilePage.tsx:347"]
     },
     "profilePage.passwordChanged": {
       "ru": "Пароль изменён; прочие сессии завершены",
       "en": "Password changed; other sessions have been ended",
       "de": "Passwort geändert; übrige Sitzungen beendet",
       "from": {"en":"Пароль изменён; прочие сессии завершены","de":"Пароль изменён; прочие сессии завершены"},
-      "where": ["client/src/pages/ProfilePage.tsx:358"]
+      "where": ["client/src/pages/ProfilePage.tsx:365"]
     },
     "profilePage.passwordToConfirm": {
       "ru": "Пароль для подтверждения",
       "en": "Password to confirm",
       "de": "Passwort zur Bestätigung",
       "from": {"en":"Пароль для подтверждения","de":"Пароль для подтверждения"},
-      "where": ["client/src/pages/ProfilePage.tsx:385"]
+      "where": ["client/src/pages/ProfilePage.tsx:392"]
     },
     "profilePage.passwordsMismatch": {
       "ru": "Пароли не совпадают",
       "en": "Passwords do not match",
       "de": "Die Passwörter stimmen nicht überein",
       "from": {"en":"Пароли не совпадают","de":"Пароли не совпадают"},
-      "where": ["client/src/pages/ProfilePage.tsx:173"]
+      "where": ["client/src/pages/ProfilePage.tsx:177"]
     },
     "profilePage.saved": {
       "ru": "Сохранено",
       "en": "Saved",
       "de": "Gespeichert",
       "from": {"en":"Сохранено","de":"Сохранено"},
-      "where": ["client/src/pages/ProfilePage.tsx:231"]
+      "where": ["client/src/pages/ProfilePage.tsx:235"]
     },
     "profilePage.sendChangeLink": {
       "ru": "Отправить ссылку",
       "en": "Send the link",
       "de": "Link senden",
       "from": {"en":"Отправить ссылку","de":"Отправить ссылку"},
-      "where": ["client/src/pages/ProfilePage.tsx:291"]
+      "where": ["client/src/pages/ProfilePage.tsx:295"]
     },
     "profilePage.sending": {
       "ru": "Отправка…",
       "en": "Sending…",
       "de": "Wird gesendet…",
       "from": {"en":"Отправка…","de":"Отправка…"},
-      "where": ["client/src/pages/ProfilePage.tsx:291"]
+      "where": ["client/src/pages/ProfilePage.tsx:295"]
     },
     "profilePage.title": {
       "ru": "Профиль",
       "en": "Profile",
       "de": "Profil",
       "from": {"en":"Профиль","de":"Профиль"},
-      "where": ["client/src/pages/ProfilePage.tsx:199"]
+      "where": ["client/src/pages/ProfilePage.tsx:203"]
     },
     "profilePage.uiLanguage": {
       "ru": "Язык интерфейса",
       "en": "Interface language",
       "de": "Sprache der Oberfläche",
       "from": {"en":"Язык интерфейса","de":"Язык интерфейса"},
-      "where": ["client/src/pages/ProfilePage.tsx:299"]
+      "where": ["client/src/pages/ProfilePage.tsx:303"]
     },
     "registerPage.displayNameOptional": {
       "ru": "Отображаемое имя (необязательно)",
       "en": "Display name (optional)",
       "de": "Anzeigename (optional)",
       "from": {"en":"Отображаемое имя (необязательно)","de":"Отображаемое имя (необязательно)"},
-      "where": ["client/src/pages/RegisterPage.tsx:74"]
+      "where": ["client/src/pages/RegisterPage.tsx:130"]
     },
     "registerPage.haveAccount": {
       "ru": "Уже есть аккаунт?",
       "en": "Already have an account?",
       "de": "Schon ein Konto?",
       "from": {"en":"Уже есть аккаунт?","de":"Уже есть аккаунт?"},
-      "where": ["client/src/pages/RegisterPage.tsx:100"]
+      "where": ["client/src/pages/RegisterPage.tsx:156"]
+    },
+    "registerPage.inviteChecking": {
+      "ru": "проверка приглашения…",
+      "en": "checking invitation…",
+      "de": "Einladung wird geprüft…",
+      "from": {"en":"проверка приглашения…","de":"проверка приглашения…"},
+      "where": ["client/src/pages/RegisterPage.tsx:79"]
+    },
+    "registerPage.inviteInvalid": {
+      "ru": "Ссылка приглашения недействительна — просрочена, отозвана или уже использована. Регистрация возможна и без неё; владелец концепции сможет пригласить вас снова.",
+      "en": "The invitation link is invalid — expired, revoked or already used. You can still register without it; the concept owner can invite you again.",
+      "de": "Der Einladungslink ist ungültig — abgelaufen, zurückgezogen oder bereits verwendet. Eine Registrierung ist auch ohne ihn möglich; der Eigentümer der Konzeption kann Sie erneut einladen.",
+      "from": {"en":"Ссылка приглашения недействительна — просрочена, отозвана или уже использована. Регистрация возможна и без неё; владелец концепции сможет пригласить вас снова.","de":"Ссылка приглашения недействительна — просрочена, отозвана или уже использована. Регистрация возможна и без неё; владелец концепции сможет пригласить вас снова."},
+      "where": ["client/src/pages/RegisterPage.tsx:93"]
+    },
+    "registerPage.inviteLabel": {
+      "ru": "Приглашение",
+      "en": "Invitation",
+      "de": "Einladung",
+      "from": {"en":"Приглашение","de":"Приглашение"},
+      "where": ["client/src/pages/RegisterPage.tsx:82"]
+    },
+    "registerPage.inviteLead": {
+      "ru": "{inviter} приглашает вас в концепцию «{title}» в роли «{role}». Зарегистрируйтесь на адрес {email} — приглашение будет ждать вас после входа.",
+      "en": "{inviter} invites you to the concept “{title}” as “{role}”. Register with the address {email} — the invitation will be waiting for you after sign-in.",
+      "de": "{inviter} lädt Sie zur Konzeption „{title}“ in der Rolle „{role}“ ein. Registrieren Sie sich mit der Adresse {email} — die Einladung wartet nach der Anmeldung auf Sie.",
+      "from": {"en":"{inviter} приглашает вас в концепцию «{title}» в роли «{role}». Зарегистрируйтесь на адрес {email} — приглашение будет ждать вас после входа.","de":"{inviter} приглашает вас в концепцию «{title}» в роли «{role}». Зарегистрируйтесь на адрес {email} — приглашение будет ждать вас после входа."},
+      "params": {"inviter":"","title":"","role":"","email":""},
+      "where": ["client/src/pages/RegisterPage.tsx:83"]
     },
     "registerPage.passwordMinLength": {
       "ru": "Пароль (не короче {minLength} символов)",
@@ -10042,14 +10606,14 @@
       "de": "Passwort (mindestens {minLength} Zeichen)",
       "from": {"en":"Пароль (не короче {minLength} символов)","de":"Пароль (не короче {minLength} символов)"},
       "params": {"minLength":"PASSWORD_MIN_LENGTH"},
-      "where": ["client/src/pages/RegisterPage.tsx:58"]
+      "where": ["client/src/pages/RegisterPage.tsx:114"]
     },
     "registerPage.registrationLower": {
       "ru": "регистрация",
       "en": "sign up",
       "de": "Registrierung",
       "from": {"en":"регистрация","de":"регистрация"},
-      "where": ["client/src/pages/RegisterPage.tsx:34"]
+      "where": ["client/src/pages/RegisterPage.tsx:71"]
     },
     "resetPasswordPage.accountEmail": {
       "ru": "Email учётной записи",
@@ -10461,84 +11025,84 @@
       "en": "Address object",
       "de": "Adressobjekt",
       "from": {"en":"Объект адреса","de":"Объект адреса"},
-      "where": ["server/services/discussion.ts:268","server/services/discussion.ts:269"]
+      "where": ["server/services/discussion.ts:284","server/services/discussion.ts:285"]
     },
     "server.discussion.alreadyPublished": {
       "ru": "Рецензия уже опубликована",
       "en": "The review is already published",
       "de": "Die Rezension ist bereits veröffentlicht",
       "from": {"en":"Рецензия уже опубликована","de":"Рецензия уже опубликована"},
-      "where": ["server/services/discussion.ts:841"]
+      "where": ["server/services/discussion.ts:902"]
     },
     "server.discussion.comment": {
       "ru": "Комментарий",
       "en": "Comment",
       "de": "Kommentar",
       "from": {"en":"Комментарий","de":"Комментарий"},
-      "where": ["server/routes/discussion.ts:146","server/services/discussion.ts:457"]
+      "where": ["server/routes/discussion.ts:146","server/services/discussion.ts:476"]
     },
     "server.discussion.commentDeleted": {
       "ru": "Комментарий удалён",
       "en": "The comment has been deleted",
       "de": "Der Kommentar wurde gelöscht",
       "from": {"en":"Комментарий удалён","de":"Комментарий удалён"},
-      "where": ["server/services/discussion.ts:523"]
+      "where": ["server/services/discussion.ts:580"]
     },
     "server.discussion.commentHidden": {
       "ru": "Комментарий скрыт владельцем",
       "en": "The comment was hidden by the owner",
       "de": "Der Kommentar wurde vom Eigentümer ausgeblendet",
       "from": {"en":"Комментарий скрыт владельцем","de":"Комментарий скрыт владельцем"},
-      "where": ["server/services/discussion.ts:524","server/services/discussion.ts:581"]
+      "where": ["server/services/discussion.ts:581","server/services/discussion.ts:638"]
     },
     "server.discussion.cursorInvalid": {
       "ru": "Негодный курсор",
       "en": "Invalid cursor",
       "de": "Ungültiger Cursor",
       "from": {"en":"Негодный курсор","de":"Негодный курсор"},
-      "where": ["server/services/discussion.ts:425"]
+      "where": ["server/services/discussion.ts:444"]
     },
     "server.discussion.deletedUser": {
       "ru": "удалённый пользователь",
       "en": "deleted user",
       "de": "gelöschter Benutzer",
       "from": {"en":"удалённый пользователь","de":"удалённый пользователь"},
-      "where": ["server/services/discussion.ts:139"]
+      "where": ["server/services/discussion.ts:140","server/services/members.ts:151","server/services/members.ts:426","server/services/members.ts:521","server/services/notifications.ts:166"]
     },
     "server.discussion.finding": {
       "ru": "Замечание",
       "en": "Finding",
       "de": "Anmerkung",
       "from": {"en":"Замечание","de":"Замечание"},
-      "where": ["server/routes/discussion.ts:208","server/services/discussion.ts:945"]
+      "where": ["server/routes/discussion.ts:208","server/services/discussion.ts:1015"]
     },
     "server.discussion.hideForbidden": {
       "ru": "Скрывать комментарии может только владелец",
       "en": "Only the owner can hide comments",
       "de": "Nur der Eigentümer kann Kommentare ausblenden",
       "from": {"en":"Скрывать комментарии может только владелец","de":"Скрывать комментарии может только владелец"},
-      "where": ["server/services/discussion.ts:608"]
+      "where": ["server/services/discussion.ts:665"]
     },
     "server.discussion.invalidQuery": {
       "ru": "Неверные параметры запроса",
       "en": "Invalid query parameters",
       "de": "Ungültige Abfrageparameter",
       "from": {"en":"Неверные параметры запроса","de":"Неверные параметры запроса"},
-      "where": ["server/services/discussion.ts:402"]
+      "where": ["server/services/discussion.ts:421"]
     },
     "server.discussion.kindAllowed": {
       "ru": "question | objection | source | unclear | null",
       "en": "question | objection | source | unclear | null",
       "de": "question | objection | source | unclear | null",
       "from": {"en":"question | objection | source | unclear | null","de":"question | objection | source | unclear | null"},
-      "where": ["server/services/discussion.ts:240"]
+      "where": ["server/services/discussion.ts:256"]
     },
     "server.discussion.kindInvalid": {
       "ru": "Неизвестный вид замечания",
       "en": "Unknown kind of remark",
       "de": "Unbekannte Art der Anmerkung",
       "from": {"en":"Неизвестный вид замечания","de":"Неизвестный вид замечания"},
-      "where": ["server/services/discussion.ts:239"]
+      "where": ["server/services/discussion.ts:255"]
     },
     "server.discussion.limitRange": {
       "ru": "целое от 1 до {max}",
@@ -10546,7 +11110,7 @@
       "de": "eine ganze Zahl von 1 bis {max}",
       "from": {"en":"целое от 1 до {max}","de":"целое от 1 до {max}"},
       "params": {"max":""},
-      "where": ["server/services/discussion.ts:398"]
+      "where": ["server/services/discussion.ts:417"]
     },
     "server.discussion.maxLength": {
       "ru": "не длиннее {max} символов",
@@ -10554,21 +11118,21 @@
       "de": "höchstens {max} Zeichen",
       "from": {"en":"не длиннее {max} символов","de":"не длиннее {max} символов"},
       "params": {"max":""},
-      "where": ["server/services/discussion.ts:231"]
+      "where": ["server/services/discussion.ts:247"]
     },
     "server.discussion.notAuthor": {
       "ru": "Правит только автор",
       "en": "Only the author can edit",
       "de": "Nur der Autor kann bearbeiten",
       "from": {"en":"Правит только автор","de":"Правит только автор"},
-      "where": ["server/services/discussion.ts:522"]
+      "where": ["server/services/discussion.ts:579"]
     },
     "server.discussion.notAuthorDelete": {
       "ru": "Удаляет только автор",
       "en": "Only the author can delete",
       "de": "Nur der Autor kann löschen",
       "from": {"en":"Удаляет только автор","de":"Удаляет только автор"},
-      "where": ["server/services/discussion.ts:546"]
+      "where": ["server/services/discussion.ts:603"]
     },
     "server.discussion.notFound": {
       "ru": "{what} не найден",
@@ -10576,161 +11140,161 @@
       "de": "{what} nicht gefunden",
       "from": {"en":"{what} не найден","de":"{what} не найден"},
       "params": {"what":""},
-      "where": ["server/routes/discussion.ts:104","server/services/discussion.ts:126"]
+      "where": ["server/routes/discussion.ts:104","server/services/discussion.ts:127"]
     },
     "server.discussion.notPublished": {
       "ru": "Отозвать можно только опубликованную рецензию",
       "en": "Only a published review can be withdrawn",
       "de": "Nur eine veröffentlichte Rezension kann zurückgezogen werden",
       "from": {"en":"Отозвать можно только опубликованную рецензию","de":"Отозвать можно только опубликованную рецензию"},
-      "where": ["server/services/discussion.ts:869"]
+      "where": ["server/services/discussion.ts:939"]
     },
     "server.discussion.notReviewAuthor": {
       "ru": "Рецензию правит только её автор",
       "en": "Only its author can edit the review",
       "de": "Nur der Autor kann die Rezension bearbeiten",
       "from": {"en":"Рецензию правит только её автор","de":"Рецензию правит только её автор"},
-      "where": ["server/services/discussion.ts:723"]
+      "where": ["server/services/discussion.ts:784"]
     },
     "server.discussion.notRoot": {
       "ru": "Статус есть только у корня ветки",
       "en": "Only the root of a thread has a status",
       "de": "Nur der Anfang eines Threads hat einen Status",
       "from": {"en":"Статус есть только у корня ветки","de":"Статус есть только у корня ветки"},
-      "where": ["server/services/discussion.ts:577"]
+      "where": ["server/services/discussion.ts:634"]
     },
     "server.discussion.nothingToChange": {
       "ru": "Нечего менять",
       "en": "Nothing to change",
       "de": "Nichts zu ändern",
       "from": {"en":"Нечего менять","de":"Нечего менять"},
-      "where": ["server/services/discussion.ts:529","server/services/discussion.ts:813","server/services/discussion.ts:966"]
+      "where": ["server/services/discussion.ts:586","server/services/discussion.ts:874","server/services/discussion.ts:1036"]
     },
     "server.discussion.onlyDraftDeleted": {
       "ru": "Удалить можно только черновик; опубликованную рецензию отзывают",
       "en": "Only a draft can be deleted; a published review is withdrawn",
       "de": "Nur ein Entwurf kann gelöscht werden; eine veröffentlichte Rezension wird zurückgezogen",
       "from": {"en":"Удалить можно только черновик; опубликованную рецензию отзывают","de":"Удалить можно только черновик; опубликованную рецензию отзывают"},
-      "where": ["server/services/discussion.ts:829"]
+      "where": ["server/services/discussion.ts:890"]
     },
     "server.discussion.parentInvalid": {
       "ru": "parentId должен быть id корневого комментария",
       "en": "parentId must be the id of a root comment",
       "de": "parentId muss die id eines Wurzelkommentars sein",
       "from": {"en":"parentId должен быть id корневого комментария","de":"parentId должен быть id корневого комментария"},
-      "where": ["server/services/discussion.ts:482"]
+      "where": ["server/services/discussion.ts:501"]
     },
     "server.discussion.replyToDeleted": {
       "ru": "Ветка удалена автором",
       "en": "The thread was deleted by its author",
       "de": "Der Thread wurde vom Autor gelöscht",
       "from": {"en":"Ветка удалена автором","de":"Ветка удалена автором"},
-      "where": ["server/services/discussion.ts:487"]
+      "where": ["server/services/discussion.ts:506"]
     },
     "server.discussion.replyToHidden": {
       "ru": "Ветка скрыта владельцем",
       "en": "The thread was hidden by the owner",
       "de": "Der Thread wurde vom Eigentümer ausgeblendet",
       "from": {"en":"Ветка скрыта владельцем","de":"Ветка скрыта владельцем"},
-      "where": ["server/services/discussion.ts:489"]
+      "where": ["server/services/discussion.ts:508"]
     },
     "server.discussion.replyToReply": {
       "ru": "Отвечать можно только корню ветки",
       "en": "Replies go only to the root of a thread",
       "de": "Antworten sind nur auf den Anfang eines Threads möglich",
       "from": {"en":"Отвечать можно только корню ветки","de":"Отвечать можно только корню ветки"},
-      "where": ["server/services/discussion.ts:485"]
+      "where": ["server/services/discussion.ts:504"]
     },
     "server.discussion.requiredField": {
       "ru": "обязательное поле",
       "en": "required field",
       "de": "Pflichtfeld",
       "from": {"en":"обязательное поле","de":"обязательное поле"},
-      "where": ["server/services/discussion.ts:216","server/services/discussion.ts:227"]
+      "where": ["server/services/discussion.ts:232","server/services/discussion.ts:243"]
     },
     "server.discussion.resolveForbidden": {
       "ru": "Решить ветку может её автор или владелец",
       "en": "Only the thread's author or the owner can resolve it",
       "de": "Nur der Autor des Threads oder der Eigentümer kann ihn als erledigt markieren",
       "from": {"en":"Решить ветку может её автор или владелец","de":"Решить ветку может её автор или владелец"},
-      "where": ["server/services/discussion.ts:579"]
+      "where": ["server/services/discussion.ts:636"]
     },
     "server.discussion.review": {
       "ru": "Рецензия",
       "en": "Review",
       "de": "Rezension",
       "from": {"en":"Рецензия","de":"Рецензия"},
-      "where": ["server/routes/discussion.ts:204","server/services/discussion.ts:712","server/services/discussion.ts:719"]
+      "where": ["server/routes/discussion.ts:204","server/services/discussion.ts:773","server/services/discussion.ts:780"]
     },
     "server.discussion.reviewWithdrawn": {
       "ru": "Рецензия отозвана и не правится",
       "en": "The review has been withdrawn and cannot be edited",
       "de": "Die Rezension wurde zurückgezogen und kann nicht bearbeitet werden",
       "from": {"en":"Рецензия отозвана и не правится","de":"Рецензия отозвана и не правится"},
-      "where": ["server/services/discussion.ts:810","server/services/discussion.ts:911","server/services/discussion.ts:960","server/services/discussion.ts:986"]
+      "where": ["server/services/discussion.ts:871","server/services/discussion.ts:981","server/services/discussion.ts:1030","server/services/discussion.ts:1056"]
     },
     "server.discussion.statusAllowed": {
       "ru": "open | resolved | hidden",
       "en": "open | resolved | hidden",
       "de": "open | resolved | hidden",
       "from": {"en":"open | resolved | hidden","de":"open | resolved | hidden"},
-      "where": ["server/services/discussion.ts:390"]
+      "where": ["server/services/discussion.ts:409"]
     },
     "server.discussion.stringExpected": {
       "ru": "строка",
       "en": "string",
       "de": "Zeichenkette",
       "from": {"en":"строка","de":"строка"},
-      "where": ["server/services/discussion.ts:222"]
+      "where": ["server/services/discussion.ts:238"]
     },
     "server.discussion.synthesis": {
       "ru": "Синтез",
       "en": "Synthesis",
       "de": "Synthese",
       "from": {"en":"Синтез","de":"Синтез"},
-      "where": ["server/services/discussion.ts:199"]
+      "where": ["server/services/discussion.ts:215"]
     },
     "server.discussion.targetIdOrKey": {
       "ru": "id либо key",
       "en": "id or key",
       "de": "id oder key",
       "from": {"en":"id либо key","de":"id либо key"},
-      "where": ["server/services/discussion.ts:256"]
+      "where": ["server/services/discussion.ts:272"]
     },
     "server.discussion.targetKindInvalid": {
       "ru": "Неизвестный вид адреса",
       "en": "Unknown kind of address",
       "de": "Unbekannte Adressart",
       "from": {"en":"Неизвестный вид адреса","de":"Неизвестный вид адреса"},
-      "where": ["server/services/discussion.ts:248","server/services/discussion.ts:385"]
+      "where": ["server/services/discussion.ts:264","server/services/discussion.ts:404"]
     },
     "server.discussion.targetNeedsIdOrKey": {
       "ru": "Адресу нужен id или ключ объекта",
       "en": "An address needs the object's id or key",
       "de": "Eine Adresse braucht die id oder den Schlüssel des Objekts",
       "from": {"en":"Адресу нужен id или ключ объекта","de":"Адресу нужен id или ключ объекта"},
-      "where": ["server/services/discussion.ts:255"]
+      "where": ["server/services/discussion.ts:271"]
     },
     "server.discussion.targetShape": {
       "ru": "{ kind: synthesis | section | subsection | category | edge | thesis | glossary_term, id?, key? }",
       "en": "{ kind: synthesis | section | subsection | category | edge | thesis | glossary_term, id?, key? }",
       "de": "{ kind: synthesis | section | subsection | category | edge | thesis | glossary_term, id?, key? }",
       "from": {"en":"{ kind: synthesis | section | subsection | category | edge | thesis | glossary_term, id?, key? }","de":"{ kind: synthesis | section | subsection | category | edge | thesis | glossary_term, id?, key? }"},
-      "where": ["server/services/discussion.ts:249"]
+      "where": ["server/services/discussion.ts:265"]
     },
     "server.discussion.textExpected": {
       "ru": "Ожидается текст",
       "en": "Text expected",
       "de": "Text erwartet",
       "from": {"en":"Ожидается текст","de":"Ожидается текст"},
-      "where": ["server/services/discussion.ts:221"]
+      "where": ["server/services/discussion.ts:237"]
     },
     "server.discussion.textRequired": {
       "ru": "Нужен текст",
       "en": "Text is required",
       "de": "Text erforderlich",
       "from": {"en":"Нужен текст","de":"Нужен текст"},
-      "where": ["server/services/discussion.ts:215","server/services/discussion.ts:226"]
+      "where": ["server/services/discussion.ts:231","server/services/discussion.ts:242"]
     },
     "server.discussion.textTooLong": {
       "ru": "Текст длиннее {max} символов",
@@ -10738,7 +11302,7 @@
       "de": "Der Text ist länger als {max} Zeichen",
       "from": {"en":"Текст длиннее {max} символов","de":"Текст длиннее {max} символов"},
       "params": {"max":""},
-      "where": ["server/services/discussion.ts:230"]
+      "where": ["server/services/discussion.ts:246"]
     },
     "server.editPlanner.actionRequired": {
       "ru": "нужно хотя бы одно действие",
@@ -11914,14 +12478,14 @@
       "en": "Internal server error",
       "de": "Interner Serverfehler",
       "from": {"en":"Внутренняя ошибка сервера","de":"Внутренняя ошибка сервера"},
-      "where": ["server/index.ts:80"]
+      "where": ["server/index.ts:82"]
     },
     "server.index.notFound": {
       "ru": "Ресурс не найден",
       "en": "Resource not found",
       "de": "Ressource nicht gefunden",
       "from": {"en":"Ресурс не найден","de":"Ресурс не найден"},
-      "where": ["server/index.ts:75"]
+      "where": ["server/index.ts:77"]
     },
     "server.lineageService.alreadyParent": {
       "ru": "Эта концепция уже указана родителем",
@@ -13027,6 +13591,50 @@
       "from": {"en":"Если кнопка не открывается, скопируйте ссылку в адресную строку:","de":"Если кнопка не открывается, скопируйте ссылку в адресную строку:"},
       "where": ["server/services/mail/templates.ts:62"]
     },
+    "server.mail.templates.digestButton": {
+      "ru": "Открыть уведомления",
+      "en": "Open notifications",
+      "de": "Benachrichtigungen öffnen",
+      "from": {"en":"Открыть уведомления","de":"Открыть уведомления"},
+      "where": ["server/services/mail/templates.ts:247"]
+    },
+    "server.mail.templates.digestLead": {
+      "ru": "Пока вас не было, в концепциях, где вы участвуете, произошло следующее:",
+      "en": "While you were away, this happened in the concepts you take part in:",
+      "de": "Während Sie weg waren, ist in den Konzeptionen, an denen Sie teilnehmen, Folgendes passiert:",
+      "from": {"en":"Пока вас не было, в концепциях, где вы участвуете, произошло следующее:","de":"Пока вас не было, в концепциях, где вы участвуете, произошло следующее:"},
+      "where": ["server/services/mail/templates.ts:229"]
+    },
+    "server.mail.templates.digestMore": {
+      "ru": "…и ещё {n, plural, one {# уведомление} few {# уведомления} many {# уведомлений} other {# уведомления}} — все в приложении.",
+      "en": "…and {n, plural, one {# more notification} other {# more notifications}} — all in the app.",
+      "de": "…und {n, plural, one {# weitere Benachrichtigung} other {# weitere Benachrichtigungen}} — alle in der Anwendung.",
+      "from": {"en":"…и ещё {n, plural, one {# уведомление} few {# уведомления} many {# уведомлений} other {# уведомления}} — все в приложении.","de":"…и ещё {n, plural, one {# уведомление} few {# уведомления} many {# уведомлений} other {# уведомления}} — все в приложении."},
+      "params": {"n":""},
+      "where": ["server/services/mail/templates.ts:231"]
+    },
+    "server.mail.templates.digestOpen": {
+      "ru": "открыть",
+      "en": "open",
+      "de": "öffnen",
+      "from": {"en":"открыть","de":"открыть"},
+      "where": ["server/services/mail/templates.ts:245"]
+    },
+    "server.mail.templates.digestSubject": {
+      "ru": "{service}: {n, plural, one {# новое уведомление} few {# новых уведомления} many {# новых уведомлений} other {# новых уведомления}}",
+      "en": "{service}: {n, plural, one {# new notification} other {# new notifications}}",
+      "de": "{service}: {n, plural, one {# neue Benachrichtigung} other {# neue Benachrichtigungen}}",
+      "from": {"en":"{service}: {n, plural, one {# новое уведомление} few {# новых уведомления} many {# новых уведомлений} other {# новых уведомления}}","de":"{service}: {n, plural, one {# новое уведомление} few {# новых уведомления} many {# новых уведомлений} other {# новых уведомления}}"},
+      "params": {"service":"","n":""},
+      "where": ["server/services/mail/templates.ts:228"]
+    },
+    "server.mail.templates.digestTail": {
+      "ru": "Сводка приходит не чаще раза в несколько часов и только при непрочитанном; отключить её или отдельные категории можно в профиле.",
+      "en": "The digest arrives at most once every few hours and only when there is something unread; you can turn it off, or individual categories, in your profile.",
+      "de": "Die Zusammenfassung kommt höchstens alle paar Stunden und nur bei Ungelesenem; Sie können sie oder einzelne Kategorien im Profil abschalten.",
+      "from": {"en":"Сводка приходит не чаще раза в несколько часов и только при непрочитанном; отключить её или отдельные категории можно в профиле.","de":"Сводка приходит не чаще раза в несколько часов и только при непрочитанном; отключить её или отдельные категории можно в профиле."},
+      "where": ["server/services/mail/templates.ts:234"]
+    },
     "server.mail.templates.greeting": {
       "ru": "Здравствуйте.",
       "en": "Hello.",
@@ -13049,6 +13657,73 @@
       "from": {"en":"{n, plural, one {# час} few {# часа} many {# часов} other {# часа}}","de":"{n, plural, one {# час} few {# часа} many {# часов} other {# часа}}"},
       "params": {"n":""},
       "where": ["server/services/mail/templates.ts:48"]
+    },
+    "server.mail.templates.inviteButton": {
+      "ru": "Открыть приглашение",
+      "en": "Open invitation",
+      "de": "Einladung öffnen",
+      "from": {"en":"Открыть приглашение","de":"Открыть приглашение"},
+      "where": ["server/services/mail/templates.ts:182"]
+    },
+    "server.mail.templates.inviteIgnore": {
+      "ru": "Если приглашение вам не нужно, ничего делать не обязательно — его можно отклонить на той же странице.",
+      "en": "If you do not want the invitation, you need not do anything — it can be declined on the same page.",
+      "de": "Wenn Sie die Einladung nicht möchten, müssen Sie nichts tun — sie kann auf derselben Seite abgelehnt werden.",
+      "from": {"en":"Если приглашение вам не нужно, ничего делать не обязательно — его можно отклонить на той же странице.","de":"Если приглашение вам не нужно, ничего делать не обязательно — его можно отклонить на той же странице."},
+      "where": ["server/services/mail/templates.ts:179"]
+    },
+    "server.mail.templates.inviteLead": {
+      "ru": "{inviter} приглашает вас участвовать в обсуждении концепции «{title}» в роли «{role}». Принять или отклонить приглашение можно на странице:",
+      "en": "{inviter} invites you to take part in discussing the concept “{title}” as “{role}”. You can accept or decline the invitation on this page:",
+      "de": "{inviter} lädt Sie ein, an der Diskussion der Konzeption „{title}“ in der Rolle „{role}“ teilzunehmen. Annehmen oder ablehnen können Sie die Einladung auf dieser Seite:",
+      "from": {"en":"{inviter} приглашает вас участвовать в обсуждении концепции «{title}» в роли «{role}». Принять или отклонить приглашение можно на странице:","de":"{inviter} приглашает вас участвовать в обсуждении концепции «{title}» в роли «{role}». Принять или отклонить приглашение можно на странице:"},
+      "params": {"inviter":"","title":"","role":""},
+      "where": ["server/services/mail/templates.ts:176"]
+    },
+    "server.mail.templates.inviteRegisterButton": {
+      "ru": "Зарегистрироваться по приглашению",
+      "en": "Register by invitation",
+      "de": "Per Einladung registrieren",
+      "from": {"en":"Зарегистрироваться по приглашению","de":"Зарегистрироваться по приглашению"},
+      "where": ["server/services/mail/templates.ts:205"]
+    },
+    "server.mail.templates.inviteRegisterIgnore": {
+      "ru": "Если вы не ждёте приглашения, ничего делать не нужно: без регистрации по ссылке участие не возникает.",
+      "en": "If you are not expecting an invitation, nothing needs to be done: without registering through the link, no participation arises.",
+      "de": "Wenn Sie keine Einladung erwarten, müssen Sie nichts tun: ohne Registrierung über den Link entsteht keine Teilnahme.",
+      "from": {"en":"Если вы не ждёте приглашения, ничего делать не нужно: без регистрации по ссылке участие не возникает.","de":"Если вы не ждёте приглашения, ничего делать не нужно: без регистрации по ссылке участие не возникает."},
+      "where": ["server/services/mail/templates.ts:202"]
+    },
+    "server.mail.templates.inviteRegisterLead": {
+      "ru": "{inviter} приглашает вас участвовать в обсуждении концепции «{title}» в службе {service} в роли «{role}». Учётной записи на этот адрес ещё нет — зарегистрируйтесь по ссылке, и приглашение будет ждать вас в каталоге:",
+      "en": "{inviter} invites you to take part in discussing the concept “{title}” in {service} as “{role}”. There is no account for this address yet — register through the link, and the invitation will be waiting for you in the catalog:",
+      "de": "{inviter} lädt Sie ein, an der Diskussion der Konzeption „{title}“ in {service} in der Rolle „{role}“ teilzunehmen. Für diese Adresse gibt es noch kein Konto — registrieren Sie sich über den Link, und die Einladung wartet im Katalog auf Sie:",
+      "from": {"en":"{inviter} приглашает вас участвовать в обсуждении концепции «{title}» в службе {service} в роли «{role}». Учётной записи на этот адрес ещё нет — зарегистрируйтесь по ссылке, и приглашение будет ждать вас в каталоге:","de":"{inviter} приглашает вас участвовать в обсуждении концепции «{title}» в службе {service} в роли «{role}». Учётной записи на этот адрес ещё нет — зарегистрируйтесь по ссылке, и приглашение будет ждать вас в каталоге:"},
+      "params": {"inviter":"","title":"","service":"","role":""},
+      "where": ["server/services/mail/templates.ts:199"]
+    },
+    "server.mail.templates.inviteRegisterTtl": {
+      "ru": "Ссылка действует {ttl} и срабатывает один раз. Новое приглашение на этот адрес делает прежнюю ссылку недействительной.",
+      "en": "The link is valid for {ttl} and works once. A new invitation to this address invalidates the previous link.",
+      "de": "Der Link ist {ttl} gültig und funktioniert einmal. Eine neue Einladung an diese Adresse macht den vorherigen Link ungültig.",
+      "from": {"en":"Ссылка действует {ttl} и срабатывает один раз. Новое приглашение на этот адрес делает прежнюю ссылку недействительной.","de":"Ссылка действует {ttl} и срабатывает один раз. Новое приглашение на этот адрес делает прежнюю ссылку недействительной."},
+      "params": {"ttl":""},
+      "where": ["server/services/mail/templates.ts:201"]
+    },
+    "server.mail.templates.inviteSubject": {
+      "ru": "{service}: приглашение в концепцию «{title}»",
+      "en": "{service}: invitation to the concept “{title}”",
+      "de": "{service}: Einladung zur Konzeption „{title}“",
+      "from": {"en":"{service}: приглашение в концепцию «{title}»","de":"{service}: приглашение в концепцию «{title}»"},
+      "params": {"service":"","title":""},
+      "where": ["server/services/mail/templates.ts:175","server/services/mail/templates.ts:198"]
+    },
+    "server.mail.templates.inviteTail": {
+      "ru": "Участник видит концепцию целиком, в том числе приватную, и может комментировать и рецензировать её; документ обсуждением не меняется.",
+      "en": "A participant sees the whole concept, including a private one, and can comment on and review it; the discussion does not change the document.",
+      "de": "Ein Teilnehmer sieht die gesamte Konzeption, auch eine private, und kann sie kommentieren und rezensieren; die Diskussion verändert das Dokument nicht.",
+      "from": {"en":"Участник видит концепцию целиком, в том числе приватную, и может комментировать и рецензировать её; документ обсуждением не меняется.","de":"Участник видит концепцию целиком, в том числе приватную, и может комментировать и рецензировать её; документ обсуждением не меняется."},
+      "where": ["server/services/mail/templates.ts:178"]
     },
     "server.mail.templates.resetButton": {
       "ru": "Задать новый пароль",
@@ -13086,6 +13761,20 @@
       "from": {"en":"Ссылка действует {ttl} и срабатывает один раз. После смены пароля все сеансы входа будут завершены.","de":"Ссылка действует {ttl} и срабатывает один раз. После смены пароля все сеансы входа будут завершены."},
       "params": {"ttl":""},
       "where": ["server/services/mail/templates.ts:98"]
+    },
+    "server.mail.templates.roleEditor": {
+      "ru": "редактор",
+      "en": "editor",
+      "de": "Redakteur",
+      "from": {"en":"редактор","de":"редактор"},
+      "where": ["server/services/mail/templates.ts:160","server/services/notifications.ts:354"]
+    },
+    "server.mail.templates.roleReviewer": {
+      "ru": "рецензент",
+      "en": "reviewer",
+      "de": "Rezensent",
+      "from": {"en":"рецензент","de":"рецензент"},
+      "where": ["server/services/mail/templates.ts:161","server/services/notifications.ts:355"]
     },
     "server.mail.templates.verifyButton": {
       "ru": "Подтвердить адрес",
@@ -13125,6 +13814,104 @@
       "from": {"en":"Ссылка действует {ttl} и срабатывает один раз. Новое письмо с подтверждением делает прежнюю ссылку недействительной.","de":"Ссылка действует {ttl} и срабатывает один раз. Новое письмо с подтверждением делает прежнюю ссылку недействительной."},
       "params": {"ttl":""},
       "where": ["server/services/mail/templates.ts:84"]
+    },
+    "server.members.alreadyAccepted": {
+      "ru": "Приглашение уже принято",
+      "en": "The invitation has already been accepted",
+      "de": "Die Einladung wurde bereits angenommen",
+      "from": {"en":"Приглашение уже принято","de":"Приглашение уже принято"},
+      "where": ["server/services/members.ts:452"]
+    },
+    "server.members.alreadyActive": {
+      "ru": "Участник уже принял приглашение",
+      "en": "The participant has already accepted the invitation",
+      "de": "Der Teilnehmer hat die Einladung bereits angenommen",
+      "from": {"en":"Участник уже принял приглашение","de":"Участник уже принял приглашение"},
+      "where": ["server/services/members.ts:357"]
+    },
+    "server.members.alreadyInvited": {
+      "ru": "Этот пользователь уже приглашён — можно повторить письмо",
+      "en": "This user has already been invited — you can resend the letter",
+      "de": "Dieser Benutzer wurde bereits eingeladen — Sie können den Brief erneut senden",
+      "from": {"en":"Этот пользователь уже приглашён — можно повторить письмо","de":"Этот пользователь уже приглашён — можно повторить письмо"},
+      "where": ["server/services/members.ts:233"]
+    },
+    "server.members.alreadyInvitedEmail": {
+      "ru": "На этот адрес уже отправлено приглашение — можно повторить письмо",
+      "en": "An invitation has already been sent to this address — you can resend the letter",
+      "de": "An diese Adresse wurde bereits eine Einladung gesendet — Sie können den Brief erneut senden",
+      "from": {"en":"На этот адрес уже отправлено приглашение — можно повторить письмо","de":"На этот адрес уже отправлено приглашение — можно повторить письмо"},
+      "where": ["server/services/members.ts:257"]
+    },
+    "server.members.alreadyMember": {
+      "ru": "Этот пользователь уже участник концепции",
+      "en": "This user is already a participant of the concept",
+      "de": "Dieser Benutzer ist bereits Teilnehmer der Konzeption",
+      "from": {"en":"Этот пользователь уже участник концепции","de":"Этот пользователь уже участник концепции"},
+      "where": ["server/services/members.ts:232"]
+    },
+    "server.members.badRole": {
+      "ru": "Роль — reviewer или editor",
+      "en": "Role must be reviewer or editor",
+      "de": "Rolle muss reviewer oder editor sein",
+      "from": {"en":"Роль — reviewer или editor","de":"Роль — reviewer или editor"},
+      "where": ["server/services/members.ts:121"]
+    },
+    "server.members.cannotDeclineActive": {
+      "ru": "Приглашение уже принято; выйти из участников может только владелец исключением",
+      "en": "The invitation has already been accepted; only the owner can remove a participant by exclusion",
+      "de": "Die Einladung wurde bereits angenommen; nur der Eigentümer kann einen Teilnehmer durch Ausschluss entfernen",
+      "from": {"en":"Приглашение уже принято; выйти из участников может только владелец исключением","de":"Приглашение уже принято; выйти из участников может только владелец исключением"},
+      "where": ["server/services/members.ts:488"]
+    },
+    "server.members.invitationNotFound": {
+      "ru": "Приглашение не найдено",
+      "en": "Invitation not found",
+      "de": "Einladung nicht gefunden",
+      "from": {"en":"Приглашение не найдено","de":"Приглашение не найдено"},
+      "where": ["server/services/members.ts:89"]
+    },
+    "server.members.inviteFailed": {
+      "ru": "Приглашение не создано — попробуйте ещё раз",
+      "en": "The invitation was not created — try again",
+      "de": "Die Einladung wurde nicht erstellt — versuchen Sie es erneut",
+      "from": {"en":"Приглашение не создано — попробуйте ещё раз","de":"Приглашение не создано — попробуйте ещё раз"},
+      "where": ["server/services/members.ts:267"]
+    },
+    "server.members.memberNotFound": {
+      "ru": "Участник не найден",
+      "en": "Participant not found",
+      "de": "Teilnehmer nicht gefunden",
+      "from": {"en":"Участник не найден","de":"Участник не найден"},
+      "where": ["server/services/members.ts:88"]
+    },
+    "server.members.noInvitation": {
+      "ru": "Приглашения в эту концепцию у вас нет",
+      "en": "You have no invitation to this concept",
+      "de": "Sie haben keine Einladung zu dieser Konzeption",
+      "from": {"en":"Приглашения в эту концепцию у вас нет","de":"Приглашения в эту концепцию у вас нет"},
+      "where": ["server/services/members.ts:412","server/services/members.ts:453","server/services/members.ts:489"]
+    },
+    "server.members.ownerOnly": {
+      "ru": "Управлять участниками может только владелец концепции",
+      "en": "Only the concept owner can manage participants",
+      "de": "Nur der Eigentümer der Konzeption kann Teilnehmer verwalten",
+      "from": {"en":"Управлять участниками может только владелец концепции","de":"Управлять участниками может только владелец концепции"},
+      "where": ["server/services/members.ts:87"]
+    },
+    "server.members.ownerSelf": {
+      "ru": "Владелец и так участник своей концепции",
+      "en": "The owner is already a participant of their own concept",
+      "de": "Der Eigentümer ist bereits Teilnehmer seiner eigenen Konzeption",
+      "from": {"en":"Владелец и так участник своей концепции","de":"Владелец и так участник своей концепции"},
+      "where": ["server/services/members.ts:213"]
+    },
+    "server.members.synthesisNotFound": {
+      "ru": "Концепция не найдена",
+      "en": "Concept not found",
+      "de": "Konzeption nicht gefunden",
+      "from": {"en":"Концепция не найдена","de":"Концепция не найдена"},
+      "where": ["server/services/members.ts:86"]
     },
     "server.metaSynthesisService.andQuote": {
       "ru": "» и «",
@@ -13323,6 +14110,130 @@
       "de": "“ nicht verfügbar (Abschnitt „",
       "from": {"en":"» недоступен (раздел «","de":"» недоступен (раздел «"},
       "where": ["server/services/mode-service.ts:366"]
+    },
+    "server.notifications.addrSynthesis": {
+      "ru": "концепция в целом",
+      "en": "the concept as a whole",
+      "de": "die Konzeption insgesamt",
+      "from": {"en":"концепция в целом","de":"концепция в целом"},
+      "where": ["server/services/notifications.ts:341"]
+    },
+    "server.notifications.badCategory": {
+      "ru": "Допустимы только: {list}",
+      "en": "Allowed only: {list}",
+      "de": "Zulässig nur: {list}",
+      "from": {"en":"Допустимы только: {list}","de":"Допустимы только: {list}"},
+      "params": {"list":""},
+      "where": ["server/services/notifications.ts:307"]
+    },
+    "server.notifications.commentNew": {
+      "ru": "{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}",
+      "en": "{who} commented on “{addr}” in the concept “{title}”{excerpt}",
+      "de": "{who} hat „{addr}“ in der Konzeption „{title}“ kommentiert{excerpt}",
+      "from": {"en":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}","de":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}"},
+      "params": {"who":"","addr":"","title":"","excerpt":""},
+      "where": ["server/services/notifications.ts:370"]
+    },
+    "server.notifications.commentReply": {
+      "ru": "{who} ответил в вашей ветке в концепции «{title}»{excerpt}",
+      "en": "{who} replied in your thread in the concept “{title}”{excerpt}",
+      "de": "{who} hat in Ihrem Thread in der Konzeption „{title}“ geantwortet{excerpt}",
+      "from": {"en":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}","de":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}"},
+      "params": {"who":"","title":"","excerpt":""},
+      "where": ["server/services/notifications.ts:372"]
+    },
+    "server.notifications.findingOutdated": {
+      "ru": "Объект «{addr}» вашего замечания в концепции «{title}» изменился",
+      "en": "The object “{addr}” of your finding in the concept “{title}” has changed",
+      "de": "Das Objekt „{addr}“ Ihrer Anmerkung in der Konzeption „{title}“ hat sich geändert",
+      "from": {"en":"Объект «{addr}» вашего замечания в концепции «{title}» изменился","de":"Объект «{addr}» вашего замечания в концепции «{title}» изменился"},
+      "params": {"addr":"","title":""},
+      "where": ["server/services/notifications.ts:376"]
+    },
+    "server.notifications.memberAccepted": {
+      "ru": "{who} принял приглашение в концепцию «{title}»",
+      "en": "{who} accepted the invitation to the concept “{title}”",
+      "de": "{who} hat die Einladung zur Konzeption „{title}“ angenommen",
+      "from": {"en":"{who} принял приглашение в концепцию «{title}»","de":"{who} принял приглашение в концепцию «{title}»"},
+      "params": {"who":"","title":""},
+      "where": ["server/services/notifications.ts:362"]
+    },
+    "server.notifications.memberDeclined": {
+      "ru": "{who} отклонил приглашение в концепцию «{title}»",
+      "en": "{who} declined the invitation to the concept “{title}”",
+      "de": "{who} hat die Einladung zur Konzeption „{title}“ abgelehnt",
+      "from": {"en":"{who} отклонил приглашение в концепцию «{title}»","de":"{who} отклонил приглашение в концепцию «{title}»"},
+      "params": {"who":"","title":""},
+      "where": ["server/services/notifications.ts:364"]
+    },
+    "server.notifications.memberInvited": {
+      "ru": "{who} приглашает вас в концепцию «{title}» в роли «{role}»",
+      "en": "{who} invites you to the concept “{title}” as “{role}”",
+      "de": "{who} lädt Sie zur Konzeption „{title}“ in der Rolle „{role}“ ein",
+      "from": {"en":"{who} приглашает вас в концепцию «{title}» в роли «{role}»","de":"{who} приглашает вас в концепцию «{title}» в роли «{role}»"},
+      "params": {"who":"","title":"","role":""},
+      "where": ["server/services/notifications.ts:360"]
+    },
+    "server.notifications.memberRemoved": {
+      "ru": "Вы исключены из участников концепции «{title}»",
+      "en": "You have been excluded from the participants of the concept “{title}”",
+      "de": "Sie wurden aus den Teilnehmern der Konzeption „{title}“ ausgeschlossen",
+      "from": {"en":"Вы исключены из участников концепции «{title}»","de":"Вы исключены из участников концепции «{title}»"},
+      "params": {"title":""},
+      "where": ["server/services/notifications.ts:368"]
+    },
+    "server.notifications.memberRoleChanged": {
+      "ru": "Ваша роль в концепции «{title}» теперь «{role}»",
+      "en": "Your role in the concept “{title}” is now “{role}”",
+      "de": "Ihre Rolle in der Konzeption „{title}“ ist jetzt „{role}“",
+      "from": {"en":"Ваша роль в концепции «{title}» теперь «{role}»","de":"Ваша роль в концепции «{title}» теперь «{role}»"},
+      "params": {"title":"","role":""},
+      "where": ["server/services/notifications.ts:366"]
+    },
+    "server.notifications.mustBeBoolean": {
+      "ru": "Должно быть true или false",
+      "en": "Must be true or false",
+      "de": "Muss true oder false sein",
+      "from": {"en":"Должно быть true или false","de":"Должно быть true или false"},
+      "where": ["server/services/notifications.ts:315"]
+    },
+    "server.notifications.nothingToChange": {
+      "ru": "Нечего менять",
+      "en": "Nothing to change",
+      "de": "Nichts zu ändern",
+      "from": {"en":"Нечего менять","de":"Нечего менять"},
+      "where": ["server/services/notifications.ts:322"]
+    },
+    "server.notifications.proposalCreated": {
+      "ru": "{who} предложил изменение в концепции «{title}»",
+      "en": "{who} proposed a change in the concept “{title}”",
+      "de": "{who} hat eine Änderung in der Konzeption „{title}“ vorgeschlagen",
+      "from": {"en":"{who} предложил изменение в концепции «{title}»","de":"{who} предложил изменение в концепции «{title}»"},
+      "params": {"who":"","title":""},
+      "where": ["server/services/notifications.ts:378"]
+    },
+    "server.notifications.proposalDecided": {
+      "ru": "По вашему предложению в концепции «{title}» принято решение",
+      "en": "A decision has been made on your proposal in the concept “{title}”",
+      "de": "Über Ihren Vorschlag in der Konzeption „{title}“ wurde entschieden",
+      "from": {"en":"По вашему предложению в концепции «{title}» принято решение","de":"По вашему предложению в концепции «{title}» принято решение"},
+      "params": {"title":""},
+      "where": ["server/services/notifications.ts:380"]
+    },
+    "server.notifications.reviewPublished": {
+      "ru": "{who} опубликовал рецензию на концепцию «{title}»{excerpt}",
+      "en": "{who} published a review of the concept “{title}”{excerpt}",
+      "de": "{who} hat eine Rezension der Konzeption „{title}“ veröffentlicht{excerpt}",
+      "from": {"en":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}","de":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}"},
+      "params": {"who":"","title":"","excerpt":""},
+      "where": ["server/services/notifications.ts:374"]
+    },
+    "server.notifications.someone": {
+      "ru": "кто-то",
+      "en": "someone",
+      "de": "jemand",
+      "from": {"en":"кто-то","de":"кто-то"},
+      "where": ["server/services/notifications.ts:350"]
     },
     "server.parseWarnings.graphDirUnknown": {
       "ru": "таблица связей, строка {row} («{src}» → «{tgt}»): направление «{dir}» не опознано (ожидается {expected}) — подставлено «{fallback}»",
@@ -14236,49 +15147,49 @@
       "en": "Already registered",
       "de": "Bereits registriert",
       "from": {"en":"Уже зарегистрирован","de":"Уже зарегистрирован"},
-      "where": ["server/routes/auth.ts:273"]
+      "where": ["server/routes/auth.ts:284"]
     },
     "server.routes.auth.emailChangeRequested": {
       "ru": "Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час",
       "en": "If the address is free, an email with a confirmation link has been sent to it — the link is valid for an hour",
       "de": "Falls die Adresse frei ist, wurde eine E-Mail mit einem Bestätigungslink dorthin gesendet — der Link gilt eine Stunde",
       "from": {"en":"Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час","de":"Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час"},
-      "where": ["server/routes/auth.ts:907"]
+      "where": ["server/routes/auth.ts:928"]
     },
     "server.routes.auth.emailQueueFailed": {
       "ru": "Не удалось поставить письмо в очередь — попробуйте позже",
       "en": "Failed to queue the email — try again later",
       "de": "Die E-Mail konnte nicht in die Warteschlange gestellt werden — versuchen Sie es später",
       "from": {"en":"Не удалось поставить письмо в очередь — попробуйте позже","de":"Не удалось поставить письмо в очередь — попробуйте позже"},
-      "where": ["server/routes/auth.ts:560"]
+      "where": ["server/routes/auth.ts:581"]
     },
     "server.routes.auth.emailTaken": {
       "ru": "Пользователь с таким email уже зарегистрирован",
       "en": "A user with this email is already registered",
       "de": "Ein Benutzer mit dieser E-Mail ist bereits registriert",
       "from": {"en":"Пользователь с таким email уже зарегистрирован","de":"Пользователь с таким email уже зарегистрирован"},
-      "where": ["server/routes/auth.ts:271"]
+      "where": ["server/routes/auth.ts:282"]
     },
     "server.routes.auth.expectedRole": {
       "ru": "Ожидается 'user' или 'admin'",
       "en": "'user' or 'admin' expected",
       "de": "Erwartet wird 'user' oder 'admin'",
       "from": {"en":"Ожидается 'user' или 'admin'","de":"Ожидается 'user' или 'admin'"},
-      "where": ["server/routes/auth.ts:747"]
+      "where": ["server/routes/auth.ts:768"]
     },
     "server.routes.auth.invalidEmail": {
       "ru": "Невалидный email",
       "en": "Invalid email",
       "de": "Ungültige E-Mail",
       "from": {"en":"Невалидный email","de":"Невалидный email"},
-      "where": ["server/routes/auth.ts:180","server/routes/auth.ts:594","server/routes/auth.ts:864"]
+      "where": ["server/routes/auth.ts:181","server/routes/auth.ts:615","server/routes/auth.ts:885","server/services/members.ts:130"]
     },
     "server.routes.auth.lastAdminForbidden": {
       "ru": "Нельзя понизить последнего администратора — сначала назначьте второго",
       "en": "The last administrator cannot be demoted — appoint a second one first",
       "de": "Der letzte Administrator kann nicht herabgestuft werden — ernennen Sie zuerst einen zweiten",
       "from": {"en":"Нельзя понизить последнего администратора — сначала назначьте второго","de":"Нельзя понизить последнего администратора — сначала назначьте второго"},
-      "where": ["server/routes/auth.ts:809"]
+      "where": ["server/routes/auth.ts:830"]
     },
     "server.routes.auth.maxLength": {
       "ru": "Максимальная длина — {maxLength} символов",
@@ -14286,42 +15197,42 @@
       "de": "Maximale Länge — {maxLength} Zeichen",
       "from": {"en":"Максимальная длина — {maxLength} символов","de":"Максимальная длина — {maxLength} символов"},
       "params": {"maxLength":"DISPLAY_NAME_MAX_LENGTH"},
-      "where": ["server/routes/auth.ts:485","server/routes/auth.ts:503"]
+      "where": ["server/routes/auth.ts:506","server/routes/auth.ts:524"]
     },
     "server.routes.auth.mustBeNonEmptyString": {
       "ru": "Должно быть непустой строкой",
       "en": "Must be a non-empty string",
       "de": "Muss eine nichtleere Zeichenkette sein",
       "from": {"en":"Должно быть непустой строкой","de":"Должно быть непустой строкой"},
-      "where": ["server/routes/auth.ts:502"]
+      "where": ["server/routes/auth.ts:523"]
     },
     "server.routes.auth.mustBeString": {
       "ru": "Должно быть строкой",
       "en": "Must be a string",
       "de": "Muss eine Zeichenkette sein",
       "from": {"en":"Должно быть строкой","de":"Должно быть строкой"},
-      "where": ["server/routes/auth.ts:190","server/routes/auth.ts:481"]
+      "where": ["server/routes/auth.ts:191","server/routes/auth.ts:502"]
     },
     "server.routes.auth.ownRoleForbidden": {
       "ru": "Свою роль изменить нельзя — попросите другого администратора",
       "en": "You cannot change your own role — ask another administrator",
       "de": "Die eigene Rolle lässt sich nicht ändern — bitten Sie einen anderen Administrator",
       "from": {"en":"Свою роль изменить нельзя — попросите другого администратора","de":"Свою роль изменить нельзя — попросите другого администратора"},
-      "where": ["server/routes/auth.ts:757"]
+      "where": ["server/routes/auth.ts:778"]
     },
     "server.routes.auth.requiredField": {
       "ru": "Обязательное поле",
       "en": "Required field",
       "de": "Pflichtfeld",
       "from": {"en":"Обязательное поле","de":"Обязательное поле"},
-      "where": ["server/routes/auth.ts:179","server/routes/auth.ts:182","server/routes/auth.ts:342","server/routes/auth.ts:343","server/routes/auth.ts:402","server/routes/auth.ts:508","server/routes/auth.ts:594","server/routes/auth.ts:633","server/routes/auth.ts:863","server/routes/auth.ts:865"]
+      "where": ["server/routes/auth.ts:180","server/routes/auth.ts:183","server/routes/auth.ts:363","server/routes/auth.ts:364","server/routes/auth.ts:423","server/routes/auth.ts:529","server/routes/auth.ts:615","server/routes/auth.ts:654","server/routes/auth.ts:884","server/routes/auth.ts:886"]
     },
     "server.routes.auth.sameEmail": {
       "ru": "Это текущий адрес учётной записи",
       "en": "This is the current address of the account",
       "de": "Das ist die aktuelle Adresse des Kontos",
       "from": {"en":"Это текущий адрес учётной записи","de":"Это текущий адрес учётной записи"},
-      "where": ["server/routes/auth.ts:875"]
+      "where": ["server/routes/auth.ts:896"]
     },
     "server.routes.auth.uiLocaleAllowed": {
       "ru": "Допустимые языки интерфейса: {locales}",
@@ -14329,28 +15240,28 @@
       "de": "Zulässige Oberflächensprachen: {locales}",
       "from": {"en":"Допустимые языки интерфейса: {locales}","de":"Допустимые языки интерфейса: {locales}"},
       "params": {"locales":""},
-      "where": ["server/routes/auth.ts:493"]
+      "where": ["server/routes/auth.ts:514"]
     },
     "server.routes.auth.wrongCredentials": {
       "ru": "Неверный email или пароль",
       "en": "Wrong email or password",
       "de": "Falsche E-Mail oder falsches Passwort",
       "from": {"en":"Неверный email или пароль","de":"Неверный email или пароль"},
-      "where": ["server/routes/auth.ts:309"]
+      "where": ["server/routes/auth.ts:330"]
     },
     "server.routes.auth.wrongCurrentPassword": {
       "ru": "Неверный текущий пароль",
       "en": "Wrong current password",
       "de": "Falsches aktuelles Passwort",
       "from": {"en":"Неверный текущий пароль","de":"Неверный текущий пароль"},
-      "where": ["server/routes/auth.ts:370"]
+      "where": ["server/routes/auth.ts:391"]
     },
     "server.routes.auth.wrongPassword": {
       "ru": "Неверный пароль",
       "en": "Wrong password",
       "de": "Falsches Passwort",
       "from": {"en":"Неверный пароль","de":"Неверный пароль"},
-      "where": ["server/routes/auth.ts:414","server/routes/auth.ts:904"]
+      "where": ["server/routes/auth.ts:435","server/routes/auth.ts:925"]
     },
     "server.routes.billing.invalidParams": {
       "ru": "Невалидные параметры",
@@ -17175,105 +18086,105 @@
       "en": "Failed to delete the account",
       "de": "Konto konnte nicht gelöscht werden",
       "from": {"en":"Не удалось удалить аккаунт","de":"Не удалось удалить аккаунт"},
-      "where": ["client/src/stores/auth-store.ts:347"]
+      "where": ["client/src/stores/auth-store.ts:357"]
     },
     "stores.authStore.emailChangeFailed": {
       "ru": "Не удалось сменить адрес",
       "en": "Failed to change the address",
       "de": "Adresse konnte nicht geändert werden",
       "from": {"en":"Не удалось сменить адрес","de":"Не удалось сменить адрес"},
-      "where": ["client/src/stores/auth-store.ts:384"]
+      "where": ["client/src/stores/auth-store.ts:394"]
     },
     "stores.authStore.emailChangeRequestFailed": {
       "ru": "Не удалось запросить смену адреса",
       "en": "Failed to request the address change",
       "de": "Adressänderung konnte nicht angefordert werden",
       "from": {"en":"Не удалось запросить смену адреса","de":"Не удалось запросить смену адреса"},
-      "where": ["client/src/stores/auth-store.ts:372","client/src/stores/auth-store.ts:373"]
+      "where": ["client/src/stores/auth-store.ts:382","client/src/stores/auth-store.ts:383"]
     },
     "stores.authStore.emailSendFailed": {
       "ru": "Не удалось отправить письмо",
       "en": "Failed to send the email",
       "de": "E-Mail konnte nicht gesendet werden",
       "from": {"en":"Не удалось отправить письмо","de":"Не удалось отправить письмо"},
-      "where": ["client/src/stores/auth-store.ts:290"]
+      "where": ["client/src/stores/auth-store.ts:300"]
     },
     "stores.authStore.genLangSaveFailed": {
       "ru": "Не удалось сохранить язык генерации",
       "en": "Could not save the generation language",
       "de": "Generierungssprache konnte nicht gespeichert werden",
       "from": {"en":"Не удалось сохранить язык генерации","de":"Не удалось сохранить язык генерации"},
-      "where": ["client/src/stores/auth-store.ts:268"]
+      "where": ["client/src/stores/auth-store.ts:278"]
     },
     "stores.authStore.localeSaveFailed": {
       "ru": "Не удалось сохранить язык интерфейса",
       "en": "Could not save the interface language",
       "de": "Oberflächensprache konnte nicht gespeichert werden",
       "from": {"en":"Не удалось сохранить язык интерфейса","de":"Не удалось сохранить язык интерфейса"},
-      "where": ["client/src/stores/auth-store.ts:258"]
+      "where": ["client/src/stores/auth-store.ts:268"]
     },
     "stores.authStore.loginFailed": {
       "ru": "Не удалось выполнить вход",
       "en": "Failed to log in",
       "de": "Anmeldung fehlgeschlagen",
       "from": {"en":"Не удалось выполнить вход","de":"Не удалось выполнить вход"},
-      "where": ["client/src/stores/auth-store.ts:183"]
+      "where": ["client/src/stores/auth-store.ts:189"]
     },
     "stores.authStore.passwordChangeFailed": {
       "ru": "Не удалось сменить пароль",
       "en": "Failed to change the password",
       "de": "Passwort konnte nicht geändert werden",
       "from": {"en":"Не удалось сменить пароль","de":"Не удалось сменить пароль"},
-      "where": ["client/src/stores/auth-store.ts:327","client/src/stores/auth-store.ts:404"]
+      "where": ["client/src/stores/auth-store.ts:337","client/src/stores/auth-store.ts:414"]
     },
     "stores.authStore.profileSaveFailed": {
       "ru": "Не удалось сохранить профиль",
       "en": "Failed to save the profile",
       "de": "Profil konnte nicht gespeichert werden",
       "from": {"en":"Не удалось сохранить профиль","de":"Не удалось сохранить профиль"},
-      "where": ["client/src/stores/auth-store.ts:244"]
+      "where": ["client/src/stores/auth-store.ts:254"]
     },
     "stores.authStore.registerFailed": {
       "ru": "Не удалось зарегистрироваться",
       "en": "Failed to sign up",
       "de": "Registrierung fehlgeschlagen",
       "from": {"en":"Не удалось зарегистрироваться","de":"Не удалось зарегистрироваться"},
-      "where": ["client/src/stores/auth-store.ts:207"]
+      "where": ["client/src/stores/auth-store.ts:217"]
     },
     "stores.authStore.requestFailed": {
       "ru": "Не удалось отправить запрос",
       "en": "Failed to send the request",
       "de": "Anfrage konnte nicht gesendet werden",
       "from": {"en":"Не удалось отправить запрос","de":"Не удалось отправить запрос"},
-      "where": ["client/src/stores/auth-store.ts:314"]
+      "where": ["client/src/stores/auth-store.ts:324"]
     },
     "stores.authStore.tooManyEmails": {
       "ru": "Слишком много писем за час — попробуйте позже",
       "en": "Too many emails in an hour — try again later",
       "de": "Zu viele E-Mails pro Stunde — versuchen Sie es später",
       "from": {"en":"Слишком много писем за час — попробуйте позже","de":"Слишком много писем за час — попробуйте позже"},
-      "where": ["client/src/stores/auth-store.ts:287","client/src/stores/auth-store.ts:370"]
+      "where": ["client/src/stores/auth-store.ts:297","client/src/stores/auth-store.ts:380"]
     },
     "stores.authStore.verifyFailed": {
       "ru": "Не удалось подтвердить адрес",
       "en": "Failed to verify the address",
       "de": "Adresse konnte nicht bestätigt werden",
       "from": {"en":"Не удалось подтвердить адрес","de":"Не удалось подтвердить адрес"},
-      "where": ["client/src/stores/auth-store.ts:302"]
+      "where": ["client/src/stores/auth-store.ts:312"]
     },
     "stores.authStore.wrongCurrentPassword": {
       "ru": "Неверный текущий пароль",
       "en": "Wrong current password",
       "de": "Falsches aktuelles Passwort",
       "from": {"en":"Неверный текущий пароль","de":"Неверный текущий пароль"},
-      "where": ["client/src/stores/auth-store.ts:402"]
+      "where": ["client/src/stores/auth-store.ts:412"]
     },
     "stores.authStore.wrongPassword": {
       "ru": "Неверный пароль",
       "en": "Wrong password",
       "de": "Falsches Passwort",
       "from": {"en":"Неверный пароль","de":"Неверный пароль"},
-      "where": ["client/src/stores/auth-store.ts:342","client/src/stores/auth-store.ts:365","client/src/stores/auth-store.ts:366"]
+      "where": ["client/src/stores/auth-store.ts:352","client/src/stores/auth-store.ts:375","client/src/stores/auth-store.ts:376"]
     },
     "stores.poolStore.alreadyLoaded": {
       "ru": "» уже загружен.",
@@ -18681,161 +19592,161 @@
       "de": " · Autor: {authorName}",
       "from": {"en":" · автор: {authorName}","de":" · автор: {authorName}"},
       "params": {"authorName":"synthesis.authorName"},
-      "where": ["client/src/pages/SynthesisPage.tsx:847"]
+      "where": ["client/src/pages/SynthesisPage.tsx:864"]
     },
     "synthesisPage.descendantsInCatalog": {
       "ru": "◈ Потомки этой концепции в каталоге",
       "en": "◈ Descendants of this concept in the catalog",
       "de": "◈ Nachkommen dieses Konzepts im Katalog",
       "from": {"en":"◈ Потомки этой концепции в каталоге","de":"◈ Потомки этой концепции в каталоге"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1139"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1183"]
     },
     "synthesisPage.editIcon": {
       "ru": "✎ Изменить",
       "en": "✎ Edit",
       "de": "✎ Bearbeiten",
       "from": {"en":"✎ Изменить","de":"✎ Изменить"},
-      "where": ["client/src/pages/SynthesisPage.tsx:892"]
+      "where": ["client/src/pages/SynthesisPage.tsx:936"]
     },
     "synthesisPage.editor": {
       "ru": "Редактор",
       "en": "Editor",
       "de": "Editor",
       "from": {"en":"Редактор","de":"Редактор"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1001"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1045"]
     },
     "synthesisPage.editorOpenFailed": {
       "ru": "Не удалось открыть редактор",
       "en": "Failed to open the editor",
       "de": "Editor konnte nicht geöffnet werden",
       "from": {"en":"Не удалось открыть редактор","de":"Не удалось открыть редактор"},
-      "where": ["client/src/pages/SynthesisPage.tsx:284"]
+      "where": ["client/src/pages/SynthesisPage.tsx:290"]
     },
     "synthesisPage.export": {
       "ru": "⤓ Экспорт",
       "en": "⤓ Export",
       "de": "⤓ Export",
       "from": {"en":"⤓ Экспорт","de":"⤓ Экспорт"},
-      "where": ["client/src/pages/SynthesisPage.tsx:936"]
+      "where": ["client/src/pages/SynthesisPage.tsx:980"]
     },
     "synthesisPage.genealogyTree": {
       "ru": "Генеалогическое древо",
       "en": "Genealogical tree",
       "de": "Genealogischer Stammbaum",
       "from": {"en":"Генеалогическое древо","de":"Генеалогическое древо"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1105"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1149"]
     },
     "synthesisPage.generatedBadge": {
       "ru": "ДОКУМЕНТ СГЕНЕРИРОВАН",
       "en": "DOCUMENT GENERATED",
       "de": "DOKUMENT GENERIERT",
       "from": {"en":"ДОКУМЕНТ СГЕНЕРИРОВАН","de":"ДОКУМЕНТ СГЕНЕРИРОВАН"},
-      "where": ["client/src/pages/SynthesisPage.tsx:871"]
+      "where": ["client/src/pages/SynthesisPage.tsx:915"]
     },
     "synthesisPage.generatingBadge": {
       "ru": "ГЕНЕРАЦИЯ ДОКУМЕНТА",
       "en": "DOCUMENT GENERATION",
       "de": "DOKUMENT WIRD GENERIERT",
       "from": {"en":"ГЕНЕРАЦИЯ ДОКУМЕНТА","de":"ГЕНЕРАЦИЯ ДОКУМЕНТА"},
-      "where": ["client/src/pages/SynthesisPage.tsx:870"]
+      "where": ["client/src/pages/SynthesisPage.tsx:914"]
     },
     "synthesisPage.generationError": {
       "ru": "Ошибка генерации",
       "en": "Generation error",
       "de": "Generierungsfehler",
       "from": {"en":"Ошибка генерации","de":"Ошибка генерации"},
-      "where": ["client/src/pages/SynthesisPage.tsx:992"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1036"]
     },
     "synthesisPage.glossaryRowNotFound": {
       "ru": "Строка глоссария не найдена в данных синтеза",
       "en": "The glossary row was not found in the synthesis data",
       "de": "Glossarzeile in den Synthesedaten nicht gefunden",
       "from": {"en":"Строка глоссария не найдена в данных синтеза","de":"Строка глоссария не найдена в данных синтеза"},
-      "where": ["client/src/pages/SynthesisPage.tsx:270"]
+      "where": ["client/src/pages/SynthesisPage.tsx:276"]
     },
     "synthesisPage.graph": {
       "ru": "◈ Граф",
       "en": "◈ Graph",
       "de": "◈ Graph",
       "from": {"en":"◈ Граф","de":"◈ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:882"]
+      "where": ["client/src/pages/SynthesisPage.tsx:926"]
     },
     "synthesisPage.ifYoursLead": {
       "ru": "Если это ваша концепция —",
       "en": "If this is your concept —",
       "de": "Wenn dies Ihr Konzept ist —",
       "from": {"en":"Если это ваша концепция —","de":"Если это ваша концепция —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:817"]
+      "where": ["client/src/pages/SynthesisPage.tsx:826"]
     },
     "synthesisPage.loadFailed": {
       "ru": "Не удалось загрузить синтез.",
       "en": "Failed to load the synthesis.",
       "de": "Synthese konnte nicht geladen werden.",
       "from": {"en":"Не удалось загрузить синтез.","de":"Не удалось загрузить синтез."},
-      "where": ["client/src/pages/SynthesisPage.tsx:832"]
+      "where": ["client/src/pages/SynthesisPage.tsx:841"]
     },
     "synthesisPage.loading": {
       "ru": "загрузка синтеза…",
       "en": "loading synthesis…",
       "de": "Synthese wird geladen…",
       "from": {"en":"загрузка синтеза…","de":"загрузка синтеза…"},
-      "where": ["client/src/pages/SynthesisPage.tsx:836"]
+      "where": ["client/src/pages/SynthesisPage.tsx:845"]
     },
     "synthesisPage.logInLower": {
       "ru": "войдите",
       "en": "log in",
       "de": "melden Sie sich an",
       "from": {"en":"войдите","de":"войдите"},
-      "where": ["client/src/pages/SynthesisPage.tsx:823"]
+      "where": ["client/src/pages/SynthesisPage.tsx:832"]
     },
     "synthesisPage.notFoundOrDeleted": {
       "ru": "Синтез не найден или был удалён.",
       "en": "The synthesis was not found or has been deleted.",
       "de": "Die Synthese wurde nicht gefunden oder gelöscht.",
       "from": {"en":"Синтез не найден или был удалён.","de":"Синтез не найден или был удалён."},
-      "where": ["client/src/pages/SynthesisPage.tsx:798"]
+      "where": ["client/src/pages/SynthesisPage.tsx:807"]
     },
     "synthesisPage.otherwise": {
       "ru": ". Иначе —",
       "en": ". Otherwise —",
       "de": ". Andernfalls —",
       "from": {"en":". Иначе —","de":". Иначе —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:825"]
+      "where": ["client/src/pages/SynthesisPage.tsx:834"]
     },
     "synthesisPage.parentConcepts": {
       "ru": "Родительские концепции:",
       "en": "Parent concepts:",
       "de": "Elternkonzepte:",
       "from": {"en":"Родительские концепции:","de":"Родительские концепции:"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1120"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1164"]
     },
     "synthesisPage.print": {
       "ru": "Распечатать",
       "en": "Print",
       "de": "Drucken",
       "from": {"en":"Распечатать","de":"Распечатать"},
-      "where": ["client/src/pages/SynthesisPage.tsx:975"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1019"]
     },
     "synthesisPage.privateConcept": {
       "ru": "Эта концепция приватна: автор не открыл её посторонним.",
       "en": "This concept is private: the author has not opened it to others.",
       "de": "Dieses Konzept ist privat: der Autor hat es Außenstehenden nicht geöffnet.",
       "from": {"en":"Эта концепция приватна: автор не открыл её посторонним.","de":"Эта концепция приватна: автор не открыл её посторонним."},
-      "where": ["client/src/pages/SynthesisPage.tsx:810"]
+      "where": ["client/src/pages/SynthesisPage.tsx:819"]
     },
     "synthesisPage.privateSynthesis": {
       "ru": "Этот синтез приватный: доступен только владельцу.",
       "en": "This synthesis is private: available only to the owner.",
       "de": "Diese Synthese ist privat: nur dem Eigentümer zugänglich.",
       "from": {"en":"Этот синтез приватный: доступен только владельцу.","de":"Этот синтез приватный: доступен только владельцу."},
-      "where": ["client/src/pages/SynthesisPage.tsx:811"]
+      "where": ["client/src/pages/SynthesisPage.tsx:820"]
     },
     "synthesisPage.publicCatalogLower": {
       "ru": "публичный каталог",
       "en": "the public catalog",
       "de": "öffentlicher Katalog",
       "from": {"en":"публичный каталог","de":"публичный каталог"},
-      "where": ["client/src/pages/SynthesisPage.tsx:825"]
+      "where": ["client/src/pages/SynthesisPage.tsx:834"]
     },
     "synthesisPage.recommendations": {
       "ru": "◈ Рекомендации{recCount}",
@@ -18843,56 +19754,70 @@
       "de": "◈ Empfehlungen{recCount}",
       "from": {"en":"◈ Рекомендации{recCount}","de":"◈ Рекомендации{recCount}"},
       "params": {"recCount":"recCount !== null ? ` · ${recCount}` : \"\""},
-      "where": ["client/src/pages/SynthesisPage.tsx:1031"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1075"]
     },
     "synthesisPage.recommendationsHint": {
       "ru": "Рекомендации критики: что исполнять, решаете вы — поштучно",
       "en": "Critique recommendations: you decide what to execute — one by one",
       "de": "Empfehlungen der Kritik: was ausgeführt wird, entscheiden Sie — einzeln",
       "from": {"en":"Рекомендации критики: что исполнять, решаете вы — поштучно","de":"Рекомендации критики: что исполнять, решаете вы — поштучно"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1028"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1072"]
     },
     "synthesisPage.sectionHistory": {
       "ru": "◷ История",
       "en": "◷ History",
       "de": "◷ Verlauf",
       "from": {"en":"◷ История","de":"◷ История"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1056"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1100"]
     },
     "synthesisPage.sectionHistoryHint": {
       "ru": "Версии раздела до каждой правки и откат",
       "en": "Section versions before each edit, and rollback",
       "de": "Abschnittsversionen vor jeder Änderung und Rollback",
       "from": {"en":"Версии раздела до каждой правки и откат","de":"Версии раздела до каждой правки и откат"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1053"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1097"]
     },
     "synthesisPage.showcaseParen": {
       "ru": " (витрина)",
       "en": " (showcase)",
       "de": " (Schaufenster)",
       "from": {"en":" (витрина)","de":" (витрина)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:846"]
+      "where": ["client/src/pages/SynthesisPage.tsx:863"]
+    },
+    "synthesisPage.tabDocument": {
+      "ru": "Документ",
+      "en": "Document",
+      "de": "Dokument",
+      "from": {"en":"Документ","de":"Документ"},
+      "where": ["client/src/pages/SynthesisPage.tsx:884"]
+    },
+    "synthesisPage.tabMembers": {
+      "ru": "Участники",
+      "en": "Participants",
+      "de": "Teilnehmer",
+      "from": {"en":"Участники","de":"Участники"},
+      "where": ["client/src/pages/SynthesisPage.tsx:892"]
     },
     "synthesisPage.thesisRowNotFound": {
       "ru": "Строка тезиса не найдена в данных синтеза",
       "en": "The thesis row was not found in the synthesis data",
       "de": "Thesenzeile in den Synthesedaten nicht gefunden",
       "from": {"en":"Строка тезиса не найдена в данных синтеза","de":"Строка тезиса не найдена в данных синтеза"},
-      "where": ["client/src/pages/SynthesisPage.tsx:255"]
+      "where": ["client/src/pages/SynthesisPage.tsx:261"]
     },
     "synthesisPage.toGraph": {
       "ru": "→ Граф",
       "en": "→ Graph",
       "de": "→ Graph",
       "from": {"en":"→ Граф","de":"→ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1042"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1086"]
     },
     "synthesisPage.toGraphHint": {
       "ru": "Трансформировать тезисы в граф (Representation Transformer)",
       "en": "Transform the theses into a graph (Representation Transformer)",
       "de": "Thesen in einen Graphen transformieren (Representation Transformer)",
       "from": {"en":"Трансформировать тезисы в граф (Representation Transformer)","de":"Трансформировать тезисы в граф (Representation Transformer)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1039"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1083"]
     },
     "synthesisPage.viewModeBadge": {
       "ru": "РЕЖИМ ПРОСМОТРА · {visibility}",
@@ -18900,14 +19825,22 @@
       "de": "ANSICHTSMODUS · {visibility}",
       "from": {"en":"РЕЖИМ ПРОСМОТРА · {visibility}","de":"РЕЖИМ ПРОСМОТРА · {visibility}"},
       "params": {"visibility":"visibilityBadge(synthesis.visibility).toUpperCase()"},
-      "where": ["client/src/pages/SynthesisPage.tsx:872"]
+      "where": ["client/src/pages/SynthesisPage.tsx:916"]
+    },
+    "synthesisPage.viewingAsMember": {
+      "ru": "Вы участник концепции · роль: {role}",
+      "en": "You are a participant of the concept · role: {role}",
+      "de": "Sie sind Teilnehmer der Konzeption · Rolle: {role}",
+      "from": {"en":"Вы участник концепции · роль: {role}","de":"Вы участник концепции · роль: {role}"},
+      "params": {"role":""},
+      "where": ["client/src/pages/SynthesisPage.tsx:861"]
     },
     "synthesisPage.viewingPublic": {
       "ru": "Вы смотрите публичную концепцию",
       "en": "You are viewing a public concept",
       "de": "Sie betrachten ein öffentliches Konzept",
       "from": {"en":"Вы смотрите публичную концепцию","de":"Вы смотрите публичную концепцию"},
-      "where": ["client/src/pages/SynthesisPage.tsx:845"]
+      "where": ["client/src/pages/SynthesisPage.tsx:862"]
     },
     "utils.conceptFile.addMissingSections": {
       "ru": ". Откройте документ, добавьте недостающие разделы и сохраните заново.",
@@ -19105,6 +20038,108 @@
       "de": "[unbenanntes Konzept]",
       "from": {"en":"[безымянная концепция]","de":"[безымянная концепция]"},
       "where": ["client/src/utils/genealogy.ts:164","client/src/utils/genealogy.ts:245"]
+    },
+    "utils.notificationText.addrSynthesis": {
+      "ru": "концепция в целом",
+      "en": "the concept as a whole",
+      "de": "die Konzeption insgesamt",
+      "from": {"en":"концепция в целом","de":"концепция в целом"},
+      "where": ["client/src/utils/notification-text.ts:18"]
+    },
+    "utils.notificationText.commentNew": {
+      "ru": "{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}",
+      "en": "{who} commented on “{addr}” in the concept “{title}”{excerpt}",
+      "de": "{who} hat „{addr}“ in der Konzeption „{title}“ kommentiert{excerpt}",
+      "from": {"en":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}","de":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}"},
+      "params": {"who":"","addr":"","title":"","excerpt":""},
+      "where": ["client/src/utils/notification-text.ts:39"]
+    },
+    "utils.notificationText.commentReply": {
+      "ru": "{who} ответил в вашей ветке в концепции «{title}»{excerpt}",
+      "en": "{who} replied in your thread in the concept “{title}”{excerpt}",
+      "de": "{who} hat in Ihrem Thread in der Konzeption „{title}“ geantwortet{excerpt}",
+      "from": {"en":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}","de":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}"},
+      "params": {"who":"","title":"","excerpt":""},
+      "where": ["client/src/utils/notification-text.ts:41"]
+    },
+    "utils.notificationText.findingOutdated": {
+      "ru": "Объект «{addr}» вашего замечания в концепции «{title}» изменился",
+      "en": "The object “{addr}” of your finding in the concept “{title}” has changed",
+      "de": "Das Objekt „{addr}“ Ihrer Anmerkung in der Konzeption „{title}“ hat sich geändert",
+      "from": {"en":"Объект «{addr}» вашего замечания в концепции «{title}» изменился","de":"Объект «{addr}» вашего замечания в концепции «{title}» изменился"},
+      "params": {"addr":"","title":""},
+      "where": ["client/src/utils/notification-text.ts:45"]
+    },
+    "utils.notificationText.memberAccepted": {
+      "ru": "{who} принял приглашение в концепцию «{title}»",
+      "en": "{who} accepted the invitation to the concept “{title}”",
+      "de": "{who} hat die Einladung zur Konzeption „{title}“ angenommen",
+      "from": {"en":"{who} принял приглашение в концепцию «{title}»","de":"{who} принял приглашение в концепцию «{title}»"},
+      "params": {"who":"","title":""},
+      "where": ["client/src/utils/notification-text.ts:31"]
+    },
+    "utils.notificationText.memberDeclined": {
+      "ru": "{who} отклонил приглашение в концепцию «{title}»",
+      "en": "{who} declined the invitation to the concept “{title}”",
+      "de": "{who} hat die Einladung zur Konzeption „{title}“ abgelehnt",
+      "from": {"en":"{who} отклонил приглашение в концепцию «{title}»","de":"{who} отклонил приглашение в концепцию «{title}»"},
+      "params": {"who":"","title":""},
+      "where": ["client/src/utils/notification-text.ts:33"]
+    },
+    "utils.notificationText.memberInvited": {
+      "ru": "{who} приглашает вас в концепцию «{title}» в роли «{role}»",
+      "en": "{who} invites you to the concept “{title}” as “{role}”",
+      "de": "{who} lädt Sie zur Konzeption „{title}“ in der Rolle „{role}“ ein",
+      "from": {"en":"{who} приглашает вас в концепцию «{title}» в роли «{role}»","de":"{who} приглашает вас в концепцию «{title}» в роли «{role}»"},
+      "params": {"who":"","title":"","role":""},
+      "where": ["client/src/utils/notification-text.ts:29"]
+    },
+    "utils.notificationText.memberRemoved": {
+      "ru": "Вы исключены из участников концепции «{title}»",
+      "en": "You have been excluded from the participants of the concept “{title}”",
+      "de": "Sie wurden aus den Teilnehmern der Konzeption „{title}“ ausgeschlossen",
+      "from": {"en":"Вы исключены из участников концепции «{title}»","de":"Вы исключены из участников концепции «{title}»"},
+      "params": {"title":""},
+      "where": ["client/src/utils/notification-text.ts:37"]
+    },
+    "utils.notificationText.memberRoleChanged": {
+      "ru": "Ваша роль в концепции «{title}» теперь «{role}»",
+      "en": "Your role in the concept “{title}” is now “{role}”",
+      "de": "Ihre Rolle in der Konzeption „{title}“ ist jetzt „{role}“",
+      "from": {"en":"Ваша роль в концепции «{title}» теперь «{role}»","de":"Ваша роль в концепции «{title}» теперь «{role}»"},
+      "params": {"title":"","role":""},
+      "where": ["client/src/utils/notification-text.ts:35"]
+    },
+    "utils.notificationText.proposalCreated": {
+      "ru": "{who} предложил изменение в концепции «{title}»",
+      "en": "{who} proposed a change in the concept “{title}”",
+      "de": "{who} hat eine Änderung in der Konzeption „{title}“ vorgeschlagen",
+      "from": {"en":"{who} предложил изменение в концепции «{title}»","de":"{who} предложил изменение в концепции «{title}»"},
+      "params": {"who":"","title":""},
+      "where": ["client/src/utils/notification-text.ts:47"]
+    },
+    "utils.notificationText.proposalDecided": {
+      "ru": "По вашему предложению в концепции «{title}» принято решение",
+      "en": "A decision has been made on your proposal in the concept “{title}”",
+      "de": "Über Ihren Vorschlag in der Konzeption „{title}“ wurde entschieden",
+      "from": {"en":"По вашему предложению в концепции «{title}» принято решение","de":"По вашему предложению в концепции «{title}» принято решение"},
+      "params": {"title":""},
+      "where": ["client/src/utils/notification-text.ts:49"]
+    },
+    "utils.notificationText.reviewPublished": {
+      "ru": "{who} опубликовал рецензию на концепцию «{title}»{excerpt}",
+      "en": "{who} published a review of the concept “{title}”{excerpt}",
+      "de": "{who} hat eine Rezension der Konzeption „{title}“ veröffentlicht{excerpt}",
+      "from": {"en":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}","de":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}"},
+      "params": {"who":"","title":"","excerpt":""},
+      "where": ["client/src/utils/notification-text.ts:43"]
+    },
+    "utils.notificationText.someone": {
+      "ru": "кто-то",
+      "en": "someone",
+      "de": "jemand",
+      "from": {"en":"кто-то","de":"кто-то"},
+      "where": ["client/src/utils/notification-text.ts:23"]
     },
     "utils.recommendations.addressMismatch": {
       "ru": "Адрес указывает на раздел «{addressSection}», а элемент найден как ",

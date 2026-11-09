@@ -50,7 +50,7 @@ Chrome ставится в кэш пользователя, а не в сист�
 
 ## 3. Первый запуск базы
 
-Миграций восемнадцать (0000…0017), `drizzle-kit` ведёт их учёт сам, повторный прогон — no-op:
+Миграций девятнадцать (0000…0018), `drizzle-kit` ведёт их учёт сам, повторный прогон — no-op:
 
 - `0000_initial` … `0003` — основная схема, биллинг, `stripe_customer_id`;
 - `0004_admin_audit` — журнал административных действий (беседа 8.1);
@@ -66,7 +66,10 @@ Chrome ставится в кэш пользователя, а не в сист�
 - `0015_email_change` — довод смены адреса почты (15.3);
 - `0016_plan_editions` — редакции тарифов: `family`, `edition` (15.4);
 - `0017_discussion` — обсуждение и рецензии: `synthesis_members`, `comments`,
-  `reviews`, `review_revisions`, `review_findings` (16.1).
+  `reviews`, `review_revisions`, `review_findings` (16.1);
+- `0018_members_notifications` — участники и уведомления: `notifications`,
+  `notification_settings`, довод приглашения `member_invite` в `auth_tokens`
+  (`synthesis_id`, `member_role`) (16.2).
 
 Сидов четыре: 264 шаблона промптов, 27 конфигов, 18 + 29 типов таксономии,
 3 тарифа. Все идемпотентны и отчитываются `created / updated / skip / fail`

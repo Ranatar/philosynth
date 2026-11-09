@@ -39,6 +39,8 @@ import { billingRoutes } from "./routes/billing.js"; // беседа 6.1
 import { promptsRoutes } from "./routes/prompts.js"; // беседа 6.1
 import { recommendationsRoutes } from "./routes/recommendations.js"; // беседа 10.1
 import { discussionRoutes } from "./routes/discussion.js"; // беседа 16.1
+import { membersRoutes } from "./routes/members.js"; // беседа 16.2
+import { notificationsRoutes } from "./routes/notifications.js"; // беседа 16.2
 import { warmCache } from "./services/prompt-registry.js";
 import { closeTransport } from "./services/mail/transport.js"; // беседа 9.1
 import { startMailWorker, stopMailWorker } from "./services/mail/worker.js"; // беседа 9.1
@@ -109,6 +111,8 @@ app.use("/api/v1/*", requestLocale);
 app.use("/api/v1/*", optionalAuth);
 app.use("/api/v1/*", rateLimiter());
 app.route("/api/v1/auth", authRoutes);
+// 16.2: ДО synthesesRoutes — GET /shared иначе перехватит GET /:id (как /public)
+app.route("/api/v1/syntheses", membersRoutes); // беседа 16.2 (03 §2.18)
 app.route("/api/v1/syntheses", synthesesRoutes); // беседа 1.4 + 1.6
 app.route("/api/v1/syntheses", sectionsRoutes); // беседа 1.6 (03 §2.3)
 app.route("/api/v1/syntheses", elementsRoutes); // беседы 1.6 (GET) + 5.1 (PATCH/версии/auto-rename/capsule; 03 §2.4)
@@ -125,6 +129,7 @@ app.route("/api/v1/taxonomy", taxonomyRoutes); // беседа 5.3 (03 §2.13; �
 app.route("/api/v1/syntheses", transformRoutes); // беседа 5.5 (03 §2.15)
 app.route("/api/v1/syntheses", recommendationsRoutes); // беседа 10.1 (03 §2.16)
 app.route("/api/v1/syntheses", discussionRoutes); // беседа 16.1 (03 §2.17)
+app.route("/api/v1/notifications", notificationsRoutes); // беседа 16.2 (03 §2.19)
 app.route("/api/v1/billing", billingRoutes); // беседа 6.1 (03 §2.10; /webhook без сессии)
 app.route("/api/v1", promptsRoutes); // беседа 6.1 (03 §2.9: /prompts, /configs — admin)
 

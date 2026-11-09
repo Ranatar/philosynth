@@ -2,10 +2,12 @@
  * PhiloSynth Service — Drizzle-схема БД.
  * Источник истины: docs/02-data-model.md (ревизия 2026-07-22, v11).
  *
- * 37 таблиц (§2.1–2.37; admin_audit — беседа 8.1; auth_tokens и
+ * 39 таблиц (§2.1–2.39; admin_audit — беседа 8.1; auth_tokens и
  * mail_outbox — беседа 9.1; recommendations — беседа 10.1;
  * synthesis_members, comments, reviews, review_revisions, review_findings —
- * беседа 16.1, миграция 0017):
+ * беседа 16.1, миграция 0017; notifications, notification_settings — беседа
+ * 16.2, миграция 0018, там же auth_tokens += member_invite/synthesis_id/
+ * member_role):
  *   users, sessions, syntheses, synthesis_lineage, sections,
  *   categories, category_edges, cluster_labels, theses, glossary_terms,
  *   dialogue_turns, element_versions, edit_plans, mode_results,
@@ -15,7 +17,7 @@
  *   element_enrichments, characteristic_justifications,
  *   representation_transforms, admin_audit, auth_tokens, mail_outbox,
  *   recommendations, synthesis_members, comments, reviews,
- *   review_revisions, review_findings.
+ *   review_revisions, review_findings, notifications, notification_settings.
  *
  * v10: ext_graph_metrics, structure_sections (syntheses);
  *      clarity, breadth, depth_score, applicability (categories);
@@ -67,6 +69,7 @@ import type {
   ReviewFields,
   ReviewFinding,
 } from "@philosynth/shared/types/discussion"; // 16.1
+import type { NotificationPayload } from "@philosynth/shared/types/notifications"; // 16.2
 import type {
   ContextEntry as ContextLogEntry,
   ParentSpecLog,
@@ -1285,10 +1288,19 @@ export const authTokens = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    purpose: text("purpose", { enum: ["email_verify", "password_reset", "email_change"] }).notNull(),
+    purpose: text("purpose", {
+      enum: ["email_verify", "password_reset", "email_change", "member_invite"],
+    }).notNull(),
     tokenHash: text("token_hash").notNull(),
-    /** 15.3 (Д-73): новый адрес у довода 'email_change'; у прочих — NULL */
+    /** 15.3 (Д-73): новый адрес у довода 'email_change'; 16.2: приглашаемый
+     *  адрес у 'member_invite' (аккаунта нет — user_id несёт пригласившего);
+     *  у прочих — NULL */
     newEmail: text("new_email"),
+    /** 16.2 (миграция 0018): синтез и роль приглашения 'member_invite';
+     *  CASCADE — удалённая концепция уносит ждущие приглашения; у прочих
+     *  назначений — NULL */
+    synthesisId: uuid("synthesis_id").references(() => syntheses.id, { onDelete: "cascade" }),
+    memberRole: text("member_role", { enum: ["reviewer", "editor"] }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     usedAt: timestamp("used_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -1298,9 +1310,14 @@ export const authTokens = pgTable(
   (t) => [
     index("idx_auth_tokens_user_purpose").on(t.userId, t.purpose),
     index("idx_auth_tokens_hash").on(t.tokenHash),
+    index("idx_auth_tokens_synthesis").on(t.synthesisId),
     check(
       "auth_tokens_purpose_check",
-      sql`${t.purpose} IN ('email_verify','password_reset','email_change')`,
+      sql`${t.purpose} IN ('email_verify','password_reset','email_change','member_invite')`,
+    ),
+    check(
+      "auth_tokens_member_role_check",
+      sql`${t.memberRole} IS NULL OR ${t.memberRole} IN ('reviewer','editor')`,
     ),
   ],
 );
@@ -1655,3 +1672,97 @@ export const reviewFindings = pgTable(
     ),
   ],
 );
+
+/* ───────────────────── 2.38. notifications (16.2) ───────────────────── */
+
+/**
+ * Уведомления в приложении (беседа 16.2; 02 §2.38). Строка — КОД события
+ * (`type`) + ссылки (синтез, актор, адрес, объект) + параметры (`payload`);
+ * фразу собирает читатель на своём языке (клиент — `tl()`, сводка по почте —
+ * под языком получателя). Получатель — `user_id`; актор события строки себе
+ * не получает. Отключённая в профиле категория не пишется вовсе.
+ * `dedupe_key` — уникальность повторяющихся событий (`finding_outdated`:
+ * объект + хэш — одно уведомление на одну смену содержимого).
+ * CASCADE по синтезу: удалённая концепция уносит свои уведомления; по
+ * пользователю при анонимизации 7.1 не срабатывает — account-deletion
+ * снимает явно.
+ */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type", {
+      enum: [
+        "member_invited",
+        "member_accepted",
+        "member_declined",
+        "member_role_changed",
+        "member_removed",
+        "comment_new",
+        "comment_reply",
+        "review_published",
+        "finding_outdated",
+        "proposal_created",
+        "proposal_decided",
+      ],
+    }).notNull(),
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
+    /** Кто совершил событие; SET NULL — след переживает актора */
+    actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+    /** Адрес обсуждения (комментарий, замечание); у событий участия — NULL */
+    address: jsonb("address").$type<DiscussionAddress>(),
+    /** На что ссылается: member | comment | review | finding | proposal */
+    refKind: text("ref_kind", { enum: ["member", "comment", "review", "finding", "proposal"] }),
+    refId: uuid("ref_id"),
+    payload: jsonb("payload").$type<NotificationPayload>().notNull().default({}),
+    /** Ключ дедупликации повторяющихся событий; NULL — без неё */
+    dedupeKey: text("dedupe_key"),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    /** Вошло в сводку по почте (работник ставит; непрочитанное после — в
+     *  следующую сводку не попадает) */
+    emailedAt: timestamp("emailed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_notifications_user_created").on(t.userId, t.createdAt),
+    index("idx_notifications_user_unread").on(t.userId).where(sql`${t.readAt} IS NULL`),
+    index("idx_notifications_synthesis").on(t.synthesisId),
+    uniqueIndex("uq_notifications_dedupe").on(t.dedupeKey).where(sql`${t.dedupeKey} IS NOT NULL`),
+    check(
+      "notifications_type_check",
+      sql`${t.type} IN ('member_invited','member_accepted','member_declined','member_role_changed','member_removed','comment_new','comment_reply','review_published','finding_outdated','proposal_created','proposal_decided')`,
+    ),
+    check(
+      "notifications_ref_kind_check",
+      sql`${t.refKind} IS NULL OR ${t.refKind} IN ('member','comment','review','finding','proposal')`,
+    ),
+  ],
+);
+
+/* ─────────────────── 2.39. notification_settings (16.2) ─────────────── */
+
+/**
+ * Настройки уведомлений пользователя (беседа 16.2; 02 §2.39): отключённые
+ * категории (`NOTIFICATION_CATEGORIES`, shared) и сводка по почте. Строки
+ * нет — всё включено. `digest_sent_at` — момент последней сводки: работник
+ * шлёт следующую не раньше чем через NOTIFY_DIGEST_INTERVAL_HOURS и только
+ * при непрочитанном, не вошедшем в прежние сводки.
+ */
+export const notificationSettings = pgTable("notification_settings", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  mutedCategories: jsonb("muted_categories").$type<string[]>().notNull().default([]),
+  emailDigest: boolean("email_digest").notNull().default(true),
+  digestSentAt: timestamp("digest_sent_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

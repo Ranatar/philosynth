@@ -78,7 +78,7 @@ console.log("\n■ A. Чистые функции и исходники");
   ok(direct.length === 3 && direct.includes("server/services/plan-executor.ts") && direct.includes("server/services/edit-planner.ts") && direct.includes("server/services/generation-service.ts"), "A11 прямых сравнений userId вне capabilities — только авторство плана (edit-planner, plan-executor) и запуска (activeRuns)", direct);
   ok(/function isOwner\(/.test(rd("server/services/capabilities.ts")) && !/ownerEditGate\(|ownerGate\(|ownerReadGate\(/.test(files.map((f) => strip(rd(f))).join("")), "A12 ownerEditGate/ownerGate/ownerReadGate больше нет; isOwner живёт в capabilities.ts");
   const journal = JSON.parse(rd("server/db/migrations/meta/_journal.json"));
-  ok(journal.entries.length === 18 && journal.entries[17].tag === "0017_discussion" && /synthesis_members/.test(rd("server/db/migrations/0017_discussion.sql")), "A13 миграция 0017_discussion восемнадцатая");
+  ok(journal.entries.length >= 18 && journal.entries[17].tag === "0017_discussion" && /synthesis_members/.test(rd("server/db/migrations/0017_discussion.sql")), "A13 миграция 0017_discussion восемнадцатая");
 }
 
 console.log("\n■ B. Живьём");

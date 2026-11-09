@@ -11,6 +11,7 @@
  * доверие заголовкам прокси по умолчанию выключено, и потеря строки при
  * выкладке молча оставила бы установщик без переменной.
  * 15.3 (Д-72): + сроки хранения и минимум времени ответа (четыре переменные).
+ * 16.2: + период сводки уведомлений по почте и период прохода уведомлений.
  * Запуск из корня: node scripts/checks/check-dotfiles.mjs
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -35,6 +36,10 @@ if (!/^TRUST_PROXY=false$/m.test(envEx)) errs.push(".env.example: TRUST_PROXY о
 for (const v of ["MAIL_RETENTION_DAYS", "AUTH_TOKEN_RETENTION_DAYS", "MAINTENANCE_INTERVAL_MS", "AUTH_MIN_RESPONSE_MS"]) {
   if (!new RegExp(`^${v}=`, "m").test(envEx)) errs.push(`.env.example без ${v}= (15.3)`);
 }
+// 16.2: уведомления — сводка по почте и проход сверки адресов
+for (const v of ["NOTIFY_DIGEST_INTERVAL_HOURS", "NOTIFY_SCAN_INTERVAL_MS"]) {
+  if (!new RegExp(`^${v}=`, "m").test(envEx)) errs.push(`.env.example без ${v}= (16.2)`);
+}
 if (!/^dev-billing-state\/$/m.test(rd(".gitignore"))) errs.push(".gitignore без dev-billing-state/ (8.6)");
 if (!existsSync(new URL("env.local.example", ROOT))) errs.push("нет env.local.example (8.6, без точки)");
 if (existsSync(new URL(".env.local.example", ROOT))) errs.push("в дереве старый .env.local.example (8.6)");
@@ -45,6 +50,7 @@ for (const n of ["starter", "pro", "academic"]) {
 if (!/^MAIL_TRANSPORT=console$/m.test(envLoc)) errs.push("env.local.example без MAIL_TRANSPORT=console (9.1)");
 if (!/^TRUST_PROXY=false$/m.test(envLoc)) errs.push("env.local.example без TRUST_PROXY=false (13.2)");
 if (!/^AUTH_MIN_RESPONSE_MS=/m.test(envLoc)) errs.push("env.local.example без AUTH_MIN_RESPONSE_MS= (15.3)");
+if (!/^NOTIFY_DIGEST_INTERVAL_HOURS=/m.test(envLoc)) errs.push("env.local.example без NOTIFY_DIGEST_INTERVAL_HOURS= (16.2)");
 if (errs.length) {
   console.error("DOTFILES: правки потеряны выкладкой —\n - " + errs.join("\n - "));
   process.exit(1);

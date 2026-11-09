@@ -138,6 +138,7 @@ import {
 } from "../services/auth-tokens.js"; // 9.1; 15.3 — смена адреса
 import { getOutboxCounts, listOutboxRows } from "../services/mail/outbox.js"; // 15.3 (Д-72 п.3)
 import { rateLimiter } from "../middleware/rate-limiter.js";
+import { applyInviteOnRegister, invitationInfo } from "../services/members.js"; // 16.2
 import { tl } from "@philosynth/shared/i18n/t";
 import { currentLocale } from "../i18n/locale.js"; // 14.1 (Д-51): язык письма при регистрации
 
@@ -227,7 +228,12 @@ async function withMinResponse<T>(fn: () => Promise<T>): Promise<T> {
 export const authRoutes = new Hono<AuthEnv>();
 
 authRoutes.post("/register", async (c) => {
-  const parsed = parseCredentials(await readJson(c), { validateStrength: true });
+  const rawBody = await readJson(c);
+  const parsed = parseCredentials(rawBody, { validateStrength: true });
+  // 16.2: регистрация по приглашению — довод из /register?invite=…;
+  // не строка / недействителен → регистрация идёт как обычная, в ответе
+  // invitation: null (клиент скажет «приглашение не найдено»)
+  const inviteToken = typeof rawBody?.inviteToken === "string" ? rawBody.inviteToken.trim() : "";
   if (!parsed.ok) {
     return c.json(
       {
@@ -257,9 +263,14 @@ authRoutes.post("/register", async (c) => {
         });
       // 14.1 (Д-51): у нового пользователя ui_locale ещё нет — письмо под языком запроса
       await queueVerificationMail(tx, { ...created!, uiLocale: currentLocale() });
-      return created!;
+      // 16.2: довод приглашения гасится и строка участника 'invited' заводится
+      // ТОЙ ЖЕ транзакцией (откат регистрации уносит и это); адрес
+      // регистрации должен совпадать с адресом приглашения
+      const invitation = inviteToken ? await applyInviteOnRegister(tx, inviteToken, created!) : null;
+      return { ...created!, invitation };
     });
-    return c.json({ user }, 201);
+    const { invitation, ...userRow } = user;
+    return c.json({ user: userRow, invitation }, 201);
   } catch (err) {
     // Гонка/дубль по UNIQUE(email) — postgres код 23505.
     // drizzle-orm ≥0.44 оборачивает PostgresError в DrizzleQueryError,
@@ -277,6 +288,16 @@ authRoutes.post("/register", async (c) => {
     }
     throw err;
   }
+});
+
+/** 16.2: что за приглашение стоит за доводом из письма (/register?invite=…):
+ *  концепция, роль, адрес, кто зовёт. Недействительный довод → 400
+ *  TOKEN_INVALID (как у прочих доводов 9.1). Без сессии: адресата ещё нет. */
+authRoutes.get("/invitations/:token", async (c) => {
+  const token = c.req.param("token") ?? "";
+  const info = token.length >= 16 ? await invitationInfo(token) : null;
+  if (!info) return tokenInvalid(c);
+  return c.json(info);
 });
 
 authRoutes.post("/login", async (c) => {
@@ -531,7 +552,7 @@ authRoutes.patch("/me", requireAuth, async (c) => {
 
 /** Лимит на запросы, порождающие письмо (сверх общего лимитера index.ts):
  *  форма сброса открыта без авторизации — ею нельзя давать засыпать ящик */
-const mailLimiter = rateLimiter({
+export const mailLimiter = rateLimiter({
   scope: "mail",
   limit: env.rateLimit.mailRequestsPerHour,
   windowSec: 3600,

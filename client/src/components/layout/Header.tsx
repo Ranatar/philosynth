@@ -26,6 +26,10 @@
  * имени/ссылок входа; рисуется и пока сессия проверяется (язык гостя
  * известен из cookie/navigator до ответа сервера). Header зовёт useT():
  * перерисовка при смене языка.
+ *
+ * Беседа 16.2 (п. 4): колокольчик уведомлений (NotificationBell) в
+ * .topbar-right у вошедшего, слева от имени: число непрочитанных опросом,
+ * выпадающий список, «Прочитать всё».
  */
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -34,6 +38,7 @@ import { useAuthStore } from "../../stores/auth-store";
 import { useT } from "../../i18n/useT";
 
 import { LanguageSwitch } from "./LanguageSwitch";
+import { NotificationBell } from "./NotificationBell"; // 16.2
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -135,6 +140,8 @@ export function Header({ onToggleSidebar, showBurger = true }: HeaderProps) {
           <LanguageSwitch variant="topbar" />
           {user ? (
             <>
+              {/* 16.2: колокольчик уведомлений — опрос unread-count */}
+              <NotificationBell />
               <Link to="/profile" title={tl("layout.header.profile", "Профиль")} className="app-topbar-link">
                 <span>{user.displayName || user.email}</span>
               </Link>

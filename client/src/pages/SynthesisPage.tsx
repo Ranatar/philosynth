@@ -112,6 +112,7 @@ import {
 } from "../utils/genealogy";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
+import { MembersPanel, roleLabel } from "../components/synthesis/MembersPanel"; // 16.2
 
 /** Метка тезиса, как её показывает документ (рендерер 5.1: label ?? номер) */
 export function thesisLabelOf(t: { label: string | null; thesisNum: number }): string {
@@ -199,6 +200,11 @@ export function SynthesisPage() {
 
   // Беседа 1.7: граф категорий — данные грузятся по клику на кнопку
   const [graphOpen, setGraphOpen] = useState(false);
+  // 16.2: вкладка владельца «Документ | Участники»
+  const [pageTab, setPageTab] = useState<"document" | "members">("document");
+  const pageTabCls = (k: "document" | "members") => (pageTab === k ? "action-btn page-tab active" : "action-btn page-tab");
+  const documentTabCls = pageTabCls("document");
+  const membersTabCls = pageTabCls("members");
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [graphLoading, setGraphLoading] = useState(false);
   // Беседа 4.2: выпадающее меню «⤓ Экспорт» (HTML/MD/Mermaid/PNG/JSON)
@@ -612,6 +618,9 @@ export function SynthesisPage() {
   // Беседа 5.2 («По факту 5.2»): владение — из SynthesisFull.isOwner
   // (оптимизм «покажем всем, 403 решит» 2.3/4.1 снят тем же флагом)
   const isOwner = synthesis?.isOwner ?? false;
+  // 16.2: роль участника из capabilities (reviewer | editor); иначе null
+  const capRole = synthesis?.capabilities?.role;
+  const memberRole = capRole === "reviewer" || capRole === "editor" ? capRole : null;
 
   // 15.1 (Д-68/Д-69): контекст действий у узлов древа. Перечитка после
   // действия — неразрушающая (applySynthesis, не store.load — грабля R3
@@ -838,12 +847,20 @@ export function SynthesisPage() {
 
   return (
     <div>
-      {/* Беседа 8.7 (п. 4a): полоса режима просмотра у невладельца */}
+      {/* Беседа 8.7 (п. 4a): полоса режима просмотра у невладельца;
+          16.2: участнику — его роль вместо «публичная концепция» */}
       {!isOwner && (
-        <div className="app-view-banner" data-testid="view-banner" data-viewer={isGuest ? "guest" : "user"}>
+        <div
+          className="app-view-banner"
+          data-testid="view-banner"
+          data-viewer={isGuest ? "guest" : memberRole ? "member" : "user"}
+          data-role={memberRole ?? undefined}
+        >
           <span className="app-view-banner-text">
-            {tl("synthesisPage.viewingPublic", "Вы смотрите публичную концепцию")}
-            {synthesis.scope === "showcase" ? tl("synthesisPage.showcaseParen", " (витрина)") : ""}
+            {memberRole
+              ? tl("synthesisPage.viewingAsMember", "Вы участник концепции · роль: {role}", { role: roleLabel(memberRole) })
+              : tl("synthesisPage.viewingPublic", "Вы смотрите публичную концепцию")}
+            {!memberRole && synthesis.scope === "showcase" ? tl("synthesisPage.showcaseParen", " (витрина)") : ""}
             {synthesis.authorName ? tl("synthesisPage.authorSuffix", " · автор: {authorName}", { authorName: synthesis.authorName }) : ""}
           </span>
           {isGuest && (
@@ -854,6 +871,33 @@ export function SynthesisPage() {
         </div>
       )}
 
+      {/* 16.2: вкладки владельца — документ / участники */}
+      {isOwner && (
+        <div className="actions-bar page-tabs" data-testid="page-tabs">
+          <div className="actions-bar-btns">
+            <button
+              type="button"
+              className={documentTabCls}
+              onClick={() => setPageTab("document")}
+              data-testid="tab-document"
+            >
+              {tl("synthesisPage.tabDocument", "Документ")}
+            </button>
+            <button
+              type="button"
+              className={membersTabCls}
+              onClick={() => setPageTab("members")}
+              data-testid="tab-members"
+            >
+              {tl("synthesisPage.tabMembers", "Участники")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isOwner && pageTab === "members" && <MembersPanel synthesisId={synthesis.id} />}
+
+      {pageTab === "document" && (<>
       {/* actions-bar [4134] — минимум 1.6b; 8.7: у гостя и на витрине
           кнопок под requireAuth/гейтом витрины нет (не рисуем неработающие) */}
       <div className="actions-bar">
@@ -1145,6 +1189,7 @@ export function SynthesisPage() {
           ) : undefined
         }
       />
+      </>)}
 
       {/* Беседа 2.4: лог контекста. Live-обновление — refreshKey растёт по
           УЖЕ существующим событиям завершения раздела (section_done через

@@ -16,10 +16,14 @@
  * ставит gen_lang) и строка о текущем языке генерации по умолчанию
  * (user.genLang; сам язык генерации выбирается в форме создания — там же
  * PATCH { genLang }, интерфейс от него не меняется).
+ *
+ * Беседа 16.2 (п. 4): секция «Уведомления» (NotificationSettingsSection) —
+ * отключаемые категории и почтовая сводка; PATCH /notifications/settings.
  */
 import { useState } from "react";
 
 import { LanguageSwitch } from "../components/layout/LanguageSwitch";
+import { NotificationSettingsSection } from "../components/layout/NotificationSettings"; // 16.2
 import { useLocale, useT } from "../i18n/useT";
 import { useAuthStore } from "../stores/auth-store";
 import { useSecondStep } from "../hooks/useSecondStep";
@@ -305,6 +309,9 @@ export function ProfilePage() {
           })}
         </div>
       </div>
+
+      {/* ── Уведомления (16.2) ── */}
+      <NotificationSettingsSection />
 
       {/* ── Смена пароля ── */}
       <form

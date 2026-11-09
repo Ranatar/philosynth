@@ -52,7 +52,7 @@ import { hasActiveGenerationForUser } from "./generation-service.js";
 import { cancelSubscription, SubscriptionError } from "./subscription-service.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
-const { users, sessions, apiKeys, syntheses, userSubscriptions, adminAudit, authTokens, synthesisMembers } = schema;
+const { users, sessions, apiKeys, syntheses, userSubscriptions, adminAudit, authTokens, synthesisMembers, notifications, notificationSettings } = schema;
 
 export class AccountDeletionError extends Error {
   constructor(
@@ -160,6 +160,12 @@ export async function deleteAccount(
     // рецензии ОСТАЮТСЯ (author_id — на анонимизированную строку; показ
     // «удалённый пользователь»): обсуждение принадлежит концепции.
     await tx.delete(synthesisMembers).where(eq(synthesisMembers.userId, userId));
+    // 16.2: уведомления и их настройки — личные данные получателя; CASCADE
+    // при анонимизации не срабатывает — снимаем явно. Строки, где удаляемый
+    // — актор (actor_id), остаются: SET NULL не нужен, показ «удалённый
+    // пользователь» — по признаку анонимизации при чтении.
+    await tx.delete(notifications).where(eq(notifications.userId, userId));
+    await tx.delete(notificationSettings).where(eq(notificationSettings.userId, userId));
     await tx
       .update(userSubscriptions)
       .set({ status: "canceled", cancelAtPeriodEnd: true, updatedAt: new Date() })

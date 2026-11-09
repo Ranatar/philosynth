@@ -38,6 +38,7 @@ import { and, asc, count, desc, eq, inArray, isNull, or, sql } from "drizzle-orm
 import { db, schema } from "../db/index.js";
 import { anonymizedEmailFor } from "./account-deletion.js";
 import { canManageSynthesis } from "./capabilities.js";
+import { notifyParticipants, notifySafe, participantsOf } from "./notifications.js"; // 16.2
 import {
   addressOf,
   findTarget,
@@ -87,7 +88,7 @@ import type {
 import { isDiscussionAddress, plainText } from "@philosynth/shared/utils/discussion-address";
 import { tl } from "@philosynth/shared/i18n/t";
 
-const { comments, reviewFindings, reviewRevisions, reviews, syntheses, users } = schema;
+const { comments, reviewFindings, reviewRevisions, reviews, syntheses, synthesisMembers, users } = schema;
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type CommentRow = typeof comments.$inferSelect;
@@ -153,32 +154,47 @@ async function loadAuthors(ids: Iterable<string | null>): Promise<Map<string, Di
     .where(inArray(users.id, uniq));
   for (const u of rows) {
     if (isAnonymizedUser(u)) {
-      out.set(u.id, { id: null, name: deletedUserLabel(), deleted: true, isOwner: false });
+      out.set(u.id, { id: null, name: deletedUserLabel(), deleted: true, isOwner: false, formerMember: false });
     } else {
       out.set(u.id, {
         id: u.id,
         name: u.displayName?.trim() || u.email,
         deleted: false,
         isOwner: false,
+        formerMember: false,
       });
     }
   }
   return out;
 }
 
+/** 16.2: действующие участники синтеза (для пометки «бывший участник»). */
+async function activeMemberIds(synthesisId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({ userId: synthesisMembers.userId })
+    .from(synthesisMembers)
+    .where(and(eq(synthesisMembers.synthesisId, synthesisId), eq(synthesisMembers.status, "active")));
+  return new Set(rows.map((r) => r.userId));
+}
+
 function authorDto(
   authorId: string | null,
   map: Map<string, DiscussionAuthor>,
   ownerId: string,
+  active: Set<string>,
 ): DiscussionAuthor {
   const base = (authorId && map.get(authorId)) || {
     id: null,
     name: deletedUserLabel(),
     deleted: true,
     isOwner: false,
+    formerMember: false,
   };
   // «автор — владелец» решает модуль прав, не сравнение здесь
-  return { ...base, isOwner: base.id !== null && canManageSynthesis({ userId: ownerId }, base.id) };
+  const isOwner = base.id !== null && canManageSynthesis({ userId: ownerId }, base.id);
+  // 16.2: не владелец и не действующий участник → «бывший участник»
+  // (исключён владельцем либо отклонил приглашение после записи)
+  return { ...base, isOwner, formerMember: base.id !== null && !isOwner && !active.has(base.id) };
 }
 
 /* ── Общее ───────────────────────────────────────────────────────────── */
@@ -298,6 +314,7 @@ function commentDto(
   ctx: {
     authors: Map<string, DiscussionAuthor>;
     ownerId: string;
+    active: Set<string>;
     resolution: AddressResolution;
     replyCount: number;
     viewer: DiscussionViewer;
@@ -309,7 +326,7 @@ function commentDto(
   return {
     id: r.id,
     synthesisId: r.synthesisId,
-    author: authorDto(r.authorId, ctx.authors, ctx.ownerId),
+    author: authorDto(r.authorId, ctx.authors, ctx.ownerId, ctx.active),
     address: addressFromRow(r.address),
     excerpt: r.excerpt,
     resolution: ctx.resolution,
@@ -348,15 +365,17 @@ async function toComments(
   if (rows.length === 0) return [];
   const idx = index ?? (await loadAddressIndex(synthesisId));
   const synth = await loadSynthesisRow(synthesisId);
-  const [authors, res, replies] = await Promise.all([
+  const [authors, res, replies, active] = await Promise.all([
     loadAuthors(rows.map((r) => r.authorId)),
     resolutionsFor(idx, rows),
     replyCounts(rows.filter((r) => r.parentId === null).map((r) => r.id)),
+    activeMemberIds(synthesisId),
   ]);
   return rows.map((r) =>
     commentDto(r, {
       authors,
       ownerId: synth.userId,
+      active,
       resolution: res.get(r.address) as AddressResolution,
       replyCount: replies.get(r.id) ?? 0,
       viewer,
@@ -507,7 +526,45 @@ export async function createComment(
       body,
     })
     .returning();
-  const [dto] = await toComments(synthesisId, [row as CommentRow], viewer, index);
+  // 16.2: уведомления — ответ в ветке автору корня (comment_reply), новый
+  // комментарий — остальным участникам (comment_new); актор себе не пишется
+  const created = row as CommentRow;
+  const snippet = plainText(body).slice(0, 80);
+  if (parentId) {
+    const [root] = await db.select({ authorId: comments.authorId }).from(comments).where(eq(comments.id, parentId)).limit(1);
+    const rootAuthor = root?.authorId ?? null;
+    if (rootAuthor) {
+      const { ownerId, memberIds } = await participantsOf(db, synthesisId);
+      const circle = new Set([...(ownerId ? [ownerId] : []), ...memberIds]);
+      if (circle.has(rootAuthor))
+        await notifySafe(db, {
+          type: "comment_reply",
+          synthesisId,
+          actorId: viewer.userId,
+          recipients: [rootAuthor],
+          address,
+          refKind: "comment",
+          refId: created.id,
+          payload: { excerpt: snippet },
+        });
+      circle.delete(rootAuthor);
+      await notifySafe(db, {
+        type: "comment_new",
+        synthesisId,
+        actorId: viewer.userId,
+        recipients: [...circle],
+        address,
+        refKind: "comment",
+        refId: created.id,
+        payload: { excerpt: snippet },
+      });
+    } else {
+      await notifyParticipants(db, { type: "comment_new", synthesisId, actorId: viewer.userId, address, refKind: "comment", refId: created.id, payload: { excerpt: snippet } });
+    }
+  } else {
+    await notifyParticipants(db, { type: "comment_new", synthesisId, actorId: viewer.userId, address, refKind: "comment", refId: created.id, payload: { excerpt: snippet } });
+  }
+  const [dto] = await toComments(synthesisId, [created], viewer, index);
   return dto as Comment;
 }
 
@@ -664,7 +721,11 @@ async function toReviews(synthesisId: string, rows: ReviewRow[], index?: Address
     .from(reviewFindings)
     .where(inArray(reviewFindings.reviewId, rows.map((r) => r.id)))
     .orderBy(asc(reviewFindings.position), asc(reviewFindings.createdAt));
-  const [authors, res] = await Promise.all([loadAuthors(rows.map((r) => r.authorId)), resolutionsFor(idx, frows)]);
+  const [authors, res, active] = await Promise.all([
+    loadAuthors(rows.map((r) => r.authorId)),
+    resolutionsFor(idx, frows),
+    activeMemberIds(synthesisId),
+  ]);
   const byReview = new Map<string, ReviewFinding[]>();
   for (const f of frows) {
     const list = byReview.get(f.reviewId) ?? [];
@@ -674,7 +735,7 @@ async function toReviews(synthesisId: string, rows: ReviewRow[], index?: Address
   return rows.map((r) => ({
     id: r.id,
     synthesisId: r.synthesisId,
-    author: authorDto(r.authorId, authors, synth.userId),
+    author: authorDto(r.authorId, authors, synth.userId, active),
     docVersion: docVersionOf(r),
     status: r.status,
     revision: r.revision,
@@ -856,6 +917,15 @@ export async function publishReview(synthesisId: string, reviewId: string, viewe
     };
     await tx.update(reviews).set(patch).where(eq(reviews.id, row.id));
     await writeRevision(tx, { ...row, ...patch }, revision);
+    // 16.2: опубликованная рецензия — всем участникам, кроме автора
+    await notifyParticipants(tx, {
+      type: "review_published",
+      synthesisId,
+      actorId: viewer.userId,
+      refKind: "review",
+      refId: row.id,
+      payload: { excerpt: plainText(row.summary ?? "").slice(0, 80) },
+    });
   });
   return getReview(synthesisId, reviewId, viewer);
 }
