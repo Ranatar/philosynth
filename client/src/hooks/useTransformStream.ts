@@ -59,7 +59,7 @@ export function messageOfTransformError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === "GENERATION_IN_PROGRESS")
       return tl("hooks.useTransformStream.otherOperation", "Идёт другая операция (генерация, режим, обогащение или трансформация) — дождитесь её завершения");
-    if (err.code === "FORBIDDEN") return tl("hooks.useTransformStream.ownerOnly", "Трансформировать представления может только владелец синтеза");
+    if (err.code === "FORBIDDEN") return tl("hooks.useTransformStream.editorsOnly", "Трансформировать представления могут только владелец и редакторы концепции");
     if (err.code === "VALIDATION_ERROR" && err.details && typeof err.details === "object") {
       const d = Object.values(err.details as Record<string, unknown>).filter(
         (v) => typeof v === "string",

@@ -138,7 +138,10 @@ target; Konzept, Adressat, Auswertung, Begründung, Änderung, Beziehungen). Б�
 `graph.graphLegend.*`), `server.editPlanner.*`, `server.elementEditor.*`,
 `server.routes.*`, `server.index.*` и др.; их en/de утверждены владельцем 2026-10-20
 (тем же днём, вливание без `--draft`); 53 ключа беседы 15.4 (вкладка «Тарифы»,
-`server.services.planAdmin.*`) — утверждены владельцем 2026-11-05. Черновиков в каталогах нет. Новые
+`server.services.planAdmin.*`) — утверждены владельцем 2026-11-05; 204 ключа беседы 17.2
+(`proposals.*`, сообщение о конфликте версий, происхождение в истории, подписи редактору) —
+утверждены владельцем 2026-11-15, пять английских строк перед вливанием приведены к
+принятым Ground / Justification. Черновиков в каталогах нет. Новые
 ключи беседы получают машинные черновики `i18n:import --draft` (отметка `draft`),
 утверждение — задача владельца: `npm run i18n:export -- --lang de --out i18n-request.de.json` (файл со всеми
 черновиками), править колонку `de` (не трогая `ru`/`params`/`where`), убрать `de` из

@@ -57,11 +57,11 @@ const PAIRS: Pair[] = [
   { table: "sections", file: "section.ts", iface: "SectionFull",
     schemaOnly: ["id", "synthesisId", "createdAt", "updatedAt"],
     typeOnly: ["subsections", "lockedSubsections", "parseWarnings", "sectionTitle", "subsectionTitles"], renamed: { secContext: "secContext" } }, // parseWarnings — 11.2 (Д-16): из генлога, вычисляемое; sectionTitle/subsectionTitles — 14.2 (Д-59): из html_content (sectionTitlesOf)
-  { table: "categories", file: "graph.ts", iface: "Category" },
-  { table: "categoryEdges", file: "graph.ts", iface: "CategoryEdge" },
+  { table: "categories", file: "graph.ts", iface: "Category", typeOnly: ["version"] }, // 17.2 (Д-81): version — номер последней версии из element_versions, вычисляется при чтении (03 §2.4)
+  { table: "categoryEdges", file: "graph.ts", iface: "CategoryEdge", typeOnly: ["version"] }, // 17.2 (Д-81): version — номер последней версии из element_versions, вычисляется при чтении (03 §2.4)
   { table: "clusterLabels", file: "graph.ts", iface: "ClusterLabel" },
-  { table: "theses", file: "elements.ts", iface: "Thesis" },
-  { table: "glossaryTerms", file: "elements.ts", iface: "GlossaryTerm" },
+  { table: "theses", file: "elements.ts", iface: "Thesis", typeOnly: ["version"] }, // 17.2 (Д-81): version — номер последней версии из element_versions, вычисляется при чтении (03 §2.4)
+  { table: "glossaryTerms", file: "elements.ts", iface: "GlossaryTerm", typeOnly: ["version"] }, // 17.2 (Д-81): version — номер последней версии из element_versions, вычисляется при чтении (03 §2.4)
   { table: "dialogueTurns", file: "elements.ts", iface: "DialogueTurn" },
   { table: "elementVersions", file: "elements.ts", iface: "ElementVersion",
     // 17.1: колонка — id исполнителя; наружу — actor { id, name, isOwner } только

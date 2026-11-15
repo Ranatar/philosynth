@@ -28,7 +28,7 @@
  * исходника (requestAnimationFrame → transition).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Category } from "@philosynth/shared/types/graph";
 
@@ -38,6 +38,8 @@ import type { EnrichmentStream } from "../../hooks/useEnrichmentStream";
 import { CharacteristicSliderGroup } from "../edit/CharacteristicSlider";
 import { EnrichmentPanel } from "../edit/EnrichmentPanel";
 import { TaxonomySelector } from "../edit/TaxonomySelector";
+import { VersionConflictNotice } from "../edit/VersionConflictNotice"; // 17.2 (Д-81)
+import { conflictsOf, type VersionConflictDetails } from "../../utils/version-conflict";
 
 import {
   CPAL,
@@ -178,6 +180,9 @@ export interface NodePanelEdit {
   readOnly: boolean;
   /** После каждого PATCH — хозяин перечитывает граф */
   onPatched: (res: UpdateCategoryResponse) => void;
+  /** 17.2 (Д-81): конфликт версий — хозяин перечитывает граф (свежая строка
+   *  категории с номером версии приходит пропом), записи не было */
+  onReread?: (() => void) | undefined;
 }
 
 export default function NodePanel({
@@ -416,7 +421,11 @@ export default function NodePanel({
 /* ── Беседа 5.4: правка по месту в панели узла ───────────────────────── */
 
 function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
-  const { synthesisId, category, stream, readOnly, onPatched } = edit;
+  const { synthesisId, category, stream, readOnly, onPatched, onReread } = edit;
+  // 17.2 (Д-81): номер версии — из DTO чтения; свой PATCH поднимает его сам
+  // (ответ несёт version.version), не дожидаясь перечитки графа хозяином
+  const versionRef = useRef<{ id: string; version: number }>({ id: category.id, version: category.version ?? 0 });
+  const [conflict, setConflict] = useState<VersionConflictDetails[] | null>(null);
   const [values, setValues] = useState<Record<string, number>>(() => pickChars(category));
   const [type, setType] = useState({ type: category.type, typeCatalogId: category.typeCatalogId });
   const [saving, setSaving] = useState<string | null>(null);
@@ -427,6 +436,13 @@ function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
   useEffect(() => {
     setValues(pickChars(category));
     setType({ type: category.type, typeCatalogId: category.typeCatalogId });
+    const prev = versionRef.current;
+    // свежая строка несёт номер не меньше своего PATCH; иная категория — её номер
+    versionRef.current = {
+      id: category.id,
+      version: prev.id === category.id ? Math.max(prev.version, category.version ?? 0) : category.version ?? 0,
+    };
+    setConflict(null);
   }, [category]);
 
   const patch = useCallback(
@@ -434,7 +450,9 @@ function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
       setSaving(label);
       setStatus(null);
       try {
-        const res = await updateCategory(synthesisId, category.id, body);
+        const res = await updateCategory(synthesisId, category.id, body, versionRef.current.version);
+        versionRef.current = { id: category.id, version: res.version.version };
+        setConflict(null);
         setStatus({
           ok: true,
           text:
@@ -445,12 +463,21 @@ function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
         });
         onPatched(res);
       } catch (err) {
+        const conflicts = conflictsOf(err);
+        if (conflicts) {
+          // 17.2: запись не сделана; значение возвращается к строке БД, выбор —
+          // «перечитать и повторить» (перечитка графа даст текущее значение)
+          setConflict(conflicts);
+          setValues(pickChars(category));
+          setType({ type: category.type, typeCatalogId: category.typeCatalogId });
+          return;
+        }
         const msg =
           err instanceof ApiError
             ? err.code === "GENERATION_IN_PROGRESS"
               ? tl("graph.nodePanel.lockedGenerating", "Идёт генерация — правки заблокированы")
               : err.code === "FORBIDDEN"
-                ? tl("graph.nodePanel.ownerOnly", "Редактировать может только владелец")
+                ? tl("graph.nodePanel.editorsOnly", "Редактировать могут только владелец и редакторы")
                 : err.message
             : String(err);
         setStatus({ ok: false, text: msg });
@@ -513,6 +540,20 @@ function InlineEditBlock({ edit }: { edit: NodePanelEdit }) {
         justify={{ stream, elementType: "category", elementId: category.id }}
       />
 
+      {conflict && (
+        <VersionConflictNotice
+          conflicts={conflict}
+          nameOf={() => category.name}
+          onReread={() => {
+            // хозяин перечитывает граф: свежая строка придёт пропом (эффект
+            // выше снимет сообщение и выставит текущие значения и версию);
+            // повторяет правку человек — ползунком, уже от текущего значения
+            versionRef.current = { id: category.id, version: 0 };
+            onReread?.();
+          }}
+          onDismiss={() => setConflict(null)}
+        />
+      )}
       {status && (
         <div className={"pool-status " + (status.ok ? "ok" : "err")} data-testid="node-edit-status">
           {status.text}

@@ -125,6 +125,13 @@ import type { Comment as DiscussionComment, DiscussionSummary, Review } from "@p
 import type { Recommendation } from "@philosynth/shared/types/recommendations";
 import type { CommentKind } from "@philosynth/shared/constants/discussion";
 import { isAddressKind } from "@philosynth/shared/constants/discussion";
+// 17.2: соавторство — предложения, конфликт версий
+import { ProposalsTab } from "../components/proposals/ProposalsTab";
+import { listProposals } from "../api/proposals";
+import { useCollabStore } from "../stores/collab-store";
+import type { Proposal } from "@philosynth/shared/types/proposals";
+import { conflictText, conflictsOf } from "../utils/version-conflict";
+import { markupToLines } from "../utils/proposals";
 
 /** Метка тезиса, как её показывает документ (рендерер 5.1: label ?? номер) */
 export function thesisLabelOf(t: { label: string | null; thesisNum: number }): string {
@@ -214,13 +221,18 @@ export function SynthesisPage() {
   const [graphOpen, setGraphOpen] = useState(false);
   // 16.2: вкладка владельца «Документ | Участники»; 16.3: «Обсуждение |
   // Рецензии» — участникам (capabilities.discuss)
-  type PageTab = "document" | "discussion" | "reviews" | "members";
+  type PageTab = "document" | "discussion" | "reviews" | "proposals" | "members";
   const [pageTab, setPageTab] = useState<PageTab>("document");
   const pageTabCls = (k: PageTab) => (pageTab === k ? "action-btn page-tab active" : "action-btn page-tab");
   const documentTabCls = pageTabCls("document");
   const membersTabCls = pageTabCls("members");
   const discussionTabCls = pageTabCls("discussion");
   const reviewsTabCls = pageTabCls("reviews");
+  const proposalsTabCls = pageTabCls("proposals");
+  // 17.2: предложения изменений (участникам) и раскрытое во вкладке
+  const [proposals, setProposals] = useState<Proposal[] | null>(null);
+  const [proposalsError, setProposalsError] = useState<string | null>(null);
+  const [proposalFocus, setProposalFocus] = useState<string | null>(null);
   // 16.3: сводка пометок, рецензии, открытая панель адреса, рекомендации (владельцу)
   const [discussSummary, setDiscussSummary] = useState<DiscussionSummary | null>(null);
   const [reviews, setReviews] = useState<Review[] | null>(null);
@@ -342,6 +354,8 @@ export function SynthesisPage() {
             }
           : cur,
       );
+      // 17.2: перечитка после конфликта версий — записи не было
+      if (outcome.reread) return;
       void reloadSections();
       // 15.2 (Д-71): удалённая категория — граф перечитывается (его данные
       // живут в graphData страницы и без перечитки показали бы удалённый узел)
@@ -424,7 +438,8 @@ export function SynthesisPage() {
         setSubEdit(
           src.lock
             ? { ...base, error: src.lock.hint }
-            : { ...base, phase: "ready", draft: src.html, nested: src.nested },
+            : // 17.2 (Д-81): хэш исходника — ожидание будущей записи
+              { ...base, phase: "ready", draft: src.html, nested: src.nested, baseHash: src.hash },
         );
       } catch (err) {
         setSubEdit({ ...base, error: subsectionErrorText(err) });
@@ -447,11 +462,18 @@ export function SynthesisPage() {
     async (html: string) => {
       const cur = subEdit;
       if (!id || !cur || cur.phase !== "ready" || subEditBusyRef.current) return;
+      // 17.2 (Д-81): пока конфликт не перечитан, записи нет (и по Ctrl+Enter)
+      if (cur.conflict && !cur.conflict.reread) return;
+      if (!cur.baseHash) {
+        // исходник без хэша — запись без ожидания не шлём: перечитать правку
+        setSubEdit({ ...cur, draft: html, error: tl("synthesisPage.subsectionNoBase", "Не удалось определить версию подраздела — закройте правку и откройте её заново.") });
+        return;
+      }
       subEditBusyRef.current = true;
       // draft = набранное: строка формы пересобирается, поле неуправляемое
       setSubEdit({ ...cur, phase: "saving", draft: html, error: null });
       try {
-        const res = await updateSubsection(id, cur.sectionKey, cur.name, html);
+        const res = await updateSubsection(id, cur.sectionKey, cur.name, html, cur.baseHash);
         await reloadSections(); // статус — после перечитки (09 §2, 6.2 п.4)
         // 12.4 (Д-34): новое название из раздела name — в шапку и всюду, где
         // стор отдаёт synthesis.title, без перезагрузки; тезисы — заметкой
@@ -466,12 +488,61 @@ export function SynthesisPage() {
             : null,
         );
       } catch (err) {
+        const conflicts = conflictsOf(err);
+        if (conflicts) {
+          // 17.2 (Д-81): запись не сделана; набранное остаётся в поле, выбор —
+          // «Перечитать и повторить»
+          const first = conflicts[0];
+          setSubEdit({
+            ...cur,
+            phase: "ready",
+            draft: html,
+            error: null,
+            conflict: {
+              message: first ? conflictText(first, cur.name) : tl("synthesisPage.subsectionConflict", "Подраздел изменили, пока вы правили."),
+              reread: false,
+            },
+          });
+          return;
+        }
         setSubEdit({ ...cur, phase: "ready", draft: html, error: subsectionErrorText(err) });
       } finally {
         subEditBusyRef.current = false;
       }
     },
     [id, subEdit, reloadSections, applySynthesis],
+  );
+  /* 17.2 (Д-81): «Перечитать и повторить» у подраздела. Исходник читается
+     заново: ожидание (baseHash) — свежее, набранное остаётся в поле, текущий
+     текст подраздела показан рядом (сообщение формы). Документ на странице
+     тоже перечитывается. Запись повторяет человек — «Сохранить». */
+  const rereadSubsectionEdit = useCallback(
+    async (draft: string) => {
+      const cur = subEdit;
+      if (!id || !cur || !cur.conflict || cur.conflict.reread || subEditBusyRef.current) return;
+      subEditBusyRef.current = true;
+      setSubEdit({ ...cur, draft, conflict: { ...cur.conflict, busy: true } });
+      try {
+        const src = await getSubsectionSource(id, cur.sectionKey, cur.name);
+        await reloadSections();
+        setSubEdit(
+          src.lock
+            ? { ...cur, draft, conflict: undefined, error: src.lock.hint }
+            : {
+                ...cur,
+                draft,
+                nested: src.nested,
+                baseHash: src.hash,
+                conflict: { message: cur.conflict.message, reread: true, currentText: markupToLines(src.html) },
+              },
+        );
+      } catch (err) {
+        setSubEdit({ ...cur, draft, conflict: { ...cur.conflict, busy: false }, error: subsectionErrorText(err) });
+      } finally {
+        subEditBusyRef.current = false;
+      }
+    },
+    [id, subEdit, reloadSections],
   );
   // 15.2 (Д-71): удаление подраздела из карточки правки — второй шаг
   // (deleteArmed) и DELETE; после — перечитка разделов, правки больше нет
@@ -558,12 +629,13 @@ export function SynthesisPage() {
     (synthesis.sectionOrder ?? []).includes("capsule") &&
     !!synthesis.capsuleHtml;
   const synthesisIdForModes = synthesis?.id ?? null;
-  const isOwnerForModes = synthesis?.isOwner ?? false;
+  // 17.2 (Д-82): генерация режимов — право правки (владелец | редактор)
+  const canEditModes = synthesis?.capabilities?.edit ?? false;
   // Просмотр режимов невладельцем: вошедший при объёме 'full' — тот же круг,
   // кому доступны разделы и экспорт (а экспорт результаты режимов несёт).
   // Гостю нет: GET /modes под requireAuth, как и экспорт. Витрина — нет.
   const modesReadOnly =
-    !isOwnerForModes && !isGuest && synthesis?.scope === "full";
+    !canEditModes && !isGuest && synthesis?.scope === "full";
   // Стабильная ссылка (грабля R3: инлайн-колбэк в props модалки менял
   // идентичность её refetch каждый рендер); prev при том же счётчике —
   // без нового объекта, чтобы не гонять рендеры по кругу
@@ -580,7 +652,7 @@ export function SynthesisPage() {
     // генерации updateModeButtons); невладельцу на 'full' — всегда: кнопки
     // только просмотра рисуются по счётчикам, капсула им не нужна
     if (!synthesisIdForModes) return;
-    if (!(isOwnerForModes ? hasCapsule : modesReadOnly)) return;
+    if (!(canEditModes ? hasCapsule : modesReadOnly)) return;
     if (editOpen) return; // пока модалка открыта, счётчики не гоняем
     let cancelled = false;
     getModes(synthesisIdForModes)
@@ -599,7 +671,7 @@ export function SynthesisPage() {
     // editOpen в deps: план с режимными шагами / подраздельный каскад
     // меняют результаты — закрытие EditModal перечитывает счётчики
     // (паритет updateModeButtons после applyEditPlan исходника)
-  }, [synthesisIdForModes, hasCapsule, editOpen, isOwnerForModes, modesReadOnly]);
+  }, [synthesisIdForModes, hasCapsule, editOpen, canEditModes, modesReadOnly]);
 
   /* ── Беседа 3.2 (п. 4): секция «Генеалогия» под шапкой документа ──
      Только для мета-синтезов (есть родители-концепции) — паритет
@@ -654,7 +726,14 @@ export function SynthesisPage() {
   // 16.3: обсуждение — владельцу и действующим участникам (одна проверка
   // сервера, 16.1); гостю и чужому зарегистрированному — ничего не рисуется
   const canDiscuss = synthesis?.capabilities?.discuss ?? false;
-  const canManage = synthesis?.capabilities?.manage ?? isOwner;
+  /* 17.2 (Д-82): права страницы — из capabilities ответа сервера (один модуль
+     прав 16.1/17.1). canEdit — владелец | действующий редактор: ВСЕ средства
+     правки, генерации, планов, режимов, паузы, рекомендаций. canManage —
+     только владелец: участники, видимость, название, удаление, копия,
+     родословная. isOwner на этой странице правку НЕ открывает (сторож 4bq);
+     он остался подписям «чья концепция» и чтению (белый список сторожа). */
+  const canEdit = synthesis?.capabilities?.edit ?? false;
+  const canManage = synthesis?.capabilities?.manage ?? false;
   const discussSynthesisId = canDiscuss ? synthesis?.id ?? null : null;
   const meId = useAuthStore((s) => s.user?.id ?? null);
   const discussChanged = useCallback(() => setDiscussVersion((v) => v + 1), []);
@@ -687,6 +766,58 @@ export function SynthesisPage() {
     };
   }, [discussSynthesisId, discussVersion]);
   const discussCounts = useMemo(() => summaryMap(discussSummary), [discussSummary]);
+
+  /* ── Беседа 17.2: предложения изменений. Список — участникам (тот же гейт,
+     что обсуждение); перечитывается по счётчику и после закрытия модалки
+     правок (план мог исполниться — предложение стало «принято»). Копия — в
+     collab-store: имена авторов и номера нужны истории версий. ── */
+  const [proposalsVersion, setProposalsVersion] = useState(0);
+  const setCollabProposals = useCollabStore((st) => st.setProposals);
+  const setCollabReviews = useCollabStore((st) => st.setReviewTitles);
+  const clearCollab = useCollabStore((st) => st.clear);
+  useEffect(() => {
+    if (!discussSynthesisId) {
+      setProposals(null);
+      clearCollab();
+      return;
+    }
+    if (editOpen) return; // модалка правок закроется — эффект перечитает
+    let cancelled = false;
+    listProposals(discussSynthesisId)
+      .then((rows) => {
+        if (cancelled) return;
+        setProposals(rows);
+        setProposalsError(null);
+        setCollabProposals(discussSynthesisId, rows);
+      })
+      .catch((err) => {
+        if (!cancelled) setProposalsError(discussErrorText(err, tl("synthesisPage.proposalsLoadFailed", "Не удалось загрузить предложения.")));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [discussSynthesisId, proposalsVersion, editOpen, setCollabProposals, clearCollab]);
+  useEffect(() => {
+    const titles: Record<string, string> = {};
+    for (const r of reviews ?? []) titles[r.id] = r.title;
+    setCollabReviews(titles);
+  }, [reviews, setCollabReviews]);
+  useEffect(() => () => clearCollab(), [clearCollab]);
+  const openProposalCount = useMemo(() => (proposals ?? []).filter((p) => p.status === "open").length, [proposals]);
+  const proposalsChanged = useCallback((focusId?: string) => {
+    if (focusId) setProposalFocus(focusId);
+    setProposalsVersion((v) => v + 1);
+  }, []);
+  /** Открыть предложение во вкладке (из панели адреса, из ссылки) */
+  const openProposal = useCallback((pid: string) => {
+    setProposalFocus(pid);
+    setPageTab("proposals");
+  }, []);
+  // ?proposal=id — переход из замечания рецензии и из уведомления
+  const proposalParam = new URLSearchParams(location.search).get("proposal");
+  useEffect(() => {
+    if (proposalParam && canDiscuss) openProposal(proposalParam);
+  }, [proposalParam, canDiscuss, openProposal]);
   const activeAddressKey = discussTarget ? addressKeyOfTarget(discussTarget) : null;
   // ?discuss=вид:ключ — переход со страницы рецензии: открыть панель и
   // прокрутить к месту (адрес берётся из записей сводки/рецензий)
@@ -758,7 +889,7 @@ export function SynthesisPage() {
   const hasCritique = sections.some((sec) => sec.key === RECOMMENDATIONS_SECTION_KEY);
   const recSynthesisId = synthesis?.id ?? null;
   useEffect(() => {
-    if (!recSynthesisId || !isOwner || live || !hasCritique || recOpen || editOpen) return;
+    if (!recSynthesisId || !canEdit || live || !hasCritique || recOpen || editOpen) return;
     let cancelled = false;
     listRecommendations(recSynthesisId)
       .then((res) => {
@@ -776,7 +907,29 @@ export function SynthesisPage() {
     return () => {
       cancelled = true;
     };
-  }, [recSynthesisId, isOwner, live, hasCritique, recOpen, editOpen]);
+  }, [recSynthesisId, canEdit, live, hasCritique, recOpen, editOpen]);
+
+  /* 17.2 (п.3): «Принять» предложение ведёт ЧЕРЕЗ ПЛАН. Служба собрала
+     черновик (документ не менялся) — управление получает та же модалка
+     правок 2.3, что и у рекомендаций 10.3: шаги, каскад, подтверждение,
+     исполнение. Второй панели плана и прямого PATCH нет. */
+  const handleProposalPlan = useCallback((plan: EditPlan, names: Record<string, string>) => {
+    setDiscussTarget(null);
+    setEditInitialRegen(undefined);
+    setEditInitialPlan(plan);
+    setEditElementNames(names);
+    setEditOpen(true);
+  }, []);
+  /** «Обсудить» предложение: панель адреса 16.3 у места документа */
+  const discussProposal = useCallback(
+    (p: Proposal) => {
+      const t = targetFromAddress(p, sectionTitlesMap);
+      setPageTab("document");
+      setDiscussTarget(t);
+      setDiscussFocus({ key: addressKeyOfTarget(t), nonce: Date.now() });
+    },
+    [sectionTitlesMap],
+  );
 
   const handleRecommendationsPlan = useCallback(
     (plan: EditPlan, names: Record<string, string>) => {
@@ -797,8 +950,9 @@ export function SynthesisPage() {
   const contentAvailable = isOwner || (!isGuest && scopeFull);
   // Логи и запросы — по действенности флагов, а не по 403 постфактум
   const eff = synthesis ? effectiveFlags(synthesis) : null;
-  const logsAvailable = isOwner || (!isGuest && !!eff?.showLogs);
-  const promptsAvailable = isOwner || (!isGuest && !!eff?.showPrompts);
+  // 17.2: журнал и запросы открыты и редактору — по праву правки (17.1)
+  const logsAvailable = canEdit || (!isGuest && !!eff?.showLogs);
+  const promptsAvailable = canEdit || (!isGuest && !!eff?.showPrompts);
 
   // Смена синтеза — редактор по месту закрывается
   useEffect(() => {
@@ -986,7 +1140,7 @@ export function SynthesisPage() {
       {/* 16.2: вкладки владельца — документ / участники; 16.3: обсуждение и
           рецензии — всем с capabilities.discuss (владелец, действующие
           участники); гостю и чужому — вкладок нет вовсе */}
-      {(isOwner || canDiscuss) && (
+      {(canManage || canDiscuss) && (
         <div className="actions-bar page-tabs" data-testid="page-tabs">
           <div className="actions-bar-btns">
             <button
@@ -1019,7 +1173,18 @@ export function SynthesisPage() {
                 {discussSummary && discussSummary.totals.reviews > 0 && <span className="page-tab-count">{discussSummary.totals.reviews}</span>}
               </button>
             )}
-            {isOwner && (
+            {canDiscuss && (
+              <button
+                type="button"
+                className={proposalsTabCls}
+                onClick={() => setPageTab("proposals")}
+                data-testid="tab-proposals"
+              >
+                {tl("synthesisPage.tabProposals", "Предложения")}
+                {openProposalCount > 0 && <span className="page-tab-count" data-testid="tab-proposals-count">{openProposalCount}</span>}
+              </button>
+            )}
+            {canManage && (
               <button
                 type="button"
                 className={membersTabCls}
@@ -1033,7 +1198,22 @@ export function SynthesisPage() {
         </div>
       )}
 
-      {isOwner && pageTab === "members" && <MembersPanel synthesisId={synthesis.id} />}
+      {canManage && pageTab === "members" && <MembersPanel synthesisId={synthesis.id} />}
+      {canDiscuss && pageTab === "proposals" && (
+        <ProposalsTab
+          synthesisId={synthesis.id}
+          proposals={proposals}
+          error={proposalsError}
+          me={meId}
+          canEdit={canEdit}
+          live={live}
+          sectionTitles={sectionTitlesMap}
+          focusId={proposalFocus}
+          onPlanReady={handleProposalPlan}
+          onDiscuss={discussProposal}
+          onChanged={proposalsChanged}
+        />
+      )}
       {canDiscuss && pageTab === "discussion" && (
         <DiscussionTab synthesisId={synthesis.id} me={meId} canManage={canManage} sectionTitles={sectionTitlesMap} onJump={jumpToComment} version={discussVersion} onChanged={discussChanged} />
       )}
@@ -1046,7 +1226,10 @@ export function SynthesisPage() {
           canManage={canManage}
           sectionTitles={sectionTitlesMap}
           reviews={reviews ?? []}
-          recommendations={isOwner ? recRows : null}
+          recommendations={canEdit ? recRows : null}
+          proposals={proposals}
+          onProposed={(p) => proposalsChanged(p.id)}
+          onOpenProposal={openProposal}
           onAddToMyReview={addToMyReview}
           onChanged={discussChanged}
           onClose={() => setDiscussTarget(null)}
@@ -1066,7 +1249,7 @@ export function SynthesisPage() {
             letterSpacing: 1,
           }}
         >
-          {isOwner
+          {canEdit
             ? live
               ? tl("synthesisPage.generatingBadge", "ГЕНЕРАЦИЯ ДОКУМЕНТА")
               : tl("synthesisPage.generatedBadge", "ДОКУМЕНТ СГЕНЕРИРОВАН")
@@ -1083,18 +1266,19 @@ export function SynthesisPage() {
               {graphLoading ? tl("common.loading", "Загрузка…") : tl("synthesisPage.graph", "◈ Граф")}
             </button>
           )}
-          {isOwner && (
+          {canEdit && (
             <button
               type="button"
               className="action-btn"
               onClick={() => setEditOpen(true)}
               disabled={live}
+              data-testid="edit-open"
             >
               {tl("synthesisPage.editIcon", "✎ Изменить")}
             </button>
           )}
           {hasCapsule &&
-            isOwner &&
+            canEdit &&
             MODE_ORDER.map((mk) => (
               <button
                 key={mk}
@@ -1189,7 +1373,7 @@ export function SynthesisPage() {
         </div>
       </div>
 
-      {live && isOwner && (
+      {live && canEdit && (
         <div style={{ marginBottom: 24 }}>
           <GenerationProgress
             sections={progressSections}
@@ -1220,10 +1404,11 @@ export function SynthesisPage() {
         summaries={summaries}
         sections={sections}
         onOpenLog={logsAvailable ? () => setLogOpen(true) : undefined}
-        editable={isOwner && !live}
+        editable={canEdit && !live}
         onRowEdit={(row) => void openInlineEditor(row)}
-        subsectionEditable={isOwner && !live}
-        subsectionEdit={isOwner && !live ? subEdit : null}
+        subsectionEditable={canEdit && !live}
+        subsectionEdit={canEdit && !live ? subEdit : null}
+        onSubsectionReread={(draft) => void rereadSubsectionEdit(draft)}
         onSubsectionEdit={(ref) => void openSubsectionEdit(ref)}
         onSubsectionSave={(html) => void saveSubsectionEdit(html)}
         onSubsectionCancel={cancelSubsectionEdit}
@@ -1238,7 +1423,7 @@ export function SynthesisPage() {
             : undefined
         }
         sectionActionsFor={(key) =>
-          isOwner && !live ? (
+          canEdit && !live ? (
             <>
               {key === RECOMMENDATIONS_SECTION_KEY && (
                 <button
@@ -1291,7 +1476,7 @@ export function SynthesisPage() {
               onRegenerateAffected={handleRegenerateAffected}
               onClose={() => setInlineEdit(null)}
             />
-          ) : historyKey === key && isOwner && !live ? (
+          ) : historyKey === key && canEdit && !live ? (
             (() => {
               const sec = sections.find((x) => x.key === key);
               return sec ? (
@@ -1299,6 +1484,7 @@ export function SynthesisPage() {
                   key={sec.id}
                   synthesisId={synthesis.id}
                   sectionId={sec.id}
+                  sectionKey={key}
                   label={sectionLabelOf(key)}
                   current={{
                     title: sec.title,
@@ -1331,9 +1517,9 @@ export function SynthesisPage() {
                   <GenealogyTree
                     node={genealogyTree}
                     light={false}
-                    // 15.1 (Д-68/Д-69): действия у узлов — только владельцу;
+                    // 15.1 (Д-68/Д-69): действия у узлов — только владельцу (manage);
                     // после привязки/отвязки — перечитать синтез и древо
-                    actions={isOwner ? lineageActions : undefined}
+                    actions={canManage ? lineageActions : undefined}
                   />
                 ) : (
                   <div className="doc-meta-val">
@@ -1396,8 +1582,8 @@ export function SynthesisPage() {
         }}
       />
 
-      {/* Беседа 10.3: панель рекомендаций критики — только владельцу */}
-      {isOwner && !live && (
+      {/* Беседа 10.3: панель рекомендаций критики — правящему (17.2: владелец | редактор) */}
+      {canEdit && !live && (
         <RecommendationsPanel
           open={recOpen}
           synthesisId={synthesis.id}
@@ -1421,7 +1607,7 @@ export function SynthesisPage() {
       )}
 
       <PauseModal
-        open={pauseModalOpen && paused && isOwner}
+        open={pauseModalOpen && paused && canEdit}
         pausedState={pausedState}
         estimates={pauseEstimates}
         onResumeGeneration={handleResumeGeneration}
@@ -1440,7 +1626,7 @@ export function SynthesisPage() {
         modeKey={modeOpen}
         onClose={() => setModeOpen(null)}
         onResultsChanged={onModeResultsChanged}
-        readOnly={!isOwnerForModes}
+        readOnly={!canEditModes}
       />
 
       {/* Беседа 1.7: модалка графа категорий */}
@@ -1450,8 +1636,8 @@ export function SynthesisPage() {
         extGraphMetrics={synthesis.extGraphMetrics}
         onClose={() => setGraphOpen(false)}
         synthesisId={synthesis.id}
-        editable={isOwner && !live}
-        editDisabled={isOwner && live}
+        editable={canEdit && !live}
+        editDisabled={canEdit && live}
         onElementSaved={handleGraphElementSaved}
         onRegenerateAffected={handleRegenerateAffected}
         onTransform={openTransform}
@@ -1463,7 +1649,7 @@ export function SynthesisPage() {
           open
           synthesisId={synthesis.id}
           initialDirection={transformDir}
-          disabled={!isOwner || live}
+          disabled={!canEdit || live}
           onTransformed={handleTransformed}
           onClose={() => setTransformDir(null)}
         />

@@ -45,6 +45,8 @@ import {
   getPlan as apiGetPlan,
   updatePlan as apiUpdatePlan,
 } from "../api/plans";
+import type { PlanExpectation } from "@philosynth/shared/types/edit-plan"; // 17.2 (Д-81)
+import { conflictsOf, type VersionConflictDetails } from "../utils/version-conflict";
 import { useWebSocket } from "./useWebSocket";
 
 import type { CreatePlanRequest } from "@philosynth/shared/types/edit-plan";
@@ -67,10 +69,14 @@ interface EditPlanState {
   runningStep: number | null;
   /** Ошибка последней операции плана (создание/исполнение) */
   error: string | null;
+  /** 17.2 (Д-81): создание плана отклонено — адресаты изменились после того,
+   *  как человек их видел (409 VERSION_CONFLICT, details.conflicts) */
+  conflicts: VersionConflictDetails[] | null;
 
   setPlan: (plan: EditPlan | null) => void;
   applyWs: (msg: WsServerMessage) => void;
   setError: (error: string | null) => void;
+  setConflicts: (conflicts: VersionConflictDetails[] | null) => void;
   reset: () => void;
 }
 
@@ -80,6 +86,7 @@ export const useEditPlanStore = create<EditPlanState>((set, get) => ({
   stepResults: {},
   runningStep: null,
   error: null,
+  conflicts: null,
 
   setPlan(plan) {
     set({
@@ -133,6 +140,10 @@ export const useEditPlanStore = create<EditPlanState>((set, get) => ({
     set({ error });
   },
 
+  setConflicts(conflicts) {
+    set({ conflicts });
+  },
+
   reset() {
     set({
       currentPlan: null,
@@ -140,6 +151,7 @@ export const useEditPlanStore = create<EditPlanState>((set, get) => ({
       stepResults: {},
       runningStep: null,
       error: null,
+      conflicts: null,
     });
   },
 }));
@@ -160,7 +172,12 @@ export interface UseEditPlanResult {
   stepResults: Record<number, StepResult>;
   runningStep: number | null;
   error: string | null;
-  create: (actions: CreatePlanRequest) => Promise<EditPlan | null>;
+  /** 17.2 (Д-81): расхождения версий при создании плана; null — нет */
+  conflicts: VersionConflictDetails[] | null;
+  clearConflicts: () => void;
+  /** Создать план. `actions.expected` — ожидаемые версии адресатов: клиент
+   *  шлёт их ВСЕГДА (EditModal считает хэши разделов, которые видит человек) */
+  create: (actions: CreatePlanRequest & { expected: PlanExpectation[] }) => Promise<EditPlan | null>;
   updateSteps: (updates: UpdatePlanRequest["steps"]) => Promise<void>;
   execute: () => Promise<boolean>;
   /** Подтверждение pending-шага: draft — PATCH; executing — WS confirm_step */
@@ -191,6 +208,8 @@ export function useEditPlan(options: UseEditPlanOptions): UseEditPlanResult {
   const setPlan = useEditPlanStore((s) => s.setPlan);
   const applyWs = useEditPlanStore((s) => s.applyWs);
   const setError = useEditPlanStore((s) => s.setError);
+  const conflicts = useEditPlanStore((s) => s.conflicts);
+  const setConflicts = useEditPlanStore((s) => s.setConflicts);
   const reset = useEditPlanStore((s) => s.reset);
 
   const onSectionEventRef = useRef(onSectionEvent);
@@ -246,19 +265,24 @@ export function useEditPlan(options: UseEditPlanOptions): UseEditPlanResult {
   }, [active, synthesisId, reset]);
 
   const create = useCallback(
-    async (actions: CreatePlanRequest): Promise<EditPlan | null> => {
+    async (actions: CreatePlanRequest & { expected: PlanExpectation[] }): Promise<EditPlan | null> => {
       if (!synthesisId) return null;
       setError(null);
+      setConflicts(null);
       try {
         const plan = await apiCreatePlan(synthesisId, actions);
         setPlan(plan);
         return plan;
       } catch (err) {
-        setError(messageOf(err));
+        // 17.2 (Д-81): план не создан — документ изменился; выбор у человека
+        // один: перечитать и составить план заново
+        const found = conflictsOf(err);
+        if (found) setConflicts(found);
+        else setError(messageOf(err));
         return null;
       }
     },
-    [synthesisId, setPlan, setError],
+    [synthesisId, setPlan, setError, setConflicts],
   );
 
   const refresh = useCallback(async () => {
@@ -338,6 +362,7 @@ export function useEditPlan(options: UseEditPlanOptions): UseEditPlanResult {
   }, [synthesisId, setPlan]);
 
   const clearError = useCallback(() => setError(null), [setError]);
+  const clearConflicts = useCallback(() => setConflicts(null), [setConflicts]);
 
   const adopt = useCallback(
     (plan: EditPlan) => {
@@ -353,6 +378,8 @@ export function useEditPlan(options: UseEditPlanOptions): UseEditPlanResult {
     stepResults,
     runningStep,
     error,
+    conflicts,
+    clearConflicts,
     create,
     updateSteps,
     execute,

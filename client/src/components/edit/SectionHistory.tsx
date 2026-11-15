@@ -23,6 +23,10 @@ import { useState } from "react";
 
 import type { RollbackResponse } from "../../api/elements";
 import { tl } from "@philosynth/shared/i18n/t";
+import type { Proposal } from "@philosynth/shared/types/proposals"; // 17.2 (Д-86)
+import { proposalNumberIn, useCollabStore } from "../../stores/collab-store";
+import { fmtWhen } from "../../utils/discussion";
+import { kindLabel } from "../../utils/proposals";
 
 import { VersionHistory } from "./VersionHistory";
 
@@ -38,6 +42,20 @@ export interface SectionHistoryProps {
   onClose?: (() => void) | undefined;
   /** Заголовок панели — метка раздела */
   label: string;
+  /** 17.2 (Д-86): ключ раздела — для блока «Принятые предложения к разделу»
+   *  (перегенерация по предложению версий раздела не пишет — «почему»
+   *  показывается здесь, из списка предложений); у капсулы не передаётся */
+  sectionKey?: string | undefined;
+}
+
+/** 17.2 (Д-86): принятые предложения, адресованные разделу и его подразделам. */
+export function acceptedProposalsOf<T extends Pick<Proposal, "status" | "address">>(list: readonly T[], sectionKey: string): T[] {
+  return list.filter(
+    (p) =>
+      p.status === "accepted" &&
+      ((p.address.kind === "section" && p.address.key === sectionKey) ||
+        (p.address.kind === "subsection" && p.address.key.startsWith(sectionKey + ":"))),
+  );
 }
 
 export function SectionHistory({
@@ -48,8 +66,11 @@ export function SectionHistory({
   onRolledBack,
   onClose,
   label,
+  sectionKey,
 }: SectionHistoryProps) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const collabProposals = useCollabStore((s) => s.proposals);
+  const accepted = sectionKey ? acceptedProposalsOf(collabProposals, sectionKey) : [];
   const currentData: Record<string, unknown> = {
     title: current.title,
     htmlContent: current.htmlContent,
@@ -71,6 +92,26 @@ export function SectionHistory({
       <div className="form-sublabel section-history-note">
         {tl("edit.sectionHistory.note", "Версии — снимки раздела до каждой правки: ручной правки подраздела, правки капсулы, ретрофита таблицы рекомендаций, автозамены имён. Откат возвращает разметку раздела из снимка; таблицы, которые служба рисует из БД, он не трогает.")}
       </div>
+      {accepted.length > 0 && (
+        <div className="section-history-proposals" data-testid="section-history-proposals">
+          <div className="form-sublabel">{tl("edit.sectionHistory.acceptedProposals", "Принятые предложения к разделу")}</div>
+          {accepted.map((p) => (
+            <div key={p.id} className="version-origin" data-testid="section-history-proposal" data-proposal-id={p.id}>
+              {tl("edit.sectionHistory.acceptedProposal", "№ {num} · {author} · {kind} — {address}; исполнил {decider}, {when}", {
+                num: proposalNumberIn(collabProposals, p.id) ?? "—",
+                author: p.author.name,
+                kind: kindLabel(p.kind),
+                address: p.address.kind === "section" ? tl("edit.sectionHistory.wholeSection", "раздел целиком") : `«${p.address.key.slice(sectionKey ? sectionKey.length + 1 : 0)}»`,
+                decider: p.decidedBy?.name ?? "—",
+                when: fmtWhen(p.decidedAt),
+              })}
+            </div>
+          ))}
+          <div className="form-sublabel section-history-note">
+            {tl("edit.sectionHistory.acceptedProposalsNote", "Перегенерация раздела и подраздела снимков версий не пишет — связь с предложением показана здесь; ручная правка подраздела по предложению видна и версией ниже.")}
+          </div>
+        </div>
+      )}
       <VersionHistory
         synthesisId={synthesisId}
         elementType="section"

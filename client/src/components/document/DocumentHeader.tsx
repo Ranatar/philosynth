@@ -44,7 +44,10 @@ import type { SynthesisFull } from "@philosynth/shared/types/synthesis";
 
 import { ApiError } from "../../api/client";
 import { updateCapsule } from "../../api/elements";
-import { updateSynthesis } from "../../api/syntheses";
+import { getSynthesis, updateSynthesis } from "../../api/syntheses";
+import { sectionContentHash } from "@philosynth/shared/utils/expected-version"; // 17.2 (Д-81)
+import { conflictsOf, type VersionConflictDetails } from "../../utils/version-conflict";
+import { VersionConflictNotice } from "../edit/VersionConflictNotice";
 import { useSynthesisStore } from "../../stores/synthesis-store";
 import { buildCapsuleHtml } from "../../utils/capsule-html";
 import { extractCapsuleText } from "../../utils/concept-file";
@@ -112,7 +115,7 @@ export function capsuleErrorText(err: unknown): string {
   if (!(err instanceof ApiError)) return tl("document.documentHeader.capsuleSaveFailed", "Не удалось сохранить капсулу.");
   if (err.code === "GENERATION_IN_PROGRESS")
     return tl("document.documentHeader.capsuleLockedGenerating", "Генерация ещё идёт — правка капсулы заблокирована.");
-  if (err.code === "FORBIDDEN") return tl("document.documentHeader.capsuleOwnerOnly", "Капсулу может менять только владелец.");
+  if (err.code === "FORBIDDEN") return tl("document.documentHeader.capsuleEditorsOnly", "Капсулу могут менять только владелец и редакторы.");
   if (err.code === "VALIDATION_ERROR") {
     const d = err.details as Record<string, unknown> | undefined;
     const v = d && typeof d === "object" ? d.html : undefined;
@@ -131,6 +134,10 @@ function Disclosure({ label, text }: { label: string; text: string }) {
 }
 
 export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
+  // 17.2 (Д-82): правка капсулы и её история — по праву правки (владелец |
+  // редактор); название — управление (только владелец, как и на сервере)
+  const canEdit = synthesis.capabilities?.edit ?? false;
+  const canManage = synthesis.capabilities?.manage ?? false;
   const applySynthesis = useSynthesisStore((s) => s.applySynthesis);
   const summaries = useSynthesisStore((s) => s.summaries);
   const reloadSections = useSynthesisStore((s) => s.reloadSections);
@@ -154,9 +161,12 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
     text: string;
     busy: boolean;
     error: string | null;
+    /** 17.2 (Д-81): капсула, к которой пишется правка (её хэш — ожидание) */
+    baseHtml: string;
+    conflict?: { conflicts: VersionConflictDetails[]; busy: boolean; reread: boolean; current?: string } | undefined;
   } | null>(null);
   const startCapsuleEdit = () =>
-    setCapsuleEdit({ text: capsuleText, busy: false, error: null });
+    setCapsuleEdit({ text: capsuleText, busy: false, error: null, baseHtml: synthesis.capsuleHtml });
   const saveCapsule = async () => {
     if (!capsuleEdit || capsuleEdit.busy) return;
     if (!capsuleEdit.text.trim()) {
@@ -165,16 +175,42 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
     }
     setCapsuleEdit({ ...capsuleEdit, busy: true, error: null });
     try {
-      const html = buildCapsuleHtml(synthesis.capsuleHtml, capsuleEdit.text);
-      const res = await updateCapsule(synthesis.id, html);
+      // 17.2 (Д-81): ожидание — хэш капсулы, к которой писалась правка
+      const html = buildCapsuleHtml(capsuleEdit.baseHtml, capsuleEdit.text);
+      const res = await updateCapsule(synthesis.id, html, await sectionContentHash(capsuleEdit.baseHtml));
       applySynthesis({ ...synthesis, capsuleHtml: res.capsuleHtml });
       setCapsuleEdit(null);
     } catch (err) {
+      const conflicts = conflictsOf(err);
+      if (conflicts) {
+        setCapsuleEdit({ ...capsuleEdit, busy: false, error: null, conflict: { conflicts, busy: false, reread: false } });
+        return;
+      }
       setCapsuleEdit({
         ...capsuleEdit,
         busy: false,
         error: capsuleErrorText(err),
       });
+    }
+  };
+
+  /* 17.2 (Д-81): «Перечитать и повторить» — капсула читается заново, шапка
+     и основа правки переходят на текущий текст, набранное остаётся в поле,
+     текущий текст показан рядом; запись повторяет человек. */
+  const rereadCapsule = async () => {
+    const cur = capsuleEdit;
+    if (!cur?.conflict || cur.conflict.busy) return;
+    setCapsuleEdit({ ...cur, conflict: { ...cur.conflict, busy: true } });
+    try {
+      const fresh = await getSynthesis(synthesis.id);
+      applySynthesis(fresh);
+      setCapsuleEdit({
+        ...cur,
+        baseHtml: fresh.capsuleHtml,
+        conflict: { conflicts: cur.conflict.conflicts, busy: false, reread: true, current: extractCapsuleText(fresh.capsuleHtml) },
+      });
+    } catch (err) {
+      setCapsuleEdit({ ...cur, error: capsuleErrorText(err), conflict: { ...cur.conflict, busy: false } });
     }
   };
 
@@ -214,7 +250,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
       </div>
       <div className="doc-title">
         {synthesis.title}
-        {synthesis.isOwner && (
+        {canManage && (
           <button
             type="button"
             className="doc-title-edit-btn"
@@ -264,7 +300,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
           <details className="header-disclosure-capsule" open>
             <summary>
               {tl("document.documentHeader.capsuleHeading", "◈ Капсула концепции")}
-              {synthesis.isOwner && !capsuleEdit && (
+              {canEdit && !capsuleEdit && (
                 <button
                   type="button"
                   className="doc-title-edit-btn"
@@ -285,7 +321,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
                   ✎
                 </button>
               )}
-              {synthesis.isOwner && !capsuleEdit && (
+              {canEdit && !capsuleEdit && (
                 <button
                   type="button"
                   className={"doc-title-edit-btn" + (capsuleHistoryOpen ? " active" : "")}
@@ -351,11 +387,21 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
                     {capsuleEdit.error}
                   </div>
                 )}
+                {capsuleEdit.conflict && (
+                  <VersionConflictNotice
+                    conflicts={capsuleEdit.conflict.conflicts}
+                    busy={capsuleEdit.conflict.busy}
+                    reread={capsuleEdit.conflict.reread}
+                    current={capsuleEdit.conflict.current}
+                    onReread={() => void rereadCapsule()}
+                    onDismiss={() => setCapsuleEdit({ ...capsuleEdit, conflict: undefined })}
+                  />
+                )}
                 <div className="inline-edit-actions">
                   <button
                     type="button"
                     className="action-btn primary"
-                    disabled={capsuleEdit.busy}
+                    disabled={capsuleEdit.busy || (!!capsuleEdit.conflict && !capsuleEdit.conflict.reread)}
                     onClick={() => void saveCapsule()}
                     data-testid="capsule-save"
                   >

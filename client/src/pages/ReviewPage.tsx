@@ -24,6 +24,7 @@ import type { Review, ReviewFinding, ReviewRevision } from "@philosynth/shared/t
 import type { SynthesisFull } from "@philosynth/shared/types/synthesis";
 import { tData } from "@philosynth/shared/i18n/data";
 import { tl } from "@philosynth/shared/i18n/t";
+import { ProposeForm } from "../components/proposals/ProposeForm"; // 17.2
 
 import { ApiError } from "../api/client";
 import { deleteFinding, deleteReview, getReview, listRevisions, publishReview, updateFinding, updateReview, withdrawReview } from "../api/discussion";
@@ -65,6 +66,10 @@ function FindingRow({ synthesisId, review, f, editable, onChanged, sectionTitles
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const delStep = useSecondStep(busy);
+  // 17.2: «предложить изменение» из замечания (источник — замечание рецензии)
+  const [proposing, setProposing] = useState(false);
+  const [proposedId, setProposedId] = useState<string | null>(null);
+  const canPropose = review.status !== "withdrawn" && f.address.kind !== "synthesis" && f.resolution.state !== "deleted";
 
   const run = async (fn: () => Promise<Review>, fallback: string) => {
     setBusy(true);
@@ -140,6 +145,35 @@ function FindingRow({ synthesisId, review, f, editable, onChanged, sectionTitles
             </button>
           )}
         </div>
+      )}
+      {canPropose && !editing && !proposing && (
+        <div className="discuss-actions">
+          <button type="button" className="discuss-link" onClick={() => { setProposedId(null); setProposing(true); }} data-testid="finding-propose">
+            {tl("reviewPage.findingPropose", "предложить изменение")}
+          </button>
+        </div>
+      )}
+      {proposing && (
+        <ProposeForm
+          synthesisId={synthesisId}
+          address={{ kind: f.address.kind, key: f.address.key, id: f.resolution.currentId ?? f.address.id }}
+          source="review_finding"
+          sourceId={f.id}
+          initialRationale={f.body}
+          onCancel={() => setProposing(false)}
+          onCreated={(p) => {
+            setProposing(false);
+            setProposedId(p.id);
+          }}
+        />
+      )}
+      {proposedId && (
+        <p className="discuss-ok" data-testid="finding-proposed-note">
+          {tl("reviewPage.findingProposed", "Предложение записано — его рассмотрят владелец и редакторы.")}{" "}
+          <Link to={`/synthesis/${synthesisId}?proposal=${proposedId}`} className="discuss-link" data-testid="finding-proposal-link">
+            {tl("reviewPage.findingProposalOpen", "открыть во вкладке «Предложения» →")}
+          </Link>
+        </p>
       )}
       {error && <p className="discuss-error">{error}</p>}
     </li>

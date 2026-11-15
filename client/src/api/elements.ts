@@ -73,6 +73,14 @@ export function getTheses(synthesisId: string): Promise<Thesis[]> {
   );
 }
 
+/** 17.2: один элемент заново — «перечитать и повторить» после конфликта
+ *  версий. Категория — своим маршрутом; тезис, термин и связь — из списка. */
+export function getCategory(synthesisId: string, categoryId: string): Promise<Category> {
+  return apiGet<{ category: Category }>(
+    `${base(synthesisId)}/categories/${encodeURIComponent(categoryId)}`,
+  ).then((r) => r.category);
+}
+
 export function getGlossary(synthesisId: string): Promise<GlossaryTerm[]> {
   return apiGet<{ terms: GlossaryTerm[] }>(`${base(synthesisId)}/glossary`).then(
     (r) => r.terms,
@@ -124,14 +132,21 @@ export interface UpdateCapsuleResponse {
   warnings: string[];
 }
 
+/* 17.2 (Д-81): каждая правка шлёт ОЖИДАЕМУЮ ВЕРСИЮ — довод обязателен, пути
+   «без ожидания» у клиента нет (сторож 4bq). Элемент — номер последней версии
+   (DTO чтения `version`, после своей правки — `version.version` ответа);
+   капсула — хэш её текста (shared sectionContentHash). Не совпало — 409
+   VERSION_CONFLICT (utils/version-conflict). */
+
 export function updateCategory(
   synthesisId: string,
   categoryId: string,
   body: CategoryUpdateInput,
+  expectedVersion: number,
 ): Promise<UpdateCategoryResponse> {
   return apiPatch<UpdateCategoryResponse>(
     `${base(synthesisId)}/categories/${encodeURIComponent(categoryId)}`,
-    body,
+    { ...body, expectedVersion },
   );
 }
 
@@ -139,10 +154,11 @@ export function updateEdge(
   synthesisId: string,
   edgeId: string,
   body: EdgeUpdateInput,
+  expectedVersion: number,
 ): Promise<UpdateEdgeResponse> {
   return apiPatch<UpdateEdgeResponse>(
     `${base(synthesisId)}/edges/${encodeURIComponent(edgeId)}`,
-    body,
+    { ...body, expectedVersion },
   );
 }
 
@@ -182,10 +198,11 @@ export function updateThesis(
   synthesisId: string,
   thesisId: string,
   body: ThesisUpdateInput,
+  expectedVersion: number,
 ): Promise<UpdateThesisResponse> {
   return apiPatch<UpdateThesisResponse>(
     `${base(synthesisId)}/theses/${encodeURIComponent(thesisId)}`,
-    body,
+    { ...body, expectedVersion },
   );
 }
 
@@ -193,19 +210,22 @@ export function updateGlossaryTerm(
   synthesisId: string,
   termId: string,
   body: GlossaryTermUpdateInput,
+  expectedVersion: number,
 ): Promise<UpdateGlossaryTermResponse> {
   return apiPatch<UpdateGlossaryTermResponse>(
     `${base(synthesisId)}/glossary/${encodeURIComponent(termId)}`,
-    body,
+    { ...body, expectedVersion },
   );
 }
 
 export function updateCapsule(
   synthesisId: string,
   html: string,
+  expectedHash: string,
 ): Promise<UpdateCapsuleResponse> {
   return apiPatch<UpdateCapsuleResponse>(`${base(synthesisId)}/capsule`, {
     html,
+    expectedHash,
   });
 }
 

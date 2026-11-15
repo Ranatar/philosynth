@@ -32,7 +32,7 @@
  * htmlSync (какие таблицы перерисованы / что не дошло до HTML — 02 §3 п.4).
  */
 import { audienceOf } from "../services/log-audience.js"; // 17.1
-import { expectedVersionErrorResponse } from "../services/expected-version.js";
+import { currentElementVersion, elementVersionsOf, expectedVersionErrorResponse } from "../services/expected-version.js";
 import { Hono } from "hono";
 
 import type { Context } from "hono";
@@ -101,6 +101,11 @@ elementsRoutes.get("/:id/categories", requireAuth, async (c) => {
   if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const synthesisId = res.row.id;
 
+  // 17.2 (Д-81): номера версий — ДО строк (см. elementVersionsOf)
+  const [catVersions, edgeVersions] = await Promise.all([
+    elementVersionsOf(synthesisId, "category"),
+    elementVersionsOf(synthesisId, "edge"),
+  ]);
   const [catRows, edgeRows, clusterRows] = await Promise.all([
     db
       .select()
@@ -121,6 +126,7 @@ elementsRoutes.get("/:id/categories", requireAuth, async (c) => {
 
   const cats: Category[] = catRows.map((r) => ({
     id: r.id,
+    version: catVersions.get(r.id) ?? 0,
     synthesisId: r.synthesisId,
     name: r.name,
     type: r.type,
@@ -147,6 +153,7 @@ elementsRoutes.get("/:id/categories", requireAuth, async (c) => {
 
   const edges: CategoryEdge[] = edgeRows.map((r) => ({
     id: r.id,
+    version: edgeVersions.get(r.id) ?? 0,
     synthesisId: r.synthesisId,
     sourceId: r.sourceId,
     targetId: r.targetId,
@@ -260,13 +267,14 @@ elementsRoutes.get("/:id/categories/:catId", requireAuth, async (c) => {
   if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
   const catId = c.req.param("catId");
   if (!isUuid(catId)) return c.json(invalidIdJson, 404);
+  const version = await currentElementVersion(db, "category", catId); // 17.2: до строки
   const [row] = await db
     .select()
     .from(categories)
     .where(and(eq(categories.id, catId), eq(categories.synthesisId, res.row.id)))
     .limit(1);
   if (!row) return c.json(invalidIdJson, 404);
-  return c.json({ category: toCategoryDto(row) });
+  return c.json({ category: { ...toCategoryDto(row), version } });
 });
 
 /* ── PATCH /:id/categories/:catId ────────────────────────────────────── */
@@ -365,12 +373,13 @@ elementsRoutes.get("/:id/theses", requireAuth, async (c) => {
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
   // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
   if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
+  const versions = await elementVersionsOf(res.row.id, "thesis"); // 17.2 (Д-81): до строк
   const rows = await db
     .select()
     .from(theses)
     .where(eq(theses.synthesisId, res.row.id))
     .orderBy(asc(theses.thesisNum));
-  return c.json({ theses: rows.map(toThesisDto) });
+  return c.json({ theses: rows.map((r) => ({ ...toThesisDto(r), version: versions.get(r.id) ?? 0 })) });
 });
 
 elementsRoutes.patch("/:id/theses/:thesisId", requireAuth, async (c) => {
@@ -398,12 +407,13 @@ elementsRoutes.get("/:id/glossary", requireAuth, async (c) => {
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
   // 8.6: витрина невладельцу содержания не отдаёт (scope из loadSynthesisForRead)
   if (res.scope === "showcase") return c.json(showcaseForbiddenJson, 403);
+  const versions = await elementVersionsOf(res.row.id, "glossary_term"); // 17.2 (Д-81): до строк
   const rows = await db
     .select()
     .from(glossaryTerms)
     .where(eq(glossaryTerms.synthesisId, res.row.id))
     .orderBy(asc(glossaryTerms.position));
-  return c.json({ terms: rows.map(toGlossaryDto) });
+  return c.json({ terms: rows.map((r) => ({ ...toGlossaryDto(r), version: versions.get(r.id) ?? 0 })) });
 });
 
 elementsRoutes.patch("/:id/glossary/:termId", requireAuth, async (c) => {

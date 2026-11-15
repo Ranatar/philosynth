@@ -115,7 +115,7 @@ export function messageOfEdgeDeleteError(err: unknown): string {
   if (!(err instanceof ApiError)) return tl("graph.graphModal.deleteEdgeFailed", "Не удалось удалить связь.");
   if (err.code === "GENERATION_IN_PROGRESS")
     return tl("graph.graphModal.lockedGenerating", "Генерация ещё идёт — правки заблокированы.");
-  if (err.code === "FORBIDDEN") return tl("graph.graphModal.ownerOnlyDelete", "Связь может удалить только владелец.");
+  if (err.code === "FORBIDDEN") return tl("graph.graphModal.editorsOnlyDelete", "Связь могут удалить только владелец и редакторы.");
   if (err.code === "NOT_FOUND") return tl("graph.graphModal.edgeAlreadyDeleted", "Связь уже удалена.");
   return err.message || tl("graph.graphModal.deleteEdgeFailed", "Не удалось удалить связь.");
 }
@@ -536,6 +536,15 @@ export default function GraphModal({
                         stream: enrichment,
                         readOnly: editDisabled,
                         onPatched: handleNodePatched,
+                        // 17.2 (Д-81): конфликт версий — перечитать граф (записи не было)
+                        onReread: () =>
+                          onElementSaved?.({
+                            kind: "category",
+                            element: panelCategory,
+                            impact: { affectedSections: [], affectedSubsections: [], affectedModes: [], severity: "none" },
+                            htmlSync: { rendered: [], patched: [], pending: [], sectionMissing: false },
+                            reread: true,
+                          }),
                       }
                     : undefined
                 }

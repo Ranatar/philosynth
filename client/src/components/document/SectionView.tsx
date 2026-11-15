@@ -153,6 +153,9 @@ export interface SectionViewProps {
   onSubsectionView?: ((view: SubsectionEditView, draft: string) => void) | undefined;
   /** 15.2 (Д-71): второй шаг удаления подраздела из карточки правки */
   onSubsectionDelete?: ((step: SubsectionDeleteStep) => void) | undefined;
+  /** 17.2 (Д-81): «Перечитать и повторить» после конфликта версий; draft —
+   *  набранное на момент нажатия (остаётся в поле) */
+  onSubsectionReread?: ((draft: string) => void) | undefined;
   /** 11.3 (Д-16): пометка «разобран с потерями» — только владельцу */
   showParseWarnings?: boolean | undefined;
   /** 16.3: пометки обсуждения у места — НАЛОЖЕНИЕ над телом раздела, а не
@@ -418,11 +421,44 @@ export function renderSubsectionEditor(
     err.setAttribute("data-testid", "subsection-edit-error");
     form.appendChild(err);
   }
+  // 17.2 (Д-81): конфликт версий — сообщение с выбором «перечитать и
+  // повторить»; после перечитки — текущий текст подраздела рядом с набранным.
+  // Кнопки «перезаписать» нет: сохранение закрыто, пока исходник не перечитан
+  if (edit.conflict) {
+    const box = el("div", "callout warning version-conflict");
+    box.setAttribute("role", "alert");
+    box.setAttribute("data-testid", "version-conflict");
+    box.setAttribute("data-reread", edit.conflict.reread ? "1" : "0");
+    box.appendChild(el("span", "callout-label", tl("document.sectionView.conflictLabel", "Конфликт версий")));
+    box.appendChild(el("div", "", edit.conflict.message));
+    if (edit.conflict.reread) {
+      const note = el("div", "version-conflict-advice", tl("document.sectionView.conflictRereadNote", "Перечитано: ниже — текущий текст подраздела в документе; в поле — ваше набранное. Сведите их и сохраните снова."));
+      note.setAttribute("data-testid", "version-conflict-reread-note");
+      box.appendChild(note);
+      const cur = el("div", "version-conflict-current", edit.conflict.currentText ?? "");
+      cur.setAttribute("data-testid", "version-conflict-current");
+      box.appendChild(cur);
+    } else {
+      box.appendChild(el("div", "version-conflict-advice", tl("document.sectionView.conflictAdvice", "Запись не сделана — чужая правка не затёрта. Перечитайте: текущий текст появится рядом, ваше набранное останется в поле, и запись можно будет повторить.")));
+      const row = el("div", "inline-edit-actions");
+      const again = el("button", "action-btn primary", edit.conflict.busy
+        ? tl("document.sectionView.conflictRereading", "Перечитываю…")
+        : tl("document.sectionView.conflictReread", "Перечитать и повторить"));
+      again.setAttribute("type", "button");
+      again.setAttribute("data-subsection-action", "reread");
+      again.setAttribute("data-testid", "version-conflict-reread");
+      if (edit.conflict.busy || edit.phase !== "ready") again.setAttribute("disabled", "");
+      row.appendChild(again);
+      box.appendChild(row);
+    }
+    form.appendChild(box);
+  }
+  const conflictOpen = !!edit.conflict && !edit.conflict.reread;
   const actions = el("div", "inline-edit-actions");
   const save = el("button", "action-btn primary", edit.phase === "saving" ? tl("common.saving", "Сохранение…") : tl("common.save", "Сохранить"));
   save.setAttribute("type", "button");
   save.setAttribute("data-subsection-action", "save");
-  if (edit.phase !== "ready") save.setAttribute("disabled", "");
+  if (edit.phase !== "ready" || conflictOpen) save.setAttribute("disabled", "");
   const cancel = el("button", "action-btn", tl("common.cancel", "Отмена"));
   cancel.setAttribute("type", "button");
   cancel.setAttribute("data-subsection-action", "cancel");
@@ -558,6 +594,7 @@ export function SectionView({
   onSubsectionCancel,
   onSubsectionView,
   onSubsectionDelete,
+  onSubsectionReread,
   showParseWarnings = false,
   marks,
 }: SectionViewProps) {
@@ -732,6 +769,11 @@ export function SectionView({
         if (body) syncFromBody(body);
         const draft = readDraft(act);
         if (draft !== null) onSubsectionView?.(which === "view-markup" ? "markup" : "rich", draft);
+      } else if (which === "reread") {
+        // 17.2: конфликт версий — перечитать исходник, набранное сохранить
+        if (body) syncFromBody(body);
+        const draft = readDraft(act);
+        if (draft !== null) onSubsectionReread?.(draft);
       } else if (which === "delete-arm" || which === "delete-disarm" || which === "delete-confirm") {
         // 15.2: второй шаг удаления подраздела
         onSubsectionDelete?.(which === "delete-arm" ? "arm" : which === "delete-disarm" ? "disarm" : "confirm");

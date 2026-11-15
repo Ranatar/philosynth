@@ -11,6 +11,11 @@ export type ThesisType = "ontological" | "epistemological" | "ethical";
 /** Строка таблицы theses */
 export interface Thesis {
   id: string;
+  /** 17.2 (Д-81): номер последней версии элемента на момент чтения
+   *  (max element_versions.version; 0 — версий не было). Клиент шлёт его
+   *  ожиданием правки (`expectedVersion`); в ответах PATCH поля нет — новый
+   *  номер там `version.version`. */
+  version?: number;
   synthesisId: string;
   thesisNum: number;
   /** 12.1 (Д-1): метка тезиса, как её записал документ («О-1», «Э-2»);
@@ -32,6 +37,11 @@ export interface Thesis {
 /** Строка таблицы glossary_terms */
 export interface GlossaryTerm {
   id: string;
+  /** 17.2 (Д-81): номер последней версии элемента на момент чтения
+   *  (max element_versions.version; 0 — версий не было). Клиент шлёт его
+   *  ожиданием правки (`expectedVersion`); в ответах PATCH поля нет — новый
+   *  номер там `version.version`. */
+  version?: number;
   synthesisId: string;
   term: string;
   definition: string;

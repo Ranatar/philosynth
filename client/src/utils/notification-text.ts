@@ -44,13 +44,33 @@ export function notificationText(n: Notification): string {
     case "finding_outdated":
       return tl("utils.notificationText.findingOutdated", "Объект «{addr}» вашего замечания в концепции «{title}» изменился", { addr: addressLabel(n.address), title });
     case "proposal_created":
-      return tl("utils.notificationText.proposalCreated", "{who} предложил изменение в концепции «{title}»", { who, title });
+      // 17.2: вид предложения и «заведено заново» — из payload (17.1)
+      return (
+        tl("utils.notificationText.proposalCreated", "{who} предложил изменение в концепции «{title}»", { who, title }) +
+        (n.payload.kind === "note"
+          ? tl("utils.notificationText.proposalKindNote", " (замечание)")
+          : n.payload.kind === "replace"
+            ? tl("utils.notificationText.proposalKindReplace", " (готовая замена)")
+            : "") +
+        (n.payload.rebasedFrom ? tl("utils.notificationText.proposalRebased", " — поверх текущего, взамен устаревшего") : "") +
+        excerpt
+      );
     case "proposal_decided":
-      return tl("utils.notificationText.proposalDecided", "По вашему предложению в концепции «{title}» принято решение", { title });
+      // 17.2: решение — кодом payload.decision (фраза собирается здесь, 14.2)
+      return n.payload.decision === "accepted"
+        ? tl("utils.notificationText.proposalAccepted", "Ваше предложение в концепции «{title}» принято: план исполнен", { title })
+        : n.payload.decision === "rejected"
+          ? tl("utils.notificationText.proposalRejected", "Ваше предложение в концепции «{title}» отклонено", { title })
+          : n.payload.decision === "closed"
+            ? tl("utils.notificationText.proposalClosed", "Ваше предложение в концепции «{title}» закрыто", { title })
+            : tl("utils.notificationText.proposalDecided", "По вашему предложению в концепции «{title}» принято решение", { title });
   }
 }
 
 /** Куда ведёт уведомление: приглашение — на страницу принятия, остальное — к концепции. */
 export function notificationLink(n: Notification): string {
-  return n.type === "member_invited" ? `/invitations/${n.synthesisId}` : `/synthesis/${n.synthesisId}`;
+  if (n.type === "member_invited") return `/invitations/${n.synthesisId}`;
+  // 17.2: уведомление о предложении ведёт к нему во вкладке «Предложения»
+  if (n.refKind === "proposal" && n.refId) return `/synthesis/${n.synthesisId}?proposal=${n.refId}`;
+  return `/synthesis/${n.synthesisId}`;
 }

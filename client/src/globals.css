@@ -7409,6 +7409,214 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 17.2 — соавторство: конфликт версий, предложения, панель решения
+ * В исходнике совместной правки нет вовсе (один человек, одна вкладка).
+ * Сообщение о конфликте, форма и вкладка предложений, панель решения собраны
+ * из готового (.callout.warning/.note, .inline-edit-form/-actions,
+ * .form-section-title/-sublabel/-label, .form-textarea/-select/-input,
+ * .action-btn(.primary/.danger), .data-table, .cert-badge(.gold), .diff и
+ * .diff-line кита (блок 5), .sec-disclosure, .version-origin 10.3,
+ * .discuss-note/.discuss-link 16.3, .transform-warn). Своих правил — пять
+ * групп, все в идиоме кита (моно-капитель подписей, прямые углы, без теней,
+ * цвета только из палитры :root):
+ * (1) .version-conflict — сообщение о конфликте версий поверх
+ *     .callout.warning: строка совета (.version-conflict-advice, моно),
+ *     «текущее значение» после перечитки (.version-conflict-current — рамка
+ *     --rule на --off, перенос строк), пополевой список
+ *     (.version-conflict-fields / -field — имя поля моно-капителью);
+ * (2) .proposal-form / .proposal-panel — форма «предложить» и панель
+ *     решения: обе .inline-edit-form; .proposal-note — пояснение (моно,
+ *     --ink-dim); .proposal-kind-row / -option — выбор вида и способа
+ *     (radio с подписью); .proposal-meta — «кто / что / источник / основа»
+ *     сеткой dt/dd, как .review-meta 16.3; .proposal-rationale — текст
+ *     основания с левой линией --rule-strong; .proposal-accept — блок
+ *     выбора способа (рамка --rule); .proposal-actions — строка кнопок с
+ *     переносом; .proposal-second-step — второй шаг «Отклонить» в строке,
+ *     .proposal-reject-note — поле «почему» рядом с ним;
+ *     .proposal-events / .proposal-event — журнал предложения (моно);
+ * (3) .proposals-tab — вкладка: .proposals-group-title — заголовок группы
+ *     (открытые / устаревшие / решённые); .proposal-row — строка таблицы
+ *     кликом раскрывает панель (курсор, активная — фон --off);
+ *     .proposal-row-panel — строка-хозяин панели решения, без отступов;
+ * (4) .plan-step-skip — «шаг снят: предложение устарело» в строке шага
+ *     плана (моно, --red); .plan-step-markup — разворот предлагаемого текста
+ *     подраздела с переносом строк;
+ * (5) .version-origin-rationale — основание предложения под строкой
+ *     происхождения версии; .section-history-proposals — блок «Принятые
+ *     предложения к разделу» над списком версий (Д-86).
+ * ═════════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* (1) конфликт версий */
+  .version-conflict {
+    margin: 10px 0;
+  }
+  .version-conflict-advice {
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+  }
+  .version-conflict-current {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--rule);
+    background: var(--off);
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .version-conflict-fields {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .version-conflict-fields li + li {
+    margin-top: 6px;
+  }
+  .version-conflict-field {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-right: 6px;
+  }
+
+  /* (2) форма предложения и панель решения */
+  .proposal-form,
+  .proposal-panel {
+    margin-top: 10px;
+  }
+  .proposal-note {
+    margin: 6px 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+  }
+  .proposal-kind-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 8px 0;
+  }
+  .proposal-kind-option {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .proposal-accept .proposal-kind-option {
+    margin: 4px 0;
+  }
+  .proposal-meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 16px;
+    margin: 0 0 10px;
+    font-size: 13px;
+  }
+  .proposal-meta dt {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    padding-top: 3px;
+  }
+  .proposal-meta dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .proposal-rationale {
+    margin: 4px 0 10px;
+    padding-left: 12px;
+    border-left: 2px solid var(--rule-strong);
+  }
+  .proposal-accept {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border: 1px solid var(--rule);
+  }
+  .proposal-actions {
+    flex-wrap: wrap;
+  }
+  .proposal-second-step {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .proposal-reject-note {
+    width: 220px;
+  }
+  .proposal-events {
+    margin-top: 10px;
+  }
+  .proposal-event {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    line-height: 1.6;
+    color: var(--ink-mid);
+  }
+
+  /* (3) вкладка «Предложения» */
+  .proposals-tab .data-table-wrap {
+    margin-bottom: 16px;
+  }
+  .proposals-group-title {
+    margin-top: 14px;
+  }
+  .proposal-row {
+    cursor: pointer;
+  }
+  .proposal-row.active td {
+    background: var(--off);
+  }
+  .proposal-row-panel > td {
+    padding: 0 12px 12px;
+    background: var(--off);
+  }
+
+  /* (4) шаг плана по предложению */
+  .plan-step-skip {
+    margin-left: 8px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--red);
+  }
+  .plan-step-markup {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* (5) происхождение в истории версий */
+  .version-origin-rationale {
+    margin-top: 4px;
+  }
+  .section-history-proposals {
+    margin: 8px 0 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .proposal-meta {
+    grid-template-columns: 1fr;
+  }
+  .proposal-reject-note {
+    width: 100%;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;

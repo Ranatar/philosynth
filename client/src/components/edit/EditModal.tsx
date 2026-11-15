@@ -58,6 +58,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
+import { sectionExpectations } from "../../utils/version-conflict"; // 17.2 (Д-81)
+import { VersionConflictNotice } from "./VersionConflictNotice";
 import type { CascadeImpactDto, EditPlan } from "@philosynth/shared/types/edit-plan";
 import type { ModeResult } from "@philosynth/shared/types/modes";
 
@@ -361,6 +363,10 @@ export function EditModal({
     for (const k of regenArr) if (secCtx[k]?.trim()) regenContexts[k] = secCtx[k] as string;
     const addContexts: Record<string, string> = {};
     for (const k of addArr) if (addCtx[k]?.trim()) addContexts[k] = addCtx[k] as string;
+    // 17.2 (Д-81): ожидаемые версии — хэши разделов, которые план
+    // перегенерирует или удаляет, какими их видит человек (стор). Раздел
+    // изменили после загрузки страницы — 409 VERSION_CONFLICT, план не создан
+    const expected = await sectionExpectations([...regenArr, ...removeArr], (k) => sections.find((x) => x.key === k)?.htmlContent);
     await editPlan.create({
       regen: regenArr,
       remove: removeArr,
@@ -369,11 +375,26 @@ export function EditModal({
       ...(Object.keys(addContexts).length ? { addContexts } : {}),
       ...(modeRegenPairs.length ? { modeRegen: modeRegenPairs } : {}),
       ...(modeRemovePairs.length ? { modeRemove: modeRemovePairs } : {}),
+      expected,
     });
   }, [
     editPlan, regenArr, removeArr, addArr, secCtx, addCtx,
-    modeRegenPairs, modeRemovePairs,
+    modeRegenPairs, modeRemovePairs, sections,
   ]);
+
+  /* 17.2 (Д-81): «Перечитать и повторить» — разделы читаются заново (карточки
+     и превью каскада встают на текущий документ), отметки человека остаются;
+     план составляет он сам, повторным нажатием. */
+  const [conflictBusy, setConflictBusy] = useState(false);
+  const handleConflictReread = useCallback(async () => {
+    setConflictBusy(true);
+    try {
+      await reloadSections();
+      editPlan.clearConflicts();
+    } finally {
+      setConflictBusy(false);
+    }
+  }, [reloadSections, editPlan]);
 
   const handleFooterRun = useCallback(() => {
     if (!plan) void handleCreatePlan();
@@ -545,6 +566,17 @@ export function EditModal({
             </div>
           )}
 
+          {/* 17.2 (Д-81): план не создан — разделы изменились после загрузки */}
+          {editPlan.conflicts && (
+            <VersionConflictNotice
+              conflicts={editPlan.conflicts}
+              nameOf={(target) => labelOf(target.split(":")[0] ?? target)}
+              busy={conflictBusy}
+              onReread={() => void handleConflictReread()}
+              onDismiss={editPlan.clearConflicts}
+            />
+          )}
+
           {/* План (после ▶ Составить план) */}
           {plan && (
             <EditPlanPanel
@@ -706,6 +738,7 @@ export function EditModal({
             className="edit-sec-btn primary"
             style={{ padding: "10px 24px", fontSize: 11, letterSpacing: 2 }}
             onClick={handleFooterRun}
+            data-testid="edit-footer-run"
             disabled={
               subRegenBusy ||
               isExecuting ||

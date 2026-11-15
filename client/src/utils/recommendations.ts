@@ -386,7 +386,7 @@ export function recommendationsErrorText(err: unknown): string {
     case "GENERATION_IN_PROGRESS":
       return tl("utils.recommendations.busy", "Идёт генерация либо исполнение плана — дождитесь окончания и повторите.");
     case "FORBIDDEN":
-      return tl("utils.recommendations.ownerOnly", "Рекомендации доступны только владельцу концепции.");
+      return tl("utils.recommendations.editorsOnly", "Рекомендации доступны только владельцу и редакторам концепции.");
     case "ROUND_IN_PROGRESS":
       return err.message || tl("utils.recommendations.roundBusy", "Раунд в работе: сначала исполните либо удалите план.");
     case "RECOMMENDATIONS_TABLE_INVALID":

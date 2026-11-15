@@ -111,7 +111,7 @@ export function messageOfEnrichmentError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === "GENERATION_IN_PROGRESS")
       return tl("hooks.useEnrichmentStream.otherOperation", "Идёт другая операция (генерация, режим или обогащение) — дождитесь её завершения");
-    if (err.code === "FORBIDDEN") return tl("hooks.useEnrichmentStream.ownerOnly", "Обогащать элементы может только владелец синтеза");
+    if (err.code === "FORBIDDEN") return tl("hooks.useEnrichmentStream.editorsOnly", "Обогащать элементы могут только владелец и редакторы концепции");
     if (err.code === "VALIDATION_ERROR" && err.details && typeof err.details === "object") {
       const d = Object.values(err.details as Record<string, unknown>).filter(
         (v) => typeof v === "string",

@@ -54,6 +54,14 @@ export interface SubsectionEditState {
   view?: SubsectionEditView | undefined;
   /** 15.2: второй шаг удаления взведён («Точно удалить?» на месте кнопки) */
   deleteArmed?: boolean | undefined;
+  /** 17.2 (Д-81): хэш исходника, к которому пишется правка (ответ GET
+   *  …/subsections/:name) — уходит в PATCH ожиданием (`expectedHash`) */
+  baseHash?: string | undefined;
+  /** 17.2: сервер ответил 409 VERSION_CONFLICT. reread=false — сообщение и
+   *  кнопка «Перечитать и повторить» (сохранение закрыто); reread=true —
+   *  исходник перечитан: baseHash свежий, набранное осталось в поле,
+   *  currentText — текущий текст подраздела «как сейчас в документе» */
+  conflict?: { message: string; reread: boolean; busy?: boolean | undefined; currentText?: string | undefined } | undefined;
 }
 
 /** 15.2: ход второго шага удаления из карточки правки (кнопки — часть строки
@@ -81,7 +89,7 @@ export function subsectionErrorText(err: unknown, verb: "save" | "delete" = "sav
   if (!(err instanceof ApiError)) return failed;
   if (err.code === "GENERATION_IN_PROGRESS")
     return tl("utils.subsectionEdit.lockedGenerating", "Генерация ещё идёт — правка подраздела заблокирована.");
-  if (err.code === "FORBIDDEN") return tl("utils.subsectionEdit.ownerOnly", "Править концепцию может только владелец.");
+  if (err.code === "FORBIDDEN") return tl("utils.subsectionEdit.editorsOnly", "Править концепцию могут только владелец и редакторы.");
   if (err.code === "SECTION_TABLE_LOCKED")
     return err.message || tl("utils.subsectionEdit.notEditable", "Этот подраздел вручную не правится.");
   if (err.code === "VALIDATION_ERROR") {

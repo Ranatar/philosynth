@@ -105,6 +105,8 @@ philosynth-service/
 │       │   ├── section.ts              # SectionDef, SectionFull, SectionSummary
 │       │   ├── graph.ts                # Category, CategoryEdge, ClusterLabel, TopologyInfo
 │       │   ├── elements.ts             # Thesis, GlossaryTerm, DialogueTurn
+│       │   │                           #  (17.2, Д-81: version — номер последней версии — у Category,
+│       │   │                           #  CategoryEdge, Thesis, GlossaryTerm в чтениях; вычисляемое)
 │       │   ├── lineage.ts              # LineageNode, ParticipantInput
 │       │   ├── discussion.ts           # 16.1: Capabilities, SynthesisRole, DiscussionAddress/Resolution,
 │       │   │                           #  Comment*, Review*, ReviewRevision, ReviewFinding, DiscussionSummary;
@@ -331,7 +333,7 @@ philosynth-service/
 │   │   ├── edit-planner.ts             # createPlan, updatePlan, addCascadeSteps
 │   │   ├── capabilities.ts             # 16.1: ЕДИНСТВЕННОЕ сравнение «владелец ли это» (isOwner);
 │   │   │                               #  capabilitiesFor(row, userId, membership) → { read, discuss, edit,
-│   │   │                               #  manage, role }; editCapability = owner (17.1 меняет здесь);
+│   │   │                               #  manage, role }; editCapability = owner | действующий editor (17.1);
 │   │   │                               #  canEdit/canManage/canDiscussSynthesis, loadMembership,
 │   │   │                               #  loadCapabilities, capabilitiesOfRow
 │   │   ├── actor-context.ts            # 17.1: исполнитель запроса (AsyncLocalStorage): runWithActor —
@@ -339,7 +341,8 @@ philosynth-service/
 │   │   │                               #  createVersion; genLogActor — каждая вставка generation_log
 │   │   ├── expected-version.ts         # 17.1: assertElementVersion (в транзакции, под блокировкой
 │   │   │                               #  элемента), assertContentHash, assertPlanExpectations,
-│   │   │                               #  VersionConflictError → 409 VERSION_CONFLICT
+│   │   │                               #  VersionConflictError → 409 VERSION_CONFLICT;
+│   │   │                               #  17.2 (Д-81): elementVersionsOf — номера версий для DTO чтения
 │   │   ├── proposals.ts                # 17.1: предложения — создать (discuss), принять (edit) =
 │   │   │                               #  ЧЕРНОВИК плана (planBodyFor, createPlan с trustProposalRefs),
 │   │   │                               #  отклонить / закрыть (edit), снять и «новое поверх текущего»
@@ -634,7 +637,10 @@ philosynth-service/
 │   │   │   ├── sections.ts
 │   │   │   ├── elements.ts             # создаёт беседа 1.7 (getCategories),
 │   │   │   │                           # расширяет 5.2 (PATCH, версии, откат,
-│   │   │   │                           # auto-rename)
+│   │   │   │                           # auto-rename); 17.2: expectedVersion /
+│   │   │   │                           # expectedHash — ОБЯЗАТЕЛЬНЫЕ доводы записи
+│   │   │   │                           # (и updateSubsection в sections.ts);
+│   │   │   │                           # getCategory снова жив — перечитка формы
 │   │   │   ├── taxonomy.ts             # каталоги типов + normalize + createCustomType (5.4 СДЕЛАНО 2026-09-05; кэш на сессию)
 │   │   │   ├── enrichment.ts           # обогащения и обоснования — 5 функций §2.14 (5.4 СДЕЛАНО 2026-09-05)
 │   │   │   ├── transforms.ts           # graph↔theses, история, откат (5.5 СДЕЛАНО 2026-09-06)
@@ -653,6 +659,8 @@ philosynth-service/
 │   │   │   ├── recommendations.ts      # 10.3: list / parse / extract / plan (+ withBusyRetry на 409 после done)
 │   │   │   ├── members.ts              # 16.2: участники (§2.18) + listSharedSyntheses + getInvitationInfo
 │   │   │   ├── notifications.ts        # 16.2: список/unread-count/read/read-all/settings (§2.19)
+│   │   │   ├── proposals.ts            # 17.2: 8 маршрутов §2.20 — list/create/get/accept (→ черновик плана)/
+│   │   │   │                           #  reject/close/withdraw/rebase; транспортов правки документа нет
 │   │   │   ├── discussion.ts           # 16.3: все 18 маршрутов §2.17 + listAllComments (обход страниц по
 │   │   │   │                           #  курсору; ветки собирает клиент — серверный status срезал бы ответы)
 │   │   │   └── export.ts
@@ -667,6 +675,8 @@ philosynth-service/
 │   │   │   ├── auth-store.ts           # Zustand: user, session (0.6: updateProfile/changePassword; 7.1: deleteAccount;
 │   │   │   │                           #  11.3: setUiLocale/setGenLang → PATCH /auth/me, applyUserLocale при restore/login)
 │   │   │   ├── synthesis-store.ts      # Zustand: текущий синтез, разделы, элементы
+│   │   │   ├── collab-store.ts         # 17.2: предложения и названия рецензий страницы концепции — имена и
+│   │   │   │                           #  номера для истории версий и шагов плана; proposalNumberIn
 │   │   │   │                           # (11.3: словари-надписи уровня модуля во ВСЁМ клиенте — фабрики
 │   │   │   │                           #  `const X = (): T => ({…})`, вызываемые при отрисовке; сторож 4ax: static = 0)
 │   │   │   ├── generation-store.ts     # Zustand: состояние генерации, стриминг
@@ -709,7 +719,10 @@ philosynth-service/
 │   │   │   │                           #  смотрящему, WS/modes/lineage только вошедшему, 403 гостю → «приватна»;
 │   │   │   │                           #  16.3: вкладки «Документ | Обсуждение | Рецензии» (capabilities.discuss)
 │   │   │   │                           #  + «Участники» (владелец), сводка пометок, пристыкованная панель адреса,
-│   │   │   │                           #  ?discuss=вид:ключ — открыть панель и прокрутить к месту
+│   │   │   │                           #  ?discuss=вид:ключ — открыть панель и прокрутить к месту;
+│   │   │   │                           #  17.2: правка — capabilities.edit, управление — capabilities.manage
+│   │   │   │                           #  (не isOwner); вкладка «Предложения», ?proposal=<id>, перечитка
+│   │   │   │                           #  подраздела при конфликте версий
 │   │   │   ├── ReviewPage.tsx          # 16.3: «/synthesis/:id/reviews/:rid» (RequireAuth) — рецензия как
 │   │   │   │                           #  документ (метаданные, семь полей, замечания с состоянием адреса и
 │   │   │   │                           #  переходом к месту, редакции); автору — редактор полей и замечаний,
@@ -794,6 +807,8 @@ philosynth-service/
 │   │   │   │   ├── GlossaryTermEditor.tsx  # Термин + столбцы по synth_level (5.2)
 │   │   │   │   ├── VersionHistory.tsx      # Версии элемента, diff, откат (5.2); 12.4: снимки раздела —
 │   │   │   │   │                           # htmlContent в diff текстом, key/sectionNum спрятаны
+│   │   │   │   ├── VersionConflictNotice.tsx # 17.2 (Д-81): сообщение о конфликте версий — текущее значение,
+│   │   │   │   │                           #  «Перечитать и повторить» + «Отмена» (кнопки «перезаписать» нет)
 │   │   │   │   ├── SectionHistory.tsx      # 12.4 (Д-14): вход в историю версий РАЗДЕЛА (elementType
 │   │   │   │   │                           # 'section', elementId = SectionSummary.id; капсула без строки —
 │   │   │   │   │                           # id синтеза) — в документе, на карточке EditModal, у капсулы
@@ -841,6 +856,17 @@ philosynth-service/
 │   │   │   │   │                            #  docVersionLabel
 │   │   │   │   └── UserText.tsx             # текст пользователя экранированными абзацами (без innerHTML)
 │   │   │   │
+│   │   │   ├── proposals/                   # 17.2: предложения изменений (клиент; сервер — 17.1, 03 §2.20)
+│   │   │   │   ├── ProposeForm.tsx          # «Предложить изменение»: готовая замена (поле элемента / текст
+│   │   │   │   │                            #  подраздела, заполнено текущим значением) либо замечание;
+│   │   │   │   │                            #  источник — напрямую, комментарий, замечание рецензии
+│   │   │   │   ├── ProposalsTab.tsx         # вкладка «Предложения»: открытые / устаревшие / решённые;
+│   │   │   │   │                            #  строка раскрывает панель решения на месте
+│   │   │   │   └── ProposalDecisionPanel.tsx # панель решения: автор, основание, источник, основа и текущая
+│   │   │   │                                #  версия, разница, журнал; «Принять» → черновик плана →
+│   │   │   │                                #  EditModal (прямого PATCH нет, сторож 4bq); «Отклонить» /
+│   │   │   │                                #  «Закрыть» вторым шагом; «Новое поверх текущего» автору
+│   │   │   │
 │   │   │   ├── pool/                        # Unified Concept Pool (v10)
 │   │   │   │   ├── ConceptPool.tsx          # Пул загруженных концепций
 │   │   │   │   ├── PoolCard.tsx             # Карточка концепции в пуле
@@ -881,6 +907,13 @@ philosynth-service/
 │   │       ├── discussion.ts               # 16.3: MarkTarget/targetOf/targetFromAddress (ключ сводки vs
 │   │       │                               #  цель серверу), threadsOf/orderThreads, paragraphsOf, подписи
 │   │       │                               #  видов/адресов/состояний
+│   │       ├── version-conflict.ts         # 17.2 (Д-81): разбор 409 VERSION_CONFLICT (conflictsOf), фразы с
+│   │       │                               #  текущим значением, sectionExpectations (ожидания плана),
+│   │       │                               #  rebaseDraft (перенос набранного на перечитанный объект)
+│   │       ├── proposals.ts                # 17.2: группы вкладки, подписи, способы принятия (зеркало сервера,
+│   │       │                               #  сторож 4bq), разница fieldDiff / subsectionDiff, журнал событий
+│   │       ├── proposal-current.ts         # 17.2: текущее состояние адресата (поля элемента / исходник
+│   │       │                               #  подраздела) — для формы и левой стороны разницы
 │   │       ├── notification-text.ts        # 16.2: фраза уведомления по type/payload на языке интерфейса
 │   │       │                               #  (зеркало серверного notificationText; 14.2) + notificationLink
 │   │       ├── visibility-text.ts          # 8.7: тексты ступеней/галочек, flagsShownFor,
@@ -977,7 +1010,7 @@ philosynth-service/
 │   │   ├── extract-section-templates.mjs
 │   │   └── extract-export-assets.mjs
 │   ├── patches/                        # идемпотентные патчи доков по итогам бесед (по одному
-│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv163)
+│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv172)
 │   │   ├── patch-docs-*.py             # запускаются ИЗ КОРНЯ репозитория;
 │   │   │                               # осторожно с повторным прогоном старого патча:
 │   │   │                               # доки с тех пор менялись, и якорь может совпасть
@@ -1145,6 +1178,22 @@ philosynth-service/
     │                                   #  Chrome 131: вкладка «Участники» (409 под формой, второй шаг
     │                                   #  исключения), колокольчик → страница принятия → полоса роли, «Со мной
     │                                   #  поделились», профиль «Уведомления», /register?invite= (32 ✓)
+    │                                   # smoke-172-request1 — 17.2: чистые функции клиента (способы ≡ серверу,
+    │                                   #  conflictsOf, rebaseDraft, разница, происхождение); живьём функциями
+    │                                   #  client/src/api (fetch → app.request): version в DTO, четыре пути
+    │                                   #  записи с ожиданием и «перечитать и повторить», предложения —
+    │                                   #  принять = черновик плана, устаревшее, новое поверх текущего (34 ✓)
+    │                                   # test-172-request1-ui — 17.2: Chrome 131 на сборке клиента — редактор
+    │                                   #  (правка есть, управления нет), конфликт версий тезиса в двух
+    │                                   #  контекстах, предложение из панели адреса, панель решения →
+    │                                   #  план → исполнение, устаревшее, история версий (29 ✓)
+    │                                   # test-172-requests2-3 — 17.2, тестовые запросы: сервер :3000 + мок
+    │                                   #  Claude :3972, preview :5233, Chrome 131; R2 двое в браузере (редактор
+    │                                   #  правит тезис и перегенерирует подраздел, владелец получает конфликт
+    │                                   #  и «перечитать и повторить», Promise.all двух «Сохранить», исполнители
+    │                                   #  в истории и журнале по смотрящему), R3 предложение из комментария →
+    │                                   #  разница и каскад → план → «принято предложение», устаревшее и «новое
+    │                                   #  поверх текущего», отклонение вторым шагом (37 ✓ ×2)
     │                                   # smoke-171-request1 — 17.1: чистые функции (editCapability, хэши
     │                                   #  ожидаемой версии ≡ адресам, planBodyFor, способы по адресату);
     │                                   #  живьём по HTTP: права редактора, VERSION_CONFLICT на четырёх

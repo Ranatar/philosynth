@@ -43,6 +43,48 @@ import {
   type RollbackResponse,
 } from "../../api/elements";
 import { tl } from "@philosynth/shared/i18n/t";
+import type { ProposalOrigin } from "@philosynth/shared/types/elements"; // 17.2
+import type { Proposal } from "@philosynth/shared/types/proposals";
+import { proposalNumberIn, useCollabStore } from "../../stores/collab-store";
+
+/**
+ * 17.2 (п.4): «Принято предложение № N пользователя X · по рецензии «Y» ·
+ * чем исполнено». Номера и имён может не быть (читатель, давнее предложение)
+ * — фраза собирается без них.
+ */
+export function proposalOriginText(
+  o: ProposalOrigin,
+  proposals: readonly Pick<Proposal, "id" | "author">[],
+  reviewTitles: Readonly<Record<string, string>>,
+): string {
+  const num = proposalNumberIn(proposals, o.proposalId);
+  const author = proposals.find((p) => p.id === o.proposalId)?.author.name;
+  let text =
+    num !== null && author
+      ? tl("edit.versionHistory.proposalAcceptedFull", "Почему: принято предложение № {num} пользователя {author}", { num, author })
+      : author
+        ? tl("edit.versionHistory.proposalAcceptedAuthor", "Почему: принято предложение пользователя {author}", { author })
+        : tl("edit.versionHistory.proposalAccepted", "Почему: принято предложение участника");
+  if (o.source === "review_finding") {
+    const title = o.reviewId ? reviewTitles[o.reviewId] : undefined;
+    text += title
+      ? tl("edit.versionHistory.proposalByReview", " · по рецензии «{title}»", { title })
+      : tl("edit.versionHistory.proposalByReviewNoTitle", " · по замечанию рецензии");
+  } else if (o.source === "comment") text += tl("edit.versionHistory.proposalByComment", " · из комментария обсуждения");
+  else if (o.source === "recommendation") text += tl("edit.versionHistory.proposalByRecommendation", " · по рекомендации критики");
+  text +=
+    " · " +
+    (o.stepType === "refine_element"
+      ? tl("edit.versionHistory.valueByModel", "значение написано моделью")
+      : o.stepType === "edit_subsection"
+        ? tl("edit.versionHistory.proposalSubsectionInserted", "вписан текст подраздела")
+        : o.stepType === "regen" || o.stepType === "regen_subsection"
+          ? tl("edit.versionHistory.proposalRegenerated", "перегенерация")
+          : o.proposalKind === "replace"
+            ? tl("edit.versionHistory.replacementInserted", "вписана готовая замена")
+            : tl("edit.versionHistory.proposalValueByAcceptor", "значение вписал принявший"));
+  return text;
+}
 
 const SOURCE_LABELS = (): Record<ChangeSource, string> => ({
   manual: tl("edit.versionHistory.sourceManual", "правка вручную"),
@@ -203,6 +245,10 @@ export function VersionHistory({
   disabled = false,
   onRolledBack,
 }: VersionHistoryProps) {
+  // 17.2: имена авторов предложений и названия рецензий — из хранилища
+  // страницы (снимок origin несёт только id); у читателя оно пусто
+  const collabProposals = useCollabStore((st) => st.proposals);
+  const reviewTitles = useCollabStore((st) => st.reviewTitles);
   const [versions, setVersions] = useState<ElementVersion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -292,6 +338,11 @@ export function VersionHistory({
               <span className="version-preview">{versionPreview(v.data)}</span>
               <span className="version-meta">
                 {fmtDate(v.createdAt)} · {SOURCE_LABELS()[v.changeSource] ?? v.changeSource}
+                {/* 17.2 (п.4): исполнитель — у правок не-владельца (сервер отдаёт
+                    поле только участникам, 17.1) */}
+                {v.actor && !v.actor.isOwner ? (
+                  <span data-testid="version-actor">{tl("edit.versionHistory.actor", " · исполнил: {name}", { name: v.actor.name })}</span>
+                ) : null}
               </span>
             </div>
             {/* 10.3: «почему изменилось» — снимок рекомендации, породившей правку
@@ -307,6 +358,19 @@ export function VersionHistory({
                   : v.origin.stepType === "delete_element" || v.origin.stepType === "delete_subsection"
                     ? tl("edit.versionHistory.deletedByRecommendation", "удалено (снимок — состояние до удаления)") // 15.2 (Д-71)
                     : tl("edit.versionHistory.valueByModel", "значение написано моделью")}
+              </div>
+            )}
+            {/* 17.2 (п.4, Д-82): происхождение «по предложению» — снимок origin
+                17.1: чьё предложение, из чего оно выросло, чем исполнено */}
+            {v.origin?.kind === "proposal" && (
+              <div className="version-origin" data-testid="version-origin" data-origin-kind="proposal">
+                {proposalOriginText(v.origin, collabProposals, reviewTitles)}
+                {v.origin.rationale ? (
+                  <details className="sec-disclosure version-origin-rationale">
+                    <summary>{tl("edit.versionHistory.proposalRationale", "Основание предложения")}</summary>
+                    <div className="disclosure-body">{v.origin.rationale}</div>
+                  </details>
+                ) : null}
               </div>
             )}
             </Fragment>

@@ -59,6 +59,8 @@ export interface DocumentViewProps {
   onSubsectionView?: ((view: SubsectionEditView, draft: string) => void) | undefined;
   /** 15.2 (Д-71): второй шаг удаления подраздела (прокидывается в SectionView) */
   onSubsectionDelete?: ((step: SubsectionDeleteStep) => void) | undefined;
+  /** 17.2 (Д-81): «Перечитать и повторить» после конфликта версий */
+  onSubsectionReread?: ((draft: string) => void) | undefined;
 }
 
 export function DocumentView({
@@ -79,6 +81,7 @@ export function DocumentView({
   onSubsectionCancel,
   onSubsectionView,
   onSubsectionDelete,
+  onSubsectionReread,
 }: DocumentViewProps) {
   const showcase = synthesis.scope === "showcase" && !synthesis.isOwner;
   const byKey = new Map(
@@ -125,12 +128,15 @@ export function DocumentView({
                   : undefined
               }
               subsectionEditBusy={!!subsectionEdit}
-              showParseWarnings={synthesis.isOwner}
+              // 17.2: пометки разбора — из журнала; он открыт правящему
+              // (владелец | редактор), сервер отдаёт поле под тем же гейтом
+              showParseWarnings={synthesis.capabilities?.edit ?? false}
               onSubsectionEdit={onSubsectionEdit}
               onSubsectionSave={onSubsectionSave}
               onSubsectionCancel={onSubsectionCancel}
               onSubsectionView={onSubsectionView}
               onSubsectionDelete={onSubsectionDelete}
+              onSubsectionReread={onSubsectionReread}
             />
           ))}
         </div>

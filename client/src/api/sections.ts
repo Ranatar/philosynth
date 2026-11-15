@@ -50,8 +50,11 @@ export function updateSubsection(
   key: string,
   name: string,
   html: string,
+  /** 17.2 (Д-81): хэш исходника, к которому писалась правка (поле `hash`
+   *  ответа GET того же пути) — обязателен: записи «без ожидания» нет */
+  expectedHash: string,
 ): Promise<SubsectionUpdateResult> {
-  return apiPatch<SubsectionUpdateResult>(subsectionPath(synthesisId, key, name), { html });
+  return apiPatch<SubsectionUpdateResult>(subsectionPath(synthesisId, key, name), { html, expectedHash });
 }
 
 export function deleteSubsection(

@@ -70,6 +70,24 @@ export async function currentElementVersion(
 }
 
 /**
+ * 17.2 (Д-81): номера последних версий ВСЕХ элементов вида в синтезе — для
+ * DTO чтения (`version`). Зовётся ДО чтения строк элементов: правка, попавшая
+ * между двумя чтениями, даст клиенту новое содержимое со старым номером —
+ * ложный конфликт при записи (безопасно), а не молчаливую перезапись.
+ */
+export async function elementVersionsOf(
+  synthesisId: string,
+  elementType: VersionedElementType,
+): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ id: elementVersions.elementId, max: sql<number>`max(${elementVersions.version})` })
+    .from(elementVersions)
+    .where(and(eq(elementVersions.synthesisId, synthesisId), eq(elementVersions.elementType, elementType)))
+    .groupBy(elementVersions.elementId);
+  return new Map(rows.map((r) => [r.id, Number(r.max ?? 0)]));
+}
+
+/**
  * Сверка ожидаемого номера версии элемента. Зовётся ВНУТРИ транзакции правки
  * до записи версии. `expected === undefined` — ожидания нет: прежнее
  * поведение. Блокировка — по id элемента на время транзакции.

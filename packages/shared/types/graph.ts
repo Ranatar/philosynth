@@ -14,6 +14,11 @@ export type ElementSource = "generated" | "manual";
 /** Строка таблицы categories (camelCase-представление в API) */
 export interface Category {
   id: string;
+  /** 17.2 (Д-81): номер последней версии элемента на момент чтения
+   *  (max element_versions.version; 0 — версий не было). Клиент шлёт его
+   *  ожиданием правки (`expectedVersion`); в ответах PATCH поля нет — новый
+   *  номер там `version.version`. */
+  version?: number;
   synthesisId: string;
   name: string;
   /** Свободный текст: 'онтологическая', 'эпистемологическая', ... */
@@ -55,6 +60,11 @@ export interface Category {
 /** Строка таблицы category_edges */
 export interface CategoryEdge {
   id: string;
+  /** 17.2 (Д-81): номер последней версии элемента на момент чтения
+   *  (max element_versions.version; 0 — версий не было). Клиент шлёт его
+   *  ожиданием правки (`expectedVersion`); в ответах PATCH поля нет — новый
+   *  номер там `version.version`. */
+  version?: number;
   synthesisId: string;
   sourceId: string;
   targetId: string;

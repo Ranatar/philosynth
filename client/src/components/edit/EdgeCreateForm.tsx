@@ -116,7 +116,7 @@ export function EdgeCreateForm({
           err.code === "GENERATION_IN_PROGRESS"
             ? tl("edit.edgeCreateForm.lockedGenerating", "Идёт генерация — правки заблокированы до её завершения")
             : err.code === "FORBIDDEN"
-              ? tl("edit.edgeCreateForm.ownerOnly", "Редактировать может только владелец синтеза")
+              ? tl("edit.edgeCreateForm.editorsOnly", "Редактировать могут только владелец и редакторы концепции")
               : err.message,
         );
       } else {

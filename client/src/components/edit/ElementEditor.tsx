@@ -52,7 +52,7 @@
  * вслед) и «Перегенерировать затронутые»; хозяин получает onSaved с
  * deleted: true и перечитывает разделы/граф.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import type { Category, CategoryEdge } from "@philosynth/shared/types/graph";
@@ -69,6 +69,10 @@ import { ApiError } from "../../api/client";
 import {
   autoRename,
   deleteElement,
+  getCategories,
+  getCategory,
+  getGlossary,
+  getTheses,
   updateCategory,
   updateEdge,
   updateGlossaryTerm,
@@ -98,6 +102,8 @@ import { formatCharacteristic } from "./CharacteristicSlider";
 import { CATEGORY_CHARACTERISTICS, EDGE_CHARACTERISTICS } from "@philosynth/shared/constants/characteristics";
 import { ThesisEditor, thesisDiff, thesisToDraft, type ThesisDraft } from "./ThesisEditor";
 import { VersionHistory } from "./VersionHistory";
+import { VersionConflictNotice } from "./VersionConflictNotice"; // 17.2 (Д-81)
+import { conflictsOf, rebaseDraft, type VersionConflictDetails } from "../../utils/version-conflict";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData, tDataLoose } from "@philosynth/shared/i18n/data";
 import { useSubsectionTitle } from "../../utils/subsection-titles"; // 14.2 (Д-59)
@@ -176,7 +182,13 @@ export interface SaveOutcome extends Omit<ElementMutationMeta, "version"> {
   deleted?: true | undefined;
   /** 15.2: что ушло вслед за удалением (каскад без FK) */
   cascade?: DeleteElementResult["cascade"] | undefined;
+  /** 17.2: записи НЕ было — элемент перечитан после конфликта версий
+   *  (хозяин обновляет свою копию; разделы перечитывать незачем) */
+  reread?: true | undefined;
 }
+
+const EMPTY_IMPACT: ImpactAnalysis = { affectedSections: [], affectedSubsections: [], affectedModes: [], severity: "none" };
+const EMPTY_SYNC: HtmlSyncInfo = { rendered: [], patched: [], pending: [], sectionMissing: false };
 
 export interface ElementEditorProps {
   synthesisId: string;
@@ -251,13 +263,63 @@ function messageOf(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === "GENERATION_IN_PROGRESS")
       return tl("edit.elementEditor.lockedGenerating", "Идёт генерация — правки заблокированы до её завершения");
-    if (err.code === "FORBIDDEN") return tl("edit.elementEditor.ownerOnly", "Редактировать может только владелец синтеза");
+    if (err.code === "FORBIDDEN") return tl("edit.elementEditor.editorsOnly", "Редактировать могут только владелец и редакторы концепции");
     return err.message;
   }
   return err instanceof Error ? err.message : String(err);
 }
 
 const versionedType = (k: EditableKind): VersionedElementType => k;
+
+/** Как элемент назван в интерфейсе (фразы конфликта версий, предложений). */
+export function elementDisplayName(t: EditableElement): string {
+  if (t.kind === "category") return t.element.name;
+  if (t.kind === "glossary_term") return t.element.term;
+  if (t.kind === "thesis") return `${tl("common.thesis", "Тезис")} ${t.element.label ?? `№${t.element.thesisNum}`}`;
+  return [t.sourceName, t.targetName].filter(Boolean).join(" → ") || tl("edit.elementEditor.graphEdge", "Связь графа");
+}
+
+type AnyElement = Category | CategoryEdge | Thesis | GlossaryTerm;
+
+/** 17.2 (Д-81): элемент заново — для «перечитать и повторить». Номер версии
+ *  приходит тем же чтением, что содержимое (DTO `version`). */
+async function fetchFreshElement(synthesisId: string, kind: EditableKind, id: string): Promise<AnyElement | null> {
+  if (kind === "category") return getCategory(synthesisId, id);
+  if (kind === "edge") return (await getCategories(synthesisId)).edges.find((e) => e.id === id) ?? null;
+  if (kind === "thesis") return (await getTheses(synthesisId)).find((t) => t.id === id) ?? null;
+  return (await getGlossary(synthesisId)).find((t) => t.id === id) ?? null;
+}
+
+/** Черновик формы из свежего элемента, с переносом набранного (rebaseDraft). */
+function rebasedDraft(draft: Draft, fresh: AnyElement): { draft: Draft; changed: string[] } {
+  switch (draft.kind) {
+    case "category": {
+      const base = categoryToDraft(fresh as Category);
+      const r = rebaseDraft(draft.base, draft.value, base);
+      return { draft: { kind: "category", base, value: r.value }, changed: r.changedByOthers as string[] };
+    }
+    case "edge": {
+      const base = edgeToDraft(fresh as CategoryEdge);
+      const r = rebaseDraft(draft.base, draft.value, base);
+      return { draft: { kind: "edge", base, value: r.value }, changed: r.changedByOthers as string[] };
+    }
+    case "thesis": {
+      const base = thesisToDraft(fresh as Thesis);
+      const r = rebaseDraft(draft.base, draft.value, base);
+      return { draft: { kind: "thesis", base, value: r.value }, changed: r.changedByOthers as string[] };
+    }
+    case "glossary_term": {
+      const base = glossaryToDraft(fresh as GlossaryTerm);
+      const r = rebaseDraft(draft.base, draft.value, base);
+      return { draft: { kind: "glossary_term", base, value: r.value }, changed: r.changedByOthers as string[] };
+    }
+  }
+}
+
+const previewOf = (v: unknown): string => {
+  const s = typeof v === "string" ? v : Array.isArray(v) ? v.join(", ") : v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
+  return s.length > 240 ? s.slice(0, 240) + "…" : s;
+};
 
 /* ── Компонент ───────────────────────────────────────────────────────── */
 
@@ -288,11 +350,28 @@ export function ElementEditor({
   const [deleting, setDeleting] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const deleteStep = useSecondStep(deleting);
+  /* 17.2 (Д-81): ожидаемая версия. baseVersion — номер последней версии, к
+     которой относится форма: из DTO чтения (target.element.version), после
+     своей правки — version.version ответа, после перечитки — свежий. Конфликт
+     (409 VERSION_CONFLICT) — сообщение и «Перечитать и повторить». */
+  const [baseVersion, setBaseVersion] = useState<number>(target.element.version ?? 0);
+  const [conflict, setConflict] = useState<{
+    conflicts: VersionConflictDetails[];
+    busy: boolean;
+    reread: boolean;
+    changed: { field: string; value: string }[];
+  } | null>(null);
+  const rereadElRef = useRef<unknown>(null);
 
   // Новый элемент (или обновлённый хозяином после PATCH) → свежий черновик
   useEffect(() => {
+    // перечитка сама выставила черновик с перенесённым набранным — хозяин
+    // лишь вернул тот же свежий элемент
+    if (target.element === rereadElRef.current) return;
     setDraft(makeDraft(target));
     setFieldErrors({});
+    setBaseVersion(target.element.version ?? 0);
+    setConflict(null);
   }, [target]);
 
   const dirty = isDirty(draft);
@@ -332,10 +411,10 @@ export function ElementEditor({
       let out: SaveOutcome;
       if (draft.kind === "category") {
         const body = categoryDiff(draft.base, draft.value);
-        const res = await updateCategory(synthesisId, elementId, body);
+        const res = await updateCategory(synthesisId, elementId, body, baseVersion);
         out = {
           kind: "category",
-          element: res.category,
+          element: { ...res.category, version: res.version.version },
           impact: res.impact,
           version: res.version,
           htmlSync: res.htmlSync,
@@ -345,10 +424,10 @@ export function ElementEditor({
               : undefined,
         };
       } else if (draft.kind === "edge") {
-        const res = await updateEdge(synthesisId, elementId, edgeDiff(draft.base, draft.value));
+        const res = await updateEdge(synthesisId, elementId, edgeDiff(draft.base, draft.value), baseVersion);
         out = {
           kind: "edge",
-          element: res.edge,
+          element: { ...res.edge, version: res.version.version },
           impact: res.impact,
           version: res.version,
           htmlSync: res.htmlSync,
@@ -358,10 +437,11 @@ export function ElementEditor({
           synthesisId,
           elementId,
           thesisDiff(draft.base, draft.value),
+          baseVersion,
         );
         out = {
           kind: "thesis",
-          element: res.thesis,
+          element: { ...res.thesis, version: res.version.version },
           impact: res.impact,
           version: res.version,
           htmlSync: res.htmlSync,
@@ -371,10 +451,11 @@ export function ElementEditor({
           synthesisId,
           elementId,
           glossaryDiff(draft.base, draft.value),
+          baseVersion,
         );
         out = {
           kind: "glossary_term",
-          element: res.term,
+          element: { ...res.term, version: res.version.version },
           impact: res.impact,
           version: res.version,
           htmlSync: res.htmlSync,
@@ -384,15 +465,58 @@ export function ElementEditor({
       setRenameResult(null);
       setEditing(false);
       setHistoryKey((k) => k + 1);
+      setConflict(null);
+      if (out.version) setBaseVersion(out.version.version);
       onSaved?.(out);
     } catch (err) {
+      const conflicts = conflictsOf(err);
+      if (conflicts) {
+        // 17.2: запись не сделана; набранное остаётся в форме
+        setConflict({ conflicts, busy: false, reread: false, changed: [] });
+        return;
+      }
       if (err instanceof ApiError && err.code === "VALIDATION_ERROR")
         setFieldErrors(detailsToFieldErrors(err.details));
       setError(messageOf(err));
     } finally {
       setSaving(false);
     }
-  }, [saving, dirty, draft, synthesisId, elementId, onSaved]);
+  }, [saving, dirty, draft, synthesisId, elementId, onSaved, baseVersion]);
+
+  /* 17.2 (Д-81): «Перечитать и повторить». Элемент читается заново (версия —
+     тем же чтением), набранное переносится на свежую основу (поле, которое
+     человек не менял, берёт текущее значение), форма показывает, что изменили
+     другие; запись повторяет человек кнопкой «Сохранить» — уже с новой
+     ожидаемой версией. Ничего не пишется само. */
+  const rereadAfterConflict = useCallback(async () => {
+    if (!conflict || conflict.busy) return;
+    setConflict({ ...conflict, busy: true });
+    try {
+      const fresh = await fetchFreshElement(synthesisId, target.kind, elementId);
+      if (!fresh) {
+        setConflict(null);
+        setError(tl("edit.elementEditor.conflictGone", "Элемента больше нет в документе — правку повторить не к чему."));
+        return;
+      }
+      const r = rebasedDraft(draft, fresh);
+      const freshData = r.draft.base as unknown as Record<string, unknown>;
+      rereadElRef.current = fresh;
+      setDraft(r.draft);
+      setBaseVersion(fresh.version ?? 0);
+      setFieldErrors({});
+      setConflict({
+        conflicts: conflict.conflicts,
+        busy: false,
+        reread: true,
+        changed: r.changed.map((f) => ({ field: f, value: previewOf(freshData[f]) })),
+      });
+      // хозяин получает свежий элемент (сводка просмотра, история) — без записи
+      onSaved?.({ kind: target.kind, element: fresh, impact: EMPTY_IMPACT, htmlSync: EMPTY_SYNC, reread: true });
+    } catch (err) {
+      setConflict({ ...conflict, busy: false });
+      setError(messageOf(err));
+    }
+  }, [conflict, synthesisId, target.kind, elementId, draft, onSaved]);
 
   const onRolledBack = useCallback(
     (res: RollbackResponse) => {
@@ -403,6 +527,9 @@ export function ElementEditor({
         version: res.version,
         htmlSync: res.htmlSync,
       };
+      // 17.2: откат записал версию — она и есть текущая
+      out.element = { ...out.element, version: res.version.version };
+      setBaseVersion(res.version.version);
       setOutcome(out);
       setRenameResult(null);
       setHistoryKey((k) => k + 1);
@@ -593,11 +720,32 @@ export function ElementEditor({
       ) : editing ? (
         <>
           {form}
+          {conflict && (
+            <VersionConflictNotice
+              conflicts={conflict.conflicts}
+              nameOf={() => elementDisplayName(target)}
+              busy={conflict.busy}
+              reread={conflict.reread}
+              current={
+                conflict.changed.length > 0 ? (
+                  <ul className="version-conflict-fields">
+                    {conflict.changed.map((ch) => (
+                      <li key={ch.field} data-conflict-field={ch.field}>
+                        <span className="version-conflict-field">{ch.field}</span> {ch.value || "—"}
+                      </li>
+                    ))}
+                  </ul>
+                ) : undefined
+              }
+              onReread={() => void rereadAfterConflict()}
+              onDismiss={() => setConflict(null)}
+            />
+          )}
           <div className="inline-edit-actions">
             <button
               type="button"
               className="action-btn primary"
-              disabled={disabled || saving || !dirty}
+              disabled={disabled || saving || !dirty || (!!conflict && !conflict.reread)}
               onClick={() => void save()}
             >
               {saving ? tl("common.saving", "Сохранение…") : tl("common.save", "Сохранить")}

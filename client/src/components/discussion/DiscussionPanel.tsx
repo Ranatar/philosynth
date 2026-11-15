@@ -19,6 +19,10 @@
  *    критики, чей адрес — этот подраздел/раздел/элемент. Группировка —
  *    только по адресу, никакой машинной.
  * Кнопок изменения документа здесь нет (Фаза 17). Тексты — UserText.
+ *
+ * 17.2: отсюда можно ПРЕДЛОЖИТЬ изменение (напрямую либо из комментария) —
+ * форма ProposeForm; предложение документ не меняет, решают его во вкладке
+ * «Предложения». Блок «Предложения» — те, что об этом адресе.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -33,6 +37,9 @@ import { createComment, listAllComments } from "../../api/discussion";
 import { kindLabel, orderThreads, stateLabel, threadsOf, type MarkTarget } from "../../utils/discussion";
 import { CommentThread, errorText } from "./CommentThread";
 import { UserText } from "./UserText";
+import type { Proposal } from "@philosynth/shared/types/proposals"; // 17.2
+import { ProposeForm } from "../proposals/ProposeForm";
+import { kindLabel as proposalKindLabel, statusLabel as proposalStatusLabel } from "../../utils/proposals";
 
 export interface DiscussionPanelProps {
   synthesisId: string;
@@ -52,6 +59,18 @@ export interface DiscussionPanelProps {
   onClose: () => void;
   /** Счётчик внешних изменений — повод перечитать ветки */
   version: number;
+  /** 17.2: предложения концепции (хозяин держит список); панель берёт те,
+   *  что об этом адресе. null/нет — блока и кнопки «Предложить» нет */
+  proposals?: readonly Proposal[] | null | undefined;
+  /** 17.2: предложение записано — хозяин перечитывает список */
+  onProposed?: ((p: Proposal) => void) | undefined;
+  /** 17.2: открыть предложение во вкладке «Предложения» */
+  onOpenProposal?: ((id: string) => void) | undefined;
+}
+
+/** 17.2: предложения об этом адресе (вид + ключ адреса записи). */
+export function proposalsAt(list: readonly Proposal[], t: MarkTarget): Proposal[] {
+  return list.filter((p) => p.address.kind === t.kind && p.address.key === t.key);
 }
 
 const squash = (s: string): string => s.replace(/\s+/g, " ").trim().toLowerCase();
@@ -87,7 +106,12 @@ export function findingsAt(reviews: readonly Review[], t: MarkTarget): { review:
   return out;
 }
 
-export function DiscussionPanel({ synthesisId, target, me, canManage, sectionTitles, reviews, recommendations, onAddToMyReview, onChanged, onClose, version }: DiscussionPanelProps) {
+export function DiscussionPanel({ synthesisId, target, me, canManage, sectionTitles, reviews, recommendations, onAddToMyReview, onChanged, onClose, version, proposals, onProposed, onOpenProposal }: DiscussionPanelProps) {
+  // 17.2: форма предложения — напрямую (source null) либо из комментария
+  const [proposing, setProposing] = useState<{ source: Comment | null } | null>(null);
+  const [proposedNote, setProposedNote] = useState<string | null>(null);
+  const canPropose = !!onProposed && target.kind !== "synthesis";
+  const here = useMemo(() => (proposals ? proposalsAt(proposals, target) : []), [proposals, target]);
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [body, setBody] = useState("");
@@ -120,6 +144,8 @@ export function DiscussionPanel({ synthesisId, target, me, canManage, sectionTit
     setKind("");
     setFormError(null);
     setFormNote(null);
+    setProposing(null);
+    setProposedNote(null);
   }, [addressKey]);
 
   const changed = useCallback(() => {
@@ -198,7 +224,15 @@ export function DiscussionPanel({ synthesisId, target, me, canManage, sectionTit
           {!comments && !loadError && <p className="discuss-muted">{tl("common.loading", "Загрузка…")}</p>}
           {comments && threads.length === 0 && <p className="discuss-muted">{tl("discussion.discussionPanel.noThreads", "Об этом месте ещё не говорили.")}</p>}
           {threads.map((t) => (
-            <CommentThread key={t.root.id} synthesisId={synthesisId} thread={t} me={me} canManage={canManage} onChanged={changed} />
+            <CommentThread
+              key={t.root.id}
+              synthesisId={synthesisId}
+              thread={t}
+              me={me}
+              canManage={canManage}
+              onChanged={changed}
+              onPropose={canPropose ? (root) => { setProposedNote(null); setProposing({ source: root }); } : undefined}
+            />
           ))}
         </section>
 
@@ -239,6 +273,55 @@ export function DiscussionPanel({ synthesisId, target, me, canManage, sectionTit
           {formError && <p className="discuss-error" data-testid="discussion-form-error">{formError}</p>}
           {formNote && <p className="discuss-ok" data-testid="discussion-form-note">{formNote}</p>}
         </section>
+
+        {/* 17.2: предложения изменений об этом адресе; решают их во вкладке */}
+        {proposals && (
+          <section className="discuss-block discuss-beside" data-testid="discussion-proposals">
+            <h4 className="discuss-kicker">
+              {tl("discussion.discussionPanel.proposals", "Предложения")}
+              <span className="discuss-count">{here.length}</span>
+            </h4>
+            {here.length === 0 && <p className="discuss-muted">{tl("discussion.discussionPanel.noProposals", "Изменений этому месту не предлагали.")}</p>}
+            {here.map((p) => (
+              <div className="discuss-finding" key={p.id} data-testid="discussion-proposal" data-proposal-id={p.id}>
+                <div className="discuss-byline">
+                  <span className="discuss-author">{p.author.name}</span>
+                  <span className="discuss-note">{proposalKindLabel(p.kind)}</span>
+                  <span className={p.stale ? "discuss-note warn" : "discuss-note"}>{proposalStatusLabel(p)}</span>
+                  {onOpenProposal && (
+                    <button type="button" className="discuss-link" onClick={() => onOpenProposal(p.id)} data-testid="discussion-proposal-open">
+                      {tl("discussion.discussionPanel.openProposal", "открыть →")}
+                    </button>
+                  )}
+                </div>
+                {p.rationale && <UserText text={p.rationale} />}
+              </div>
+            ))}
+            {canPropose && !proposing && (
+              <button type="button" className="action-btn" onClick={() => { setProposedNote(null); setProposing({ source: null }); }} data-testid="discussion-propose">
+                {tl("discussion.discussionPanel.propose", "Предложить изменение")}
+              </button>
+            )}
+            {proposedNote && <p className="discuss-ok" data-testid="discussion-proposed-note">{proposedNote}</p>}
+            {canPropose && proposing && (
+              <ProposeForm
+                key={proposing.source?.id ?? "direct"}
+                synthesisId={synthesisId}
+                address={{ kind: target.kind, key: target.key, id: target.target.id ?? null }}
+                target={target.target}
+                source={proposing.source ? "comment" : "direct"}
+                sourceId={proposing.source?.id}
+                initialRationale={proposing.source?.body ?? ""}
+                onCancel={() => setProposing(null)}
+                onCreated={(p) => {
+                  setProposing(null);
+                  setProposedNote(tl("discussion.discussionPanel.proposedNote", "Предложение записано — его рассмотрят владелец и редакторы (вкладка «Предложения»)."));
+                  onProposed?.(p);
+                }}
+              />
+            )}
+          </section>
+        )}
 
         {/* РЯДОМ, не слитно: замечания рецензий об этом адресе */}
         <section className="discuss-block discuss-beside" data-testid="discussion-findings">

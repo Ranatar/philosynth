@@ -48,6 +48,9 @@ export interface CommentThreadProps {
   onJump?: ((c: Comment) => void) | undefined;
   /** Что-то изменилось — хозяин перечитывает список и сводку */
   onChanged: () => void;
+  /** 17.2: «предложить изменение» из комментария (источник — корень ветки);
+   *  нет пропа — действия нет (вкладка «Обсуждение», адрес концепции) */
+  onPropose?: ((root: Comment) => void) | undefined;
 }
 
 function KindSelect({ value, onChange, disabled }: { value: CommentKind | ""; onChange: (v: CommentKind | "") => void; disabled: boolean }) {
@@ -173,7 +176,7 @@ function CommentBody({ c, me, synthesisId, canManage, onChanged }: { c: Comment;
   );
 }
 
-export function CommentThread({ synthesisId, thread, me, canManage, showAddress = false, sectionTitles, onJump, onChanged }: CommentThreadProps) {
+export function CommentThread({ synthesisId, thread, me, canManage, showAddress = false, sectionTitles, onJump, onChanged, onPropose }: CommentThreadProps) {
   const { root, replies } = thread;
   const [replying, setReplying] = useState(false);
   const [reply, setReply] = useState("");
@@ -251,6 +254,11 @@ export function CommentThread({ synthesisId, thread, me, canManage, showAddress 
               {tl("discussion.commentThread.resolve", "решить")}
             </button>
           ))}
+        {onPropose && !root.deleted && root.status !== "hidden" && root.resolution.state !== "deleted" && (
+          <button type="button" className="discuss-link" disabled={busy} data-testid="thread-propose" onClick={() => onPropose(root)}>
+            {tl("discussion.commentThread.propose", "предложить изменение")}
+          </button>
+        )}
       </div>
       {replying && (
         <div className="discuss-form">

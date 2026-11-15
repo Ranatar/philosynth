@@ -33,6 +33,8 @@ import {
 } from "@philosynth/shared/constants/edit-steps";
 import type { EditPlan, EditStep, StepResult } from "@philosynth/shared/types/edit-plan";
 import { tl } from "@philosynth/shared/i18n/t";
+import { proposalNumberIn, useCollabStore } from "../../stores/collab-store"; // 17.2
+import { markupToLines } from "../../utils/proposals";
 import { tData } from "@philosynth/shared/i18n/data";
 
 export interface EditPlanPanelProps {
@@ -137,6 +139,8 @@ export function EditPlanPanel({
   onConfirmStep,
   onSkipStep,
 }: EditPlanPanelProps) {
+  // 17.2: номера и авторы предложений — из хранилища страницы
+  const collabProposals = useCollabStore((s) => s.proposals);
   return (
     <div
       style={{
@@ -168,6 +172,8 @@ export function EditPlanPanel({
             step.status === "pending" &&
             (plan.status === "draft" || isExecuting);
           const recs = step.recommendations ?? [];
+          // 17.2: предложения, которые исполняет шаг (ссылку ставит служба 17.1)
+          const props = step.proposals ?? [];
           return (
             <div key={i} data-testid="plan-step" data-step-type={step.type} className={isDeleteStepType(step.type) ? "plan-step-delete" : undefined}>
             <div
@@ -192,6 +198,27 @@ export function EditPlanPanel({
                 {recs.length > 0 && (
                   <span className="plan-step-rec" data-testid="plan-step-rec">
                     {tl("edit.editPlanPanel.recommendationRound", "рекомендация {nums} · раунд {round}", { nums: recs.map((r) => `№ ${r.num}`).join(", "), round: recs[0]?.round })}
+                  </span>
+                )}
+                {props.length > 0 && (
+                  <span className="plan-step-rec" data-testid="plan-step-proposal">
+                    {props
+                      .map((pr) => {
+                        const n = proposalNumberIn(collabProposals, pr.id);
+                        const who = collabProposals.find((x) => x.id === pr.id)?.author.name;
+                        return (
+                          (n !== null ? tl("edit.editPlanPanel.proposalNum", "предложение № {num}", { num: n }) : tl("edit.editPlanPanel.proposalNoNum", "предложение")) +
+                          (who ? ` · ${who}` : "")
+                        );
+                      })
+                      .join(", ")}
+                  </span>
+                )}
+                {step.skipReason && (
+                  <span className="plan-step-skip" data-testid="plan-step-skip-reason">
+                    {step.skipReason === "proposal_stale"
+                      ? tl("edit.editPlanPanel.skipStale", "снят: предложение устарело — документ изменился")
+                      : tl("edit.editPlanPanel.skipNotOpen", "снят: предложение уже не открыто")}
                   </span>
                 )}
                 {isFreeStepType(step.type) && (
@@ -249,6 +276,20 @@ export function EditPlanPanel({
                 </span>
               )}
             </div>
+            {/* 17.2 (Д-82): карточка шага «вписать правку подраздела» — разворот
+                предлагаемого текста (по блокам, без тегов) */}
+            {step.type === "edit_subsection" && step.value && (
+              <details className="sec-disclosure plan-step-value" data-testid="plan-step-subsection">
+                <summary>{tl("edit.editPlanPanel.subsectionText", "Текст, который будет вписан")}</summary>
+                <div className="disclosure-body plan-step-markup">{markupToLines(step.value)}</div>
+              </details>
+            )}
+            {props.length > 0 && props[0]?.rationale && step.type !== "edit_element" && step.type !== "edit_subsection" && (
+              <details className="sec-disclosure plan-step-value" data-testid="plan-step-proposal-note">
+                <summary>{tl("edit.editPlanPanel.proposalNote", "Замечание-основание (уйдёт доводом шага)")}</summary>
+                <div className="disclosure-body">{props[0].rationale}</div>
+              </details>
+            )}
             {step.type === "edit_element" && step.value && (
               <details className="sec-disclosure plan-step-value" data-testid="plan-step-value">
                 <summary>{tl("common.readyReplacement", "Готовая замена")}</summary>

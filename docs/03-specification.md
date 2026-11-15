@@ -668,7 +668,8 @@ PATCH  /syntheses/:id          { title?, extGraphMetrics?,
                                 // ПО МЕСТУ в карточке каталога
                                 // (Enter/Esc, details.title под полем)
                                 // и ✎ у названия документа — оба
-                                // только у владельца (isOwner).
+                                // только у владельца (17.2: гейт клиента —
+                                // capabilities.manage, не isOwner).
                                 // Только владелец. Единственный способ
                                 // опубликовать синтез — без него вкладка
                                 // «Публичные» недостижима из UI (8.7 ставит
@@ -805,7 +806,9 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
                                         // role === 'owner'. С 17.1 edit = owner |
                                         // действующий редактор; manage — только
                                         // владелец;
-                                        // клиент переходит на поле в 16.3/17.2.
+                                        // клиент перешёл на поле: обсуждение — 16.3,
+                                        // правка и управление — 17.2; isOwner
+                                        // остался подписям и гейту чтения (4bq).
   docNum: string;                       // «PS-NNNN-XXXX» — заполняется при
                                         // создании записи (формат исходника
                                         // [12110]); шапка документа
@@ -1083,7 +1086,7 @@ DELETE /syntheses/:id/sections/:key/subsections/:name
                                  // Несёт GET /sections/:key; показ — 11.3:
                                  // SectionView рисует «⚠ Разобран с потерями (N)» со
                                  // списком ТОЛЬКО владельцу (DocumentView передаёт
-                                 // isOwner) — предупреждения из генлога, а логи под
+                                 // isOwner; с 17.2 — capabilities.edit) — предупреждения из генлога, а логи под
                                  // флагом автора. Сервер же отдаёт поле любому
                                  // невладельцу на full без учёта show_logs — долг Д-31
 }
@@ -1185,11 +1188,22 @@ PATCH  /syntheses/:id/capsule   { html: string, expectedHash?: string }
                                 // sectionContentHash(capsuleHtml)); не совпал → 409
                                 // VERSION_CONFLICT (details.target 'capsule').
 
+// 17.2 (Д-81) — НОМЕР ВЕРСИИ В DTO ЧТЕНИЯ. GET /categories (категории и связи
+// графа), GET /categories/:catId, GET /theses и GET /glossary отдают у каждого
+// элемента version: целое ≥ 0 — номер его последней версии на момент чтения
+// (max element_versions.version; 0 — версий не было). Сервер читает номера ДО
+// строк элементов (elementVersionsOf): правка, попавшая между двумя чтениями,
+// даст клиенту новое содержимое со старым номером — ложный конфликт при
+// записи, а не молчаливую перезапись. Клиент шлёт это число ожиданием правки
+// (expectedVersion); в ответах PATCH поля нет — новый номер там version.version.
+// Решение беседы 17.2: брать номер из GET …/versions отдельным запросом нельзя —
+// содержимое формы и номер версии были бы прочитаны в разные моменты.
+//
 // 17.1 — ОЖИДАЕМАЯ ВЕРСИЯ ЭЛЕМЕНТА. Все четыре PATCH элемента
 // (/categories/:catId, /edges/:edgeId, /theses/:thesisId, /glossary/:termId)
 // принимают в теле expectedVersion: целое ≥ 0 — номер последней версии
 // элемента (max element_versions.version; 0 — версий не было; клиент берёт его
-// из GET …/versions либо из ответа прошлого PATCH: version.version). Сверка —
+// с 17.2 — из поля version DTO чтения (абзац выше) либо из ответа прошлого PATCH: version.version). Сверка —
 // в транзакции правки под блокировкой элемента: две одновременные правки с
 // одним ожиданием не проходят обе. Не совпало → 409 VERSION_CONFLICT,
 // details: { target: 'вид:id', expected: { version }, current: { version } },
@@ -1214,7 +1228,7 @@ PATCH  /syntheses/:id/capsule   { html: string, expectedHash?: string }
                                 // npm run sanitize:stored-html. Каждый ответ
                                 // сервера несёт CSP (server/security-headers).
                                 // Клиент (8.4): ✎ у капсулы в
-                                // DocumentHeader (только isOwner,
+                                // DocumentHeader (17.2: capabilities.edit, с expectedHash; прежде isOwner,
                                 // disabled при status='generating'),
                                 // textarea с ТЕКСТОМ капсулы (абзацы
                                 // через пустую строку); html собирает
@@ -1386,10 +1400,16 @@ DELETE /syntheses/:id/glossary/:termId
   version: number;
   data: Record<string, unknown>;   // снимок ДО изменения
   changeSource: "manual" | "regenerated" | "cascade" | "auto_rename" | "rollback"
-              | "recommendation";  // 10.2: правка исполнила рекомендацию критики
+              | "recommendation"   // 10.2: правка исполнила рекомендацию критики
+              | "proposal";        // 17.1: правка исполнила принятое предложение (§2.20)
   origin?: VersionOrigin | null;   // 10.2: «почему» — { kind: 'recommendation',
                                    // recommendationId, round, num, op, rationale,
                                    // planId, stepIndex, stepType }
+                                   // 17.1: либо { kind: 'proposal', … } — ProposalOrigin
+                                   // (предложение, его автор, источник и рецензия
+                                   // замечания, план, шаг — §2.20)
+  actor?: ActorRef | null;         // 17.1: исполнитель { id, name, isOwner } — отдаётся
+                                   // участникам и только у правок не-владельца
   createdAt: string;
 }
 ```
@@ -1594,7 +1614,10 @@ DELETE /syntheses/:id/modes/:modeKey/:index
 WS-соединения (паритет модалки экспортированного файла, где
 buildModesExportSection снимает `.mode-modal-params`). Гостю и на витрине
 кнопок нет. Сервер не менялся: чтение обоих GET и прежде было открыто этому
-кругу, run/regenerate/DELETE — только владельцу.
+кругу, run/regenerate/DELETE — только владельцу. С 17.1 сервер открывает их
+и редактору; клиент 17.2 ставит `readOnly` модалки по отсутствию
+`capabilities.edit` — редактор запускает, перегенерирует и удаляет
+результаты, как владелец.
 
 ### 2.8. Lineage
 
@@ -2137,6 +2160,9 @@ POST   /syntheses/:id/transforms/:transformId/rollback
 
 Все пять маршрутов (с 10.2 — постановка плана, с 12.3 — оценка ретрофита) — ТОЛЬКО ВЛАДЕЛЬЦУ,
 включая чтение: рекомендации касаются правки. Чужому — 403 и на публичной концепции; гостю — 401.
+С 17.1 «владельцу» здесь значит `capabilities.edit` (владелец | действующий
+редактор — преамбула §2, `editGate`); клиент 17.2 показывает панель
+рекомендаций и строки критики в панели адреса тому же кругу.
 
 ```
 GET  /syntheses/:id/recommendations            ?round=N
@@ -2558,7 +2584,32 @@ updatedAt }`. **`stale` вычисляется при чтении** и нигд
 `ProposalEvent { id, type, actor, payload, createdAt }` — журнал (02 §2.41):
 `created`, `plan_drafted`, `plan_released`, `accepted`, `rejected`,
 `withdrawn`, `closed`, `rebased`; фраз в БД нет — клиент собирает их по коду.
-Клиент — 17.2. Сторож 4bp.
+Сторож 4bp.
+
+**Клиент (беседа 17.2)**: страница концепции берёт права из
+`SynthesisFull.capabilities` — правка, генерация, планы, режимы, пауза,
+рекомендации открыты по `edit` (владелец | редактор), участники, название и
+родословная — по `manage`; `isOwner` правку не открывает (сторож 4bq, белый
+список — подписи и чтение). Вкладка «Предложения» (`capabilities.discuss`):
+три группы — открытые, устаревшие (`stale`), решённые; строка раскрывает
+панель решения на месте: кто предложил, основание, источник со ссылкой
+(рецензия / ветка у адреса), основа и текущая версия, разница «сейчас →
+предлагается» (пополевая у элемента, по блокам текста у подраздела), журнал
+событий. «Принять» зовёт `POST …/accept` и передаёт ЧЕРНОВИК плана модалке
+правок 2.3 (шаги, каскад, подтверждение, исполнение — там; прямого PATCH из
+панели нет); у замечания принимающий выбирает способ. «Отклонить» и
+«Закрыть» — вторым шагом; «Новое поверх текущего» — автору устаревшего;
+«Обсудить» — панель адреса 16.3. Предложить изменение можно из панели
+адреса (напрямую и из комментария — `source: 'comment'`) и из замечания на
+странице рецензии (`source: 'review_finding'`); поле замены заполняется
+текущим значением адресата. Переход к предложению — `/synthesis/:id?proposal=<id>`
+(из замечания рецензии и из уведомлений `proposal_*`). Каждая запись клиента
+шлёт ожидание (`expectedVersion` — из поля `version` DTO чтения, `expectedHash`
+— хэш исходника подраздела / текста капсулы, `expected[]` плана — хэши
+разделов, какими их видит человек); на 409 `VERSION_CONFLICT` — сообщение с
+текущим значением и один выбор: «Перечитать и повторить» (объект читается
+заново, набранное остаётся в форме, запись повторяет человек); пути
+«перезаписать» нет.
 
 ---
 
@@ -2851,6 +2902,12 @@ Endpoint: `wss://host/ws?token={sessionToken}`
     value?: string;                // 10.2: edit_element — готовый текст
     subsection?: string;           // 10.2: refine_element — "sectionKey:имя"
     recommendations?: { id, round, num, op, rationale }[];   // 10.2
+    proposals?: StepProposalRef[]; // 17.1: предложения, исполняемые шагом (ставит только
+                                   // служба предложений, §2.20); type += "edit_subsection"
+                                   // — ручная правка подраздела планом (target
+                                   // "sectionKey:имя", value — разметка; бесплатный)
+    skipReason?: "proposal_stale" | "proposal_not_open";  // 17.1: почему шаг по
+                                   // предложению снят исполнителем (status 'skipped')
     cascadeGenerated: boolean;
     result?: {
       outputChars: number;
