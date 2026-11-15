@@ -16,6 +16,12 @@
 # Отчёт в стиле патч-скриптов доков: created / skip / fail.
 # Повторный прогон на готовой машине обязан дать одни skip.
 #
+# Ревизия 2026-11-15 — исходящий прокси своей машины (PHILOSYNTH_PROXY,
+#    раздел «Сеть» ниже и §1a руководства): прокси берётся из окружения,
+#    apt или прошлого .env, пишется в .env блоком с NODE_USE_ENV_PROXY=1;
+#    apt под sudo получает его явно; проверка выхода к API Anthropic;
+#    Chrome — из частей chrome/ в репозитории, сеть лишь запасной путь.
+#
 # Ревизия 2026-09-21 (репозиторий после беседы 10.1):
 #  - миграций ДВАДЦАТЬ (0000…0019; 0019 — предложения и исполнитель: proposals, proposal_events, actor_user_id в element_versions и generation_log, 17.1; 0018 — участники и уведомления: notifications, notification_settings, довод member_invite в auth_tokens, 16.2; 0017 — обсуждение и рецензии: synthesis_members, comments, reviews, review_revisions, review_findings, 16.1; 0016 — редакции тарифов family/edition, 15.4; 0010 — язык интерфейса, 11.2; 0011 — метка тезиса, 12.1;
 #    0012 — замечание сторожа рекомендаций, 0013 — находки сторожа кодами, 12.3; 0014 — уникальная пара
@@ -63,9 +69,20 @@ CHROME_VERSION="${CHROME_VERSION:-131.0.6778.204}"
 PORT_SERVER="${PORT_SERVER:-3000}"
 PORT_CLIENT="${PORT_CLIENT:-5173}"
 
+# Исходящий прокси ЭТОЙ машины (2026-11-15). Сеть своей машины и сеть
+# хостера — разные вещи, поэтому прокси нигде не зашит: пусто — ищется в
+# окружении оболочки (https_proxy/HTTPS_PROXY/http_proxy/HTTP_PROXY), затем
+# в настройках apt (Acquire::http(s)::Proxy), затем в блоке прокси в .env
+# от прошлого прогона; не нашёлся — машина ходит наружу напрямую. off —
+# убрать блок прокси из .env. Только HTTP(S)-прокси: SOCKS встроенный fetch
+# Node не понимает.
+PHILOSYNTH_PROXY="${PHILOSYNTH_PROXY:-}"
+NO_PROXY_LOCAL="localhost,127.0.0.1,::1"
+
 # Пакеты: python3 и build-essential — для node-gyp, если пребилд canvas не
-# подойдёт; cairo/pango/libpng/librsvg — самому canvas в любом случае.
-APT_PKGS="postgresql redis-server git curl ca-certificates python3 build-essential \
+# подойдёт; cairo/pango/libpng/librsvg — самому canvas в любом случае;
+# unzip — Chrome из частей репозитория (chrome/).
+APT_PKGS="postgresql redis-server git curl ca-certificates unzip python3 build-essential \
 pkg-config libcairo2-dev libpango1.0-dev libpng-dev libjpeg-dev libgif-dev librsvg2-dev"
 
 C_OK=$'\033[32m'; C_SKIP=$'\033[90m'; C_WARN=$'\033[33m'; C_ERR=$'\033[31m'; C_0=$'\033[0m'
@@ -87,6 +104,107 @@ SUDO=""
 as_postgres() {
   if [ "$(id -u)" -eq 0 ]; then su postgres -c "$*"
   else sudo -u postgres bash -lc "$*"; fi
+}
+
+# ── Сеть: исходящий прокси ───────────────────────────────────────────────
+# Зачем это вообще. Сервер ходит к Anthropic и Stripe встроенным fetch, а
+# он переменные прокси ИГНОРИРУЕТ, пока не задан NODE_USE_ENV_PROXY=1
+# (проверено на 22.23: без флага fetch идёт мимо прокси, с флагом — через
+# него). Флаг понимают Node ≥ 22.21 и ≥ 24, поэтому при прокси планка
+# версии поднимается. Ещё три ловушки той же природы:
+#  - sudo сбрасывает окружение, и apt-get под ним прокси не видит;
+#  - curl к 127.0.0.1 при выставленном http_proxy без no_proxy уходит в
+#    прокси (curl 8.5 Ubuntu 24 петлю сам не исключает) — health-check
+#    врал бы «молчит» при живом сервере;
+#  - сервер узнаёт о прокси только из .env (его читают и start, и
+#    EnvironmentFile служб), поэтому прокси пишется туда отдельным блоком.
+# На хостинге блока нет: там переменные не выставлены, и сервер ходит
+# напрямую (deploy/philosynth-hosting.md §3).
+PROXY_URL=""; PROXY_SRC=""
+ENV_BLOCK_BEGIN="# >>> philosynth-ubuntu.sh: исходящий прокси этой машины"
+ENV_BLOCK_END="# <<< philosynth-ubuntu.sh: прокси"
+
+mask_url() { printf '%s' "$1" | sed -E 's#//[^/@]*@#//***@#'; }
+
+dotenv_proxy() {
+  [ -f "$REPO_DIR/.env" ] || return 0
+  awk -v b="$ENV_BLOCK_BEGIN" -v e="$ENV_BLOCK_END" \
+    '$0==b{f=1;next} $0==e{f=0} f&&/^HTTPS_PROXY=/{sub(/^HTTPS_PROXY=/,"");print;exit}' "$REPO_DIR/.env"
+}
+
+apt_proxy() {  # $1 = http | https
+  command -v apt-config >/dev/null 2>&1 || return 0
+  apt-config dump 2>/dev/null | awk -v k="Acquire::$1::Proxy" '$1==k{v=$2; gsub(/[";]/,"",v); print v; exit}'
+}
+
+# Приводит адрес к виду http(s)://…; пусто — «прокси нет».
+norm_proxy() {
+  local raw="${1%/}"
+  case "$raw" in
+    ""|DIRECT|direct|false) return 0 ;;
+    http://*|https://*) printf '%s' "$raw" ;;
+    *://*) ;;   # чужая схема — отказ в check_proxy_scheme, не здесь:
+                # die в подстановке $(…) погасил бы только подоболочку
+    *) printf 'http://%s' "$raw" ;;
+  esac
+}
+
+check_proxy_scheme() {
+  case "${1:-}" in
+    socks*) die "прокси $(mask_url "$1") — SOCKS. Встроенный fetch Node его не
+      понимает: укажите HTTP-вход того же прокси (у v2rayN и v2rayNG он есть рядом с SOCKS)" ;;
+    http://*|https://*|*"://"*) case "$1" in http://*|https://*) ;; *)
+      die "прокси $(mask_url "$1"): схема не http(s) — так не поедет" ;; esac ;;
+  esac
+}
+
+# PROXY_URL — для https-адресов (его и пишем в .env: сервер ходит только по
+# https), PROXY_HTTP — для http-адресов (apt-зеркала). Окружение и apt
+# задают их раздельно, и склеивать нельзя: прокси, пускающий только CONNECT,
+# отвечает 405 на http-зеркала (поймано прогоном за таким прокси).
+# PHILOSYNTH_PROXY задаёт оба сразу.
+PROXY_HTTP=""
+resolve_proxy() {
+  local rs="" rh="" src=""
+  if [ "$PHILOSYNTH_PROXY" = "off" ]; then PROXY_SRC="off"; return 0; fi
+  if [ -n "$PHILOSYNTH_PROXY" ]; then
+    rs="$PHILOSYNTH_PROXY"; rh="$PHILOSYNTH_PROXY"; src="PHILOSYNTH_PROXY"
+  elif [ -n "${https_proxy:-}${HTTPS_PROXY:-}${http_proxy:-}${HTTP_PROXY:-}" ]; then
+    rs="${https_proxy:-${HTTPS_PROXY:-}}"; rh="${http_proxy:-${HTTP_PROXY:-}}"; src="окружение оболочки"
+    # задан только http-прокси — по обычаю curl/npm он годится и для https
+    [ -z "$rs" ] && rs="$rh"
+  else
+    rs="$(apt_proxy https)"; rh="$(apt_proxy http)"; src="настройки apt"
+    [ -z "$rs" ] && rs="$rh"
+    if [ -z "$rs" ]; then rs="$(dotenv_proxy)"; rh=""; src=".env (прошлый прогон)"; fi
+  fi
+  check_proxy_scheme "$rs"; check_proxy_scheme "$rh"
+  PROXY_URL="$(norm_proxy "$rs")"; PROXY_HTTP="$(norm_proxy "$rh")"
+  [ -n "$PROXY_URL$PROXY_HTTP" ] || return 0
+  PROXY_SRC="$src"
+  local np="${no_proxy:-${NO_PROXY:-}}" h
+  for h in ${NO_PROXY_LOCAL//,/ }; do
+    case ",$np," in *",$h,"*) ;; *) np="${np:+$np,}$h" ;; esac
+  done
+  export no_proxy="$np" NO_PROXY="$np"
+  [ -n "$PROXY_URL" ]  && export https_proxy="$PROXY_URL" HTTPS_PROXY="$PROXY_URL"
+  [ -n "$PROXY_HTTP" ] && export http_proxy="$PROXY_HTTP" HTTP_PROXY="$PROXY_HTTP"
+  # fetch через прокси — с 22.21 (NODE_USE_ENV_PROXY); 24+ проходит и так
+  [ -n "$PROXY_URL" ] && NODE_MIN_MINOR=21
+  return 0
+}
+
+# Команда от root с прокси. Под root окружение уже экспортировано
+# resolve_proxy; под sudo его приходится передать явно — sudo его режет.
+# (Прежний `$SUDO -E bash` под root превращался в `-E bash` — «command not
+# found», та же грабля, что у as_postgres.)
+as_root() {
+  if [ "$(id -u)" -eq 0 ]; then "$@"; return; fi
+  local e=()
+  [ -n "$PROXY_URL" ]  && e+=(https_proxy="$PROXY_URL" HTTPS_PROXY="$PROXY_URL")
+  [ -n "$PROXY_HTTP" ] && e+=(http_proxy="$PROXY_HTTP" HTTP_PROXY="$PROXY_HTTP")
+  if [ ${#e[@]} -gt 0 ]; then sudo env "${e[@]}" no_proxy="$NO_PROXY" NO_PROXY="$NO_PROXY" "$@"
+  else sudo "$@"; fi
 }
 
 # systemd есть не всегда: в контейнере (docker, lxc, WSL1) его нет, и
@@ -120,6 +238,12 @@ doctor() {
     fi
   else
     skip "node не найден — поставлю"
+  fi
+
+  if [ -n "$PROXY_URL$PROXY_HTTP" ]; then
+    ok "исходящий прокси (из: $PROXY_SRC): https → $(mask_url "${PROXY_URL:-напрямую}"), http → $(mask_url "${PROXY_HTTP:-напрямую}"); мимо — $NO_PROXY_LOCAL"
+  else
+    skip "исходящего прокси нет — наружу напрямую (своя сеть за прокси? PHILOSYNTH_PROXY=http://адрес:порт)"
   fi
 
   has_systemd && ok "systemd есть — автозапуск возможен (команда systemd)" \
@@ -158,9 +282,9 @@ step_packages() {
   if [ -z "$missing" ]; then
     skip "все пакеты уже стоят"
   else
-    $SUDO apt-get update -qq
+    as_root apt-get update -qq
     # shellcheck disable=SC2086
-    $SUDO apt-get install -y -qq $missing >/dev/null
+    as_root apt-get install -y -qq $missing >/dev/null
     ok "поставлены:$missing"
   fi
 
@@ -168,9 +292,9 @@ step_packages() {
     skip "node $(node -v) годится"
   else
     # NodeSource, а не apt: в репозитории Ubuntu 24 лежит Node 18, а проекту
-    # нужен 22.18+ (см. package.json engines).
-    curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO -E bash - >/dev/null
-    $SUDO apt-get install -y -qq nodejs >/dev/null
+    # нужен 22.18+ (см. package.json engines); за прокси — 22.21+.
+    curl -fsSL https://deb.nodesource.com/setup_22.x | as_root bash - >/dev/null
+    as_root apt-get install -y -qq nodejs >/dev/null
     node_ok || die "node так и не встал в нужной версии: $(node -v 2>&1)"
     ok "node $(node -v) из NodeSource"
   fi
@@ -191,6 +315,24 @@ step_chrome() {
     return
   fi
   cd "$REPO_DIR" 2>/dev/null || cd "$HOME"
+  # Сначала — из частей в репозитории (chrome/, положены 2026-10-14): сеть
+  # не нужна вовсе, а через прокси 166 МБ — самое долгое во всей установке.
+  if [ -f chrome/SHA256SUMS ] && grep -q "Chrome for Testing ${CHROME_VERSION}" chrome/README.md 2>/dev/null; then
+    if (cd chrome && sha256sum -c --quiet SHA256SUMS) >/dev/null 2>&1; then
+      local tmp; tmp="$(mktemp -d)"
+      cat chrome/chrome-linux64.zip.part* > "$tmp/chrome.zip"
+      mkdir -p "$HOME/.cache/puppeteer/chrome/linux-${CHROME_VERSION}"
+      unzip -q -o "$tmp/chrome.zip" -d "$HOME/.cache/puppeteer/chrome/linux-${CHROME_VERSION}"
+      rm -rf "$tmp"
+      if [ -x "$(chrome_path)" ]; then
+        ok "Chrome ${CHROME_VERSION} из частей репозитория → $(chrome_path)"
+        return
+      fi
+      warn "части chrome/ распаковались не туда — ставлю из сети"
+    else
+      warn "части chrome/ не сошлись с chrome/SHA256SUMS (неполный клон?) — ставлю из сети"
+    fi
+  fi
   npx --yes @puppeteer/browsers install "chrome@${CHROME_VERSION}" \
       --path "$HOME/.cache/puppeteer" >/dev/null \
     || die "не удалось поставить Chrome ${CHROME_VERSION}"
@@ -317,12 +459,83 @@ step_repo() {
     ok "в .env дописаны TRUST_PROXY=false и HOST= (локальная сборка без прокси)"
   fi
 
+  step_proxy_dotenv
+
   grep -q '^ANTHROPIC_API_KEY=..*' .env \
     || warn "ANTHROPIC_API_KEY пуст — серверная генерация недоступна.
       Либо вписать ключ в .env, либо ввести свой в интерфейсе (BYO-Key)."
   grep -q '^STRIPE_SECRET_KEY=..*' .env \
     || warn "STRIPE_SECRET_KEY пуст — пополнение и подписки отвечают 503.
       Для проверки платного пути поднимите стенд: bash $0 stand"
+}
+
+# Блок прокси в .env (2026-11-15). TRUST_PROXY выше — про ВХОДЯЩИЙ прокси
+# (Caddy перед сервером), этот блок — про ИСХОДЯЩИЙ (сервер → Anthropic,
+# Stripe). Пишется только при найденном прокси, держится между метками и
+# правится целиком; чужой HTTPS_PROXY вне меток не трогается.
+strip_proxy_block() {
+  awk -v b="$ENV_BLOCK_BEGIN" -v e="$ENV_BLOCK_END" \
+    '$0==b{f=1;next} f&&$0==e{f=0;next} !f' .env > .env.tmp && mv .env.tmp .env
+}
+
+step_proxy_dotenv() {
+  local have; have="$(dotenv_proxy)"
+  if [ "$PROXY_SRC" = "off" ]; then
+    if grep -qxF "$ENV_BLOCK_BEGIN" .env; then
+      strip_proxy_block; ok "блок прокси убран из .env (PHILOSYNTH_PROXY=off) — сервер ходит напрямую"
+    else
+      skip "блока прокси в .env нет"
+    fi
+    return
+  fi
+  if [ -z "$PROXY_URL" ]; then
+    skip "исходящего прокси нет — сервер ходит наружу напрямую"
+    return
+  fi
+  if [ -z "$have" ] && grep -q '^HTTPS_PROXY=' .env; then
+    skip "в .env свой HTTPS_PROXY вне блока скрипта — не трогаю (NODE_USE_ENV_PROXY=1 там же?)"
+    return
+  fi
+  if [ "$have" = "$PROXY_URL" ]; then
+    skip "прокси в .env: $(mask_url "$PROXY_URL")"
+    return
+  fi
+  strip_proxy_block
+  # Серверу нужен только HTTPS_PROXY: к Anthropic и Stripe он ходит по https.
+  # пустая строка-отбивка — только если её ещё нет (иначе каждый цикл off/on копил бы их)
+  [ -n "$(tail -n 1 .env)" ] && printf '\n' >> .env
+  printf '%s\n# Только для своей сети. На хостинге блока быть не должно (philosynth-hosting.md §3).\nHTTPS_PROXY=%s\nNO_PROXY=%s\nNODE_USE_ENV_PROXY=1\n%s\n' \
+    "$ENV_BLOCK_BEGIN" "$PROXY_URL" "$NO_PROXY_LOCAL" "$ENV_BLOCK_END" >> .env
+  ok "в .env записан исходящий прокси $(mask_url "$PROXY_URL") (из: $PROXY_SRC) + NODE_USE_ENV_PROXY=1"
+}
+
+# Выход к API Anthropic — тем же путём, что у сервера: node, встроенный
+# fetch, окружение из .env. Ключ не шлётся; 401 значит «дошли».
+step_egress() {
+  head_ "Выход к API Anthropic"
+  cd "$REPO_DIR"
+  command -v node >/dev/null 2>&1 || { skip "node ещё нет — проверю в следующий раз"; return; }
+  local res code
+  res="$(set -a; . ./.env; set +a; node -e '
+    const base = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
+    fetch(base + "/v1/messages", { method: "POST", body: "{}",
+      headers: { "content-type": "application/json", "anthropic-version": "2023-06-01" },
+      signal: AbortSignal.timeout(20000) })
+    .then(async r => console.log(r.status + " " + (await r.text()).slice(0, 160).replace(/\s+/g, " ")))
+    .catch(e => console.log("ERR " + (e.cause?.code || e.name || e.message)));
+  ' 2>/dev/null || echo "ERR node")"
+  code="${res%% *}"
+  local via="напрямую"
+  grep -q '^NODE_USE_ENV_PROXY=1' .env && via="через прокси из .env"
+  case "$code" in
+    401) ok "API Anthropic достижим $via (401 без ключа — так и должно быть)" ;;
+    403) warn "API Anthropic ответил 403 ($via): ${res#* }
+      Обычно это отказ по стране выхода. Своя сеть за прокси — задайте его:
+      PHILOSYNTH_PROXY=http://адрес:порт bash $0   (у VirtualBox NAT хост — 10.0.2.2)" ;;
+    ERR) warn "до API Anthropic не дошли ($via): ${res#ERR }
+      Проверьте прокси (bash $0 doctor) или ANTHROPIC_BASE_URL в .env" ;;
+    *)   ok "API Anthropic отвечает $via (код $code)" ;;
+  esac
 }
 
 # ── 6. Зависимости ───────────────────────────────────────────────────────
@@ -637,10 +850,12 @@ EOF
 summary() { printf '\n\033[1mИтог:\033[0m created=%d skip=%d fail=%d\n' "$n_created" "$n_skip" "$n_fail"; }
 
 # ── main ─────────────────────────────────────────────────────────────────
+resolve_proxy
+
 case "${1:-setup}" in
   setup)
     doctor; step_packages; step_postgres; step_redis
-    step_repo; step_npm; step_chrome; step_db_content
+    step_repo; step_npm; step_egress; step_chrome; step_db_content
     summary
     printf '\nДальше:  bash %s start\n' "$0"
     printf 'И один раз: bash %s admin  — без администратора недостижимы\n' "$0"
@@ -648,7 +863,7 @@ case "${1:-setup}" in
     ;;
   start)   cmd_start;   summary ;;
   stop)    cmd_stop;    summary ;;
-  status)  cmd_status;  summary ;;
+  status)  cmd_status; step_egress; summary ;;
   doctor)  doctor;      summary ;;
   admin)   step_admin;  summary ;;
   stand)   shift; step_stand "${1:-}"; summary ;;
