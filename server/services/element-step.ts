@@ -27,6 +27,7 @@
  *
  * Модуль — лист графа импортов (его зовёт только plan-executor).
  */
+import { genLogActor } from "./actor-context.js"; // 17.1: исполнитель строки журнала
 import { and, eq, sql as dsql } from "drizzle-orm";
 
 import {
@@ -80,7 +81,8 @@ import { StreamError, classifyStreamError } from "./streaming-manager.js";
 import { clearStreamState } from "../ws/stream-state.js";
 
 import type { EditStep, ElementStepKind } from "@philosynth/shared/types/edit-plan";
-import type { HtmlSyncInfo, VersionOrigin } from "@philosynth/shared/types/elements";
+import type { ChangeSource, HtmlSyncInfo, VersionOrigin } from "@philosynth/shared/types/elements";
+import { proposalOriginOf } from "./proposal-links.js"; // 17.1
 import { tl } from "@philosynth/shared/i18n/t";
 
 /* ══ Ошибки ═══════════════════════════════════════════════════════════ */
@@ -212,6 +214,11 @@ function originOf(
   planId: string | null,
   stepIndex: number | null,
 ): VersionOrigin | null {
+  // 17.1: шаг по принятому предложению — происхождение 'proposal' (кто
+  // предложил, из чего, каким способом принято); исполнитель — actor версии
+  const prop = step.proposals?.[0];
+  if (prop && planId !== null && stepIndex !== null)
+    return proposalOriginOf(prop, planId, stepIndex, step.type === "refine_element" ? "refine_element" : "edit_element");
   const rec = step.recommendations?.[0];
   if (!rec) return null;
   return {
@@ -226,6 +233,10 @@ function originOf(
     stepType: step.type === "refine_element" ? "refine_element" : "edit_element",
   };
 }
+
+/** Источник версии по происхождению шага. */
+const sourceOfOrigin = (origin: VersionOrigin | null): ChangeSource =>
+  origin ? (origin.kind === "proposal" ? "proposal" : "recommendation") : "manual";
 
 async function writeField(
   synthesisId: string,
@@ -298,7 +309,7 @@ export async function applyElementEdit(
     throw new ElementStepError("NOT_FOUND", tl("server.elementStep.elementNotFound", "Элемент шага не найден: {kind} {elementId}", { kind: ELEMENT_STEP_KIND_LABELS[kind], elementId }));
   const origin = originOf(step, planId, stepIndex);
   return writeField(synthesisId, el, field, step.value, {
-    changeSource: origin ? "recommendation" : "manual",
+    changeSource: sourceOfOrigin(origin),
     origin,
   });
 }
@@ -422,7 +433,7 @@ export async function refineElement(
 
   const [genEntry] = await db
     .insert(generationLog)
-    .values({
+    .values({ ...genLogActor(),
       synthesisId,
       sectionKey: host,
       sectionLabel:
@@ -514,7 +525,7 @@ export async function refineElement(
 
   const origin = originOf(step, planId, stepIndex);
   const applied = await writeField(synthesisId, el, field, value, {
-    changeSource: origin ? "recommendation" : "manual",
+    changeSource: sourceOfOrigin(origin),
     origin,
   });
   return { ...applied, usage, outputChars: answer.length };

@@ -35,7 +35,14 @@
  * импорт допустим: модуль — лист графа (его импортируют только роуты),
  * цикла нет (грабля 2.1).
  */
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+
+import {
+  assertContentHash,
+  assertElementVersion,
+  sectionContentHash,
+  subsectionContentHash,
+} from "./expected-version.js";
 
 import { db } from "../db/index.js";
 import {
@@ -381,6 +388,10 @@ async function loadGlossaryRow(
 export interface ElementUpdateOptions {
   changeSource?: ChangeSource;
   origin?: VersionOrigin | null;
+  /** 17.1: ожидаемый номер версии элемента (max element_versions.version, 0 —
+   *  версий не было); не совпал — VersionConflictError (409 VERSION_CONFLICT).
+   *  undefined — без сверки (старые клиенты, шаги плана проверяют основу сами) */
+  expectedVersion?: unknown;
 }
 
 function emptySync(): HtmlSyncInfo {
@@ -619,6 +630,7 @@ export async function updateCategory(
 
   const { before, row, version } = await db.transaction(async (tx) => {
     const before = await loadCategoryRow(synthesisId, categoryId, tx);
+    await assertElementVersion(tx, "category", before.id, opts.expectedVersion); // 17.1
     const version = await createVersion(
       synthesisId, before.id, "category", snapshotOf(before),
       opts.changeSource ?? "manual", tx, opts.origin ?? null,
@@ -729,6 +741,7 @@ export async function updateCategoryEdge(
 
   const { row, version, reflexiveChanged } = await db.transaction(async (tx) => {
     const before = await loadEdgeRow(synthesisId, edgeId, tx);
+    await assertElementVersion(tx, "edge", before.id, opts.expectedVersion); // 17.1
     const version = await createVersion(
       synthesisId, before.id, "edge", snapshotOf(before),
       opts.changeSource ?? "manual", tx, opts.origin ?? null,
@@ -1100,6 +1113,7 @@ export async function updateThesis(
 
   const { before, row, version } = await db.transaction(async (tx) => {
     const before = await loadThesisRow(synthesisId, thesisId, tx);
+    await assertElementVersion(tx, "thesis", before.id, opts.expectedVersion); // 17.1
     const version = await createVersion(
       synthesisId, before.id, "thesis", snapshotOf(before),
       opts.changeSource ?? "manual", tx, opts.origin ?? null,
@@ -1221,6 +1235,7 @@ export async function updateGlossaryTerm(
 
   const { before, row, version } = await db.transaction(async (tx) => {
     const before = await loadGlossaryRow(synthesisId, termId, tx);
+    await assertElementVersion(tx, "glossary_term", before.id, opts.expectedVersion); // 17.1
     const version = await createVersion(
       synthesisId, before.id, "glossary_term", snapshotOf(before),
       opts.changeSource ?? "manual", tx, opts.origin ?? null,
@@ -1498,6 +1513,8 @@ export interface UpdateCapsuleResult {
 export async function updateCapsule(
   synthesisId: string,
   html: unknown,
+  /** 17.1: expectedHash — sha256 содержимого капсулы, к которому писалась правка */
+  opts: { expectedHash?: unknown } = {},
 ): Promise<UpdateCapsuleResult> {
   if (typeof html !== "string" || !html.trim())
     fail({ html: tl("server.elementEditor.htmlStringExpected", "ожидается непустая HTML-строка") });
@@ -1513,6 +1530,17 @@ export async function updateCapsule(
       .where(eq(syntheses.id, synthesisId))
       .limit(1);
     if (!synth) throw new ElementEditorError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
+    // 17.1: ожидаемая версия капсулы — хэш содержимого (строка синтеза под
+    // блокировкой: две одновременные правки с одним ожиданием не пройдут обе)
+    if (opts.expectedHash !== undefined && opts.expectedHash !== null) {
+      await tx.execute(sql`select 1 from ${syntheses} where ${syntheses.id} = ${synthesisId} for update`);
+      const [fresh] = await tx
+        .select({ capsule: syntheses.capsuleHtml })
+        .from(syntheses)
+        .where(eq(syntheses.id, synthesisId))
+        .limit(1);
+      assertContentHash(opts.expectedHash, await sectionContentHash(fresh?.capsule ?? ""), "capsule");
+    }
     const [capRow] = await tx
       .select()
       .from(sections)
@@ -1624,6 +1652,8 @@ export interface SubsectionSourceResult {
   name: string;
   /** Разметка содержимого без обёртки и <h4> — то, что уходит в поле правки */
   html: string;
+  /** 17.1: sha256 исходника — ожидаемая версия для PATCH (expectedHash) */
+  hash?: string;
   nested: string[];
   lock: SubsectionLock | null;
 }
@@ -1845,6 +1875,7 @@ export async function getSubsectionSource(
     sectionKey,
     name: source.name,
     html: source.html,
+    hash: await subsectionContentHash(source.html),
     nested: source.nested,
     lock: subsectionLockOf(sectionKey, row.html, subsectionName),
   };
@@ -1861,11 +1892,22 @@ export async function getSubsectionSource(
  * для graph/theses/glossary они ЗАМЕНЯЮТ гранулярные строки (новые id —
  * версии и обогащения элементов осиротели бы), а их таблицы и так заперты.
  */
+/** 17.1: ожидаемая версия и происхождение ручной правки подраздела. */
+export interface UpdateSubsectionOptions {
+  /** sha256 исходника подраздела (GET …/subsections/:name → hash), к
+   *  которому писалась правка; не совпал — 409 VERSION_CONFLICT */
+  expectedHash?: unknown;
+  /** шаг плана edit_subsection по принятому предложению: 'proposal' + origin */
+  changeSource?: ChangeSource;
+  origin?: VersionOrigin | null;
+}
+
 export async function updateSubsection(
   synthesisId: string,
   sectionKey: string,
   subsectionName: string,
   html: unknown,
+  opts: UpdateSubsectionOptions = {},
 ): Promise<UpdateSubsectionResult> {
   if (typeof html !== "string")
     throw new SubsectionEditError("VALIDATION_ERROR", tl("common.invalidData", "Невалидные данные"), {
@@ -1886,7 +1928,8 @@ export async function updateSubsection(
       .limit(1)
       .for("update");
     if (!row) throw new SubsectionEditError("NOT_FOUND", tl("common.sectionNotFound", "Раздел не найден"));
-    if (!readSubsectionSource(row.htmlContent, subsectionName))
+    const currentSource = readSubsectionSource(row.htmlContent, subsectionName);
+    if (!currentSource)
       throw subsectionNotFound(row.htmlContent, subsectionName);
     const lock = subsectionLockOf(sectionKey, row.htmlContent, subsectionName);
     if (lock)
@@ -1895,6 +1938,13 @@ export async function updateSubsection(
         ...(lock.table ? { table: lock.table } : {}),
         subsection: subsectionName,
       });
+    // 17.1: ожидаемая версия подраздела — хэш исходника; строка раздела уже
+    // под FOR UPDATE, вторая одновременная правка увидит новое содержимое
+    assertContentHash(
+      opts.expectedHash,
+      await subsectionContentHash(currentSource.html),
+      `${sectionKey}:${subsectionName}`,
+    );
     let result;
     try {
       result = replaceSubsectionContent(row.htmlContent, subsectionName, html);
@@ -1931,8 +1981,9 @@ export async function updateSubsection(
       row.id,
       "section",
       snapshotOf(row),
-      "manual",
+      opts.changeSource ?? "manual",
       tx,
+      opts.origin ?? null,
     );
     await tx
       .update(sections)

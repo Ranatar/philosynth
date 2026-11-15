@@ -31,7 +31,12 @@ export type EditStepType =
   | "delete_element"
   /** 15.2 (Д-71): удаление ПОДРАЗДЕЛА — цель «sectionKey:подраздел»;
    *  запертые подразделы (таблицы рендерера, капсула) не удаляются */
-  | "delete_subsection";
+  | "delete_subsection"
+  /** 17.1: ручная правка подраздела шагом плана — готовая разметка содержимого
+   *  (тот же сервис, что карандаш 9.2); цель — "sectionKey:имя". Нужна
+   *  принятию предложения «заменить текст подраздела»: второго механизма
+   *  исполнения, кроме плана правок, нет (врезка «Фаза 17») */
+  | "edit_subsection";
 
 /** Виды элементов, адресуемых шагами edit_element / refine_element.
  *  Значения и хелперы — packages/shared/constants/edit-steps.ts */
@@ -49,6 +54,36 @@ export interface StepRecommendationRef {
   op: string;
   /** Подраздел критики, где проблема установлена (столбец «Основание») */
   rationale: string;
+}
+
+/**
+ * 17.1: предложение, которое исполняет шаг (снимок, не ссылка — образец
+ * StepRecommendationRef 10.2). Ставит ТОЛЬКО служба предложений
+ * (`acceptProposal`); из тела клиента отбрасывается.
+ */
+export interface StepProposalRef {
+  id: string;
+  authorId: string | null;
+  /** direct | comment | review_finding | recommendation */
+  source: string;
+  sourceId: string | null;
+  /** рецензия замечания-источника (source = review_finding) */
+  sourceReviewId?: string | null;
+  /** replace | note */
+  kind: string;
+  rationale: string;
+}
+
+/**
+ * 17.1: ожидаемая версия адресата плана. `target` — "kind:elementId"
+ * (номер версии элемента), "sectionKey" либо "sectionKey:подраздел" либо
+ * "capsule" (хэш содержимого, как адрес Фазы 16). Не совпало при создании
+ * плана — 409 VERSION_CONFLICT с текущими значениями.
+ */
+export interface PlanExpectation {
+  target: string;
+  version?: number;
+  hash?: string;
 }
 
 export type EditStepStatus =
@@ -90,6 +125,11 @@ export interface EditStep {
   subsection?: string;
   /** 10.2: рекомендации, породившие шаг (у шага элемента — ровно одна) */
   recommendations?: StepRecommendationRef[];
+  /** 17.1: предложения, которые исполняет шаг (ставит служба предложений) */
+  proposals?: StepProposalRef[];
+  /** 17.1: почему шаг снят исполнителем, а не человеком: предложение шага
+   *  устарело (документ изменился после принятия) либо уже не открыто */
+  skipReason?: "proposal_stale" | "proposal_not_open";
   result?: StepResult;
   /** true = шаг добавлен автоматически каскадом */
   cascadeGenerated: boolean;
@@ -139,6 +179,8 @@ export interface SubsectionRegenAction {
   /** Пожелание к перегенерации (довод рекомендации) */
   note?: string;
   recommendations?: StepRecommendationRef[];
+  /** 17.1: предложение-источник (ставит только служба) */
+  proposals?: StepProposalRef[];
 }
 
 /** Правка поля элемента готовым текстом (10.2). */
@@ -149,6 +191,8 @@ export interface ElementEditAction {
   field?: string;
   value: string;
   recommendations?: StepRecommendationRef[];
+  /** 17.1: предложение-источник (ставит только служба) */
+  proposals?: StepProposalRef[];
 }
 
 /** Точечная генерация в поле элемента (10.2). */
@@ -161,6 +205,8 @@ export interface ElementRefineAction {
   /** «sectionKey:имя» подраздела для контекста модели */
   subsection?: string;
   recommendations?: StepRecommendationRef[];
+  /** 17.1: предложение-источник (ставит только служба) */
+  proposals?: StepProposalRef[];
 }
 
 /** 15.2 (Д-71): удаление элемента шагом плана (delete_element). */
@@ -179,6 +225,15 @@ export interface SubsectionDeleteAction {
 }
 
 /** Тело POST /syntheses/:id/plans (03-spec §2.6) */
+/** 17.1: ручная правка подраздела шагом плана: готовая разметка содержимого
+ *  (без обёртки data-section и <h4> — как PATCH …/subsections/:name). */
+export interface SubsectionEditAction {
+  /** "sectionKey:имя подраздела" */
+  target: string;
+  html: string;
+  proposals?: StepProposalRef[];
+}
+
 export interface CreatePlanRequest {
   regen: string[];
   remove: string[];
@@ -197,6 +252,13 @@ export interface CreatePlanRequest {
   subsectionDeletes?: SubsectionDeleteAction[];
   /** 10.2: рекомендации, породившие перегенерацию РАЗДЕЛА (ключ — sectionKey) */
   regenRecommendations?: Record<string, StepRecommendationRef[]>;
+  /** 17.1: ручная правка подраздела готовой разметкой (бесплатно) */
+  subsectionEdits?: SubsectionEditAction[];
+  /** 17.1: предложения у перегенерации РАЗДЕЛА (ключ раздела → снимки);
+   *  ставит только служба */
+  regenProposals?: Record<string, StepProposalRef[]>;
+  /** 17.1: ожидаемые версии адресатов плана (409 VERSION_CONFLICT) */
+  expected?: PlanExpectation[];
 }
 
 /** Тело PATCH /syntheses/:id/plans/:planId */

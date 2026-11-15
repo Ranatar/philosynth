@@ -134,6 +134,13 @@
       "when": 1794206614962,
       "tag": "0018_members_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794751733896,
+      "tag": "0019_proposals_actor",
+      "breakpoints": true
     }
   ]
 }

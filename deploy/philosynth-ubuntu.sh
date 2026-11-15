@@ -17,7 +17,7 @@
 # Повторный прогон на готовой машине обязан дать одни skip.
 #
 # Ревизия 2026-09-21 (репозиторий после беседы 10.1):
-#  - миграций ДЕВЯТНАДЦАТЬ (0000…0018; 0018 — участники и уведомления: notifications, notification_settings, довод member_invite в auth_tokens, 16.2; 0017 — обсуждение и рецензии: synthesis_members, comments, reviews, review_revisions, review_findings, 16.1; 0016 — редакции тарифов family/edition, 15.4; 0010 — язык интерфейса, 11.2; 0011 — метка тезиса, 12.1;
+#  - миграций ДВАДЦАТЬ (0000…0019; 0019 — предложения и исполнитель: proposals, proposal_events, actor_user_id в element_versions и generation_log, 17.1; 0018 — участники и уведомления: notifications, notification_settings, довод member_invite в auth_tokens, 16.2; 0017 — обсуждение и рецензии: synthesis_members, comments, reviews, review_revisions, review_findings, 16.1; 0016 — редакции тарифов family/edition, 15.4; 0010 — язык интерфейса, 11.2; 0011 — метка тезиса, 12.1;
 #    0012 — замечание сторожа рекомендаций, 0013 — находки сторожа кодами, 12.3; 0014 — уникальная пара
 #    родословной, 15.1; 0015 — довод смены адреса email_change, 15.3; 0016 — редакции тарифов, 15.4): 0006 — почта (9.1), 0007 — рекомендации
 #    критики (10.1), 0008 — дерево генеалогии импортированного файла
@@ -353,7 +353,7 @@ step_db_content() {
   set -a; . ./.env; set +a
 
   npx --yes drizzle-kit migrate
-  ok "миграции применены — 0000_initial … 0018 (drizzle ведёт учёт сам,
+  ok "миграции применены — 0000_initial … 0019 (drizzle ведёт учёт сам,
       повторный прогон no-op). 0004 — admin_audit (8.1), 0005 — ступень
       видимости вместо is_public (8.6), 0006 — почта: auth_tokens и
       mail_outbox (9.1), 0007 — рекомендации критики (10.1), 0008 — дерево

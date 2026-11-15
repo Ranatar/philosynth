@@ -88,7 +88,12 @@ async function handleExport(
     let body: string | Buffer;
     switch (fmt) {
       case "html":
-        body = await exportHTML(id, { includeLogs, ownerView });
+        body = await exportHTML(id, {
+          includeLogs,
+          ownerView,
+          // 17.1 (Д-85): стоимость чужих строк — по выгружающему; имён нет
+          audience: { names: false, viewerId: user.id, allCosts: ownerView },
+        });
         break;
       case "md":
         body = await exportMD(id);

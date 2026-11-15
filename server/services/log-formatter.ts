@@ -36,6 +36,8 @@
  * разделов; метка «промпт недоступен (импортированная запись)» остаётся
  * лишь когда и реконструкция невозможна (нет параметров/строки синтеза).
  */
+import { EXPORT_AUDIENCE, costVisible, loadActorRefs, shownActor, type LogAudience } from "./log-audience.js"; // 17.1
+import type { ActorRef } from "@philosynth/shared/types/elements";
 import { asc, eq } from "drizzle-orm";
 
 import { db } from "../db/index.js";
@@ -146,7 +148,11 @@ async function loadLogs(synthesisId: string): Promise<{
 
 /* ══ formatCtxLog [23318] ═════════════════════════════════════════════ */
 
-export async function formatCtxLog(synthesisId: string): Promise<string> {
+export async function formatCtxLog(
+  synthesisId: string,
+  /** 17.1: кто читает — имена исполнителей и стоимость чужих строк */
+  audience: LogAudience = EXPORT_AUDIENCE,
+): Promise<string> {
   const loaded = await loadLogs(synthesisId);
   if (!loaded) return tl("server.logFormatter.logEmpty", "Лог пуст. Сгенерируйте документ.");
   const { row, ctxRows, genCommon } = loaded;
@@ -158,6 +164,16 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
 
   const lines: string[] = [];
   lines.push(tl("server.logFormatter.logTitle", "PHILOSYNTH PRO — ЛОГ КОНТЕКСТА И ГЕНЕРАЦИИ"));
+
+  // 17.1: исполнители строк — «запустил X» у строк не-владельца (участникам)
+  const actorRefs = audience.names
+    ? await loadActorRefs(genLog.map((g) => g.actorUserId), row.userId)
+    : new Map<string, ActorRef>();
+  const startedByLine = (g: GenRow): string | null => {
+    const actor = shownActor(g.actorUserId, row.userId, actorRefs, audience);
+    return actor ? tl("server.logFormatter.startedBy", "  Запустил: {name}", { name: actor.name }) : null;
+  };
+  let hiddenCosts = 0;
   lines.push(tl("server.logFormatter.date", "Дата: ") + new Date().toLocaleString("ru-RU"));
   const verStr = formatVersion({
     base: row.versionBase,
@@ -342,6 +358,8 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
       if (acts.regen.length) lines.push(tl("server.logFormatter.regenerated", "  Перегенерировано: ") + acts.regen.join(", "));
       if (acts.remove.length) lines.push(tl("server.logFormatter.deleted", "  Удалено: ") + acts.remove.join(", "));
       if (acts.add.length) lines.push(tl("server.logFormatter.added", "  Добавлено: ") + acts.add.join(", "));
+      const versionBy = startedByLine(g); // 17.1
+      if (versionBy) lines.push(versionBy);
       lines.push("═".repeat(70));
       continue;
     }
@@ -482,6 +500,8 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
 
     lines.push("");
     lines.push("═══ " + label.toUpperCase() + " ═══");
+    const startedBy = startedByLine(g); // 17.1: строку запустил не владелец
+    if (startedBy) lines.push(startedBy);
 
     // --- Состав входа ---
     lines.push("");
@@ -755,9 +775,15 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
             ? " (" + (g.outputChars / g.outputTokens).toFixed(1) + tl("server.logFormatter.charsPerToken", " с/т)")
             : ""),
       );
-      lines.push(
-        tl("server.logFormatter.costPrefix", "  Стоимость: $") + cost.toFixed(4) + " (" + (cost * 100).toFixed(2) + "¢)",
-      );
+      // 17.1: стоимость строки не-владельца — владельцу и самому исполнителю
+      if (costVisible(g.actorUserId, row.userId, audience))
+        lines.push(
+          tl("server.logFormatter.costPrefix", "  Стоимость: $") + cost.toFixed(4) + " (" + (cost * 100).toFixed(2) + "¢)",
+        );
+      else {
+        hiddenCosts++;
+        lines.push(tl("server.logFormatter.costHidden", "  Стоимость: скрыта (оплатил исполнитель)"));
+      }
       if (errorText) {
         lines.push(tl("server.logFormatter.errorPrefix", "  ⚠ ОШИБКА: ") + errorText);
       }
@@ -819,7 +845,7 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         outC: a.outC + g.outputChars,
         inT: a.inT + g.inputTokens,
         outT: a.outT + g.outputTokens,
-        cost: a.cost + Number(g.costUsd),
+        cost: a.cost + (costVisible(g.actorUserId, row.userId, audience) ? Number(g.costUsd) : 0),
       }),
       { inC: 0, outC: 0, inT: 0, outT: 0, cost: 0 },
     );
@@ -836,6 +862,8 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
         (t.cost * 100).toFixed(2) +
         "¢)",
     );
+    if (hiddenCosts > 0)
+      lines.push(tl("server.logFormatter.costHiddenTotal", "  (без {count} строк, оплаченных другими участниками)", { count: hiddenCosts }));
     lines.push("═".repeat(70));
   }
 
@@ -850,8 +878,9 @@ export async function formatCtxLog(synthesisId: string): Promise<string> {
  */
 export async function formatCtxLogHTML(
   synthesisId: string,
+  audience: LogAudience = EXPORT_AUDIENCE,
 ): Promise<{ text: string; html: string }> {
-  const plain = await formatCtxLog(synthesisId);
+  const plain = await formatCtxLog(synthesisId, audience);
   // 14.2: сравнение с фразой на языке запроса, не с русским литералом
   if (plain === tl("server.logFormatter.logEmpty", "Лог пуст. Сгенерируйте документ."))
     return {
@@ -876,6 +905,7 @@ export async function formatCtxLogHTML(
  */
 export async function formatPromptsForExport(
   synthesisId: string,
+  audience: LogAudience = EXPORT_AUDIENCE,
 ): Promise<string | null> {
   const loaded = await loadLogs(synthesisId);
   if (!loaded) return null;
@@ -1040,7 +1070,9 @@ export async function formatPromptsForExport(
         (g.outputTokens || 0).toLocaleString("ru") +
         tl("server.logFormatter.tokens", " токенов"),
     );
-    lines.push(tl("server.logFormatter.costShort", "Стоимость: $") + Number(g.costUsd).toFixed(4));
+    if (costVisible(g.actorUserId, loaded.row.userId, audience)) // 17.1
+      lines.push(tl("server.logFormatter.costShort", "Стоимость: $") + Number(g.costUsd).toFixed(4));
+    else lines.push(tl("server.logFormatter.costHidden", "  Стоимость: скрыта (оплатил исполнитель)").trim());
     // ТЗ: информация о родительском контексте и бюджете раздела
     const meta = metaOf(g);
     const parentOv =

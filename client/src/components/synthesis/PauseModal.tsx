@@ -390,6 +390,8 @@ function planOpLabel(op: PlanOp | null | undefined): string {
         ? tl("synthesis.pauseModal.stepDelete", "Удаление: ")
         : op.action === "edit_element" || op.action === "refine_element"
           ? tl("synthesis.pauseModal.stepElementEdit", "Правка элемента: ")
+          : op.action === "edit_subsection" // 17.1
+            ? tl("synthesis.pauseModal.stepSubsectionEdit", "Правка подраздела: ")
           : tl("synthesis.pauseModal.stepRegenerate", "Перегенерация: ");
   return prefix + planOpTarget(op);
 }
@@ -401,7 +403,7 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
     .slice(0, 5)
     .map(
       (o) =>
-        (o.action === "add" ? "➕ " : isDeletion(o.action) ? "✕ " : o.action === "edit_element" || o.action === "refine_element" ? "✎ " : "↻ ") +
+        (o.action === "add" ? "➕ " : isDeletion(o.action) ? "✕ " : o.action === "edit_element" || o.action === "refine_element" || o.action === "edit_subsection" ? "✎ " : "↻ ") +
         planOpTarget(o),
     )
     .join(", ");

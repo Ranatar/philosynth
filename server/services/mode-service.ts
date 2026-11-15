@@ -43,6 +43,7 @@
  * бесед 2.1/2.2) — ПОБОЧНЫМ ЭФФЕКТОМ ИМПОРТА в низе модуля (прецедент —
  * setPlanResumeExecutor 2.2); импортёры: ws/handler, routes/modes.
  */
+import { genLogActor } from "./actor-context.js"; // 17.1: исполнитель строки журнала
 import { and, asc, eq, sql as dsql } from "drizzle-orm";
 
 import type { GenerationOrder } from "@philosynth/shared/types/synthesis";
@@ -493,7 +494,7 @@ export async function runMode(
   // genEntry [23046]; КВИРК: taskChars = prompt − ctx (в silent — целиком)
   const [genEntry] = await db
     .insert(generationLog)
-    .values({
+    .values({ ...genLogActor(),
       synthesisId,
       sectionKey: streamKey,
       sectionLabel: `${config.title} · ${param}`,
@@ -729,7 +730,7 @@ export async function regenerateModeSilent(
   // genEntry [23180]; КВИРК: taskChars = prompt.length ЦЕЛИКОМ
   const [genEntry] = await db
     .insert(generationLog)
-    .values({
+    .values({ ...genLogActor(),
       synthesisId,
       sectionKey: streamKey,
       sectionLabel: `${config.title} · ${target.paramValue} [каскад]`,

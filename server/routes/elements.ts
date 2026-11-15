@@ -31,6 +31,8 @@
  * 404 до запроса к PG. Ответы PATCH/rollback несут аддитивные version и
  * htmlSync (какие таблицы перерисованы / что не дошло до HTML — 02 §3 п.4).
  */
+import { audienceOf } from "../services/log-audience.js"; // 17.1
+import { expectedVersionErrorResponse } from "../services/expected-version.js";
 import { Hono } from "hono";
 
 import type { Context } from "hono";
@@ -211,6 +213,11 @@ elementsRoutes.get("/:id/categories", requireAuth, async (c) => {
    копия ownerEditGate 5.1 (её же брали sections 9.2 и recommendations 10.1)
    снята; кто имеет право edit — модуль прав services/capabilities. */
 
+/** 17.1: ожидаемая версия элемента из тела PATCH (нет — без сверки). */
+function expectedVersionOf(body: unknown): unknown {
+  return body && typeof body === "object" ? (body as { expectedVersion?: unknown }).expectedVersion : undefined;
+}
+
 async function readJson(c: Context): Promise<unknown> {
   try {
     return await c.req.json();
@@ -221,6 +228,9 @@ async function readJson(c: Context): Promise<unknown> {
 
 /** Ошибки сервисов → JSON 03 §4.3; прочее — наверх (500). */
 function serviceError(c: Context, err: unknown): Response {
+  // 17.1: ожидаемая версия не совпала → 409 VERSION_CONFLICT с текущим значением
+  const ev = expectedVersionErrorResponse(err);
+  if (ev) return c.json(ev.body, ev.status);
   if (err instanceof ElementEditorError) {
     if (err.code === "NOT_FOUND")
       return c.json({ error: err.message, code: "NOT_FOUND" }, 404);
@@ -269,7 +279,8 @@ elementsRoutes.patch("/:id/categories/:catId", requireAuth, async (c) => {
   const catId = c.req.param("catId");
   if (!isUuid(catId)) return c.json(invalidIdJson, 404);
   try {
-    const result = await updateCategory(id, catId, await readJson(c));
+    const body = await readJson(c);
+    const result = await updateCategory(id, catId, body, { expectedVersion: expectedVersionOf(body) });
     return c.json(result);
   } catch (err) {
     return serviceError(c, err);
@@ -301,7 +312,8 @@ elementsRoutes.patch("/:id/edges/:edgeId", requireAuth, async (c) => {
   const edgeId = c.req.param("edgeId");
   if (!isUuid(edgeId)) return c.json(invalidIdJson, 404);
   try {
-    const result = await updateCategoryEdge(id, edgeId, await readJson(c));
+    const body = await readJson(c);
+    const result = await updateCategoryEdge(id, edgeId, body, { expectedVersion: expectedVersionOf(body) });
     return c.json(result);
   } catch (err) {
     return serviceError(c, err);
@@ -369,7 +381,8 @@ elementsRoutes.patch("/:id/theses/:thesisId", requireAuth, async (c) => {
   const thesisId = c.req.param("thesisId");
   if (!isUuid(thesisId)) return c.json(invalidIdJson, 404);
   try {
-    const result = await updateThesis(id, thesisId, await readJson(c));
+    const body = await readJson(c);
+    const result = await updateThesis(id, thesisId, body, { expectedVersion: expectedVersionOf(body) });
     return c.json(result);
   } catch (err) {
     return serviceError(c, err);
@@ -401,7 +414,8 @@ elementsRoutes.patch("/:id/glossary/:termId", requireAuth, async (c) => {
   const termId = c.req.param("termId");
   if (!isUuid(termId)) return c.json(invalidIdJson, 404);
   try {
-    const result = await updateGlossaryTerm(id, termId, await readJson(c));
+    const body = await readJson(c);
+    const result = await updateGlossaryTerm(id, termId, body, { expectedVersion: expectedVersionOf(body) });
     return c.json(result);
   } catch (err) {
     return serviceError(c, err);
@@ -428,7 +442,11 @@ elementsRoutes.get(
         400,
       );
     if (!isUuid(elementId)) return c.json(invalidIdJson, 404);
-    const versions = await getVersionHistory(res.row.id, elementType, elementId);
+    // 17.1: имя исполнителя правки — участникам (модуль log-audience)
+    const versions = await getVersionHistory(res.row.id, elementType, elementId, {
+      ownerId: res.row.userId,
+      audience: audienceOf(res.capabilities, user.id),
+    });
     if (versions.length === 0) {
       // Версий нет: элемент существует → пустой список; иначе 404
       const row = await loadElementRow(res.row.id, elementType, elementId);
@@ -506,7 +524,9 @@ elementsRoutes.patch("/:id/capsule", requireAuth, async (c) => {
   const html =
     body && typeof body === "object" ? (body as { html?: unknown }).html : undefined;
   try {
-    const result = await updateCapsule(id, html);
+    const result = await updateCapsule(id, html, {
+      expectedHash: body && typeof body === "object" ? (body as { expectedHash?: unknown }).expectedHash : undefined,
+    });
     return c.json(result);
   } catch (err) {
     return serviceError(c, err);

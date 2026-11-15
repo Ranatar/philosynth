@@ -144,7 +144,7 @@ export function isAnonymizedUser(u: { id: string; email: string }): boolean {
   return u.email === anonymizedEmailFor(u.id);
 }
 
-async function loadAuthors(ids: Iterable<string | null>): Promise<Map<string, DiscussionAuthor>> {
+export async function loadAuthors(ids: Iterable<string | null>): Promise<Map<string, DiscussionAuthor>> {
   const uniq = [...new Set([...ids].filter((x): x is string => !!x))];
   const out = new Map<string, DiscussionAuthor>();
   if (uniq.length === 0) return out;
@@ -169,7 +169,7 @@ async function loadAuthors(ids: Iterable<string | null>): Promise<Map<string, Di
 }
 
 /** 16.2: действующие участники синтеза (для пометки «бывший участник»). */
-async function activeMemberIds(synthesisId: string): Promise<Set<string>> {
+export async function activeMemberIds(synthesisId: string): Promise<Set<string>> {
   const rows = await db
     .select({ userId: synthesisMembers.userId })
     .from(synthesisMembers)
@@ -177,7 +177,7 @@ async function activeMemberIds(synthesisId: string): Promise<Set<string>> {
   return new Set(rows.map((r) => r.userId));
 }
 
-function authorDto(
+export function authorDto(
   authorId: string | null,
   map: Map<string, DiscussionAuthor>,
   ownerId: string,
@@ -276,7 +276,7 @@ function cleanTarget(raw: unknown): AddressTarget {
 
 /** Цель → адрес и выдержка; объекта нет → 404. Чужой id (другого синтеза)
  *  индексом не найдётся — адрес строится только из объектов этой концепции. */
-async function resolveTarget(index: AddressIndex, raw: unknown): Promise<{ address: DiscussionAddress; excerpt: string }> {
+export async function resolveTarget(index: AddressIndex, raw: unknown): Promise<{ address: DiscussionAddress; excerpt: string }> {
   const target = cleanTarget(raw);
   const obj = findTarget(index, target);
   if (!obj) {
@@ -287,7 +287,7 @@ async function resolveTarget(index: AddressIndex, raw: unknown): Promise<{ addre
   return addressOf(index, obj);
 }
 
-function addressFromRow(raw: unknown): DiscussionAddress {
+export function addressFromRow(raw: unknown): DiscussionAddress {
   if (isDiscussionAddress(raw)) return raw;
   // форма неизвестна (строку могла записать более новая версия) — считаем удалённым
   return { kind: "synthesis", key: "", id: null, hash: "?", version: null };

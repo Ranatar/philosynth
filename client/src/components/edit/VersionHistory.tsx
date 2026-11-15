@@ -51,6 +51,7 @@ const SOURCE_LABELS = (): Record<ChangeSource, string> => ({
   auto_rename: tl("edit.versionHistory.sourceRename", "автозамена имени"),
   rollback: tl("edit.versionHistory.sourceRollback", "откат"),
   recommendation: tl("edit.versionHistory.sourceRecommendation", "по рекомендации критики"), // 10.2; «почему» (origin) — ниже, 10.3
+  proposal: tl("edit.versionHistory.sourceProposal", "по предложению участника"), // 17.1; карточка происхождения — клиент 17.2
 });
 
 const HIDDEN_FIELDS = new Set([

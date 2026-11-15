@@ -60,6 +60,9 @@ const TYPE_LABEL = (): Record<EditStep["type"], string> => ({
   // 15.2 (Д-71): удаления мельче раздела — бесплатные шаги
   delete_element: tl("edit.editPlanPanel.deleteElement", "Удалить элемент"),
   delete_subsection: tl("edit.editPlanPanel.deleteSubsection", "Удалить подраздел"),
+  // 17.1: ручная правка подраздела шагом плана (бесплатный); карточка шага
+  // с предложением и разворотом разметки — клиент 17.2
+  edit_subsection: tl("edit.editPlanPanel.editSubsection", "Вписать правку подраздела"),
 });
 
 function stepIcon(step: EditStep, running: boolean): string {

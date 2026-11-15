@@ -43,6 +43,7 @@
  *    (conceptContextBlockFull/Selective) — meta-synthesis-service (3.1),
  *    беседа 3.1 заменила стаб настоящим (buildMetaParentContext).
  */
+import { genLogActor, runWithActor } from "./actor-context.js"; // 17.1: исполнитель строки журнала и контекст слота
 import { and, eq, sql as dsql } from "drizzle-orm";
 
 import type {
@@ -156,7 +157,7 @@ import {
   saveElementsToDb,
 } from "./element-parser.js";
 import { tl } from "@philosynth/shared/i18n/t";
-import { canEditSynthesis } from "./capabilities.js"; // 16.1
+import { canEditSynthesisOf } from "./capabilities.js"; // 16.1
 import { pw, renderParseWarningsRu, sanitizeParseWarnings } from "./parse-warnings.js"; // 14.2 (Д-55): коды предупреждений
 import { streamLogError } from "./gen-log-labels.js"; // 14.2 (Д-62): коды подписей и ошибок журнала
 import type { GenLogLabel } from "@philosynth/shared/types/generation";
@@ -262,11 +263,23 @@ function activeRunsOfUser(userId: string): number {
  * Отмена активной генерации (WS cancel, §3.1): user-abort → abort
  * контроллера; финализация по правилам stop — внутри цикла генерации.
  */
-export function cancelGeneration(synthesisId: string, userId: string): boolean {
+export function cancelGeneration(
+  synthesisId: string,
+  userId: string,
+  /** 17.1 (Д-84): отменяет управляющий концепцией (владелец) — чужой запуск
+   *  на своей концепции он вправе остановить; право проверяет вызывающий
+   *  (модуль прав), здесь — только признак */
+  byManager = false,
+): boolean {
   const run = activeRuns.get(synthesisId);
-  if (!run || run.userId !== userId) return false;
+  if (!run || (!byManager && run.userId !== userId)) return false;
   run.abort.abort();
   return true;
+}
+
+/** Кто запустил идущую операцию (null — операции нет). */
+export function activeRunUserId(synthesisId: string): string | null {
+  return activeRuns.get(synthesisId)?.userId ?? null;
 }
 
 /* ══ Свой повтор пропущенной таблицы рекомендаций (12.3, Д-21) ════════ */
@@ -828,10 +841,16 @@ export async function withGenerationSlot(
     // has()-проверкой выше), квота подписки потребляется атомарно здесь.
     let billing: BillingDecision;
     if (billingOpts.free === true) {
-      await fn({ synthesisId, userId, signal: run.abort.signal, billing: FREE_SLOT_BILLING });
+      await runWithActor(userId, () =>
+        fn({ synthesisId, userId, signal: run.abort.signal, billing: FREE_SLOT_BILLING }),
+      );
       return;
     }
     try {
+      // 17.1: userId слота — ИСПОЛНИТЕЛЬ (кто нажал): владелец либо редактор.
+      // Квота, BYO-ключ и баланс — его; владелец за редактора не платит
+      // (решение пользователя 2026-11-05). Сторож 4bp: сюда не приходит
+      // row.userId синтеза
       billing = await resolveBilling(userId, {
         quota: billingOpts.quota ?? null,
         units: billingOpts.units ?? 1,
@@ -844,7 +863,9 @@ export async function withGenerationSlot(
       }
       throw err;
     }
-    await fn({ synthesisId, userId, signal: run.abort.signal, billing });
+    // 17.1: исполнитель — контекст всей операции под слотом (версии и
+    // строки журнала пишут его: element_versions / generation_log .actor_user_id)
+    await runWithActor(userId, () => fn({ synthesisId, userId, signal: run.abort.signal, billing }));
   } finally {
     activeRuns.delete(synthesisId);
   }
@@ -861,7 +882,7 @@ export async function generateSynthesis(
     userId,
     async (handle) => {
       const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
-      if (!canEditSynthesis(row, userId)) { // 16.1: одна проверка прав
+      if (!(await canEditSynthesisOf(row, userId))) { // 16.1: одна проверка прав; 17.1: с участием (редактор)
         throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
       }
       Object.assign(secCtx, opts.sectionContexts ?? {});
@@ -900,7 +921,7 @@ export async function resumeSynthesisFromPass(
     userId,
     async (handle) => {
       const { row, philosophers, secCtx } = await loadSynthesis(synthesisId);
-      if (!canEditSynthesis(row, userId)) { // 16.1: одна проверка прав
+      if (!(await canEditSynthesisOf(row, userId))) { // 16.1: одна проверка прав; 17.1: с участием (редактор)
         throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
       }
       Object.assign(secCtx, opts.sectionContexts ?? {});
@@ -1067,7 +1088,7 @@ export async function runGenerationPasses(
         .limit(1)
     : [];
   if (existingCommon.length === 0) {
-    await db.insert(generationLog).values({
+    await db.insert(generationLog).values({ ...genLogActor(),
       synthesisId,
       sectionKey: "_genCommon",
       sectionLabel: "Общие элементы",
@@ -1168,7 +1189,7 @@ export async function runGenerationPasses(
         : undefined;
       const [genEntry] = await db
         .insert(generationLog)
-        .values({
+        .values({ ...genLogActor(),
           synthesisId,
           sectionKey: sectionKeyJoined,
           // labelSuffix ' [возобновление]' — только в genEntry [25601]
@@ -1341,7 +1362,7 @@ export async function runGenerationPasses(
 
         if (e.kind === "user-abort") {
           // §3.1: pausedState не создаётся — финализация по правилам stop
-          await db.insert(generationLog).values({
+          await db.insert(generationLog).values({ ...genLogActor(),
             synthesisId,
             sectionKey: sectionKeyJoined,
             sectionLabel,
@@ -1393,7 +1414,7 @@ export async function runGenerationPasses(
           })
           .where(eq(syntheses.id, synthesisId));
         // _logPauseEvent('pause-marker', …) [25766]
-        await db.insert(generationLog).values({
+        await db.insert(generationLog).values({ ...genLogActor(),
           synthesisId,
           sectionKey: sectionKeyJoined,
           sectionLabel,
@@ -1570,7 +1591,7 @@ export async function runGenerationPasses(
           updatedAt: new Date(),
         })
         .where(eq(syntheses.id, synthesisId));
-      await db.insert(generationLog).values({
+      await db.insert(generationLog).values({ ...genLogActor(),
         synthesisId,
         sectionKey: sectionKeyJoined,
         sectionLabel,
@@ -1803,7 +1824,7 @@ async function ensureGenCommonForEdit(
     .limit(1);
   if (existing) return;
   const scaffoldLen = `ПАРАМЕТРЫ СИНТЕЗА:\n\n\nЗАДАНИЕ:...\n\n\n`.length;
-  await db.insert(generationLog).values({
+  await db.insert(generationLog).values({ ...genLogActor(),
     synthesisId,
     sectionKey: "_genCommon",
     sectionLabel: "Общие элементы",
@@ -2092,7 +2113,7 @@ export async function regenerateSection(
 
   // ТЗ selective-parent-context 10.2 [19984]: маркер миграции схемы
   if (hasConceptParticipants(p) && row.parentContextSchema === "monolithic") {
-    await db.insert(generationLog).values({
+    await db.insert(generationLog).values({ ...genLogActor(),
       synthesisId,
       sectionKey,
       sectionLabel: KEY_LABELS[sectionKey as keyof typeof KEY_LABELS] ?? sectionKey,
@@ -2198,7 +2219,7 @@ export async function regenerateSection(
   const expectedSubs = subsecMap[sectionKey] ?? [];
   const [genEntry] = await db
     .insert(generationLog)
-    .values({
+    .values({ ...genLogActor(),
       synthesisId,
       sectionKey,
       sectionLabel: `${def.title} [перегенерация]`,
@@ -2606,7 +2627,7 @@ export async function regenerateSubsection(
   /* ── 3. GenLog [20352–20376] ── */
   const [genEntry] = await db
     .insert(generationLog)
-    .values({
+    .values({ ...genLogActor(),
       synthesisId,
       sectionKey: `${sectionKey}:${subsectionName}`,
       sectionLabel: `${def.title} → ${subsectionName} [подраздел]`,
@@ -3066,7 +3087,7 @@ export async function addSection(
     const expectedSubs = subsecMap[sectionKey] ?? [];
     const [genEntry] = await db
       .insert(generationLog)
-      .values({
+      .values({ ...genLogActor(),
         synthesisId,
         sectionKey,
         sectionLabel: `${newDef.title} [добавлен]`,
@@ -3233,7 +3254,7 @@ export async function deleteSection(
   const deletedNum = secRow?.sectionNum;
 
   // ── Запись в лог [20845] ──
-  await db.insert(generationLog).values({
+  await db.insert(generationLog).values({ ...genLogActor(),
     synthesisId,
     sectionKey,
     sectionLabel:

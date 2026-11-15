@@ -189,7 +189,7 @@ try {
     let p = await probe(S);
     ok(p.O.doc === 200 && p.O.isOwner === true && p.O.role === "owner" && p.O.caps.edit && p.O.caps.manage && p.O.sec === 200 && p.O.cm === 200, "private: владелец — всё (owner, edit, manage, разделы, обсуждение)", p.O);
     ok(p.R.doc === 200 && p.R.isOwner === false && p.R.role === "reviewer" && p.R.caps.discuss && !p.R.caps.edit && !p.R.caps.manage && p.R.sec === 200 && p.R.cats === 200 && p.R.cm === 200, "private: рецензент читает концепцию целиком и обсуждение, isOwner=false, edit=false", p.R);
-    ok(p.E.doc === 200 && p.E.role === "editor" && p.E.caps.discuss && !p.E.caps.edit && p.E.sec === 200 && p.E.cm === 200, "private: редактор — как рецензент (edit=false до 17.1)", p.E);
+    ok(p.E.doc === 200 && p.E.role === "editor" && p.E.caps.discuss && p.E.caps.edit && !p.E.caps.manage && p.E.sec === 200 && p.E.cm === 200, "private: редактор — читает, обсуждает и ПРАВИТ (edit=true с 17.1), manage — нет", p.E);
     ok(p.I.doc === 403 && p.I.sec === 403 && p.I.cm === 403 && p.X.doc === 403 && p.X.sec === 403 && p.X.cats === 403 && p.X.cm === 403, "private: приглашённый (не принял) и чужой — 403 везде", { I: p.I, X: p.X });
     ok(p.G.doc === 403 && p.G.sec === 401 && p.G.cm === 401, "private: гость — 403 документ, 401 на requireAuth-маршрутах", p.G);
     // рецензент комментирует приватную; чужой — нет
@@ -215,7 +215,10 @@ try {
       u.api("GET", `/syntheses/${S}/recommendations`), u.api("POST", `/syntheses/${S}/lineage/link`, { parentName: "Чужая", parentSynthesisId: S2 }), u.api("POST", `/syntheses/${S}/regenerate/sum`, {}), u.api("GET", `/syntheses/${S}/logs/generation`),
     ]);
     const eR = await edits(R), eE = await edits(E), eX = await edits(X);
-    ok(eR.slice(0, 7).every((r) => r.status === 403) && eE.slice(0, 7).every((r) => r.status === 403) && eR[7].status === 403 && eE[7].status === 403 && (await O.api("GET", `/syntheses/${S}/logs/generation`)).status === 200, "рецензент и редактор: PATCH категории/синтеза, DELETE, duplicate, рекомендации, lineage link, перегенерация → 403; логи приватной — по флагам 8.6 (private → 403 участнику, 200 владельцу)", { R: eR.map((r) => r.status), E: eE.map((r) => r.status) });
+    // 17.1: редактор ПРАВИТ (категория, рекомендации, перегенерация, журнал — 200), manage ему закрыт
+    // (PATCH/DELETE синтеза, duplicate, lineage link — 403); рецензент — 403 всюду, как прежде
+    ok(eR.slice(0, 7).every((r) => r.status === 403) && eR[7].status === 403 && [1, 2, 3, 5].every((i) => eE[i].status === 403) && eE[0].status === 200 && [200, 404].includes(eE[4].status) && eE[6].status === 200 && eE[7].status === 200 && (await O.api("GET", `/syntheses/${S}/logs/generation`)).status === 200, "рецензент: все маршруты правки и управления → 403, логи приватной — 403; редактор (17.1): правка, рекомендации, перегенерация, журнал — 200, управление (PATCH/DELETE синтеза, duplicate, lineage link) — 403", { R: eR.map((r) => r.status), E: eE.map((r) => r.status) });
+    await waitIdle(O, S); // перегенерация «sum», запущенная редактором, должна закончиться до следующих проверок
     ok(eX.slice(0, 7).every((r) => r.status === 403), "чужой: те же маршруты → 403 (как до беседы)", eX.map((r) => r.status));
     const oCat = await O.api("PATCH", `/syntheses/${S}/categories/${cat.id}`, { definition: "правка владельца " + TAG });
     const oTitle = await O.api("PATCH", `/syntheses/${S}`, { title: "Заглавие " + TAG });

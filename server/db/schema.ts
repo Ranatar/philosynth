@@ -70,6 +70,7 @@ import type {
   ReviewFinding,
 } from "@philosynth/shared/types/discussion"; // 16.1
 import type { NotificationPayload } from "@philosynth/shared/types/notifications"; // 16.2
+import type { ProposalBase } from "@philosynth/shared/types/proposals"; // 17.1
 import type {
   ContextEntry as ContextLogEntry,
   ParentSpecLog,
@@ -625,7 +626,8 @@ export const elementVersions = pgTable(
     changeSource: text("change_source", {
       // +rollback (правка 2026-09-02): откат к версии сам создаёт версию
       // +recommendation (10.2): правка исполнила рекомендацию критики
-      enum: ["manual", "regenerated", "cascade", "auto_rename", "rollback", "recommendation"],
+      // +proposal (17.1): правка исполнила принятое предложение участника
+      enum: ["manual", "regenerated", "cascade", "auto_rename", "rollback", "recommendation", "proposal"],
     })
       .notNull()
       .default("manual"),
@@ -633,6 +635,11 @@ export const elementVersions = pgTable(
      *  породившей версию (номер, раунд, операция, основание, план, шаг).
      *  NULL — правка не по рекомендации */
     origin: jsonb("origin").$type<VersionOrigin>(),
+    /** 17.1 (миграция 0019): ИСПОЛНИТЕЛЬ правки — кто нажал (владелец либо
+     *  редактор). NULL — строка до 17.1 или запись службы без пользователя:
+     *  читается как владелец. Схему номера версии не меняет: номер считает,
+     *  что произошло, а не кто это сделал (врезка «Фаза 17») */
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -766,6 +773,10 @@ export const generationLog = pgTable(
       .$type<Record<string, unknown>>()
       .notNull()
       .default(sql`'{}'::jsonb`),
+    /** 17.1 (миграция 0019): ИСПОЛНИТЕЛЬ операции — кто нажал кнопку (он же
+     *  плательщик: resolveBilling получает его). NULL — строка до 17.1,
+     *  импорт либо запись службы: читается как владелец */
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1766,3 +1777,113 @@ export const notificationSettings = pgTable("notification_settings", {
     .notNull()
     .defaultNow(),
 });
+
+/* ───────────────────────── 2.40. proposals (17.1) ───────────────────── */
+
+/**
+ * Предложения изменений (беседа 17.1; 02 §2.40, врезка «Фаза 17» в 07).
+ * Предложение документ НЕ меняет: принять его значит собрать ЧЕРНОВИК плана
+ * правок (`plan_id`) и исполнить его существующим исполнителем; статус
+ * `accepted` ставит исполненный шаг. Адрес, выдержка и состояние — как у
+ * комментариев 16.1 (вычисляется при чтении). Основа: у элемента — номер
+ * версии (`base_version`), у раздела, подраздела, капсулы — хэш содержимого
+ * (`base_hash`); «устарело» (основа ≠ текущему) НЕ хранится — вычисляется.
+ * `source_id` — без FK: источник (комментарий, замечание рецензии, строка
+ * рекомендаций) может исчезнуть, предложение остаётся.
+ * CASCADE по синтезу; автор SET NULL (при анонимизации 7.1 строка users
+ * остаётся — автор читается «удалённым пользователем», как в 16.1).
+ */
+export const proposals = pgTable(
+  "proposals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+    address: jsonb("address").$type<DiscussionAddress>().notNull(),
+    addressKind: text("address_kind").notNull(),
+    addressKey: text("address_key").notNull(),
+    excerpt: text("excerpt").notNull().default(""),
+    /** Основа: { version, hash } на момент записи */
+    base: jsonb("base").$type<ProposalBase>().notNull(),
+    source: text("source", { enum: ["direct", "comment", "review_finding", "recommendation"] })
+      .notNull()
+      .default("direct"),
+    sourceId: uuid("source_id"),
+    /** Рецензия замечания-источника (source = review_finding) — снимок id */
+    sourceReviewId: uuid("source_review_id"),
+    kind: text("kind", { enum: ["replace", "note"] }).notNull(),
+    /** replace у элемента: правимое поле */
+    field: text("field"),
+    /** replace: готовое значение поля / разметка содержимого подраздела */
+    value: text("value"),
+    rationale: text("rationale").notNull().default(""),
+    status: text("status", { enum: ["open", "accepted", "rejected", "withdrawn", "closed"] })
+      .notNull()
+      .default("open"),
+    /** Черновик плана, в котором предложение стоит («принимается») */
+    planId: uuid("plan_id").references(() => editPlans.id, { onDelete: "set null" }),
+    decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    /** Слово решившего (отклонение, закрытие) — обычный текст */
+    note: text("note").notNull().default(""),
+    closeReason: text("close_reason", { enum: ["member_removed", "superseded", "outdated", "manual"] }),
+    /** Новое предложение поверх текущего, заведённое взамен этого */
+    supersededBy: uuid("superseded_by"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_proposals_synthesis_created").on(t.synthesisId, t.createdAt),
+    index("idx_proposals_address").on(t.synthesisId, t.addressKind, t.addressKey),
+    index("idx_proposals_author").on(t.authorId),
+    index("idx_proposals_plan").on(t.planId),
+    check("proposals_source_check", sql`${t.source} IN ('direct','comment','review_finding','recommendation')`),
+    check("proposals_kind_check", sql`${t.kind} IN ('replace','note')`),
+    check("proposals_status_check", sql`${t.status} IN ('open','accepted','rejected','withdrawn','closed')`),
+    check(
+      "proposals_close_reason_check",
+      sql`${t.closeReason} IS NULL OR ${t.closeReason} IN ('member_removed','superseded','outdated','manual')`,
+    ),
+  ],
+);
+
+/* ────────────────────── 2.41. proposal_events (17.1) ────────────────── */
+
+/**
+ * Журнал событий предложения (беседа 17.1; 02 §2.41): кто и что с ним
+ * сделал. Пишется той же транзакцией, что смена состояния. Фраза не
+ * хранится (правило 14.2) — код `type` и параметры `payload`.
+ */
+export const proposalEvents = pgTable(
+  "proposal_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    proposalId: uuid("proposal_id")
+      .notNull()
+      .references(() => proposals.id, { onDelete: "cascade" }),
+    synthesisId: uuid("synthesis_id")
+      .notNull()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
+    actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+    type: text("type", {
+      enum: ["created", "plan_drafted", "plan_released", "accepted", "rejected", "withdrawn", "closed", "rebased"],
+    }).notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_proposal_events_proposal").on(t.proposalId, t.createdAt),
+    check(
+      "proposal_events_type_check",
+      sql`${t.type} IN ('created','plan_drafted','plan_released','accepted','rejected','withdrawn','closed','rebased')`,
+    ),
+  ],
+);

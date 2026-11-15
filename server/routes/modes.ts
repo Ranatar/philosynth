@@ -53,7 +53,7 @@ import {
 import type { GenerationOrder } from "@philosynth/shared/types/synthesis";
 import type { ModeResult } from "@philosynth/shared/types/modes";
 import { tl } from "@philosynth/shared/i18n/t";
-import { editGate } from "./edit-gate.js"; // 16.1
+import { editGate, editRightFirst } from "./edit-gate.js"; // 16.1
 
 export const modesRoutes = new Hono<AuthEnv>();
 
@@ -150,7 +150,7 @@ modesRoutes.get("/:id/modes/:modeKey", requireAuth, async (c) => {
 
 /* ── POST /syntheses/:id/modes/:modeKey/run — запуск режима (§2.7) ──── */
 
-modesRoutes.post("/:id/modes/:modeKey/run", requireAuth, billingCheck({ quota: "modes" }), async (c) => {
+modesRoutes.post("/:id/modes/:modeKey/run", requireAuth, editRightFirst, billingCheck({ quota: "modes" }), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const modeKey = c.req.param("modeKey");
@@ -218,6 +218,7 @@ modesRoutes.delete("/:id/modes/:modeKey/:index", requireAuth, async (c) => {
 modesRoutes.post(
   "/:id/modes/:modeKey/:index/regenerate",
   requireAuth,
+  editRightFirst,
   billingCheck({ quota: "modes" }), // 6.1
   async (c) => {
     const user = c.get("user");

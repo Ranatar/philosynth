@@ -542,15 +542,29 @@ CREATE TABLE element_versions (
   version      INT NOT NULL,
   data         JSONB NOT NULL,  -- полный снимок элемента до изменения
   change_source TEXT NOT NULL DEFAULT 'manual',
-    -- 'manual'|'regenerated'|'cascade'|'auto_rename'|'rollback'|'recommendation'
-    -- (текст без CHECK; 'recommendation' — 10.2: правка исполнила рекомендацию критики)
+    -- 'manual'|'regenerated'|'cascade'|'auto_rename'|'rollback'|'recommendation'|'proposal'
+    -- (текст без CHECK; 'recommendation' — 10.2: правка исполнила рекомендацию критики;
+    --  'proposal' — 17.1: шаг плана исполнил принятое предложение участника, §2.40)
   origin       JSONB,           -- 10.2 (миграция 0009): «почему изменилось» — снимок
                                 -- рекомендации, породившей версию: { kind:'recommendation',
                                 -- recommendationId, round, num, op, rationale, planId,
                                 -- stepIndex, stepType }. NULL — правка не по рекомендации.
                                 -- Снимок, а не FK: строки 'new' при перечитке таблицы
                                 -- пересобираются, план может быть удалён — ответ на
-                                -- «почему» обязан пережить и то и другое
+                                -- «почему» обязан пережить и то и другое.
+                                -- 17.1: либо снимок ПРЕДЛОЖЕНИЯ — { kind:'proposal',
+                                -- proposalId, authorId, source, sourceId, proposalKind,
+                                -- rationale, planId, stepIndex, stepType: edit_element |
+                                -- edit_subsection | refine_element } (shared ProposalOrigin;
+                                -- VersionOrigin — объединение, различать по kind)
+  actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                                -- 17.1 (миграция 0019): ИСПОЛНИТЕЛЬ правки — чей запрос
+                                -- (HTTP / WS / слот генерации) записал версию. NULL — строка
+                                -- до Фазы 17 либо импорт: исполнитель — владелец. Пишет
+                                -- createVersion из контекста запроса (services/
+                                -- actor-context.ts, AsyncLocalStorage) — вызывающие его не
+                                -- передают. Имя отдаётся участникам и только у строк
+                                -- не-владельца (ElementVersion.actor, services/log-audience)
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -666,7 +680,17 @@ CREATE TABLE generation_log (
   --   подпись/ошибку по коду под языком запроса (gen-log-labels.ts), запись
   --   без кода — колонки как есть. pause_marker/resume_marker несут logLabel
   --   { kind: 'pass', sections }
+  -- 17.1: version_marker плана с шагами по предложениям несёт metadata.proposals
+  --   [{ id, authorId, source }] — ссылки, без текста
   metadata       JSONB NOT NULL DEFAULT '{}',
+  -- 17.1 (миграция 0019): ИСПОЛНИТЕЛЬ строки — кто запустил генерацию / план /
+  -- возобновление (он же плательщик: слот withGenerationSlot берётся на него).
+  -- NULL — строка до Фазы 17 либо импорт: исполнитель — владелец. Каждая вставка
+  -- несёт ...genLogActor() (сторож 4bp). Показ: «Запустил: X» и GenLogEntry.actor —
+  -- только у строк не-владельца и только участникам (читателю по show_logs имён
+  -- нет, выгрузки имён не несут); стоимость такой строки — владельцу и самому
+  -- исполнителю, остальным скрыта (costHidden)
+  actor_user_id  UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -1608,6 +1632,100 @@ CREATE TABLE notification_settings (
 `emailed_at`, `digest_sent_at` ставится — той же транзакцией, что
 постановка письма. Отключённые категории в сводку не входят (и
 помечаются вошедшими — иначе держали бы получателя кандидатом).
+
+### 2.40. proposals
+
+Предложения изменений (беседа 17.1, миграция 0019): адресованное (адрес
+Фазы 16, §2.34) изменение документа от участника с правом обсуждения.
+Исполняет предложение ТОЛЬКО план правок (§2.13): принятие создаёт
+черновик плана со ссылкой в шаге и ставит `plan_id`; `accepted` пишет
+исполнитель плана после успешного шага.
+
+```sql
+CREATE TABLE proposals (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  synthesis_id     UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
+  author_id        UUID REFERENCES users(id) ON DELETE SET NULL,
+  address          JSONB NOT NULL,   -- DiscussionAddress на момент записи
+  address_kind     TEXT NOT NULL,    -- section | subsection | category | edge | thesis |
+                                     -- glossary_term (документу целиком — комментарий, не предложение)
+  address_key      TEXT NOT NULL,
+  excerpt          TEXT NOT NULL DEFAULT '',
+  base             JSONB NOT NULL,   -- { version, hash } адресата на момент записи.
+                                     -- «Устарело» (stale) НЕ хранится: вычисляется при чтении у
+                                     -- открытого предложения. У ЭЛЕМЕНТА основа — номер версии
+                                     -- (любая правка элемента после записи, и другого поля тоже);
+                                     -- у раздела и подраздела — хэш содержимого; адресат удалён —
+                                     -- устарело (proposal-links.baseIsCurrent — одно место правила)
+  source           TEXT NOT NULL DEFAULT 'direct',
+                                     -- direct | comment | review_finding | recommendation
+  source_id        UUID,             -- id комментария / замечания рецензии / рекомендации
+                                     -- (проверяется в этом синтезе при создании; без FK —
+                                     -- источник может быть удалён, предложение живёт)
+  source_review_id UUID,             -- рецензия замечания-источника (снимок id)
+  kind             TEXT NOT NULL,    -- replace (готовое значение) | note (только обоснование)
+  field            TEXT,             -- replace у элемента: правимое поле (белый список 10.2)
+  value            TEXT,             -- replace: значение поля либо разметка содержимого
+                                     -- подраздела (чистится sanitizeSectionHtml при записи)
+  rationale        TEXT NOT NULL DEFAULT '',   -- обычный текст (plainText 16.1)
+  status           TEXT NOT NULL DEFAULT 'open',
+                                     -- open | accepted | rejected | withdrawn | closed
+  plan_id          UUID REFERENCES edit_plans(id) ON DELETE SET NULL,
+                                     -- черновик плана, в котором предложение стоит; у
+                                     -- accepted — исполнивший план
+  decided_by       UUID REFERENCES users(id) ON DELETE SET NULL,
+  decided_at       TIMESTAMPTZ,
+  note             TEXT NOT NULL DEFAULT '',   -- слово решившего (отклонение, закрытие)
+  close_reason     TEXT,             -- member_removed | superseded | outdated | manual
+  superseded_by    UUID,             -- новое предложение поверх текущего, заведённое взамен
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT proposals_source_check CHECK (source IN ('direct','comment','review_finding','recommendation')),
+  CONSTRAINT proposals_kind_check   CHECK (kind IN ('replace','note')),
+  CONSTRAINT proposals_status_check CHECK (status IN ('open','accepted','rejected','withdrawn','closed')),
+  CONSTRAINT proposals_close_reason_check CHECK (close_reason IS NULL OR close_reason IN
+    ('member_removed','superseded','outdated','manual'))
+);
+CREATE INDEX idx_proposals_synthesis_created ON proposals(synthesis_id, created_at);
+CREATE INDEX idx_proposals_address ON proposals(synthesis_id, address_kind, address_key);
+CREATE INDEX idx_proposals_author ON proposals(author_id);
+CREATE INDEX idx_proposals_plan ON proposals(plan_id);
+```
+
+Переходы статуса: `open → accepted` — только `settleProposalStep`
+(исполнитель плана, после шага; решивший — исполнитель); `open → rejected`
+— только действие человека с правом правки (`rejectProposal`; машина не
+отклоняет); `open → withdrawn` — автор; `open → closed` — правящий
+(`manual` | `outdated`), исключение участника или удаление его аккаунта
+(`member_removed`, той же транзакцией), «новое поверх текущего»
+(`superseded` + `superseded_by`). Шаг плана не состоялся (план удалён или
+остановлен, шаг снят человеком либо исполнителем из-за устаревания) —
+статус НЕ меняется, `plan_id` обнуляется, событие `plan_released`.
+
+### 2.41. proposal_events
+
+Журнал событий предложения (беседа 17.1): кто и что с ним сделал. Пишется
+той же транзакцией, что смена состояния. Фраза не хранится (правило 14.2)
+— код `type` и параметры `payload`.
+
+```sql
+CREATE TABLE proposal_events (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  proposal_id  UUID NOT NULL REFERENCES proposals(id) ON DELETE CASCADE,
+  synthesis_id UUID NOT NULL REFERENCES syntheses(id) ON DELETE CASCADE,
+  actor_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+  type         TEXT NOT NULL,
+    -- created | plan_drafted { planId, method } | plan_released { planId?, reason:
+    --   plan_deleted | plan_stopped | step_skipped | step_failed | stale | not_open |
+    --   member_removed } | accepted { planId, stepIndex, stepType } | rejected |
+    --   withdrawn | closed { reason, to? } | rebased { from }
+  payload      JSONB NOT NULL DEFAULT '{}',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT proposal_events_type_check CHECK (type IN
+    ('created','plan_drafted','plan_released','accepted','rejected','withdrawn','closed','rebased'))
+);
+CREATE INDEX idx_proposal_events_proposal ON proposal_events(proposal_id, created_at);
+```
 
 ## 3. Извлечение гранулярных элементов из HTML
 

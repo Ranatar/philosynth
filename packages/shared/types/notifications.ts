@@ -95,6 +95,15 @@ export interface NotificationActor {
 export interface NotificationPayload {
   role?: MemberRole;
   excerpt?: string;
+  /** 17.1, proposal_created: вид предложения (replace | note) */
+  kind?: string;
+  /** 17.1, proposal_created: id устаревшего предложения, поверх которого
+   *  заведено это */
+  rebasedFrom?: string;
+  /** 17.1, proposal_decided: accepted | rejected | closed */
+  decision?: string;
+  /** 17.1, proposal_decided (accepted): план, исполнивший предложение */
+  planId?: string;
 }
 
 export interface Notification {

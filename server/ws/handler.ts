@@ -77,8 +77,9 @@ import {
 import { connectionManager } from "./connection-manager.js";
 import { getStreamState } from "./stream-state.js";
 import { tl } from "@philosynth/shared/i18n/t";
-import { canEditSynthesis } from "../services/capabilities.js"; // 16.1
+import { canEditSynthesisOf, canManageSynthesis } from "../services/capabilities.js"; // 16.1; 17.1
 import { runWithLocale } from "../i18n/locale.js"; // 14.1 (Д-53): язык пользователя в обработчиках WS
+import { runWithActor } from "../services/actor-context.js"; // 17.1
 
 /** Типы клиентских сообщений (валидация до диспетчеризации). */
 const CLIENT_MESSAGE_TYPES: ReadonlySet<WsClientMessage["type"]> = new Set([
@@ -155,7 +156,7 @@ async function handleSubscribeGeneration(
   }
 
   const [row] = await db
-    .select({ userId: syntheses.userId, visibility: syntheses.visibility, status: syntheses.status })
+    .select({ id: syntheses.id, userId: syntheses.userId, visibility: syntheses.visibility, status: syntheses.status })
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
@@ -168,7 +169,7 @@ async function handleSubscribeGeneration(
     });
     return;
   }
-  if (!canEditSynthesis(row, user.id)) { // 16.1: одна проверка прав
+  if (!(await canEditSynthesisOf(row, user.id))) { // 16.1: одна проверка прав; 17.1: с участием (редактор)
     connectionManager.send(ws, {
       type: "stream_error",
       synthesisId,
@@ -239,6 +240,7 @@ async function handleResume(
   if (!isUuid(synthesisId)) return;
   const [row] = await db
     .select({
+      id: syntheses.id,
       userId: syntheses.userId,
       visibility: syntheses.visibility,
       status: syntheses.status,
@@ -250,7 +252,7 @@ async function handleResume(
     .from(syntheses)
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
-  if (!row || !canEditSynthesis(row, user.id)) return; // чужой/несуществующий — молча (16.1: одна проверка прав)
+  if (!row || !(await canEditSynthesisOf(row, user.id))) return; // чужой/несуществующий — молча (16.1: одна проверка прав)
 
   const state = await getStreamState(synthesisId);
   if (state) {
@@ -359,6 +361,22 @@ async function handleResumePlan(
   }
 }
 
+/** 17.1 (Д-84): отмена чужого запуска управляющим концепцией (владельцем). */
+async function cancelAsManager(synthesisId: string, userId: string): Promise<void> {
+  try {
+    const [own] = await db
+      .select({ userId: syntheses.userId })
+      .from(syntheses)
+      .where(eq(syntheses.id, synthesisId))
+      .limit(1);
+    if (own && canManageSynthesis(own, userId) && cancelGeneration(synthesisId, userId, true)) return;
+  } catch (err) {
+    console.warn(`[ws] cancel ${synthesisId}:`, err);
+    return;
+  }
+  console.warn(`[ws] user=${userId}: cancel ${synthesisId} — активной генерации нет`);
+}
+
 function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): void {
   switch (msg.type) {
     case "ping":
@@ -378,6 +396,12 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
       // §3.1: user-abort — pausedState не создаётся, частичный результат
       // финализируется по правилам stop (внутри generation-service)
       const cancelled = cancelGeneration(msg.synthesisId, user.id);
+      // 17.1 (Д-84): запуск чужой (редактора) — владелец концепции вправе его
+      // остановить; «управляет ли» решает модуль прав
+      if (!cancelled && isUuid(msg.synthesisId)) {
+        void cancelAsManager(msg.synthesisId, user.id);
+        return;
+      }
       if (!cancelled) {
         console.warn(
           `[ws] user=${user.id}: cancel ${msg.synthesisId} — активной генерации нет`,
@@ -468,12 +492,12 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
           if (!isUuid(msg.synthesisId) || !isUuid(msg.elementId))
             throw new GenerationError("NOT_FOUND", tl("server.ws.handler.synthesisOrElementNotFound", "Синтез или элемент не найден"));
           const [row] = await db
-            .select({ userId: syntheses.userId, visibility: syntheses.visibility })
+            .select({ id: syntheses.id, userId: syntheses.userId, visibility: syntheses.visibility })
             .from(syntheses)
             .where(eq(syntheses.id, msg.synthesisId))
             .limit(1);
           if (!row) throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
-          if (!canEditSynthesis(row, user.id)) // 16.1: одна проверка прав
+          if (!(await canEditSynthesisOf(row, user.id))) // 16.1: одна проверка прав; 17.1: с участием (редактор)
             throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
           await startEnrichment(
             msg.synthesisId, user.id, msg.elementType, msg.elementId, msg.enrichmentType,
@@ -495,12 +519,12 @@ function handleMessage(ws: WSContext, user: AuthUser, msg: WsClientMessage): voi
           if (!isUuid(msg.synthesisId))
             throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
           const [row] = await db
-            .select({ userId: syntheses.userId, visibility: syntheses.visibility })
+            .select({ id: syntheses.id, userId: syntheses.userId, visibility: syntheses.visibility })
             .from(syntheses)
             .where(eq(syntheses.id, msg.synthesisId))
             .limit(1);
           if (!row) throw new GenerationError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
-          if (!canEditSynthesis(row, user.id)) // 16.1: одна проверка прав
+          if (!(await canEditSynthesisOf(row, user.id))) // 16.1: одна проверка прав; 17.1: с участием (редактор)
             throw new GenerationError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
           await startTransform(msg.synthesisId, user.id, msg.direction);
         },
@@ -564,7 +588,7 @@ export function registerWebSocket(app: Hono<AuthEnv>): {
         );
         // 14.1 (Д-53): обработчики WS живут вне контекста requestLocale —
         // язык пользователя (users.ui_locale) ставится здесь явно
-        if (resumeId) void runWithLocale(user.uiLocale, () => handleResume(ws, user, resumeId));
+        if (resumeId) void runWithLocale(user.uiLocale, () => runWithActor(user.id, () => handleResume(ws, user, resumeId)));
       },
 
       onMessage(evt, ws) {
@@ -576,7 +600,9 @@ export function registerWebSocket(app: Hono<AuthEnv>): {
           console.warn(`[ws] user=${user.id}: невалидное сообщение проигнорировано`);
           return;
         }
-        runWithLocale(user.uiLocale, () => handleMessage(ws, user, msg));
+        // 17.1: и исполнитель — версии и журнал операций, запущенных по WS,
+        // несут того, кто прислал сообщение
+        runWithLocale(user.uiLocale, () => runWithActor(user.id, () => handleMessage(ws, user, msg)));
       },
 
       onClose(_evt, ws) {

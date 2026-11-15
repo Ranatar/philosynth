@@ -57,6 +57,7 @@
  * из generation-слота (finishPlanRun) — во всех трёх прогонах: execute,
  * confirm_step, resume. Внутри слота остаются шаги и каскад.
  */
+import { genLogActor } from "./actor-context.js"; // 17.1: исполнитель строки журнала
 import { and, asc, eq, inArray, sql as dsql } from "drizzle-orm";
 
 import {
@@ -87,7 +88,16 @@ import {
   toApiPlan,
 } from "./edit-planner.js";
 import { applyElementEdit, refineElement } from "./element-step.js";
-import { deleteElement, deleteSubsection } from "./element-editor.js"; // 15.2 (Д-71)
+import { deleteElement, deleteSubsection, updateSubsection } from "./element-editor.js"; // 15.2 (Д-71); 17.1: edit_subsection
+import {
+  proposalOriginOf,
+  proposalRefsOf,
+  proposalStepBlockers,
+  releaseProposalsOfPlan,
+  settleProposalStep,
+  type ProposalReleaseReason,
+} from "./proposal-links.js"; // 17.1
+import { notifySafe } from "./notifications.js"; // 17.1
 import {
   addSection,
   deleteSection,
@@ -247,11 +257,61 @@ async function settleStepRecommendations(
   }
 }
 
+/* ── 17.1: предложения шага ── */
+
+/** Шаг не состоялся — его предложения возвращаются в ожидание решения. */
+async function releaseStepProposals(
+  synthesisId: string,
+  planId: string,
+  step: EditStep,
+  actorId: string,
+  reason: ProposalReleaseReason,
+): Promise<void> {
+  const ids = (step.proposals ?? []).map((r) => r.id);
+  if (ids.length === 0) return;
+  try {
+    await releaseProposalsOfPlan(synthesisId, planId, actorId, reason, ids);
+  } catch (e) {
+    console.warn("releaseStepProposals:", e);
+  }
+}
+
+/** Шаг исполнен — предложения 'accepted', авторам — уведомление 16.2. */
+async function acceptStepProposals(
+  synthesisId: string,
+  planId: string,
+  stepIndex: number,
+  step: EditStep,
+  actorId: string,
+): Promise<void> {
+  const refs = step.proposals ?? [];
+  if (refs.length === 0) return;
+  try {
+    const accepted = await settleProposalStep(synthesisId, planId, stepIndex, step.type, refs, actorId);
+    for (const p of accepted) {
+      if (!p.authorId) continue;
+      await notifySafe(db, {
+        type: "proposal_decided",
+        synthesisId,
+        actorId,
+        recipients: [p.authorId],
+        refKind: "proposal",
+        refId: p.id,
+        payload: { decision: "accepted", planId },
+        dedupeKey: `proposal_decided:${p.id}:accepted`,
+      });
+    }
+  } catch (e) {
+    // учёт предложений не должен ронять исполненный шаг
+    console.warn("acceptStepProposals:", e);
+  }
+}
+
 /** Раздел, чьё содержание меняет шаг мельче раздела (для каскада). */
 function touchedSectionOf(step: EditStep): string | null {
   // 15.2 (Д-71): удаление подраздела / элемента меняет раздел-хозяин так же,
   // как перегенерация подраздела / правка элемента — каскад считается от него
-  if (step.type === "regen_subsection" || step.type === "delete_subsection")
+  if (step.type === "regen_subsection" || step.type === "delete_subsection" || step.type === "edit_subsection")
     return step.target.slice(0, step.target.indexOf(":"));
   if (step.type === "edit_element" || step.type === "refine_element" || step.type === "delete_element") {
     const ref = parseElementStepTarget(step.target);
@@ -292,7 +352,7 @@ function planSummaryFromSteps(steps: EditStep[]): {
 }
 
 function stepToOp(step: EditStep): Record<string, unknown> {
-  if (step.type === "regen_subsection" || step.type === "delete_subsection") {
+  if (step.type === "regen_subsection" || step.type === "delete_subsection" || step.type === "edit_subsection") {
     const i = step.target.indexOf(":");
     return {
       action: step.type,
@@ -359,7 +419,7 @@ async function bumpVersionsForPlan(
       : (labels[s.target] ?? s.target);
     return `${s.type}: ${label}`;
   });
-  await db.insert(generationLog).values({
+  await db.insert(generationLog).values({ ...genLogActor(),
     synthesisId,
     sectionKey: "_versionMarker",
     sectionLabel: "Версия документа",
@@ -369,6 +429,11 @@ async function bumpVersionsForPlan(
     metadata: {
       logLabel: { kind: "version" } satisfies GenLogLabel, // 14.2 (Д-62)
       actions,
+      // 17.1: предложения, исполняемые этим планом (ссылки; исполнитель —
+      // колонка actor_user_id строки)
+      ...(proposalRefsOf(active).length
+        ? { proposals: proposalRefsOf(active).map((r) => ({ id: r.id, authorId: r.authorId, source: r.source })) }
+        : {}),
       hasSectionChanges,
       modeRegenCount,
       // Беседа 2.4: печать «ВЕРСИЯ vN» в formatCtxLog
@@ -491,6 +556,22 @@ async function runStep(
       });
       return ZERO_RESULT;
     }
+    case "edit_subsection": {
+      // 17.1: ручная правка подраздела шагом плана — тот же сервис, что у
+      // карточки правки (9.2): чистка, замки, версия раздела. Модель не
+      // зовётся, стоимость 0. По предложению — источник 'proposal' + origin
+      const ref = parseSubsectionStepTarget(step.target);
+      if (!ref || typeof step.value !== "string")
+        throw new PlanError(
+          "VALIDATION_ERROR",
+          tl("server.planExecutor.badEditSubsectionStep", "Шаг edit_subsection без адреса «раздел:подраздел» или без разметки: {target}", { target: step.target }),
+        );
+      const prop = step.proposals?.[0];
+      await updateSubsection(synthesisId, ref.sectionKey, ref.subsectionName, step.value, prop
+        ? { changeSource: "proposal", origin: proposalOriginOf(prop, planId, stepIndex, "edit_subsection") }
+        : {});
+      return ZERO_RESULT;
+    }
     case "regen_mode": {
       if (!modeRegenerator) {
         throw new PlanError(
@@ -545,13 +626,35 @@ async function runPlanSteps(
       continue;
     }
     if (
-      (step.type === "regen_subsection" || step.type === "delete_subsection") &&
+      (step.type === "regen_subsection" || step.type === "delete_subsection" || step.type === "edit_subsection") &&
       !sectionOrder.includes(step.target.split(":")[0] as string)
     ) {
       step.status = "skipped";
       await persistSteps(planId, steps, i);
       await settleStepRecommendations(synthesisId, step, "new");
+      await releaseStepProposals(synthesisId, planId, step, userId, "step_skipped");
       continue;
+    }
+
+    // 17.1: шаг по предложению — только если предложение ещё открыто, стоит
+    // в этом плане и НЕ устарело. Иначе шаг снимается (не падает и не
+    // исполняется), предложение освобождается: устаревшее принять нельзя,
+    // отклоняет его только человек
+    if (step.proposals?.length) {
+      const blockers = await proposalStepBlockers(synthesisId, planId, step.proposals);
+      if (blockers.length > 0) {
+        step.status = "skipped";
+        step.skipReason = blockers.some((b) => b.reason === "stale") ? "proposal_stale" : "proposal_not_open";
+        await persistSteps(planId, steps, i);
+        await settleStepRecommendations(synthesisId, step, "new");
+        await releaseStepProposals(
+          synthesisId, planId, step, userId,
+          step.skipReason === "proposal_stale" ? "stale" : "not_open",
+        );
+        // событие «шаг исполнен» не шлётся: шаг снят; статус и причину
+        // клиент получит с plan_updated по завершении прогона
+        continue;
+      }
     }
 
     step.status = "running";
@@ -564,6 +667,7 @@ async function runPlanSteps(
       step.result = result;
       await persistSteps(planId, steps, i + 1);
       await settleStepRecommendations(synthesisId, step, "done");
+      await acceptStepProposals(synthesisId, planId, i, step, userId); // 17.1
       sendToUser(userId, {
         type: "plan_step_done",
         planId,
@@ -815,7 +919,16 @@ async function finishPlanRun(
   userId: string,
   markDone: boolean,
 ): Promise<void> {
-  if (markDone) await setPlanStatus(planId, "done");
+  if (markDone) {
+    await setPlanStatus(planId, "done");
+    // 17.1: план завершён — предложения его НЕисполненных шагов (снятых в
+    // черновике, упавших режимных) возвращаются в ожидание решения
+    try {
+      await releaseProposalsOfPlan(synthesisId, planId, userId, "step_skipped");
+    } catch (e) {
+      console.warn("releaseProposalsOfPlan:", e);
+    }
+  }
   await sendPlanUpdated(synthesisId, planId, userId);
 }
 
@@ -869,6 +982,9 @@ export async function confirmStep(
     throw new PlanError("FORBIDDEN", tl("server.planExecutor.noPlanAccess", "Нет доступа к плану"));
   }
   const synthesisId = row.synthesisId;
+  // 17.1: автор плана обязан СЕЙЧАС иметь право правки (исключённый редактор
+  // свой план не продолжает) — та же проверка, что у loadPlanRow
+  await loadPlanRow(synthesisId, planId, userId);
   if (row.status !== "done" && row.status !== "executing") {
     throw new PlanError(
       "PLAN_CONFLICT",
@@ -950,6 +1066,9 @@ async function resumePlanExecutor(
       fromIndex = stepIdx + 1;
       // 10.2: шаг пропустил ЧЕЛОВЕК — рекомендация отклонена
       await settleStepRecommendations(synthesisId, failedStep, "rejected");
+      // 17.1: предложение пропуском шага НЕ отклоняется — освобождается и
+      // ждёт решения (отклонение — отдельное действие с причиной)
+      await releaseStepProposals(synthesisId, planId, failedStep, userId, "step_skipped");
     }
   } else {
     fromIndex = stepIdx + (mode === "skip_step" ? 1 : 0);

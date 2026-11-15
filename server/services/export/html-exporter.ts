@@ -90,6 +90,7 @@ import {
 } from "../../utils/html-parser.js";
 import { buildParams, loadSynthesis } from "../generation-service.js";
 import { formatCtxLogHTML } from "../log-formatter.js";
+import { EXPORT_AUDIENCE, costVisible, type LogAudience } from "../log-audience.js"; // 17.1 (Д-85)
 import { getModeConfig } from "../mode-service.js";
 import { getAncestors, lineageTreeToFileGenealogy } from "../lineage-service.js";
 import { loadConceptParticipants } from "../meta-synthesis-service.js";
@@ -620,6 +621,11 @@ export function stripParentContent<
 export interface ExportHTMLOptions {
   includeLogs?: boolean;
   ownerView?: boolean;
+  /** 17.1 (Д-85): кто выгружает — стоимость строки, запущенной не владельцем,
+   *  видят владелец и сам исполнитель; остальным в файле (встроенный журнал и
+   *  видимый лог) она нулевая/скрыта. Имён исполнителей выгрузка не несёт
+   *  никому (names: false). Умолчание — владелец */
+  audience?: LogAudience;
 }
 
 export async function exportHTML(
@@ -628,6 +634,7 @@ export async function exportHTML(
 ): Promise<string> {
   const includeLogs = options.includeLogs !== false;
   const ownerView = options.ownerView !== false; // 13.2 (Д-65)
+  const audience: LogAudience = { ...(options.audience ?? EXPORT_AUDIENCE), names: false }; // 17.1 (Д-85)
   const s = await loadExportSynthesis(synthesisId);
   const row = s.row;
 
@@ -752,7 +759,7 @@ export async function exportHTML(
       outputChars: g.outputChars,
       inputTokens: g.inputTokens,
       outputTokens: g.outputTokens,
-      costUsd: Number(g.costUsd),
+      costUsd: costVisible(g.actorUserId, row.userId, audience) ? Number(g.costUsd) : 0, // 17.1 (Д-85)
       errorMessage: g.errorMessage,
       metadata: restMeta,
       createdAt: g.createdAt.toISOString(),
@@ -839,7 +846,7 @@ export async function exportHTML(
     // 14.2: лог в выгрузке — русское зеркало (11.4): собирается под ru при
     // любом языке запроса (до 14.2 оболочка лога шла на языке запроса —
     // расхождение с 11.4, найдено сверкой 14.2 п.0)
-    const log = await runWithLocale("ru", () => formatCtxLogHTML(synthesisId));
+    const log = await runWithLocale("ru", () => formatCtxLogHTML(synthesisId, audience));
     const isEmpty = log.text === "Лог пуст. Сгенерируйте документ.";
     stateJSON += `\n<details style="
       max-width:1100px; margin:20px auto 0;

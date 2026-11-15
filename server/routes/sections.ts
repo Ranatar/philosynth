@@ -39,6 +39,7 @@
  *    (loadConceptParticipants) — превью учитывает давление их веса на
  *    бюджет, как и живая генерация.
  */
+import { expectedVersionErrorResponse } from "../services/expected-version.js";
 import { Hono } from "hono";
 
 import { and, asc, desc, eq, like, or } from "drizzle-orm";
@@ -226,6 +227,9 @@ sectionsRoutes.get("/:id/sections/:key", requireAuth, async (c) => {
 
 /** Ошибки правки подраздела → JSON 03 §4.3; прочее — наверх (500). */
 function subsectionError(c: Context, err: unknown): Response {
+  // 17.1: ожидаемая версия не совпала → 409 VERSION_CONFLICT
+  const ev = expectedVersionErrorResponse(err);
+  if (ev) return c.json(ev.body, ev.status);
   if (err instanceof SubsectionEditError) {
     const status =
       err.code === "NOT_FOUND" ? 404 : err.code === "SECTION_TABLE_LOCKED" ? 409 : 400;
@@ -280,7 +284,9 @@ sectionsRoutes.patch("/:id/sections/:key/subsections/:name", requireAuth, async 
   const html =
     body && typeof body === "object" ? (body as { html?: unknown }).html : undefined;
   try {
-    const r = await updateSubsection(id, key, c.req.param("name"), html);
+    const r = await updateSubsection(id, key, c.req.param("name"), html, {
+      expectedHash: body && typeof body === "object" ? (body as { expectedHash?: unknown }).expectedHash : undefined,
+    });
     const result: SubsectionUpdateResult = {
       changed: r.changed,
       version: r.version,

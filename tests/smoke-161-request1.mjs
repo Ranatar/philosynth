@@ -60,9 +60,9 @@ console.log("\n■ A. Чистые функции и исходники");
   const e = CAP.capabilitiesFor(row, "U2", { role: "editor", status: "active" });
   const inv = CAP.capabilitiesFor(row, "U2", { role: "reviewer", status: "invited" });
   ok(!g.read && g.role === "guest" && o.read && o.discuss && o.edit && o.manage && o.role === "owner" && !s.read && s.role === "reader", "A1 права: гость/владелец/чужой на private");
-  ok(r.read && r.discuss && !r.edit && !r.manage && r.role === "reviewer" && e.read && e.discuss && !e.edit && !e.manage && e.role === "editor", "A2 участник читает и обсуждает; редактор БЕЗ права edit до 17.1");
+  ok(r.read && r.discuss && !r.edit && !r.manage && r.role === "reviewer" && e.read && e.discuss && e.edit && !e.manage && e.role === "editor", "A2 участник читает и обсуждает; рецензент не правит, редактор правит (17.1), manage — ни у кого из них");
   ok(!inv.read && inv.role === "reader" && CAP.capabilitiesFor({ userId: "U1", visibility: "full" }, null).read && !CAP.capabilitiesFor({ userId: "U1", visibility: "showcase" }, "U2").discuss, "A3 приглашённый (не принял) — как читатель; публичная даёт read, но не discuss");
-  ok(CAP.canManageSynthesis(row, "U1") && !CAP.canManageSynthesis(row, "U2") && !CAP.canManageSynthesis(row, null) && CAP.canEditSynthesis(row, "U1") && !CAP.canEditSynthesis(row, "U2", { role: "editor", status: "active" }), "A4 canManage/canEdit");
+  ok(CAP.canManageSynthesis(row, "U1") && !CAP.canManageSynthesis(row, "U2") && !CAP.canManageSynthesis(row, null) && CAP.canEditSynthesis(row, "U1") && CAP.canEditSynthesis(row, "U2", { role: "editor", status: "active" }) && !CAP.canEditSynthesis(row, "U2", { role: "reviewer", status: "active" }) && !CAP.canEditSynthesis(row, "U2", { role: "editor", status: "invited" }), "A4 canManage/canEdit (17.1: действующий редактор правит)");
   ok(ADDR.categoryKey("  Бытие  ") === ADDR.categoryKey("бытие") && ADDR.edgeKey("A", "B", "Причинность") === "a→b|причинность" && ADDR.thesisKey("T1.2", 5) === "T1.2" && ADDR.thesisKey(null, 5) === "5" && ADDR.subsectionKey("graph", "x:y") === "graph:x:y" && ADDR.parseSubsectionKey("graph:x:y")?.dataSection === "x:y", "A5 ключи адресов");
   ok(ADDR.canonicalJson({ b: 1, a: { d: [2, { z: 1, y: undefined }], c: "x" } }) === ADDR.canonicalJson({ a: { c: "x", d: [2, { z: 1 }] }, b: 1 }), "A6 canonicalJson — порядок ключей не влияет, undefined выпадает");
   const h1 = await ADDR.contentHash("category", { name: "A", definition: "d" }), h2 = await ADDR.contentHash("category", { definition: "d", name: "A" }), h3 = await ADDR.contentHash("category", { name: "A", definition: "e" });
@@ -112,14 +112,14 @@ try {
   const gO = await call("GET", `/syntheses/${S}`, undefined, owner), gR = await call("GET", `/syntheses/${S}`, undefined, rev), gE = await call("GET", `/syntheses/${S}`, undefined, rev2), gS = await call("GET", `/syntheses/${S}`, undefined, stranger), gI = await call("GET", `/syntheses/${S}`, undefined, invited), gG = await call("GET", `/syntheses/${S}`);
   ok(gO.status === 200 && gO.json.synthesis.isOwner === true && gO.json.synthesis.capabilities?.role === "owner" && gO.json.synthesis.capabilities.manage && gO.json.synthesis.capabilities.edit, "B1a владелец: isOwner, capabilities owner", { status: gO.status, isOwner: gO.json?.synthesis?.isOwner, caps: gO.json?.synthesis?.capabilities, keys: Object.keys(gO.json ?? {}).slice(0, 12) });
   ok(gR.status === 200 && gR.json.synthesis.isOwner === false && gR.json.synthesis.capabilities?.role === "reviewer" && gR.json.synthesis.capabilities.discuss && !gR.json.synthesis.capabilities.edit && secR.status === 200 && (secR.json.sections ?? secR.json).length > 0, "B1b рецензент читает ПРИВАТНУЮ (и разделы), isOwner false, edit false", { caps: gR.json?.synthesis?.capabilities, secR: secR.status });
-  ok(gE.status === 200 && gE.json.synthesis.capabilities?.role === "editor" && !gE.json.synthesis.capabilities.edit, "B1c редактор: role editor, edit false (до 17.1)");
+  ok(gE.status === 200 && gE.json.synthesis.capabilities?.role === "editor" && gE.json.synthesis.capabilities.edit === true && gE.json.synthesis.capabilities.manage === false, "B1c редактор: role editor, edit true (17.1), manage false");
   ok([403, 404].includes(gS.status) && [403, 404].includes(gI.status) && [401, 403, 404].includes(gG.status) && [403, 404].includes(secS.status), "B1d чужой, приглашённый и гость приватную не видят (и разделы)", { gS: gS.status, gI: gI.status, gG: gG.status, secS: secS.status });
 
   // B2 паритет гейта правки: участники не правят
   const [cat] = await sql`select id, name, definition from categories where synthesis_id=${S} order by name limit 1`;
   ok(!!cat, "B2a в образце есть категории");
   const pR = await call("PATCH", `/syntheses/${S}/categories/${cat.id}`, { definition: "x" }, rev), pE = await call("PATCH", `/syntheses/${S}/categories/${cat.id}`, { definition: "x" }, rev2), pS = await call("PATCH", `/syntheses/${S}/categories/${cat.id}`, { definition: "x" }, stranger);
-  ok(pR.status === 403 && pE.status === 403 && pS.status === 403 && pR.json.code === "FORBIDDEN", "B2b PATCH категории: рецензент, редактор, чужой → 403 FORBIDDEN", { pR: pR.status, pE: pE.status, pS: pS.status });
+  ok(pR.status === 403 && pE.status === 200 && pS.status === 403 && pR.json.code === "FORBIDDEN", "B2b PATCH категории: рецензент и чужой → 403 FORBIDDEN; редактор → 200 (17.1)", { pR: pR.status, pE: pE.status, pS: pS.status });
   const mR = await call("PATCH", `/syntheses/${S}`, { title: "x" }, rev);
   ok(mR.status === 403, "B2c PATCH /syntheses/:id рецензентом → 403");
   const bad = await call("GET", `/syntheses/${S}/comments`, undefined, { cookie: owner.cookie });

@@ -24,6 +24,7 @@
  *    паритет downloadPrompts).
  *  - Порядок строк — created_at asc (порядок массивов исходника).
  */
+import { audienceOf, costVisible, loadActorRefs, shownActor } from "../services/log-audience.js"; // 17.1
 import { Hono } from "hono";
 
 import { asc, eq } from "drizzle-orm";
@@ -59,6 +60,10 @@ export function logsAllowed(
   kind: "logs" | "prompts",
 ): boolean {
   if (res.viewer === "owner") return true;
+  // 17.1: редактор запускает генерации и разбирает паузы — журнал и запросы
+  // ему открыты как владельцу (право правки; модуль прав). Рецензент и
+  // читатель — по флагам автора (8.6), как прежде
+  if (res.capabilities.edit) return true;
   if (res.viewer === "guest") return false;
   const flags = effectiveFlags(res.row);
   return kind === "logs" ? flags.showLogs : flags.showPrompts;
@@ -87,7 +92,16 @@ logsRoutes.get("/:id/logs/generation", requireAuth, async (c) => {
     .from(generationLog)
     .where(eq(generationLog.synthesisId, res.row.id))
     .orderBy(asc(generationLog.createdAt));
-  const entries: GenLogEntry[] = rows.map((r) => ({
+  // 17.1: исполнитель строки — участникам; стоимость чужой строки — владельцу
+  // и самому исполнителю (services/log-audience)
+  const audience = audienceOf(res.capabilities, user.id);
+  const actorRefs = audience.names
+    ? await loadActorRefs(rows.map((r) => r.actorUserId), res.row.userId)
+    : new Map();
+  const entries: GenLogEntry[] = rows.map((r) => {
+    const actor = shownActor(r.actorUserId, res.row.userId, actorRefs, audience);
+    const seesCost = costVisible(r.actorUserId, res.row.userId, audience);
+    return {
     id: r.id,
     synthesisId: r.synthesisId,
     sectionKey: r.sectionKey,
@@ -101,11 +115,14 @@ logsRoutes.get("/:id/logs/generation", requireAuth, async (c) => {
     outputChars: r.outputChars,
     inputTokens: r.inputTokens,
     outputTokens: r.outputTokens,
-    costUsd: Number(r.costUsd),
+    costUsd: seesCost ? Number(r.costUsd) : 0,
+    ...(seesCost ? {} : { costHidden: true }),
+    ...(actor ? { actor } : {}),
     errorMessage: r.errorMessage,
     metadata: r.metadata,
     createdAt: r.createdAt.toISOString(),
-  }));
+    };
+  });
   return c.json({ entries });
 });
 
@@ -151,7 +168,7 @@ logsRoutes.get("/:id/logs/formatted", requireAuth, async (c) => {
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
   if (!logsAllowed(res, "logs")) return c.json(logsForbiddenJson, 403);
 
-  const { text, html } = await formatCtxLogHTML(res.row.id);
+  const { text, html } = await formatCtxLogHTML(res.row.id, audienceOf(res.capabilities, user.id));
   return c.json({ text, html });
 });
 
@@ -164,6 +181,6 @@ logsRoutes.get("/:id/logs/prompts", requireAuth, async (c) => {
   if (res.access === "forbidden") return c.json(forbiddenJson, 403);
   if (!logsAllowed(res, "prompts")) return c.json(promptsForbiddenJson, 403);
 
-  const text = await formatPromptsForExport(res.row.id);
+  const text = await formatPromptsForExport(res.row.id, audienceOf(res.capabilities, user.id));
   return c.json({ text });
 });

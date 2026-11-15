@@ -24,6 +24,7 @@
  *     действие не отменяет (`sent: false` в ответе);
  *   - mailLimiter — на роуте (письмо порождает каждое приглашение/повтор).
  */
+import { closeProposalsOfMember, releaseProposalsOfMemberPlans } from "./proposal-links.js"; // 17.1
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { db, schema } from "../db/index.js";
@@ -310,6 +311,10 @@ export async function changeMemberRole(
         refId: memberId,
         payload: { role },
       });
+    // 17.1: редактор понижен до рецензента — его планы больше не исполнятся;
+    // предложения, стоявшие в них, освобождаются (свои предложения остаются)
+    if (updated!.status === "active" && row.role === "editor" && role !== "editor")
+      await releaseProposalsOfMemberPlans(tx, synthesisId, updated!.userId, ownerId);
     return (await memberViews([updated!]))[0]!;
   });
 }
@@ -339,8 +344,10 @@ export async function removeMember(
         refId: memberId,
         payload: { role: row.role },
       });
-    // Фаза 17 (17.1): здесь же закрыть открытые предложения исключённого с
-    // причиной «участник исключён» — правило записано в 03 §2.18.
+    // 17.1: открытые предложения исключённого закрываются с причиной
+    // «участник исключён» той же транзакцией (03 §2.18); чужие предложения в
+    // его черновиках планов — освобождаются
+    if (row.status === "active") await closeProposalsOfMember(tx, synthesisId, row.userId, ownerId);
   });
   return { ok: true, removed: row.status };
 }

@@ -56,13 +56,14 @@ function activeRole(membership: MembershipRow | null | undefined): MemberRole | 
 }
 
 /**
- * Право прямой правки, генерации и принятия предложений. 16.1 — только
- * владелец. 17.1 (решение пользователя: «редактор получает права с Фазы 17»)
- * заменяет тело на `owner || role === "editor"` — больше нигде ничего менять
- * не нужно: все гейты правки спрашивают сюда.
+ * Право прямой правки, генерации и принятия предложений: владелец либо
+ * ДЕЙСТВУЮЩИЙ редактор (17.1; решение пользователя: «редактор получает права
+ * с Фазы 17»). Приглашённый редактор (status 'invited') сюда не попадает —
+ * `activeRole` отдаёт роль только действующему. Рецензент обсуждает и
+ * предлагает, но не правит. `manage` редактору не даётся нигде.
  */
-function editCapability(owner: boolean, _role: MemberRole | null): boolean {
-  return owner;
+function editCapability(owner: boolean, role: MemberRole | null): boolean {
+  return owner || role === "editor";
 }
 
 /**
@@ -109,6 +110,21 @@ export function canEditSynthesis(
   membership: MembershipRow | null = null,
 ): boolean {
   return capabilitiesFor(row, userId, membership).edit;
+}
+
+/**
+ * 17.1: право правки по строке синтеза С ЗАГРУЗКОЙ участия. Синхронный
+ * `canEditSynthesis(row, userId)` без третьего довода отвечает только за
+ * владельца — участие он не знает; до 17.1 этого хватало (edit = владелец),
+ * теперь каждое место вне роутового `editGate` (WS, сервисы планов, паузы и
+ * генерации, превью каскада) спрашивает ЭТУ функцию. Сторож 4bp красит
+ * двухдоводный `canEditSynthesis(` вне модуля.
+ */
+export async function canEditSynthesisOf(
+  row: OwnedSynthesisRow & { id: string },
+  userId: string | null,
+): Promise<boolean> {
+  return (await capabilitiesOfRow(row, userId)).edit;
 }
 
 /** Участники, видимость, удаление синтеза, копия, родословная — только

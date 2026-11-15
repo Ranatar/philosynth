@@ -63,11 +63,17 @@ const PAIRS: Pair[] = [
   { table: "theses", file: "elements.ts", iface: "Thesis" },
   { table: "glossaryTerms", file: "elements.ts", iface: "GlossaryTerm" },
   { table: "dialogueTurns", file: "elements.ts", iface: "DialogueTurn" },
-  { table: "elementVersions", file: "elements.ts", iface: "ElementVersion" },
+  { table: "elementVersions", file: "elements.ts", iface: "ElementVersion",
+    // 17.1: колонка — id исполнителя; наружу — actor { id, name, isOwner } только
+    // участникам и только у правок не-владельца (services/log-audience)
+    schemaOnly: ["actorUserId"], typeOnly: ["actor"] },
   { table: "editPlans", file: "edit-plan.ts", iface: "EditPlan",
     schemaOnly: ["userId", "updatedAt"], typeOnly: ["estimatedCost", "costBreakdown", "cascadePending"] }, // costBreakdown (10.2), cascadePending (12.3, Д-7) — вычисляемые, как estimatedCost
   { table: "modeResults", file: "modes.ts", iface: "ModeResult" },
-  { table: "generationLog", file: "generation.ts", iface: "GenLogEntry" },
+  { table: "generationLog", file: "generation.ts", iface: "GenLogEntry",
+    // 17.1: исполнитель строки — колонка id; наружу actor (участникам) и
+    // costHidden (стоимость чужой строки видят владелец и сам исполнитель)
+    schemaOnly: ["actorUserId"], typeOnly: ["actor", "costHidden"] },
   { table: "contextLog", file: "generation.ts", iface: "CtxLogEntry" },
   { table: "synthesisLineage", file: "lineage.ts", iface: "LineageRecord" },
   { table: "apiUsage", file: "billing.ts", iface: "ApiUsage" },

@@ -40,7 +40,7 @@ import {
   parseAndStore,
 } from "../services/recommendations.js";
 import { StreamError } from "../services/streaming-manager.js";
-import { editGate } from "./edit-gate.js"; // 16.1
+import { editGate, editRightFirst } from "./edit-gate.js"; // 16.1
 
 import type { Context } from "hono";
 import { tl } from "@philosynth/shared/i18n/t";
@@ -168,6 +168,7 @@ recommendationsRoutes.get("/:id/recommendations/extract/estimate", requireAuth, 
 recommendationsRoutes.post(
   "/:id/recommendations/extract",
   requireAuth,
+  editRightFirst,
   billingCheck({ quota: "regenerations" }),
   async (c) => {
     const user = c.get("user");

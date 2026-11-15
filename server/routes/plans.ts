@@ -22,6 +22,7 @@
  *  - estimatedCost вычисляется на каждый ответ (в edit_plans не
  *    хранится — 02 §2.13).
  */
+import { expectedVersionErrorResponse } from "../services/expected-version.js";
 import { Hono } from "hono";
 
 import { requireAuth, type AuthEnv } from "../middleware/auth.js";
@@ -53,7 +54,7 @@ import type {
   UpdatePlanRequest,
 } from "@philosynth/shared/types/edit-plan";
 import { tl } from "@philosynth/shared/i18n/t";
-import { canEditSynthesis } from "../services/capabilities.js"; // 16.1
+import { canEditSynthesisOf } from "../services/capabilities.js"; // 16.1
 
 export const plansRoutes = new Hono<AuthEnv>();
 
@@ -65,6 +66,9 @@ const PLAN_ERROR_STATUS = {
 } as const;
 
 function errJson(c: Context, err: unknown): Response {
+  // 17.1: ожидаемая версия адресата плана не совпала → 409 VERSION_CONFLICT
+  const ev = expectedVersionErrorResponse(err);
+  if (ev) return c.json(ev.body, ev.status);
   if (err instanceof PlanError) {
     return c.json(
       {
@@ -210,7 +214,7 @@ plansRoutes.post("/:id/plans/impact", requireAuth, async (c) => {
   try {
     // Владельческий гейт (превью каскада — edit-операция, правило 2.1)
     const { row, philosophers } = await loadSynthesis(id);
-    if (!canEditSynthesis(row, user.id)) // 16.1: одна проверка прав
+    if (!(await canEditSynthesisOf(row, user.id))) // 16.1: одна проверка прав; 17.1: с участием (редактор)
       return c.json({ error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"), code: "FORBIDDEN" }, 403);
 
     const impact = await analyzeImpact(id, { regen, remove, add });

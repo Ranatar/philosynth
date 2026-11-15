@@ -10,7 +10,9 @@
  * Кто имеет право edit, решает модуль прав (services/capabilities): в 16.1
  * — владелец, с 17.1 — и редактор; сюда это не возвращается.
  */
-import type { Context } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
+
+import type { AuthEnv } from "../middleware/auth.js";
 import { eq } from "drizzle-orm";
 
 import { db, schema } from "../db/index.js";
@@ -49,3 +51,17 @@ export async function editGate(
     );
   return null;
 }
+
+/**
+ * 17.1 (Д-83): право правки ДО предпроверки биллинга. `billingCheck` стоял
+ * сразу за `requireAuth`, и участник без права правки (рецензент, чужой) без
+ * подписки и баланса получал под BILLING_ENFORCE отказ биллинга (402) вместо
+ * 403 FORBIDDEN — ответ «пополните баланс» тому, кому операция не положена
+ * вовсе. Ставится между `requireAuth` и `billingCheck`; активную операцию не
+ * проверяет (её проверяет гейт внутри обработчика, как прежде).
+ */
+export const editRightFirst: MiddlewareHandler<AuthEnv> = async (c, next) => {
+  const denied = await editGate(c, c.req.param("id") ?? "", c.get("user").id, { activeOp: false });
+  if (denied) return denied;
+  await next();
+};

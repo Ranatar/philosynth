@@ -187,6 +187,24 @@
 > остальное (разделы, элементы, режимы, преобразования, экспорт, генерация,
 > импорт, правка) — под `requireAuth`, как прежде.
 >
+> **17.1 (2026-11-15) — право правки.** Всюду ниже, где о пути ПРАВКИ
+> документа сказано «только владелец» (элементы и связи §2.4, подразделы и
+> капсула §2.3–2.4, планы §2.6, перегенерация §2.5, режимы §2.7,
+> обогащение §2.14, трансформация §2.15, рекомендации §2.16, удаления 15.2,
+> пауза и её возобновление, подписка на генерацию по WebSocket), читать:
+> **`capabilities.edit` — владелец либо действующий редактор** (один модуль
+> прав, §2.17). «Только владелец» в прямом смысле осталось за УПРАВЛЕНИЕМ
+> (`capabilities.manage`): участники и приглашения, видимость и флаги,
+> название, удаление концепции, копия, привязка и отвязка родословной.
+> Платит и записывается исполнителем тот, кто нажал: слот генерации,
+> квота подписки и BYO-ключ — его; отказ биллинга (403 с кодом
+> `QUOTA_EXCEEDED` / `INSUFFICIENT_BALANCE` / `BILLING_REQUIRED`, как с 6.1)
+> получает он, подписка владельца за редактора не подставляется. На платных
+> маршрутах право правки проверяется ДО биллинга (`editRightFirst`):
+> участник без права получает 403 `FORBIDDEN`, а не отказ биллинга.
+> Отменить идущую операцию (WS `cancel`) может запустивший и владелец
+> концепции.
+>
 > **9.1 (2026-09-19).** «Три пути» — о СОДЕРЖАНИИ службы. Маршруты входа
 > сессии не требуют по своей природе (`/auth/register`, `/auth/login`,
 > `/auth/logout`), и к ним 9.1 добавила три почтовых: `POST
@@ -594,6 +612,10 @@ GET    /syntheses/:id          → { synthesis: SynthesisFull }
                                 //   содержимое РОДИТЕЛЬСКИХ концепций (в том
                                 //   числе приватных родителей владельца);
                                 //   оценки паузы невладельцу не считаются;
+                                //   17.1: РЕДАКТОРУ (capabilities.edit) пауза
+                                //   отдаётся — он её возобновляет, — но БЕЗ
+                                //   genParams (у kind 'gen' — пустой объект);
+                                //   оценки паузы ему считаются;
                                 //   guest: без totalCostUsd/totalInputTokens/
                                 //   totalOutputTokens; при scope='full' документ
                                 //   ОДНИМ ответом — sections: SectionFull[]
@@ -780,8 +802,9 @@ POST   /syntheses/import       multipart/form-data: file (HTML)
                                         // role: owner | reviewer | editor |
                                         // reader | guest } — права смотрящего
                                         // из services/capabilities; isOwner =
-                                        // role === 'owner'. В 16.1 edit = owner
-                                        // (редактор получает его в 17.1);
+                                        // role === 'owner'. С 17.1 edit = owner |
+                                        // действующий редактор; manage — только
+                                        // владелец;
                                         // клиент переходит на поле в 16.3/17.2.
   docNum: string;                       // «PS-NNNN-XXXX» — заполняется при
                                         // создании записи (формат исходника
@@ -877,8 +900,17 @@ GET    /syntheses/:id/sections/:key/subsections/:name
                                 // data-section (нечёткого поиска нет: правка
                                 // не должна попасть в «похожий» подраздел).
 
-PATCH  /syntheses/:id/sections/:key/subsections/:name   { html }
+PATCH  /syntheses/:id/sections/:key/subsections/:name   { html, expectedHash? }
                                 → SubsectionUpdateResult
+                                // 17.1: ожидаемая версия — expectedHash = поле hash
+                                // исходника (GET того же пути отдаёт { …, hash }:
+                                // sha256 разметки подраздела, тот же, что у адреса
+                                // 16.1 — shared subsectionContentHash). Не совпал с
+                                // текущим → 409 VERSION_CONFLICT, details: { target:
+                                // 'раздел:подраздел', expected: { hash }, current:
+                                // { hash } }, запись не делается. Без expectedHash —
+                                // как прежде (старые клиенты); клиент 17.2 шлёт всегда.
+                                // Право — capabilities.edit (владелец | редактор).
 
 // 15.2 (Д-71): удаление подраздела — тот же путь, DELETE. Только владелец
 // (403), активная операция → 409 GENERATION_IN_PROGRESS; неизвестный ключ /
@@ -1145,9 +1177,28 @@ PATCH  /syntheses/:id/edges/:edgeId
 PATCH  /syntheses/:id/categories/:catId
                                 { …, structuralRoles?, proceduralRoles?,
                                   clusterIndices? }
-PATCH  /syntheses/:id/capsule   { html: string }
+PATCH  /syntheses/:id/capsule   { html: string, expectedHash?: string }
                                 → { capsuleHtml: string, version,
                                     warnings: string[] }
+                                // 17.1: expectedHash — sha256 содержимого капсулы,
+                                // к которому писалась правка (shared
+                                // sectionContentHash(capsuleHtml)); не совпал → 409
+                                // VERSION_CONFLICT (details.target 'capsule').
+
+// 17.1 — ОЖИДАЕМАЯ ВЕРСИЯ ЭЛЕМЕНТА. Все четыре PATCH элемента
+// (/categories/:catId, /edges/:edgeId, /theses/:thesisId, /glossary/:termId)
+// принимают в теле expectedVersion: целое ≥ 0 — номер последней версии
+// элемента (max element_versions.version; 0 — версий не было; клиент берёт его
+// из GET …/versions либо из ответа прошлого PATCH: version.version). Сверка —
+// в транзакции правки под блокировкой элемента: две одновременные правки с
+// одним ожиданием не проходят обе. Не совпало → 409 VERSION_CONFLICT,
+// details: { target: 'вид:id', expected: { version }, current: { version } },
+// запись не делается («последний перезаписал» исключён, обходного force нет).
+// Негодное ожидание (не целое ≥ 0) → 400 VALIDATION_ERROR. Без expectedVersion
+// — как прежде. Право правки на всех путях §2.4 — capabilities.edit (владелец |
+// действующий редактор); версия записывает исполнителя (actor_user_id), история
+// версий отдаёт участникам ElementVersion.actor { id, name, isOwner } — только
+// у правок не-владельца.
                                 // 13.1 (Д-63): присланное чистится тем же
                                 // ядром в режиме «раздел целиком» (обёртка
                                 // doc-section и <h4> допустимы); что снято —
@@ -1450,6 +1501,25 @@ POST   /syntheses/:id/plans    { regen: string[], remove: string[], add: string[
                                 // шагов мельче себя не принимает → 400. Снимки
                                 // рекомендаций (recommendations[]) из тела клиента
                                 // ОТБРАСЫВАЮТСЯ — их ставит только служба 10.2.
+                                // 17.1: + subsectionEdits?: { target: 'раздел:подраздел',
+                                // html }[] — шаг edit_subsection (ручная правка
+                                // подраздела планом; бесплатный, исполняется тем же
+                                // updateSubsection, что карточка правки 9.2; тот же
+                                // подраздел этим же планом не перегенерируется и не
+                                // удаляется). + expected?: { target, version? | hash? }[]
+                                // — ожидаемые версии адресатов: 'вид:id' (version),
+                                // 'раздел', 'раздел:подраздел', 'capsule' (hash);
+                                // расхождения → 409 VERSION_CONFLICT, details.conflicts
+                                // — ВСЕ разошедшиеся с текущими значениями, план не
+                                // создаётся. Поля proposals шагов и regenProposals из
+                                // тела запроса ОТБРАСЫВАЮТСЯ — их ставит только служба
+                                // предложений (§2.20). План принадлежит автору
+                                // (владелец или редактор): читает, исполняет и
+                                // оплачивает его он; автор, потерявший право
+                                // правки, свой план не читает. Чужой план: владельцу
+                                // концепции открыт на ЧТЕНИЕ и УДАЛЕНИЕ (GET, DELETE),
+                                // исполнять, править и продолжать его может только
+                                // автор (403); прочим — 403.
 
 GET    /syntheses/:id/plans/:planId
                                 → { plan: EditPlan }
@@ -1867,6 +1937,18 @@ GET    /syntheses/:id/export/md     → text/markdown
 
 ```
 GET    /syntheses/:id/logs/generation  → { entries: GenerationLogEntry[] }
+                                       // 17.1: журнал и запросы открыты редактору по праву
+                                       // правки (как владельцу); рецензенту и читателю — по
+                                       // флагам автора (8.6). Строка, запущенная НЕ
+                                       // владельцем: entry.actor { id, name, isOwner:false }
+                                       // и «Запустил: X» в /formatted — только участникам
+                                       // (читателю по show_logs имён нет); её стоимость —
+                                       // владельцу и самому исполнителю, остальным
+                                       // costUsd: 0 + costHidden: true и «Стоимость: скрыта».
+                                       // Выгрузка HTML (§2.11) имён исполнителей не несёт
+                                       // никому; стоимость строк не-владельца во встроенном
+                                       // журнале и видимом логе — по выгружающему (то же
+                                       // правило: владелец и сам исполнитель).
 GET    /syntheses/:id/logs/context     → { entries: ContextLogEntry[] }
 GET    /syntheses/:id/logs/formatted   → { text: string, html: string }
 GET    /syntheses/:id/logs/prompts     → { text: string | null } — дамп
@@ -2341,9 +2423,15 @@ POST   /syntheses/:id/membership/decline       → { ok }                       
 **Исключение участника** (DELETE активного): строка снимается; его
 комментарии и рецензии ОСТАЮТСЯ, автор показывается `formerMember: true`
 (вычисляется при чтении: не владелец и не действующий участник).
-**Правило для 17.1**: открытые предложения исключённого закрываются с
-причиной «участник исключён» той же транзакцией (`removeMember`; метка
-в коде). Отзыв приглашённого (строка invited) уведомления не даёт.
+**Предложения исключённого (17.1)**: его открытые предложения закрываются
+(`closed`, причина `member_removed`, решивший — владелец) той же
+транзакцией (`removeMember` → `closeProposalsOfMember`); чужие предложения,
+стоявшие в его черновиках планов, освобождаются (`plan_released`); принятые
+и отклонённые остаются историей. То же делает удаление аккаунта участника.
+Исключённый редактор свои планы больше не читает и не исполняет; понижение
+редактора до рецензента освобождает предложения из его черновиков планов
+(его собственные предложения остаются открытыми). Отзыв приглашённого
+(строка invited) уведомления не даёт.
 
 **Клиент**: вкладка «Документ | Участники» страницы концепции (владельцу;
 `MembersPanel`: приглашение email + роль, 409 строкой под формой, `<select>`
@@ -2378,10 +2466,99 @@ member_role_changed / member_removed (участнику), comment_new (влад
 корня), comment_reply (автору корня ветки), review_published (всем, кроме
 автора), finding_outdated (автору открытого корня / замечания
 опубликованной рецензии — проходом, один раз на текущий хэш объекта),
-proposal_created / proposal_decided — заведены, пишет 17.1. Актор своего
+proposal_created (тем, кто решает: владельцу и действующим редакторам;
+payload: excerpt, kind, rebasedFrom?), proposal_decided (автору: payload
+decision accepted | rejected | closed, planId у accepted) — 17.1. Актор своего
 события не получает; отключённая категория не пишется вовсе. Доставка —
 опросом (без WebSocket) и сводкой по почте не чаще `NOTIFY_DIGEST_INTERVAL_HOURS`
 (02 §2.39). Страница ≤ 200 (умолчание 30), курсор — id последней строки.
+
+### 2.20. Предложения изменений (беседа 17.1)
+
+```
+GET    /syntheses/:id/proposals              ?status=&addressKind=&addressKey=&mine=1
+                                             → { proposals: Proposal[] }   (новые сверху, ≤ 200)
+POST   /syntheses/:id/proposals              ProposalCreateInput { target?: { kind, id?, key? },
+                                             kind: 'replace' | 'note', field?, value?, rationale?,
+                                             source?: 'direct' | 'comment' | 'review_finding' |
+                                             'recommendation', sourceId? } → 201 Proposal
+GET    /syntheses/:id/proposals/:pid         → ProposalDetail (Proposal + events: ProposalEvent[])
+POST   /syntheses/:id/proposals/:pid/accept  ProposalAcceptInput { method?, field?, value? }
+                                             → 201 { proposal: Proposal, plan: EditPlan }
+POST   /syntheses/:id/proposals/:pid/reject  { note? } → Proposal
+POST   /syntheses/:id/proposals/:pid/close   { reason?: 'manual' | 'outdated', note? } → Proposal
+POST   /syntheses/:id/proposals/:pid/withdraw → Proposal
+POST   /syntheses/:id/proposals/:pid/rebase  { value?, rationale? } → 201 Proposal (новое)
+```
+
+Все маршруты — под `requireAuth` и гейтом ОБСУЖДЕНИЯ (`capabilities.discuss`:
+владелец и действующие участники; не-UUID / нет синтеза → 404, нет права →
+403); активной операцией не гейтятся — документ они не меняют.
+
+`Proposal { id, synthesisId, author: DiscussionAuthor, address, resolution:
+{ state: current | outdated | deleted, currentId, currentHash, currentVersion },
+excerpt, base: { version, hash }, stale, source, sourceId, sourceReviewId, kind,
+field, value, rationale, status: open | accepted | rejected | withdrawn | closed,
+planId, decidedBy, decidedAt, note, closeReason, supersededBy, createdAt,
+updatedAt }`. **`stale` вычисляется при чтении** и нигде не хранится:
+открытое предложение, чья основа разошлась с адресатом. Основа элемента —
+НОМЕР ВЕРСИИ (любая правка элемента после записи предложения, и другого поля
+тоже, делает его устаревшим); основа раздела и подраздела — хэш содержимого;
+удалённый адресат — устарело.
+
+**Создать** — любой с правом обсуждения. Адресат: раздел, подраздел, элемент
+(категория, связь, тезис, термин); документу целиком — комментарий (400).
+`replace` — готовое значение: поле элемента (белый список полей шага 10.2,
+≤ 4000 знаков) либо разметка содержимого НЕзапертого подраздела (чистится
+`sanitizeSectionHtml`, ≤ 200 000); разделу целиком замену предложить нельзя
+(400). `note` — только обоснование (обязательно). Из источника (`comment`,
+`review_finding`) адрес берётся от источника и разрешается ЗАНОВО (основа —
+текущая); источник не из этого синтеза, удалённый, скрытый или чужой черновик
+— 404; объект источника удалён — 409 CONFLICT. `recommendation` — только с
+правом правки (403). Уведомление `proposal_created` — владельцу и редакторам.
+
+**Принять** (`capabilities.edit`) — НЕ исполняет: собирает ЧЕРНОВИК плана
+правок (§2.6) с шагом, несущим ссылку на предложение; документ не меняется,
+предложение остаётся `open` и получает `planId` (событие `plan_drafted`).
+Дальше — обычный путь плана: предпросмотр с каскадом, подтверждение,
+исполнение под слотом и квотой ИСПОЛНИТЕЛЯ (принявшего). `accepted` пишет
+исполнитель плана после успешного шага; версия шага — `change_source
+'proposal'` с происхождением (`ProposalOrigin`: предложение, его автор,
+источник — комментарий либо замечание и его рецензия `reviewId`, план, шаг),
+автору — `proposal_decided`. Перегенерация раздела и подраздела версий не
+пишет (так с 2.2): у regen-шагов связь с предложением — событие `accepted`
+и `metadata.proposals` маркера версии.
+Второго пути исполнения нет. Способ: у `replace` он определён адресатом
+(элемент → `edit_element`, подраздел → `edit_subsection`) и не выбирается,
+значение при принятии не подменяется (400); у `note` способ называет
+принимающий — `method`: элемент → `edit_element` (нужен `value`) |
+`refine_element`; подраздел → `edit_subsection` (нужен `value`) |
+`regen_subsection`; раздел → `regen`. Модель замечание как разрешение
+переписать документ не толкует: текст `note` уходит в шаг лишь доводом
+(контекстом) названного человеком способа. Предложение уже в черновике
+плана / не открыто → 409 CONFLICT.
+
+**Устаревшее принять нельзя**: основа разошлась с адресатом → 409
+`PROPOSAL_STALE` (details: state, base, current). То же правило держит
+исполнитель плана: если документ изменили, пока план лежал черновиком, шаг
+по предложению НЕ исполняется — снимается (`status 'skipped'`, `skipReason
+'proposal_stale' | 'proposal_not_open'`), предложение освобождается
+(`plan_released`) и ждёт решения. Автоматического перебазирования нет:
+**«новое поверх текущего»** (`rebase`) заводит ЧЕЛОВЕК — автор устаревшего
+предложения: новое предложение с текущей основой (значение и обоснование
+можно поправить), прежнее — `closed` / `superseded` со ссылкой
+`supersededBy`. Не устаревшее заново не заводится (409).
+
+**Отклонить** — только действие человека с правом правки (`reject`, слово
+решившего — `note`); машина предложение не отклоняет: пропуск шага, удаление
+или остановка плана его лишь освобождают. **Снять** (`withdraw`) — автор.
+**Закрыть** (`close`) — правящий, причина `manual` | `outdated`. Исключение
+участника — §2.18. Решения шлют автору `proposal_decided`.
+
+`ProposalEvent { id, type, actor, payload, createdAt }` — журнал (02 §2.41):
+`created`, `plan_drafted`, `plan_released`, `accepted`, `rejected`,
+`withdrawn`, `closed`, `rebased`; фраз в БД нет — клиент собирает их по коду.
+Клиент — 17.2. Сторож 4bp.
 
 ---
 
@@ -2756,6 +2933,14 @@ TOKEN_INVALID       — довод из письма (подтверждение
                       моменту подтверждения (15.3)
 LAST_ADMIN          — понижение или удаление аккаунта последнего администратора —
                       409 (8.1; подсказка «сначала назначьте второго»)
+VERSION_CONFLICT    — ожидаемая версия не совпала (17.1): правка элемента
+                      (expectedVersion), подраздела и капсулы (expectedHash),
+                      создание плана (expected[]) — 409; запись не делается;
+                      details: { target, expected, current } либо у плана
+                      { conflicts: […] } — текущие значения для перечитки
+PROPOSAL_STALE      — принятие предложения, чей адресат изменён или удалён
+                      после его записи (17.1, §2.20) — 409; details: state,
+                      base, current; выход — «новое поверх текущего» автором
 CONFLICT            — обсуждение (16.1, §2.17): действие против состояния
                       строки — ответ в удалённую/скрытую ветку, правка
                       удалённого/скрытого комментария, повторная публикация,

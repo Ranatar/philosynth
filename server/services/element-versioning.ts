@@ -41,6 +41,7 @@ import type {
   VersionedElementType,
 } from "@philosynth/shared/types/elements";
 import { tl } from "@philosynth/shared/i18n/t";
+import { currentActorId } from "./actor-context.js"; // 17.1
 
 export const VERSIONED_ELEMENT_TYPES: readonly VersionedElementType[] = [
   "category",
@@ -127,6 +128,9 @@ export async function createVersion(
       data: snapshotOf(data),
       changeSource,
       ...(origin ? { origin } : {}),
+      // 17.1: исполнитель правки — из контекста операции (запрос / WS / слот);
+      // вне контекста NULL — читается как владелец
+      actorUserId: currentActorId(),
     })
     .returning();
   if (!row) throw new Error(tl("server.elementVersioning.insertWithoutReturning", "element-versioning: insert без returning"));
@@ -142,6 +146,8 @@ export async function getVersionHistory(
   synthesisId: string,
   elementType: VersionedElementType,
   elementId: string,
+  /** 17.1: кто смотрит — от этого зависит, видно ли имя исполнителя */
+  viewer?: { ownerId: string; audience: { names: boolean; viewerId: string | null; allCosts: boolean } },
 ): Promise<ElementVersion[]> {
   const rows = await db
     .select()
@@ -154,7 +160,16 @@ export async function getVersionHistory(
       ),
     )
     .orderBy(desc(elementVersions.version));
-  return rows.map(toDto);
+  if (!viewer) return rows.map(toDto);
+  // 17.1: исполнитель правки — участникам, и только у строк не-владельца
+  const { loadActorRefs, shownActor } = await import("./log-audience.js");
+  const refs = viewer.audience.names
+    ? await loadActorRefs(rows.map((r) => r.actorUserId), viewer.ownerId)
+    : new Map();
+  return rows.map((r) => {
+    const actor = shownActor(r.actorUserId, viewer.ownerId, refs, viewer.audience);
+    return actor ? { ...toDto(r), actor } : toDto(r);
+  });
 }
 
 /* ── Восстановление данных по типу ───────────────────────────────────── */

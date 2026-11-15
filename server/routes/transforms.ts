@@ -46,7 +46,7 @@ import {
   showcaseForbiddenJson,
 } from "./syntheses.js";
 import { tl } from "@philosynth/shared/i18n/t";
-import { editGate } from "./edit-gate.js"; // 16.1
+import { editGate, editRightFirst } from "./edit-gate.js"; // 16.1
 
 export const transformRoutes = new Hono<AuthEnv>();
 
@@ -79,10 +79,10 @@ async function postTransform(
   return c.json({ ok: true });
 }
 
-transformRoutes.post("/:id/transform/graph-to-theses", requireAuth, billingCheck({ quota: "regenerations" }), (c) =>
+transformRoutes.post("/:id/transform/graph-to-theses", requireAuth, editRightFirst, billingCheck({ quota: "regenerations" }), (c) =>
   postTransform(c, c.req.param("id"), "graph_to_theses"),
 );
-transformRoutes.post("/:id/transform/theses-to-graph", requireAuth, billingCheck({ quota: "regenerations" }), (c) =>
+transformRoutes.post("/:id/transform/theses-to-graph", requireAuth, editRightFirst, billingCheck({ quota: "regenerations" }), (c) =>
   postTransform(c, c.req.param("id"), "theses_to_graph"),
 );
 

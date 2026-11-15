@@ -41,6 +41,7 @@
  * анонимизируется, и FK не срабатывает). След действий остаётся: action,
  * target, details — на месте, привязка к личности снята.
  */
+import { closeProposalsOfMember } from "./proposal-links.js"; // 17.1
 import { randomUUID } from "node:crypto";
 
 import { count, eq, inArray, sql } from "drizzle-orm";
@@ -159,6 +160,15 @@ export async function deleteAccount(
     // при анонимизации тоже не срабатывает) — снимаем явно. Комментарии и
     // рецензии ОСТАЮТСЯ (author_id — на анонимизированную строку; показ
     // «удалённый пользователь»): обсуждение принадлежит концепции.
+    // 17.1: участие снимается — открытые предложения удаляемого в чужих
+    // концепциях закрываются с причиной «участник исключён» (то же правило,
+    // что у removeMember; решивший — никто, actor NULL); принятые и
+    // отклонённые остаются историей концепции
+    const memberships = await tx
+      .select({ synthesisId: synthesisMembers.synthesisId })
+      .from(synthesisMembers)
+      .where(eq(synthesisMembers.userId, userId));
+    for (const m of memberships) await closeProposalsOfMember(tx, m.synthesisId, userId, null);
     await tx.delete(synthesisMembers).where(eq(synthesisMembers.userId, userId));
     // 16.2: уведомления и их настройки — личные данные получателя; CASCADE
     // при анонимизации не срабатывает — снимаем явно. Строки, где удаляемый

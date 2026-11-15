@@ -23,6 +23,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { db, schema } from "../db/index.js";
 import { env } from "../env.js";
 import { setRequestLocale } from "../i18n/locale.js";
+import { runWithActor } from "../services/actor-context.js"; // 17.1
 import type { BillingContextVar } from "./billing-check.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
@@ -241,7 +242,8 @@ export const requireAuth: MiddlewareHandler<AuthEnv> = async (c, next) => {
   c.set("user", result.user);
   c.set("session", result.session);
   setRequestLocale(result.user.uiLocale); // 11.2: язык пользователя первым
-  await next();
+  // 17.1: исполнитель операции — контекст запроса (версии и журнал пишут его)
+  await runWithActor(result.user.id, () => next());
 };
 
 /**
@@ -270,7 +272,8 @@ export const optionalAuth: MiddlewareHandler = async (c, next) => {
     c.set("session", result.session);
     setRequestLocale(result.user.uiLocale); // 11.2: язык пользователя первым
   }
-  await next();
+  // 17.1: исполнитель операции — контекст запроса (гость — null)
+  await runWithActor(result ? result.user.id : null, () => next());
 };
 
 /** Смотрящий гостевого роута: AuthUser либо null (после optionalAuth). */

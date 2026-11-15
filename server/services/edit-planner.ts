@@ -65,6 +65,9 @@
  * confirm_step, pausedState kind='plan').
  */
 
+import { assertPlanExpectations } from "./expected-version.js";
+import { releaseProposalsOfPlan } from "./proposal-links.js";
+import { SUBSECTION_EDIT_MAX_CHARS } from "@philosynth/shared/constants/edit-steps";
 import { and, eq, inArray } from "drizzle-orm";
 
 import {
@@ -133,6 +136,7 @@ import type {
   EditStep,
   ElementStepKind,
   StepRecommendationRef,
+  StepProposalRef,
   UpdatePlanRequest,
 } from "@philosynth/shared/types/edit-plan";
 import type {
@@ -145,7 +149,7 @@ import type { PromptParams } from "./prompt-builder.js";
 import type { SectionDefFull } from "./section-defs-builder.js";
 import type { CascadeWaveEntry } from "./cost-estimator.js";
 import { tl } from "@philosynth/shared/i18n/t";
-import { canEditSynthesis } from "./capabilities.js"; // 16.1
+import { canEditSynthesisOf, canManageSynthesis } from "./capabilities.js"; // 16.1; 17.1
 import { tData } from "@philosynth/shared/i18n/data"; // 14.1 (Д-52)
 import { KEY_LABELS, isSectionKey } from "@philosynth/shared/constants/section-labels"; // 14.1 (Д-52)
 
@@ -242,8 +246,20 @@ interface NormalizedActions {
   /** 15.2 (Д-71) — удаления мельче раздела (уже проверенные) */
   elementDeletes: ElementDeleteStepAction[];
   subsectionDeletes: SubsectionDeleteStepAction[];
+  /** 17.1 — ручные правки подразделов (шаг edit_subsection, бесплатно) */
+  subsectionEdits: SubsectionEditStepAction[];
   /** 10.2 — рекомендации, породившие перегенерацию раздела */
   regenRecommendations: Record<string, StepRecommendationRef[]>;
+  /** 17.1 — предложения, принятые перегенерацией раздела */
+  regenProposals: Record<string, StepProposalRef[]>;
+}
+
+/** 17.1: ручная правка подраздела шагом плана — готовая разметка (value). */
+interface SubsectionEditStepAction {
+  target: string;
+  sectionKey: string;
+  html: string;
+  proposals?: StepProposalRef[];
 }
 
 interface ElementDeleteStepAction {
@@ -263,6 +279,7 @@ interface SubRegenAction {
   sectionKey: string;
   note?: string;
   recommendations?: StepRecommendationRef[];
+  proposals?: StepProposalRef[];
 }
 
 interface ElementStepAction {
@@ -274,6 +291,7 @@ interface ElementStepAction {
   note?: string;
   subsection?: string;
   recommendations?: StepRecommendationRef[];
+  proposals?: StepProposalRef[];
 }
 
 /** Что создатель плана вправе передать сверх тела запроса. */
@@ -284,7 +302,25 @@ export interface CreatePlanOptions {
    * клиент приписал бы правке чужое «почему».
    */
   trustRecommendationRefs?: boolean;
+  /**
+   * 17.1: ссылки на предложения (`proposals` шага) принимаются ТОЛЬКО от
+   * службы предложений (services/proposals.ts — единственный путь принятия).
+   * Из тела HTTP-запроса отбрасываются: иначе клиент объявил бы произвольную
+   * правку «принятием предложения» и закрыл бы чужое предложение как принятое.
+   */
+  trustProposalRefs?: boolean;
 }
+
+const asProposalRefs = (v: unknown, trusted: boolean): StepProposalRef[] | undefined => {
+  if (!trusted || !Array.isArray(v)) return undefined;
+  const out = v.filter(
+    (r): r is StepProposalRef =>
+      !!r && typeof r === "object" &&
+      typeof (r as StepProposalRef).id === "string" &&
+      ((r as StepProposalRef).authorId === null || typeof (r as StepProposalRef).authorId === "string"),
+  );
+  return out.length ? out : undefined;
+};
 
 const asRefs = (v: unknown, trusted: boolean): StepRecommendationRef[] | undefined => {
   if (!trusted || !Array.isArray(v)) return undefined;
@@ -316,6 +352,7 @@ async function normalizeActions(
   opts: CreatePlanOptions = {},
 ): Promise<NormalizedActions> {
   const trusted = opts.trustRecommendationRefs === true;
+  const trustedProp = opts.trustProposalRefs === true;
   const details: Record<string, string> = {};
   const inDoc = new Set(sectionOrder.filter((k) => k !== "sum"));
 
@@ -411,11 +448,13 @@ async function normalizeActions(
       if (seen.has(target)) continue;
       seen.add(target);
       const refs = asRefs(a.recommendations, trusted);
+      const props = asProposalRefs(a.proposals, trustedProp);
       subRegens.push({
         target,
         sectionKey,
         ...(typeof a.note === "string" && a.note.trim() ? { note: a.note.trim() } : {}),
         ...(refs ? { recommendations: refs } : {}),
+        ...(props ? { proposals: props } : {}),
       });
     }
   }
@@ -425,7 +464,7 @@ async function normalizeActions(
   const seenEl = new Set<string>();
   const takeElement = async (
     type: ElementStepAction["type"],
-    a: { kind?: unknown; elementId?: unknown; field?: unknown; value?: unknown; note?: unknown; subsection?: unknown; recommendations?: unknown },
+    a: { kind?: unknown; elementId?: unknown; field?: unknown; value?: unknown; note?: unknown; subsection?: unknown; recommendations?: unknown; proposals?: unknown },
     fieldName: "elementEdits" | "elementRefines",
   ): Promise<void> => {
     const kind = a?.kind as ElementStepKind;
@@ -459,6 +498,7 @@ async function normalizeActions(
     }
     seenEl.add(k);
     const refs = asRefs(a.recommendations, trusted);
+    const props = asProposalRefs(a.proposals, trustedProp);
     if (type === "edit_element") {
       const value = typeof a.value === "string" ? normalizeFieldValue(a.value) : "";
       if (!value) {
@@ -469,7 +509,7 @@ async function normalizeActions(
         details[fieldName] = tl("server.editPlanner.valueTooLong", "значение длиннее {max} знаков", { max: ELEMENT_FIELD_MAX_CHARS });
         return;
       }
-      elementSteps.push({ type, kind, elementId, field, value, ...(refs ? { recommendations: refs } : {}) });
+      elementSteps.push({ type, kind, elementId, field, value, ...(refs ? { recommendations: refs } : {}), ...(props ? { proposals: props } : {}) });
     } else {
       const note = typeof a.note === "string" ? a.note.trim() : "";
       if (!note) {
@@ -480,6 +520,7 @@ async function normalizeActions(
         type, kind, elementId, field, note,
         ...(typeof a.subsection === "string" && a.subsection.includes(":") ? { subsection: a.subsection } : {}),
         ...(refs ? { recommendations: refs } : {}),
+        ...(props ? { proposals: props } : {}),
       });
     }
   };
@@ -560,6 +601,69 @@ async function normalizeActions(
     }
   }
 
+  /* ── 17.1: ручные правки подразделов (шаг edit_subsection) ── */
+  // Правила — как у удаления подраздела: раздел-хозяин не перегенерируется и
+  // не удаляется этим же планом, подраздел существует, один адресат — один
+  // шаг, тот же подраздел этим же планом не перегенерируется и не удаляется.
+  // Замок (таблица рендерера, капсула) проверяет исполнение — тем же
+  // updateSubsection, что и ручная правка (SECTION_TABLE_LOCKED, шаг падает).
+  const subsectionEdits: SubsectionEditStepAction[] = [];
+  const rawSubEdits = Array.isArray(body.subsectionEdits) ? body.subsectionEdits : [];
+  if (rawSubEdits.length > 0) {
+    const namesOf = await subsectionNames();
+    const seen = new Set<string>();
+    for (const raw of rawSubEdits) {
+      const a = (raw ?? {}) as { target?: unknown; html?: unknown; proposals?: unknown };
+      const target = typeof a.target === "string" ? a.target : "";
+      const ref = parseSubsectionStepTarget(target);
+      if (!ref) {
+        details.subsectionEdits = tl("server.editPlanner.subsectionAddressShape", "адрес «{target}» — не «sectionKey:подраздел»", { target });
+        continue;
+      }
+      const { sectionKey, subsectionName: name } = ref;
+      if (!sectionOrder.includes(sectionKey)) {
+        details.subsectionEdits = tl("server.editPlanner.sectionNotInDocument", "раздел «{section}» отсутствует в документе", { section: secLabel(sectionKey) });
+        continue;
+      }
+      if (!(namesOf.get(sectionKey) ?? []).includes(name)) {
+        details.subsectionEdits = tl("server.editPlanner.subsectionNotInSection", "в разделе «{section}» нет подраздела «{subsection}»", { section: secLabel(sectionKey), subsection: name });
+        continue;
+      }
+      if (regen.includes(sectionKey) || remove.includes(sectionKey)) {
+        details.subsectionEdits = tl("server.editPlanner.sectionRegeneratedByPlan", "раздел «{section}» этим же планом перегенерируется или удаляется целиком", { section: secLabel(sectionKey) });
+        continue;
+      }
+      if (subRegens.some((r) => r.target === target) || subsectionDeletes.some((r) => r.target === target)) {
+        details.subsectionEdits = tl("server.editPlanner.editAndRegenSameSubsection", "подраздел «{subsection}» раздела «{section}» этим же планом и правится вручную, и перегенерируется либо удаляется", { subsection: name, section: secLabel(sectionKey) });
+        continue;
+      }
+      const html = typeof a.html === "string" ? a.html.trim() : "";
+      if (!html) {
+        details.subsectionEdits = tl("server.editPlanner.emptySubsectionHtml", "пустая разметка подраздела: удаление — отдельная операция, а не пустая правка");
+        continue;
+      }
+      if (html.length > SUBSECTION_EDIT_MAX_CHARS) {
+        details.subsectionEdits = tl("server.editPlanner.valueTooLong", "значение длиннее {max} знаков", { max: SUBSECTION_EDIT_MAX_CHARS });
+        continue;
+      }
+      if (seen.has(target)) {
+        details.subsectionEdits = tl("server.editPlanner.subsectionNamedTwice", "подраздел «{subsection}» раздела «{section}» назван дважды", { subsection: name, section: secLabel(sectionKey) });
+        continue;
+      }
+      seen.add(target);
+      const props = asProposalRefs(a.proposals, trustedProp);
+      subsectionEdits.push({ target, sectionKey, html, ...(props ? { proposals: props } : {}) });
+    }
+  }
+
+  const regenProposals: Record<string, StepProposalRef[]> = {};
+  if (trustedProp && body.regenProposals && typeof body.regenProposals === "object") {
+    for (const [k, v] of Object.entries(body.regenProposals)) {
+      const refs = asProposalRefs(v, true);
+      if (refs && regen.includes(k)) regenProposals[k] = refs;
+    }
+  }
+
   const regenRecommendations: Record<string, StepRecommendationRef[]> = {};
   if (trusted && body.regenRecommendations && typeof body.regenRecommendations === "object") {
     for (const [k, v] of Object.entries(body.regenRecommendations)) {
@@ -592,7 +696,9 @@ async function normalizeActions(
     elementSteps,
     elementDeletes,
     subsectionDeletes,
+    subsectionEdits,
     regenRecommendations,
+    regenProposals,
   };
 }
 
@@ -605,6 +711,7 @@ function touchedSectionsOf(actions: NormalizedActions): string[] {
       ...actions.elementSteps.map((a) => ELEMENT_STEP_HOST[a.kind]),
       ...actions.elementDeletes.map((a) => ELEMENT_STEP_HOST[a.kind]),
       ...actions.subsectionDeletes.map((a) => a.sectionKey),
+      ...actions.subsectionEdits.map((a) => a.sectionKey),
     ]),
   ];
 }
@@ -613,7 +720,7 @@ function hasAnyAction(a: NormalizedActions): boolean {
   return (
     a.regen.length + a.remove.length + a.add.length + a.modeRegen.length +
       a.modeRemove.length + a.subRegens.length + a.elementSteps.length +
-      a.elementDeletes.length + a.subsectionDeletes.length > 0
+      a.elementDeletes.length + a.subsectionDeletes.length + a.subsectionEdits.length > 0
   );
 }
 
@@ -685,6 +792,7 @@ async function assembleSteps(
       ...(a.note !== undefined ? { context: a.note } : {}),
       ...(a.subsection !== undefined ? { subsection: a.subsection } : {}),
       ...(a.recommendations ? { recommendations: a.recommendations } : {}),
+      ...(a.proposals ? { proposals: a.proposals } : {}),
     });
   }
 
@@ -702,6 +810,7 @@ async function assembleSteps(
   const subHosts = [
     ...new Set([
       ...actions.subsectionDeletes.map((a) => a.sectionKey),
+      ...actions.subsectionEdits.map((a) => a.sectionKey),
       ...actions.subRegens.map((a) => a.sectionKey),
     ]),
   ].filter((k) => k !== "sum");
@@ -725,6 +834,17 @@ async function assembleSteps(
         ...(a.recommendations ? { recommendations: a.recommendations } : {}),
       });
     }
+    // 17.1: ручные правки подразделов (бесплатно) — раньше платных перегенераций
+    for (const a of actions.subsectionEdits.filter((x) => x.sectionKey === sectionKey)) {
+      push({
+        type: "edit_subsection",
+        target: a.target,
+        status: "confirmed",
+        cascadeGenerated: false,
+        value: a.html,
+        ...(a.proposals ? { proposals: a.proposals } : {}),
+      });
+    }
     for (const a of actions.subRegens.filter((x) => x.sectionKey === sectionKey)) {
       push({
         type: "regen_subsection",
@@ -733,6 +853,7 @@ async function assembleSteps(
         cascadeGenerated: false,
         ...(a.note !== undefined ? { context: a.note } : {}),
         ...(a.recommendations ? { recommendations: a.recommendations } : {}),
+        ...(a.proposals ? { proposals: a.proposals } : {}),
       });
     }
   };
@@ -757,6 +878,9 @@ async function assembleSteps(
       ...(context !== undefined ? { context } : {}),
       ...(item.action === "regen" && actions.regenRecommendations[item.key]
         ? { recommendations: actions.regenRecommendations[item.key] }
+        : {}),
+      ...(item.action === "regen" && actions.regenProposals[item.key]
+        ? { proposals: actions.regenProposals[item.key] }
         : {}),
     });
   }
@@ -836,7 +960,7 @@ function costGroupOf(steps: readonly EditStep[]): StepCostGroup {
       // обращение: SYS + узкий контекст → один абзац
       g.refineCount += 1;
     }
-    // delete, edit_element, delete_element, delete_subsection — 0
+    // delete, edit_element, edit_subsection, delete_element, delete_subsection — 0
   }
   return g;
 }
@@ -1083,8 +1207,12 @@ export async function createPlan(
   opts: CreatePlanOptions = {},
 ): Promise<EditPlan> {
   const { row, philosophers } = await loadSynthesis(synthesisId);
-  if (!canEditSynthesis(row, userId)) // 16.1: одна проверка прав
+  if (!(await canEditSynthesisOf(row, userId))) // 16.1: одна проверка прав; 17.1: с участием (редактор)
     throw new PlanError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
+
+  // 17.1: ожидаемые версии адресатов плана — до сборки шагов; расхождение —
+  // VersionConflictError (409 VERSION_CONFLICT со всеми разошедшимися разом)
+  await assertPlanExpectations(synthesisId, body.expected);
 
   const sectionOrder: readonly string[] = row.sectionOrder ?? [];
   const actions = await normalizeActions(synthesisId, sectionOrder, body, opts);
@@ -1136,11 +1264,23 @@ export async function createPlan(
 
 /* ── Чтение/обновление/удаление ──────────────────────────────────────── */
 
-/** Строка плана + владельческий контроль (планы — только владельца). */
+/**
+ * Строка плана + контроль автора. План принадлежит тому, кто его составил
+ * (владелец или редактор, 17.1): он платит за исполнение и он же им
+ * управляет; чужой план не виден и не исполняется. Сверх авторства автор
+ * обязан СЕЙЧАС иметь право правки: редактор, исключённый из участников или
+ * пониженный до рецензента, свой прежний план не читает, не исполняет и не
+ * возобновляет.
+ */
 export async function loadPlanRow(
   synthesisId: string,
   planId: string,
   userId: string,
+  /** 17.1 (Д-84): управляющему концепцией (владельцу) чужой план открыт на
+   *  ЧТЕНИЕ и УДАЛЕНИЕ (иначе черновик редактора держал бы предложения и не
+   *  убирался); исполнять, править и продолжать план может только автор —
+   *  платит он */
+  opts: { manager?: boolean } = {},
 ): Promise<PlanRow> {
   const [row] = await db
     .select()
@@ -1148,7 +1288,22 @@ export async function loadPlanRow(
     .where(and(eq(editPlans.id, planId), eq(editPlans.synthesisId, synthesisId)))
     .limit(1);
   if (!row) throw new PlanError("NOT_FOUND", tl("common.planNotFound", "План не найден"));
+  const [synth0] = opts.manager
+    ? await db
+        .select({ userId: syntheses.userId })
+        .from(syntheses)
+        .where(eq(syntheses.id, synthesisId))
+        .limit(1)
+    : [];
+  if (synth0 && canManageSynthesis(synth0, userId)) return row;
   if (row.userId !== userId)
+    throw new PlanError("FORBIDDEN", tl("server.editPlanner.noPlanAccess", "Нет доступа к плану"));
+  const [synth] = await db
+    .select({ id: syntheses.id, userId: syntheses.userId, visibility: syntheses.visibility })
+    .from(syntheses)
+    .where(eq(syntheses.id, synthesisId))
+    .limit(1);
+  if (!synth || !(await canEditSynthesisOf(synth, userId)))
     throw new PlanError("FORBIDDEN", tl("server.editPlanner.noPlanAccess", "Нет доступа к плану"));
   return row;
 }
@@ -1159,7 +1314,7 @@ export async function getPlan(
   planId: string,
   userId: string,
 ): Promise<EditPlan> {
-  const planRow = await loadPlanRow(synthesisId, planId, userId);
+  const planRow = await loadPlanRow(synthesisId, planId, userId, { manager: true });
   const { row, philosophers } = await loadSynthesis(synthesisId);
   const cost = await estimatePlanCostSplit(
     synthesisId,
@@ -1180,7 +1335,34 @@ function subRegensFromSteps(steps: readonly EditStep[]): SubRegenAction[] {
       sectionKey: s.target.slice(0, s.target.indexOf(":")),
       ...(s.context !== undefined ? { note: s.context } : {}),
       ...(s.recommendations ? { recommendations: s.recommendations } : {}),
+      ...(s.proposals ? { proposals: s.proposals } : {}),
     }));
+}
+
+/* 17.1: обратное к сборке — ручные правки подразделов из шагов плана
+   (updatePlan пересобирает шаги ПО ТИПАМ: без этой функции шаг исчез бы при
+   первой же смене галки) */
+function subsectionEditsFromSteps(steps: readonly EditStep[]): SubsectionEditStepAction[] {
+  const out: SubsectionEditStepAction[] = [];
+  for (const s of steps) {
+    if (s.type !== "edit_subsection" || s.value === undefined) continue;
+    const ref = parseSubsectionStepTarget(s.target);
+    if (!ref) continue;
+    out.push({
+      target: s.target,
+      sectionKey: ref.sectionKey,
+      html: s.value,
+      ...(s.proposals ? { proposals: s.proposals } : {}),
+    });
+  }
+  return out;
+}
+
+function regenProposalsFromSteps(steps: readonly EditStep[]): Record<string, StepProposalRef[]> {
+  const out: Record<string, StepProposalRef[]> = {};
+  for (const s of steps)
+    if (s.type === "regen" && s.proposals?.length) out[s.target] = s.proposals;
+  return out;
 }
 
 function elementActionsFromSteps(steps: readonly EditStep[]): ElementStepAction[] {
@@ -1198,6 +1380,7 @@ function elementActionsFromSteps(steps: readonly EditStep[]): ElementStepAction[
       ...(s.context !== undefined ? { note: s.context } : {}),
       ...(s.subsection !== undefined ? { subsection: s.subsection } : {}),
       ...(s.recommendations ? { recommendations: s.recommendations } : {}),
+      ...(s.proposals ? { proposals: s.proposals } : {}),
     });
   }
   return out;
@@ -1324,7 +1507,9 @@ export async function updatePlan(
     // 15.2: удаления — так же
     elementDeletes: elementDeletesFromSteps(activeBase),
     subsectionDeletes: subsectionDeletesFromSteps(activeBase),
+    subsectionEdits: subsectionEditsFromSteps(activeBase), // 17.1
     regenRecommendations: regenRefsFromSteps(base),
+    regenProposals: regenProposalsFromSteps(base), // 17.1
   };
 
   const impact = await analyzeImpact(synthesisId, {
@@ -1358,6 +1543,7 @@ export async function updatePlan(
     elementSteps: elementActionsFromSteps(base),
     elementDeletes: elementDeletesFromSteps(base),
     subsectionDeletes: subsectionDeletesFromSteps(base),
+    subsectionEdits: subsectionEditsFromSteps(base), // 17.1
   };
 
   const p = paramsFromRow(row, philosophers);
@@ -1394,10 +1580,12 @@ export async function deletePlan(
   planId: string,
   userId: string,
 ): Promise<void> {
-  const planRow = await loadPlanRow(synthesisId, planId, userId);
+  const planRow = await loadPlanRow(synthesisId, planId, userId, { manager: true });
   if (planRow.status === "executing")
     throw new PlanError("PLAN_CONFLICT", tl("server.editPlanner.planExecutingStopFirst", "План исполняется — сначала остановите"));
   // 10.2: рекомендации плана — обратно в 'new' ДО удаления (FK обнулит plan_id)
   await releaseRecommendations(synthesisId, planId);
+  // 17.1: предложения, взятые в этот план, возвращаются в ожидание решения
+  await releaseProposalsOfPlan(synthesisId, planId, userId, "plan_deleted");
   await db.delete(editPlans).where(eq(editPlans.id, planId));
 }

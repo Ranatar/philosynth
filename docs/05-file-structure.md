@@ -62,6 +62,8 @@ philosynth-service/
 │       │   ├── phil-filename.ts        # PHIL_FILENAME (PHIL_FILENAME)
 │       │   ├── discussion.ts           # 16.1: MEMBER_ROLES/STATUSES, ADDRESS_KINDS/STATES, COMMENT_KINDS/
 │       │   │                           #  STATUSES, REVIEW_STATUSES, REVIEW_TEXT_FIELDS, пределы текстов и страниц
+│       │   ├── proposals.ts            # 17.1: PROPOSAL_SOURCES / KINDS / STATUSES / CLOSE_REASONS /
+│       │   │                           #  EVENT_TYPES / ACCEPT_METHODS, пределы текстов и страницы
 │       │   ├── notifications.ts        # 16.2: NOTIFICATION_TYPES (11) / CATEGORIES (5) / CATEGORY_OF, REF_KINDS,
 │       │   │                           #  страницы, MEMBER_INVITE_TOKEN_PURPOSE, MEMBER_INVITE_TTL_HOURS
 │       │   ├── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (METHOD_CODE, LEVEL_CODE)
@@ -107,6 +109,10 @@ philosynth-service/
 │       │   ├── discussion.ts           # 16.1: Capabilities, SynthesisRole, DiscussionAddress/Resolution,
 │       │   │                           #  Comment*, Review*, ReviewRevision, ReviewFinding, DiscussionSummary;
 │       │   │                           #  16.2: DiscussionAuthor.formerMember
+│       │   ├── proposals.ts            # 17.1: Proposal, ProposalBase, ProposalEvent, ProposalDetail,
+│       │   │                           #  ProposalCreateInput, ProposalAcceptInput/Result; в edit-plan.ts —
+│       │   │                           #  шаг edit_subsection, StepProposalRef, PlanExpectation, skipReason;
+│       │   │                           #  в elements.ts — ChangeSource 'proposal', ProposalOrigin, ActorRef
 │       │   ├── notifications.ts        # 16.2: MemberView, PendingInvitation, MembersView, MemberInviteResult,
 │       │   │                           #  MyMembership, InvitationInfo, SharedSynthesisPreview, Notification*,
 │       │   │                           #  NotificationList, NotificationSettings
@@ -134,6 +140,8 @@ philosynth-service/
 │           │                           # hasConceptParticipants (v11, 01 §4.14)
 │           ├── colorize-log.ts         # colorizeLog() — единая реализация (2.4;
 │           │                           # клиент реэкспортирует)
+│           ├── expected-version.ts     # 17.1: ожидаемая версия правки — sectionContentHash /
+│           │                           #  subsectionContentHash (≡ хэшу адреса 16.1), VersionConflictDetails
 │           ├── discussion-address.ts   # 16.1: ключи адресов (categoryKey, edgeKey, thesisKey, termKey,
 │           │                           #  subsectionKey), canonicalJson → sha256 contentHash, plainText,
 │           │                           #  excerptOf, buildAddress, resolutionOf (current|outdated|deleted)
@@ -198,6 +206,9 @@ philosynth-service/
 │   │       ├── 0017_discussion.sql     # 16.1: synthesis_members, comments, reviews, review_revisions,
 │   │       │                           #  review_findings (CASCADE по синтезу, author_id SET NULL); drizzle-kit,
 │   │       │                           #  тег переименован
+│   │       ├── 0019_proposals_actor.sql  # 17.1: proposals, proposal_events; actor_user_id в
+│   │       │                           #  element_versions и generation_log (SET NULL); drizzle-kit, тег
+│   │       │                           #  переименован; только добавления
 │   │       ├── 0018_members_notifications.sql  # 16.2: notifications, notification_settings; auth_tokens +=
 │   │       │                           #  purpose member_invite, synthesis_id (CASCADE), member_role (CHECK);
 │   │       │                           #  частичный уникальный индекс dedupe; drizzle-kit, тег переименован
@@ -236,6 +247,8 @@ philosynth-service/
 │   │   ├── discussion.ts               # 16.1: 18 маршрутов /syntheses/:id/comments|reviews|discussion/summary
 │   │   │                               #  (03 §2.17) под requireAuth + discussGate (404 → 403 по discuss);
 │   │   │                               #  hide/unhide — manage; DiscussionError → 400/403/404/409
+│   │   ├── proposals.ts                # 17.1: 8 маршрутов /syntheses/:id/proposals (03 §2.20) под
+│   │   │                               #  requireAuth + гейт обсуждения; принятие отдаёт черновик плана
 │   │   ├── members.ts                  # 16.2: 11 маршрутов участников (03 §2.18): GET /shared (ДО /:id),
 │   │   │                               #  /:id/members[/:mid[/resend]], /:id/invitations/:tid[/resend],
 │   │   │                               #  /:id/membership[/accept|/decline]; письма — под mailLimiter
@@ -321,6 +334,22 @@ philosynth-service/
 │   │   │                               #  manage, role }; editCapability = owner (17.1 меняет здесь);
 │   │   │                               #  canEdit/canManage/canDiscussSynthesis, loadMembership,
 │   │   │                               #  loadCapabilities, capabilitiesOfRow
+│   │   ├── actor-context.ts            # 17.1: исполнитель запроса (AsyncLocalStorage): runWithActor —
+│   │   │                               #  middleware/auth, ws/handler, withGenerationSlot; currentActorId —
+│   │   │                               #  createVersion; genLogActor — каждая вставка generation_log
+│   │   ├── expected-version.ts         # 17.1: assertElementVersion (в транзакции, под блокировкой
+│   │   │                               #  элемента), assertContentHash, assertPlanExpectations,
+│   │   │                               #  VersionConflictError → 409 VERSION_CONFLICT
+│   │   ├── proposals.ts                # 17.1: предложения — создать (discuss), принять (edit) =
+│   │   │                               #  ЧЕРНОВИК плана (planBodyFor, createPlan с trustProposalRefs),
+│   │   │                               #  отклонить / закрыть (edit), снять и «новое поверх текущего»
+│   │   │                               #  (автор); stale вычисляется; документ не пишет
+│   │   ├── proposal-links.ts           # 17.1: связь предложение ↔ план без зависимости от
+│   │   │                               #  планировщика: события, releaseProposalsOfPlan,
+│   │   │                               #  proposalStepBlockers (заслон устаревшего), settleProposalStep
+│   │   │                               #  (единственное место 'accepted'), closeProposalsOfMember
+│   │   ├── log-audience.ts             # 17.1: кто смотрит журнал и версии — audienceOf, shownActor
+│   │   │                               #  (имя — участникам, у строк не-владельца), costVisible
 │   │   ├── discussion-address.ts       # 16.1: индекс адресуемых объектов концепции (loadAddressIndex —
 │   │   │                               #  разделы, категории, рёбра, тезисы, термины, max element_versions;
 │   │   │                               #  подразделы лениво через html-parser), findTarget (id → ключ),
@@ -1116,6 +1145,18 @@ philosynth-service/
     │                                   #  Chrome 131: вкладка «Участники» (409 под формой, второй шаг
     │                                   #  исключения), колокольчик → страница принятия → полоса роли, «Со мной
     │                                   #  поделились», профиль «Уведомления», /register?invite= (32 ✓)
+    │                                   # smoke-171-request1 — 17.1: чистые функции (editCapability, хэши
+    │                                   #  ожидаемой версии ≡ адресам, planBodyFor, способы по адресату);
+    │                                   #  живьём по HTTP: права редактора, VERSION_CONFLICT на четырёх
+    │                                   #  путях, исполнитель в версии и журнале (имена/стоимость по
+    │                                   #  смотрящему), пауза редактору; предложения — принять = черновик,
+    │                                   #  исполнение планом, устаревшее, отклонение человеком, «новое
+    │                                   #  поверх текущего», исключение участника (59 ✓)
+    │                                   # test-171-requests2-5 — 17.1, тестовые запросы: живой сервер под
+    │                                   #  BILLING_ENFORCE=true + мок Claude; R2 права и плательщик (квота
+    │                                   #  редактора, отказ биллинга ему, 403 рецензенту на 30 путях,
+    │                                   #  manage), R3 происхождение (журнал, выгрузка, номер документа),
+    │                                   #  R4 одновременные правки, R5 предложения (50 ✓ ×3)
     │                                   # smoke-163-request1 — 16.3: исходники (компоненты обсуждения без
     │                                   #  dangerouslySetInnerHTML, ссылка { __html } SectionView прежняя, гейты
     │                                   #  canDiscuss, MARK_TABLES ≡ рендереру, маршрут рецензии под RequireAuth,

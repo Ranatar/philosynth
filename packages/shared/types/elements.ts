@@ -79,7 +79,9 @@ export type ChangeSource =
   /** Откат к прежней версии (03 §2.4, правка 2026-09-02) */
   | "rollback"
   /** 10.2: правка исполнила рекомендацию критики; какую — ElementVersion.origin */
-  | "recommendation";
+  | "recommendation"
+  /** 17.1: правка исполнила принятое ПРЕДЛОЖЕНИЕ участника; какое — origin */
+  | "proposal";
 
 /**
  * 10.2: «почему изменилось». Снимок рекомендации, породившей версию: номер и
@@ -87,7 +89,7 @@ export type ChangeSource =
  * (element_versions.origin) — переживает перечитку таблицы рекомендаций и
  * удаление плана.
  */
-export interface VersionOrigin {
+export interface RecommendationOrigin {
   kind: "recommendation";
   recommendationId: string;
   round: number;
@@ -100,6 +102,40 @@ export interface VersionOrigin {
    *  15.2: 'delete_element' / 'delete_subsection' — удаление по рекомендации
    *  «удалить» (версия-снимок удалённого элемента / раздела до удаления) */
   stepType: "edit_element" | "refine_element" | "delete_element" | "delete_subsection";
+}
+
+/**
+ * 17.1: версия исполнила принятое предложение. Снимок (не FK): кто предложил,
+ * из чего оно выросло (комментарий, замечание рецензии и сама рецензия,
+ * рекомендация критики), план и шаг. Исполнитель — колонка
+ * `element_versions.actor_user_id`, не это поле.
+ */
+export interface ProposalOrigin {
+  kind: "proposal";
+  proposalId: string;
+  authorId: string | null;
+  /** direct | comment | review_finding | recommendation */
+  source: string;
+  sourceId: string | null;
+  /** рецензия замечания-источника (source = review_finding) */
+  reviewId?: string | null;
+  /** replace | note */
+  proposalKind: string;
+  rationale: string;
+  planId: string | null;
+  stepIndex: number | null;
+  stepType: "edit_element" | "edit_subsection" | "refine_element" | "regen_subsection" | "regen";
+}
+
+export type VersionOrigin = RecommendationOrigin | ProposalOrigin;
+
+/** 17.1: исполнитель версии/строки журнала — участникам концепции (имя);
+ *  читателю по showLogs поля нет вовсе. */
+export interface ActorRef {
+  id: string | null;
+  name: string;
+  /** исполнитель — владелец концепции */
+  isOwner: boolean;
 }
 
 /** Строка таблицы element_versions */
@@ -115,6 +151,9 @@ export interface ElementVersion {
   changeSource: ChangeSource;
   /** 10.2: рекомендация, породившая правку; null — правка не по рекомендации */
   origin?: VersionOrigin | null;
+  /** 17.1: кто исполнил правку (element_versions.actor_user_id); null — строка
+   *  до 17.1 либо служба: читается как владелец. Отдаётся участникам концепции */
+  actor?: ActorRef | null;
   createdAt: string;
 }
 

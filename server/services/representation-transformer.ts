@@ -60,6 +60,7 @@
  *    transform» / «No graph to transform») — роут проверяет синхронно
  *    (edge case протокола → 400).
  */
+import { genLogActor } from "./actor-context.js"; // 17.1: исполнитель строки журнала
 import { and, asc, desc, eq, sql as dsql } from "drizzle-orm";
 
 import type { RepresentationTransform, TransformDirection } from "@philosynth/shared/types/elements";
@@ -424,7 +425,7 @@ async function streamTransform(
   const streamKey = transformStreamKey(direction);
   const [genEntry] = await db
     .insert(generationLog)
-    .values({
+    .values({ ...genLogActor(),
       synthesisId,
       sectionKey: targetKey,
       sectionLabel: `${targetTitle} [трансформация ${direction === "graph_to_theses" ? "граф → тезисы" : "тезисы → граф"}]`,

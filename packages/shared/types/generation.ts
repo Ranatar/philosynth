@@ -6,6 +6,7 @@
 
 /** v11: маркеры показываются в «Логе контекста»,
  *  исключаются из «Лога промптов» (не являются запросами к API) */
+import type { ActorRef } from "./elements.js";
 export type GenerationLogType =
   | "generation"
   | "version_marker"
@@ -110,6 +111,12 @@ export interface GenLogEntry {
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
+  /** 17.1: стоимость скрыта от смотрящего (строку оплатил другой участник;
+   *  видят владелец и сам исполнитель) — costUsd при этом 0 */
+  costHidden?: boolean;
+  /** 17.1: исполнитель строки — только у строк НЕ-владельца и только
+   *  участникам (читателю по showLogs имён не отдаём) */
+  actor?: ActorRef;
   errorMessage: string | null;
   /** secCtxPreview, modeParam, subsections;
    *  v11: promptSkeleton — скелет промпта пишется при генерации,

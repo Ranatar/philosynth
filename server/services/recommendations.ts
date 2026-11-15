@@ -65,6 +65,7 @@
  *
  * linkedom по-прежнему только в utils/html-parser (инвариант 1.3).
  */
+import { genLogActor } from "./actor-context.js"; // 17.1: исполнитель строки журнала
 import { createHash } from "node:crypto";
 
 import { and, asc, desc, eq, inArray, max, sql as dsql } from "drizzle-orm";
@@ -1169,7 +1170,7 @@ async function composeTableUnderSlot(
   const { critique, prompt, SYS } = req;
   const [genEntry] = await db
     .insert(generationLog)
-    .values({
+    .values({ ...genLogActor(),
       synthesisId,
       // 12.3: ключ ПОДРАЗДЕЛА. С ключом раздела эта короткая строка
       // становилась «фактическим размером критики» в оценках стоимости

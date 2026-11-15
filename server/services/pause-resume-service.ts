@@ -52,6 +52,8 @@
  * старте сервера, поэтому generation_paused из generation-service несёт
  * живые estimates; без импорта — деградация до {} (fail-open).
  */
+import { releaseProposalsOfPlan } from "./proposal-links.js"; // 17.1
+import { genLogActor } from "./actor-context.js"; // 17.1: исполнитель строки журнала
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 import type {
@@ -119,7 +121,7 @@ import {
 } from "./streaming-manager.js";
 import { buildEffectiveDeps, resolveContextDeps } from "./synthesis-engine.js";
 import { tl } from "@philosynth/shared/i18n/t";
-import { canEditSynthesis } from "./capabilities.js"; // 16.1
+import { canEditSynthesisOf } from "./capabilities.js"; // 16.1
 
 /* ══ Константы ════════════════════════════════════════════════════════ */
 
@@ -199,7 +201,7 @@ export async function logPauseEvent(
 ): Promise<void> {
   try {
     const { sectionKey, sectionLabel, source, ...meta } = data;
-    await db.insert(generationLog).values({
+    await db.insert(generationLog).values({ ...genLogActor(),
       synthesisId,
       sectionKey: sectionKey ?? "_pause",
       sectionLabel: sectionLabel ?? "",
@@ -547,7 +549,7 @@ export async function resumeGeneration(
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
   if (!row) throw new PauseResumeError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
-  if (!canEditSynthesis(row, userId)) { // 16.1: одна проверка прав
+  if (!(await canEditSynthesisOf(row, userId))) { // 16.1: одна проверка прав; 17.1: с участием (редактор)
     throw new PauseResumeError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
   }
   if (isGenerationActive(synthesisId)) {
@@ -927,7 +929,7 @@ export async function resumePlan(
     .where(eq(syntheses.id, synthesisId))
     .limit(1);
   if (!row) throw new PauseResumeError("NOT_FOUND", tl("common.synthesisNotFound", "Синтез не найден"));
-  if (!canEditSynthesis(row, userId)) { // 16.1: одна проверка прав
+  if (!(await canEditSynthesisOf(row, userId))) { // 16.1: одна проверка прав; 17.1: с участием (редактор)
     throw new PauseResumeError("FORBIDDEN", tl("common.noSynthesisAccess", "Нет доступа к синтезу"));
   }
   const ps = row.pausedState;
@@ -982,6 +984,8 @@ export async function resumePlan(
           eq(recommendations.status, "planned"),
         ),
       );
+    // 17.1: предложения остановленного плана — обратно в ожидание решения
+    await releaseProposalsOfPlan(synthesisId, planId, userId, "plan_stopped");
     sendToUser(userId, { type: "generation_resumed", synthesisId, mode });
     return;
   }

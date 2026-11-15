@@ -54,8 +54,8 @@ import type {
   SubsectionImpactResponse,
 } from "@philosynth/shared/types/edit-plan";
 import { tl } from "@philosynth/shared/i18n/t";
-import { editGate } from "./edit-gate.js"; // 16.1
-import { canEditSynthesis } from "../services/capabilities.js"; // 16.1
+import { editGate, editRightFirst } from "./edit-gate.js"; // 16.1
+import { canEditSynthesisOf } from "../services/capabilities.js"; // 16.1
 
 export const generationRoutes = new Hono<AuthEnv>();
 
@@ -67,6 +67,7 @@ export const generationRoutes = new Hono<AuthEnv>();
 generationRoutes.post(
   "/:id/regenerate/:sectionKey",
   requireAuth,
+  editRightFirst,
   billingCheck({ quota: "regenerations" }), // 6.1
   async (c) => {
     const user = c.get("user");
@@ -93,6 +94,7 @@ generationRoutes.post(
 generationRoutes.post(
   "/:id/regenerate-subsection",
   requireAuth,
+  editRightFirst,
   billingCheck({ quota: "regenerations" }), // 6.1
   async (c) => {
     const user = c.get("user");
@@ -182,7 +184,7 @@ generationRoutes.post("/:id/subsection-impact", requireAuth, async (c) => {
 
   try {
     const { row, philosophers, secCtx } = await loadSynthesis(id);
-    if (!canEditSynthesis(row, user.id)) // 16.1: одна проверка прав
+    if (!(await canEditSynthesisOf(row, user.id))) // 16.1: одна проверка прав; 17.1: с участием (редактор)
       return c.json({ error: tl("common.noSynthesisAccess", "Нет доступа к синтезу"), code: "FORBIDDEN" }, 403);
 
     const sectionOrder: readonly string[] = row.sectionOrder ?? [];

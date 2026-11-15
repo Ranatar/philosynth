@@ -223,7 +223,7 @@ try {
     ok(reg.status === 201 && reg.json.invitation?.synthesisId === S && myInv.status === 200 && myInv.json.member.status === "invited" && myInv.json.member.role === "editor" && myInv.json.synthesis.ownerName === "Тест owner", "регистрация по ссылке → участие invited того же синтеза", { reg: reg.json, my: myInv.json });
     ok((await GET(`/syntheses/${S}/members`, owner.cookie)).json.invitations.length === 0, "ждущее приглашение адреса погашено после регистрации");
     const acc2 = await call(`/syntheses/${S}/membership/accept`, { cookie: nu.cookie });
-    ok(acc2.status === 200 && (await GET(`/syntheses/${S}`, nu.cookie)).json?.synthesis?.capabilities.role === "editor" && !(await GET(`/syntheses/${S}`, nu.cookie)).json.synthesis.capabilities.edit, "новый участник принял — читает приватную как editor, edit false (до 17.1)");
+    ok(acc2.status === 200 && (await GET(`/syntheses/${S}`, nu.cookie)).json?.synthesis?.capabilities.role === "editor" && (await GET(`/syntheses/${S}`, nu.cookie)).json.synthesis.capabilities.edit === true && (await GET(`/syntheses/${S}`, nu.cookie)).json.synthesis.capabilities.manage === false, "новый участник принял — читает приватную как editor: edit true (17.1), manage false");
     // (в) отзыв приглашённого
     const rinv = await call(`/syntheses/${S}/members`, { body: { email: revoked.email, role: "reviewer" }, cookie: owner.cookie });
     const list1 = (await GET(`/syntheses/${S}/members`, owner.cookie)).json.members;
@@ -339,7 +339,9 @@ try {
     ok(await exists(po, T("tab-members")) && !(await exists(po, T("view-banner"))), "владельцу — вкладки «Документ | Участники», полосы просмотра нет");
     await click(po, T("tab-members"));
     await waitSel(po, T("members-panel"));
-    ok(await exists(po, T("members-empty")), "вкладка «Участники» пуста до приглашений");
+    // 17.1: ждём ответа GET /members — прежде проверка стояла без ожидания и
+    // падала, когда панель ещё показывала загрузку (гонка отрисовки)
+    ok(await waitSel(po, T("members-empty")).then(() => true, () => false), "вкладка «Участники» пуста до приглашений");
     await typeInto(po, T("invite-email"), rev.email);
     await po.select(T("invite-role"), "reviewer");
     await click(po, T("invite-submit"));
@@ -373,7 +375,7 @@ try {
     ok(!(await exists(pr, T("notification-count"))), "после перехода по строке счётчик обнулился");
     await click(pr, T("invitation-open"));
     await waitSel(pr, T("view-banner"));
-    ok((await pr.$eval(T("view-banner"), (el) => el.dataset.viewer)) === "member" && /роль: рецензент/.test(await text(pr, T("view-banner"))) && !(await exists(pr, T("page-tabs"))), "концепция участнику: полоса «роль: рецензент», вкладок владельца нет");
+    ok((await pr.$eval(T("view-banner"), (el) => el.dataset.viewer)) === "member" && /роль: рецензент/.test(await text(pr, T("view-banner"))) && !(await exists(pr, T("tab-members"))), "концепция участнику: полоса «роль: рецензент», вкладки владельца «Участники» нет (вкладки обсуждения участнику дала 16.3)");
     // владелец: роль и второй шаг исключения
     await po.reload({ waitUntil: "networkidle0" });
     await click(po, T("tab-members"));

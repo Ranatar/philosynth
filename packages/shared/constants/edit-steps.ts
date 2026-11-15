@@ -21,6 +21,7 @@ export const FREE_STEP_TYPES: readonly EditStepType[] = [
   "edit_element",
   "delete_element",
   "delete_subsection",
+  "edit_subsection", // 17.1: готовая разметка подраздела — модель не зовётся
 ];
 
 export function isFreeStepType(t: EditStepType): boolean {
@@ -178,3 +179,7 @@ export function planCascadePending(
 ): PlanCascadePending {
   return { steps: steps.filter(isPendingStep).length, costUsd: pendingCost };
 }
+
+/** 17.1: предел разметки шага edit_subsection (ручная правка подраздела
+ *  планом; столько же — у значения предложения, PROPOSAL_VALUE_MAX). */
+export const SUBSECTION_EDIT_MAX_CHARS = 200_000;

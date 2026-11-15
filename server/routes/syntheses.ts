@@ -473,7 +473,13 @@ export function projectSynthesis(
   full: SynthesisFull,
   viewer: SynthesisViewer,
   flags: EffectiveFlags,
-  extra: { authorName?: string | null; sections?: SectionFull[] } = {},
+  extra: {
+    authorName?: string | null;
+    sections?: SectionFull[];
+    /** 17.1: смотрящий правит документ (редактор) — пауза ему остаётся
+     *  (уже без genParams: buildSynthesisFull), иначе он её не возобновит */
+    keepPause?: boolean;
+  } = {},
 ): SynthesisFull {
   const scope = full.scope;
   const base: SynthesisFull = { ...full };
@@ -482,9 +488,12 @@ export function projectSynthesis(
     base.authorName = extra.authorName.trim();
   }
   if (viewer === "owner") return base;
-  // 13.2 (Д-65): пауза — только владельцу, на любой ступени
-  base.pausedState = null;
-  base.pauseEstimates = null;
+  // 13.2 (Д-65): пауза — только владельцу, на любой ступени; 17.1: и
+  // редактору (право правки), но без снапшота параметров генерации
+  if (!extra.keepPause) {
+    base.pausedState = null;
+    base.pauseEstimates = null;
+  }
   if (viewer === "user") return base;
   // guest
   const {
@@ -597,7 +606,18 @@ async function buildSynthesisFull(
   // projectSynthesis всё равно обнулит pausedState/pauseEstimates, а
   // computePauseEstimates собирает промпты из содержимого родителей
   const ownerView = caps.role === "owner";
-  const ps = ownerView ? ((row.pausedState ?? null) as PausedState | null) : null;
+  // 17.1: редактор (право правки) паузу видит — он её возобновляет; но
+  // genParams (зерно, secCtx, conceptParticipants — содержимое РОДИТЕЛЬСКИХ
+  // концепций владельца, Д-65) ему не отдаются: возобновление читает их на
+  // сервере из строки, клиенту редактора они не нужны
+  const rawPs = (row.pausedState ?? null) as PausedState | null;
+  const ps: PausedState | null = ownerView
+    ? rawPs
+    : caps.edit && rawPs
+      ? rawPs.kind === "gen"
+        ? { ...rawPs, genParams: {} }
+        : rawPs
+      : null;
   let pauseEstimates: PauseEstimates | null = null;
   if (ps) {
     pauseEstimates =
@@ -668,8 +688,9 @@ async function respondSynthesisFull(
 ): Promise<SynthesisFull> {
   const full = await buildSynthesisFull(res.row, viewerUserId, res.scope, res.capabilities);
   const flags = effectiveFlags(res.row);
-  const extra: { authorName?: string | null; sections?: SectionFull[] } = {
+  const extra: { authorName?: string | null; sections?: SectionFull[]; keepPause?: boolean } = {
     authorName: flags.showAuthor ? await authorNameOf(res.row) : null,
+    keepPause: res.capabilities.edit, // 17.1: редактору пауза остаётся
   };
   if (res.viewer === "guest" && res.scope === "full") {
     extra.sections = await loadSectionsFull(res.row);

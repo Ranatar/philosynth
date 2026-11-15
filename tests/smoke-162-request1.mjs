@@ -66,7 +66,7 @@ console.log("\n■ A. Исходники и чистые функции");
   ok(!/\.userId\s*(!==|===)\s*(user\.id|userId|ownerId)\b/.test(ms + ns) && /canManageSynthesis\(row, userId\)/.test(ms), "A6 владелец — только через canManageSynthesis (4bm)");
   const journal = JSON.parse(rd("server/db/migrations/meta/_journal.json"));
   const mig = rd("server/db/migrations/0018_members_notifications.sql");
-  ok(journal.entries.length === 19 && journal.entries[18].tag === "0018_members_notifications" && /CREATE TABLE "notifications"/.test(mig) && /CREATE TABLE "notification_settings"/.test(mig) && /member_invite/.test(mig), "A7 миграция 0018_members_notifications девятнадцатая; таблицы и purpose");
+  ok(journal.entries.length >= 19 && journal.entries[18].tag === "0018_members_notifications" && /CREATE TABLE "notifications"/.test(mig) && /CREATE TABLE "notification_settings"/.test(mig) && /member_invite/.test(mig), "A7 миграция 0018_members_notifications девятнадцатая; таблицы и purpose");
   ok(/NOTIFY_DIGEST_INTERVAL_HOURS=/.test(rd(".env.example")) && /NOTIFY_SCAN_INTERVAL_MS=/.test(rd(".env.example")) && /NOTIFY_DIGEST_INTERVAL_HOURS=/.test(rd("env.local.example")) && /NOTIFY_DIGEST_INTERVAL_HOURS/.test(rd("scripts/checks/check-dotfiles.mjs")), "A8 env NOTIFY_* в .env.example / env.local.example / check-dotfiles");
   const css = rd("client/src/globals.css");
   const block = css.split("Беседа 16.2 — участники и уведомления")[1]?.split("/* Утилиты Tailwind")[0] ?? "";

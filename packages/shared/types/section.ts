@@ -91,6 +91,9 @@ export interface SubsectionSource {
   name: string;
   /** Разметка содержимого без обёртки data-section и без <h4> */
   html: string;
+  /** 17.1: sha256 исходника (subsectionContentHash) — шлётся обратно в
+   *  PATCH как expectedHash; у капсулы и запертых без исходника — нет */
+  hash?: string;
   /** Вложенные подразделы, стоящие в html комментариями-ссылками */
   nested: string[];
   lock: SubsectionLock | null;
