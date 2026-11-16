@@ -58,6 +58,7 @@ import { db } from "../db/index.js";
 import { categories, categoryEdges, clusterLabels } from "../db/schema.js";
 import { parseFragment, type HtmlElement } from "../utils/html-parser.js";
 import { pw } from "./parse-warnings.js";
+import { reindexSynthesis } from "./search-index.js"; // 18.1: свежесть индекса поиска
 import {
   getCategoryTypes,
   getRelationshipTypes,
@@ -724,6 +725,10 @@ export async function saveGraphToDb(
 
     return { categoriesInserted, edgesInserted, clustersInserted };
   });
+
+  // 18.1: категории заменены — имена категорий входят в индекс поиска.
+  // Пересчёт сразу после фиксации транзакции; сбой его запись графа не роняет.
+  await reindexSynthesis(synthesisId);
 
   // 5.5: нормализация на каталог — ВНЕ транзакции (каталог читается через
   // Redis/БД, fail-open), после фиксации строк.

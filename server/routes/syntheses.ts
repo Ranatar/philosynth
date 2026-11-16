@@ -64,6 +64,7 @@ import {
   type LineagePosRow,
 } from "../services/lineage-service.js";
 import { parentOverheadForSection } from "../services/context-builder.js";
+import { reindexSynthesis } from "../services/search-index.js"; // 18.1: свежесть индекса поиска
 import { normalizeSectionKey } from "../services/parent-context.js";
 import {
   optionalAuth,
@@ -996,6 +997,9 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
       synthesisId: cid,
     })),
   ]);
+  // 18.1: строка индекса поиска заводится сразу — концепция находится по
+  // названию и зерну ещё до первого раздела
+  await reindexSynthesis(synthesisId);
 
   /* ── Запуск генерации в фоне (§2.2: «Генерация начинается, клиент
         подключается по WebSocket») ── */
@@ -1625,6 +1629,9 @@ synthesesRoutes.patch("/:id", requireAuth, async (c) => {
     .where(eq(syntheses.id, id))
     .returning();
   const urow = updated as SynthesisRow;
+  // 18.1: название входит в индекс поиска (видимость и флаги — нет: права
+  // проверяются по строке синтеза на каждом запросе поиска)
+  if (patch.title !== undefined) await reindexSynthesis(id);
   return c.json({
     synthesis: await respondSynthesisFull(
       { access: "ok", row: urow, viewer: "owner", scope: "full", capabilities: capabilitiesFor(urow, user.id) },
@@ -1911,6 +1918,9 @@ synthesesRoutes.post("/:id/duplicate", requireAuth, async (c) => {
 
     return copyId;
   });
+  // 18.1: копия получила название, зерно, капсулу, категории и термины
+  // оригинала — её строка индекса поиска строится после фиксации копии
+  await reindexSynthesis(newId);
 
   return c.json({ id: newId }, 201);
 });

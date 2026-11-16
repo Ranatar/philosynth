@@ -46,6 +46,7 @@
  */
 
 import { and, desc, eq, ilike, inArray, ne } from "drizzle-orm";
+import { escapeLike } from "../utils/search-text.js";
 
 import { db, sql } from "../db/index.js";
 import { syntheses, synthesisLineage } from "../db/schema.js";
@@ -874,10 +875,7 @@ function fileNodeUnavailableMessage(state: FileNodeState): string {
 
 /* ══ 15.1 (Д-68): кандидаты для узла дерева файла ══════════════════════ */
 
-/** Экранирование % и _ для ILIKE-поиска по подстроке. */
-function escapeLike(s: string): string {
-  return s.replace(/[\\%_]/g, (ch) => "\\" + ch);
-}
+// 18.1: экранирование % и _ для ILIKE — одно на сервер (utils/search-text)
 
 /** Предел списка совпадений по подстроке названия. */
 export const FILE_NODE_SEARCH_LIMIT = 20;

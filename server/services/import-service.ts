@@ -134,6 +134,7 @@ import {
   parseGraphFromHTML,
   saveGraphToDb,
 } from "./graph-parser.js";
+import { reindexSynthesis } from "./search-index.js"; // 18.1: свежесть индекса поиска
 import { renderParseWarnings } from "./parse-warnings.js"; // 14.2 (Д-55)
 import {
   findSameOwnerSynthesesByTitle,
@@ -1565,6 +1566,11 @@ export async function importHTML(
     await db.delete(syntheses).where(eq(syntheses.id, synthesisId));
     throw err;
   }
+
+  // 18.1: импорт записал название, зерно, язык и капсулу (граф и глоссарий
+  // пересчитали индекс сами — saveGraphToDb / saveElementsToDb); итоговый
+  // пересчёт — после всех записей, чтобы индекс видел документ целиком
+  await reindexSynthesis(synthesisId);
 
   console.log(
     "Импорт завершён:",

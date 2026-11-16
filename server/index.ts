@@ -41,6 +41,7 @@ import { recommendationsRoutes } from "./routes/recommendations.js"; // бесе
 import { discussionRoutes } from "./routes/discussion.js"; // беседа 16.1
 import { proposalsRoutes } from "./routes/proposals.js"; // беседа 17.1
 import { membersRoutes } from "./routes/members.js"; // беседа 16.2
+import { searchRoutes } from "./routes/search.js";
 import { notificationsRoutes } from "./routes/notifications.js"; // беседа 16.2
 import { warmCache } from "./services/prompt-registry.js";
 import { closeTransport } from "./services/mail/transport.js"; // беседа 9.1
@@ -114,6 +115,7 @@ app.use("/api/v1/*", rateLimiter());
 app.route("/api/v1/auth", authRoutes);
 // 16.2: ДО synthesesRoutes — GET /shared иначе перехватит GET /:id (как /public)
 app.route("/api/v1/syntheses", membersRoutes); // беседа 16.2 (03 §2.18)
+app.route("/api/v1/syntheses", searchRoutes); // беседа 18.1 (03 §2.21): /search — ДО /:id
 app.route("/api/v1/syntheses", synthesesRoutes); // беседа 1.4 + 1.6
 app.route("/api/v1/syntheses", sectionsRoutes); // беседа 1.6 (03 §2.3)
 app.route("/api/v1/syntheses", elementsRoutes); // беседы 1.6 (GET) + 5.1 (PATCH/версии/auto-rename/capsule; 03 §2.4)

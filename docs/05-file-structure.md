@@ -64,6 +64,9 @@ philosynth-service/
 │       │   │                           #  STATUSES, REVIEW_STATUSES, REVIEW_TEXT_FIELDS, пределы текстов и страниц
 │       │   ├── proposals.ts            # 17.1: PROPOSAL_SOURCES / KINDS / STATUSES / CLOSE_REASONS /
 │       │   │                           #  EVENT_TYPES / ACCEPT_METHODS, пределы текстов и страницы
+│       │   ├── search.ts               # 18.1: SEARCH_SCOPES / FIELDS / PHIL_MODES / PHIL_AREAS / SORTS /
+│       │   │                           #  MATCH_KINDS / FRAGMENT_SOURCES / READ_LEVELS, SEARCH_FIELDS_BY_LEVEL,
+│       │   │                           #  словари по языку (searchTsConfigFor), пределы и порог триграмм
 │       │   ├── notifications.ts        # 16.2: NOTIFICATION_TYPES (11) / CATEGORIES (5) / CATEGORY_OF, REF_KINDS,
 │       │   │                           #  страницы, MEMBER_INVITE_TOKEN_PURPOSE, MEMBER_INVITE_TTL_HOURS
 │       │   ├── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (METHOD_CODE, LEVEL_CODE)
@@ -115,6 +118,9 @@ philosynth-service/
 │       │   │                           #  ProposalCreateInput, ProposalAcceptInput/Result; в edit-plan.ts —
 │       │   │                           #  шаг edit_subsection, StepProposalRef, PlanExpectation, skipReason;
 │       │   │                           #  в elements.ts — ChangeSource 'proposal', ProposalOrigin, ActorRef
+│       │   ├── search.ts               # 18.1: SynthesisSearchItem (превью + fragment + term + моя роль),
+│       │   │                           #  SearchFragment / SearchFragmentPart, SearchTermHit,
+│       │   │                           #  SynthesisSearchQueryEcho, SynthesisSearchResponse
 │       │   ├── notifications.ts        # 16.2: MemberView, PendingInvitation, MembersView, MemberInviteResult,
 │       │   │                           #  MyMembership, InvitationInfo, SharedSynthesisPreview, Notification*,
 │       │   │                           #  NotificationList, NotificationSettings
@@ -211,6 +217,10 @@ philosynth-service/
 │   │       ├── 0019_proposals_actor.sql  # 17.1: proposals, proposal_events; actor_user_id в
 │   │       │                           #  element_versions и generation_log (SET NULL); drizzle-kit, тег
 │   │       │                           #  переименован; только добавления
+│   │       ├── 0020_search_index.sql   # 18.1: synthesis_search (четыре tsvector, GIN; тексты для
+│   │       │                           #  фрагмента и триграмм), индексы точного термина глоссария,
+│   │       │                           #  триграммы зерна; генерат drizzle-kit с комментариями рукой, тег
+│   │       │                           #  переименован; строк не наполняет (npm run search:reindex)
 │   │       ├── 0018_members_notifications.sql  # 16.2: notifications, notification_settings; auth_tokens +=
 │   │       │                           #  purpose member_invite, synthesis_id (CASCADE), member_role (CHECK);
 │   │       │                           #  частичный уникальный индекс dedupe; drizzle-kit, тег переименован
@@ -251,6 +261,9 @@ philosynth-service/
 │   │   │                               #  hide/unhide — manage; DiscussionError → 400/403/404/409
 │   │   ├── proposals.ts                # 17.1: 8 маршрутов /syntheses/:id/proposals (03 §2.20) под
 │   │   │                               #  requireAuth + гейт обсуждения; принятие отдаёт черновик плана
+│   │   ├── search.ts                   # 18.1: GET /syntheses/search (03 §2.21) — optionalAuth, четвёртый
+│   │   │                               #  гостевой путь; разбор параметров, 401 гостю вне public,
+│   │   │                               #  превью через toPreview + projectPreview; монтируется ДО /:id
 │   │   ├── members.ts                  # 16.2: 11 маршрутов участников (03 §2.18): GET /shared (ДО /:id),
 │   │   │                               #  /:id/members[/:mid[/resend]], /:id/invitations/:tid[/resend],
 │   │   │                               #  /:id/membership[/accept|/decline]; письма — под mailLimiter
@@ -343,6 +356,13 @@ philosynth-service/
 │   │   │                               #  элемента), assertContentHash, assertPlanExpectations,
 │   │   │                               #  VersionConflictError → 409 VERSION_CONFLICT;
 │   │   │                               #  17.2 (Д-81): elementVersionsOf — номера версий для DTO чтения
+│   │   ├── search-index.ts             # 18.1: индекс поиска — buildSearchDocument (чистая), writeSearchIndex
+│   │   │                               #  (upsert строки synthesis_search), reindexSynthesis (не бросает;
+│   │   │                               #  зовут ВСЕ писатели документа — перепись в стороже 4br),
+│   │   │                               #  reindexAll; модуль-лист (db + html-parser)
+│   │   ├── search.ts                   # 18.1: запрос поиска — список и уровень чтения из
+│   │   │                               #  services/capabilities, словарь → триграммы, фильтры, фрагменты;
+│   │   │                               #  META_SYNTHESIS_SQL, GLOSSARY_TERM_BASE_SQL
 │   │   ├── proposals.ts                # 17.1: предложения — создать (discuss), принять (edit) =
 │   │   │                               #  ЧЕРНОВИК плана (planBodyFor, createPlan с trustProposalRefs),
 │   │   │                               #  отклонить / закрыть (edit), снять и «новое поверх текущего»
@@ -422,6 +442,9 @@ philosynth-service/
 │   │   │                               # см. 02 §3. Приёмка: round-trip
 │   │   │                               # parse(render(x)) === x
 │   │   │
+│   │   ├── element-satellites.ts       # 18.1 (Д-87): detachElementSatellites — обогащения, обоснования
+│   │   │                               # и ссылки рекомендаций удаляемых элементов; одна на deleteElement
+│   │   │                               # (15.2) и deleteSection; модуль-лист
 │   │   ├── element-versioning.ts       # Создание версий, откат (НОВОЕ)
 │   │   │
 │   │   ├── element-taxonomy.ts         # Каталог типов категорий/связей, нечёткая нормализация,
@@ -601,6 +624,9 @@ philosynth-service/
 │   │   ├── html-parser.ts              # Обёртка над linkedom для серверного DOM-парсинга
 │   │   │                               # 13.1: санитайзер на общем ядре shared; sanitizeSectionHtml
 │   │   │                               # (раздел целиком) — для всех входов разметки
+│   │   ├── search-text.ts              # 18.1: текст поиска — куски фрагмента из ts_headline
+│   │   │                               # (splitHeadline), подстрока, «похожие» слова, обрезка окна,
+│   │   │                               # слова запроса, экранирование ILIKE
 │   │   ├── client-address.ts           # 13.2 (Д-67): адрес клиента — ЕДИНСТВЕННЫЙ читатель
 │   │   │                               # X-Forwarded-For/X-Real-IP, только под TRUST_PROXY; иначе
 │   │   │                               # адрес соединения; потребители — rate-limiter, admin-audit
@@ -993,6 +1019,9 @@ philosynth-service/
 │   │   │                               # capsule_html, mode_results, снимки element_versions,
 │   │   │                               # element_enrichments); --dry, --synthesis; идемпотентен;
 │   │   │                               # npm run sanitize:stored-html — шаг после обновления (deploy/*)
+│   │   ├── reindex-search.ts           # 18.1: полный пересчёт индекса поиска (начальное наполнение
+│   │   │                               # после миграции 0020 и починка после сбоя); --dry, --missing,
+│   │   │                               # --synthesis; npm run search:reindex — шаг deploy/* после миграций
 │   │   └── lineage-parent-access-report.ts  # 13.2 (Д-66): ОТЧЁТ о связях synthesis_lineage, где
 │   │                                   # чужой родитель сегодня не годится по правилу metaParentAllowed
 │   │                                   # (записаны до 13.2 веткой UUID); только читает — снятие строк
@@ -1010,7 +1039,7 @@ philosynth-service/
 │   │   ├── extract-section-templates.mjs
 │   │   └── extract-export-assets.mjs
 │   ├── patches/                        # идемпотентные патчи доков по итогам бесед (по одному
-│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv172)
+│   │                                   # на беседу, patch-docs-conv<NNN>.py; последний — conv181)
 │   │   ├── patch-docs-*.py             # запускаются ИЗ КОРНЯ репозитория;
 │   │   │                               # осторожно с повторным прогоном старого патча:
 │   │   │                               # доки с тех пор менялись, и якорь может совпасть
@@ -1178,6 +1207,17 @@ philosynth-service/
     │                                   #  Chrome 131: вкладка «Участники» (409 под формой, второй шаг
     │                                   #  исключения), колокольчик → страница принятия → полоса роли, «Со мной
     │                                   #  поделились», профиль «Уведомления», /register?invite= (32 ✓)
+    │                                   # test-181-requests2-4 — 18.1: живой сервер, всё по HTTP; импорт образца
+    │                                   #  и двух его вариантов (английский, немецкий — заменой текста);
+    │                                   #  R2 поля и языки, опечатка, точный термин, 20 сочетаний фильтров;
+    │                                   #  R3 видимость (чужое приватное, приглашённый и участник, витрина,
+    │                                   #  гость, смена ступени); R4 свежесть (правки, удаление, трансформация
+    │                                   #  на моке и откат, копия, сбой пересчёта на уровне базы) (38 ✓ ×2)
+    │                                   # smoke-181-request1 — 18.1: чистые функции (документ индекса, куски
+    │                                   #  подсветки, «похожие» слова, обрезка); живьём через app.request:
+    │                                   #  поля и три языка, опечатка, точный термин с id, фильтры,
+    │                                   #  видимость (чужое приватное, участник, приглашённый, витрина,
+    │                                   #  гость), свежесть и сбой пересчёта, Д-87, прежние списки (47 ✓)
     │                                   # smoke-172-request1 — 17.2: чистые функции клиента (способы ≡ серверу,
     │                                   #  conflictsOf, rebaseDraft, разница, происхождение); живьём функциями
     │                                   #  client/src/api (fetch → app.request): version в DTO, четыре пути

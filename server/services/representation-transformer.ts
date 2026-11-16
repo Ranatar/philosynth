@@ -106,6 +106,7 @@ import {
 } from "./generation-service.js";
 import { sanitizeSectionHtml } from "../utils/html-parser.js"; // 13.1 (Д-63)
 import { ROLE_MAP, parseGraphFromHTML, saveGraphToDb } from "./graph-parser.js";
+import { reindexSynthesis } from "./search-index.js"; // 18.1: свежесть индекса поиска
 import { buildSYS } from "./prompt-builder.js";
 import { renderTemplate } from "./prompt-registry.js";
 import { StreamError, classifyStreamError } from "./streaming-manager.js";
@@ -721,6 +722,8 @@ async function restoreGraph(synthesisId: string, snap: GraphSnapshot): Promise<v
       await tx.insert(clusterLabels).values(snap.clusters.map((c) => ({ ...c, synthesisId })));
     }
   });
+  // 18.1: откат трансформации вернул прежние категории — индекс поиска
+  await reindexSynthesis(synthesisId);
 }
 
 /** Восстановить тезисы из снимка (прежние id; транзакция). */

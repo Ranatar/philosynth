@@ -66,10 +66,13 @@ import {
   clusterLabels,
   contextLog,
   generationLog,
+  glossaryTerms,
   sections,
   syntheses,
   synthesisLineage,
+  theses,
 } from "../db/schema.js";
+import { detachElementSatellites } from "./element-satellites.js"; // 18.1 (Д-87)
 import { env } from "../env.js";
 import {
   innerTextTrimmed,
@@ -151,6 +154,7 @@ import { CTX_LABELS } from "@philosynth/shared/constants/ctx-keys";
 import { PARENT_CONTEXT_SCHEMA_ID } from "../config/parent-deps.js";
 import { buildDynamicOrder } from "../utils/topo-sort.js";
 import { parseGraphFromHTML, saveGraphToDb } from "./graph-parser.js";
+import { reindexSynthesis } from "./search-index.js"; // 18.1: свежесть индекса поиска
 import {
   parseGlossaryFromHTML,
   parseThesesFromHTML,
@@ -1493,6 +1497,7 @@ export async function runGenerationPasses(
             .update(syntheses)
             .set({ title, updatedAt: new Date() })
             .where(eq(syntheses.id, synthesisId));
+          await reindexSynthesis(synthesisId); // 18.1: название — в индексе поиска
         }
       }
 
@@ -1688,6 +1693,9 @@ export async function finalizeRun(
       updatedAt: new Date(),
     })
     .where(eq(syntheses.id, synthesisId));
+  // 18.1: капсула прохода легла в syntheses.capsule_html — индекс поиска
+  // (пересчёт идёт всегда: завершение прохода — точка, где документ готов)
+  await reindexSynthesis(synthesisId);
 
   await clearStreamState(synthesisId);
 
@@ -2010,6 +2018,7 @@ async function applySectionSideEffects(
         .update(syntheses)
         .set({ title, updatedAt: new Date() })
         .where(eq(syntheses.id, synthesisId));
+      await reindexSynthesis(synthesisId); // 18.1: название — в индексе поиска
     }
   }
   if (sectionKey === "capsule") {
@@ -2018,7 +2027,10 @@ async function applySectionSideEffects(
       .update(syntheses)
       .set({ capsuleHtml: html, updatedAt: new Date() })
       .where(eq(syntheses.id, synthesisId));
+    await reindexSynthesis(synthesisId); // 18.1: капсула — в индексе поиска
   }
+  // (граф и глоссарий: пересчёт индекса зовут сами saveGraphToDb /
+  // saveElementsToDb — 18.1)
   return parseWarnings;
 }
 
@@ -3284,14 +3296,51 @@ export async function deleteSection(
   );
 
   // ── 8. Side-effects [20823–20866] ──
-  if (sectionKey === "graph") {
-    await db
-      .delete(categoryEdges)
-      .where(eq(categoryEdges.synthesisId, synthesisId));
-    await db.delete(categories).where(eq(categories.synthesisId, synthesisId));
-    await db
-      .delete(clusterLabels)
-      .where(eq(clusterLabels.synthesisId, synthesisId));
+  // 18.1 (Д-87): раздел уносит свои гранулярные строки — граф (категории,
+  // рёбра, метки кластеров), глоссарий (термины), тезисы — вместе со
+  // спутниками без внешнего ключа (обогащения, обоснования, ссылки
+  // рекомендаций: element-satellites). До 18.1 строки снимались только у
+  // графа, спутники — ни у кого: термины удалённого глоссария оставались в
+  // выдаче элементов и в поиске. Снимков версий здесь нет (решение
+  // пользователя 2026-11-16): удаление раздела — не правка элемента,
+  // восстановления из снимка всё равно нет (Огр-13), его след — строка
+  // deletion_marker выше.
+  if (sectionKey === "graph" || sectionKey === "glossary" || sectionKey === "theses") {
+    await db.transaction(async (tx) => {
+      if (sectionKey === "graph") {
+        const cats = await tx
+          .select({ id: categories.id, name: categories.name })
+          .from(categories)
+          .where(eq(categories.synthesisId, synthesisId));
+        const edges = await tx
+          .select({ id: categoryEdges.id })
+          .from(categoryEdges)
+          .where(eq(categoryEdges.synthesisId, synthesisId));
+        await detachElementSatellites(tx, synthesisId, [...cats.map((c) => c.id), ...edges.map((e) => e.id)], cats);
+        await tx.delete(categoryEdges).where(eq(categoryEdges.synthesisId, synthesisId));
+        await tx.delete(categories).where(eq(categories.synthesisId, synthesisId));
+        await tx.delete(clusterLabels).where(eq(clusterLabels.synthesisId, synthesisId));
+      } else if (sectionKey === "glossary") {
+        const terms = await tx
+          .select({ id: glossaryTerms.id, name: glossaryTerms.term })
+          .from(glossaryTerms)
+          .where(eq(glossaryTerms.synthesisId, synthesisId));
+        await detachElementSatellites(tx, synthesisId, terms.map((t) => t.id), terms);
+        await tx.delete(glossaryTerms).where(eq(glossaryTerms.synthesisId, synthesisId));
+      } else {
+        const rows = await tx
+          .select({ id: theses.id, label: theses.label, thesisNum: theses.thesisNum })
+          .from(theses)
+          .where(eq(theses.synthesisId, synthesisId));
+        await detachElementSatellites(
+          tx,
+          synthesisId,
+          rows.map((t) => t.id),
+          rows.map((t) => ({ id: t.id, name: t.label ?? String(t.thesisNum) })),
+        );
+        await tx.delete(theses).where(eq(theses.synthesisId, synthesisId));
+      }
+    });
   }
   if (sectionKey === "name") {
     await db
@@ -3305,6 +3354,11 @@ export async function deleteSection(
       .set({ capsuleHtml: "", updatedAt: new Date() })
       .where(eq(syntheses.id, synthesisId));
   }
+  // 18.1: удаление раздела графа снимает категории, глоссария — термины,
+  // раздела name — название, капсулы — капсулу: индекс поиска
+  // пересчитывается (тезисы в индекс не входят)
+  if (sectionKey === "graph" || sectionKey === "glossary" || sectionKey === "name" || sectionKey === "capsule")
+    await reindexSynthesis(synthesisId);
 }
 
 /* ── buildDeletionReplacements [20759–20801] ─────────────────────────── */

@@ -39,6 +39,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { glossaryTerms, theses } from "../db/schema.js";
+import { reindexSynthesis } from "./search-index.js"; // 18.1: свежесть индекса поиска
 import {
   findThesisBlocks,
   innerTextTrimmed,
@@ -398,7 +399,7 @@ export async function saveElementsToDb(
   elements: ParsedElements,
 ): Promise<SaveElementsResult> {
   void sectionKey; // тезисы/глоссарий привязаны к синтезу (см. JSDoc)
-  return db.transaction(async (tx) => {
+  const saved = await db.transaction(async (tx) => {
     let thesesInserted = 0;
     if (elements.theses) {
       await tx.delete(theses).where(eq(theses.synthesisId, synthesisId));
@@ -449,4 +450,8 @@ export async function saveElementsToDb(
 
     return { thesesInserted, glossaryInserted };
   });
+  // 18.1: глоссарий заменён — термины и определения входят в индекс поиска
+  // (замена одних тезисов индекс не трогает: тезисы в него не входят).
+  if (elements.glossaryTerms) await reindexSynthesis(synthesisId);
+  return saved;
 }

@@ -35,6 +35,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { closeDb, db } from "../../server/db/index.js";
+import { reindexSynthesis } from "../../server/services/search-index.js";
 import {
   elementEnrichments,
   elementVersions,
@@ -118,8 +119,10 @@ async function main(): Promise<void> {
     const res = sanitizeSectionHtml(r.html);
     if (!res.changed) continue;
     note(capRep, res.warnings);
-    if (!DRY)
+    if (!DRY) {
       await db.update(syntheses).set({ capsuleHtml: res.html, updatedAt: new Date() }).where(eq(syntheses.id, r.id));
+      await reindexSynthesis(r.id); // 18.1: капсула — в индексе поиска
+    }
   }
   printReport("syntheses.capsule_html", capRep);
 

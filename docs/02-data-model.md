@@ -20,6 +20,8 @@ users ─────────────┐
   │     │     └── dialogue_turns
   │     │
   │     ├── synthesis_lineage     (граф наследования: parent ← child)
+  │     ├── synthesis_search      (18.1: индекс поиска — строка на синтез;
+  │     │                          пишет только reindexSynthesis; CASCADE)
   │     ├── edit_plans
   │     │     └── edit_plan_steps
   │     ├── mode_results
@@ -236,6 +238,9 @@ CREATE INDEX idx_syntheses_visibility ON syntheses(visibility) WHERE visibility 
   -- idx_syntheses_public по is_public снят миграцией 0005)
 CREATE INDEX idx_syntheses_paused ON syntheses(status) WHERE status = 'paused';
 CREATE INDEX idx_syntheses_title_trgm ON syntheses USING gin(title gin_trgm_ops);
+CREATE INDEX idx_syntheses_seed_trgm ON syntheses USING gin(seed gin_trgm_ops);
+  -- 18.1 (миграция 0020): поиск по зерну с опечаткой (word_similarity);
+  -- лексемы названия и зерна — в synthesis_search (§2.42)
 ```
 
 ### 2.4. synthesis_lineage
@@ -492,6 +497,14 @@ CREATE TABLE glossary_terms (
 );
 
 CREATE INDEX idx_glossary_synthesis ON glossary_terms(synthesis_id);
+-- 18.1 (миграция 0020): точный поиск термина без регистра. Документ пишет
+-- термин одной ячейкой вместе с пояснением — «Имя (пояснение)», — поэтому
+-- индексов два: по термину целиком и по имени без хвостовой скобки
+-- (выражение — одно на схему, миграцию и запрос: GLOSSARY_TERM_BASE_SQL в
+-- server/services/search.ts, сторож 4br).
+CREATE INDEX idx_glossary_term_lower ON glossary_terms (lower(term));
+CREATE INDEX idx_glossary_term_base ON glossary_terms
+  (lower(btrim(regexp_replace(term, '[[:space:]]*[(][^()]*[)][[:space:]]*$', ''))));
 ```
 
 ### 2.11. dialogue_turns
@@ -1726,6 +1739,65 @@ CREATE TABLE proposal_events (
 );
 CREATE INDEX idx_proposal_events_proposal ON proposal_events(proposal_id, created_at);
 ```
+
+### 2.42. synthesis_search
+
+Индекс поиска концепций (беседа 18.1, миграция `0020_search_index`; маршрут
+— 03 §2.21). Одна строка на синтез. В индекс входят **название, зерно,
+капсула без разметки, имена категорий, термины глоссария и их
+определения**; тезисы и тексты разделов не входят (решение пользователя
+2026-11-16: держать их свежими при каждой перегенерации дорого).
+
+```sql
+CREATE TABLE synthesis_search (
+  synthesis_id  UUID PRIMARY KEY REFERENCES syntheses(id) ON DELETE CASCADE,
+  config        TEXT NOT NULL DEFAULT 'simple',
+    -- словарь документа по syntheses.lang: Russian → russian, English →
+    -- english, German → german, иной язык → simple (shared
+    -- SEARCH_TS_CONFIG_BY_LANG); нужен ts_headline при выдаче фрагмента
+  title_tsv     TSVECTOR NOT NULL,  -- название (вес A)
+  seed_tsv      TSVECTOR NOT NULL,  -- зерно (вес B)
+  capsule_tsv   TSVECTOR NOT NULL,  -- капсула: всё, что ищется у ВИТРИНЫ
+  content_tsv   TSVECTOR NOT NULL,  -- капсула (B) + имена категорий и термины
+                                    --  (A) + определения терминов (C)
+  capsule_text  TEXT NOT NULL DEFAULT '',  -- капсула без разметки: фрагмент и триграммы
+  elements_text TEXT NOT NULL DEFAULT '',  -- построчно: имена категорий, затем
+                                           --  «термин — определение»
+  indexed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT synthesis_search_config_check
+    CHECK (config IN ('russian','english','german','simple'))
+);
+CREATE INDEX idx_synthesis_search_title   ON synthesis_search USING gin(title_tsv);
+CREATE INDEX idx_synthesis_search_seed    ON synthesis_search USING gin(seed_tsv);
+CREATE INDEX idx_synthesis_search_capsule ON synthesis_search USING gin(capsule_tsv);
+CREATE INDEX idx_synthesis_search_content ON synthesis_search USING gin(content_tsv);
+CREATE INDEX idx_synthesis_search_capsule_trgm  ON synthesis_search USING gin(capsule_text gin_trgm_ops);
+CREATE INDEX idx_synthesis_search_elements_trgm ON synthesis_search USING gin(elements_text gin_trgm_ops);
+```
+
+- **Каждый `tsvector` — сумма двух разборов текста:** словарём документа
+  (`config`) и `simple`. Запрос разбирается всеми четырьмя словарями и
+  объединяется через «или» (язык запроса неизвестен), так что русский
+  запрос находит словоформы в русском документе, а точное слово — в любом.
+- **Отдельная таблица, а не колонки `syntheses`:** строку `syntheses` весь
+  сервер читает целиком (`select()`), и четыре `tsvector` поехали бы в
+  каждый ответ и каждый снимок.
+- **Пишет строку одна функция** — `reindexSynthesis(id)`
+  (`server/services/search-index.ts`): её зовут все писатели названия,
+  зерна, капсулы, категорий и терминов СРАЗУ ПОСЛЕ фиксации своей записи.
+  Триггеров нет. Сбой пересчёта операцию не роняет: строка
+  `[search-index] …` в журнале сервера, индекс чинит повторный пересчёт.
+  Текст капсулы снимает с разметки серверный разбор (linkedom), `tsvector`
+  строит SQL (`to_tsvector`).
+- **Начальное наполнение — скриптом, не миграцией:** `npm run
+  search:reindex` (`scripts/maintenance/reindex-search.ts`; ключи `--dry`,
+  `--missing`, `--synthesis <uuid>`) — той же функцией, что зовут писатели;
+  копия сборки документа в SQL миграции разошлась бы с ней при первой
+  правке. Он же — починка после сбоя. `deploy/*` зовут его после миграций.
+- **Прав в индексе нет.** Кому что открыто, решается на каждом запросе по
+  строкам `syntheses` и `synthesis_members` (03 §2.21); строка индекса сама
+  ничего не открывает. У концепции без строки индекса (до первого
+  пересчёта) работает только поиск по подстроке названия.
 
 ## 3. Извлечение гранулярных элементов из HTML
 

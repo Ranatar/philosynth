@@ -120,6 +120,7 @@ import {
   issueTextFor,
   issuesFromColumn,
   renderIssuesRu,
+  withIssueTexts,
 } from "./recommendation-issues.js";
 import {
   buildPromptSkeleton,
@@ -507,17 +508,10 @@ export function cleanAddress(raw: string): string {
  * 12.3 (Д-46): три колонки строки из одного списка находок — коды и русский
  * вид каждого уровня. Писать их порознь нельзя: текст и коды разойдутся.
  */
-export function withIssueTexts(issues: RecommendationIssue[]): {
-  issues: RecommendationIssue[];
-  invalidReason: string | null;
-  warning: string | null;
-} {
-  return {
-    issues,
-    invalidReason: renderIssuesRu(issues, "invalid"),
-    warning: renderIssuesRu(issues, "warning"),
-  };
-}
+// 18.1 (Д-87): сама функция живёт в листе recommendation-issues — её зовёт и
+// чистка спутников удалённых элементов (element-satellites), которой нельзя
+// импортировать этот модуль (он тянет generation-service — был бы цикл).
+export { withIssueTexts };
 
 /**
  * Хэш источника строки ПРОТИВ ТЕКУЩЕГО документа (решение 3 шапки): у строки

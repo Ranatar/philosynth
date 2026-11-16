@@ -104,8 +104,8 @@ import { buildSubsectionMap } from "./section-defs-builder.js";
 // 15.2 (Д-71): рекомендации удалённого элемента — ссылка гаснет, строка
 // 'new'/'stale' негодна кодом target_element_gone (leaf-модуль issues +
 // withIssueTexts; recommendations.ts этот модуль не импортирует — цикла нет)
-import { issue, issuesFromColumn } from "./recommendation-issues.js";
-import { withIssueTexts } from "./recommendations.js";
+import { detachElementSatellites } from "./element-satellites.js"; // 18.1 (Д-87)
+import { reindexSynthesis } from "./search-index.js"; // 18.1: свежесть индекса поиска
 import { type DeletableElementKind } from "@philosynth/shared/constants/edit-steps";
 
 import type {
@@ -644,6 +644,9 @@ export async function updateCategory(
     return { before, row, version };
   });
 
+  // 18.1: имя категории входит в индекс поиска — пересчёт сразу после записи
+  await reindexSynthesis(synthesisId);
+
   const sync = emptySync();
   const tables: RenderableTable[] = ["categories"];
   const topoTouched =
@@ -1029,38 +1032,23 @@ export async function deleteElement(
       version = await createVersion(synthesisId, before.id, "glossary_term", snapshotOf(before), changeSource, tx, origin);
       await tx.delete(glossaryTerms).where(eq(glossaryTerms.id, before.id));
     }
-    // обогащения и обоснования элемента (и ушедших рёбер)
-    const ownerIds = enrichmentOwners.map((o) => o.id);
-    const en = await tx
-      .delete(elementEnrichments)
-      .where(and(eq(elementEnrichments.synthesisId, synthesisId), inArray(elementEnrichments.elementId, ownerIds)))
-      .returning({ id: elementEnrichments.id });
-    const ju = await tx
-      .delete(characteristicJustifications)
-      .where(and(eq(characteristicJustifications.synthesisId, synthesisId), inArray(characteristicJustifications.elementId, ownerIds)))
-      .returning({ id: characteristicJustifications.id });
-    cascade.enrichmentsDeleted = en.length + ju.length;
-    // рекомендации: ссылка гаснет; годные к исполнению — негодны кодом
-    const recs = await tx
-      .select({ id: recommendations.id, status: recommendations.status, element: recommendations.element, issues: recommendations.issues })
-      .from(recommendations)
-      .where(and(eq(recommendations.synthesisId, synthesisId), eq(recommendations.elementId, id)));
-    for (const r of recs) {
-      if (r.status === "new" || r.status === "stale") {
-        const gone = issue("invalid", "target_element_gone", { element: r.element ?? names[0] ?? "" });
-        const notes = issuesFromColumn(r.issues).filter((x) => x.level === "warning");
-        await tx
-          .update(recommendations)
-          .set({ elementId: null, status: "invalid", ...withIssueTexts([gone, ...notes]) })
-          .where(eq(recommendations.id, r.id));
-      } else {
-        await tx.update(recommendations).set({ elementId: null }).where(eq(recommendations.id, r.id));
-      }
-      cascade.recommendationsDetached++;
-    }
+    // обогащения и обоснования элемента (и ушедших рёбер), рекомендации —
+    // общей функцией с удалением раздела (18.1, Д-87: element-satellites)
+    const sat = await detachElementSatellites(
+      tx,
+      synthesisId,
+      enrichmentOwners.map((o) => o.id),
+      [{ id, name: names[0] ?? "" }],
+    );
+    cascade.enrichmentsDeleted = sat.enrichmentsDeleted;
+    cascade.recommendationsDetached = sat.recommendationsDetached;
     await tx.update(syntheses).set({ updatedAt: new Date() }).where(eq(syntheses.id, synthesisId));
     return { version, names, reflexiveChanged };
   });
+
+  // 18.1: удалённая категория / термин уходит из индекса поиска (у тезиса
+  // пересчёт ничего не меняет — тезисы в индекс не входят)
+  await reindexSynthesis(synthesisId);
 
   const sync = emptySync();
   const tables: RenderableTable[] =
@@ -1249,6 +1237,9 @@ export async function updateGlossaryTerm(
     return { before, row, version };
   });
 
+  // 18.1: термин и определение входят в индекс поиска
+  await reindexSynthesis(synthesisId);
+
   const sync = emptySync();
   await renderTables(synthesisId, ["glossary"], sync);
   // termCategory живёт в категорийных подразделах прозой — в HTML не отражается
@@ -1292,7 +1283,7 @@ export async function autoRenameReferences(
   if (!re) fail({ oldName: tl("server.elementEditor.nameTooShort", "слишком короткое имя") });
   const htmlName = esc(n);
 
-  return db.transaction(async (tx) => {
+  const renamed = await db.transaction(async (tx) => {
     const secRows = await tx
       .select()
       .from(sections)
@@ -1411,6 +1402,9 @@ export async function autoRenameReferences(
     }
     return { affectedSections, affectedTheses };
   });
+  // 18.1: автозамена правит капсулу и текстовые поля терминов и категорий
+  await reindexSynthesis(synthesisId);
+  return renamed;
 }
 
 /* ── rollback (обёртка над versioning: перерисовка + impact) ─────────── */
@@ -1450,6 +1444,9 @@ export async function rollbackElement(
   version: number,
 ): Promise<RollbackElementResult> {
   const res = await rollbackToVersion(synthesisId, elementType, elementId, version);
+  // 18.1: откат возвращает прежние имя категории, термин либо капсулу
+  // (rollbackToVersion пишет и syntheses.capsule_html) — пересчёт индекса
+  await reindexSynthesis(synthesisId);
   const sync = emptySync();
   const tables = TABLES_BY_TYPE[elementType];
   if (tables) {
@@ -1523,7 +1520,7 @@ export async function updateCapsule(
   const cleaned = sanitizeSectionHtml(html.trim());
   const value = cleaned.html.trim();
   if (!value) fail({ html: tl("server.elementEditor.htmlStringExpected", "ожидается непустая HTML-строка") });
-  return db.transaction(async (tx) => {
+  const saved = await db.transaction(async (tx) => {
     const [synth] = await tx
       .select({ id: syntheses.id, capsule: syntheses.capsuleHtml })
       .from(syntheses)
@@ -1567,6 +1564,9 @@ export async function updateCapsule(
         .where(eq(sections.id, capRow.id));
     return { capsuleHtml: value, version, warnings: cleaned.warnings };
   });
+  // 18.1: капсула входит в индекс поиска
+  await reindexSynthesis(synthesisId);
+  return saved;
 }
 
 /* ── Ручная правка подраздела (беседа 9.2) ───────────────────────────── */
@@ -2078,6 +2078,8 @@ export async function updateSubsection(
     };
   });
   const { rerenderTheses, ...out } = saved;
+  // 18.1: правка раздела name могла обновить название концепции (12.1, Д-4)
+  if (out.titleUpdated !== undefined) await reindexSynthesis(synthesisId);
   if (rerenderTheses) {
     // Формулировка стоит и в «Сводной таблице тезисов» — её рисует рендерер 5.1
     // (вне транзакции: applyElementUpdateToHtml читает зафиксированные строки)

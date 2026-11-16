@@ -91,9 +91,9 @@ function depthParam(raw: string | undefined, fallback: number): number {
  * удаляется ВМЕСТЕ с поддеревом (транзитивная видимость через приватного
  * посредника не раскрывается).
  */
-async function pruneInvisible(
+export async function pruneInvisible(
   nodes: LineageNode[],
-  userId: string,
+  userId: string | null, // 18.1: null — гость поиска (видит только неприватное)
 ): Promise<LineageNode[]> {
   const ids: string[] = [];
   const collect = (list: LineageNode[]): void => {
@@ -111,7 +111,8 @@ async function pruneInvisible(
     .where(
       and(
         inArray(syntheses.id, [...new Set(ids)]),
-        or(eq(syntheses.userId, userId), ne(syntheses.visibility, "private")),
+        // гостю (18.1) первого условия нет: or() пропускает undefined
+        or(userId === null ? undefined : eq(syntheses.userId, userId), ne(syntheses.visibility, "private")),
       ),
     );
   const visible = new Set(rows.map((r) => r.id));

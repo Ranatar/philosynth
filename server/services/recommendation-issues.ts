@@ -167,3 +167,20 @@ export function issueTextFor(
 ): string | null {
   return renderIssues(issues, level) ?? stored;
 }
+
+/**
+ * 12.3 (Д-46): три колонки строки рекомендации из одного списка находок —
+ * коды и русский вид каждого уровня. Писать их порознь нельзя: текст и коды
+ * разойдутся. (До 18.1 жила в recommendations.ts; оттуда реэкспортируется.)
+ */
+export function withIssueTexts(issues: RecommendationIssue[]): {
+  issues: RecommendationIssue[];
+  invalidReason: string | null;
+  warning: string | null;
+} {
+  return {
+    issues,
+    invalidReason: renderIssuesRu(issues, "invalid"),
+    warning: renderIssuesRu(issues, "warning"),
+  };
+}

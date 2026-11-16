@@ -18,6 +18,9 @@
  *   representation_transforms, admin_audit, auth_tokens, mail_outbox,
  *   recommendations, synthesis_members, comments, reviews,
  *   review_revisions, review_findings, notifications, notification_settings.
+ * 17.1 (миграция 0019): + proposals, proposal_events (§2.40–2.41).
+ * 18.1 (миграция 0020): + synthesis_search (§2.42) — индекс поиска; там же
+ *   индексы точного термина glossary_terms и триграммный индекс зерна.
  *
  * v10: ext_graph_metrics, structure_sections (syntheses);
  *      clarity, breadth, depth_score, applicability (categories);
@@ -50,6 +53,14 @@ import {
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {
     return "bytea";
+  },
+});
+
+/** TSVECTOR (18.1): в pg-core drizzle-orm 0.44 типа нет. Значение пишется и
+ *  читается только SQL-выражениями (`to_tsvector`, `@@`) — в JS не ходит. */
+const tsvector = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return "tsvector";
   },
 });
 
@@ -272,6 +283,12 @@ export const syntheses = pgTable(
     index("idx_syntheses_title_trgm").using(
       "gin",
       sql`${t.title} gin_trgm_ops`,
+    ),
+    // 18.1 (миграция 0020): запасной ход поиска по зерну (опечатки —
+    // word_similarity по триграммам)
+    index("idx_syntheses_seed_trgm").using(
+      "gin",
+      sql`${t.seed} gin_trgm_ops`,
     ),
   ],
 );
@@ -560,7 +577,17 @@ export const glossaryTerms = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("idx_glossary_synthesis").on(t.synthesisId)],
+  (t) => [
+    index("idx_glossary_synthesis").on(t.synthesisId),
+    // 18.1 (миграция 0020): точный термин без регистра — поле `term` поиска.
+    // Второй индекс — имя термина без хвостовой скобки-пояснения: документ
+    // пишет «Имя (пояснение)» одной ячейкой, человек ищет по имени
+    // (выражение — GLOSSARY_TERM_BASE_SQL в services/search.ts, сторож 4br)
+    index("idx_glossary_term_lower").on(sql`lower(${t.term})`),
+    index("idx_glossary_term_base").on(
+      sql`lower(btrim(regexp_replace(${t.term}, '[[:space:]]*[(][^()]*[)][[:space:]]*$', '')))`,
+    ),
+  ],
 );
 
 /* ───────────────────────── 2.11. dialogue_turns ─────────────────────── */
@@ -1884,6 +1911,63 @@ export const proposalEvents = pgTable(
     check(
       "proposal_events_type_check",
       sql`${t.type} IN ('created','plan_drafted','plan_released','accepted','rejected','withdrawn','closed','rebased')`,
+    ),
+  ],
+);
+
+/* ────────────────────── 2.42. synthesis_search (18.1) ─────────────────── */
+
+/**
+ * Индекс поиска концепций (беседа 18.1; 02 §2.42; врезка «Фаза 18» в 07).
+ * Одна строка на синтез; пишет ТОЛЬКО `reindexSynthesis`
+ * (services/search-index.ts) — её зовут все писатели названия, зерна,
+ * капсулы, категорий и терминов глоссария сразу после своей записи;
+ * триггеров нет. Тезисы и тексты разделов в индекс НЕ входят.
+ *
+ * Четыре tsvector — по словарю языка генерации (`config`) плюс `simple`:
+ * название, зерно, капсула (без разметки) и содержание целиком (капсула +
+ * имена категорий + термины и определения глоссария). Капсула отдельно —
+ * витрина ищется по ней, но не по категориям и терминам. Два текста — для
+ * фрагмента выдачи (`ts_headline`) и запасного хода по триграммам.
+ * tsvector и GIN drizzle-kit не знает — SQL миграции 0020 написан рукой.
+ */
+export const synthesisSearch = pgTable(
+  "synthesis_search",
+  {
+    synthesisId: uuid("synthesis_id")
+      .primaryKey()
+      .references(() => syntheses.id, { onDelete: "cascade" }),
+    /** Словарь документа: 'russian' | 'english' | 'german' | 'simple'
+     *  (shared searchTsConfigFor по syntheses.lang) */
+    config: text("config").notNull().default("simple"),
+    titleTsv: tsvector("title_tsv").notNull(),
+    seedTsv: tsvector("seed_tsv").notNull(),
+    capsuleTsv: tsvector("capsule_tsv").notNull(),
+    contentTsv: tsvector("content_tsv").notNull(),
+    /** Капсула без разметки и без заголовка раздела */
+    capsuleText: text("capsule_text").notNull().default(""),
+    /** Имена категорий и «термин — определение», по строке на элемент */
+    elementsText: text("elements_text").notNull().default(""),
+    indexedAt: timestamp("indexed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_synthesis_search_title").using("gin", t.titleTsv),
+    index("idx_synthesis_search_seed").using("gin", t.seedTsv),
+    index("idx_synthesis_search_capsule").using("gin", t.capsuleTsv),
+    index("idx_synthesis_search_content").using("gin", t.contentTsv),
+    index("idx_synthesis_search_capsule_trgm").using(
+      "gin",
+      sql`${t.capsuleText} gin_trgm_ops`,
+    ),
+    index("idx_synthesis_search_elements_trgm").using(
+      "gin",
+      sql`${t.elementsText} gin_trgm_ops`,
+    ),
+    check(
+      "synthesis_search_config_check",
+      sql`${t.config} IN ('russian', 'english', 'german', 'simple')`,
     ),
   ],
 );
