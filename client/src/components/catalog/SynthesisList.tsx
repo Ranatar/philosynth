@@ -5,8 +5,11 @@
  * (actions) в карточки — только на вкладке «Мои». Беседа 8.7: вместо
  * переключателя публикации — управление публичностью (visibility), тоже
  * только на «Мои»; без обоих пропов список годится гостю (/explore,
- * LandingPage) — карточки только читают.
+ * LandingPage) — карточки только читают. Беседа 18.2: список принимает и
+ * строки выдачи поиска (превью + фрагмент + термин) — карточка рисует, где
+ * найдено; fuzzy — выдача запасного хода («похожие», не точные).
  */
+import type { SynthesisSearchItem } from "@philosynth/shared/types/search";
 import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
 
 import {
@@ -16,7 +19,7 @@ import {
 } from "./SynthesisCard";
 
 export interface SynthesisListProps {
-  items: readonly SynthesisPreview[];
+  items: readonly (SynthesisPreview | SynthesisSearchItem)[];
   emptyText: string;
   /** Беседа 8.7: управление публичностью (только на вкладке «Мои») */
   visibility?: SynthesisCardVisibility | undefined;
@@ -24,6 +27,8 @@ export interface SynthesisListProps {
   actions?: SynthesisCardActions | undefined;
   /** Беседа 16.2: бейдж по карточке (вкладка «Со мной поделились» — роль) */
   badgeOf?: ((s: SynthesisPreview) => React.ReactNode) | undefined;
+  /** Беседа 18.2: выдача найдена по похожим словам (match: 'fuzzy') */
+  fuzzy?: boolean | undefined;
 }
 
 export function SynthesisList({
@@ -32,9 +37,10 @@ export function SynthesisList({
   visibility,
   actions,
   badgeOf,
+  fuzzy,
 }: SynthesisListProps) {
   if (items.length === 0) {
-    return <p className="pool-status" style={{ textAlign: "center", padding: "32px 0" }}>{emptyText}</p>;
+    return <p className="pool-status" style={{ textAlign: "center", padding: "32px 0" }} data-testid="catalog-empty">{emptyText}</p>;
   }
   return (
     <div className="catalog-list">
@@ -45,6 +51,9 @@ export function SynthesisList({
           visibility={visibility}
           actions={actions}
           badge={badgeOf ? badgeOf(s) : undefined}
+          fragment={"fragment" in s ? s.fragment : undefined}
+          term={"term" in s ? s.term : undefined}
+          fuzzy={fuzzy}
         />
       ))}
     </div>

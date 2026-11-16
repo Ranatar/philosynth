@@ -26,7 +26,8 @@
  *   R3 — поток 07 №2: мета-синтез 2-го уровня (meta2 из meta1 через
  *        API; заодно серверные warnings POST — Кант выбран повторно) →
  *        дерево 3 уровня (.gen-tree li li li) с кликабельным meta1.
- *   R4 — поток 07 №3: LineageSearch «Кант» → прямой C1 И транзитивные
+ *   R4 — поток 07 №3 (с 18.2 — фильтр панели каталога «Кант» + «вся
+ *        родословная» вместо LineageSearch) → прямой C1 И транзитивные
  *        meta1/meta2; бейдж «мета-синтез»; фильтр «Потомки C1»
  *        (?descendantsOf=) → пересечение = meta1+meta2, сброс.
  *   R5 — поток 07 №4: мобильный viewport 400×800 → вертикальный стек
@@ -723,20 +724,37 @@ try {
   const meta1Prev = search1.body.syntheses.find((s) => s.id === meta1);
   ok(meta1Prev?.hasConceptParents === true, "hasConceptParents=true у meta1");
 
+  // 18.2: блока «Поиск по генеалогии» и кнопки «Генеалогия» больше нет —
+  // это фильтр панели каталога (философ + область «вся родословная»), а
+  // потомков отбирает сервер параметром descendantsOf общего поиска;
+  // плашку «Показаны только потомки» заменила строка фильтра в панели.
+  const T = (id) => `[data-testid="${id}"]`;
+  const shownIds = () => page.$$eval(".catalog-card", (els) => els.map((e) => e.dataset.synthesisId));
+  /** Выдача каталога показана и принадлежит текущему адресу */
+  const catalogSettled = (pred, timeout = 15000) => page.waitForFunction((src) => {
+    const q = document.querySelector('[data-testid="catalog-results"]')?.dataset.query ?? "";
+    if (!q) return false;
+    const have = new URLSearchParams(q);
+    for (const [k, v] of new URLSearchParams(location.search)) if (!have.getAll(k).includes(v)) return false;
+    return new Function("return (" + src + ")()")();
+  }, { timeout }, pred.toString());
   await page.goto(`${UI}/catalog`, { waitUntil: "domcontentloaded" });
   await waitText(page, "Каталог концепций");
-  ok(await clickButtonByText(page, null, "▸ Генеалогия") ||
-     await clickButtonByText(page, null, "Генеалогия"),
-    "кнопка «Генеалогия» раскрывает поиск");
-  await waitText(page, "Поиск по генеалогии");
-  await fill(page, 'input[list="lineage-search-philosophers"]', "Кант");
-  await clickButtonByText(page, null, "+ Добавить");
-  await sleep(150);
-  ok(has(await pageText(page), "Кант ✕") || (await page.evaluate(() =>
-    [...document.querySelectorAll("span")].some((s) =>
-      s.innerText.trim().startsWith("Кант")))),
-    "чип «Кант» добавлен");
-  await clickButtonByText(page, null, "Найти");
+  ok(!(await page.evaluate(() => [...document.querySelectorAll("button")].some((b) => /Генеалогия/.test(b.innerText)))),
+    "кнопки «Генеалогия» нет (18.2: поиск по генеалогии — фильтр панели)");
+  await page.click(T("catalog-filters-toggle"));
+  await page.waitForSelector(T("catalog-filters"), { timeout: 10000 });
+  await fill(page, T("filter-phil-input"), "Кант");
+  await page.click(T("filter-phil-add"));
+  await page.waitForSelector(`${T("filter-phil-chips")} [data-philosopher="Кант"]`, { timeout: 10000 });
+  ok(true, "чип «Кант» добавлен");
+  await catalogSettled(() => location.search.includes("philosopher="));
+  const directIds = await shownIds();
+  // meta2 создан с Кантом среди ПРЯМЫХ участников (R3), meta1 — только через родителя C1
+  ok(directIds.includes(C1) && directIds.includes(meta2) && !directIds.includes(meta1),
+    "прямые участники: C1 и meta2 (Кант назван прямо), meta1 — нет", JSON.stringify(directIds));
+  await page.select(T("filter-phil-area"), "lineage");
+  await catalogSettled(() => location.search.includes("philArea=lineage"));
   await waitText(page, T1, 15000); // C1 в результатах
   const tSearch = await pageText(page);
   ok(has(tSearch, T1), "результаты: C1 (прямой)");
@@ -748,26 +766,24 @@ try {
         "◈ мета-синтез").length);
   ok(badgeCount >= 2, "бейдж «◈ мета-синтез» у карточек meta1/meta2",
     String(badgeCount));
-  const resultLinks = await page.$$eval("a[href^='/synthesis/']", (as) =>
-    as.map((a) => a.getAttribute("href")));
-  ok(resultLinks.includes(`/synthesis/${meta1}`) &&
-    resultLinks.includes(`/synthesis/${meta2}`),
+  const lineageIds = await shownIds();
+  ok(lineageIds.includes(meta1) && lineageIds.includes(meta2),
     "результаты: meta1 и meta2 (транзитивно)");
+  // фильтр панели ≡ прежнему /lineage/search (тот же набор концепций)
+  ok(foundIds.every((id) => lineageIds.includes(id)) && lineageIds.every((id) => foundIds.includes(id)),
+    "фильтр «вся родословная» даёт тот же набор, что /lineage/search", JSON.stringify([foundIds.length, lineageIds.length]));
 
   // Фильтр «Потомки концепции C1»
   await page.goto(`${UI}/catalog?descendantsOf=${C1}`, { waitUntil: "domcontentloaded" });
-  await waitText(page, "Показаны только потомки", 20000);
-  // Гонка: баннер (запрос потомков) может опередить загрузку СПИСКА —
-  // ждём появления карточки meta1, затем снимаем ссылки
-  await page.waitForSelector(`a[href="/synthesis/${meta1}"]`, { timeout: 15000 });
-  const tDesc = await pageText(page);
-  ok(has(tDesc, "к концепции"), "баннер фильтра с ссылкой на концепцию");
-  const cardLinks = await page.$$eval("a[href^='/synthesis/']", (as) =>
-    as.map((a) => a.getAttribute("href")));
-  ok(cardLinks.includes(`/synthesis/${meta1}`) && cardLinks.includes(`/synthesis/${meta2}`),
-    "пересечение: meta1 и meta2 показаны");
-  ok(!has(tDesc, T2), "C2 (не потомок) скрыта фильтром");
-  await clickButtonByText(page, null, "✕ Сбросить фильтр");
+  await page.waitForSelector(T("filter-descendants-chip"), { timeout: 20000 });
+  await page.waitForSelector(`.catalog-card[data-synthesis-id="${meta1}"]`, { timeout: 15000 });
+  await page.waitForFunction((t) => (document.querySelector('[data-testid="filter-descendants-chip"]')?.textContent ?? "").toLowerCase().includes(t.toLowerCase()), { timeout: 10000 }, T1);
+  ok(true, "строка фильтра потомков в панели названа концепцией");
+  const descIds = await shownIds();
+  ok(descIds.includes(meta1) && descIds.includes(meta2),
+    "потомки: meta1 и meta2 показаны");
+  ok(!descIds.includes(C2) && !descIds.includes(C1), "C2 (не потомок) скрыта фильтром");
+  await page.click(T("filter-descendants-remove"));
   await page.waitForFunction(() => !location.search.includes("descendantsOf"),
     { timeout: 10000 });
   await waitText(page, T2, 15000);

@@ -115,6 +115,8 @@ import { tData } from "@philosynth/shared/i18n/data";
 import { MembersPanel, roleLabel } from "../components/synthesis/MembersPanel"; // 16.2
 // 16.3: обсуждение и рецензии
 import { AddressMarks } from "../components/discussion/AddressMarks";
+import { TERM_SECTION_KEY, TermFocus, type TermFocusRequest } from "../components/document/TermFocus"; // 18.2
+import { termKey } from "@philosynth/shared/utils/discussion-address"; // 18.2
 import { DiscussionPanel } from "../components/discussion/DiscussionPanel";
 import { DiscussionTab } from "../components/discussion/DiscussionTab";
 import { ReviewsTab } from "../components/discussion/ReviewsTab";
@@ -836,6 +838,48 @@ export function SynthesisPage() {
     setDiscussFocus({ key: `${kind}:${key}`, nonce: Date.now() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [discussParam, canDiscuss, synthesis?.id]);
+  // 18.2: ?term=<id>&termKey=<ключ> — переход из выдачи поиска каталога прямо
+  // к термину глоссария. id разрешается в текущее имя термина там, где
+  // смотрящему открыт GET /glossary (вошедший, документ целиком): имя могло
+  // смениться после поиска. Гостю и при сбое остаётся ключ из адреса (id
+  // строки меняется при перегенерации глоссария — поэтому ключ и носится).
+  const termQuery = new URLSearchParams(location.search);
+  const termParam = termQuery.get("term");
+  const termKeyParam = termQuery.get("termKey");
+  const [termFocus, setTermFocus] = useState<TermFocusRequest | null>(null);
+  const [termFound, setTermFound] = useState<boolean | null>(null);
+  const termSynthesisId = synthesis?.id ?? null;
+  // владельцу сервер отдаёт scope: "full" всегда — отдельной ветки по владению не нужно (сторож 4bq)
+  const termGlossaryReadable = !isGuest && synthesis?.scope === "full";
+  useEffect(() => {
+    setTermFocus(null);
+    setTermFound(null);
+    if (!termSynthesisId || (!termParam && !termKeyParam)) return;
+    let cancelled = false;
+    const focusOn = (key: string) => {
+      if (cancelled || !key) return;
+      setPageTab("document");
+      setTermFocus({ key, nonce: Date.now() });
+    };
+    if (termParam && termGlossaryReadable) {
+      getGlossary(termSynthesisId)
+        .then((terms) => {
+          const hit = terms.find((t) => t.id === termParam);
+          focusOn(hit ? termKey(hit.term) : (termKeyParam ?? ""));
+        })
+        .catch(() => focusOn(termKeyParam ?? ""));
+    } else {
+      focusOn(termKeyParam ?? "");
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [termSynthesisId, termParam, termKeyParam, termGlossaryReadable]);
+  /** Рамка найденного термина — в слоте пометок раздела глоссария */
+  const termMark = (key: string, host: React.RefObject<HTMLDivElement | null>, html: string) =>
+    termFocus && key === TERM_SECTION_KEY ? (
+      <TermFocus host={host} html={html} focus={termFocus} onResolved={setTermFound} />
+    ) : null;
   /** Переход к адресу из вкладки «Обсуждение» (панель + прокрутка) */
   const jumpToComment = useCallback(
     (c: DiscussionComment) => {
@@ -1399,6 +1443,14 @@ export function SynthesisPage() {
         </div>
       )}
 
+      {/* 18.2: термин из выдачи поиска не нашёлся в документе */}
+      {termFocus && (termFound === false || (!loading && sections.length > 0 && !sections.some((s) => s.key === TERM_SECTION_KEY))) && (
+        <div className="callout note" data-testid="term-focus-missing">
+          <span className="callout-label">{tl("synthesisPage.termLabel", "Термин")}</span>
+          {tl("synthesisPage.termMissing", "Термин из поиска не найден в документе: глоссарий мог измениться после того, как был построен индекс.")}
+        </div>
+      )}
+
       <DocumentView
         synthesis={synthesis}
         summaries={summaries}
@@ -1418,9 +1470,16 @@ export function SynthesisPage() {
           canDiscuss
             ? (key) =>
                 ({ host, html }) => (
-                  <AddressMarks sectionKey={key} host={host} html={html} counts={discussCounts} activeKey={activeAddressKey} focus={discussFocus} onOpen={setDiscussTarget} />
+                  <>
+                    <AddressMarks sectionKey={key} host={host} html={html} counts={discussCounts} activeKey={activeAddressKey} focus={discussFocus} onOpen={setDiscussTarget} />
+                    {termMark(key, host, html)}
+                  </>
                 )
-            : undefined
+            : termFocus
+              ? (key) =>
+                  ({ host, html }) =>
+                    termMark(key, host, html)
+              : undefined
         }
         sectionActionsFor={(key) =>
           canEdit && !live ? (

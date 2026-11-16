@@ -1299,7 +1299,8 @@ object-src 'none'; base-uri 'none'; frame-ancestors 'none'` (плюс
    систему: скруглений, теней и произвольной типографики в разметке быть
    не должно — микро-подписи набираются моноширинным шрифтом капителью с
    разрядкой, углы прямые.
-4. Проверка — `python3 scripts/css-parity-audit.py` из корня репозитория.
+4. Проверка — `python3 scripts/checks/css-parity-audit.py` из корня репозитория
+   (скрипт переехал в `scripts/checks/` в 12.5; путь здесь поправлен в 18.2).
    Разделы A и B обязаны быть нулевыми; раздел D сверяет, что
    `EXPORT_SOURCE_RAW_CSS` по-прежнему побайтово равен блоку `<style>`.
 
@@ -1313,10 +1314,20 @@ object-src 'none'; base-uri 'none'; frame-ancestors 'none'` (плюс
   справа статична (`opacity: .5`), у сервиса в ней ссылка и кнопка.
   Правило исходника при этом остаётся дословным.
 - Экраны входа и регистрации (`.auth-screen`, `.auth-card`,
-  `.auth-header`), каталог (`.catalog-list`, `.catalog-card*`,
-  `.catalog-filter-bar`), пикер «Из каталога» (`.pool-catalog-*`),
-  drop-зона импорта (`.import-dropzone`), `.pause-content`,
-  `.lineage-search`, `.synth-ready-row`.
+  `.auth-header`), каталог (`.catalog-list`, `.catalog-card*`), пикер «Из
+  каталога» (`.pool-catalog-*`), drop-зона импорта (`.import-dropzone`),
+  `.pause-content`, `.synth-ready-row`.
+- Поиск каталога (беседа 18.2, блок «Беседа 18.2 — поиск в каталоге» в
+  хвосте части 3): строка поиска с выбором поля (`.catalog-search*`),
+  панель фильтров (`.catalog-filters*`, `.catalog-filter*`), фрагмент
+  выдачи и подсветка (`.search-fragment*`, `.search-hit`, `.search-hit.fuzzy`,
+  `.search-term-*`), счёт и пустая выдача (`.catalog-found`,
+  `.catalog-fuzzy`, `.catalog-empty*`), рамка найденного термина в
+  документе (`.term-focus`, `.term-focus-label`). Прежние
+  `.catalog-filter-bar` (плашка потомков) и `.lineage-search` /
+  `.lineage-results` (блок «Поиск по генеалогии») сняты вместе с
+  компонентами. Палитра и углы — кита: в блоке нет hex-цветов, скруглений
+  и теней (сторож 4bs).
 - Анти-переполнение полей (`min-width: 0`, `max-width: 100%` на
   `.form-input`/`.form-select`/`.form-textarea`): ширина `<select>` в
   Chrome тянется по самой длинной опции и распирала страницу на 375px.

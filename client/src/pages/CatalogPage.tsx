@@ -53,41 +53,82 @@
  * кнопки «Новый синтез» и поиска по генеалогии (/lineage/search под
  * requireAuth). Гостю доступен без входа; зарегистрированному — тот же
  * список, что вкладка «Публичные».
+ *
+ * Беседа 18.2 — поиск в каталоге (сервер — 18.1, 03 §2.21). Всё, что выше
+ * сказано о транспорте списков, ЗАМЕНЕНО: три вкладки ходят в ОДИН маршрут
+ * `GET /syntheses/search` (список = вкладка), прежние `GET /syntheses`,
+ * `/public`, `/shared` каталогу больше не нужны (их зовут пул, биллинг и
+ * стартовая страница).
+ *  - Строка поиска с выбором поля (название / зерно / содержание / термин)
+ *    — на всех трёх вкладках и на «/explore»; дебаунс ввода прежний, 400 мс.
+ *  - СОСТОЯНИЕ ПОИСКА — В АДРЕСНОЙ СТРОКЕ (ссылкой можно поделиться):
+ *    вкладка, текст, поле, фильтры, страница. Читает и пишет его один
+ *    модуль `utils/catalog-search` — тем же сериализатором, что строит
+ *    запрос; имена параметров адреса ≡ параметрам маршрута (сторож 4bs).
+ *    Локального состояния у поиска нет, кроме набираемого текста до
+ *    дебаунса и раскрытости панели.
+ *  - Панель фильтров (CatalogFilters): философы (все / любой; прямые /
+ *    родословная), эпоха, метод, уровень, язык, мета, потомки концепции,
+ *    статус и дата — только на «Мои»; сброс. Прежние отдельная кнопка
+ *    «Генеалогия» с блоком LineageSearch (3.2) и плашка `?descendantsOf=`
+ *    с клиентским пересечением СНЯТЫ: родословная — фильтр панели (область
+ *    «вся родословная»), потомков отбирает сервер. Ссылка
+ *    `/catalog?descendantsOf=<id>` со страницы концепции работает как
+ *    прежде — параметр тот же.
+ *  - Выдача: карточка + фрагмент с подсветкой (куски текста, не разметка);
+ *    у найденного термина карточка ведёт прямо к термину в документе.
+ *    Находки запасного хода (`match: 'fuzzy'`, опечатка) названы «похожими».
+ *    Пустая выдача при заданных условиях — сообщение с подсказками, чем
+ *    ослабить поиск, и кнопкой сброса.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import type { LineageNode } from "@philosynth/shared/types/lineage";
+import type { SearchField, SearchMatchKind, SearchScope } from "@philosynth/shared/constants/search";
+import type { SynthesisSearchItem } from "@philosynth/shared/types/search";
 import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
 import type { SharedSynthesisPreview } from "@philosynth/shared/types/notifications";
 
 import { ApiError } from "../api/client";
 import { getDescendants } from "../api/lineage";
-import { listSharedSyntheses } from "../api/members"; // 16.2
+import { searchSyntheses } from "../api/search"; // 18.2
 import {
   deleteSynthesis,
   duplicateSynthesis,
   getSynthesis,
-  listPublicSyntheses,
-  listSyntheses,
   renameSynthesis,
   updateSynthesis,
 } from "../api/syntheses";
+import { CatalogFilters } from "../components/catalog/CatalogFilters"; // 18.2
+import { CatalogSearchBar } from "../components/catalog/CatalogSearchBar"; // 18.2
 import type {
   SynthesisCardActions,
   SynthesisCardVisibility,
 } from "../components/catalog/SynthesisCard";
 import { SynthesisList } from "../components/catalog/SynthesisList";
-import { LineageSearch } from "../components/lineage/LineageSearch";
 import { LoadingSpinner } from "../components/shared/LoadingSpinner";
 import { memberStatusLabel, roleLabel } from "../components/synthesis/MembersPanel"; // 16.2
 import { useAuthStore } from "../stores/auth-store";
+import {
+  CATALOG_PAGE_LIMIT,
+  activeFilterCount,
+  catalogSearchString,
+  hasSearchCriteria,
+  parseCatalogSearch,
+  relaxHints,
+  resetFilters,
+  searchQueryString,
+  withScope,
+  type CatalogSearchContext,
+  type CatalogSearchState,
+  type RelaxHint,
+} from "../utils/catalog-search"; // 18.2
 import { tl } from "@philosynth/shared/i18n/t";
 
-const PAGE_LIMIT = 20;
+const PAGE_LIMIT = CATALOG_PAGE_LIMIT;
 const SEARCH_DEBOUNCE_MS = 400;
 
-type CatalogTab = "mine" | "public" | "shared";
+type CatalogTab = SearchScope;
 
 /** 16.2: роль/статус участия по карточке вкладки «Со мной поделились» */
 function sharedBadge(s: SynthesisPreview): React.ReactNode {
@@ -98,19 +139,6 @@ function sharedBadge(s: SynthesisPreview): React.ReactNode {
       {sh.myStatus === "active" ? roleLabel(sh.myRole) : `${memberStatusLabel("invited")} · ${roleLabel(sh.myRole)}`}
     </span>
   );
-}
-
-/** Собрать id всех узлов-концепций из леса потомков (беседа 3.2) */
-function collectDescendantIds(nodes: readonly LineageNode[]): Set<string> {
-  const ids = new Set<string>();
-  const walk = (list: readonly LineageNode[]) => {
-    for (const n of list) {
-      if (n.type === "synthesis" && n.synthesisId) ids.add(n.synthesisId);
-      walk(n.children);
-    }
-  };
-  walk(nodes);
-  return ids;
 }
 
 /** Текст ошибки действия карточки (8.4): 400 с details[field] → сама
@@ -146,6 +174,37 @@ export function visibilityErrorText(err: unknown): string {
   return err.message || tl("catalogPage.visibilityChangeFailed", "Не удалось изменить публичность.");
 }
 
+/** Текст ошибки поиска (18.2). Концепция X фильтра потомков обязана быть
+ *  читаема смотрящим: 404 — её нет, 403 — она закрыта (03 §2.21). */
+export function searchErrorText(err: unknown, state: CatalogSearchState): string {
+  if (!(err instanceof ApiError)) return tl("catalogPage.catalogLoadFailed", "Не удалось загрузить каталог.");
+  if (state.descendantsOf && err.code === "NOT_FOUND")
+    return tl("catalogPage.descendantsNotFound", "Концепция, потомков которой вы ищете, не найдена — снимите фильтр потомков.");
+  if (state.descendantsOf && err.code === "FORBIDDEN")
+    return tl("catalogPage.descendantsForbidden", "Концепция, потомков которой вы ищете, вам недоступна — снимите фильтр потомков.");
+  return err.message || tl("catalogPage.catalogLoadFailed", "Не удалось загрузить каталог.");
+}
+
+/** Подсказка, чем ослабить поиск (18.2, п. 3) */
+export function relaxHintText(hint: RelaxHint): string {
+  switch (hint) {
+    case "philAny":
+      return tl("catalogPage.relaxPhilAny", "искать любого из названных философов, а не всех сразу");
+    case "philLineage":
+      return tl("catalogPage.relaxPhilLineage", "искать философов и эпохи во всей родословной, а не только среди прямых участников");
+    case "fieldContent":
+      return tl("catalogPage.relaxFieldContent", "искать текст в содержании (капсула, категории, термины), а не только в названии или зерне");
+    case "termExact":
+      return tl("catalogPage.relaxTermExact", "поле «термин» ищет термин целиком — попробуйте поле «содержание»: оно находит словоформы и определения");
+    case "dates":
+      return tl("catalogPage.relaxDates", "расширить промежуток дат");
+    case "fewerFilters":
+      return tl("catalogPage.relaxFewerFilters", "снять часть фильтров — они сочетаются через «и»");
+    case "otherScope":
+      return tl("catalogPage.relaxOtherScope", "посмотреть на другой вкладке каталога");
+  }
+}
+
 export interface CatalogPageProps {
   /** Беседа 8.7: режим «/explore» — только публичный каталог, без «Мои» */
   publicOnly?: boolean | undefined;
@@ -153,94 +212,132 @@ export interface CatalogPageProps {
 
 export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
   const authenticated = useAuthStore((s) => s.status === "authenticated");
-  const [tab, setTab] = useState<CatalogTab>(publicOnly ? "public" : "mine");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
 
-  const [items, setItems] = useState<SynthesisPreview[]>([]);
+  // 18.2: состояние поиска — адресная строка (вкладка, текст, поле, фильтры,
+  // страница); читает и пишет его один модуль utils/catalog-search
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchCtx = useMemo<CatalogSearchContext>(
+    () => ({ defaultScope: publicOnly ? "public" : "mine", lockScope: publicOnly }),
+    [publicOnly],
+  );
+  const state = useMemo(() => parseCatalogSearch(searchParams, searchCtx), [searchParams, searchCtx]);
+  // stateRef — состояние, от которого считается СЛЕДУЮЩЕЕ действие. Роутер
+  // применяет новый адрес переходом (startTransition): между записью адреса
+  // и отрисовкой проходит время, и второе быстрое действие (философ, сразу
+  // за ним область) взяло бы прежнее состояние и стёрло первое. Поэтому
+  // запись адреса сразу кладёт записанное сюда (applyState), а отрисовка
+  // перекладывает разобранное из адреса только при его действительной смене.
+  const stateRef = useRef(state);
+  const seenParams = useRef(searchParams);
+  if (seenParams.current !== searchParams) {
+    seenParams.current = searchParams;
+    stateRef.current = state;
+  }
+  const tab: CatalogTab = state.scope;
+  const page = state.page;
+  const search = state.q;
+
+  /** Записать состояние в адресную строку. replace — правка того же
+   *  поиска (набор текста); без него — новый шаг истории (вкладка, фильтр,
+   *  страница): «назад» возвращает прежний поиск. */
+  const applyState = useCallback(
+    (next: CatalogSearchState, opts: { replace?: boolean } = {}) => {
+      stateRef.current = next;
+      setSearchParams(new URLSearchParams(catalogSearchString(next, searchCtx)), { replace: opts.replace === true });
+    },
+    [setSearchParams, searchCtx],
+  );
+  const patchState = useCallback(
+    (patch: Partial<CatalogSearchState>) => applyState({ ...stateRef.current, ...patch, page: 1 }),
+    [applyState],
+  );
+
+  // Набираемый текст: до дебаунса живёт здесь, после — в адресе (q)
+  const [searchInput, setSearchInput] = useState(state.q);
+  // адрес сменился извне («назад», ссылка, сброс) — строка ввода следует за ним
+  useEffect(() => {
+    setSearchInput((cur) => (cur.trim() === search ? cur : search));
+  }, [search]);
+  // Дебаунс поиска: ввод → 400 мс тишины → параметр q адреса
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = searchInput.trim();
+      if (q !== stateRef.current.q) applyState({ ...stateRef.current, q, page: 1 }, { replace: true });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchInput, applyState]);
+
+  const [items, setItems] = useState<SynthesisSearchItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [match, setMatch] = useState<SearchMatchKind | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Какому запросу принадлежит показанная выдача: между сменой адреса и
+  // стартом запроса (эффект — после отрисовки) прежние карточки не должны
+  // мелькнуть под новыми условиями и счётом «Найдено N»
+  const [resultKey, setResultKey] = useState<string | null>(null);
 
-  // Беседа 3.2: фильтр «Потомки концепции X» (?descendantsOf=<id>)
-  const [searchParams, setSearchParams] = useSearchParams();
-  const descendantsOf = searchParams.get("descendantsOf");
-  const [descendantIds, setDescendantIds] = useState<Set<string> | null>(null);
-  const [descendantsError, setDescendantsError] = useState(false);
+  // Панель фильтров: раскрыта, если ссылка уже несёт фильтры
+  const [filtersOpen, setFiltersOpen] = useState(() => activeFilterCount(state) > 0);
+  const filterCount = activeFilterCount(state);
+
+  // Название концепции X фильтра потомков — для строки панели
+  const descendantsOf = state.descendantsOf;
+  const [descendantsTitle, setDescendantsTitle] = useState<string | null>(null);
   useEffect(() => {
-    setDescendantIds(null);
-    setDescendantsError(false);
+    setDescendantsTitle(null);
     if (!descendantsOf) return;
     let cancelled = false;
-    getDescendants(descendantsOf)
-      .then((children) => {
-        if (!cancelled) setDescendantIds(collectDescendantIds(children));
+    getSynthesis(descendantsOf)
+      .then((full) => {
+        if (!cancelled) setDescendantsTitle(full.title);
       })
       .catch(() => {
-        if (!cancelled) setDescendantsError(true);
+        /* недоступна — причину назовёт сам поиск (searchErrorText) */
       });
     return () => {
       cancelled = true;
     };
   }, [descendantsOf]);
 
-  // Беседа 3.2: сворачиваемый блок «Поиск по генеалогии»
-  const [lineageSearchOpen, setLineageSearchOpen] = useState(false);
-
-  // Дебаунс поиска: ввод → 400 мс тишины → серверный ?search=
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(1);
-    }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [searchInput]);
-
+  // Запрос — по строке запроса состояния: одинаковое состояние не
+  // перезапрашивается, как бы ни пересобирался объект
+  const queryKey = searchQueryString(state);
+  // запрос идёт по ОТРИСОВАННОМУ состоянию (stateRef может уже нести следующее)
+  const shownState = useRef(state);
+  shownState.current = state;
   const reqSeq = useRef(0);
   // silent (8.4): перечитка после действия карточки — без спиннера, чтобы
   // список не «мигал» и соседние карточки не размонтировались
   const fetchList = useCallback(async (opts: { silent?: boolean } = {}) => {
     const seq = ++reqSeq.current;
+    const st = shownState.current;
     if (!opts.silent) setLoading(true);
     setError(null);
     try {
-      const params = {
-        page,
-        limit: PAGE_LIMIT,
-        ...(search ? { search } : {}),
-      };
-      // 16.2: «Со мной поделились» — мои участия (любого статуса) одним
-      // списком без страниц; поиск — по названию на клиенте (список короткий)
-      const result =
-        tab === "mine"
-          ? await listSyntheses(params)
-          : tab === "public"
-            ? await listPublicSyntheses(params)
-            : await listSharedSyntheses().then((r) => {
-                const items = search
-                  ? r.items.filter((it) => it.title.toLowerCase().includes(search.toLowerCase()))
-                  : r.items;
-                return { items, total: items.length };
-              });
+      const result = await searchSyntheses(st);
       if (seq !== reqSeq.current) return;
       setItems(result.items);
       setTotal(result.total);
+      setMatch(result.match);
+      setResultKey(searchQueryString(st));
     } catch (err) {
       if (seq !== reqSeq.current) return;
       setItems([]);
       setTotal(0);
-      setError(
-        err instanceof ApiError ? err.message : tl("catalogPage.catalogLoadFailed", "Не удалось загрузить каталог."),
-      );
+      setMatch(null);
+      setError(searchErrorText(err, st));
+      setResultKey(searchQueryString(st));
     } finally {
       if (seq === reqSeq.current) setLoading(false);
     }
-  }, [tab, search, page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey]);
 
   useEffect(() => {
     void fetchList();
   }, [fetchList]);
+  const pending = loading || resultKey !== queryKey;
 
   // Беседа 8.7 (п. 5): управление публичностью — ОДИН PATCH со ступенью и
   // флагами (updateSynthesis), затем тихая перечитка списка; сырые флаги
@@ -324,19 +421,15 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
   );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
-
-  // Беседа 3.2: пересечение текущего списка с множеством потомков
-  // (клиентское — «каталог лишь отображает пересечение», аудит 2026-07-30)
-  const visibleItems = useMemo(() => {
-    if (!descendantsOf || descendantIds === null || descendantsError)
-      return items;
-    return items.filter((s) => descendantIds.has(s.id));
-  }, [items, descendantsOf, descendantIds, descendantsError]);
+  const criteria = hasSearchCriteria(state);
+  const fuzzy = match === "fuzzy";
+  const hints = useMemo(() => relaxHints(state, searchCtx), [state, searchCtx]);
 
   const tabBtn = (key: CatalogTab, label: string) => (
     <button
       type="button"
       className="action-btn"
+      data-testid={`catalog-tab-${key}`}
       style={
         tab === key
           ? {
@@ -346,14 +439,18 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
             }
           : undefined
       }
-      onClick={() => {
-        setTab(key);
-        setPage(1);
-      }}
+      onClick={() => applyState(withScope(stateRef.current, key))}
     >
       {label}
     </button>
   );
+
+  const emptyDefault =
+    tab === "mine"
+      ? tl("catalogPage.noSynthesesYet", "У вас пока нет синтезов — начните с «Новый синтез».")
+      : tab === "shared"
+        ? tl("catalogPage.noShared", "С вами пока никто не делился концепциями — участие возникает по приглашению владельца.")
+        : tl("catalogPage.noPublicSyntheses", "Публичных синтезов пока нет.");
 
   return (
     <div>
@@ -385,99 +482,131 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
           {!publicOnly && tabBtn("shared", tl("catalogPage.tabShared", "Со мной поделились"))}
         </div>
         <div className="actions-bar-btns">
-          {/* Поиск по генеалогии — /lineage/search под requireAuth: гостю
-              и в режиме /explore не показывается */}
-          {authenticated && !publicOnly && (
-            <button
-              type="button"
-              className="action-btn"
-              onClick={() => setLineageSearchOpen((v) => !v)}
-              title={tl("catalogPage.lineageSearchHint", "Поиск концепций по философам-предкам")}
-            >
-              {tl("catalogPage.genealogyToggle", "{lineageSearchOpen} Генеалогия", { lineageSearchOpen: lineageSearchOpen ? "▾" : "▸" })}
-            </button>
-          )}
-          <input
-            type="search"
+          {/* 18.2: строка поиска с выбором поля — на всех вкладках и гостю */}
+          <CatalogSearchBar
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={tl("catalogPage.searchByTitle", "Поиск по названию…")}
-            className="form-input"
-            style={{ width: 256 }}
+            field={state.field}
+            onValue={setSearchInput}
+            onField={(field: SearchField) => patchState({ field })}
           />
-        </div>
-      </div>
-
-      {/* Беседа 3.2 (п. 3): поиск по философам-предкам */}
-      {lineageSearchOpen && authenticated && !publicOnly && (
-        <LineageSearch />
-      )}
-
-      {/* Беседа 3.2 (п. 5): баннер фильтра потомков */}
-      {descendantsOf && (
-        <div className="callout gold catalog-filter-bar">
-          <span>
-            {descendantsError
-              ? tl("catalogPage.descendantsLoadFailed", "⚠ Не удалось загрузить потомков — фильтр не применён.")
-              : descendantIds === null
-                ? tl("catalogPage.loadingDescendants", "Загрузка потомков…")
-                : descendantIds.size === 0
-                  ? tl("catalogPage.noVisibleDescendants", "У этой концепции нет потомков (видимых вам).")
-                  : tl("catalogPage.onlyDescendantsLead", "Показаны только потомки концепции (") +
-                    descendantIds.size +
-                    tl("catalogPage.onlyDescendantsTail", ") — пересечение с текущей вкладкой.")}{" "}
-            <Link to={`/synthesis/${descendantsOf}`}>{tl("catalogPage.toConcept", "◈ к концепции")}</Link>
-          </span>
           <button
             type="button"
             className="action-btn"
-            style={{ padding: "2px 10px" }}
-            onClick={() => {
-              searchParams.delete("descendantsOf");
-              setSearchParams(searchParams, { replace: true });
-            }}
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((v) => !v)}
+            data-testid="catalog-filters-toggle"
           >
-            {tl("catalogPage.resetFilter", "✕ Сбросить фильтр")}
+            {tl("catalogPage.filtersToggle", "{arrow} Фильтры{count}", {
+              arrow: filtersOpen ? "▾" : "▸",
+              count: filterCount > 0 ? ` · ${filterCount}` : "",
+            })}
           </button>
         </div>
+      </div>
+
+      {/* 18.2 (п. 2): панель фильтров; родословная и потомки — её фильтры */}
+      {filtersOpen && (
+        <CatalogFilters
+          state={state}
+          onChange={patchState}
+          onReset={() => applyState(resetFilters(stateRef.current))}
+          descendantsTitle={descendantsTitle}
+        />
       )}
 
-      <div>
-        {loading ? (
+      <div data-testid="catalog-results" data-query={pending ? "" : queryKey}>
+        {pending ? (
           <LoadingSpinner label={tl("catalogPage.loadingCatalog", "загрузка каталога…")} />
         ) : error ? (
-          <div className="callout warning">
+          <div className="callout warning" data-testid="catalog-error">
             <span className="callout-label">{tl("common.error", "Ошибка")}</span>
-            {error}
+            {error}{" "}
+            {descendantsOf && (
+              <button
+                type="button"
+                className="action-btn"
+                onClick={() => patchState({ descendantsOf: null })}
+                data-testid="catalog-error-reset-descendants"
+              >
+                {tl("catalogPage.resetDescendants", "✕ Снять фильтр потомков")}
+              </button>
+            )}
+          </div>
+        ) : items.length === 0 && criteria ? (
+          /* 18.2 (п. 3): пустая выдача — чем ослабить поиск */
+          <div className="catalog-empty" data-testid="catalog-empty-search">
+            <p className="catalog-empty-title">{tl("catalogPage.nothingFound", "Ничего не найдено по запросу.")}</p>
+            {hints.length > 0 && (
+              <>
+                <p className="catalog-empty-lead">{tl("catalogPage.relaxLead", "Попробуйте ослабить условия:")}</p>
+                <ul className="catalog-empty-hints">
+                  {hints.map((h) => (
+                    <li key={h} data-hint={h}>
+                      {relaxHintText(h)}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <div className="catalog-empty-actions">
+              {filterCount > 0 && (
+                <button
+                  type="button"
+                  className="action-btn"
+                  onClick={() => applyState(resetFilters(stateRef.current))}
+                  data-testid="catalog-empty-reset"
+                >
+                  {tl("catalogPage.resetFilters", "✕ Сбросить фильтры")}
+                </button>
+              )}
+              {search && (
+                <button
+                  type="button"
+                  className="action-btn"
+                  onClick={() => {
+                    setSearchInput("");
+                    patchState({ q: "" });
+                  }}
+                  data-testid="catalog-empty-clear-text"
+                >
+                  {tl("catalogPage.clearText", "✕ Очистить текст поиска")}
+                </button>
+              )}
+            </div>
           </div>
         ) : (
-          <SynthesisList
-            items={visibleItems}
-            emptyText={
-              descendantsOf && descendantIds !== null && !descendantsError
-                ? tl("catalogPage.noDescendantsInTab", "На этой вкладке потомков выбранной концепции нет.")
-                : search
-                  ? tl("catalogPage.nothingFound", "Ничего не найдено по запросу.")
-                  : tab === "mine"
-                    ? tl("catalogPage.noSynthesesYet", "У вас пока нет синтезов — начните с «Новый синтез».")
-                    : tab === "shared"
-                      ? tl("catalogPage.noShared", "С вами пока никто не делился концепциями — участие возникает по приглашению владельца.")
-                      : tl("catalogPage.noPublicSyntheses", "Публичных синтезов пока нет.")
-            }
-            visibility={tab === "mine" ? cardVisibility : undefined}
-            actions={tab === "mine" ? cardActions : undefined}
-            badgeOf={tab === "shared" ? sharedBadge : undefined}
-          />
+          <>
+            {criteria && (
+              <div className="catalog-found" data-testid="catalog-found" data-match={match ?? ""} data-total={total}>
+                {tl("catalogPage.foundTotal", "{n, plural, one {Найдена # концепция} few {Найдено # концепции} many {Найдено # концепций} other {Найдено # концепции}}", { n: total })}
+              </div>
+            )}
+            {fuzzy && (
+              <div className="callout note catalog-fuzzy" data-testid="catalog-fuzzy">
+                <span className="callout-label">{tl("catalogPage.fuzzyLabel", "Похожие")}</span>
+                {tl("catalogPage.fuzzyNote", "Точных совпадений нет — показаны концепции с похожими словами (возможна опечатка в запросе).")}
+              </div>
+            )}
+            <SynthesisList
+              items={items}
+              emptyText={emptyDefault}
+              visibility={tab === "mine" ? cardVisibility : undefined}
+              actions={tab === "mine" ? cardActions : undefined}
+              badgeOf={tab === "shared" ? sharedBadge : undefined}
+              fuzzy={fuzzy}
+            />
+          </>
         )}
       </div>
 
-      {!loading && !error && total > PAGE_LIMIT && (
+      {!pending && !error && total > PAGE_LIMIT && (
         <div className="actions-bar" style={{ justifyContent: "center", gap: 16 }}>
           <button
             type="button"
             className="action-btn"
             disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => applyState({ ...stateRef.current, page: Math.max(1, page - 1) })}
+            data-testid="catalog-page-prev"
           >
             {tl("catalogPage.back", "← Назад")}
           </button>
@@ -488,7 +617,8 @@ export function CatalogPage({ publicOnly = false }: CatalogPageProps) {
             type="button"
             className="action-btn"
             disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => applyState({ ...stateRef.current, page: page + 1 })}
+            data-testid="catalog-page-next"
           >
             {tl("catalogPage.forward", "Вперёд →")}
           </button>

@@ -156,7 +156,20 @@ export function AddressMarks({ sectionKey, host, html, counts, activeKey, focus,
     // html — повод перемерить после смены тела раздела; tick — ресайз
   }, [host, sectionKey, html, counts, tick]);
 
-  const active = useMemo(() => spots.findIndex((s) => addressKeyOfTarget(s.target) === activeKey), [spots, activeKey]);
+  // Адрес 16.1 — по СОДЕРЖИМОМУ строки (связь: «источник → цель | тип»),
+  // поэтому строки-дубликаты одной связи несут один адрес и одну ветку
+  // обсуждения. Ключ React обязан быть уникален среди соседей: у повтора
+  // адреса он получает номер повтора (Д-90). Сам адрес (data-address, счёт,
+  // открытие панели) остаётся общим — пометка стоит у каждой строки.
+  const marks = useMemo(() => {
+    const seen = new Map<string, number>();
+    return spots.map((spot) => {
+      const address = addressKeyOfTarget(spot.target);
+      const n = seen.get(address) ?? 0;
+      seen.set(address, n + 1);
+      return { spot, address, reactKey: n === 0 ? address : `${address}#${n + 1}` };
+    });
+  }, [spots]);
 
   // прокрутка к адресу — по nonce, когда цель измерена; страница после
   // перехода ещё оседает (шрифты, соседние разделы, правое поле панели),
@@ -186,18 +199,20 @@ export function AddressMarks({ sectionKey, host, html, counts, activeKey, focus,
 
   return (
     <>
-      {spots.map((s, i) => {
-        const visible = s.count > 0 || i === hover || i === active;
-        const cls = ["addr-mark", s.count > 0 ? "has" : "empty", i === active ? "active" : "", visible ? "" : "faint"].filter(Boolean).join(" ");
+      {marks.map(({ spot: s, address, reactKey }, i) => {
+        // открытый адрес подсвечен у каждой строки, которая его несёт
+        const isActive = activeKey !== null && address === activeKey;
+        const visible = s.count > 0 || i === hover || isActive;
+        const cls = ["addr-mark", s.count > 0 ? "has" : "empty", isActive ? "active" : "", visible ? "" : "faint"].filter(Boolean).join(" ");
         return (
           <button
-            key={addressKeyOfTarget(s.target)}
+            key={reactKey}
             type="button"
             className={cls}
             style={{ top: s.top, left: s.left }}
             title={s.count > 0 ? tl("discussion.addressMarks.openHint", "{title} — {n, plural, one {# запись} few {# записи} many {# записей} other {# записи}} обсуждения и рецензий", { title: s.target.title, n: s.count }) : tl("discussion.addressMarks.startHint", "{title} — обсудить", { title: s.target.title })}
             data-testid="addr-mark"
-            data-address={addressKeyOfTarget(s.target)}
+            data-address={address}
             data-count={s.count}
             onMouseEnter={() => setHover(i)}
             onClick={(e) => {

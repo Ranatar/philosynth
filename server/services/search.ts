@@ -70,6 +70,8 @@ export interface SearchParams {
   epochPhilosophers: string[];
   method: string | null;
   synthLevel: string | null;
+  /** Глубина проработки (18.2, Д-89); null — фильтра нет */
+  depth: string | null;
   lang: string | null;
   meta: boolean | null;
   /** id видимых потомков концепции X; null — фильтра нет */
@@ -185,6 +187,7 @@ function baseConditions(p: SearchParams, userId: string | null): SqlFragment {
   if (p.epochPhilosophers.length > 0) conds.push(philosophersCond(p.epochPhilosophers, "any", p.philArea));
   if (p.method) conds.push(sql`s.method = ${p.method}`);
   if (p.synthLevel) conds.push(sql`s.synth_level = ${p.synthLevel}`);
+  if (p.depth) conds.push(sql`s.depth = ${p.depth}`);
   if (p.lang) conds.push(sql`lower(s.lang) = lower(${p.lang})`);
   if (p.status) conds.push(sql`s.status = ${p.status}`);
   if (p.meta !== null) conds.push(p.meta ? META_SYNTHESIS_SQL : sql`NOT ${META_SYNTHESIS_SQL}`);

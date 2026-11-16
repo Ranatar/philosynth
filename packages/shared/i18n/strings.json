@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-11-15T16:43:04.164Z",
-    "imported": "2026-11-15T16:43:21.575Z"
+    "synced": "2026-11-16T14:02:39.408Z",
+    "imported": "2026-11-16T14:03:01.954Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -2403,48 +2403,379 @@
       "from": {"en":"Использовано","de":"Использовано"},
       "where": ["client/src/pages/BillingPage.tsx:702"]
     },
+    "catalog.catalogFilters.activeCount": {
+      "ru": "{n, plural, one {задан # фильтр} few {задано # фильтра} many {задано # фильтров} other {задано # фильтра}}",
+      "en": "{n, plural, one {# filter set} other {# filters set}}",
+      "de": "{n, plural, one {# Filter gesetzt} other {# Filter gesetzt}}",
+      "from": {"en":"{n, plural, one {задан # фильтр} few {задано # фильтра} many {задано # фильтров} other {задано # фильтра}}","de":"{n, plural, one {задан # фильтр} few {задано # фильтра} many {задано # фильтров} other {задано # фильтра}}"},
+      "params": {"n":""},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:356"]
+    },
+    "catalog.catalogFilters.addPhilosopher": {
+      "ru": "+ Добавить",
+      "en": "+ Add",
+      "de": "+ Hinzufügen",
+      "from": {"en":"+ Добавить","de":"+ Добавить"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:114"]
+    },
+    "catalog.catalogFilters.any": {
+      "ru": "любой",
+      "en": "any",
+      "de": "beliebig",
+      "from": {"en":"любой","de":"любой"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:191","client/src/components/catalog/CatalogFilters.tsx:210","client/src/components/catalog/CatalogFilters.tsx:229","client/src/components/catalog/CatalogFilters.tsx:248","client/src/components/catalog/CatalogFilters.tsx:287"]
+    },
+    "catalog.catalogFilters.created": {
+      "ru": "Создана: с — по",
+      "en": "Created: from — to",
+      "de": "Erstellt: von — bis",
+      "from": {"en":"Создана: с — по","de":"Создана: с — по"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:298"]
+    },
+    "catalog.catalogFilters.dateFromAria": {
+      "ru": "Создана не раньше",
+      "en": "Created not earlier than",
+      "de": "Erstellt nicht früher als",
+      "from": {"en":"Создана не раньше","de":"Создана не раньше"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:306"]
+    },
+    "catalog.catalogFilters.dateToAria": {
+      "ru": "Создана не позже",
+      "en": "Created not later than",
+      "de": "Erstellt nicht später als",
+      "from": {"en":"Создана не позже","de":"Создана не позже"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:315"]
+    },
+    "catalog.catalogFilters.depth": {
+      "ru": "Глубина",
+      "en": "Depth",
+      "de": "Tiefe",
+      "from": {"en":"Глубина","de":"Глубина"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:201"]
+    },
+    "catalog.catalogFilters.descendants": {
+      "ru": "Потомки концепции",
+      "en": "Descendants of a concept",
+      "de": "Nachkommen eines Konzepts",
+      "from": {"en":"Потомки концепции","de":"Потомки концепции"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:324"]
+    },
+    "catalog.catalogFilters.descendantsHint": {
+      "ru": "Не задано. Фильтр ставит ссылка «Потомки этой концепции в каталоге» на странице концепции.",
+      "en": "Not set. The filter is set by the “Descendants of this concept in the catalog” link on the concept page.",
+      "de": "Nicht gesetzt. Den Filter setzt der Link „Nachkommen dieses Konzepts im Katalog“ auf der Seite des Konzepts.",
+      "from": {"en":"Не задано. Фильтр ставит ссылка «Потомки этой концепции в каталоге» на странице концепции.","de":"Не задано. Фильтр ставит ссылка «Потомки этой концепции в каталоге» на странице концепции."},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:344"]
+    },
+    "catalog.catalogFilters.descendantsUnknown": {
+      "ru": "концепция",
+      "en": "concept",
+      "de": "Konzept",
+      "from": {"en":"концепция","de":"концепция"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:329"]
+    },
+    "catalog.catalogFilters.epochs": {
+      "ru": "Эпоха философов",
+      "en": "Epoch of the philosophers",
+      "de": "Epoche der Philosophen",
+      "from": {"en":"Эпоха философов","de":"Эпоха философов"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:164"]
+    },
+    "catalog.catalogFilters.lang": {
+      "ru": "Язык генерации",
+      "en": "Generation language",
+      "de": "Sprache der Generierung",
+      "from": {"en":"Язык генерации","de":"Язык генерации"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:239"]
+    },
+    "catalog.catalogFilters.meta": {
+      "ru": "Мета-синтез",
+      "en": "Meta-synthesis",
+      "de": "Meta-Synthese",
+      "from": {"en":"Мета-синтез","de":"Мета-синтез"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:259"]
+    },
+    "catalog.catalogFilters.metaAny": {
+      "ru": "не важно",
+      "en": "does not matter",
+      "de": "egal",
+      "from": {"en":"не важно","de":"не важно"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:268"]
+    },
+    "catalog.catalogFilters.metaNo": {
+      "ru": "без мета-синтезов",
+      "en": "without meta-syntheses",
+      "de": "ohne Meta-Synthesen",
+      "from": {"en":"без мета-синтезов","de":"без мета-синтезов"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:270"]
+    },
+    "catalog.catalogFilters.metaYes": {
+      "ru": "только мета-синтезы",
+      "en": "meta-syntheses only",
+      "de": "nur Meta-Synthesen",
+      "from": {"en":"только мета-синтезы","de":"только мета-синтезы"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:269"]
+    },
+    "catalog.catalogFilters.method": {
+      "ru": "Метод",
+      "en": "Method",
+      "de": "Methode",
+      "from": {"en":"Метод","de":"Метод"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:182"]
+    },
+    "catalog.catalogFilters.noneActive": {
+      "ru": "фильтры не заданы",
+      "en": "no filters set",
+      "de": "keine Filter gesetzt",
+      "from": {"en":"фильтры не заданы","de":"фильтры не заданы"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:361"]
+    },
+    "catalog.catalogFilters.philAreaAria": {
+      "ru": "Где искать философов",
+      "en": "Where to look for the philosophers",
+      "de": "Wo die Philosophen gesucht werden",
+      "from": {"en":"Где искать философов","de":"Где искать философов"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:151"]
+    },
+    "catalog.catalogFilters.philAreaDirect": {
+      "ru": "прямые участники синтеза",
+      "en": "direct participants of the synthesis",
+      "de": "direkte Teilnehmer der Synthese",
+      "from": {"en":"прямые участники синтеза","de":"прямые участники синтеза"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:154"]
+    },
+    "catalog.catalogFilters.philAreaLineage": {
+      "ru": "вся родословная (через мета-синтез)",
+      "en": "the whole lineage (through meta-synthesis)",
+      "de": "die gesamte Abstammung (über Meta-Synthese)",
+      "from": {"en":"вся родословная (через мета-синтез)","de":"вся родословная (через мета-синтез)"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:156"]
+    },
+    "catalog.catalogFilters.philModeAll": {
+      "ru": "все названные",
+      "en": "all of the named",
+      "de": "alle genannten",
+      "from": {"en":"все названные","de":"все названные"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:143"]
+    },
+    "catalog.catalogFilters.philModeAny": {
+      "ru": "любой из названных",
+      "en": "any of the named",
+      "de": "beliebiger der genannten",
+      "from": {"en":"любой из названных","de":"любой из названных"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:144"]
+    },
+    "catalog.catalogFilters.philModeAria": {
+      "ru": "Как сочетать философов",
+      "en": "How to combine the philosophers",
+      "de": "Wie die Philosophen verknüpft werden",
+      "from": {"en":"Как сочетать философов","de":"Как сочетать философов"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:140"]
+    },
+    "catalog.catalogFilters.philosopherPlaceholder": {
+      "ru": "Имя философа (напр. Кант)",
+      "en": "Philosopher's name (e.g. Кант)",
+      "de": "Name des Philosophen (z. B. Кант)",
+      "from": {"en":"Имя философа (напр. Кант)","de":"Имя философа (напр. Кант)"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:99"]
+    },
+    "catalog.catalogFilters.philosophers": {
+      "ru": "Философы",
+      "en": "Philosophers",
+      "de": "Philosophen",
+      "from": {"en":"Философы","de":"Философы"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:83"]
+    },
+    "catalog.catalogFilters.removeDescendants": {
+      "ru": "Снять фильтр потомков",
+      "en": "Remove the descendants filter",
+      "de": "Nachkommen-Filter entfernen",
+      "from": {"en":"Снять фильтр потомков","de":"Снять фильтр потомков"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:335"]
+    },
+    "catalog.catalogFilters.removePhilosopher": {
+      "ru": "Убрать: {name}",
+      "en": "Remove: {name}",
+      "de": "Entfernen: {name}",
+      "from": {"en":"Убрать: {name}","de":"Убрать: {name}"},
+      "params": {"name":""},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:126"]
+    },
+    "catalog.catalogFilters.reset": {
+      "ru": "✕ Сбросить фильтры",
+      "en": "✕ Reset filters",
+      "de": "✕ Filter zurücksetzen",
+      "from": {"en":"✕ Сбросить фильтры","de":"✕ Сбросить фильтры"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:370"]
+    },
+    "catalog.catalogFilters.status": {
+      "ru": "Статус",
+      "en": "Status",
+      "de": "Status",
+      "from": {"en":"Статус","de":"Статус"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:278"]
+    },
+    "catalog.catalogFilters.synthLevel": {
+      "ru": "Уровень синтеза",
+      "en": "Synthesis level",
+      "de": "Syntheseebene",
+      "from": {"en":"Уровень синтеза","de":"Уровень синтеза"},
+      "where": ["client/src/components/catalog/CatalogFilters.tsx:220"]
+    },
+    "catalog.catalogSearchBar.fieldAria": {
+      "ru": "Где искать",
+      "en": "Where to search",
+      "de": "Wo gesucht wird",
+      "from": {"en":"Где искать","de":"Где искать"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:55"]
+    },
+    "catalog.catalogSearchBar.fieldContent": {
+      "ru": "содержание",
+      "en": "content",
+      "de": "Inhalt",
+      "from": {"en":"содержание","de":"содержание"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:20"]
+    },
+    "catalog.catalogSearchBar.fieldSeed": {
+      "ru": "зерно",
+      "en": "seed",
+      "de": "Keim",
+      "from": {"en":"зерно","de":"зерно"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:18"]
+    },
+    "catalog.catalogSearchBar.fieldTerm": {
+      "ru": "термин",
+      "en": "term",
+      "de": "Begriff",
+      "from": {"en":"термин","de":"термин"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:22"]
+    },
+    "catalog.catalogSearchBar.fieldTitle": {
+      "ru": "название",
+      "en": "title",
+      "de": "Titel",
+      "from": {"en":"название","de":"название"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:16"]
+    },
+    "catalog.catalogSearchBar.inputAria": {
+      "ru": "Текст поиска",
+      "en": "Search text",
+      "de": "Suchtext",
+      "from": {"en":"Текст поиска","de":"Текст поиска"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:71"]
+    },
+    "catalog.catalogSearchBar.placeholderContent": {
+      "ru": "Капсула, категории, термины и их определения…",
+      "en": "Capsule, categories, terms and their definitions…",
+      "de": "Kapsel, Kategorien, Begriffe und ihre Definitionen…",
+      "from": {"en":"Капсула, категории, термины и их определения…","de":"Капсула, категории, термины и их определения…"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:34"]
+    },
+    "catalog.catalogSearchBar.placeholderSeed": {
+      "ru": "Поиск по зерну концепции…",
+      "en": "Search by concept seed…",
+      "de": "Suche im Keim des Konzepts…",
+      "from": {"en":"Поиск по зерну концепции…","de":"Поиск по зерну концепции…"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:32"]
+    },
+    "catalog.catalogSearchBar.placeholderTerm": {
+      "ru": "Термин глоссария целиком…",
+      "en": "A whole glossary term…",
+      "de": "Ein ganzer Glossarbegriff…",
+      "from": {"en":"Термин глоссария целиком…","de":"Термин глоссария целиком…"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:36"]
+    },
+    "catalog.catalogSearchBar.placeholderTitle": {
+      "ru": "Поиск по названию…",
+      "en": "Search by title…",
+      "de": "Suche nach Titel…",
+      "from": {"en":"Поиск по названию…","de":"Поиск по названию…"},
+      "where": ["client/src/components/catalog/CatalogSearchBar.tsx:30"]
+    },
+    "catalog.searchFragment.fuzzySuffix": {
+      "ru": " · похожее",
+      "en": " · similar",
+      "de": " · ähnlich",
+      "from": {"en":" · похожее","de":" · похожее"},
+      "where": ["client/src/components/catalog/SearchFragment.tsx:42"]
+    },
+    "catalog.searchFragment.sourceCapsule": {
+      "ru": "капсула",
+      "en": "capsule",
+      "de": "Kapsel",
+      "from": {"en":"капсула","de":"капсула"},
+      "where": ["client/src/components/catalog/SearchFragment.tsx:22"]
+    },
+    "catalog.searchFragment.sourceCategory": {
+      "ru": "категория",
+      "en": "category",
+      "de": "Kategorie",
+      "from": {"en":"категория","de":"категория"},
+      "where": ["client/src/components/catalog/SearchFragment.tsx:24"]
+    },
+    "catalog.searchFragment.sourceSeed": {
+      "ru": "зерно",
+      "en": "seed",
+      "de": "Keim",
+      "from": {"en":"зерно","de":"зерно"},
+      "where": ["client/src/components/catalog/SearchFragment.tsx:20"]
+    },
+    "catalog.searchFragment.sourceTerm": {
+      "ru": "термин",
+      "en": "term",
+      "de": "Begriff",
+      "from": {"en":"термин","de":"термин"},
+      "where": ["client/src/components/catalog/SearchFragment.tsx:26"]
+    },
+    "catalog.searchFragment.sourceTitle": {
+      "ru": "название",
+      "en": "title",
+      "de": "Titel",
+      "from": {"en":"название","de":"название"},
+      "where": ["client/src/components/catalog/SearchFragment.tsx:18"]
+    },
     "catalog.synthesisCard.author": {
       "ru": "Автор: {authorName}",
       "en": "Author: {authorName}",
       "de": "Autor: {authorName}",
       "from": {"en":"Автор: {authorName}","de":"Автор: {authorName}"},
       "params": {"authorName":"synthesis.authorName"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:260"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:290"]
     },
     "catalog.synthesisCard.countingDescendants": {
       "ru": "Считаю потомков…",
       "en": "Counting descendants…",
       "de": "Nachkommen werden gezählt…",
       "from": {"en":"Считаю потомков…","de":"Считаю потомков…"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:349"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:389"]
     },
     "catalog.synthesisCard.deleteIrreversible": {
       "ru": "Удаление необратимо: разделы, элементы, логи и родословная концепции будут стёрты.",
       "en": "Deletion is irreversible: sections, elements, logs and the concept's lineage will be erased.",
       "de": "Das Löschen ist unwiderruflich: Abschnitte, Elemente, Protokolle und Abstammung des Konzepts werden gelöscht.",
       "from": {"en":"Удаление необратимо: разделы, элементы, логи и родословная концепции будут стёрты.","de":"Удаление необратимо: разделы, элементы, логи и родословная концепции будут стёрты."},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:78"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:94"]
     },
     "catalog.synthesisCard.descendantFew": {
       "ru": "потомка",
       "en": "descendants",
       "de": "Nachkommen",
       "from": {"en":"потомка","de":"потомка"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:69"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:85"]
     },
     "catalog.synthesisCard.descendantMany": {
       "ru": "потомков",
       "en": "descendants",
       "de": "Nachkommen",
       "from": {"en":"потомков","de":"потомков"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:70"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:86"]
     },
     "catalog.synthesisCard.descendantOne": {
       "ru": "потомок",
       "en": "descendant",
       "de": "Nachkomme",
       "from": {"en":"потомок","de":"потомок"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:67"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:83"]
     },
     "catalog.synthesisCard.descendantsOrphaned": {
       "ru": "{base} У концепции {descendantCount} — они останутся без родителя.",
@@ -2452,28 +2783,28 @@
       "de": "{base} Das Konzept hat {descendantCount} — sie bleiben ohne Eltern zurück.",
       "from": {"en":"{base} У концепции {descendantCount} — они останутся без родителя.","de":"{base} У концепции {descendantCount} — они останутся без родителя."},
       "params": {"base":"base","descendantCount":"descendantsPhrase(descendantCount)"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:81"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:97"]
     },
     "catalog.synthesisCard.duplicate": {
       "ru": "Дублировать",
       "en": "Duplicate",
       "de": "Duplizieren",
       "from": {"en":"Дублировать","de":"Дублировать"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:429"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:469"]
     },
     "catalog.synthesisCard.duplicating": {
       "ru": "Дублирую…",
       "en": "Duplicating…",
       "de": "Wird dupliziert…",
       "from": {"en":"Дублирую…","de":"Дублирую…"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:429"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:469"]
     },
     "catalog.synthesisCard.metaSynthesisBadge": {
       "ru": "◈ мета-синтез",
       "en": "◈ meta-synthesis",
       "de": "◈ Meta-Synthese",
       "from": {"en":"◈ мета-синтез","de":"◈ мета-синтез"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:238"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:268"]
     },
     "catalog.synthesisCard.noDescendants": {
       "ru": "{base} Потомков у концепции нет.",
@@ -2481,56 +2812,70 @@
       "de": "{base} Das Konzept hat keine Nachkommen.",
       "from": {"en":"{base} Потомков у концепции нет.","de":"{base} Потомков у концепции нет."},
       "params": {"base":"base"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:80"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:96"]
     },
     "catalog.synthesisCard.rename": {
       "ru": "Переименовать",
       "en": "Rename",
       "de": "Umbenennen",
       "from": {"en":"Переименовать","de":"Переименовать"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:417"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:457"]
     },
     "catalog.synthesisCard.statusDraft": {
       "ru": "черновик",
       "en": "draft",
       "de": "Entwurf",
       "from": {"en":"черновик","de":"черновик"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:54"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:65"]
     },
     "catalog.synthesisCard.statusError": {
       "ru": "ошибка",
       "en": "error",
       "de": "Fehler",
       "from": {"en":"ошибка","de":"ошибка"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:58"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:69"]
     },
     "catalog.synthesisCard.statusGenerating": {
       "ru": "генерируется…",
       "en": "generating…",
       "de": "wird generiert…",
       "from": {"en":"генерируется…","de":"генерируется…"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:55"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:66"]
     },
     "catalog.synthesisCard.statusPaused": {
       "ru": "на паузе",
       "en": "paused",
       "de": "pausiert",
       "from": {"en":"на паузе","de":"на паузе"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:56"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:67"]
     },
     "catalog.synthesisCard.statusReady": {
       "ru": "готов",
       "en": "ready",
       "de": "fertig",
       "from": {"en":"готов","de":"готов"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:57"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:68"]
+    },
+    "catalog.synthesisCard.termFound": {
+      "ru": "термин глоссария",
+      "en": "glossary term",
+      "de": "Glossarbegriff",
+      "from": {"en":"термин глоссария","de":"термин глоссария"},
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:302"]
+    },
+    "catalog.synthesisCard.termGo": {
+      "ru": "→ откроется у термина",
+      "en": "→ opens at the term",
+      "de": "→ öffnet sich beim Begriff",
+      "from": {"en":"→ откроется у термина","de":"→ откроется у термина"},
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:304"]
     },
     "catalog.synthesisCard.visibility": {
       "ru": "Публичность",
       "en": "Visibility",
       "de": "Sichtbarkeit",
       "from": {"en":"Публичность","de":"Публичность"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:375"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:415"]
     },
     "catalog.visibilityControl.costNote": {
       "ru": "Стоимость и токены галочкой не управляются: их видит любой зарегистрированный, гость — никогда.",
@@ -2572,162 +2917,156 @@
       "en": "← Back",
       "de": "← Zurück",
       "from": {"en":"← Назад","de":"← Назад"},
-      "where": ["client/src/pages/CatalogPage.tsx:482"]
+      "where": ["client/src/pages/CatalogPage.tsx:611"]
     },
     "catalogPage.catalogLoadFailed": {
       "ru": "Не удалось загрузить каталог.",
       "en": "Failed to load the catalog.",
       "de": "Katalog konnte nicht geladen werden.",
       "from": {"en":"Не удалось загрузить каталог.","de":"Не удалось загрузить каталог."},
-      "where": ["client/src/pages/CatalogPage.tsx:234"]
+      "where": ["client/src/pages/CatalogPage.tsx:180","client/src/pages/CatalogPage.tsx:185"]
+    },
+    "catalogPage.clearText": {
+      "ru": "✕ Очистить текст поиска",
+      "en": "✕ Clear the search text",
+      "de": "✕ Suchtext löschen",
+      "from": {"en":"✕ Очистить текст поиска","de":"✕ Очистить текст поиска"},
+      "where": ["client/src/pages/CatalogPage.tsx:572"]
     },
     "catalogPage.conceptCatalog": {
       "ru": "Каталог концепций",
       "en": "Concept catalog",
       "de": "Konzeptkatalog",
       "from": {"en":"Каталог концепций","de":"Каталог концепций"},
-      "where": ["client/src/pages/CatalogPage.tsx:362"]
+      "where": ["client/src/pages/CatalogPage.tsx:459"]
     },
     "catalogPage.copyFailed": {
       "ru": "Не удалось создать копию.",
       "en": "Failed to create a copy.",
       "de": "Kopie konnte nicht erstellt werden.",
       "from": {"en":"Не удалось создать копию.","de":"Не удалось создать копию."},
-      "where": ["client/src/pages/CatalogPage.tsx:302"]
+      "where": ["client/src/pages/CatalogPage.tsx:399"]
     },
     "catalogPage.deleteFailed": {
       "ru": "Не удалось удалить концепцию.",
       "en": "Failed to delete the concept.",
       "de": "Konzept konnte nicht gelöscht werden.",
       "from": {"en":"Не удалось удалить концепцию.","de":"Не удалось удалить концепцию."},
-      "where": ["client/src/pages/CatalogPage.tsx:311"]
+      "where": ["client/src/pages/CatalogPage.tsx:408"]
     },
-    "catalogPage.descendantsLoadFailed": {
-      "ru": "⚠ Не удалось загрузить потомков — фильтр не применён.",
-      "en": "⚠ Failed to load descendants — the filter was not applied.",
-      "de": "⚠ Nachkommen konnten nicht geladen werden — Filter nicht angewendet.",
-      "from": {"en":"⚠ Не удалось загрузить потомков — фильтр не применён.","de":"⚠ Не удалось загрузить потомков — фильтр не применён."},
-      "where": ["client/src/pages/CatalogPage.tsx:421"]
+    "catalogPage.descendantsForbidden": {
+      "ru": "Концепция, потомков которой вы ищете, вам недоступна — снимите фильтр потомков.",
+      "en": "The concept whose descendants you are looking for is not available to you — remove the descendants filter.",
+      "de": "Das Konzept, dessen Nachkommen Sie suchen, ist für Sie nicht zugänglich — entfernen Sie den Nachkommen-Filter.",
+      "from": {"en":"Концепция, потомков которой вы ищете, вам недоступна — снимите фильтр потомков.","de":"Концепция, потомков которой вы ищете, вам недоступна — снимите фильтр потомков."},
+      "where": ["client/src/pages/CatalogPage.tsx:184"]
+    },
+    "catalogPage.descendantsNotFound": {
+      "ru": "Концепция, потомков которой вы ищете, не найдена — снимите фильтр потомков.",
+      "en": "The concept whose descendants you are looking for was not found — remove the descendants filter.",
+      "de": "Das Konzept, dessen Nachkommen Sie suchen, wurde nicht gefunden — entfernen Sie den Nachkommen-Filter.",
+      "from": {"en":"Концепция, потомков которой вы ищете, не найдена — снимите фильтр потомков.","de":"Концепция, потомков которой вы ищете, не найдена — снимите фильтр потомков."},
+      "where": ["client/src/pages/CatalogPage.tsx:182"]
+    },
+    "catalogPage.filtersToggle": {
+      "ru": "{arrow} Фильтры{count}",
+      "en": "{arrow} Filters{count}",
+      "de": "{arrow} Filter{count}",
+      "from": {"en":"{arrow} Фильтры{count}","de":"{arrow} Фильтры{count}"},
+      "params": {"arrow":"","count":""},
+      "where": ["client/src/pages/CatalogPage.tsx:499"]
     },
     "catalogPage.forward": {
       "ru": "Вперёд →",
       "en": "Forward →",
       "de": "Weiter →",
       "from": {"en":"Вперёд →","de":"Вперёд →"},
-      "where": ["client/src/pages/CatalogPage.tsx:493"]
+      "where": ["client/src/pages/CatalogPage.tsx:623"]
     },
-    "catalogPage.genealogyToggle": {
-      "ru": "{lineageSearchOpen} Генеалогия",
-      "en": "{lineageSearchOpen} Genealogy",
-      "de": "{lineageSearchOpen} Genealogie",
-      "from": {"en":"{lineageSearchOpen} Генеалогия","de":"{lineageSearchOpen} Генеалогия"},
-      "params": {"lineageSearchOpen":"lineageSearchOpen ? \"▾\" : \"▸\""},
-      "where": ["client/src/pages/CatalogPage.tsx:397"]
+    "catalogPage.foundTotal": {
+      "ru": "{n, plural, one {Найдена # концепция} few {Найдено # концепции} many {Найдено # концепций} other {Найдено # концепции}}",
+      "en": "{n, plural, one {# concept found} other {# concepts found}}",
+      "de": "{n, plural, one {# Konzept gefunden} other {# Konzepte gefunden}}",
+      "from": {"en":"{n, plural, one {Найдена # концепция} few {Найдено # концепции} many {Найдено # концепций} other {Найдено # концепции}}","de":"{n, plural, one {Найдена # концепция} few {Найдено # концепции} many {Найдено # концепций} other {Найдено # концепции}}"},
+      "params": {"n":""},
+      "where": ["client/src/pages/CatalogPage.tsx:581"]
+    },
+    "catalogPage.fuzzyLabel": {
+      "ru": "Похожие",
+      "en": "Similar",
+      "de": "Ähnliche",
+      "from": {"en":"Похожие","de":"Похожие"},
+      "where": ["client/src/pages/CatalogPage.tsx:586"]
+    },
+    "catalogPage.fuzzyNote": {
+      "ru": "Точных совпадений нет — показаны концепции с похожими словами (возможна опечатка в запросе).",
+      "en": "No exact matches — concepts with similar words are shown (the query may contain a typo).",
+      "de": "Keine genauen Treffer — gezeigt werden Konzepte mit ähnlichen Wörtern (die Anfrage enthält möglicherweise einen Tippfehler).",
+      "from": {"en":"Точных совпадений нет — показаны концепции с похожими словами (возможна опечатка в запросе).","de":"Точных совпадений нет — показаны концепции с похожими словами (возможна опечатка в запросе)."},
+      "where": ["client/src/pages/CatalogPage.tsx:587"]
     },
     "catalogPage.generationRunning": {
       "ru": "Генерация ещё идёт — дождитесь завершения или остановите её.",
       "en": "Generation is still running — wait for it to finish or stop it.",
       "de": "Die Generierung läuft noch — warten Sie auf den Abschluss oder stoppen Sie sie.",
       "from": {"en":"Генерация ещё идёт — дождитесь завершения или остановите её.","de":"Генерация ещё идёт — дождитесь завершения или остановите её."},
-      "where": ["client/src/pages/CatalogPage.tsx:131"]
-    },
-    "catalogPage.lineageSearchHint": {
-      "ru": "Поиск концепций по философам-предкам",
-      "en": "Search concepts by ancestor philosophers",
-      "de": "Konzepte nach Vorfahren-Philosophen suchen",
-      "from": {"en":"Поиск концепций по философам-предкам","de":"Поиск концепций по философам-предкам"},
-      "where": ["client/src/pages/CatalogPage.tsx:395"]
+      "where": ["client/src/pages/CatalogPage.tsx:159"]
     },
     "catalogPage.loadingCatalog": {
       "ru": "загрузка каталога…",
       "en": "loading catalog…",
       "de": "Katalog wird geladen…",
       "from": {"en":"загрузка каталога…","de":"загрузка каталога…"},
-      "where": ["client/src/pages/CatalogPage.tsx:447"]
-    },
-    "catalogPage.loadingDescendants": {
-      "ru": "Загрузка потомков…",
-      "en": "Loading descendants…",
-      "de": "Nachkommen werden geladen…",
-      "from": {"en":"Загрузка потомков…","de":"Загрузка потомков…"},
-      "where": ["client/src/pages/CatalogPage.tsx:423"]
+      "where": ["client/src/pages/CatalogPage.tsx:519"]
     },
     "catalogPage.myCatalog": {
       "ru": "Мой каталог",
       "en": "My catalog",
       "de": "Mein Katalog",
       "from": {"en":"Мой каталог","de":"Мой каталог"},
-      "where": ["client/src/pages/CatalogPage.tsx:367"]
+      "where": ["client/src/pages/CatalogPage.tsx:464"]
     },
     "catalogPage.newSynthesis": {
       "ru": "Новый синтез",
       "en": "New synthesis",
       "de": "Neue Synthese",
       "from": {"en":"Новый синтез","de":"Новый синтез"},
-      "where": ["client/src/pages/CatalogPage.tsx:376"]
-    },
-    "catalogPage.noDescendantsInTab": {
-      "ru": "На этой вкладке потомков выбранной концепции нет.",
-      "en": "There are no descendants of the selected concept on this tab.",
-      "de": "Auf diesem Tab gibt es keine Nachkommen des gewählten Konzepts.",
-      "from": {"en":"На этой вкладке потомков выбранной концепции нет.","de":"На этой вкладке потомков выбранной концепции нет."},
-      "where": ["client/src/pages/CatalogPage.tsx:458"]
+      "where": ["client/src/pages/CatalogPage.tsx:473"]
     },
     "catalogPage.noPublicSyntheses": {
       "ru": "Публичных синтезов пока нет.",
       "en": "There are no public syntheses yet.",
       "de": "Noch keine öffentlichen Synthesen.",
       "from": {"en":"Публичных синтезов пока нет.","de":"Публичных синтезов пока нет."},
-      "where": ["client/src/pages/CatalogPage.tsx:465"]
+      "where": ["client/src/pages/CatalogPage.tsx:453"]
     },
     "catalogPage.noShared": {
       "ru": "С вами пока никто не делился концепциями — участие возникает по приглашению владельца.",
       "en": "No one has shared a concept with you yet — participation starts with an owner's invitation.",
       "de": "Bisher hat niemand eine Konzeption mit Ihnen geteilt — die Teilnahme beginnt mit einer Einladung des Eigentümers.",
       "from": {"en":"С вами пока никто не делился концепциями — участие возникает по приглашению владельца.","de":"С вами пока никто не делился концепциями — участие возникает по приглашению владельца."},
-      "where": ["client/src/pages/CatalogPage.tsx:464"]
+      "where": ["client/src/pages/CatalogPage.tsx:452"]
     },
     "catalogPage.noSynthesesYet": {
       "ru": "У вас пока нет синтезов — начните с «Новый синтез».",
       "en": "You have no syntheses yet — start with “New synthesis”.",
       "de": "Sie haben noch keine Synthesen — beginnen Sie mit „Neue Synthese“.",
       "from": {"en":"У вас пока нет синтезов — начните с «Новый синтез».","de":"У вас пока нет синтезов — начните с «Новый синтез»."},
-      "where": ["client/src/pages/CatalogPage.tsx:462"]
-    },
-    "catalogPage.noVisibleDescendants": {
-      "ru": "У этой концепции нет потомков (видимых вам).",
-      "en": "This concept has no descendants (visible to you).",
-      "de": "Dieses Konzept hat keine (für Sie sichtbaren) Nachkommen.",
-      "from": {"en":"У этой концепции нет потомков (видимых вам).","de":"У этой концепции нет потомков (видимых вам)."},
-      "where": ["client/src/pages/CatalogPage.tsx:425"]
+      "where": ["client/src/pages/CatalogPage.tsx:450"]
     },
     "catalogPage.nothingFound": {
       "ru": "Ничего не найдено по запросу.",
       "en": "Nothing found for the query.",
       "de": "Zur Anfrage wurde nichts gefunden.",
       "from": {"en":"Ничего не найдено по запросу.","de":"Ничего не найдено по запросу."},
-      "where": ["client/src/pages/CatalogPage.tsx:460"]
-    },
-    "catalogPage.onlyDescendantsLead": {
-      "ru": "Показаны только потомки концепции (",
-      "en": "Only the descendants of the concept are shown (",
-      "de": "Angezeigt werden nur Nachkommen des Konzepts (",
-      "from": {"en":"Показаны только потомки концепции (","de":"Показаны только потомки концепции ("},
-      "where": ["client/src/pages/CatalogPage.tsx:426"]
-    },
-    "catalogPage.onlyDescendantsTail": {
-      "ru": ") — пересечение с текущей вкладкой.",
-      "en": ") — intersected with the current tab.",
-      "de": ") — Schnittmenge mit dem aktuellen Tab.",
-      "from": {"en":") — пересечение с текущей вкладкой.","de":") — пересечение с текущей вкладкой."},
-      "where": ["client/src/pages/CatalogPage.tsx:428"]
+      "where": ["client/src/pages/CatalogPage.tsx:538"]
     },
     "catalogPage.ownerOnlyAction": {
       "ru": "Действие доступно только владельцу.",
       "en": "The action is available only to the owner.",
       "de": "Die Aktion ist nur dem Eigentümer verfügbar.",
       "from": {"en":"Действие доступно только владельцу.","de":"Действие доступно только владельцу."},
-      "where": ["client/src/pages/CatalogPage.tsx:132"]
+      "where": ["client/src/pages/CatalogPage.tsx:160"]
     },
     "catalogPage.pageOfTotal": {
       "ru": "стр. {page} / {totalPages} · всего {total}",
@@ -2735,56 +3074,112 @@
       "de": "S. {page} / {totalPages} · insgesamt {total}",
       "from": {"en":"стр. {page} / {totalPages} · всего {total}","de":"стр. {page} / {totalPages} · всего {total}"},
       "params": {"page":"page","totalPages":"totalPages","total":"total"},
-      "where": ["client/src/pages/CatalogPage.tsx:485"]
+      "where": ["client/src/pages/CatalogPage.tsx:614"]
     },
     "catalogPage.publicConcepts": {
       "ru": "Публичные концепции",
       "en": "Public concepts",
       "de": "Öffentliche Konzepte",
       "from": {"en":"Публичные концепции","de":"Публичные концепции"},
-      "where": ["client/src/pages/CatalogPage.tsx:362"]
+      "where": ["client/src/pages/CatalogPage.tsx:459"]
+    },
+    "catalogPage.relaxDates": {
+      "ru": "расширить промежуток дат",
+      "en": "widen the date range",
+      "de": "den Datumsbereich erweitern",
+      "from": {"en":"расширить промежуток дат","de":"расширить промежуток дат"},
+      "where": ["client/src/pages/CatalogPage.tsx:200"]
+    },
+    "catalogPage.relaxFewerFilters": {
+      "ru": "снять часть фильтров — они сочетаются через «и»",
+      "en": "remove some of the filters — they are combined with “and”",
+      "de": "einen Teil der Filter entfernen — sie werden mit „und“ verknüpft",
+      "from": {"en":"снять часть фильтров — они сочетаются через «и»","de":"снять часть фильтров — они сочетаются через «и»"},
+      "where": ["client/src/pages/CatalogPage.tsx:202"]
+    },
+    "catalogPage.relaxFieldContent": {
+      "ru": "искать текст в содержании (капсула, категории, термины), а не только в названии или зерне",
+      "en": "search the text in the content (capsule, categories, terms), not only in the title or the seed",
+      "de": "den Text im Inhalt suchen (Kapsel, Kategorien, Begriffe), nicht nur im Titel oder im Keim",
+      "from": {"en":"искать текст в содержании (капсула, категории, термины), а не только в названии или зерне","de":"искать текст в содержании (капсула, категории, термины), а не только в названии или зерне"},
+      "where": ["client/src/pages/CatalogPage.tsx:196"]
+    },
+    "catalogPage.relaxLead": {
+      "ru": "Попробуйте ослабить условия:",
+      "en": "Try relaxing the conditions:",
+      "de": "Versuchen Sie, die Bedingungen zu lockern:",
+      "from": {"en":"Попробуйте ослабить условия:","de":"Попробуйте ослабить условия:"},
+      "where": ["client/src/pages/CatalogPage.tsx:541"]
+    },
+    "catalogPage.relaxOtherScope": {
+      "ru": "посмотреть на другой вкладке каталога",
+      "en": "look on another tab of the catalog",
+      "de": "in einem anderen Reiter des Katalogs nachsehen",
+      "from": {"en":"посмотреть на другой вкладке каталога","de":"посмотреть на другой вкладке каталога"},
+      "where": ["client/src/pages/CatalogPage.tsx:204"]
+    },
+    "catalogPage.relaxPhilAny": {
+      "ru": "искать любого из названных философов, а не всех сразу",
+      "en": "look for any of the named philosophers, not all of them at once",
+      "de": "nach einem beliebigen der genannten Philosophen suchen, nicht nach allen zugleich",
+      "from": {"en":"искать любого из названных философов, а не всех сразу","de":"искать любого из названных философов, а не всех сразу"},
+      "where": ["client/src/pages/CatalogPage.tsx:192"]
+    },
+    "catalogPage.relaxPhilLineage": {
+      "ru": "искать философов и эпохи во всей родословной, а не только среди прямых участников",
+      "en": "look for the philosophers and epochs in the whole lineage, not only among the direct participants",
+      "de": "Philosophen und Epochen in der gesamten Abstammung suchen, nicht nur unter den direkten Teilnehmern",
+      "from": {"en":"искать философов и эпохи во всей родословной, а не только среди прямых участников","de":"искать философов и эпохи во всей родословной, а не только среди прямых участников"},
+      "where": ["client/src/pages/CatalogPage.tsx:194"]
+    },
+    "catalogPage.relaxTermExact": {
+      "ru": "поле «термин» ищет термин целиком — попробуйте поле «содержание»: оно находит словоформы и определения",
+      "en": "the “term” field looks for a whole term — try the “content” field: it finds word forms and definitions",
+      "de": "das Feld „Begriff“ sucht einen ganzen Begriff — versuchen Sie das Feld „Inhalt“: es findet Wortformen und Definitionen",
+      "from": {"en":"поле «термин» ищет термин целиком — попробуйте поле «содержание»: оно находит словоформы и определения","de":"поле «термин» ищет термин целиком — попробуйте поле «содержание»: оно находит словоформы и определения"},
+      "where": ["client/src/pages/CatalogPage.tsx:198"]
     },
     "catalogPage.renameFailed": {
       "ru": "Не удалось переименовать.",
       "en": "Failed to rename.",
       "de": "Umbenennen fehlgeschlagen.",
       "from": {"en":"Не удалось переименовать.","de":"Не удалось переименовать."},
-      "where": ["client/src/pages/CatalogPage.tsx:293"]
+      "where": ["client/src/pages/CatalogPage.tsx:390"]
     },
-    "catalogPage.resetFilter": {
-      "ru": "✕ Сбросить фильтр",
-      "en": "✕ Reset filter",
+    "catalogPage.resetDescendants": {
+      "ru": "✕ Снять фильтр потомков",
+      "en": "✕ Remove the descendants filter",
+      "de": "✕ Nachkommen-Filter entfernen",
+      "from": {"en":"✕ Снять фильтр потомков","de":"✕ Снять фильтр потомков"},
+      "where": ["client/src/pages/CatalogPage.tsx:531"]
+    },
+    "catalogPage.resetFilters": {
+      "ru": "✕ Сбросить фильтры",
+      "en": "✕ Reset filters",
       "de": "✕ Filter zurücksetzen",
-      "from": {"en":"✕ Сбросить фильтр","de":"✕ Сбросить фильтр"},
-      "where": ["client/src/pages/CatalogPage.tsx:440"]
-    },
-    "catalogPage.searchByTitle": {
-      "ru": "Поиск по названию…",
-      "en": "Search by title…",
-      "de": "Suche nach Titel…",
-      "from": {"en":"Поиск по названию…","de":"Поиск по названию…"},
-      "where": ["client/src/pages/CatalogPage.tsx:404"]
+      "from": {"en":"✕ Сбросить фильтры","de":"✕ Сбросить фильтры"},
+      "where": ["client/src/pages/CatalogPage.tsx:559"]
     },
     "catalogPage.tabMine": {
       "ru": "Мои",
       "en": "Mine",
       "de": "Meine",
       "from": {"en":"Мои","de":"Мои"},
-      "where": ["client/src/pages/CatalogPage.tsx:383"]
+      "where": ["client/src/pages/CatalogPage.tsx:480"]
     },
     "catalogPage.tabPublic": {
       "ru": "Публичные",
       "en": "Public",
       "de": "Öffentliche",
       "from": {"en":"Публичные","de":"Публичные"},
-      "where": ["client/src/pages/CatalogPage.tsx:384"]
+      "where": ["client/src/pages/CatalogPage.tsx:481"]
     },
     "catalogPage.tabShared": {
       "ru": "Со мной поделились",
       "en": "Shared with me",
       "de": "Mit mir geteilt",
       "from": {"en":"Со мной поделились","de":"Со мной поделились"},
-      "where": ["client/src/pages/CatalogPage.tsx:385"]
+      "where": ["client/src/pages/CatalogPage.tsx:482"]
     },
     "catalogPage.titleValue": {
       "ru": "Название: {title}",
@@ -2792,28 +3187,21 @@
       "de": "Titel: {title}",
       "from": {"en":"Название: {title}","de":"Название: {title}"},
       "params": {"title":"v"},
-      "where": ["client/src/pages/CatalogPage.tsx:128"]
-    },
-    "catalogPage.toConcept": {
-      "ru": "◈ к концепции",
-      "en": "◈ to the concept",
-      "de": "◈ zum Konzept",
-      "from": {"en":"◈ к концепции","de":"◈ к концепции"},
-      "where": ["client/src/pages/CatalogPage.tsx:429"]
+      "where": ["client/src/pages/CatalogPage.tsx:156"]
     },
     "catalogPage.visibilityChangeFailed": {
       "ru": "Не удалось изменить публичность.",
       "en": "Failed to change the visibility.",
       "de": "Sichtbarkeit konnte nicht geändert werden.",
       "from": {"en":"Не удалось изменить публичность.","de":"Не удалось изменить публичность."},
-      "where": ["client/src/pages/CatalogPage.tsx:139","client/src/pages/CatalogPage.tsx:146"]
+      "where": ["client/src/pages/CatalogPage.tsx:167","client/src/pages/CatalogPage.tsx:174"]
     },
     "catalogPage.visibilityOwnerOnly": {
       "ru": "Публичность меняет только владелец.",
       "en": "Only the owner changes the visibility.",
       "de": "Die Sichtbarkeit ändert nur der Eigentümer.",
       "from": {"en":"Публичность меняет только владелец.","de":"Публичность меняет только владелец."},
-      "where": ["client/src/pages/CatalogPage.tsx:145"]
+      "where": ["client/src/pages/CatalogPage.tsx:173"]
     },
     "catalogPage.visibilityValue": {
       "ru": "Публичность: {visibility}",
@@ -2821,7 +3209,7 @@
       "de": "Sichtbarkeit: {visibility}",
       "from": {"en":"Публичность: {visibility}","de":"Публичность: {visibility}"},
       "params": {"visibility":"v"},
-      "where": ["client/src/pages/CatalogPage.tsx:143"]
+      "where": ["client/src/pages/CatalogPage.tsx:171"]
     },
     "changeEmailPage.changeLower": {
       "ru": "смена адреса",
@@ -2863,14 +3251,14 @@
       "en": "Philosophical Concept Synthesis",
       "de": "Synthese eines philosophischen Konzepts",
       "from": {"en":"Синтез Философской Концепции","de":"Синтез Философской Концепции"},
-      "where": ["server/services/generation-service.ts:3299"]
+      "where": ["server/services/generation-service.ts:3348"]
     },
     "common.authRequired": {
       "ru": "Требуется авторизация",
       "en": "Authorization required",
       "de": "Anmeldung erforderlich",
       "from": {"en":"Требуется авторизация","de":"Требуется авторизация"},
-      "where": ["server/middleware/auth.ts:238","server/middleware/billing-check.ts:62","server/routes/auth.ts:544","server/ws/handler.ts:626"]
+      "where": ["server/middleware/auth.ts:238","server/middleware/billing-check.ts:62","server/routes/auth.ts:544","server/routes/search.ts:123","server/ws/handler.ts:626"]
     },
     "common.brandPhilo": {
       "ru": "Philo",
@@ -2898,14 +3286,14 @@
       "en": "Cancel",
       "de": "Abbrechen",
       "from": {"en":"Отмена","de":"Отмена"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:336","client/src/components/catalog/SynthesisCard.tsx:402","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/discussion/CommentThread.tsx:133","client/src/components/discussion/CommentThread.tsx:154","client/src/components/discussion/CommentThread.tsx:292","client/src/components/document/DocumentHeader.tsx:416","client/src/components/document/SectionView.tsx:462","client/src/components/document/SectionView.tsx:482","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:659","client/src/components/edit/ElementEditor.tsx:759","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/edit/VersionConflictNotice.tsx:58","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/proposals/ProposalDecisionPanel.tsx:398","client/src/components/proposals/ProposalDecisionPanel.tsx:450","client/src/components/proposals/ProposalDecisionPanel.tsx:466","client/src/components/proposals/ProposeForm.tsx:210","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1924","client/src/pages/AdminPromptsPage.tsx:1988","client/src/pages/AdminPromptsPage.tsx:2019","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434","client/src/pages/ReviewPage.tsx:121","client/src/pages/ReviewPage.tsx:139","client/src/pages/ReviewPage.tsx:368"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:376","client/src/components/catalog/SynthesisCard.tsx:442","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/discussion/CommentThread.tsx:133","client/src/components/discussion/CommentThread.tsx:154","client/src/components/discussion/CommentThread.tsx:292","client/src/components/document/DocumentHeader.tsx:416","client/src/components/document/SectionView.tsx:462","client/src/components/document/SectionView.tsx:482","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:659","client/src/components/edit/ElementEditor.tsx:759","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/edit/VersionConflictNotice.tsx:58","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/proposals/ProposalDecisionPanel.tsx:398","client/src/components/proposals/ProposalDecisionPanel.tsx:450","client/src/components/proposals/ProposalDecisionPanel.tsx:466","client/src/components/proposals/ProposeForm.tsx:210","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1924","client/src/pages/AdminPromptsPage.tsx:1988","client/src/pages/AdminPromptsPage.tsx:2019","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434","client/src/pages/ReviewPage.tsx:121","client/src/pages/ReviewPage.tsx:139","client/src/pages/ReviewPage.tsx:368"]
     },
     "common.capsule": {
       "ru": "Капсула",
       "en": "Capsule",
       "de": "Kapsel",
       "from": {"en":"Капсула","de":"Капсула"},
-      "where": ["client/src/components/lineage/GenealogyTree.tsx:110","server/services/element-editor.ts:1555"]
+      "where": ["client/src/components/lineage/GenealogyTree.tsx:110","server/services/element-editor.ts:1552"]
     },
     "common.categoryGraph": {
       "ru": "Граф категорий",
@@ -2954,14 +3342,14 @@
       "en": "Really delete?",
       "de": "Wirklich löschen?",
       "from": {"en":"Точно удалить?","de":"Точно удалить?"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:390","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1113","client/src/pages/BillingPage.tsx:358","client/src/pages/ProfilePage.tsx:423"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:430","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1113","client/src/pages/BillingPage.tsx:358","client/src/pages/ProfilePage.tsx:423"]
     },
     "common.createAccount": {
       "ru": "Создать аккаунт",
       "en": "Create account",
       "de": "Konto erstellen",
       "from": {"en":"Создать аккаунт","de":"Создать аккаунт"},
-      "where": ["client/src/pages/CatalogPage.tsx:371","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:152","client/src/pages/SynthesisPage.tsx:1134"]
+      "where": ["client/src/pages/CatalogPage.tsx:468","client/src/pages/LandingPage.tsx:134","client/src/pages/LandingPage.tsx:195","client/src/pages/RegisterPage.tsx:152","client/src/pages/SynthesisPage.tsx:1178"]
     },
     "common.creating": {
       "ru": "Создание…",
@@ -2989,7 +3377,7 @@
       "en": "Delete",
       "de": "Löschen",
       "from": {"en":"Удалить","de":"Удалить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:441","client/src/components/edit/EditPlanPanel.tsx:54","client/src/components/edit/EditSectionCard.tsx:236","client/src/components/edit/ElementEditor.tsx:671","client/src/components/edit/ModeResultsPanel.tsx:121","client/src/pages/BillingPage.tsx:347"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:481","client/src/components/edit/EditPlanPanel.tsx:54","client/src/components/edit/EditSectionCard.tsx:236","client/src/components/edit/ElementEditor.tsx:671","client/src/components/edit/ModeResultsPanel.tsx:121","client/src/pages/BillingPage.tsx:347"]
     },
     "common.description": {
       "ru": "Описание",
@@ -3067,7 +3455,7 @@
       "en": "Error",
       "de": "Fehler",
       "from": {"en":"Ошибка","de":"Ошибка"},
-      "where": ["client/src/components/synthesis/MembersPanel.tsx:224","client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:450","client/src/pages/SynthesisPage.tsx:1105"]
+      "where": ["client/src/components/synthesis/MembersPanel.tsx:224","client/src/components/synthesis/SynthesisForm.tsx:860","client/src/pages/CatalogPage.tsx:522","client/src/pages/SynthesisPage.tsx:1149"]
     },
     "common.fillParameter": {
       "ru": "Заполните параметр.",
@@ -3095,14 +3483,14 @@
       "en": "free synthesis",
       "de": "freie Synthese",
       "from": {"en":"свободный синтез","de":"свободный синтез"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:143","client/src/components/document/DocumentFooter.tsx:41","client/src/components/pool/ConceptPool.tsx:298"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:168","client/src/components/document/DocumentFooter.tsx:41","client/src/components/pool/ConceptPool.tsx:298"]
     },
     "common.generationInProgress": {
       "ru": "Генерация уже идёт",
       "en": "Generation is already in progress",
       "de": "Die Generierung läuft bereits",
       "from": {"en":"Генерация уже идёт","de":"Генерация уже идёт"},
-      "where": ["server/routes/edit-gate.ts:49","server/routes/lineage.ts:304","server/routes/plans.ts:300","server/services/plan-executor.ts:876","server/services/plan-executor.ts:995"]
+      "where": ["server/routes/edit-gate.ts:49","server/routes/lineage.ts:305","server/routes/plans.ts:300","server/services/plan-executor.ts:876","server/services/plan-executor.ts:995"]
     },
     "common.generative": {
       "ru": "Генеративная",
@@ -3137,14 +3525,14 @@
       "en": "Invalid data",
       "de": "Ungültige Daten",
       "from": {"en":"Невалидные данные","de":"Невалидные данные"},
-      "where": ["server/routes/auth.ts:240","server/routes/auth.ts:308","server/routes/auth.ts:370","server/routes/auth.ts:423","server/routes/auth.ts:532","server/routes/auth.ts:613","server/routes/auth.ts:659","server/routes/auth.ts:766","server/routes/auth.ts:888","server/routes/auth.ts:894","server/routes/discussion.ts:97","server/routes/enrichment.ts:74","server/routes/members.ts:71","server/routes/modes.ts:174","server/routes/notifications.ts:38","server/routes/recommendations.ts:120","server/routes/taxonomy.ts:70","server/services/element-editor.ts:237","server/services/element-editor.ts:1913","server/services/element-editor.ts:1953","server/services/element-editor.ts:1976","server/services/element-editor.ts:2167","server/services/element-enrichment.ts:670","server/services/element-enrichment.ts:726","server/services/expected-version.ts:43","server/services/members.ts:121","server/services/members.ts:130","server/services/notifications.ts:308","server/services/notifications.ts:316","server/services/notifications.ts:323","server/services/proposals.ts:121"]
+      "where": ["server/routes/auth.ts:240","server/routes/auth.ts:308","server/routes/auth.ts:370","server/routes/auth.ts:423","server/routes/auth.ts:532","server/routes/auth.ts:613","server/routes/auth.ts:659","server/routes/auth.ts:766","server/routes/auth.ts:888","server/routes/auth.ts:894","server/routes/discussion.ts:97","server/routes/enrichment.ts:74","server/routes/members.ts:71","server/routes/modes.ts:174","server/routes/notifications.ts:38","server/routes/recommendations.ts:120","server/routes/taxonomy.ts:70","server/services/element-editor.ts:237","server/services/element-editor.ts:1913","server/services/element-editor.ts:1953","server/services/element-editor.ts:1976","server/services/element-editor.ts:2169","server/services/element-enrichment.ts:670","server/services/element-enrichment.ts:726","server/services/expected-version.ts:43","server/services/members.ts:121","server/services/members.ts:130","server/services/notifications.ts:308","server/services/notifications.ts:316","server/services/notifications.ts:323","server/services/proposals.ts:121"]
     },
     "common.invalidJson": {
       "ru": "Невалидный JSON",
       "en": "Invalid JSON",
       "de": "Ungültiges JSON",
       "from": {"en":"Невалидный JSON","de":"Невалидный JSON"},
-      "where": ["server/routes/discussion.ts:100","server/routes/generation.ts:114","server/routes/generation.ts:169","server/routes/members.ts:74","server/routes/notifications.ts:41","server/routes/plans.ts:102","server/routes/plans.ts:143","server/routes/plans.ts:196","server/routes/recommendations.ts:204","server/routes/syntheses.ts:711","server/routes/syntheses.ts:1054","server/routes/syntheses.ts:1262","server/routes/syntheses.ts:1556"]
+      "where": ["server/routes/discussion.ts:100","server/routes/generation.ts:114","server/routes/generation.ts:169","server/routes/members.ts:74","server/routes/notifications.ts:41","server/routes/plans.ts:102","server/routes/plans.ts:143","server/routes/plans.ts:196","server/routes/recommendations.ts:204","server/routes/syntheses.ts:712","server/routes/syntheses.ts:1058","server/routes/syntheses.ts:1266","server/routes/syntheses.ts:1560"]
     },
     "common.justification": {
       "ru": "Обоснование",
@@ -3165,7 +3553,7 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/discussion/DiscussionPanel.tsx:224","client/src/components/discussion/DiscussionTab.tsx:121","client/src/components/discussion/ReviewsTab.tsx:76","client/src/components/document/SectionView.tsx:385","client/src/components/document/SectionView.tsx:401","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/components/proposals/ProposalDecisionPanel.tsx:310","client/src/components/proposals/ProposalsTab.tsx:43","client/src/components/proposals/ProposeForm.tsx:177","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1894","client/src/pages/AdminPromptsPage.tsx:1921","client/src/pages/AdminPromptsPage.tsx:1930","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/AdminPromptsPage.tsx:2013","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:1266"]
+      "where": ["client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/discussion/DiscussionPanel.tsx:224","client/src/components/discussion/DiscussionTab.tsx:121","client/src/components/discussion/ReviewsTab.tsx:76","client/src/components/document/SectionView.tsx:385","client/src/components/document/SectionView.tsx:401","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/components/proposals/ProposalDecisionPanel.tsx:310","client/src/components/proposals/ProposalsTab.tsx:43","client/src/components/proposals/ProposeForm.tsx:177","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1894","client/src/pages/AdminPromptsPage.tsx:1921","client/src/pages/AdminPromptsPage.tsx:1930","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/AdminPromptsPage.tsx:2013","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:1310"]
     },
     "common.logIn": {
       "ru": "Войти",
@@ -3187,7 +3575,7 @@
       "de": "Kein Zugriff auf die Synthese",
       "from": {"en":"Нет доступа к синтезу","de":"Нет доступа к синтезу"},
       "static": true,
-      "where": ["server/routes/generation.ts:188","server/routes/plans.ts:218","server/routes/syntheses.ts:289","server/services/edit-planner.ts:1211","server/services/generation-service.ts:886","server/services/generation-service.ts:925","server/services/pause-resume-service.ts:553","server/services/pause-resume-service.ts:933","server/ws/handler.ts:176","server/ws/handler.ts:501","server/ws/handler.ts:528"]
+      "where": ["server/routes/generation.ts:188","server/routes/plans.ts:218","server/routes/syntheses.ts:290","server/services/edit-planner.ts:1211","server/services/generation-service.ts:890","server/services/generation-service.ts:929","server/services/pause-resume-service.ts:553","server/services/pause-resume-service.ts:933","server/ws/handler.ts:176","server/ws/handler.ts:501","server/ws/handler.ts:528"]
     },
     "common.noveltyDegree": {
       "ru": "Степень новизны",
@@ -3250,7 +3638,7 @@
       "en": "Save",
       "de": "Speichern",
       "from": {"en":"Сохранить","de":"Сохранить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:325","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/discussion/CommentThread.tsx:130","client/src/components/document/DocumentHeader.tsx:408","client/src/components/document/SectionView.tsx:458","client/src/components/edit/ElementEditor.tsx:751","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:244","client/src/pages/ReviewPage.tsx:118"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:365","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/discussion/CommentThread.tsx:130","client/src/components/document/DocumentHeader.tsx:408","client/src/components/document/SectionView.tsx:458","client/src/components/edit/ElementEditor.tsx:751","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:244","client/src/pages/ReviewPage.tsx:118"]
     },
     "common.saving": {
       "ru": "Сохранение…",
@@ -3264,7 +3652,7 @@
       "en": "Section not found",
       "de": "Abschnitt nicht gefunden",
       "from": {"en":"Раздел не найден","de":"Раздел не найден"},
-      "where": ["server/routes/sections.ts:200","server/services/element-editor.ts:1871","server/services/element-editor.ts:1930","server/services/element-editor.ts:2149","server/services/recommendations.ts:1257"]
+      "where": ["server/routes/sections.ts:200","server/services/element-editor.ts:1871","server/services/element-editor.ts:1930","server/services/element-editor.ts:2151","server/services/recommendations.ts:1251"]
     },
     "common.sectionsGen": {
       "ru": "разделов",
@@ -3286,7 +3674,7 @@
       "de": "Synthese nicht gefunden",
       "from": {"en":"Синтез не найден","de":"Синтез не найден"},
       "static": true,
-      "where": ["server/routes/generation.ts:163","server/routes/generation.ts:288","server/routes/plans.ts:84","server/routes/plans.ts:96","server/routes/plans.ts:190","server/routes/syntheses.ts:285","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1532","server/services/export/common.ts:50","server/services/generation-service.ts:668","server/services/generation-service.ts:3238","server/services/pause-resume-service.ts:551","server/services/pause-resume-service.ts:931","server/services/proposals.ts:129","server/services/recommendation-planner.ts:492","server/ws/handler.ts:152","server/ws/handler.ts:167","server/ws/handler.ts:499","server/ws/handler.ts:520","server/ws/handler.ts:526"]
+      "where": ["server/routes/generation.ts:163","server/routes/generation.ts:288","server/routes/plans.ts:84","server/routes/plans.ts:96","server/routes/plans.ts:190","server/routes/syntheses.ts:286","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1529","server/services/export/common.ts:50","server/services/generation-service.ts:672","server/services/generation-service.ts:3250","server/services/pause-resume-service.ts:551","server/services/pause-resume-service.ts:931","server/services/proposals.ts:129","server/services/recommendation-planner.ts:492","server/ws/handler.ts:152","server/ws/handler.ts:167","server/ws/handler.ts:499","server/ws/handler.ts:520","server/ws/handler.ts:526"]
     },
     "common.term": {
       "ru": "Термин",
@@ -3321,7 +3709,7 @@
       "en": "Title",
       "de": "Titel",
       "from": {"en":"Название","de":"Название"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:287","client/src/components/edit/ElementEditor.tsx:908","client/src/components/edit/TaxonomySelector.tsx:436","client/src/components/edit/VersionHistory.tsx:117","client/src/pages/AdminPromptsPage.tsx:1022"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:327","client/src/components/edit/ElementEditor.tsx:908","client/src/components/edit/TaxonomySelector.tsx:436","client/src/components/edit/VersionHistory.tsx:117","client/src/pages/AdminPromptsPage.tsx:1022"]
     },
     "common.toHome": {
       "ru": "На главную",
@@ -5748,6 +6136,13 @@
       "de": "Abschnitt nach der Generierung geändert",
       "from": {"en":"Раздел изменён после генерации","de":"Раздел изменён после генерации"},
       "where": ["client/src/components/document/TableOfContents.tsx:71"]
+    },
+    "document.termFocus.label": {
+      "ru": "найденный термин",
+      "en": "found term",
+      "de": "gefundener Begriff",
+      "from": {"en":"найденный термин","de":"найденный термин"},
+      "where": ["client/src/components/document/TermFocus.tsx:140"]
     },
     "edit.addSectionPanel.addSections": {
       "ru": "+ Добавить разделы",
@@ -10137,70 +10532,6 @@
       "from": {"en":"Связь снимется, узел из файла проступит снова; потомки не затронуты.","de":"Связь снимется, узел из файла проступит снова; потомки не затронуты."},
       "where": ["client/src/components/lineage/LineageNodeActions.tsx:306"]
     },
-    "lineage.lineageSearch.add": {
-      "ru": "+ Добавить",
-      "en": "+ Add",
-      "de": "+ Hinzufügen",
-      "from": {"en":"+ Добавить","de":"+ Добавить"},
-      "where": ["client/src/components/lineage/LineageSearch.tsx:94"]
-    },
-    "lineage.lineageSearch.addPhilosopher": {
-      "ru": "Добавьте хотя бы одного философа.",
-      "en": "Add at least one philosopher.",
-      "de": "Fügen Sie mindestens einen Philosophen hinzu.",
-      "from": {"en":"Добавьте хотя бы одного философа.","de":"Добавьте хотя бы одного философа."},
-      "where": ["client/src/components/lineage/LineageSearch.tsx:44"]
-    },
-    "lineage.lineageSearch.description": {
-      "ru": "Концепции, в генеалогии которых присутствуют ВСЕ указанные философы (включая предков через мета-синтез).",
-      "en": "Concepts whose genealogy includes ALL the listed philosophers (including ancestors via meta-synthesis).",
-      "de": "Konzepte, in deren Genealogie ALLE angegebenen Philosophen vorkommen (einschließlich der Vorfahren über Meta-Synthese).",
-      "from": {"en":"Концепции, в генеалогии которых присутствуют ВСЕ указанные философы (включая предков через мета-синтез).","de":"Концепции, в генеалогии которых присутствуют ВСЕ указанные философы (включая предков через мета-синтез)."},
-      "where": ["client/src/components/lineage/LineageSearch.tsx:67"]
-    },
-    "lineage.lineageSearch.find": {
-      "ru": "Найти",
-      "en": "Find",
-      "de": "Suchen",
-      "from": {"en":"Найти","de":"Найти"},
-      "where": ["client/src/components/lineage/LineageSearch.tsx:102"]
-    },
-    "lineage.lineageSearch.notFound": {
-      "ru": "Концепций с философами {selected} в генеалогии не найдено.",
-      "en": "No concepts with philosophers {selected} in their genealogy were found.",
-      "de": "Keine Konzepte mit den Philosophen {selected} in der Genealogie gefunden.",
-      "from": {"en":"Концепций с философами {selected} в генеалогии не найдено.","de":"Концепций с философами {selected} в генеалогии не найдено."},
-      "params": {"selected":"selected.join(\", \")"},
-      "where": ["client/src/components/lineage/LineageSearch.tsx:137"]
-    },
-    "lineage.lineageSearch.philosopherPlaceholder": {
-      "ru": "Имя философа (напр. Кант)",
-      "en": "Philosopher's name (e.g. Kant)",
-      "de": "Name des Philosophen (z. B. Кант)",
-      "from": {"en":"Имя философа (напр. Кант)","de":"Имя философа (напр. Кант)"},
-      "where": ["client/src/components/lineage/LineageSearch.tsx:81"]
-    },
-    "lineage.lineageSearch.removePrefix": {
-      "ru": "Убрать ",
-      "en": "Remove ",
-      "de": "Entfernen ",
-      "from": {"en":"Убрать ","de":"Убрать "},
-      "where": ["client/src/components/lineage/LineageSearch.tsx:118"]
-    },
-    "lineage.lineageSearch.searchFailed": {
-      "ru": "Не удалось выполнить поиск по генеалогии.",
-      "en": "Genealogy search failed.",
-      "de": "Genealogiesuche konnte nicht ausgeführt werden.",
-      "from": {"en":"Не удалось выполнить поиск по генеалогии.","de":"Не удалось выполнить поиск по генеалогии."},
-      "where": ["client/src/components/lineage/LineageSearch.tsx:56"]
-    },
-    "lineage.lineageSearch.title": {
-      "ru": "Поиск по генеалогии",
-      "en": "Genealogy search",
-      "de": "Genealogiesuche",
-      "from": {"en":"Поиск по генеалогии","de":"Поиск по генеалогии"},
-      "where": ["client/src/components/lineage/LineageSearch.tsx:65"]
-    },
     "loginPage.forgotPassword": {
       "ru": "Забыли пароль?",
       "en": "Forgot your password?",
@@ -13416,7 +13747,7 @@
       "en": "a category id is expected",
       "de": "erwartet wird eine Kategorie-ID",
       "from": {"en":"ожидается id категории","de":"ожидается id категории"},
-      "where": ["server/services/element-editor.ts:805"]
+      "where": ["server/services/element-editor.ts:808"]
     },
     "server.elementEditor.categoryNotFound": {
       "ru": "Категория не найдена",
@@ -13430,28 +13761,28 @@
       "en": "category not found in this synthesis",
       "de": "Kategorie in dieser Synthese nicht gefunden",
       "from": {"en":"категория не найдена в этом синтезе","de":"категория не найдена в этом синтезе"},
-      "where": ["server/services/element-editor.ts:845","server/services/element-editor.ts:846"]
+      "where": ["server/services/element-editor.ts:848","server/services/element-editor.ts:849"]
     },
     "server.elementEditor.edgeNotCreated": {
       "ru": "Связь не создана",
       "en": "The relation was not created",
       "de": "Beziehung nicht erstellt",
       "from": {"en":"Связь не создана","de":"Связь не создана"},
-      "where": ["server/services/element-editor.ts:866"]
+      "where": ["server/services/element-editor.ts:869"]
     },
     "server.elementEditor.edgeNotFound": {
       "ru": "Связь не найдена",
       "en": "Relation not found",
       "de": "Beziehung nicht gefunden",
       "from": {"en":"Связь не найдена","de":"Связь не найдена"},
-      "where": ["server/services/element-editor.ts:349","server/services/element-editor.ts:754"]
+      "where": ["server/services/element-editor.ts:349","server/services/element-editor.ts:757"]
     },
     "server.elementEditor.htmlStringExpected": {
       "ru": "ожидается непустая HTML-строка",
       "en": "a non-empty HTML string is expected",
       "de": "erwartet wird eine nichtleere HTML-Zeichenkette",
       "from": {"en":"ожидается непустая HTML-строка","de":"ожидается непустая HTML-строка"},
-      "where": ["server/services/element-editor.ts:1520","server/services/element-editor.ts:1525"]
+      "where": ["server/services/element-editor.ts:1517","server/services/element-editor.ts:1522"]
     },
     "server.elementEditor.integerExpected": {
       "ru": "ожидается целое",
@@ -13529,7 +13860,7 @@
       "en": "name too short",
       "de": "Name zu kurz",
       "from": {"en":"слишком короткое имя","de":"слишком короткое имя"},
-      "where": ["server/services/element-editor.ts:1292"]
+      "where": ["server/services/element-editor.ts:1283"]
     },
     "server.elementEditor.newParagraphNotThesis": {
       "ru": "Абзац «{paragraph}» не сведён ни с одним тезисом — в список тезисов он не попал (новый тезис заводится перегенерацией раздела)",
@@ -13544,7 +13875,7 @@
       "en": "there are no fields to update",
       "de": "kein einziges Feld zum Aktualisieren",
       "from": {"en":"нет ни одного поля для обновления","de":"нет ни одного поля для обновления"},
-      "where": ["server/services/element-editor.ts:629","server/services/element-editor.ts:740","server/services/element-editor.ts:1112","server/services/element-editor.ts:1234"]
+      "where": ["server/services/element-editor.ts:629","server/services/element-editor.ts:743","server/services/element-editor.ts:1100","server/services/element-editor.ts:1222"]
     },
     "server.elementEditor.nonNegativeIntArrayExpected": {
       "ru": "ожидается массив неотрицательных целых",
@@ -13565,7 +13896,7 @@
       "en": "an object is expected",
       "de": "erwartet wird ein Objekt",
       "from": {"en":"ожидается объект","de":"ожидается объект"},
-      "where": ["server/services/element-editor.ts:600","server/services/element-editor.ts:717","server/services/element-editor.ts:796","server/services/element-editor.ts:1095","server/services/element-editor.ts:1218"]
+      "where": ["server/services/element-editor.ts:600","server/services/element-editor.ts:720","server/services/element-editor.ts:799","server/services/element-editor.ts:1083","server/services/element-editor.ts:1206"]
     },
     "server.elementEditor.oneOf": {
       "ru": "одно из: {options}",
@@ -13573,7 +13904,7 @@
       "de": "eines von: {options}",
       "from": {"en":"одно из: {options}","de":"одно из: {options}"},
       "params": {"options":""},
-      "where": ["server/services/element-editor.ts:728","server/services/element-editor.ts:818","server/services/element-editor.ts:1107"]
+      "where": ["server/services/element-editor.ts:731","server/services/element-editor.ts:821","server/services/element-editor.ts:1095"]
     },
     "server.elementEditor.paragraphWithoutThesis": {
       "ru": "Абзац «{paragraph}» изменён, но ни с одним тезисом списка не сведён — список тезисов не обновлён",
@@ -13588,14 +13919,14 @@
       "en": "matches oldName",
       "de": "stimmt mit oldName überein",
       "from": {"en":"совпадает с oldName","de":"совпадает с oldName"},
-      "where": ["server/services/element-editor.ts:1290"]
+      "where": ["server/services/element-editor.ts:1281"]
     },
     "server.elementEditor.sameEndsOnlyReflexive": {
       "ru": "совпадение концов допустимо только у рефлексивной связи",
       "en": "identical ends are allowed only for a reflexive relation",
       "de": "gleiche Enden sind nur bei einer reflexiven Beziehung zulässig",
       "from": {"en":"совпадение концов допустимо только у рефлексивной связи","de":"совпадение концов допустимо только у рефлексивной связи"},
-      "where": ["server/services/element-editor.ts:830"]
+      "where": ["server/services/element-editor.ts:833"]
     },
     "server.elementEditor.stringArrayExpected": {
       "ru": "ожидается массив строк",
@@ -13616,7 +13947,7 @@
       "en": "an object string → string is expected",
       "de": "erwartet wird ein Objekt Zeichenkette → Zeichenkette",
       "from": {"en":"ожидается объект строка → строка","de":"ожидается объект строка → строка"},
-      "where": ["server/services/element-editor.ts:1230"]
+      "where": ["server/services/element-editor.ts:1218"]
     },
     "server.elementEditor.subsectionNotFound": {
       "ru": "Подраздел «{name}» не найден",
@@ -13631,14 +13962,14 @@
       "en": "the edit changed the set of the section's subsections — not saved",
       "de": "die Änderung hat die Zusammensetzung der Unterabschnitte des Abschnitts verändert — nicht gespeichert",
       "from": {"en":"правка изменила состав подразделов раздела — не сохранено","de":"правка изменила состав подразделов раздела — не сохранено"},
-      "where": ["server/services/element-editor.ts:1977","server/services/element-editor.ts:2168"]
+      "where": ["server/services/element-editor.ts:1977","server/services/element-editor.ts:2170"]
     },
     "server.elementEditor.termNotFound": {
       "ru": "Термин не найден",
       "en": "Term not found",
       "de": "Begriff nicht gefunden",
       "from": {"en":"Термин не найден","de":"Термин не найден"},
-      "where": ["server/services/element-editor.ts:377","server/services/element-editor.ts:1248"]
+      "where": ["server/services/element-editor.ts:377","server/services/element-editor.ts:1236"]
     },
     "server.elementEditor.thesisFormulationFuzzy": {
       "ru": "Формулировка тезиса {thesis} в прозе изменена, но с тезисом она сведена нечётко — формулировка в списке тезисов не обновлена (правьте её карандашом ✎ в строке сводной таблицы)",
@@ -13653,7 +13984,7 @@
       "en": "Thesis not found",
       "de": "These nicht gefunden",
       "from": {"en":"Тезис не найден","de":"Тезис не найден"},
-      "where": ["server/services/element-editor.ts:363","server/services/element-editor.ts:1126"]
+      "where": ["server/services/element-editor.ts:363","server/services/element-editor.ts:1114"]
     },
     "server.elementEditor.thesisParagraphLost": {
       "ru": "Абзац тезиса {thesis} после правки не найден — тезис в списке тезисов не изменён и не удалён",
@@ -14173,7 +14504,7 @@
       "en": "Generation is already running for this synthesis",
       "de": "Für diese Synthese läuft bereits eine Generierung",
       "from": {"en":"Генерация уже запущена для этого синтеза","de":"Генерация уже запущена для этого синтеза"},
-      "where": ["server/services/generation-service.ts:828"]
+      "where": ["server/services/generation-service.ts:832"]
     },
     "server.generationService.concurrencyLimit": {
       "ru": "Не более {concurrentGenerations} одновременных генераций",
@@ -14181,7 +14512,7 @@
       "de": "Höchstens {concurrentGenerations} gleichzeitige Generierungen",
       "from": {"en":"Не более {concurrentGenerations} одновременных генераций","de":"Не более {concurrentGenerations} одновременных генераций"},
       "params": {"concurrentGenerations":"env.rateLimit.concurrentGenerations"},
-      "where": ["server/services/generation-service.ts:743"]
+      "where": ["server/services/generation-service.ts:747"]
     },
     "server.generationService.noStructuredParts": {
       "ru": "Раздел «{sectionKey}» не имеет структурированных parts.",
@@ -14189,7 +14520,7 @@
       "de": "Der Abschnitt „{sectionKey}“ hat keine strukturierten parts.",
       "from": {"en":"Раздел «{sectionKey}» не имеет структурированных parts.","de":"Раздел «{sectionKey}» не имеет структурированных parts."},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2518"]
+      "where": ["server/services/generation-service.ts:2530"]
     },
     "server.generationService.sectionExists": {
       "ru": "Раздел «{sectionKey}» уже есть в документе",
@@ -14197,7 +14528,7 @@
       "de": "Der Abschnitt „{sectionKey}“ ist bereits im Dokument",
       "from": {"en":"Раздел «{sectionKey}» уже есть в документе","de":"Раздел «{sectionKey}» уже есть в документе"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2985"]
+      "where": ["server/services/generation-service.ts:2997"]
     },
     "server.generationService.sectionMissing": {
       "ru": "Раздел «{sectionKey}» отсутствует в документе",
@@ -14205,7 +14536,7 @@
       "de": "Der Abschnitt „{sectionKey}“ fehlt im Dokument",
       "from": {"en":"Раздел «{sectionKey}» отсутствует в документе","de":"Раздел «{sectionKey}» отсутствует в документе"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2097"]
+      "where": ["server/services/generation-service.ts:2109"]
     },
     "server.generationService.sectionNotInDefs": {
       "ru": "Раздел «{sectionKey}» не найден в определениях.",
@@ -14213,7 +14544,7 @@
       "de": "Der Abschnitt „{sectionKey}“ wurde in den Definitionen nicht gefunden.",
       "from": {"en":"Раздел «{sectionKey}» не найден в определениях.","de":"Раздел «{sectionKey}» не найден в определениях."},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2142","server/services/generation-service.ts:2790","server/services/generation-service.ts:3018"]
+      "where": ["server/services/generation-service.ts:2154","server/services/generation-service.ts:2802","server/services/generation-service.ts:3030"]
     },
     "server.generationService.sectionUndeletable": {
       "ru": "Раздел «{sectionKey}» нельзя удалить",
@@ -14221,14 +14552,14 @@
       "de": "Der Abschnitt „{sectionKey}“ kann nicht gelöscht werden",
       "from": {"en":"Раздел «{sectionKey}» нельзя удалить","de":"Раздел «{sectionKey}» нельзя удалить"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:3243"]
+      "where": ["server/services/generation-service.ts:3255"]
     },
     "server.generationService.unknownError": {
       "ru": "неизвестная ошибка",
       "en": "unknown error",
       "de": "unbekannter Fehler",
       "from": {"en":"неизвестная ошибка","de":"неизвестная ошибка"},
-      "where": ["server/services/generation-service.ts:1307","server/services/generation-service.ts:1910"]
+      "where": ["server/services/generation-service.ts:1311","server/services/generation-service.ts:1918"]
     },
     "server.generationService.unknownSection": {
       "ru": "Неизвестный раздел «{sectionKey}»",
@@ -14236,7 +14567,7 @@
       "de": "Unbekannter Abschnitt „{sectionKey}“",
       "from": {"en":"Неизвестный раздел «{sectionKey}»","de":"Неизвестный раздел «{sectionKey}»"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2991"]
+      "where": ["server/services/generation-service.ts:3003"]
     },
     "server.importService.depthUnrecognized": {
       "ru": "Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию.",
@@ -14244,14 +14575,14 @@
       "de": "Tiefe nicht erkannt (gefunden: „{depthDisplay}“). Standard „Standard“ eingesetzt.",
       "from": {"en":"Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию.","de":"Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию."},
       "params": {"depthDisplay":"depthDisplay || \"—\""},
-      "where": ["server/services/import-service.ts:714"]
+      "where": ["server/services/import-service.ts:715"]
     },
     "server.importService.docOutputMissing": {
       "ru": "Не найден элемент #docOutput. Это не файл PhiloSynth.",
       "en": "Element #docOutput not found. This is not a PhiloSynth file.",
       "de": "Element #docOutput nicht gefunden. Dies ist keine PhiloSynth-Datei.",
       "from": {"en":"Не найден элемент #docOutput. Это не файл PhiloSynth.","de":"Не найден элемент #docOutput. Это не файл PhiloSynth."},
-      "where": ["server/services/import-service.ts:1108"]
+      "where": ["server/services/import-service.ts:1109"]
     },
     "server.importService.duplicateSectionKey": {
       "ru": "Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр.",
@@ -14259,14 +14590,14 @@
       "de": "Der Abschnitt „{title}“ dupliziert den Schlüssel „{key}“ — das erste Exemplar wurde verwendet.",
       "from": {"en":"Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр.","de":"Раздел «{title}» дублирует ключ «{key}» — использован первый экземпляр."},
       "params": {"title":"sec.title","key":"sec.key"},
-      "where": ["server/services/import-service.ts:1133"]
+      "where": ["server/services/import-service.ts:1134"]
     },
     "server.importService.graphParseFailed": {
       "ru": "Не удалось распарсить граф — категории и связи не восстановлены.",
       "en": "Failed to parse the graph — categories and relations were not restored.",
       "de": "Der Graph konnte nicht ausgewertet werden — Kategorien und Beziehungen nicht wiederhergestellt.",
       "from": {"en":"Не удалось распарсить граф — категории и связи не восстановлены.","de":"Не удалось распарсить граф — категории и связи не восстановлены."},
-      "where": ["server/services/import-service.ts:1325"]
+      "where": ["server/services/import-service.ts:1326"]
     },
     "server.importService.levelUnrecognized": {
       "ru": "Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию.",
@@ -14274,21 +14605,21 @@
       "de": "Syntheseebene nicht erkannt (gefunden: „{synthDisplay}“). Standard „Vergleichend“ eingesetzt.",
       "from": {"en":"Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию.","de":"Уровень синтеза не распознан (найдено: «{synthDisplay}»). Подставлен «Сравнительный» по умолчанию."},
       "params": {"synthDisplay":"synthDisplay || \"—\""},
-      "where": ["server/services/import-service.ts:722"]
+      "where": ["server/services/import-service.ts:723"]
     },
     "server.importService.logMissing": {
       "ru": "Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. ",
       "en": "The context and generation log is missing. The history of cost and context dependencies is unavailable. ",
       "de": "Das Kontext- und Generierungsprotokoll fehlt. Der Verlauf der Kosten und Kontextabhängigkeiten ist nicht verfügbar. ",
       "from": {"en":"Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. ","de":"Лог контекста и генерации отсутствует. История стоимости и контекстных зависимостей недоступна. "},
-      "where": ["server/services/import-service.ts:731"]
+      "where": ["server/services/import-service.ts:732"]
     },
     "server.importService.logWillAccumulate": {
       "ru": "Лог начнёт накапливаться заново при редактировании.",
       "en": "The log will start accumulating again on editing.",
       "de": "Das Protokoll beginnt beim Bearbeiten erneut zu wachsen.",
       "from": {"en":"Лог начнёт накапливаться заново при редактировании.","de":"Лог начнёт накапливаться заново при редактировании."},
-      "where": ["server/services/import-service.ts:732"]
+      "where": ["server/services/import-service.ts:733"]
     },
     "server.importService.methodUnrecognized": {
       "ru": "Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию.",
@@ -14296,14 +14627,14 @@
       "de": "Synthesemethode nicht erkannt (gefunden: „{methodDisplay}“). Standard „Dialektisch“ eingesetzt.",
       "from": {"en":"Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию.","de":"Метод синтеза не распознан (найдено: «{methodDisplay}»). Подставлен «Диалектический» по умолчанию."},
       "params": {"methodDisplay":"methodDisplay || \"—\""},
-      "where": ["server/services/import-service.ts:706"]
+      "where": ["server/services/import-service.ts:707"]
     },
     "server.importService.noSections": {
       "ru": "В файле не найдено ни одного раздела (.doc-section).",
       "en": "No sections (.doc-section) were found in the file.",
       "de": "In der Datei wurde kein einziger Abschnitt (.doc-section) gefunden.",
       "from": {"en":"В файле не найдено ни одного раздела (.doc-section).","de":"В файле не найдено ни одного раздела (.doc-section)."},
-      "where": ["server/services/import-service.ts:1118"]
+      "where": ["server/services/import-service.ts:1119"]
     },
     "server.importService.parentAmbiguous": {
       "ru": "Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).",
@@ -14311,7 +14642,7 @@
       "de": "Das Elternkonzept „{name}“ wurde nicht automatisch verknüpft: in der Datenbank gibt es {matchesCount} Namensübereinstimmungen — wählen Sie das Elternteil im Vorschlag unten (ein Name ist kein Bezeichner, die Verknüpfung wird nicht stillschweigend erstellt).",
       "from": {"en":"Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча).","de":"Концепция-родитель «{name}» не связана автоматически: в базе найдено {matchesCount} совпадений по имени — выберите родителя в предложении ниже (имя не идентификатор, связь не создаётся молча)."},
       "params": {"name":"p.name","matchesCount":"matches.length"},
-      "where": ["server/services/import-service.ts:1503"]
+      "where": ["server/services/import-service.ts:1504"]
     },
     "server.importService.parentMissing": {
       "ru": "Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.",
@@ -14319,7 +14650,7 @@
       "de": "Das Elternkonzept „{name}“ wurde in der Datenbank nicht gefunden — keine Genealogieverknüpfung erstellt. Sein Abstammungszweig wurde aus der Datei übernommen und wird im Stammbaum als Schnappschuss ohne Verweise angezeigt; eine echte Verknüpfung entsteht, wenn das Elternteil VOR diesem Konzept importiert wird.",
       "from": {"en":"Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции.","de":"Концепция-родитель «{name}» в базе не найдена — связь генеалогии не создана. Её ветка родословной сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок; настоящая связь появится, если импортировать родителя ДО этой концепции."},
       "params": {"name":"p.name"},
-      "where": ["server/services/import-service.ts:1504"]
+      "where": ["server/services/import-service.ts:1505"]
     },
     "server.importService.parentNotAllowed": {
       "ru": "Концепция-родитель «{name}» найдена по идентификатору из файла, но в мета-синтез не годится по правилу доступа (автор не разрешил использование, концепция приватна или открыта витриной) — связь генеалогии не создана. Её ветка сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок.",
@@ -14327,7 +14658,7 @@
       "de": "Das Elternkonzept „{name}“ wurde über den Bezeichner aus der Datei gefunden, ist nach der Zugriffsregel aber nicht für die Metasynthese zugelassen (der Autor hat die Verwendung nicht erlaubt, das Konzept ist privat oder als Schaufenster geöffnet) — keine Genealogieverknüpfung erstellt. Sein Zweig wurde aus der Datei übernommen und wird im Stammbaum als Schnappschuss ohne Verweise angezeigt.",
       "from": {"en":"Концепция-родитель «{name}» найдена по идентификатору из файла, но в мета-синтез не годится по правилу доступа (автор не разрешил использование, концепция приватна или открыта витриной) — связь генеалогии не создана. Её ветка сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок.","de":"Концепция-родитель «{name}» найдена по идентификатору из файла, но в мета-синтез не годится по правилу доступа (автор не разрешил использование, концепция приватна или открыта витриной) — связь генеалогии не создана. Её ветка сохранена из файла и показывается в генеалогическом древе как снимок, без ссылок."},
       "params": {"name":"p.name"},
-      "where": ["server/services/import-service.ts:1501"]
+      "where": ["server/services/import-service.ts:1502"]
     },
     "server.importService.parentRepeated": {
       "ru": "Концепция-родитель «{name}» указана в файле повторно — связь уже создана первым вхождением, повтор показывается в древе снимком.",
@@ -14335,14 +14666,14 @@
       "de": "Das Elternkonzept „{name}“ ist in der Datei mehrfach angegeben — die Verknüpfung wurde bereits durch das erste Vorkommen erstellt, die Wiederholung wird im Stammbaum als Schnappschuss angezeigt.",
       "from": {"en":"Концепция-родитель «{name}» указана в файле повторно — связь уже создана первым вхождением, повтор показывается в древе снимком.","de":"Концепция-родитель «{name}» указана в файле повторно — связь уже создана первым вхождением, повтор показывается в древе снимком."},
       "params": {"name":""},
-      "where": ["server/services/import-service.ts:1449"]
+      "where": ["server/services/import-service.ts:1450"]
     },
     "server.importService.philosophersNotFound": {
       "ru": "Список философов не найден. Перегенерация разделов невозможна без него.",
       "en": "The list of philosophers was not found. Sections cannot be regenerated without it.",
       "de": "Die Philosophenliste wurde nicht gefunden. Ohne sie ist eine Neugenerierung der Abschnitte unmöglich.",
       "from": {"en":"Список философов не найден. Перегенерация разделов невозможна без него.","de":"Список философов не найден. Перегенерация разделов невозможна без него."},
-      "where": ["server/services/import-service.ts:694"]
+      "where": ["server/services/import-service.ts:695"]
     },
     "server.importService.sectionKeyUnknown": {
       "ru": "Не удалось определить ключ для раздела «{titleText}» — раздел пропущен.",
@@ -14350,7 +14681,7 @@
       "de": "Der Schlüssel für den Abschnitt „{titleText}“ konnte nicht bestimmt werden — der Abschnitt wurde übersprungen.",
       "from": {"en":"Не удалось определить ключ для раздела «{titleText}» — раздел пропущен.","de":"Не удалось определить ключ для раздела «{titleText}» — раздел пропущен."},
       "params": {"titleText":"titleText"},
-      "where": ["server/services/import-service.ts:785"]
+      "where": ["server/services/import-service.ts:786"]
     },
     "server.importService.sectionNotInOrder": {
       "ru": "Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка.",
@@ -14358,112 +14689,112 @@
       "de": "Der Abschnitt „{sectionKey}“ fehlt in der eingebetteten sectionOrder — ans Ende der Reihenfolge angefügt.",
       "from": {"en":"Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка.","de":"Раздел «{sectionKey}» отсутствует во встроенном sectionOrder — добавлен в конец порядка."},
       "params": {"sectionKey":"k"},
-      "where": ["server/services/import-service.ts:1187"]
+      "where": ["server/services/import-service.ts:1188"]
     },
     "server.importService.synthesisNotCreated": {
       "ru": "Импорт: запись syntheses не создана",
       "en": "Import: the syntheses record was not created",
       "de": "Import: syntheses-Eintrag nicht erstellt",
       "from": {"en":"Импорт: запись syntheses не создана","de":"Импорт: запись syntheses не создана"},
-      "where": ["server/services/import-service.ts:1269"]
+      "where": ["server/services/import-service.ts:1270"]
     },
     "server.importService.thesesParseFailed": {
       "ru": "Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены.",
       "en": "Failed to parse the theses/glossary — granular elements were not restored.",
       "de": "Thesen/Glossar konnten nicht ausgewertet werden — granulare Elemente nicht wiederhergestellt.",
       "from": {"en":"Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены.","de":"Не удалось распарсить тезисы/глоссарий — гранулярные элементы не восстановлены."},
-      "where": ["server/services/import-service.ts:1347"]
+      "where": ["server/services/import-service.ts:1348"]
     },
     "server.index.internalError": {
       "ru": "Внутренняя ошибка сервера",
       "en": "Internal server error",
       "de": "Interner Serverfehler",
       "from": {"en":"Внутренняя ошибка сервера","de":"Внутренняя ошибка сервера"},
-      "where": ["server/index.ts:83"]
+      "where": ["server/index.ts:84"]
     },
     "server.index.notFound": {
       "ru": "Ресурс не найден",
       "en": "Resource not found",
       "de": "Ressource nicht gefunden",
       "from": {"en":"Ресурс не найден","de":"Ресурс не найден"},
-      "where": ["server/index.ts:78"]
+      "where": ["server/index.ts:79"]
     },
     "server.lineageService.alreadyParent": {
       "ru": "Эта концепция уже указана родителем",
       "en": "This concept is already listed as a parent",
       "de": "Dieses Konzept ist bereits als Elternteil angegeben",
       "from": {"en":"Эта концепция уже указана родителем","de":"Эта концепция уже указана родителем"},
-      "where": ["server/services/lineage-service.ts:750","server/services/lineage-service.ts:792","server/services/lineage-service.ts:814","server/services/lineage-service.ts:847"]
+      "where": ["server/services/lineage-service.ts:751","server/services/lineage-service.ts:793","server/services/lineage-service.ts:815","server/services/lineage-service.ts:848"]
     },
     "server.lineageService.descendantAsParent": {
       "ru": "Нельзя назначить родителем собственного потомка — родословная замкнётся в цикл",
       "en": "You cannot make your own descendant a parent — the lineage would close into a cycle",
       "de": "Ein eigener Nachkomme kann nicht als Elternteil bestimmt werden — die Abstammung würde sich zu einem Zyklus schließen",
       "from": {"en":"Нельзя назначить родителем собственного потомка — родословная замкнётся в цикл","de":"Нельзя назначить родителем собственного потомка — родословная замкнётся в цикл"},
-      "where": ["server/services/lineage-service.ts:756"]
+      "where": ["server/services/lineage-service.ts:757"]
     },
     "server.lineageService.generatedParent": {
       "ru": "По этому родителю сгенерирован текст документа — его нельзя отвязать",
       "en": "The document text was generated from this parent — it cannot be unlinked",
       "de": "Der Dokumenttext wurde nach diesem Elternteil generiert — die Verknüpfung kann nicht gelöst werden",
       "from": {"en":"По этому родителю сгенерирован текст документа — его нельзя отвязать","de":"По этому родителю сгенерирован текст документа — его нельзя отвязать"},
-      "where": ["server/services/lineage-service.ts:1016"]
+      "where": ["server/services/lineage-service.ts:1014"]
     },
     "server.lineageService.lineageRowNotCreated": {
       "ru": "synthesis_lineage: строка связи не создана",
       "en": "synthesis_lineage: the link row was not created",
       "de": "synthesis_lineage: Verknüpfungszeile nicht erstellt",
       "from": {"en":"synthesis_lineage: строка связи не создана","de":"synthesis_lineage: строка связи не создана"},
-      "where": ["server/services/lineage-service.ts:852"]
+      "where": ["server/services/lineage-service.ts:853"]
     },
     "server.lineageService.nodeCovered": {
       "ru": "Этот узел дерева файла уже перекрыт связью в базе",
       "en": "This file tree node is already covered by a link in the database",
       "de": "Dieser Knoten des Dateibaums ist bereits durch eine Verknüpfung in der Datenbank überdeckt",
       "from": {"en":"Этот узел дерева файла уже перекрыт связью в базе","de":"Этот узел дерева файла уже перекрыт связью в базе"},
-      "where": ["server/services/lineage-service.ts:867"]
+      "where": ["server/services/lineage-service.ts:868"]
     },
     "server.lineageService.nodeMissing": {
       "ru": "Узла дерева файла с такой позицией нет",
       "en": "There is no file tree node with this position",
       "de": "Einen Knoten des Dateibaums mit dieser Position gibt es nicht",
       "from": {"en":"Узла дерева файла с такой позицией нет","de":"Узла дерева файла с такой позицией нет"},
-      "where": ["server/services/lineage-service.ts:871"]
+      "where": ["server/services/lineage-service.ts:872"]
     },
     "server.lineageService.nodeNotConcept": {
       "ru": "Этот узел дерева файла — философ, а не концепция: связывать нечего",
       "en": "This file tree node is a philosopher, not a concept: there is nothing to link",
       "de": "Dieser Knoten des Dateibaums ist ein Philosoph, kein Konzept: es gibt nichts zu verknüpfen",
       "from": {"en":"Этот узел дерева файла — философ, а не концепция: связывать нечего","de":"Этот узел дерева файла — философ, а не концепция: связывать нечего"},
-      "where": ["server/services/lineage-service.ts:869"]
+      "where": ["server/services/lineage-service.ts:870"]
     },
     "server.lineageService.notLinked": {
       "ru": "Эта концепция не указана родителем",
       "en": "This concept is not listed as a parent",
       "de": "Dieses Konzept ist nicht als Elternteil angegeben",
       "from": {"en":"Эта концепция не указана родителем","de":"Эта концепция не указана родителем"},
-      "where": ["server/services/lineage-service.ts:1004"]
+      "where": ["server/services/lineage-service.ts:1002"]
     },
     "server.lineageService.selfParent": {
       "ru": "Концепция не может быть собственным родителем",
       "en": "A concept cannot be its own parent",
       "de": "Ein Konzept kann nicht sein eigenes Elternteil sein",
       "from": {"en":"Концепция не может быть собственным родителем","de":"Концепция не может быть собственным родителем"},
-      "where": ["server/services/lineage-service.ts:733"]
+      "where": ["server/services/lineage-service.ts:734"]
     },
     "server.lineageService.unnamedConcept": {
       "ru": "[безымянная концепция]",
       "en": "[unnamed concept]",
       "de": "[unbenanntes Konzept]",
       "from": {"en":"[безымянная концепция]","de":"[безымянная концепция]"},
-      "where": ["server/services/lineage-service.ts:83"]
+      "where": ["server/services/lineage-service.ts:84"]
     },
     "server.lineageService.unnamedPhilosopher": {
       "ru": "[безымянный философ]",
       "en": "[unnamed philosopher]",
       "de": "[unbenannter Philosoph]",
       "from": {"en":"[безымянный философ]","de":"[безымянный философ]"},
-      "where": ["server/services/lineage-service.ts:82"]
+      "where": ["server/services/lineage-service.ts:83"]
     },
     "server.logFormatter.actionFillMissing": {
       "ru": "Догенерация недостающих подразделов",
@@ -17056,14 +17387,14 @@
       "en": "Add the section to the document (Edit → add section), then parse the recommendations.",
       "de": "Fügen Sie den Abschnitt zum Dokument hinzu (Bearbeiten → Abschnitt hinzufügen), dann werten Sie die Empfehlungen aus.",
       "from": {"en":"Добавьте раздел в документ (Изменить → добавить раздел), затем разберите рекомендации.","de":"Добавьте раздел в документ (Изменить → добавить раздел), затем разберите рекомендации."},
-      "where": ["server/services/recommendations.ts:815"]
+      "where": ["server/services/recommendations.ts:809"]
     },
     "server.recommendations.arePlural": {
       "ru": "й стоят",
       "en": "s are",
       "de": "en stehen",
       "from": {"en":"й стоят","de":"й стоят"},
-      "where": ["server/services/recommendations.ts:871"]
+      "where": ["server/services/recommendations.ts:865"]
     },
     "server.recommendations.columnMissing": {
       "ru": "В таблице рекомендаций не найден столбец: {missing}. ",
@@ -17071,21 +17402,21 @@
       "de": "In der Empfehlungstabelle fehlt die Spalte: {missing}. ",
       "from": {"en":"В таблице рекомендаций не найден столбец: {missing}. ","de":"В таблице рекомендаций не найден столбец: {missing}. "},
       "params": {"missing":"missing.map((m) => `«${m}»`).join(\", \")"},
-      "where": ["server/services/recommendations.ts:264"]
+      "where": ["server/services/recommendations.ts:265"]
     },
     "server.recommendations.critiqueNotGenerated": {
       "ru": "Раздел «Критический анализ» ещё не сгенерирован — рекомендаций у концепции нет. ",
       "en": "The “Critical analysis” section has not been generated yet — the concept has no recommendations. ",
       "de": "Der Abschnitt „Kritische Analyse“ ist noch nicht generiert — das Konzept hat keine Empfehlungen. ",
       "from": {"en":"Раздел «Критический анализ» ещё не сгенерирован — рекомендаций у концепции нет. ","de":"Раздел «Критический анализ» ещё не сгенерирован — рекомендаций у концепции нет. "},
-      "where": ["server/services/recommendations.ts:814"]
+      "where": ["server/services/recommendations.ts:808"]
     },
     "server.recommendations.executeOrDelete": {
       "ru": "Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд.",
       "en": "Execute this plan or delete it — after that a new analysis will open the next round.",
       "de": "Führen Sie diesen Plan aus oder löschen Sie ihn — danach eröffnet eine neue Auswertung die nächste Runde.",
       "from": {"en":"Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд.","de":"Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд."},
-      "where": ["server/services/recommendations.ts:872"]
+      "where": ["server/services/recommendations.ts:866"]
     },
     "server.recommendations.headersFound": {
       "ru": "Найдены заголовки: {foundCount}. ",
@@ -17093,21 +17424,21 @@
       "de": "Gefundene Überschriften: {foundCount}. ",
       "from": {"en":"Найдены заголовки: {foundCount}. ","de":"Найдены заголовки: {foundCount}. "},
       "params": {"foundCount":"found.length ? found.map((f) => `«${f}»`).join(\", \") : \"—\""},
-      "where": ["server/services/recommendations.ts:265"]
+      "where": ["server/services/recommendations.ts:266"]
     },
     "server.recommendations.isSingular": {
       "ru": "я стоит",
       "en": " is",
       "de": " steht",
       "from": {"en":"я стоит","de":"я стоит"},
-      "where": ["server/services/recommendations.ts:871"]
+      "where": ["server/services/recommendations.ts:865"]
     },
     "server.recommendations.legacyConcept": {
       "ru": "Концепция создана до контракта рекомендаций — составьте таблицу по готовой прозе: ",
       "en": "The concept was created before the recommendations contract — compile a table from the finished prose: ",
       "de": "Das Konzept wurde vor dem Empfehlungsvertrag erstellt — erstellen Sie die Tabelle aus dem vorhandenen Fließtext: ",
       "from": {"en":"Концепция создана до контракта рекомендаций — составьте таблицу по готовой прозе: ","de":"Концепция создана до контракта рекомендаций — составьте таблицу по готовой прозе: "},
-      "where": ["server/services/recommendations.ts:224"]
+      "where": ["server/services/recommendations.ts:225"]
     },
     "server.recommendations.noProseSubsection": {
       "ru": "В критике нет подраздела «{proseSubsection}» — составлять таблицу не по чему. ",
@@ -17115,7 +17446,7 @@
       "de": "In der Kritik fehlt der Unterabschnitt „{proseSubsection}“ — es gibt nichts, woraus die Tabelle erstellt werden könnte. ",
       "from": {"en":"В критике нет подраздела «{proseSubsection}» — составлять таблицу не по чему. ","de":"В критике нет подраздела «{proseSubsection}» — составлять таблицу не по чему. "},
       "params": {"proseSubsection":"RECOMMENDATIONS_PROSE_SUBSECTION"},
-      "where": ["server/services/recommendations.ts:1061"]
+      "where": ["server/services/recommendations.ts:1055"]
     },
     "server.recommendations.noProseSubsectionShort": {
       "ru": "В критике нет подраздела «{proseSubsection}»",
@@ -17123,7 +17454,7 @@
       "de": "In der Kritik fehlt der Unterabschnitt „{proseSubsection}“",
       "from": {"en":"В критике нет подраздела «{proseSubsection}»","de":"В критике нет подраздела «{proseSubsection}»"},
       "params": {"proseSubsection":"RECOMMENDATIONS_PROSE_SUBSECTION"},
-      "where": ["server/services/recommendations.ts:1278"]
+      "where": ["server/services/recommendations.ts:1272"]
     },
     "server.recommendations.noTable": {
       "ru": "В подразделе «{tableSubsection}» нет таблицы (<table class=\"doc-table\">)",
@@ -17131,14 +17462,14 @@
       "de": "Im Unterabschnitt „{tableSubsection}“ gibt es keine Tabelle (<table class=\"doc-table\">)",
       "from": {"en":"В подразделе «{tableSubsection}» нет таблицы (<table class=\"doc-table\">)","de":"В подразделе «{tableSubsection}» нет таблицы (<table class=\"doc-table\">)"},
       "params": {"tableSubsection":"RECOMMENDATIONS_TABLE_SUBSECTION"},
-      "where": ["server/services/recommendations.ts:232"]
+      "where": ["server/services/recommendations.ts:233"]
     },
     "server.recommendations.noTableReturned": {
       "ru": "Модель не вернула таблицу — документ не изменён. Повторите запрос.",
       "en": "The model did not return a table — the document is unchanged. Retry the request.",
       "de": "Das Modell hat keine Tabelle zurückgegeben — das Dokument ist unverändert. Wiederholen Sie die Anfrage.",
       "from": {"en":"Модель не вернула таблицу — документ не изменён. Повторите запрос.","de":"Модель не вернула таблицу — документ не изменён. Повторите запрос."},
-      "where": ["server/services/recommendations.ts:1245"]
+      "where": ["server/services/recommendations.ts:1239"]
     },
     "server.recommendations.noTableSubsection": {
       "ru": "В разделе «Критический анализ» нет подраздела «{tableSubsection}». ",
@@ -17146,21 +17477,21 @@
       "de": "Im Abschnitt „Kritische Analyse“ fehlt der Unterabschnitt „{tableSubsection}“. ",
       "from": {"en":"В разделе «Критический анализ» нет подраздела «{tableSubsection}». ","de":"В разделе «Критический анализ» нет подраздела «{tableSubsection}». "},
       "params": {"tableSubsection":"RECOMMENDATIONS_TABLE_SUBSECTION"},
-      "where": ["server/services/recommendations.ts:223"]
+      "where": ["server/services/recommendations.ts:224"]
     },
     "server.recommendations.orderIrrelevant": {
       "ru": "Порядок столбцов не важен, названия — важны.",
       "en": "The order of columns does not matter, the names do.",
       "de": "Die Reihenfolge der Spalten ist unwichtig, die Namen sind wichtig.",
       "from": {"en":"Порядок столбцов не важен, названия — важны.","de":"Порядок столбцов не важен, названия — важны."},
-      "where": ["server/services/recommendations.ts:266"]
+      "where": ["server/services/recommendations.ts:267"]
     },
     "server.recommendations.regenerateCritique": {
       "ru": "Перегенерируйте раздел «Критический анализ».",
       "en": "Regenerate the “Critical analysis” section.",
       "de": "Generieren Sie den Abschnitt „Kritische Analyse“ neu.",
       "from": {"en":"Перегенерируйте раздел «Критический анализ».","de":"Перегенерируйте раздел «Критический анализ»."},
-      "where": ["server/services/recommendations.ts:1062"]
+      "where": ["server/services/recommendations.ts:1056"]
     },
     "server.recommendations.responseUnfit": {
       "ru": "Ответ модели не годится в документ: {message}",
@@ -17168,7 +17499,7 @@
       "de": "Die Modellantwort taugt nicht für das Dokument: {message}",
       "from": {"en":"Ответ модели не годится в документ: {message}","de":"Ответ модели не годится в документ: {message}"},
       "params": {"message":"err.message"},
-      "where": ["server/services/recommendations.ts:1270"]
+      "where": ["server/services/recommendations.ts:1264"]
     },
     "server.recommendations.roundInProgress": {
       "ru": "Раунд {round} ещё в работе: {heldCount} рекомендаци{heldWordEnding} в плане правок. ",
@@ -17176,7 +17507,7 @@
       "de": "Runde {round} ist noch in Arbeit: {heldCount} Empfehlung{heldWordEnding} im Bearbeitungsplan. ",
       "from": {"en":"Раунд {round} ещё в работе: {heldCount} рекомендаци{heldWordEnding} в плане правок. ","de":"Раунд {round} ещё в работе: {heldCount} рекомендаци{heldWordEnding} в плане правок. "},
       "params": {"round":"latest","heldCount":"held.length","heldWordEnding":"held.length === 1 ? \"я стоит\" : \"й стоят\""},
-      "where": ["server/services/recommendations.ts:871"]
+      "where": ["server/services/recommendations.ts:865"]
     },
     "server.recommendations.roundMissing": {
       "ru": "Раунда {round} у концепции нет (последний — {latestRound})",
@@ -17184,28 +17515,28 @@
       "de": "Runde {round} gibt es bei diesem Konzept nicht (letzte — {latestRound})",
       "from": {"en":"Раунда {round} у концепции нет (последний — {latestRound})","de":"Раунда {round} у концепции нет (последний — {latestRound})"},
       "params": {"round":"round","latestRound":"latestRound"},
-      "where": ["server/services/recommendations.ts:968"]
+      "where": ["server/services/recommendations.ts:962"]
     },
     "server.recommendations.tableEmpty": {
       "ru": "В таблице рекомендаций нет ни одной строки",
       "en": "The recommendations table has no rows",
       "de": "Die Empfehlungstabelle enthält keine einzige Zeile",
       "from": {"en":"В таблице рекомендаций нет ни одной строки","de":"В таблице рекомендаций нет ни одной строки"},
-      "where": ["server/services/recommendations.ts:291"]
+      "where": ["server/services/recommendations.ts:292"]
     },
     "server.representationTransformer.categoryTableMissing": {
       "ru": "В ответе не найдена «Таблица категорий» — граф не заменён",
       "en": "“Category table” was not found in the response — the graph was not replaced",
       "de": "In der Antwort wurde keine „Kategorietabelle“ gefunden — der Graph wurde nicht ersetzt",
       "from": {"en":"В ответе не найдена «Таблица категорий» — граф не заменён","de":"В ответе не найдена «Таблица категорий» — граф не заменён"},
-      "where": ["server/services/representation-transformer.ts:616"]
+      "where": ["server/services/representation-transformer.ts:617"]
     },
     "server.representationTransformer.graphSnapshotCorrupt": {
       "ru": "Снимок графа повреждён — откат невозможен",
       "en": "The graph snapshot is corrupted — rollback is impossible",
       "de": "Der Schnappschuss des Graphen ist beschädigt — Rücksetzung unmöglich",
       "from": {"en":"Снимок графа повреждён — откат невозможен","de":"Снимок графа повреждён — откат невозможен"},
-      "where": ["server/services/representation-transformer.ts:782"]
+      "where": ["server/services/representation-transformer.ts:785"]
     },
     "server.representationTransformer.sectionNotInDefs": {
       "ru": "Раздел «{targetKey}» не найден в определениях",
@@ -17213,28 +17544,28 @@
       "de": "Der Abschnitt „{targetKey}“ wurde in den Definitionen nicht gefunden",
       "from": {"en":"Раздел «{targetKey}» не найден в определениях","de":"Раздел «{targetKey}» не найден в определениях"},
       "params": {"targetKey":"targetKey"},
-      "where": ["server/services/representation-transformer.ts:389"]
+      "where": ["server/services/representation-transformer.ts:390"]
     },
     "server.representationTransformer.thesesSnapshotCorrupt": {
       "ru": "Снимок тезисов повреждён — откат невозможен",
       "en": "The theses snapshot is corrupted — rollback is impossible",
       "de": "Der Schnappschuss der Thesen ist beschädigt — Rücksetzung unmöglich",
       "from": {"en":"Снимок тезисов повреждён — откат невозможен","de":"Снимок тезисов повреждён — откат невозможен"},
-      "where": ["server/services/representation-transformer.ts:777"]
+      "where": ["server/services/representation-transformer.ts:780"]
     },
     "server.representationTransformer.thesesTableMissing": {
       "ru": "В ответе не найдена «Сводная таблица тезисов» — тезисы не заменены",
       "en": "“Thesis summary table” was not found in the response — the theses were not replaced",
       "de": "In der Antwort wurde keine „Übersichtstabelle der Thesen“ gefunden — die Thesen wurden nicht ersetzt",
       "from": {"en":"В ответе не найдена «Сводная таблица тезисов» — тезисы не заменены","de":"В ответе не найдена «Сводная таблица тезисов» — тезисы не заменены"},
-      "where": ["server/services/representation-transformer.ts:573"]
+      "where": ["server/services/representation-transformer.ts:574"]
     },
     "server.representationTransformer.transformNotFound": {
       "ru": "Трансформация не найдена",
       "en": "Transformation not found",
       "de": "Transformation nicht gefunden",
       "from": {"en":"Трансформация не найдена","de":"Трансформация не найдена"},
-      "where": ["server/services/representation-transformer.ts:769"]
+      "where": ["server/services/representation-transformer.ts:772"]
     },
     "server.routes.auth.alreadyRegistered": {
       "ru": "Уже зарегистрирован",
@@ -17489,70 +17820,70 @@
       "en": "The parent concept belongs to another user",
       "de": "Das Elternkonzept gehört einem anderen Benutzer",
       "from": {"en":"Концепция-родитель принадлежит другому пользователю","de":"Концепция-родитель принадлежит другому пользователю"},
-      "where": ["server/routes/lineage.ts:231"]
+      "where": ["server/routes/lineage.ts:232"]
     },
     "server.routes.lineage.invalidLinkParams": {
       "ru": "Невалидные параметры связи",
       "en": "Invalid link parameters",
       "de": "Ungültige Verknüpfungsparameter",
       "from": {"en":"Невалидные параметры связи","de":"Невалидные параметры связи"},
-      "where": ["server/routes/lineage.ts:186"]
+      "where": ["server/routes/lineage.ts:187"]
     },
     "server.routes.lineage.invalidPosition": {
       "ru": "Невалидная позиция узла",
       "en": "Invalid node position",
       "de": "Ungültige Knotenposition",
       "from": {"en":"Невалидная позиция узла","de":"Невалидная позиция узла"},
-      "where": ["server/routes/lineage.ts:267"]
+      "where": ["server/routes/lineage.ts:268"]
     },
     "server.routes.lineage.notLinked": {
       "ru": "Такой связи с родителем нет",
       "en": "There is no such link with the parent",
       "de": "Eine solche Verknüpfung mit dem Elternteil gibt es nicht",
       "from": {"en":"Такой связи с родителем нет","de":"Такой связи с родителем нет"},
-      "where": ["server/routes/lineage.ts:310","server/routes/lineage.ts:322"]
+      "where": ["server/routes/lineage.ts:311","server/routes/lineage.ts:323"]
     },
     "server.routes.lineage.parentNotFound": {
       "ru": "Концепция-родитель не найдена",
       "en": "Parent concept not found",
       "de": "Elternkonzept nicht gefunden",
       "from": {"en":"Концепция-родитель не найдена","de":"Концепция-родитель не найдена"},
-      "where": ["server/routes/lineage.ts:213","server/routes/lineage.ts:224"]
+      "where": ["server/routes/lineage.ts:214","server/routes/lineage.ts:225"]
     },
     "server.routes.lineage.philosopherParamRequired": {
       "ru": "хотя бы один параметр philosopher",
       "en": "at least one philosopher parameter",
       "de": "mindestens ein Parameter philosopher",
       "from": {"en":"хотя бы один параметр philosopher","de":"хотя бы один параметр philosopher"},
-      "where": ["server/routes/lineage.ts:346"]
+      "where": ["server/routes/lineage.ts:347"]
     },
     "server.routes.lineage.philosopherRequired": {
       "ru": "Укажите хотя бы одного философа",
       "en": "Specify at least one philosopher",
       "de": "Geben Sie mindestens einen Philosophen an",
       "from": {"en":"Укажите хотя бы одного философа","de":"Укажите хотя бы одного философа"},
-      "where": ["server/routes/lineage.ts:344"]
+      "where": ["server/routes/lineage.ts:345"]
     },
     "server.routes.lineage.positionInteger": {
       "ru": "целое число не меньше нуля",
       "en": "an integer not less than zero",
       "de": "eine ganze Zahl nicht kleiner als null",
       "from": {"en":"целое число не меньше нуля","de":"целое число не меньше нуля"},
-      "where": ["server/routes/lineage.ts:181","server/routes/lineage.ts:269"]
+      "where": ["server/routes/lineage.ts:182","server/routes/lineage.ts:270"]
     },
     "server.routes.lineage.requiredFieldLower": {
       "ru": "обязательное поле",
       "en": "required field",
       "de": "Pflichtfeld",
       "from": {"en":"обязательное поле","de":"обязательное поле"},
-      "where": ["server/routes/lineage.ts:171","server/routes/lineage.ts:174"]
+      "where": ["server/routes/lineage.ts:172","server/routes/lineage.ts:175"]
     },
     "server.routes.lineage.selfParent": {
       "ru": "Концепция не может быть собственным родителем",
       "en": "A concept cannot be its own parent",
       "de": "Ein Konzept kann nicht sein eigenes Elternteil sein",
       "from": {"en":"Концепция не может быть собственным родителем","de":"Концепция не может быть собственным родителем"},
-      "where": ["server/routes/lineage.ts:201"]
+      "where": ["server/routes/lineage.ts:202"]
     },
     "server.routes.logs.logClosed": {
       "ru": "Автор не открыл лог генерации этой концепции",
@@ -17676,7 +18007,7 @@
       "en": "Compatibility analysis unavailable",
       "de": "Kompatibilitätsanalyse nicht verfügbar",
       "from": {"en":"Анализ совместимости недоступен","de":"Анализ совместимости недоступен"},
-      "where": ["server/routes/syntheses.ts:1100"]
+      "where": ["server/routes/syntheses.ts:1104"]
     },
     "server.routes.syntheses.conceptNotFound": {
       "ru": "концепция {cid} не найдена",
@@ -17684,7 +18015,7 @@
       "de": "Konzept {cid} nicht gefunden",
       "from": {"en":"концепция {cid} не найдена","de":"концепция {cid} не найдена"},
       "params": {"cid":"cid"},
-      "where": ["server/routes/syntheses.ts:841"]
+      "where": ["server/routes/syntheses.ts:842"]
     },
     "server.routes.syntheses.copySuffix": {
       "ru": "{title} (копия)",
@@ -17692,56 +18023,56 @@
       "de": "{title} (Kopie)",
       "from": {"en":"{title} (копия)","de":"{title} (копия)"},
       "params": {"title":"row.title"},
-      "where": ["server/routes/syntheses.ts:1714"]
+      "where": ["server/routes/syntheses.ts:1721"]
     },
     "server.routes.syntheses.duplicateParticipants": {
       "ru": "участники-концепции не должны повторяться",
       "en": "participant concepts must not repeat",
       "de": "Teilnehmerkonzepte dürfen sich nicht wiederholen",
       "from": {"en":"участники-концепции не должны повторяться","de":"участники-концепции не должны повторяться"},
-      "where": ["server/routes/syntheses.ts:829"]
+      "where": ["server/routes/syntheses.ts:830"]
     },
     "server.routes.syntheses.estimateUnavailable": {
       "ru": "Оценка стоимости недоступна",
       "en": "Cost estimate unavailable",
       "de": "Kostenschätzung nicht verfügbar",
       "from": {"en":"Оценка стоимости недоступна","de":"Оценка стоимости недоступна"},
-      "where": ["server/routes/syntheses.ts:1354"]
+      "where": ["server/routes/syntheses.ts:1358"]
     },
     "server.routes.syntheses.fieldRequired": {
       "ru": "Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta",
       "en": "At least one of the fields title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta is required",
       "de": "Mindestens eines der Felder title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta ist erforderlich",
       "from": {"en":"Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta","de":"Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta"},
-      "where": ["server/routes/syntheses.ts:1604"]
+      "where": ["server/routes/syntheses.ts:1608"]
     },
     "server.routes.syntheses.invalidEstimateParams": {
       "ru": "Невалидные параметры оценки",
       "en": "Invalid estimate parameters",
       "de": "Ungültige Parameter der Schätzung",
       "from": {"en":"Невалидные параметры оценки","de":"Невалидные параметры оценки"},
-      "where": ["server/routes/syntheses.ts:1318"]
+      "where": ["server/routes/syntheses.ts:1322"]
     },
     "server.routes.syntheses.invalidParams": {
       "ru": "Невалидные параметры",
       "en": "Invalid parameters",
       "de": "Ungültige Parameter",
       "from": {"en":"Невалидные параметры","de":"Невалидные параметры"},
-      "where": ["server/routes/syntheses.ts:1074","server/routes/syntheses.ts:1405","server/routes/syntheses.ts:1418","server/routes/syntheses.ts:1596"]
+      "where": ["server/routes/search.ts:195","server/routes/syntheses.ts:1078","server/routes/syntheses.ts:1409","server/routes/syntheses.ts:1422","server/routes/syntheses.ts:1600"]
     },
     "server.routes.syntheses.invalidSynthesisParams": {
       "ru": "Невалидные параметры синтеза",
       "en": "Invalid synthesis parameters",
       "de": "Ungültige Syntheseparameter",
       "from": {"en":"Невалидные параметры синтеза","de":"Невалидные параметры синтеза"},
-      "where": ["server/routes/syntheses.ts:806","server/routes/syntheses.ts:827","server/routes/syntheses.ts:839"]
+      "where": ["server/routes/syntheses.ts:807","server/routes/syntheses.ts:828","server/routes/syntheses.ts:840"]
     },
     "server.routes.syntheses.knownSectionKeysArrayExpected": {
       "ru": "массив известных ключей разделов",
       "en": "an array of known section keys",
       "de": "ein Array bekannter Abschnittsschlüssel",
       "from": {"en":"массив известных ключей разделов","de":"массив известных ключей разделов"},
-      "where": ["server/routes/syntheses.ts:1070"]
+      "where": ["server/routes/syntheses.ts:1074"]
     },
     "server.routes.syntheses.metaForbidden": {
       "ru": "Автор концепции «{title}» не разрешил использовать её в мета-синтезе",
@@ -17749,70 +18080,70 @@
       "de": "Der Autor des Konzepts „{title}“ hat dessen Verwendung in der Meta-Synthese nicht erlaubt",
       "from": {"en":"Автор концепции «{title}» не разрешил использовать её в мета-синтезе","de":"Автор концепции «{title}» не разрешил использовать её в мета-синтезе"},
       "params": {"title":"title"},
-      "where": ["server/routes/syntheses.ts:302"]
+      "where": ["server/routes/syntheses.ts:303"]
     },
     "server.routes.syntheses.noParticipantAccess": {
       "ru": "Нет доступа к концепции-участнику",
       "en": "No access to a participant concept",
       "de": "Kein Zugriff auf das Teilnehmerkonzept",
       "from": {"en":"Нет доступа к концепции-участнику","de":"Нет доступа к концепции-участнику"},
-      "where": ["server/routes/syntheses.ts:849"]
+      "where": ["server/routes/syntheses.ts:850"]
     },
     "server.routes.syntheses.nonEmptyString": {
       "ru": "непустая строка",
       "en": "non-empty string",
       "de": "nichtleere Zeichenkette",
       "from": {"en":"непустая строка","de":"непустая строка"},
-      "where": ["server/routes/syntheses.ts:1563"]
+      "where": ["server/routes/syntheses.ts:1567"]
     },
     "server.routes.syntheses.participantArrayExpected": {
       "ru": "массив ParticipantInput",
       "en": "an array of ParticipantInput",
       "de": "ein Array von ParticipantInput",
       "from": {"en":"массив ParticipantInput","de":"массив ParticipantInput"},
-      "where": ["server/routes/syntheses.ts:733"]
+      "where": ["server/routes/syntheses.ts:734"]
     },
     "server.routes.syntheses.participantShape": {
       "ru": "элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}",
       "en": "items {type:'philosopher', name} | {type:'synthesis', synthesisId}",
       "de": "Elemente {type:'philosopher', name} | {type:'synthesis', synthesisId}",
       "from": {"en":"элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}","de":"элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}"},
-      "where": ["server/routes/syntheses.ts:747"]
+      "where": ["server/routes/syntheses.ts:748"]
     },
     "server.routes.syntheses.participantSynthesisIdRequired": {
       "ru": "участник synthesis требует synthesisId (UUID)",
       "en": "a synthesis participant requires synthesisId (UUID)",
       "de": "ein Teilnehmer vom Typ synthesis braucht synthesisId (UUID)",
       "from": {"en":"участник synthesis требует synthesisId (UUID)","de":"участник synthesis требует synthesisId (UUID)"},
-      "where": ["server/routes/syntheses.ts:741"]
+      "where": ["server/routes/syntheses.ts:742"]
     },
     "server.routes.syntheses.participantUnsuitable": {
       "ru": "Концепция-участник непригодна для мета-синтеза",
       "en": "A participant concept is unsuitable for meta-synthesis",
       "de": "Das Teilnehmerkonzept ist für die Meta-Synthese ungeeignet",
       "from": {"en":"Концепция-участник непригодна для мета-синтеза","de":"Концепция-участник непригодна для мета-синтеза"},
-      "where": ["server/routes/syntheses.ts:865"]
+      "where": ["server/routes/syntheses.ts:866"]
     },
     "server.routes.syntheses.publicFlagRemoved": {
       "ru": "снят в 8.7 — используйте visibility",
       "en": "removed in 8.7 — use visibility",
       "de": "in 8.7 entfernt — visibility verwenden",
       "from": {"en":"снят в 8.7 — используйте visibility","de":"снят в 8.7 — используйте visibility"},
-      "where": ["server/routes/syntheses.ts:1582"]
+      "where": ["server/routes/syntheses.ts:1586"]
     },
     "server.routes.syntheses.sectionKeysArrayExpected": {
       "ru": "массив ключей разделов",
       "en": "an array of section keys",
       "de": "ein Array von Abschnittsschlüsseln",
       "from": {"en":"массив ключей разделов","de":"массив ключей разделов"},
-      "where": ["server/routes/syntheses.ts:770","server/routes/syntheses.ts:1303"]
+      "where": ["server/routes/syntheses.ts:771","server/routes/syntheses.ts:1307"]
     },
     "server.routes.syntheses.seedRequiredWithoutParticipants": {
       "ru": "обязателен при пустых philosophers/participants",
       "en": "required when philosophers/participants are empty",
       "de": "erforderlich, wenn philosophers/participants leer sind",
       "from": {"en":"обязателен при пустых philosophers/participants","de":"обязателен при пустых philosophers/participants"},
-      "where": ["server/routes/syntheses.ts:764"]
+      "where": ["server/routes/syntheses.ts:765"]
     },
     "server.routes.syntheses.showcaseOnly": {
       "ru": "Концепция открыта витриной: доступны капсула и метаданные, содержание — нет",
@@ -17820,70 +18151,70 @@
       "de": "Das Konzept ist als Schaufenster geöffnet: Kapsel und Metadaten sind verfügbar, der Inhalt nicht",
       "from": {"en":"Концепция открыта витриной: доступны капсула и метаданные, содержание — нет","de":"Концепция открыта витриной: доступны капсула и метаданные, содержание — нет"},
       "static": true,
-      "where": ["server/routes/syntheses.ts:296"]
+      "where": ["server/routes/syntheses.ts:297"]
     },
     "server.routes.syntheses.startFailed": {
       "ru": "Не удалось запустить генерацию",
       "en": "Failed to start the generation",
       "de": "Generierung konnte nicht gestartet werden",
       "from": {"en":"Не удалось запустить генерацию","de":"Не удалось запустить генерацию"},
-      "where": ["server/routes/syntheses.ts:1008"]
+      "where": ["server/routes/syntheses.ts:1012"]
     },
     "server.routes.syntheses.stillGenerating": {
       "ru": "Синтез ещё генерируется — дождитесь завершения",
       "en": "The synthesis is still being generated — wait for it to finish",
       "de": "Die Synthese wird noch generiert — warten Sie auf den Abschluss",
       "from": {"en":"Синтез ещё генерируется — дождитесь завершения","de":"Синтез ещё генерируется — дождитесь завершения"},
-      "where": ["server/routes/syntheses.ts:1687"]
+      "where": ["server/routes/syntheses.ts:1694"]
     },
     "server.routes.syntheses.stopBeforeDelete": {
       "ru": "Генерация ещё идёт — остановите её перед удалением",
       "en": "Generation is still running — stop it before deleting",
       "de": "Die Generierung läuft noch — stoppen Sie sie vor dem Löschen",
       "from": {"en":"Генерация ещё идёт — остановите её перед удалением","de":"Генерация ещё идёт — остановите её перед удалением"},
-      "where": ["server/routes/syntheses.ts:1655"]
+      "where": ["server/routes/syntheses.ts:1662"]
     },
     "server.routes.syntheses.stringArrayExpected": {
       "ru": "массив строк",
       "en": "an array of strings",
       "de": "ein Array von Zeichenketten",
       "from": {"en":"массив строк","de":"массив строк"},
-      "where": ["server/routes/syntheses.ts:725"]
+      "where": ["server/routes/syntheses.ts:726"]
     },
     "server.routes.syntheses.titleMax300": {
       "ru": "не длиннее 300 символов",
       "en": "at most 300 characters",
       "de": "höchstens 300 Zeichen",
       "from": {"en":"не длиннее 300 символов","de":"не длиннее 300 символов"},
-      "where": ["server/routes/syntheses.ts:1565"]
+      "where": ["server/routes/syntheses.ts:1569"]
     },
     "server.routes.syntheses.unknownDepth": {
       "ru": "неизвестная глубина",
       "en": "unknown depth",
       "de": "unbekannte Tiefe",
       "from": {"en":"неизвестная глубина","de":"неизвестная глубина"},
-      "where": ["server/routes/syntheses.ts:784","server/routes/syntheses.ts:1311"]
+      "where": ["server/routes/syntheses.ts:785","server/routes/syntheses.ts:1315"]
     },
     "server.routes.syntheses.unknownLevel": {
       "ru": "неизвестный уровень",
       "en": "unknown level",
       "de": "unbekannte Ebene",
       "from": {"en":"неизвестный уровень","de":"неизвестный уровень"},
-      "where": ["server/routes/syntheses.ts:782","server/routes/syntheses.ts:1061","server/routes/syntheses.ts:1309"]
+      "where": ["server/routes/syntheses.ts:783","server/routes/syntheses.ts:1065","server/routes/syntheses.ts:1313"]
     },
     "server.routes.syntheses.unknownMethod": {
       "ru": "неизвестный метод",
       "en": "unknown method",
       "de": "unbekannte Methode",
       "from": {"en":"неизвестный метод","de":"неизвестный метод"},
-      "where": ["server/routes/syntheses.ts:780","server/routes/syntheses.ts:1059","server/routes/syntheses.ts:1307","server/routes/syntheses.ts:1420"]
+      "where": ["server/routes/syntheses.ts:781","server/routes/syntheses.ts:1063","server/routes/syntheses.ts:1311","server/routes/syntheses.ts:1424"]
     },
     "server.routes.syntheses.unknownSections": {
       "ru": "неизвестные разделы",
       "en": "unknown sections",
       "de": "unbekannte Abschnitte",
       "from": {"en":"неизвестные разделы","de":"неизвестные разделы"},
-      "where": ["server/routes/syntheses.ts:1300"]
+      "where": ["server/routes/syntheses.ts:1304"]
     },
     "server.routes.syntheses.unknownSectionsList": {
       "ru": "неизвестные разделы: {keys}",
@@ -17891,7 +18222,7 @@
       "de": "unbekannte Abschnitte: {keys}",
       "from": {"en":"неизвестные разделы: {keys}","de":"неизвестные разделы: {keys}"},
       "params": {"keys":""},
-      "where": ["server/routes/syntheses.ts:775"]
+      "where": ["server/routes/syntheses.ts:776"]
     },
     "server.routes.taxonomy.categoryTypeNotFound": {
       "ru": "Тип категории не найден",
@@ -21693,182 +22024,182 @@
       "de": " · Autor: {authorName}",
       "from": {"en":" · автор: {authorName}","de":" · автор: {authorName}"},
       "params": {"authorName":"synthesis.authorName"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1130"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1174"]
     },
     "synthesisPage.descendantsInCatalog": {
       "ru": "◈ Потомки этой концепции в каталоге",
       "en": "◈ Descendants of this concept in the catalog",
       "de": "◈ Nachkommen dieses Konzepts im Katalog",
       "from": {"en":"◈ Потомки этой концепции в каталоге","de":"◈ Потомки этой концепции в каталоге"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1545"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1604"]
     },
     "synthesisPage.discussSynthesis": {
       "ru": "◉ Обсудить концепцию",
       "en": "◉ Discuss the concept",
       "de": "◉ Konzept diskutieren",
       "from": {"en":"◉ Обсудить концепцию","de":"◉ Обсудить концепцию"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1362"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1406"]
     },
     "synthesisPage.discussSynthesisTitle": {
       "ru": "Концепция",
       "en": "Concept",
       "de": "Konzept",
       "from": {"en":"Концепция","de":"Концепция"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1360"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1404"]
     },
     "synthesisPage.editIcon": {
       "ru": "✎ Изменить",
       "en": "✎ Edit",
       "de": "✎ Bearbeiten",
       "from": {"en":"✎ Изменить","de":"✎ Изменить"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1277"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1321"]
     },
     "synthesisPage.editor": {
       "ru": "Редактор",
       "en": "Editor",
       "de": "Editor",
       "from": {"en":"Редактор","de":"Редактор"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1397"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1441"]
     },
     "synthesisPage.editorOpenFailed": {
       "ru": "Не удалось открыть редактор",
       "en": "Failed to open the editor",
       "de": "Editor konnte nicht geöffnet werden",
       "from": {"en":"Не удалось открыть редактор","de":"Не удалось открыть редактор"},
-      "where": ["client/src/pages/SynthesisPage.tsx:326"]
+      "where": ["client/src/pages/SynthesisPage.tsx:328"]
     },
     "synthesisPage.export": {
       "ru": "⤓ Экспорт",
       "en": "⤓ Export",
       "de": "⤓ Export",
       "from": {"en":"⤓ Экспорт","de":"⤓ Экспорт"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1321"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1365"]
     },
     "synthesisPage.genealogyTree": {
       "ru": "Генеалогическое древо",
       "en": "Genealogical tree",
       "de": "Genealogischer Stammbaum",
       "from": {"en":"Генеалогическое древо","de":"Генеалогическое древо"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1511"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1570"]
     },
     "synthesisPage.generatedBadge": {
       "ru": "ДОКУМЕНТ СГЕНЕРИРОВАН",
       "en": "DOCUMENT GENERATED",
       "de": "DOKUMENT GENERIERT",
       "from": {"en":"ДОКУМЕНТ СГЕНЕРИРОВАН","de":"ДОКУМЕНТ СГЕНЕРИРОВАН"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1255"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1299"]
     },
     "synthesisPage.generatingBadge": {
       "ru": "ГЕНЕРАЦИЯ ДОКУМЕНТА",
       "en": "DOCUMENT GENERATION",
       "de": "DOKUMENT WIRD GENERIERT",
       "from": {"en":"ГЕНЕРАЦИЯ ДОКУМЕНТА","de":"ГЕНЕРАЦИЯ ДОКУМЕНТА"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1254"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1298"]
     },
     "synthesisPage.generationError": {
       "ru": "Ошибка генерации",
       "en": "Generation error",
       "de": "Generierungsfehler",
       "from": {"en":"Ошибка генерации","de":"Ошибка генерации"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1388"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1432"]
     },
     "synthesisPage.glossaryRowNotFound": {
       "ru": "Строка глоссария не найдена в данных синтеза",
       "en": "The glossary row was not found in the synthesis data",
       "de": "Glossarzeile in den Synthesedaten nicht gefunden",
       "from": {"en":"Строка глоссария не найдена в данных синтеза","de":"Строка глоссария не найдена в данных синтеза"},
-      "where": ["client/src/pages/SynthesisPage.tsx:312"]
+      "where": ["client/src/pages/SynthesisPage.tsx:314"]
     },
     "synthesisPage.graph": {
       "ru": "◈ Граф",
       "en": "◈ Graph",
       "de": "◈ Graph",
       "from": {"en":"◈ Граф","de":"◈ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1266"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1310"]
     },
     "synthesisPage.ifYoursLead": {
       "ru": "Если это ваша концепция —",
       "en": "If this is your concept —",
       "de": "Wenn dies Ihr Konzept ist —",
       "from": {"en":"Если это ваша концепция —","de":"Если это ваша концепция —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1090"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1134"]
     },
     "synthesisPage.loadFailed": {
       "ru": "Не удалось загрузить синтез.",
       "en": "Failed to load the synthesis.",
       "de": "Synthese konnte nicht geladen werden.",
       "from": {"en":"Не удалось загрузить синтез.","de":"Не удалось загрузить синтез."},
-      "where": ["client/src/pages/SynthesisPage.tsx:1105"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1149"]
     },
     "synthesisPage.loading": {
       "ru": "загрузка синтеза…",
       "en": "loading synthesis…",
       "de": "Synthese wird geladen…",
       "from": {"en":"загрузка синтеза…","de":"загрузка синтеза…"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1109"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1153"]
     },
     "synthesisPage.logInLower": {
       "ru": "войдите",
       "en": "log in",
       "de": "melden Sie sich an",
       "from": {"en":"войдите","de":"войдите"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1096"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1140"]
     },
     "synthesisPage.notFoundOrDeleted": {
       "ru": "Синтез не найден или был удалён.",
       "en": "The synthesis was not found or has been deleted.",
       "de": "Die Synthese wurde nicht gefunden oder gelöscht.",
       "from": {"en":"Синтез не найден или был удалён.","de":"Синтез не найден или был удалён."},
-      "where": ["client/src/pages/SynthesisPage.tsx:1071"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1115"]
     },
     "synthesisPage.otherwise": {
       "ru": ". Иначе —",
       "en": ". Otherwise —",
       "de": ". Andernfalls —",
       "from": {"en":". Иначе —","de":". Иначе —"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1098"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1142"]
     },
     "synthesisPage.parentConcepts": {
       "ru": "Родительские концепции:",
       "en": "Parent concepts:",
       "de": "Elternkonzepte:",
       "from": {"en":"Родительские концепции:","de":"Родительские концепции:"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1526"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1585"]
     },
     "synthesisPage.print": {
       "ru": "Распечатать",
       "en": "Print",
       "de": "Drucken",
       "from": {"en":"Распечатать","de":"Распечатать"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1371"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1415"]
     },
     "synthesisPage.privateConcept": {
       "ru": "Эта концепция приватна: автор не открыл её посторонним.",
       "en": "This concept is private: the author has not opened it to others.",
       "de": "Dieses Konzept ist privat: der Autor hat es Außenstehenden nicht geöffnet.",
       "from": {"en":"Эта концепция приватна: автор не открыл её посторонним.","de":"Эта концепция приватна: автор не открыл её посторонним."},
-      "where": ["client/src/pages/SynthesisPage.tsx:1083"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1127"]
     },
     "synthesisPage.privateSynthesis": {
       "ru": "Этот синтез приватный: доступен только владельцу.",
       "en": "This synthesis is private: available only to the owner.",
       "de": "Diese Synthese ist privat: nur dem Eigentümer zugänglich.",
       "from": {"en":"Этот синтез приватный: доступен только владельцу.","de":"Этот синтез приватный: доступен только владельцу."},
-      "where": ["client/src/pages/SynthesisPage.tsx:1084"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1128"]
     },
     "synthesisPage.proposalsLoadFailed": {
       "ru": "Не удалось загрузить предложения.",
       "en": "Could not load the proposals.",
       "de": "Die Vorschläge konnten nicht geladen werden.",
       "from": {"en":"Не удалось загрузить предложения.","de":"Не удалось загрузить предложения."},
-      "where": ["client/src/pages/SynthesisPage.tsx:794"]
+      "where": ["client/src/pages/SynthesisPage.tsx:796"]
     },
     "synthesisPage.publicCatalogLower": {
       "ru": "публичный каталог",
       "en": "the public catalog",
       "de": "öffentlicher Katalog",
       "from": {"en":"публичный каталог","de":"публичный каталог"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1098"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1142"]
     },
     "synthesisPage.recommendations": {
       "ru": "◈ Рекомендации{recCount}",
@@ -21876,112 +22207,126 @@
       "de": "◈ Empfehlungen{recCount}",
       "from": {"en":"◈ Рекомендации{recCount}","de":"◈ Рекомендации{recCount}"},
       "params": {"recCount":"recCount !== null ? ` · ${recCount}` : \"\""},
-      "where": ["client/src/pages/SynthesisPage.tsx:1436"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1495"]
     },
     "synthesisPage.recommendationsHint": {
       "ru": "Рекомендации критики: что исполнять, решаете вы — поштучно",
       "en": "Critique recommendations: you decide what to execute — one by one",
       "de": "Empfehlungen der Kritik: was ausgeführt wird, entscheiden Sie — einzeln",
       "from": {"en":"Рекомендации критики: что исполнять, решаете вы — поштучно","de":"Рекомендации критики: что исполнять, решаете вы — поштучно"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1433"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1492"]
     },
     "synthesisPage.reviewsLoadFailed": {
       "ru": "Не удалось загрузить рецензии.",
       "en": "Could not load the reviews.",
       "de": "Rezensionen konnten nicht geladen werden.",
       "from": {"en":"Не удалось загрузить рецензии.","de":"Не удалось загрузить рецензии."},
-      "where": ["client/src/pages/SynthesisPage.tsx:762"]
+      "where": ["client/src/pages/SynthesisPage.tsx:764"]
     },
     "synthesisPage.sectionHistory": {
       "ru": "◷ История",
       "en": "◷ History",
       "de": "◷ Verlauf",
       "from": {"en":"◷ История","de":"◷ История"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1461"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1520"]
     },
     "synthesisPage.sectionHistoryHint": {
       "ru": "Версии раздела до каждой правки и откат",
       "en": "Section versions before each edit, and rollback",
       "de": "Abschnittsversionen vor jeder Änderung und Rollback",
       "from": {"en":"Версии раздела до каждой правки и откат","de":"Версии раздела до каждой правки и откат"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1458"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1517"]
     },
     "synthesisPage.showcaseParen": {
       "ru": " (витрина)",
       "en": " (showcase)",
       "de": " (Schaufenster)",
       "from": {"en":" (витрина)","de":" (витрина)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1129"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1173"]
     },
     "synthesisPage.subsectionConflict": {
       "ru": "Подраздел изменили, пока вы правили.",
       "en": "The subsection was changed while you were editing.",
       "de": "Der Unterabschnitt wurde geändert, während Sie bearbeitet haben.",
       "from": {"en":"Подраздел изменили, пока вы правили.","de":"Подраздел изменили, пока вы правили."},
-      "where": ["client/src/pages/SynthesisPage.tsx:502"]
+      "where": ["client/src/pages/SynthesisPage.tsx:504"]
     },
     "synthesisPage.subsectionNoBase": {
       "ru": "Не удалось определить версию подраздела — закройте правку и откройте её заново.",
       "en": "Could not determine the subsection's version — close the editor and open it again.",
       "de": "Die Version des Unterabschnitts ließ sich nicht bestimmen — schließen Sie die Bearbeitung und öffnen Sie sie erneut.",
       "from": {"en":"Не удалось определить версию подраздела — закройте правку и откройте её заново.","de":"Не удалось определить версию подраздела — закройте правку и откройте её заново."},
-      "where": ["client/src/pages/SynthesisPage.tsx:469"]
+      "where": ["client/src/pages/SynthesisPage.tsx:471"]
     },
     "synthesisPage.tabDiscussion": {
       "ru": "Обсуждение",
       "en": "Discussion",
       "de": "Diskussion",
       "from": {"en":"Обсуждение","de":"Обсуждение"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1161"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1205"]
     },
     "synthesisPage.tabDocument": {
       "ru": "Документ",
       "en": "Document",
       "de": "Dokument",
       "from": {"en":"Документ","de":"Документ"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1152"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1196"]
     },
     "synthesisPage.tabMembers": {
       "ru": "Участники",
       "en": "Participants",
       "de": "Teilnehmer",
       "from": {"en":"Участники","de":"Участники"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1194"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1238"]
     },
     "synthesisPage.tabProposals": {
       "ru": "Предложения",
       "en": "Proposals",
       "de": "Vorschläge",
       "from": {"en":"Предложения","de":"Предложения"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1183"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1227"]
     },
     "synthesisPage.tabReviews": {
       "ru": "Рецензии",
       "en": "Reviews",
       "de": "Rezensionen",
       "from": {"en":"Рецензии","de":"Рецензии"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1172"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1216"]
+    },
+    "synthesisPage.termLabel": {
+      "ru": "Термин",
+      "en": "Term",
+      "de": "Begriff",
+      "from": {"en":"Термин","de":"Термин"},
+      "where": ["client/src/pages/SynthesisPage.tsx:1449"]
+    },
+    "synthesisPage.termMissing": {
+      "ru": "Термин из поиска не найден в документе: глоссарий мог измениться после того, как был построен индекс.",
+      "en": "The term from the search was not found in the document: the glossary may have changed since the index was built.",
+      "de": "Der Begriff aus der Suche wurde im Dokument nicht gefunden: das Glossar kann sich geändert haben, seit der Index aufgebaut wurde.",
+      "from": {"en":"Термин из поиска не найден в документе: глоссарий мог измениться после того, как был построен индекс.","de":"Термин из поиска не найден в документе: глоссарий мог измениться после того, как был построен индекс."},
+      "where": ["client/src/pages/SynthesisPage.tsx:1450"]
     },
     "synthesisPage.thesisRowNotFound": {
       "ru": "Строка тезиса не найдена в данных синтеза",
       "en": "The thesis row was not found in the synthesis data",
       "de": "Thesenzeile in den Synthesedaten nicht gefunden",
       "from": {"en":"Строка тезиса не найдена в данных синтеза","de":"Строка тезиса не найдена в данных синтеза"},
-      "where": ["client/src/pages/SynthesisPage.tsx:297"]
+      "where": ["client/src/pages/SynthesisPage.tsx:299"]
     },
     "synthesisPage.toGraph": {
       "ru": "→ Граф",
       "en": "→ Graph",
       "de": "→ Graph",
       "from": {"en":"→ Граф","de":"→ Граф"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1447"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1506"]
     },
     "synthesisPage.toGraphHint": {
       "ru": "Трансформировать тезисы в граф (Representation Transformer)",
       "en": "Transform the theses into a graph (Representation Transformer)",
       "de": "Thesen in einen Graphen transformieren (Representation Transformer)",
       "from": {"en":"Трансформировать тезисы в граф (Representation Transformer)","de":"Трансформировать тезисы в граф (Representation Transformer)"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1444"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1503"]
     },
     "synthesisPage.viewModeBadge": {
       "ru": "РЕЖИМ ПРОСМОТРА · {visibility}",
@@ -21989,7 +22334,7 @@
       "de": "ANSICHTSMODUS · {visibility}",
       "from": {"en":"РЕЖИМ ПРОСМОТРА · {visibility}","de":"РЕЖИМ ПРОСМОТРА · {visibility}"},
       "params": {"visibility":"visibilityBadge(synthesis.visibility).toUpperCase()"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1256"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1300"]
     },
     "synthesisPage.viewingAsMember": {
       "ru": "Вы участник концепции · роль: {role}",
@@ -21997,14 +22342,14 @@
       "de": "Sie sind Teilnehmer der Konzeption · Rolle: {role}",
       "from": {"en":"Вы участник концепции · роль: {role}","de":"Вы участник концепции · роль: {role}"},
       "params": {"role":""},
-      "where": ["client/src/pages/SynthesisPage.tsx:1127"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1171"]
     },
     "synthesisPage.viewingPublic": {
       "ru": "Вы смотрите публичную концепцию",
       "en": "You are viewing a public concept",
       "de": "Sie betrachten ein öffentliches Konzept",
       "from": {"en":"Вы смотрите публичную концепцию","de":"Вы смотрите публичную концепцию"},
-      "where": ["client/src/pages/SynthesisPage.tsx:1128"]
+      "where": ["client/src/pages/SynthesisPage.tsx:1172"]
     },
     "utils.conceptFile.addMissingSections": {
       "ru": ". Откройте документ, добавьте недостающие разделы и сохраните заново.",

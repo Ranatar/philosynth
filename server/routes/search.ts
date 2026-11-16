@@ -15,7 +15,8 @@
  *   epoch         номер эпохи PHILOSOPHER_EPOCHS с нуля, повторяемый:
  *                 среди философов концепции (в области philArea) есть
  *                 философ одной из названных эпох
- *   method, synthLevel, status, lang
+ *   method, synthLevel, depth, status, lang   (depth — глубина проработки
+ *                 overview | standard | deep | exhaustive; 18.2, Д-89)
  *   meta          true | false — мета-синтез (среди родителей есть концепция)
  *   descendantsOf id концепции X: только её видимые потомки
  *   dateFrom, dateTo   YYYY-MM-DD, по дате создания, обе границы включены (UTC)
@@ -82,6 +83,7 @@ export const searchRoutes = new Hono<AuthEnv>();
 /* Допустимые значения — зеркало enum'ов схемы (02), как в routes/syntheses */
 const METHODS = new Set(["dialectical", "integrative", "deconstructive", "hermeneutical", "analytical", "creative"]);
 const SYNTH_LEVELS = new Set(["comparative", "transformative", "generative"]);
+const DEPTHS = new Set(["overview", "standard", "deep", "exhaustive"]);
 const STATUSES = new Set(["draft", "generating", "paused", "ready", "error"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 /** Глубина обхода потомков для фильтра (предел сервиса родословной). */
@@ -157,6 +159,7 @@ searchRoutes.get("/search", optionalAuth, async (c) => {
   /* ── прочие фильтры ── */
   if (q.method !== undefined && !METHODS.has(q.method)) details.method = [...METHODS].join("|");
   if (q.synthLevel !== undefined && !SYNTH_LEVELS.has(q.synthLevel)) details.synthLevel = [...SYNTH_LEVELS].join("|");
+  if (q.depth !== undefined && !DEPTHS.has(q.depth)) details.depth = [...DEPTHS].join("|");
   if (q.status !== undefined && !STATUSES.has(q.status)) details.status = [...STATUSES].join("|");
   let meta: boolean | null = null;
   if (q.meta !== undefined) {
@@ -219,6 +222,7 @@ searchRoutes.get("/search", optionalAuth, async (c) => {
     epochPhilosophers,
     method: q.method ?? null,
     synthLevel: q.synthLevel ?? null,
+    depth: q.depth ?? null,
     lang,
     meta,
     descendantIds,
@@ -265,6 +269,7 @@ searchRoutes.get("/search", optionalAuth, async (c) => {
       epochs,
       method: params.method,
       synthLevel: params.synthLevel,
+      depth: params.depth,
       lang,
       meta,
       descendantsOf: q.descendantsOf ?? null,

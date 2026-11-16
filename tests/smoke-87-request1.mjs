@@ -16,7 +16,8 @@
  *    вошедший → /catalog, restoring → заглушка, сбои строкой;
  *  - PlansTable вынесена из BillingPage: в BillingPage <table нет в секции
  *    подписки, столбец действия — слот;
- *  - CatalogPage: publicOnly без «Мои», «Новый синтез» и LineageSearch;
+ *  - CatalogPage: publicOnly без «Мои» и «Новый синтез» (18.2: LineageSearch
+ *    снят — фильтр родословной общего поиска гостю открыт);
  *    публичность — один updateSynthesis({ visibility, 4 флага }) + тихая
  *    перечитка; флаги из getSynthesis; visibilityErrorText по кодам;
  *  - SynthesisCard/VisibilityControl: «Опубликовать» и isPublic в клиенте
@@ -137,9 +138,12 @@ console.log("\n6. CatalogPage");
 const cp = rd("client/src/pages/CatalogPage.tsx"), cpC = strip(cp);
 const cpMod = await import("../client/src/pages/CatalogPage.tsx");
 const { ApiError } = await import("../client/src/api/client.ts");
-check("publicOnly — вкладка по умолчанию public", /useState<CatalogTab>\(publicOnly \? "public" : "mine"\)/.test(cpC));
-check("publicOnly — без «Мои»/«Публичные» и «Новый синтез»", /\{!publicOnly && tabBtn\("mine", "Мои"\)\}/.test(cpC) && /publicOnly \? \([\s\S]*?\) : \(\s*<Link to="\/synthesis\/new"/.test(cpC));
-check("LineageSearch — только вошедшему и не в publicOnly", /\{lineageSearchOpen && authenticated && !publicOnly && \(/.test(cpC) && /\{authenticated && !publicOnly && \(\s*<button/.test(cpC));
+// 18.2: вкладка — состояние адресной строки; на «/explore» список заперт (scope адреса не читается)
+check("publicOnly — список заперт на public", /defaultScope: publicOnly \? "public" : "mine", lockScope: publicOnly/.test(cpC));
+check("publicOnly — без «Мои»/«Публичные» и «Новый синтез»", /\{!publicOnly && tabBtn\("mine", tl\("catalogPage\.tabMine", "Мои"\)\)\}/.test(cpC) && /publicOnly \? \([\s\S]*?\) : \(\s*<Link to="\/synthesis\/new"/.test(cpC));
+// 18.2: LineageSearch снят — родословная стала фильтром общего поиска (доступен и гостю),
+// а закрытый сессией /lineage/search каталог не зовёт вовсе
+check("каталог не зовёт /lineage/search; LineageSearch нет", !/LineageSearch|lineage\/search|searchByPhilosophers/.test(cpC) && /<CatalogFilters/.test(cpC));
 check("гостю на /explore — «Создать аккаунт»", /explore-register/.test(cpC) && /to="\/register"/.test(cpC));
 check("публичность — ОДИН PATCH со ступенью и четырьмя флагами", /await updateSynthesis\(id, \{\s*visibility: flags\.visibility,\s*showAuthor: flags\.showAuthor,\s*showLogs: flags\.showLogs,\s*showPrompts: flags\.showPrompts,\s*allowMeta: flags\.allowMeta,\s*\}\)/.test(cpC));
 check("после PATCH — тихая перечитка", /await updateSynthesis\([\s\S]*?await fetchList\(\{ silent: true \}\)/.test(cpC));
@@ -171,21 +175,26 @@ check("VisibilityControl — клики гасятся (preventDefault+stopPropa
 check("VisibilityControl — флаги из loadFlags при открытии", /loadFlags\(synthesisId\)/.test(vcC));
 check("VisibilityControl — без window.confirm/prompt", !/window\.confirm|window\.prompt|confirm\(/.test(vcC));
 check("shared — isPublic снят из SynthesisFull/Preview/PatchInput (вариант б)", !/isPublic\??: boolean/.test(strip(rd("packages/shared/types/synthesis.ts"))));
-check("сервер — DTO без isPublic, синоним PATCH → 400", !/isPublic: isPublicOf/.test(strip(rd("server/routes/syntheses.ts"))) && /details\.isPublic = "снят в 8\.7/.test(rd("server/routes/syntheses.ts")));
+// 11.x: сообщение отказа — через tl() (текст прежний)
+check("сервер — DTO без isPublic, синоним PATCH → 400", !/isPublic: isPublicOf/.test(strip(rd("server/routes/syntheses.ts"))) && /details\.isPublic = tl\("server\.routes\.syntheses\.publicFlagRemoved", "снят в 8\.7/.test(rd("server/routes/syntheses.ts")));
 
 // ── 8. SynthesisPage / Document* ───────────────────────────────────────
 console.log("\n8. SynthesisPage / DocumentView / DocumentHeader / ContextLogViewer");
 const sp = rd("client/src/pages/SynthesisPage.tsx"), spC = strip(sp);
 check("смотрящий — authStatus из auth-store, isGuest", /const isGuest = authStatus !== "authenticated"/.test(spC));
-check("гейты — contentAvailable/logsAvailable/promptsAvailable по effectiveFlags", /effectiveFlags\(synthesis\)/.test(spC) && /const contentAvailable = isOwner \|\| \(!isGuest && scopeFull\)/.test(spC) && /logsAvailable = isOwner \|\| \(!isGuest && !!eff\?\.showLogs\)/.test(spC) && /promptsAvailable = isOwner \|\| \(!isGuest && !!eff\?\.showPrompts\)/.test(spC));
-check("полоса невладельца + «Создать аккаунт» гостю", /\{!isOwner && \(\s*<div className="app-view-banner"/.test(spC) && /Вы смотрите публичную концепцию/.test(spC) && /\{isGuest && \(\s*<Link to="\/register"/.test(spC));
+// 16–17: логи и промпты открыты имеющему право правки (владелец и редактор), а не только владельцу
+check("гейты — contentAvailable/logsAvailable/promptsAvailable по effectiveFlags", /effectiveFlags\(synthesis\)/.test(spC) && /const contentAvailable = isOwner \|\| \(!isGuest && scopeFull\)/.test(spC) && /logsAvailable = canEdit \|\| \(!isGuest && !!eff\?\.showLogs\)/.test(spC) && /promptsAvailable = canEdit \|\| \(!isGuest && !!eff\?\.showPrompts\)/.test(spC) && /const canEdit = synthesis\?\.capabilities\?\.edit \?\? false/.test(spC));
+// 11.x: строки через tl(); 16.2: участнику полоса называет его роль
+check("полоса невладельца + «Создать аккаунт» гостю", /\{!isOwner && \(\s*<div\s+className="app-view-banner"/.test(spC) && /tl\("synthesisPage\.viewingPublic", "Вы смотрите публичную концепцию"\)/.test(spC) && /\{isGuest && \(\s*<Link to="\/register"/.test(spC));
 check("WS — synthesisId null гостю", /synthesisId: !isGuest \? \(id \?\? null\) : null/.test(spC));
-check("GET /modes — только владельцу", /!isOwnerForModes\) return/.test(spC));
+// 16–17: счётчики режимов — имеющему право правки (при капсуле) либо смотрящему полный документ; гостю — никогда (id не задан без сессии)
+check("GET /modes — по праву правки либо просмотру полного документа", /if \(!\(canEditModes \? hasCapsule : modesReadOnly\)\) return;/.test(spC) && /const canEditModes = synthesis\?\.capabilities\?\.edit \?\? false/.test(spC));
 check("/lineage/ancestors — не гостю", /!isMetaSynthesis \|\| isGuest\) return/.test(spC));
 check("граф и экспорт — под contentAvailable", (spC.match(/\{contentAvailable && \(/g) ?? []).length === 2);
-check("✎ Изменить и режимы — под isOwner", /\{isOwner && \(\s*<button[\s\S]*?✎ Изменить/.test(spC) && /hasCapsule &&\s*isOwner &&\s*MODE_ORDER\.map/.test(spC));
+// 16–17: гейт — право правки (capabilities.edit), не владение (сторож 4bq)
+check("✎ Изменить и режимы — под правом правки", /\{canEdit && \(\s*<button[\s\S]*?✎ Изменить/.test(spC) && /hasCapsule &&\s*canEdit &&\s*MODE_ORDER\.map/.test(spC));
 check("◈ Лог — по logsAvailable, viewer с promptsAvailable", /onOpenLog=\{logsAvailable \? \(\) => setLogOpen\(true\) : undefined\}/.test(spC) && /promptsAvailable=\{promptsAvailable\}/.test(spC));
-check("GenerationProgress/PauseModal — владельцу", /\{live && isOwner && \(/.test(spC) && /open=\{pauseModalOpen && paused && isOwner\}/.test(spC));
+check("GenerationProgress/PauseModal — имеющему право правки", /\{live && canEdit && \(/.test(spC) && /open=\{pauseModalOpen && paused && canEdit\}/.test(spC));
 check("403 гостю — «приватна» + ссылка на вход со state.from", /Эта концепция приватна/.test(spC) && /to="\/login"\s*state=\{\{ from: location\.pathname \+ location\.search \}\}/.test(spC));
 check("перечитка при смене authStatus (restoring — не переход)", /prevAuthRef/.test(spC) && /if \(prev !== authStatus && id\) void load\(id\)/.test(spC));
 check("4p: viewOnly: true / pausedState / reloadSections / <PauseModal целы", sp.includes("viewOnly: true") && sp.includes("synthesis?.pausedState") || sp.includes("synthesis.pausedState") && sp.includes("reloadSections") && sp.includes("<PauseModal"));

@@ -7,9 +7,9 @@
  *  - getDescendants → GET /syntheses/:id/lineage/descendants?depth=N —
  *    { children }: потомки; чужие приватные узлы отсечены сервером
  *    ВМЕСТЕ с поддеревьями (pruneInvisible);
- *  - searchByPhilosophers → GET /lineage/search?philosopher=…×N —
- *    { syntheses }: концепции, в генеалогии которых есть ВСЕ указанные
- *    философы (транзитивно); только видимые (свои ИЛИ публичные).
+ *  - поиск по философам-предкам (GET /lineage/search, 3.1) клиент больше
+ *    НЕ зовёт: с 18.2 это фильтр общего поиска каталога (`philArea=lineage`
+ *    у GET /syntheses/search — `api/search.ts`); серверный маршрут остаётся.
  *
  * depth зажимается сервером в 1..10 (clampDepth) — клиент не валидирует.
  *
@@ -31,7 +31,6 @@ import type {
   LineageUnlinkResult,
   LinkParentInput,
 } from "@philosynth/shared/types/lineage";
-import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
 
 import { apiDelete, apiGet, apiPost } from "./client";
 
@@ -53,18 +52,6 @@ export function getDescendants(
     `/syntheses/${encodeURIComponent(id)}/lineage/descendants`,
     depth !== undefined ? { depth } : {},
   ).then((r) => r.children);
-}
-
-export function searchByPhilosophers(
-  names: readonly string[],
-): Promise<SynthesisPreview[]> {
-  // Повторяющийся параметр philosopher=…&philosopher=… (§2.8)
-  const qs = names
-    .map((n) => "philosopher=" + encodeURIComponent(n))
-    .join("&");
-  return apiGet<{ syntheses: SynthesisPreview[] }>(
-    `/lineage/search?${qs}`,
-  ).then((r) => r.syntheses);
 }
 
 export function linkParent(

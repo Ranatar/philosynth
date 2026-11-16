@@ -35,6 +35,12 @@
  *    красная (.action-btn.danger, --red — единственный цвет опасности).
  * Оба состояния (правка/подтверждение) — взаимоисключающие: открытие
  * одного закрывает другое.
+ *
+ * Беседа 18.2 (п. 3): карточка выдачи поиска — под превью фрагмент с
+ * подсветкой совпадения (SearchFragmentView: куски текста, не разметка);
+ * у найденного термина глоссария — строка с термином, а сама карточка
+ * ведёт ПРЯМО К ТЕРМИНУ в документе (`?term=<id>&termKey=<ключ>`, читает
+ * SynthesisPage): второй ссылки внутри карточки нет — карточка уже ссылка.
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -45,7 +51,12 @@ import type {
   VisibilityFlags,
 } from "@philosynth/shared/types/synthesis";
 
+import type { SearchFragment, SearchTermHit } from "@philosynth/shared/types/search";
+import { termKey } from "@philosynth/shared/utils/discussion-address";
+
+import { termLinkOf } from "../../utils/catalog-search";
 import { visibilityBadge } from "../../utils/visibility-text";
+import { SearchFragmentView } from "./SearchFragment";
 import { VisibilityControl } from "./VisibilityControl";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
@@ -57,6 +68,11 @@ const STATUS_LABELS = (): Record<string, string> => ({
   ready: tl("catalog.synthesisCard.statusReady", "готов"),
   error: tl("catalog.synthesisCard.statusError", "ошибка"),
 });
+
+/** Подпись статуса концепции (карточка и фильтр каталога 18.2) */
+export function synthesisStatusLabel(status: string): string {
+  return STATUS_LABELS()[status] ?? status;
+}
 
 /** Множественное число «потомок» (8.4, п.4) */
 export function descendantsPhrase(n: number): string {
@@ -112,6 +128,12 @@ export interface SynthesisCardProps {
   /** Беседа 16.2: дополнительный бейдж (вкладка «Со мной поделились» —
    *  моя роль/статус участия); рисуется первым в header-badges */
   badge?: React.ReactNode;
+  /** Беседа 18.2: фрагмент выдачи поиска с совпадением */
+  fragment?: SearchFragment | undefined;
+  /** Беседа 18.2: найденный термин глоссария — карточка ведёт к нему */
+  term?: SearchTermHit | undefined;
+  /** Беседа 18.2: найдено запасным ходом (опечатка) — «похожее» */
+  fuzzy?: boolean | undefined;
 }
 
 type Mode =
@@ -136,6 +158,9 @@ export function SynthesisCard({
   visibility,
   actions,
   badge,
+  fragment,
+  term,
+  fuzzy,
 }: SynthesisCardProps) {
   const phil =
     synthesis.philosophers.length > 0
@@ -219,10 +244,15 @@ export function SynthesisCard({
   const busy =
     duplicating || ("busy" in mode && mode.busy);
 
+  // 18.2: найден термин — карточка открывает документ у этого термина
+  const cardTo = term
+    ? termLinkOf(synthesis.id, { id: term.id, key: termKey(term.term) })
+    : `/synthesis/${synthesis.id}`;
+
   return (
     <Link
       ref={cardRef}
-      to={`/synthesis/${synthesis.id}`}
+      to={cardTo}
       className="catalog-card"
       data-synthesis-id={synthesis.id}
     >
@@ -245,7 +275,7 @@ export function SynthesisCard({
             </span>
           )}
           <span className="cert-badge">
-            {STATUS_LABELS()[synthesis.status] ?? synthesis.status}
+            {synthesisStatusLabel(synthesis.status)}
           </span>
         </span>
       </div>
@@ -263,6 +293,16 @@ export function SynthesisCard({
 
       {synthesis.capsulePreview && (
         <p className="catalog-card-preview">{synthesis.capsulePreview}</p>
+      )}
+
+      {/* Беседа 18.2 (п. 3): где найдено — фрагмент с подсветкой и термин */}
+      {fragment && <SearchFragmentView fragment={fragment} fuzzy={fuzzy} />}
+      {term && (
+        <div className="search-term-line" data-testid="card-term" data-term-id={term.id}>
+          <span className="search-fragment-source">{tl("catalog.synthesisCard.termFound", "термин глоссария")}</span>
+          <span className="search-term-name">{term.term}</span>
+          <span className="search-term-go">{tl("catalog.synthesisCard.termGo", "→ откроется у термина")}</span>
+        </div>
       )}
 
       {/* Беседа 8.7 (п. 5): управление публичностью — вместо «Опубликовать» */}

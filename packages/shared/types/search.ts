@@ -61,6 +61,8 @@ export interface SynthesisSearchQueryEcho {
   epochs: number[];
   method: string | null;
   synthLevel: string | null;
+  /** Глубина проработки (18.2, Д-89) */
+  depth: string | null;
   lang: string | null;
   meta: boolean | null;
   descendantsOf: string | null;
