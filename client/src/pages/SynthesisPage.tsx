@@ -62,6 +62,7 @@ import {
 } from "../components/edit/ElementEditor";
 import type { EditableRowRef } from "../components/document/SectionView";
 import { getAncestors } from "../api/lineage";
+import { SimilarConcepts } from "../components/catalog/SimilarConcepts";
 import { DocumentView } from "../components/document/DocumentView";
 import { GenealogyTree } from "../components/lineage/GenealogyTree";
 import { EditModal } from "../components/edit/EditModal";
@@ -1610,6 +1611,10 @@ export function SynthesisPage() {
           ) : undefined
         }
       />
+
+      {/* Беседа 18.3 (п. 2): похожие концепции — под документом. Путь
+          гостевой; кандидаты — только видимые смотрящему (правила поиска). */}
+      <SimilarConcepts synthesisId={synthesis.id} guest={isGuest} mine={canManage} />
       </>)}
 
       {/* Беседа 2.4: лог контекста. Live-обновление — refreshKey растёт по

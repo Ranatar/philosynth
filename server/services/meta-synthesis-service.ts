@@ -17,7 +17,8 @@
  *    genealogy концепт-файла;
  *  - collectPhilosopherAncestors [22451] — АДАПТАЦИЯ: в исходнике обходит
  *    УЗЕЛ генеалогии рекурсией по объекту; здесь принимает synthesisId и
- *    считает рекурсивным CTE по 02-data-model §2.4 (глубина ≤ 10);
+ *    идёт общим обходом родословной (18.3, Д-91: строки БД и дерево
+ *    файла, глубина ≤ 10; до того — свой CTE по одним строкам);
  *  - conceptContextBlockFull [10232] — legacy-монолит, порт 1:1
  *    (КВИРК ИСХОДНИКА СОХРАНЁН: перечень полей монолита НЕ включает
  *    portraits и graphEdges — короче PARENT_FIELD_ORDER);
@@ -46,7 +47,8 @@
  *
  * Циклы ESM: этот модуль НЕ импортирует generation-service (тот импортирует
  *  нас — регистрация провайдера); только db / context-extractor /
- *  parent-context / shared.
+ *  parent-context / lineage-service (18.3: общий обход родословной; тот —
+ *  db, utils и модуль-лист lineage-walk) / shared.
  */
 
 import { and, eq } from "drizzle-orm";
@@ -72,6 +74,7 @@ import {
   type ConceptParticipant,
   type ParentDepsParams,
 } from "./parent-context.js";
+import { loadLineageWalk } from "./lineage-service.js"; // 18.3 (Д-91): общий обход; lineage-service нас не импортирует
 import type { SectionDeps } from "../utils/deep-merge.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
@@ -321,30 +324,26 @@ export function unsuitableConceptMessage(
 
 /**
  * АДАПТАЦИЯ collectPhilosopherAncestors [22451]: вместо рекурсии по узлу
- * genealogy — рекурсивный CTE по synthesis_lineage (02-data-model §2.4,
- * глубина ≤ 10). Возвращает Set имён философов-предков (включая
- * непосредственных родителей-философов).
+ * genealogy — общий обход родословной (`loadLineageWalk` → `lineageWalkCte`,
+ * services/lineage-walk; глубина ≤ 10). Возвращает Set имён философов-
+ * предков (включая непосредственных родителей-философов).
+ *
+ * 18.3 (Д-91): прежде здесь стоял собственный рекурсивный запрос по одним
+ * строкам synthesis_lineage — четвёртый обход родословной, не видевший
+ * философов дерева импортированного файла (`syntheses.file_genealogy`).
+ * Теперь обход тот же, что у `/lineage/search`, фильтра поиска и сходства:
+ * строки БД и дерево файла с правилом приоритета 15.1 (действующая строка
+ * на позиции i перекрывает узел файла i). Пересечение участников
+ * мета-синтеза по философу вложенного узла файла называется, как его
+ * называл исходник (там genealogy — само дерево файла).
  */
 export async function collectPhilosopherAncestors(
   synthesisId: string,
 ): Promise<Set<string>> {
-  const rows = await sql<{ parent_name: string | null }[]>`
-    WITH RECURSIVE ancestors AS (
-      SELECT parent_type, parent_name, parent_synthesis_id, 1 AS depth
-      FROM synthesis_lineage WHERE synthesis_id = ${synthesisId}
-
-      UNION ALL
-
-      SELECT sl.parent_type, sl.parent_name, sl.parent_synthesis_id, a.depth + 1
-      FROM synthesis_lineage sl
-      JOIN ancestors a ON sl.synthesis_id = a.parent_synthesis_id
-      WHERE a.parent_type = 'synthesis' AND a.depth < 10
-    )
-    SELECT DISTINCT parent_name FROM ancestors
-    WHERE parent_type = 'philosopher' AND parent_name IS NOT NULL
-  `;
   const out = new Set<string>();
-  for (const r of rows) if (r.parent_name) out.add(r.parent_name);
+  for (const r of await loadLineageWalk([synthesisId])) {
+    if (r.kind === "philosopher" && r.key) out.add(r.key);
+  }
   return out;
 }
 

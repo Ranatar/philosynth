@@ -27,6 +27,7 @@
  * и этот модуль таблиц тезисов и разделов не читает (сторож 4br).
  */
 import { sql } from "../db/index.js";
+import { LIVE_LINEAGE_ROW_SQL, lineagePhilosophersCond, lineageWalkCte } from "./lineage-walk.js";
 import {
   searchReadLevelSql,
   searchScopeSql,
@@ -121,8 +122,9 @@ const and = (conds: SqlFragment[]): SqlFragment =>
 const or = (conds: SqlFragment[]): SqlFragment =>
   conds.length === 0 ? sql`false` : conds.reduce((a, b) => sql`${a} OR ${b}`);
 
-/** Действующая строка родословной на позиции (правило приоритета 15.1). */
-const LIVE_ROW = sql`((l.parent_type = 'philosopher' AND coalesce(l.parent_name, '') <> '') OR (l.parent_type = 'synthesis' AND l.parent_synthesis_id IS NOT NULL))`;
+/** Действующая строка родословной на позиции (правило приоритета 15.1) —
+ *  одно выражение с обходом родословной (services/lineage-walk, 18.3). */
+const LIVE_ROW = LIVE_LINEAGE_ROW_SQL;
 
 /**
  * «Мета-синтез» — SQL-зеркало ОДНОГО правила `isMetaSynthesisRows`
@@ -145,33 +147,19 @@ export const META_SYNTHESIS_SQL = sql`(
   )
 )`;
 
-/**
- * Пары «концепция — философ-предок» по всей родословной (транзитивно,
- * глубина ≤ 10) — тот же обход, что `searchByPhilosophers`
- * (`/lineage/search`, 3.1): строки synthesis_lineage; дерево
- * импортированного файла (`file_genealogy`) обход не видит, как и там.
+/*
+ * Вся родословная (`philArea=lineage`, и `epoch` в этой области) — общий
+ * обход `lineageWalkCte` (services/lineage-walk; 18.3, Д-88): строки
+ * synthesis_lineage ПЛЮС дерево импортированного файла по правилу
+ * приоритета 15.1. До 18.3 здесь стояла своя копия обхода (`ANC_CTE`) —
+ * зеркало `searchByPhilosophers`, не видевшее вложенных узлов файла.
  */
-const ANC_CTE = sql`anc AS (
-  SELECT sl.synthesis_id AS root_id, sl.parent_type, sl.parent_name, sl.parent_synthesis_id, 1 AS depth
-  FROM synthesis_lineage sl
-  UNION ALL
-  SELECT a.root_id, sl.parent_type, sl.parent_name, sl.parent_synthesis_id, a.depth + 1
-  FROM synthesis_lineage sl
-  JOIN anc a ON sl.synthesis_id = a.parent_synthesis_id
-  WHERE a.parent_type = 'synthesis' AND a.depth < 10
-)`;
 
 /** Условие «среди философов концепции есть названные». */
 function philosophersCond(names: string[], mode: SearchPhilMode, area: SearchPhilArea): SqlFragment {
   const uniq = [...new Set(names)];
   if (uniq.length === 0) return sql`true`;
-  if (area === "lineage") {
-    const having = mode === "all" ? sql`count(DISTINCT a.parent_name) = ${uniq.length}` : sql`count(DISTINCT a.parent_name) >= 1`;
-    return sql`s.id IN (
-      SELECT a.root_id FROM anc a
-      WHERE a.parent_type = 'philosopher' AND a.parent_name IN ${sql(uniq)}
-      GROUP BY a.root_id HAVING ${having})`;
-  }
+  if (area === "lineage") return lineagePhilosophersCond(uniq, mode);
   const direct = (list: string[]): SqlFragment => sql`EXISTS (
     SELECT 1 FROM synthesis_lineage l
     WHERE l.synthesis_id = s.id AND l.parent_type = 'philosopher' AND l.parent_name IN ${sql(list)})`;
@@ -318,7 +306,7 @@ async function runPage(
     CROSS JOIN q
     WHERE ${m.cond}`;
   const withs = sql`
-    WITH RECURSIVE ${ANC_CTE},
+    WITH RECURSIVE ${lineageWalkCte()},
     q AS (SELECT ${mode === "fts" ? unionTsQuery(p.q) : sql`''::tsquery`} AS tsq),
     base AS (
       SELECT s.id, s.title, s.seed, s.method, s.status, s.created_at, s.updated_at,

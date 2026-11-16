@@ -67,6 +67,9 @@ philosynth-service/
 │       │   ├── search.ts               # 18.1: SEARCH_SCOPES / FIELDS / PHIL_MODES / PHIL_AREAS / SORTS /
 │       │   │                           #  MATCH_KINDS / FRAGMENT_SOURCES / READ_LEVELS, SEARCH_FIELDS_BY_LEVEL,
 │       │   │                           #  словари по языку (searchTsConfigFor), пределы и порог триграмм
+│       │   ├── similarity.ts           # 18.3: SIMILARITY_FEATURES / WEIGHTS (сумма 100) / GRADES /
+│       │   │                           #  GRADE_MIN + similarityGradeOf, признаки текста и свидетельства,
+│       │   │                           #  SIMILAR_LIMIT_*, SIMILAR_CANDIDATE_CAP, SIMILAR_REASON_ITEMS_MAX
 │       │   ├── notifications.ts        # 16.2: NOTIFICATION_TYPES (11) / CATEGORIES (5) / CATEGORY_OF, REF_KINDS,
 │       │   │                           #  страницы, MEMBER_INVITE_TOKEN_PURPOSE, MEMBER_INVITE_TTL_HOURS
 │       │   ├── methods.ts              # METHOD_CODE, LEVEL_CODE, ORDER_CODE (METHOD_CODE, LEVEL_CODE)
@@ -121,6 +124,9 @@ philosynth-service/
 │       │   ├── search.ts               # 18.1: SynthesisSearchItem (превью + fragment + term + моя роль),
 │       │   │                           #  SearchFragment / SearchFragmentPart, SearchTermHit,
 │       │   │                           #  SynthesisSearchQueryEcho, SynthesisSearchResponse
+│       │   ├── similarity.ts           # 18.3: SimilarSynthesisItem (превью + similarity: grade, reasons,
+│       │   │                           #  textCompared), SimilarityReasons, SimilarAncestor,
+│       │   │                           #  SimilarSynthesesResponse — числа меры в DTO нет
 │       │   ├── notifications.ts        # 16.2: MemberView, PendingInvitation, MembersView, MemberInviteResult,
 │       │   │                           #  MyMembership, InvitationInfo, SharedSynthesisPreview, Notification*,
 │       │   │                           #  NotificationList, NotificationSettings
@@ -264,6 +270,9 @@ philosynth-service/
 │   │   ├── search.ts                   # 18.1: GET /syntheses/search (03 §2.21) — optionalAuth, четвёртый
 │   │   │                               #  гостевой путь; разбор параметров, 401 гостю вне public,
 │   │   │                               #  превью через toPreview + projectPreview; монтируется ДО /:id
+│   │   ├── similar.ts                  # 18.3: GET /syntheses/:id/similar (03 §2.22) — optionalAuth, пятый
+│   │   │                               #  гостевой путь; исходная — loadSynthesisForRead, превью —
+│   │   │                               #  toPreview + projectPreview; монтируется ДО synthesesRoutes
 │   │   ├── members.ts                  # 16.2: 11 маршрутов участников (03 §2.18): GET /shared (ДО /:id),
 │   │   │                               #  /:id/members[/:mid[/resend]], /:id/invitations/:tid[/resend],
 │   │   │                               #  /:id/membership[/accept|/decline]; письма — под mailLimiter
@@ -363,6 +372,14 @@ philosynth-service/
 │   │   ├── search.ts                   # 18.1: запрос поиска — список и уровень чтения из
 │   │   │                               #  services/capabilities, словарь → триграммы, фильтры, фрагменты;
 │   │   │                               #  META_SYNTHESIS_SQL, GLOSSARY_TERM_BASE_SQL
+│   │   ├── similarity.ts               # 18.3: похожие концепции — признаки, предотбор с потолком,
+│   │   │                               #  причины; кандидаты по правилам поиска (capabilities); термины
+│   │   │                               #  и категории — только уровень full и тот же язык
+│   │   ├── similarity-score.ts         # 18.3: чистое ядро меры (scoreSimilarity, jaccard) — без БД
+│   │   ├── lineage-walk.ts             # 18.3 (Д-88): ОДИН обход родословной — lineageWalkCte (строки БД +
+│   │   │                               #  дерево файла, правило приоритета 15.1); модуль-лист; потребители:
+│   │   │                               #  /lineage/search, фильтр поиска, сходство, пересечения
+│   │   │                               #  участников мета-синтеза (Д-91)
 │   │   ├── proposals.ts                # 17.1: предложения — создать (discuss), принять (edit) =
 │   │   │                               #  ЧЕРНОВИК плана (planBodyFor, createPlan с trustProposalRefs),
 │   │   │                               #  отклонить / закрыть (edit), снять и «новое поверх текущего»
@@ -529,6 +546,8 @@ philosynth-service/
 │   │   ├── lineage-service.ts          # Рекурсивные CTE для навигации по графу (НОВОЕ)
 │   │   │                               # 8.5: + normalizeConceptTitle, findSameOwnerSynthesesByTitle
 │   │   │                               #  (сопоставление родителя по имени), isDescendantOf, linkParent
+│   │   │                               # 18.3: searchByPhilosophers — на общем обходе (lineage-walk);
+│   │   │                               #  + loadLineageWalk, LINEAGE_WALK_KEY_SQL, LINEAGE_WALK_NAMED_SQL
 │   │   │
 │   │   ├── plan-order-builder.ts       # buildPlanOrder — единый топопорядок (v10)
 │   │   ├── structure-tracker.ts        # refreshSumDef, structureSections (v10)
@@ -679,6 +698,7 @@ philosynth-service/
 │   │   │   ├── lineage.ts              # 3.2: ancestors/descendants/search; 8.5: + linkParent
 │   │   │   │                           #  (18.2: searchByPhilosophers снята — каталог ищет общим поиском)
 │   │   │   ├── search.ts               # 18.2: searchSyntheses(state) → GET /syntheses/search (§2.21)
+│   │   │   ├── similar.ts              # 18.3: getSimilarSyntheses(id) → GET /syntheses/:id/similar (§2.22)
 │   │   │   ├── billing.ts              # 7 функций §2.10: ключ, пополнение, истории (6.2 СДЕЛАНО 2026-09-07)
 │   │   │   ├── admin.ts                # 8.1: listUsers / setUserRole / getAuditLog (вкладка «Доступ»);
 │   │   │   │                           # 15.3: getMailOutbox (вкладка «Почта»); 15.4: listAdminPlans /
@@ -923,8 +943,11 @@ philosynth-service/
 │   │   │   │   ├── CatalogFilters.tsx      # 18.2 (C5): панель фильтров — философы с подсказками
 │   │   │   │   │                           #  (все/любой, прямые/родословная), эпоха, метод, уровень,
 │   │   │   │   │                           #  язык, мета, потомки X; статус и дата — только «Мои»; сброс
-│   │   │   │   └── SearchFragment.tsx      # 18.2: фрагмент выдачи — куски текста, совпадение в <mark>
-│   │   │   │                               #  (HTML не вставляется — сторож 4bs)
+│   │   │   │   ├── SearchFragment.tsx      # 18.2: фрагмент выдачи — куски текста, совпадение в <mark>
+│   │   │   │   │                           #  (HTML не вставляется — сторож 4bs)
+│   │   │   │   └── SimilarConcepts.tsx     # 18.3: блок «Похожие концепции» страницы концепции — карточки,
+│   │   │   │                               #  мера словами, причины текстом, ссылки в каталог через
+│   │   │   │                               #  catalogSearchString (similarCatalogHref)
 │   │   │   │
 │   │   │   ├── logs/
 │   │   │   │   ├── ContextLogViewer.tsx    # Модальное окно лога
@@ -1228,6 +1251,17 @@ philosynth-service/
     │                                   #  и дата, подсказки); подсветка рендером (разметка экранируется);
     │                                   #  живьём функцией клиента (fetch → app.request): 24 состояния панели
     │                                   #  ≡ эху сервера, три вкладки, гость, термин → ссылка, глубина (41 ✓)
+    │                                   # smoke-183-request1 — 18.3: ядро меры (веса, Жаккар, ступени); Д-88 —
+    │                                   #  три потребителя обхода дают один ответ; маршрут живьём: порядок,
+    │                                   #  причины, limit, потолок; видимость, граница языков, витрина (35 ✓)
+    │                                   # test-183-request1-ui — 18.3: Chrome 131 на СБОРКЕ: блок «Похожие
+    │                                   #  концепции» — мера словами, причины текстом, ссылки в каталог,
+    │                                   #  переход, пустое состояние, гость (20 ✓)
+    │                                   # test-183-requests2-3 — 18.3: тестовые запросы одним заходом. R2 —
+    │                                   #  живой сервер по HTTP на импортах образца и его вариантов (один
+    │                                   #  язык / другой язык / приватная / витрина / участник / гость,
+    │                                   #  мера на запрос); R3 — Chrome 131 на СБОРКЕ: блок, причины,
+    │                                   #  переходы, пустое состояние, гость, en/de, узкое окно (65 ✓)
     │                                   # test-182-request1-ui — 18.2: Chrome 131 на СБОРКЕ: строка поиска и
     │                                   #  поле на трёх вкладках, дебаунс → адрес, подсветка, «похожие»,
     │                                   #  переход к термину (рамка в окне), панель фильтров, ссылка и

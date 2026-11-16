@@ -50,6 +50,7 @@ import { escapeLike } from "../utils/search-text.js";
 
 import { db, sql } from "../db/index.js";
 import { syntheses, synthesisLineage } from "../db/schema.js";
+import { lineageWalkCte, rootsWithAllPhilosophers } from "./lineage-walk.js";
 import type {
   FileGenealogyNode,
   FileNodeCandidates,
@@ -529,37 +530,89 @@ export async function getDescendants(
 
 /**
  * id синтезов, в генеалогии которых (транзитивно, глубина ≤ 10) есть ВСЕ
- * указанные философы: рекурсивный CTE пар (root_id, философ-предок) +
- * HAVING COUNT(DISTINCT) = names.length (03 §2.8). Пустой список имён →
- * пустой результат (валидация — у роута).
+ * указанные философы (03 §2.8). Пустой список имён → пустой результат
+ * (валидация — у роута). 18.3 (Д-88): обход — общий `lineageWalkCte`
+ * (services/lineage-walk): строки synthesis_lineage ПЛЮС дерево
+ * импортированного файла по правилу приоритета — философ вложенного узла
+ * файла теперь тоже «в генеалогии». Тем же обходом живут фильтр поиска
+ * `philArea=lineage` и сходство концепций (сторож 5ba сверяет три ответа).
  */
 export async function searchByPhilosophers(
   names: readonly string[],
 ): Promise<string[]> {
   const uniq = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
-  if (uniq.length === 0) return [];
+  return rootsWithAllPhilosophers(uniq);
+}
 
-  const rows = await sql<{ root_id: string }[]>`
-    WITH RECURSIVE anc AS (
-      SELECT sl.synthesis_id AS root_id, sl.parent_type, sl.parent_name,
-             sl.parent_synthesis_id, 1 AS depth
-      FROM synthesis_lineage sl
+/* ══ 18.3: предки строками — для сходства концепций ═══════════════════ */
 
-      UNION ALL
+/** Строка обхода для потребителя, которому нужны сами предки (сходство). */
+export interface LineageWalkRow {
+  rootId: string;
+  kind: "philosopher" | "concept";
+  /** Ключ предка: имя философа; у концепции — `id:<uuid>` (строка БД либо
+   *  узел файла с вписанным идентификатором) или `file:<имя>` (снимок
+   *  файла без идентификатора; имя приведено — регистр, пробелы, кавычки) */
+  key: string;
+  /** Имя для показа: философ, название концепции из БД, имя узла файла */
+  label: string;
+  /** id концепции-предка со строкой в БД; null — снимок файла / философ */
+  synthesisId: string | null;
+  depth: number;
+}
 
-      SELECT a.root_id, sl.parent_type, sl.parent_name,
-             sl.parent_synthesis_id, a.depth + 1
-      FROM synthesis_lineage sl
-      JOIN anc a ON sl.synthesis_id = a.parent_synthesis_id
-      WHERE a.parent_type = 'synthesis' AND a.depth < 10
-    )
-    SELECT root_id FROM anc
-    WHERE parent_type = 'philosopher'
-      AND parent_name IN ${sql(uniq)}
-    GROUP BY root_id
-    HAVING COUNT(DISTINCT parent_name) = ${uniq.length}
-  `;
-  return rows.map((r) => r.root_id);
+/**
+ * Имя узла-концепции файла для сравнения — SQL-вид `normalizeConceptTitle`
+ * (8.5): снять кавычки, схлопнуть пробелы, нижний регистр. Имя — не
+ * идентификатор: по нему сходятся только снимки файла между собой, со
+ * строками БД снимок сравнивается лишь по вписанному в файл идентификатору.
+ */
+const FILE_NAME_KEY = sql`lower(btrim(regexp_replace(regexp_replace(coalesce(w.name, ''), '[«»"„“”‟'']', '', 'g'), '[[:space:]]+', ' ', 'g')))`;
+const UUID_SQL_RE = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+
+/**
+ * Ключ строки обхода (`walk w`): имя философа; у концепции — `id:<uuid>`
+ * либо `file:<имя>` (см. LineageWalkRow.key). Одно выражение на загрузчик
+ * и на предотбор кандидатов сходства (18.3) — ключи обязаны совпадать.
+ */
+export const LINEAGE_WALK_KEY_SQL = sql`CASE WHEN w.kind = 'philosopher' THEN w.name
+                WHEN w.sid IS NOT NULL THEN 'id:' || w.sid::text
+                WHEN coalesce(w.node ->> 'synthesisId', '') ~ ${UUID_SQL_RE} THEN 'id:' || lower(w.node ->> 'synthesisId')
+                ELSE 'file:' || ${FILE_NAME_KEY} END`;
+
+/** Строка обхода с именем: строка БД либо названный узел файла. */
+export const LINEAGE_WALK_NAMED_SQL = sql`(w.sid IS NOT NULL
+           OR (coalesce(btrim(w.name), '') NOT IN ('', ${UNNAMED_CONCEPT_RU}, ${UNNAMED_PHILOSOPHER_RU})
+               AND coalesce(w.node ->> 'unnamed', 'false') <> 'true'))`;
+
+/**
+ * Предки названных концепций — строками (корень сам в ответ не входит).
+ * Безымянные узлы файла (14.2: `unnamed`, пустое имя, прежние русские
+ * заглушки) пропускаются: сравнивать их не с чем.
+ */
+export async function loadLineageWalk(rootIds: readonly string[]): Promise<LineageWalkRow[]> {
+  const ids = [...new Set(rootIds)];
+  if (ids.length === 0) return [];
+  const rows = await sql<
+    { root_id: string; kind: "philosopher" | "concept"; key: string; label: string | null; sid: string | null; depth: number }[]
+  >`
+    WITH RECURSIVE ${lineageWalkCte(sql`s.id IN ${sql(ids)}`)}
+    SELECT DISTINCT ON (w.root_id, w.kind, key) w.root_id, w.kind, w.sid, w.depth,
+           ${LINEAGE_WALK_KEY_SQL} AS key,
+           CASE WHEN w.sid IS NOT NULL THEN t.title ELSE w.name END AS label
+    FROM walk w
+    LEFT JOIN syntheses t ON t.id = w.sid
+    WHERE w.depth > 0
+      AND ${LINEAGE_WALK_NAMED_SQL}
+    ORDER BY w.root_id, w.kind, key, w.depth`;
+  return rows.map((r) => ({
+    rootId: r.root_id,
+    kind: r.kind,
+    key: r.key,
+    label: r.label ?? "",
+    synthesisId: r.sid,
+    depth: r.depth,
+  }));
 }
 
 /* ══ createLineageRecords ═════════════════════════════════════════════ */

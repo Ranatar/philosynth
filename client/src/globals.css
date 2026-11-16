@@ -7874,6 +7874,197 @@ font-size: 14px;
   }
 }
 
+/* ═══ Беседа 18.3 — похожие концепции: блок под документом на странице
+ * концепции. В исходнике документ один — сравнивать его не с чем, блока
+ * нет; в UI-ките «Похожих концепций» тоже нет. Собрано из готового:
+ * .cert-badge(.gold), .doc-meta-val.gold, .doc-meta-key, .pool-status(.err).
+ * Своих правил — четыре группы, все в идиоме кита (подписи — моно-капитель
+ * с разрядкой, углы прямые, теней нет, цвета только из :root):
+ * (1) .similar-block — блок: отбивка сверху линией --rule-strong;
+ *     .similar-head — заголовок (.similar-title, моно-капитель --gold) и
+ *     пояснение, среди чего искали (.similar-note, моно --ink-dim);
+ *     .similar-list — карточки столбцом (порода .catalog-list);
+ * (2) .similar-card — карточка: бумага и рамка --rule с левой линией, как
+ *     .catalog-card, но НЕ ссылка целиком (внутри — ссылки причин); цвет
+ *     левой линии — ступень меры: .strong — --gold, .notable —
+ *     --rule-strong, .weak — --rule; .similar-card-head — название-ссылка
+ *     (.similar-card-title) и мера словами справа; .similar-card-meta —
+ *     метод × уровень и бейджи в ряд;
+ * (3) .similar-grade — мера СЛОВАМИ (числа нет): моно-капитель в рамке;
+ *     .strong — --gold (как .cert-badge.gold), .notable — --ink-mid,
+ *     .weak — --ink-dim;
+ * (4) .similar-reasons — причины сходства: строки «подпись — значение»
+ *     (.similar-reason; .similar-reason-key — моно-капитель --ink-dim,
+ *     .similar-reason-val — текст); .similar-more — «и ещё N»;
+ *     .similar-sub-link — малая ссылка в каталог; .similar-skip — почему
+ *     термины и категории не сравнивались (моно, --ink-dim, левая линия);
+ *     .similar-empty — пустая выдача; .similar-foot — как считается.
+ * ═════════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* (1) блок */
+  .similar-block {
+    margin-top: 36px;
+    padding-top: 20px;
+    border-top: 2px solid var(--rule-strong);
+  }
+  .similar-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 14px;
+    margin-bottom: 14px;
+  }
+  .similar-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .similar-note {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .similar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* (2) карточка */
+  .similar-card {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rule-strong);
+    padding: 14px 20px;
+  }
+  .similar-card.strong {
+    border-left-color: var(--gold);
+  }
+  .similar-card.weak {
+    border-left-color: var(--rule);
+  }
+  .similar-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .similar-card-title {
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .similar-card-title:hover {
+    color: var(--blue-corp);
+  }
+  .similar-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    margin-top: 4px;
+  }
+
+  /* (3) мера словами */
+  .similar-grade {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border: 1px solid var(--rule-strong);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--ink-mid);
+  }
+  .similar-grade.strong {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .similar-grade.weak {
+    border-color: var(--rule);
+    color: var(--ink-dim);
+  }
+
+  /* (4) причины */
+  .similar-reasons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+  .similar-reason {
+    display: grid;
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: 10px;
+    align-items: baseline;
+  }
+  .similar-reason-key {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .similar-reason-val {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .similar-more {
+    color: var(--ink-dim);
+    font-style: italic;
+  }
+  .similar-sub-link {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--ink-dim);
+  }
+  .similar-skip {
+    margin-top: 10px;
+    padding-left: 10px;
+    border-left: 2px solid var(--rule-strong);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    line-height: 1.6;
+    color: var(--ink-dim);
+  }
+  .similar-empty {
+    padding: 16px 0;
+    font-size: 12px;
+    color: var(--ink-mid);
+  }
+  .similar-foot {
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    line-height: 1.7;
+    color: var(--ink-dim);
+  }
+}
+
+@media (max-width: 600px) {
+  .similar-reason {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .similar-card {
+    padding: 12px 14px;
+  }
+}
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;
