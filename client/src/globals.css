@@ -7405,6 +7405,16 @@ font-size: 14px;
   .review-field .form-textarea {
     min-height: 96px;
   }
+  /* поля рецензии и ответ в ветке — во всю ширину колонки (вне .form-group
+     исходника, где растягивает flex-колонка, текстовое поле оставалось
+     встроенным, ≈ 200px; правка 2026-11-17) */
+  .review-field .form-input,
+  .review-field .form-textarea,
+  .discuss-thread .form-textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
   .review-save-row {
     margin-bottom: 24px;
   }
