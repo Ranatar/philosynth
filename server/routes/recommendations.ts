@@ -33,6 +33,7 @@ import { PlanError } from "../services/edit-planner.js";
 import { GenerationError } from "../services/generation-service.js";
 import { buildPlanDraft } from "../services/recommendation-planner.js";
 import {
+  EXTRACT_CREDIT_OP,
   RecommendationsError,
   estimateExtractCost,
   extractRecommendationsTable,
@@ -44,6 +45,7 @@ import { editGate, editRightFirst } from "./edit-gate.js"; // 16.1
 
 import type { Context } from "hono";
 import { tl } from "@philosynth/shared/i18n/t";
+import { creditCharge } from "../config/plan-economics.js";
 
 export const recommendationsRoutes = new Hono<AuthEnv>();
 
@@ -169,7 +171,7 @@ recommendationsRoutes.post(
   "/:id/recommendations/extract",
   requireAuth,
   editRightFirst,
-  billingCheck({ quota: "regenerations" }),
+  billingCheck(creditCharge(EXTRACT_CREDIT_OP)),
   async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");

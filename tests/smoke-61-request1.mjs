@@ -85,7 +85,7 @@ check("без заголовка → отказ", throwsWith(() => constructWebh
 check("не событие → отказ", throwsWith(() => constructWebhookEvent("{}", signWebhookPayload("{}", process.env.STRIPE_WEBHOOK_SECRET, ts), ts), (e) => e.code === "WEBHOOK_SIGNATURE_INVALID"));
 
 console.log("── subscription-service ──");
-check("четыре квоты", eq([...QUOTA_TYPES], ["syntheses", "regenerations", "modes", "enrichments"]));
+check("квота одна — кредиты (0021)", eq([...QUOTA_TYPES], ["credits"]));
 check("маппинг статусов Stripe", eq(
   ["active", "trialing", "past_due", "unpaid", "paused", "canceled", "incomplete_expired", "incomplete"].map(mapStripeStatus),
   ["active", "trialing", "past_due", "past_due", "past_due", "canceled", "canceled", "incomplete"]));
@@ -96,7 +96,7 @@ check("наценка = BILLING_MARKUP", Math.abs(computeChargeUsd(1) - env.stri
 check("коды → статусы", eq(
   ["QUOTA_EXCEEDED", "INSUFFICIENT_BALANCE", "BILLING_REQUIRED", "API_KEY_MISSING", "NOT_FOUND", "STRIPE_UNAVAILABLE", "VALIDATION_ERROR"].map(billingErrorStatus),
   [403, 403, 403, 403, 404, 503, 400]));
-check("BillingError несёт details", new BillingError("QUOTA_EXCEEDED", "x", { quotaType: "modes" }).details.quotaType === "modes");
+check("BillingError несёт details", new BillingError("QUOTA_EXCEEDED", "x", { quotaType: "credits" }).details.quotaType === "credits");
 check("env.billing: enforce boolean, minReserveUsd number", typeof env.billing.enforce === "boolean" && env.billing.minReserveUsd > 0);
 
 console.log("── streaming-manager: разъём учёта (мок SSE) ──");
@@ -152,8 +152,10 @@ console.log("── роуты ──");
 // 12.5 (Д-45): hono перечисляет по записи на КАЖДЫЙ обработчик пути (GET /plans с optionalAuth
 // 8.6 даёт две) — считаем уникальные пути
 const paths = (app) => [...new Set(app.routes.filter((r) => r.method !== "ALL").map((r) => `${r.method} ${r.path}`))].sort();
-check("billing: 13 путей §2.10", eq(paths(billingRoutes), [
-  "DELETE /api-key/:id", "GET /api-key", "GET /plans", "GET /subscription", "GET /transactions", "GET /usage",
+// 15.4: + админка тарифов (4); 2026-11-17: + GET /view (как подписывать стоимость)
+check("billing: 18 путей §2.10", eq(paths(billingRoutes), [
+  "DELETE /api-key/:id", "GET /admin/plans", "GET /api-key", "GET /plans", "GET /subscription", "GET /transactions", "GET /usage", "GET /view",
+  "PATCH /admin/plans/:id", "POST /admin/plans", "POST /admin/plans/:id/editions",
   "POST /api-key", "POST /subscribe", "POST /subscription/cancel", "POST /subscription/resume",
   "POST /topup", "POST /topup/confirm", "POST /webhook",
 ]), paths(billingRoutes));
@@ -163,14 +165,15 @@ check("prompts: 8 путей §2.9", eq(paths(promptsRoutes), [
 ]), paths(promptsRoutes));
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const wrapped = {
-  "server/routes/syntheses.ts": ['synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" })'],
-  "server/routes/generation.ts": ['billingCheck({ quota: "regenerations" })'],
+  // 0021: предпроверка — по весу операции в кредитах (creditCharge); синтез — «хоть кредит», точно — по оценке
+  "server/routes/syntheses.ts": ['synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "credits", units: 1 })'],
+  "server/routes/generation.ts": ['billingCheck(creditCharge("section"))', 'billingCheck(creditCharge("subsection"))'],
   // 12.5 (Д-45): с 10.2 предпроверка плана УСЛОВНАЯ — billingCheck зовётся из обработчика
   // после чтения плана (план без платных шагов ключа/подписки не требует)
-  "server/routes/plans.ts": ['const executeBillingCheck = billingCheck({ quota: "regenerations" })', 'await executeBillingCheck(c, async () => undefined)'],
-  "server/routes/modes.ts": ['/run", requireAuth, billingCheck({ quota: "modes" })'],
-  "server/routes/enrichment.ts": ['billingCheck({ quota: "enrichments" })'],
-  "server/routes/transforms.ts": ['billingCheck({ quota: "regenerations" })'],
+  "server/routes/plans.ts": ['const executeBillingCheck = (credits: number) => billingCheck({ quota: "credits", units: credits })', 'await executeBillingCheck(creditsForSteps(row.steps, 0))(c, async () => undefined)'],
+  "server/routes/modes.ts": ['/run", requireAuth, editRightFirst, billingCheck(creditCharge("mode"))'],
+  "server/routes/enrichment.ts": ['billingCheck(creditCharge("enrichment"))'],
+  "server/routes/transforms.ts": ['billingCheck(creditCharge("section"))'],
 };
 for (const [f, needles] of Object.entries(wrapped)) {
   const t = src(f);

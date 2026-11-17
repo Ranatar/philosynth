@@ -76,12 +76,13 @@ try {
   const at3 = plans.PLANS.map((p) => plans.computePlanEconomics(p, 3));
   check("при BILLING_MARKUP=3 тарифы убыточны — проверка реагирует на наценку", at3.every((e) => !e.ok));
   let econErr = null;
-  try { plans.assertPlanEconomics({ ...plans.PLANS[0], quotaSyntheses: 1000 }, 1.2); } catch (e) { econErr = e; }
+  try { plans.assertPlanEconomics({ ...plans.PLANS[0], quotaCredits: 100_000 }, 1.2); } catch (e) { econErr = e; }
   check("убыточный план → PlanEconomicsError с объяснением", econErr instanceof plans.PlanEconomicsError && /убыточен/.test(econErr.message) && /BILLING_MARKUP 1\.2/.test(econErr.message) && econErr.economics.ok === false);
   let markupErr = null;
   try { plans.computePlanEconomics(plans.PLANS[0], 0); } catch (e) { markupErr = e; }
   check("наценка ≤ 0 → RangeError", markupErr instanceof RangeError);
-  check("breakdown суммируется в quotaCostUsd", Math.abs(Object.values(at12[0].breakdown).reduce((s, b) => s + b.costUsd, 0) - at12[0].quotaCostUsd) < 1e-9);
+  // 0021: раскладка — на сколько операций каждого вида хватит кредитов тарифа
+  check("breakdown: count = floor(кредиты / вес) по каждому виду", Object.values(at12[0].breakdown).every((b) => b.count === Math.floor(plans.PLANS[0].quotaCredits / b.weight)));
 
   console.log("── 2. stripe-client: Products / Prices ──");
   const sc = await import("../server/services/stripe-client.ts");

@@ -82,10 +82,8 @@ export interface SubscriptionPlan {
   displayName: string;
   priceUsd: number;
   billingPeriod: BillingPeriod;
-  quotaSyntheses: number;
-  quotaRegenerations: number;
-  quotaModes: number;
-  quotaEnrichments: number;
+  /** Кредитов за период (миграция 0021: единая квота вместо четырёх) */
+  quotaCredits: number;
   stripePriceId: string;
   /** «открыт для покупки»: только такие отдаёт GET /billing/plans и
    *  принимает POST /billing/subscribe; закрытая редакция живёт ради
@@ -113,10 +111,7 @@ export interface PlanFieldsInput {
   displayName?: string;
   priceUsd?: number;
   billingPeriod?: BillingPeriod;
-  quotaSyntheses?: number;
-  quotaRegenerations?: number;
-  quotaModes?: number;
-  quotaEnrichments?: number;
+  quotaCredits?: number;
 }
 
 /** PATCH /billing/admin/plans/:id — правка на месте. displayName и isActive
@@ -141,10 +136,7 @@ export interface PlanCreateInput {
   displayName: string;
   priceUsd: number;
   billingPeriod: BillingPeriod;
-  quotaSyntheses: number;
-  quotaRegenerations: number;
-  quotaModes: number;
-  quotaEnrichments: number;
+  quotaCredits: number;
 }
 
 /** Ответ PATCH / POST редакции / POST семейства: план после записи;
@@ -165,11 +157,8 @@ export interface UserSubscription {
   status: SubscriptionStatus;
   currentPeriodStart: string;
   currentPeriodEnd: string;
-  /** Счётчики использования (сбрасываются в начале периода) */
-  usedSyntheses: number;
-  usedRegenerations: number;
-  usedModes: number;
-  usedEnrichments: number;
+  /** Израсходовано кредитов за период (сбрасывается в начале периода) */
+  usedCredits: number;
   cancelAtPeriodEnd: boolean;
   createdAt: string;
   updatedAt: string;
@@ -179,18 +168,8 @@ export interface UserSubscription {
 export interface SubscriptionOverview {
   subscription: UserSubscription | null;
   plan: SubscriptionPlan | null;
-  usage: {
-    syntheses: number;
-    regenerations: number;
-    modes: number;
-    enrichments: number;
-  };
-  quotas: {
-    syntheses: number;
-    regenerations: number;
-    modes: number;
-    enrichments: number;
-  };
+  usage: { credits: number };
+  quotas: { credits: number };
 }
 
 /* ── DTO эндпоинтов §2.10 (беседа 6.1; потребитель — client/api/billing.ts 6.2) ── */
@@ -238,5 +217,82 @@ export interface SubscribeResult {
   subscription: UserSubscription;
 }
 
-/** Квоты подписки — колонки used_… и quota_… (02 §2.22–2.23) */
-export type QuotaType = "syntheses" | "regenerations" | "modes" | "enrichments";
+/** Квота подписки — колонки used_credits и quota_credits (02 §2.22–2.23).
+ *  До миграции 0021 квот было четыре (синтезы, перегенерации, режимы,
+ *  обогащения); с 0021 — единые кредиты с весами операций. */
+export type QuotaType = "credits";
+
+/**
+ * Вид операции для веса в кредитах (решение пользователя 2026-11-17):
+ *  - synthesis  — синтез и мета-синтез; списывается по оценке состава
+ *                 (вес — опорный синтез, им пользуются тариф и запасной путь);
+ *  - section    — перегенерация/добавление раздела, преобразование граф↔тезисы;
+ *  - subsection — перегенерация подраздела, извлечение таблицы рекомендаций;
+ *  - mode       — запуск или перегенерация режима;
+ *  - enrichment — обогащение элемента, обоснование характеристики,
+ *                 точечная генерация в элемент.
+ */
+export type CreditOp = "synthesis" | "section" | "subsection" | "mode" | "enrichment";
+export const CREDIT_OPS: readonly CreditOp[] = ["synthesis", "section", "subsection", "mode", "enrichment"];
+
+/** Справка о кредитах — веса операций и цена кредита (GET /billing/view, /billing/plans). */
+export interface CreditInfo {
+  /** Себестоимость одного кредита по ставкам оценщика, USD, без наценки */
+  creditUsd: number;
+  /** Вес операции в кредитах; synthesis — опорный синтез (8 разделов, глубина standard) */
+  weights: Record<CreditOp, number>;
+}
+
+/**
+ * GET /billing/view — как показывать стоимость операций этому пользователю:
+ *  - byo          — себестоимость по его ключу, USD;
+ *  - subscription — кредиты: сколько спишется и сколько останется;
+ *  - balance      — себестоимость × markup, USD (столько спишется с баланса);
+ *  - none         — источника оплаты нет (операция будет отклонена).
+ */
+export interface BillingView extends CreditInfo {
+  mode: "byo" | "subscription" | "balance" | "none";
+  /** BILLING_MARKUP режима баланса */
+  markup: number;
+  balanceUsd: number;
+  /** Только у подписки: остаток и квота периода */
+  creditsLeft?: number;
+  creditsQuota?: number;
+  /** Подписчик с остатком меньше операции платит с баланса, если он есть */
+  balanceFallback?: boolean;
+}
+
+/* ── Журнал списаний кредитов (0022) ─────────────────────────────────── */
+
+/** Строка credit_charges для истории (GET /billing/credit-charges) */
+export interface CreditCharge {
+  id: string;
+  /** null — документ удалён (строка журнала остаётся) */
+  synthesisId: string | null;
+  synthesisTitle: string | null;
+  credits: number;
+  /** synthesis | section | subsection | mode | enrichment | plan */
+  op: string;
+  createdAt: string;
+}
+
+export interface CreditChargeHistory {
+  items: CreditCharge[];
+  total: number;
+  /** Сумма кредитов по всем строкам пользователя */
+  totalCredits: number;
+  page: number;
+  limit: number;
+}
+
+/** GET /syntheses/:id/charges — что документ стоил запросившему пользователю */
+export interface SynthesisCharges {
+  /** Кредитов подписки */
+  credits: number;
+  /** Списано с баланса, USD (с наценкой) */
+  balanceUsd: number;
+  /** Себестоимость вызовов по своему ключу, USD (счёт Anthropic) */
+  byoUsd: number;
+  /** Вызовов без списания (доработка после сбоя) */
+  waivedCalls: number;
+}

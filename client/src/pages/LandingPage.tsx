@@ -23,10 +23,10 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 
-import type { SubscriptionPlan } from "@philosynth/shared/types/billing";
+import type { CreditInfo, SubscriptionPlan } from "@philosynth/shared/types/billing";
 import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
 
-import { getPlans } from "../api/subscription";
+import { getPlansWithCredits } from "../api/subscription";
 import { listPublicSyntheses } from "../api/syntheses";
 import { PlansTable } from "../components/billing/PlansTable";
 import { SynthesisList } from "../components/catalog/SynthesisList";
@@ -80,6 +80,7 @@ export function LandingPage() {
   const [showcase, setShowcase] = useState<SynthesisPreview[] | null>(null);
   const [showcaseError, setShowcaseError] = useState(false);
   const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null);
+  const [planCredits, setPlanCredits] = useState<CreditInfo | null>(null); // 0021
   const [plansError, setPlansError] = useState(false);
 
   useEffect(() => {
@@ -95,9 +96,12 @@ export function LandingPage() {
           setShowcaseError(true);
         }
       });
-    getPlans()
-      .then((p) => {
-        if (!cancelled) setPlans(p);
+    getPlansWithCredits()
+      .then((r) => {
+        if (!cancelled) {
+          setPlans(r.plans);
+          setPlanCredits(r.credits);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -181,12 +185,12 @@ export function LandingPage() {
       <section className="input-form" data-testid="landing-plans">
         <h2 className="form-section-title">{tl("landingPage.plans", "Тарифы")}</h2>
         <p className="submit-note" style={{ maxWidth: "100%" }}>
-          {tl("landingPage.plansText", "Работать можно тремя способами: со своим ключом Anthropic (стоимость для службы нулевая), по подписке с месячными квотами или с баланса — пополнение через Stripe, списание по себестоимости запроса с наценкой службы. Стоимость каждого синтеза показывается до запуска и в футере готового документа.")}
+          {tl("landingPage.plansText", "Работать можно тремя способами: со своим ключом Anthropic (стоимость для службы нулевая), по подписке с кредитами на месяц (каждая операция списывает свой вес — см. таблицу ниже) или с баланса — пополнение через Stripe, списание по себестоимости запроса с наценкой службы. Стоимость каждого синтеза показывается до запуска и в футере готового документа.")}
         </p>
         {plansError ? (
           <div className="pool-status err">{tl("landingPage.plansLoadFailed", "Не удалось загрузить тарифы.")}</div>
         ) : (
-          <PlansTable plans={plans} testId="landing-plans-table" />
+          <PlansTable plans={plans} credits={planCredits} testId="landing-plans-table" />
         )}
       </section>
 

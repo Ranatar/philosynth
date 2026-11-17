@@ -433,9 +433,9 @@ export async function computePauseEstimates(
 ): Promise<PauseEstimates> {
   if (!ps || ps.kind !== "gen" || !ps.genParams) return {};
   const sectionKey = ps.sectionKeys[0];
-  if (!sectionKey) return {};
+  if (!sectionKey) return { serviceFailure: isServiceFailurePause(ps) };
 
-  const result: PauseEstimates = {};
+  const result: PauseEstimates = { serviceFailure: isServiceFailurePause(ps) };
   try {
     const infra = await rebuildInfra(ps);
     if (!infra) return {};
@@ -472,7 +472,11 @@ export async function computePauseEstimates(
       synthesisId,
       ps.sectionKeys.join("+"),
     );
-    const { missing } = computeMissingSubs(ps, detail);
+    const { missing, streamingSub } = computeMissingSubs(ps, detail);
+    if (ps.isPartial) {
+      result.missingSubs = missing;
+      result.streamingSub = streamingSub;
+    }
     const targetDef = infra.defs.find((d) => d.key === sectionKey);
     if (
       missing.length > 0 &&
@@ -600,6 +604,30 @@ export async function resumeGeneration(
 }
 
 /**
+ * Пауза по вине службы или API — доработка после неё бесплатна и в режиме
+ * баланса (решение пользователя 2026-11-17, вариант 3). Причины пользователя:
+ * 'billing' (кончился кредит на счёте Anthropic) и 'auth' (негодный ключ) —
+ * когда ключ BYO; после них возобновление доводит оплачиваемую операцию и
+ * списывается как обычно. Нехватка баланса службы посреди операции паузы не
+ * даёт: баланс сверяется с оценкой при старте, а списывается по факту
+ * каждого вызова. У подписки возобновление и так без квоты (6.1).
+ * Сознательной паузы в службе нет: остановка пользователем (user-abort)
+ * pausedState не создаёт — частичный результат финализируется, а доработка
+ * идёт обычной платной правкой (добавить/перегенерировать раздел).
+ */
+export function isServiceFailurePause(ps: {
+  reasonKind?: PauseReasonKind | undefined;
+  paidBy?: "byo" | "subscription" | "balance" | undefined;
+}): boolean {
+  const accountReason = ps.reasonKind === "billing" || ps.reasonKind === "auth";
+  if (!accountReason) return true;
+  // 'billing'/'auth' — ответ API о ключе: ключ пользователя (BYO) — его
+  // причина; серверный (подписка, баланс) — сбой службы. Пауза до 2026-11-17
+  // плательщика не знает — считается причиной пользователя (осторожно).
+  return ps.paidBy === "subscription" || ps.paidBy === "balance";
+}
+
+/**
  * Общая ветка retry/skip [25143–25296]: startIdx = passIdx (retry) либо
  * passIdx+1 (skip); при retry частичный контент прерванных разделов
  * очищается (аналог ct.innerHTML="" [25292]; следующий upsert перезапишет).
@@ -634,6 +662,7 @@ async function resumeRetryOrSkip(
 
   await resumeSynthesisFromPass(synthesisId, userId, startIdx, {
     sectionContexts: genParamsSecCtx(ps),
+    waiveBalance: isServiceFailurePause(ps),
   });
 }
 
@@ -718,6 +747,7 @@ async function resumeFillMissingSubs(
     });
     await resumeSynthesisFromPass(synthesisId, userId, ps.passIdx + 1, {
       sectionContexts: p.secCtx,
+      waiveBalance: isServiceFailurePause(ps),
     });
     return;
   }
@@ -867,6 +897,7 @@ async function resumeFillMissingSubs(
         sectionLabel: ps.sectionLabel,
         isPartial: doneSubs.length > 0,
         ...reasonFields,
+        paidBy: handle.billing.billingMode, // 2026-11-17: чья причина паузы
         partialSubsections: doneSubs.map((s) => s.name),
         expectedSubsections: [...ps.expectedSubsections],
         completedPasses: ps.completedPasses,
@@ -889,7 +920,7 @@ async function resumeFillMissingSubs(
         estimates: await computePauseEstimates(synthesisId, newPs),
       });
     }
-  }, { quota: null }); // 6.1: квота подписки
+  }, { quota: null, waiveBalance: isServiceFailurePause(ps) }); // 6.1: квота подписки; 2026-11-17: баланс после сбоя службы
 }
 
 /* ══ resumePlan (kind='plan') [25910] ═════════════════════════════════ */

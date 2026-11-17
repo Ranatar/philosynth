@@ -176,8 +176,29 @@ export function planCostBreakdown(
 export function planCascadePending(
   steps: readonly EditStep[],
   pendingCost: number,
+  pendingCredits = 0,
 ): PlanCascadePending {
-  return { steps: steps.filter(isPendingStep).length, costUsd: pendingCost };
+  return { steps: steps.filter(isPendingStep).length, costUsd: pendingCost, credits: pendingCredits };
+}
+
+/**
+ * 0021 (кредиты): вид операции шага — по нему берётся вес в кредитах
+ * (server config/plan-economics.ts CREDIT_WEIGHTS). null — шаг без модели.
+ */
+export function creditOpOfStepType(
+  type: EditStep["type"],
+): "section" | "subsection" | "mode" | "enrichment" | null {
+  if (isFreeStepType(type)) return null;
+  switch (type) {
+    case "regen_subsection":
+      return "subsection";
+    case "regen_mode":
+      return "mode";
+    case "refine_element":
+      return "enrichment";
+    default:
+      return "section"; // regen, add
+  }
 }
 
 /** 17.1: предел разметки шага edit_subsection (ручная правка подраздела

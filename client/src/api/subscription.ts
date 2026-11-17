@@ -20,6 +20,7 @@
  */
 
 import type {
+  CreditInfo,
   SubscribeResult,
   SubscriptionOverview,
   SubscriptionPlan,
@@ -34,6 +35,15 @@ export function getSubscription(): Promise<SubscriptionOverview> {
 
 export function getPlans(): Promise<SubscriptionPlan[]> {
   return apiGet<{ plans: SubscriptionPlan[] }>("/billing/plans").then((r) => r.plans);
+}
+
+/** 0021: тарифы вместе с весами операций в кредитах — для раскладки
+ *  «на что хватит» (страница тарифов и стартовая). */
+export function getPlansWithCredits(): Promise<{ plans: SubscriptionPlan[]; credits: CreditInfo | null }> {
+  return apiGet<{ plans: SubscriptionPlan[]; credits?: CreditInfo }>("/billing/plans").then((r) => ({
+    plans: r.plans,
+    credits: r.credits ?? null,
+  }));
 }
 
 export function subscribe(planId: string): Promise<SubscribeResult> {

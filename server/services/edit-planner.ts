@@ -80,11 +80,13 @@ import {
   isTakenStep,
   parseElementStepTarget,
   parseSubsectionStepTarget,
+  creditOpOfStepType,
   planCascadePending,
   planCostBreakdown,
   type DeletableElementKind,
 } from "@philosynth/shared/constants/edit-steps";
 
+import { creditsFor } from "../config/plan-economics.js"; // 0021
 import { db } from "../db/index.js";
 import { editPlans, recommendations, sections, syntheses } from "../db/schema.js";
 import { listSubsectionNames } from "../utils/html-parser.js";
@@ -209,6 +211,20 @@ export interface PlanCostEstimate {
   pending: number;
 }
 
+/** 0021: кредиты шагов, отобранных предикатом (вес вида операции шага). */
+export function stepCredits(
+  steps: readonly EditStep[],
+  pick: (s: EditStep) => boolean,
+): number {
+  let n = 0;
+  for (const s of steps) {
+    if (!pick(s)) continue;
+    const op = creditOpOfStepType(s.type);
+    if (op) n += creditsFor(op);
+  }
+  return n;
+}
+
 /** Строка edit_plans → API-представление (03 §4.2). */
 export function toApiPlan(row: PlanRow, cost: PlanCostEstimate): EditPlan {
   return {
@@ -219,9 +235,10 @@ export function toApiPlan(row: PlanRow, cost: PlanCostEstimate): EditPlan {
     steps: row.steps,
     // 12.3 (Д-7): только взятые шаги — pending без подтверждения не исполняются
     estimatedCost: cost.taken,
+    estimatedCredits: stepCredits(row.steps, isTakenStep), // 0021
     // 10.2: бесплатные шаги — отдельной строкой, не в общей сумме
     costBreakdown: planCostBreakdown(row.steps, cost.taken),
-    cascadePending: planCascadePending(row.steps, cost.pending),
+    cascadePending: planCascadePending(row.steps, cost.pending, stepCredits(row.steps, isPendingStep)),
     createdAt: row.createdAt.toISOString(),
   };
 }

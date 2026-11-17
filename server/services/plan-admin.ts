@@ -125,10 +125,7 @@ function specOf(row: PlanRow): PlanSpec {
     displayName: row.displayName,
     priceUsd: Number(row.priceUsd),
     billingPeriod: row.billingPeriod,
-    quotaSyntheses: row.quotaSyntheses,
-    quotaRegenerations: row.quotaRegenerations,
-    quotaModes: row.quotaModes,
-    quotaEnrichments: row.quotaEnrichments,
+    quotaCredits: row.quotaCredits,
   };
 }
 
@@ -247,10 +244,7 @@ export async function updatePlan(id: string, input: PlanUpdateInput, actor: Plan
           displayName: next.displayName,
           priceUsd: priceString(next.priceUsd),
           billingPeriod: next.billingPeriod,
-          quotaSyntheses: next.quotaSyntheses,
-          quotaRegenerations: next.quotaRegenerations,
-          quotaModes: next.quotaModes,
-          quotaEnrichments: next.quotaEnrichments,
+          quotaCredits: next.quotaCredits,
           stripePriceId,
           isActive,
         })
@@ -333,10 +327,7 @@ export async function createPlanEdition(id: string, input: PlanEditionInput, act
           displayName: next.displayName,
           priceUsd: priceString(next.priceUsd),
           billingPeriod: next.billingPeriod,
-          quotaSyntheses: next.quotaSyntheses,
-          quotaRegenerations: next.quotaRegenerations,
-          quotaModes: next.quotaModes,
-          quotaEnrichments: next.quotaEnrichments,
+          quotaCredits: next.quotaCredits,
           stripePriceId: price.id,
           isActive: true,
         })
@@ -379,10 +370,7 @@ export async function createPlanFamily(input: PlanCreateInput, actor: PlanActor)
     displayName: String(input.displayName ?? "").trim(),
     priceUsd: input.priceUsd,
     billingPeriod: input.billingPeriod,
-    quotaSyntheses: input.quotaSyntheses,
-    quotaRegenerations: input.quotaRegenerations,
-    quotaModes: input.quotaModes,
-    quotaEnrichments: input.quotaEnrichments,
+    quotaCredits: input.quotaCredits,
   };
   assertPlanSpec(next);
   const [dup] = await db
@@ -411,10 +399,7 @@ export async function createPlanFamily(input: PlanCreateInput, actor: PlanActor)
           displayName: next.displayName,
           priceUsd: priceString(next.priceUsd),
           billingPeriod: next.billingPeriod,
-          quotaSyntheses: next.quotaSyntheses,
-          quotaRegenerations: next.quotaRegenerations,
-          quotaModes: next.quotaModes,
-          quotaEnrichments: next.quotaEnrichments,
+          quotaCredits: next.quotaCredits,
           stripePriceId: price.id,
           isActive: input.isActive ?? true,
         })

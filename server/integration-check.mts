@@ -2650,29 +2650,36 @@ await rClose();
   await ak.deleteApiKey(st2.keyId, uid); await ak.deleteApiKey(st1.keyId, uid);
   try { await ak.deleteApiKey(st1.keyId, uid); errs.push("5x: повторный deleteApiKey не NOT_FOUND"); } catch (e) { if ((e as { code?: string }).code !== "NOT_FOUND") errs.push("5x: deleteApiKey — не NOT_FOUND"); }
   // (г) подписка: план + строка active → subscription; consumeQuota атомарен
-  const [plan] = await db5x.insert(sch5x.subscriptionPlans).values({ name: `iq5x-${tag}`, family: `iq5x-${tag}`, displayName: "5x", priceUsd: "1.00", billingPeriod: "month", quotaSyntheses: 2, quotaRegenerations: 1, quotaModes: 1, quotaEnrichments: 1, stripePriceId: `price_${tag}` }).returning({ id: sch5x.subscriptionPlans.id });
+  const [plan] = await db5x.insert(sch5x.subscriptionPlans).values({ name: `iq5x-${tag}`, family: `iq5x-${tag}`, displayName: "5x", priceUsd: "1.00", billingPeriod: "month", quotaCredits: 20, stripePriceId: `price_${tag}` }).returning({ id: sch5x.subscriptionPlans.id });
   const planId = (plan as { id: string }).id;
   const now = Date.now();
   const [subRow] = await db5x.insert(sch5x.userSubscriptions).values({ userId: uid, planId, stripeSubscriptionId: `sub_${tag}`, status: "active", currentPeriodStart: new Date(now - 1000), currentPeriodEnd: new Date(now + 86400000) }).returning({ id: sch5x.userSubscriptions.id });
   const subId = (subRow as { id: string }).id;
-  const dSub = await bs.resolveBilling(uid, { quota: "syntheses" });
+  // 0021: квота одна — кредиты; операция списывает units (свой вес)
+  const dSub = await bs.resolveBilling(uid, { quota: "credits", units: 10 });
   if (dSub.billingMode !== "subscription" || dSub.subscriptionId !== subId) errs.push("5x: активная подписка не выбрана");
-  if ((await ss.checkQuota(subId, "syntheses", 0)).used !== 0) errs.push("5x: checkQuota (consume:false) изменил счётчик");
-  const race = await Promise.all([1, 2, 3].map(() => ss.consumeQuota(subId, "syntheses", 1)));
-  if (race.filter((r) => r.ok).length !== 2) errs.push(`5x: consumeQuota пробил квоту 2 (ok=${race.filter((r) => r.ok).length})`);
-  if ((await ss.checkQuota(subId, "syntheses", 0)).used !== 2) errs.push("5x: used_syntheses ≠ 2 после трёх параллельных consume");
-  const dFb = await bs.resolveBilling(uid, { quota: "syntheses" });
-  if (dFb.billingMode !== "balance") errs.push("5x: нет fallback на баланс при исчерпанной квоте");
+  if ((await ss.checkQuota(subId, "credits", 0)).used !== 0) errs.push("5x: checkQuota (consume:false) изменил счётчик");
+  const race = await Promise.all([1, 2, 3].map(() => ss.consumeQuota(subId, "credits", 10)));
+  if (race.filter((r) => r.ok).length !== 2) errs.push(`5x: consumeQuota пробил квоту 20 кредитов (ok=${race.filter((r) => r.ok).length})`);
+  if ((await ss.checkQuota(subId, "credits", 0)).used !== 20) errs.push("5x: used_credits ≠ 20 после трёх параллельных consume по 10");
+  const dFb = await bs.resolveBilling(uid, { quota: "credits", units: 1 });
+  if (dFb.billingMode !== "balance") errs.push("5x: нет fallback на баланс при исчерпанных кредитах");
   await db5x.update(sch5x.users).set({ balanceUsd: "0" }).where(eq5x(sch5x.users.id, uid));
-  try { await bs.resolveBilling(uid, { quota: "syntheses" }); errs.push("5x: квота исчерпана без баланса — прошло"); }
-  catch (e) { const d = e as { code?: string; details?: { quotaType?: string; used?: number } }; if (d.code !== "QUOTA_EXCEEDED" || d.details?.quotaType !== "syntheses" || d.details?.used !== 2) errs.push("5x: QUOTA_EXCEEDED без details.quotaType/used"); }
-  if ((await bs.resolveBilling(uid, { quota: "modes" })).billingMode !== "subscription") errs.push("5x: другая квота (modes) не работает");
+  try { await bs.resolveBilling(uid, { quota: "credits", units: 26 }); errs.push("5x: кредиты исчерпаны без баланса — прошло"); }
+  catch (e) { const d = e as { code?: string; details?: { quotaType?: string; used?: number; needed?: number } }; if (d.code !== "QUOTA_EXCEEDED" || d.details?.quotaType !== "credits" || d.details?.used !== 20 || d.details?.needed !== 26) errs.push("5x: QUOTA_EXCEEDED без details.quotaType/used/needed"); }
   if ((await bs.resolveBilling(uid, { quota: null })).billingMode !== "subscription") errs.push("5x: операция без квоты (resume) не проходит по подписке");
+  // 2026-11-17: GET /billing/view — подписка, остаток 0 из 20, баланса нет
+  const v5x = await bs.getBillingView(uid);
+  if (v5x.mode !== "subscription" || v5x.creditsLeft !== 0 || v5x.creditsQuota !== 20 || v5x.balanceFallback !== false || v5x.weights.section < 1) errs.push(`5x: getBillingView подписки: ${JSON.stringify(v5x)}`);
   await ss.resetUsageCounters(subId, { start: new Date(now), end: new Date(now + 2 * 86400000) });
   const afterReset = (await db5x.select().from(sch5x.userSubscriptions).where(eq5x(sch5x.userSubscriptions.id, subId)))[0]!;
-  if (afterReset.usedSyntheses !== 0 || Math.abs(afterReset.currentPeriodEnd.getTime() - (now + 2 * 86400000)) > 5) errs.push("5x: resetUsageCounters не обнулил/не сдвинул период");
+  if (afterReset.usedCredits !== 0 || Math.abs(afterReset.currentPeriodEnd.getTime() - (now + 2 * 86400000)) > 5) errs.push("5x: resetUsageCounters не обнулил/не сдвинул период");
   await db5x.update(sch5x.userSubscriptions).set({ status: "canceled" }).where(eq5x(sch5x.userSubscriptions.id, subId));
-  await expectCode(() => bs.resolveBilling(uid, { quota: "modes" }), "BILLING_REQUIRED", "отменённая подписка без баланса");
+  await expectCode(() => bs.resolveBilling(uid, { quota: "credits", units: 8 }), "BILLING_REQUIRED", "отменённая подписка без баланса");
+  // 2026-11-17: доработка после сбоя службы/API — баланс не требуется (waived)
+  const dWaive = await bs.resolveBilling(uid, { quota: null, waiveBalance: true });
+  if (dWaive.billingMode !== "balance" || dWaive.waived !== true) errs.push("5x: waiveBalance не дал режим balance без списания");
+  if ((await bs.getBillingView(uid)).mode !== "none") errs.push("5x: getBillingView без источника — не none");
   if (ss.mapStripeStatus("incomplete_expired") !== "canceled" || ss.mapStripeStatus("trialing") !== "trialing") errs.push("5x: mapStripeStatus");
   // (д) chargeUsage: наценка, balance_after, api_usage; recordApiUsage byo вне totals
   await db5x.update(sch5x.users).set({ balanceUsd: "1.0000" }).where(eq5x(sch5x.users.id, uid));
@@ -2687,11 +2694,24 @@ await rClose();
   if ((await bs.getUsageHistory(uid, { synthesisId: sid })).entries.length !== 2) errs.push("5x: фильтр synthesisId");
   const th = await bs.getTransactionHistory(uid, { limit: 1 });
   if (th.total !== 1 || th.items.length !== 1 || th.items[0]!.sectionKey !== "graph") errs.push("5x: getTransactionHistory");
+  // 0022: журнал списаний кредитов — по документу и пользователю
+  await bs.recordCreditCharge({ userId: uid, synthesisId: sid, subscriptionId: subId, credits: 26, op: "section" });
+  await bs.recordCreditCharge({ userId: uid, synthesisId: sid, subscriptionId: subId, credits: 0, op: "section" }); // ноль не пишется
+  const chg = await bs.getSynthesisCharges(uid, sid);
+  if (chg.credits !== 26 || Math.abs(chg.balanceUsd - ch.chargedUsd) > 1e-6 || Math.abs(chg.byoUsd - bs.computeCostUsd(500, 500)) > 1e-6 || chg.waivedCalls !== 0) errs.push(`5x: getSynthesisCharges: ${JSON.stringify(chg)}`);
+  const cch = await bs.getCreditChargeHistory(uid);
+  if (cch.total !== 1 || cch.totalCredits !== 26 || cch.items[0]?.synthesisId !== sid || cch.items[0]?.op !== "section") errs.push(`5x: getCreditChargeHistory: ${JSON.stringify(cch)}`);
   // (е) ON DELETE SET NULL истории при удалении синтеза (миграция 0002)
   await db5x.delete(sch5x.syntheses).where(eq5x(sch5x.syntheses.id, sid));
   const hist2 = await bs.getUsageHistory(uid);
   if (hist2.entries.length !== 2 || hist2.entries.some((e) => e.synthesisId !== null)) errs.push("5x: api_usage не SET NULL при удалении синтеза");
   if ((await bs.getTransactionHistory(uid)).items[0]!.synthesisId !== null) errs.push("5x: transactions не SET NULL при удалении синтеза");
+  if ((await bs.getCreditChargeHistory(uid)).items[0]?.synthesisId !== null) errs.push("5x: credit_charges не SET NULL при удалении синтеза");
+  // 2026-11-17: waived — usage пишется, баланс не списывается, транзакции нет
+  const balBeforeWaive = await balance();
+  const trBeforeWaive = (await bs.getTransactionHistory(uid)).total;
+  await bs.recordStreamUsage({ userId: uid, billingMode: "balance", waived: true, synthesisId: null, sectionKey: "graph" }, { inputTokens: 1000, outputTokens: 100 });
+  if (Math.abs((await balance()) - balBeforeWaive) > 1e-9 || (await bs.getTransactionHistory(uid)).total !== trBeforeWaive || (await bs.getUsageHistory(uid)).entries.length !== 3) errs.push("5x: waived-usage списал баланс / не записал api_usage");
   // (ж) реестр: createVersion → черновик; activate → кэш сброшен; откат
   const rkey = "mode.adversarial";
   const orig = await pr5x.getTemplate(rkey);
@@ -2863,26 +2883,26 @@ await rClose();
     if (!row) { errs.push(`5aa: план ${n} не посеян`); continue; }
     if (!before) {
       // создан этим прогоном — ≡ plans.ts, редакция 1 своего семейства
-      if (Number(row.priceUsd) !== def.priceUsd || row.quotaSyntheses !== def.quotaSyntheses || row.quotaEnrichments !== def.quotaEnrichments) errs.push(`5aa: созданная строка ${n} расходится с plans.ts`);
+      if (Number(row.priceUsd) !== def.priceUsd || row.quotaCredits !== def.quotaCredits) errs.push(`5aa: созданная строка ${n} расходится с plans.ts`);
       if (row.family !== n || row.edition !== 1) errs.push(`5aa: созданная строка ${n}: family=${row.family}, edition=${row.edition} (ожидалось ${n}/1)`);
       if (row.isActive !== Boolean(envSource[plansMod.priceEnvVarFor(n)])) errs.push(`5aa: is_active плана ${n} не следует из наличия STRIPE_PRICE_*`);
     } else {
       // уже была — сид её не тронул
-      const same = (["displayName", "priceUsd", "billingPeriod", "quotaSyntheses", "quotaRegenerations", "quotaModes", "quotaEnrichments", "stripePriceId", "isActive"] as const).every((k) => String(before[k]) === String(row[k]));
+      const same = (["displayName", "priceUsd", "billingPeriod", "quotaCredits", "stripePriceId", "isActive"] as const).every((k) => String(before[k]) === String(row[k]));
       if (!same) errs.push(`5aa: сид переписал существующую строку ${n} (15.4)`);
       const diverged = r2.results.find((r) => r.name === n)?.diverged ?? [];
-      const reallyDiverges = Number(row.priceUsd) !== def.priceUsd || row.quotaSyntheses !== def.quotaSyntheses || row.displayName !== def.displayName;
+      const reallyDiverges = Number(row.priceUsd) !== def.priceUsd || row.quotaCredits !== def.quotaCredits || row.displayName !== def.displayName;
       if (reallyDiverges && diverged.length === 0) errs.push(`5aa: строка ${n} расходится с plans.ts, а отчёт сида этого не говорит`);
     }
   }
   // убыточная квота — fail без записи (экономика проверяется ДО чтения строки)
-  const lossy = plansMod.PLANS.map((pl) => (pl.name === "starter" ? { ...pl, quotaSyntheses: 500 } : pl));
+  const lossy = plansMod.PLANS.map((pl) => (pl.name === "starter" ? { ...pl, quotaCredits: 500_000 } : pl));
   const r3 = await seedMod.seedPlans({ envSource, markup: 1.2, plans: lossy });
   const sf = r3.results.find((r) => r.name === "starter");
   if (sf?.outcome !== "fail" || !/убыточен|уменьшите квоты/.test(sf.error ?? "")) errs.push(`5aa: убыточная квота не даёт fail с объяснением (${sf?.outcome}: ${sf?.error})`);
   const starterRow = (await db5aa.select().from(sch5aa.subscriptionPlans).where(eq5aa(sch5aa.subscriptionPlans.name, "starter")))[0];
   const starterAfter = rowsAfter.find((r) => r.name === "starter");
-  if (starterRow?.quotaSyntheses !== starterAfter?.quotaSyntheses) errs.push("5aa: fail экономики записал строку");
+  if (starterRow?.quotaCredits !== starterAfter?.quotaCredits) errs.push("5aa: fail экономики записал строку");
   // getPlans ⊆ открытые для покупки
   const { getPlans: gp5aa } = await import("./services/subscription-service.js");
   const active = await gp5aa();
@@ -3268,10 +3288,10 @@ async function section4as(): Promise<void> {
   if (JSON.stringify(paths) !== JSON.stringify(["get /:id/recommendations", "post /:id/recommendations/parse", "get /:id/recommendations/extract/estimate", "post /:id/recommendations/extract", "post /:id/recommendations/plan"])) errs.push(`4as: маршруты рекомендаций: ${paths.join(", ")}`);
   // 16.1: ownerEditGate/ownerReadGate → общий editGate (routes/edit-gate.ts); readGate = editGate без activeOp
   if ((routes.match(/editGate\(c, id, user\.id\)/g) ?? []).length !== 3 /* 10.2: + plan */ || (routes.match(/readGate\(c, id, user\.id\)/g) ?? []).length !== 2 /* 12.3: + extract/estimate */ || !/editGate\(c, id, userId, \{ activeOp: false \}\)/.test(routes) || /loadSynthesisForRead/.test(routes)) errs.push("4as: рекомендации — правом edit: оба GET через readGate (= editGate без активной операции), три POST через editGate, без loadSynthesisForRead");
-  if (!/billingCheck\(\{ quota: "regenerations" \}\)/.test(routes)) errs.push("4as: extract без billingCheck regenerations");
+  if (!/billingCheck\(creditCharge\(EXTRACT_CREDIT_OP\)\)/.test(routes)) errs.push("4as: extract без billingCheck по весу EXTRACT_CREDIT_OP (кредиты 0021)");
   const svc = strip(await rd("./services/recommendations.ts"));
-  // 12.3 (Д-20): квота названа один раз — EXTRACT_QUOTA — и идёт и в слот, и в ответ оценки
-  if (!/export const EXTRACT_QUOTA = "regenerations" as const;/.test(svc) || !/\{ quota: EXTRACT_QUOTA \}/.test(svc) || /sendToUser|connectionManager/.test(svc)) errs.push("4as: ретрофит — квота regenerations (EXTRACT_QUOTA) и БЕЗ WS-сообщений (клиент до 10.3 принял бы их за обрыв генерации)");
+  // 12.3 (Д-20): вид операции назван один раз — EXTRACT_CREDIT_OP (0021: была EXTRACT_QUOTA) — и идёт и в слот, и в ответ оценки
+  if (!/export const EXTRACT_CREDIT_OP = "subsection" as const;/.test(svc) || !/creditCharge\(EXTRACT_CREDIT_OP\)/.test(svc) || !/creditsFor\(EXTRACT_CREDIT_OP\)/.test(svc) || /sendToUser|connectionManager/.test(svc)) errs.push("4as: ретрофит — вес подраздела (EXTRACT_CREDIT_OP) в слоте и оценке и БЕЗ WS-сообщений (клиент до 10.3 принял бы их за обрыв генерации)");
   if (/from "linkedom"/.test(svc)) errs.push("4as: linkedom вне utils/html-parser (инвариант 1.3)");
   const sectionsRoutes = strip(await rd("./routes/sections.ts"));
   if (/recommendations/.test(sectionsRoutes)) errs.push("4as: маршруты рекомендаций заведены в routes/sections — там сторожа 4ao/4ar считают маршруты разделов");
@@ -3448,7 +3468,10 @@ async function section4at(): Promise<void> {
   const PE = await import("./services/plan-executor.js");
   const st = (type: string) => ({ type, target: "x", status: "confirmed", cascadeGenerated: false }) as never;
   if (PE.countBillableSteps([st("edit_element"), st("delete")]) !== 0 || PE.countBillableSteps([st("refine_element"), st("regen"), st("edit_element")]) !== 2) errs.push("4at: countBillableSteps — edit_element/delete бесплатны, ноль не поднимается до единицы");
-  if (!("free" in PE.slotBillingFor([st("edit_element")])) || (PE.slotBillingFor([st("refine_element")]) as { units?: number }).units !== 1) errs.push("4at: slotBillingFor — без платных шагов обязан давать бесплатный слот");
+  // 0021: платный слот списывает кредиты — сумму весов шагов (refine_element — вес обогащения)
+  const W4at = (await import("./config/plan-economics.js")).CREDIT_WEIGHTS;
+  if (!("free" in PE.slotBillingFor([st("edit_element")])) || (PE.slotBillingFor([st("refine_element")]) as { units?: number }).units !== W4at.enrichment) errs.push("4at: slotBillingFor — без платных шагов обязан давать бесплатный слот");
+  if (PE.creditsForSteps([st("regen"), st("add"), st("regen_subsection"), st("regen_mode"), st("refine_element"), st("delete")]) !== 2 * W4at.section + W4at.subsection + W4at.mode + W4at.enrichment) errs.push("4at: creditsForSteps — не сумма весов видов шагов (0021)");
   const gs = strip(await rd("./services/generation-service.ts"));
   if (!/if \(billingOpts\.free === true\) \{\s*await (?:fn\(|runWithActor\(userId, \(\) =>\s*fn\()/.test(gs)) errs.push("4at: бесплатный слот обязан обходить resolveBilling");
   if (!/if \(countBillableSteps\(row\.steps, 0\) > 0\) \{\s*const denied = await executeBillingCheck/.test(plansRoute)) errs.push("4at: предпроверка биллинга на execute обязана быть условной (по платным шагам)");
@@ -4448,7 +4471,7 @@ async function section5am(): Promise<void> {
 
     // (б) Д-20: оценка ретрофита — без модели, слота, квоты и записи
     const est = await rec.estimateExtractCost(syn!.id);
-    if (!(est.estimate.inTokens > 0 && est.estimate.outTokens > 0 && est.estimate.cost > 0) || est.quota.type !== "regenerations" || est.quota.units !== 1) errs.push(`5am: оценка ретрофита (Д-20): ${JSON.stringify(est)}`);
+    if (!(est.estimate.inTokens > 0 && est.estimate.outTokens > 0 && est.estimate.cost > 0) || est.quota.type !== "credits" || est.quota.units !== (await import("./config/plan-economics.js")).CREDIT_WEIGHTS.subsection) errs.push(`5am: оценка ретрофита (Д-20): ${JSON.stringify(est)}`);
     if ((await d.select({ id: sc.apiUsage.id }).from(sc.apiUsage).where(eqM(sc.apiUsage.userId, u!.id))).length || gen.isGenerationActive(syn!.id)) errs.push("5am: оценка ретрофита оставила след в api_usage либо заняла слот (Д-20)");
     if ((await rec.listRecommendations(syn!.id)).round !== 1) errs.push("5am: оценка ретрофита тронула раунд (Д-20)");
 
@@ -5202,7 +5225,7 @@ async function section5av(): Promise<void> {
   const origWarn = console.warn;
   try {
     // (а) новое семейство → Product (metadata.philosynth_plan = family) + Price (lookup_key philosynth_<name>)
-    const spec = { name: tag, displayName: "IC 15.4", priceUsd: 19.99, billingPeriod: "month" as const, quotaSyntheses: 3, quotaRegenerations: 5, quotaModes: 5, quotaEnrichments: 10 };
+    const spec = { name: tag, displayName: "IC 15.4", priceUsd: 19.99, billingPeriod: "month" as const, quotaCredits: 780 };
     const c1 = await pa.createPlanFamily(spec, actor);
     if (c1.plan.family !== tag || c1.plan.edition !== 1 || !c1.plan.isActive || !c1.plan.stripePriceId) errs.push("5av: createPlanFamily — не редакция 1 / закрыт / без Price");
     const prod1 = [...mock.state.products.values()].find((p) => (p.metadata as Record<string, string> | undefined)?.philosynth_plan === tag);
@@ -5210,21 +5233,21 @@ async function section5av(): Promise<void> {
     if (!prod1) errs.push("5av: Product семейства не найден в моке по metadata.philosynth_plan");
     if (!price1 || price1.lookup_key !== `philosynth_${tag}` || price1.unit_amount !== 1999) errs.push(`5av: Price редакции 1 — lookup_key/сумма не те (${JSON.stringify(price1)})`);
     // убыточная редакция — отказ ОДНОЙ функцией экономики (plan-economics)
-    try { await pa.createPlanEdition(c1.plan.id, { quotaSyntheses: 500 }, actor); errs.push("5av: убыточная редакция принята"); }
+    try { await pa.createPlanEdition(c1.plan.id, { quotaCredits: 500_000 }, actor); errs.push("5av: убыточная редакция принята"); }
     catch (e) { const err = e as { code?: string; details?: { economics?: string } }; if (err.code !== "VALIDATION_ERROR" || !/убыточен/.test(err.details?.economics ?? "")) errs.push(`5av: убыточная редакция — не VALIDATION_ERROR с экономикой (${err.code})`); }
     // (б) живая подписка status=incomplete → квоты заперты
     const now = Date.now();
     const [sub] = await d.insert(sc.userSubscriptions).values({ userId: usr!.id, planId: c1.plan.id, stripeSubscriptionId: `sub_${tag}`, status: "incomplete", currentPeriodStart: new Date(now - 1000), currentPeriodEnd: new Date(now + 86_400_000) }).returning({ id: sc.userSubscriptions.id });
     const list1 = await pa.listPlansForAdmin();
     if (list1.find((p) => p.id === c1.plan.id)?.liveSubscriptions !== 1) errs.push("5av: listPlansForAdmin не считает incomplete живой подпиской");
-    try { await pa.updatePlan(c1.plan.id, { quotaSyntheses: 4 }, actor); errs.push("5av: правка квот при живой подписке принята"); }
-    catch (e) { const err = e as { code?: string; details?: { lockedFields?: string[] } }; if (err.code !== "PLAN_HAS_SUBSCRIPTIONS" || JSON.stringify(err.details?.lockedFields) !== '["quotaSyntheses"]') errs.push(`5av: правка квот — не PLAN_HAS_SUBSCRIPTIONS/lockedFields (${err.code} ${JSON.stringify(err.details)})`); }
+    try { await pa.updatePlan(c1.plan.id, { quotaCredits: 1000 }, actor); errs.push("5av: правка квот при живой подписке принята"); }
+    catch (e) { const err = e as { code?: string; details?: { lockedFields?: string[] } }; if (err.code !== "PLAN_HAS_SUBSCRIPTIONS" || JSON.stringify(err.details?.lockedFields) !== '["quotaCredits"]') errs.push(`5av: правка квот — не PLAN_HAS_SUBSCRIPTIONS/lockedFields (${err.code} ${JSON.stringify(err.details)})`); }
     if (pa.planAdminErrorStatus("PLAN_HAS_SUBSCRIPTIONS") !== 409) errs.push("5av: PLAN_HAS_SUBSCRIPTIONS не 409");
     const u1 = await pa.updatePlan(c1.plan.id, { displayName: "IC 15.4 renamed", priceUsd: 19.99 }, actor);
     if (u1.plan.displayName !== "IC 15.4 renamed" || u1.plan.stripePriceId !== c1.plan.stripePriceId) errs.push("5av: название на месте при живой подписке не правится / Price сменился без смены цены");
     // (в) новая редакция
-    const e2 = await pa.createPlanEdition(c1.plan.id, { priceUsd: 24.99, quotaSyntheses: 4 }, actor);
-    if (e2.plan.name !== `${tag}-v2` || e2.plan.edition !== 2 || e2.plan.family !== tag || !e2.plan.isActive || e2.plan.quotaSyntheses !== 4) errs.push(`5av: редакция 2 — имя/номер/семейство/активность не те (${e2.plan.name}/${e2.plan.edition})`);
+    const e2 = await pa.createPlanEdition(c1.plan.id, { priceUsd: 24.99, quotaCredits: 1000 }, actor);
+    if (e2.plan.name !== `${tag}-v2` || e2.plan.edition !== 2 || e2.plan.family !== tag || !e2.plan.isActive || e2.plan.quotaCredits !== 1000) errs.push(`5av: редакция 2 — имя/номер/семейство/активность не те (${e2.plan.name}/${e2.plan.edition})`);
     if (e2.previous?.isActive !== false || e2.previous.liveSubscriptions !== 1) errs.push("5av: прежняя редакция не закрыта / живые подписки не отданы");
     const price2 = mock.state.prices.get(e2.plan.stripePriceId) as Record<string, unknown> | undefined;
     if (!price2 || price2.lookup_key !== `philosynth_${tag}-v2` || price2.unit_amount !== 2499 || price2.product !== prod1?.id) errs.push("5av: Price редакции 2 — lookup_key/сумма/Product не те");
@@ -5233,7 +5256,7 @@ async function section5av(): Promise<void> {
     if (subAfter?.planId !== c1.plan.id) errs.push("5av: новая редакция перевела подписчика (plan_id изменился)");
     if ((await ss.getPlans()).some((p) => p.id === c1.plan.id)) errs.push("5av: закрытая редакция видна в GET /billing/plans");
     const [e1row] = await d.select().from(sc.subscriptionPlans).where(eqN(sc.subscriptionPlans.id, c1.plan.id));
-    if (e1row?.quotaSyntheses !== 3) errs.push("5av: квоты прежней редакции изменились");
+    if (e1row?.quotaCredits !== 780) errs.push("5av: квоты прежней редакции изменились");
     // (г) вебхук: Price редакции 2 → plan_id; неизвестный Price → предупреждение, plan_id на месте
     console.warn = (...a: unknown[]) => { warns.push(a.map(String).join(" ")); };
     const evt = (priceId: string) => ({ id: "evt_ic154", object: "event" as const, type: "customer.subscription.updated", data: { object: { id: `sub_${tag}`, status: "active", items: { data: [{ price: { id: priceId } }] } } } });
@@ -5257,11 +5280,11 @@ async function section5av(): Promise<void> {
     if (!st0) errs.push("5av: строки starter нет (5aa не посеял)");
     else {
       // квота МЕНЬШЕ (больше — убыточно при цене starter): экономика проверяется до строки
-      const sr = await seedMod.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...stDef, quotaSyntheses: Math.max(0, st0.quotaSyntheses - 1) }] });
+      const sr = await seedMod.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...stDef, quotaCredits: Math.max(0, st0.quotaCredits - 1) }] });
       const srr = sr.results[0];
-      if (sr.counts.skip !== 1 || srr?.outcome !== "skip" || !srr.diverged?.some((x) => x.field === "quotaSyntheses" && x.inDb === String(st0.quotaSyntheses) && x.inCode === String(Math.max(0, st0.quotaSyntheses - 1)))) errs.push(`5av: сид на существующей строке — не skip с diverged quotaSyntheses (${JSON.stringify(sr.results)})`);
+      if (sr.counts.skip !== 1 || srr?.outcome !== "skip" || !srr.diverged?.some((x) => x.field === "quotaCredits" && x.inDb === String(st0.quotaCredits) && x.inCode === String(Math.max(0, st0.quotaCredits - 1)))) errs.push(`5av: сид на существующей строке — не skip с diverged quotaCredits (${JSON.stringify(sr.results)})`);
       const [st1] = await d.select().from(sc.subscriptionPlans).where(eqN(sc.subscriptionPlans.id, st0.id));
-      if (st1?.quotaSyntheses !== st0.quotaSyntheses || st1.isActive !== st0.isActive) errs.push("5av: сид переписал существующую строку starter");
+      if (st1?.quotaCredits !== st0.quotaCredits || st1.isActive !== st0.isActive) errs.push("5av: сид переписал существующую строку starter");
     }
     // (ж) след: plan.created / plan.updated ×2 / plan.edition
     const audit = await d.select().from(sc.adminAudit).where(likeN(sc.adminAudit.targetId, `${tag}%`));
@@ -6911,7 +6934,7 @@ for (const [file, exp] of [
   if (!cpx.includes("отметить ↑") || !cpx.includes("onMarkModeRegen"))
     errs.push("4x: CascadePanel E5 без кнопки «отметить ↑» [19483]");
   const srx = await rdx("../client/src/components/edit/SubsectionRegenPanel.tsx");
-  for (const t of ["Перегенерировать их?", "Оценка стоимости: ≈ $",
+  for (const t of ["Перегенерировать их?", "Оценка стоимости: ", "chargeLine(billingView", /* 2026-11-17: подпись по способу оплаты */
     "regenerateModeResult", 'kind: "mode"'])
     if (!srx.includes(t))
       errs.push(`4x: каскад режимов SubsectionRegenPanel без «${t}» (confirm [19022])`);
@@ -7849,8 +7872,9 @@ need(await import("./config/export-assets.js"),
   const clientApi = await rd("../client/src/api/client.ts");
   for (const code of ["INSUFFICIENT_BALANCE", "API_KEY_INVALID", "API_KEY_MISSING", "QUOTA_EXCEEDED", "BILLING_REQUIRED"]) if (!clientApi.includes(`"${code}"`)) errs.push(`4ag: ApiErrorCode клиента без ${code} (§4.3)`);
   const sharedBilling = await rd("../packages/shared/types/billing.ts");
-  for (const q of ss.QUOTA_TYPES) if (!new RegExp(`\\b${q}: number;`).test(sharedBilling)) errs.push(`4ag: QuotaType ${q} нет среди полей usage/quotas SubscriptionOverview`);
-  if (!/export type QuotaType = "syntheses" \| "regenerations" \| "modes" \| "enrichments";/.test(sharedBilling)) errs.push("4ag: shared QuotaType ≠ QUOTA_TYPES");
+  // 0021: квота одна — кредиты; usage/quotas SubscriptionOverview — { credits: number }
+  for (const q of ss.QUOTA_TYPES) if (!new RegExp(`usage: \\{ ${q}: number \\};`).test(sharedBilling) || !new RegExp(`quotas: \\{ ${q}: number \\};`).test(sharedBilling)) errs.push(`4ag: QuotaType ${q} нет среди полей usage/quotas SubscriptionOverview`);
+  if (!/export type QuotaType = "credits";/.test(sharedBilling) || JSON.stringify(ss.QUOTA_TYPES) !== '["credits"]') errs.push("4ag: shared QuotaType ≠ QUOTA_TYPES (кредиты 0021)");
   const gsSrc = await rd("./services/generation-service.ts");
   if (!/billing: BillingDecision;/.test(gsSrc)) errs.push("4ag: GenerationSlotHandle без billing");
   if (!/consume: true,/.test(gsSrc) || !/resolveBilling\(userId, \{/.test(gsSrc)) errs.push("4ag: withGenerationSlot не зовёт resolveBilling(consume:true)");
@@ -7862,15 +7886,18 @@ need(await import("./config/export-assets.js"),
   if (/env\.anthropic\.apiKey/.test(svcAll)) errs.push("4ag: сервис берёт env.anthropic.apiKey напрямую (ключ — handle.billing.apiKey)");
   if (/TODO\(6\.1\)/.test(svcAll)) errs.push("4ag: устаревшая метка TODO(6.1)");
   const slotAwaits = (svcAll.match(/await withGenerationSlot\(/g) ?? []).length;
-  const slotQuotas = (svcAll.match(/\}, (?:\{ quota: .*?\}|slotBillingFor\(steps, \w+\))\); \/\/ 6\.1: квота подписки/g) ?? []).length + (svcAll.match(/^\s*\{ quota: (?:"syntheses"|null)(?:, estimatedCostUsd: opts\.estimatedCostUsd)? \},\n\s*\);/gm) ?? []).length;
+  // 0021: слот — по весу операции (creditCharge), сумме шагов плана (slotBillingFor),
+  // без квоты при возобновлении (quota: null / resumeSlotBillingFor) — у каждого
+  const slotQuotas = (svcAll.match(/\}, (?:creditCharge\("\w+"\)|\{ quota: null[^}]*\}|(?:resumeS|s)lotBillingFor\([^;]*?\))\); \/\/ 6\.1: квота подписки/g) ?? []).length + (svcAll.match(/^\s*\{ quota: (?:"credits", units: opts\.credits \?\? creditsFor\("synthesis"\), estimatedCostUsd: opts\.estimatedCostUsd, op: "synthesis"|null, waiveBalance: opts\.waiveBalance) \},\n\s*\);/gm) ?? []).length;
   if (slotAwaits !== 13 || slotQuotas !== slotAwaits) errs.push(`4ag: квоты заданы не у всех withGenerationSlot (${slotQuotas}/${slotAwaits}, ожидалось 13)`);
   const smSrc = await rd("./services/streaming-manager.ts");
   if (!/await recordUsageIfBilled\(opts\.billing, synthesisId, sectionKey, err\.usage\)/.test(smSrc)) errs.push("4ag: max-tokens без учёта usage");
   if (/from "\.\/billing-service\.js"|from "\.\.\/db\//.test(smSrc)) errs.push("4ag: streaming-manager импортирует биллинг/БД (должен — разъём)");
   const routeChecks: Record<string, [RegExp, number]> = {
-    "syntheses": [/billingCheck\(\{ quota: "syntheses" \}\)/g, 1], "generation": [/billingCheck\(\{ quota: "regenerations" \}\)/g, 2],
-    "plans": [/billingCheck\(\{ quota: "regenerations" \}\)/g, 1], "modes": [/billingCheck\(\{ quota: "modes" \}\)/g, 2],
-    "enrichment": [/billingCheck\(\{ quota: "enrichments" \}\)/g, 3], "transforms": [/billingCheck\(\{ quota: "regenerations" \}\)/g, 2],
+    // 0021: предпроверка — по весу операции; синтез — «хоть кредит» (точно — по оценке), план — сумма шагов
+    "syntheses": [/billingCheck\(\{ quota: "credits", units: 1 \}\)/g, 1], "generation": [/billingCheck\(creditCharge\("(?:section|subsection)"\)\)/g, 2],
+    "plans": [/billingCheck\(\{ quota: "credits", units: credits \}\)/g, 1], "modes": [/billingCheck\(creditCharge\("mode"\)\)/g, 2],
+    "enrichment": [/billingCheck\(creditCharge\("enrichment"\)\)/g, 3], "transforms": [/billingCheck\(creditCharge\("section"\)\)/g, 2],
   };
   for (const [f, [re, n]] of Object.entries(routeChecks)) { const t = await rd(`./routes/${f}.ts`); if ((t.match(re) ?? []).length !== n) errs.push(`4ag: routes/${f} — billingCheck ×${n} не найден`); }
   const bcSrc = await rd("./middleware/billing-check.ts");
@@ -7969,8 +7996,9 @@ need(await import("./config/export-assets.js"),
   if (!eqSet(keysOfConst("MODE_LABELS"), unionOf("BillingMode"))) errs.push("4ah: MODE_LABELS ≠ BillingMode");
   if (!eqSet(keysOfConst("TX_LABELS"), unionOf("TransactionType"))) errs.push("4ah: TX_LABELS ≠ TransactionType");
   if (!eqSet(keysOfConst("SUB_STATUS_LABELS"), unionOf("SubscriptionStatus"))) errs.push("4ah: SUB_STATUS_LABELS ≠ SubscriptionStatus");
+  // 0021: квота одна — кредиты; таблица остатка — одна строка по usage.credits / quotas.credits
   const { QUOTA_TYPES: qt } = await import("./services/subscription-service.js");
-  if (!eqSet(keysOfConst("QUOTA_LABELS"), [...qt])) errs.push("4ah: QUOTA_LABELS ≠ QUOTA_TYPES");
+  for (const q of qt) if (!bp.includes(`overview.usage.${q}`) || !bp.includes(`overview.quotas.${q}`)) errs.push(`4ah: BillingPage не показывает квоту ${q} (usage/quotas)`);
   // (д) 4ah — тестовые значения предпросмотра покрывают плейсхолдеры серверных шаблонов
   const cfgDir = new URL("./config/", import.meta.url);
   const inventory = new Set<string>();
@@ -8076,9 +8104,9 @@ need(await import("./config/export-assets.js"),
   const synR = await rd("./routes/syntheses.ts");
   if ((synR.match(/estimateSynthesisCost\(user\.id, \{/g) ?? []).length !== 2) errs.push("4ai: estimateSynthesisCost должен зваться из /estimate И из гейта POST /syntheses");
   if (!/billingCtx\?\.billingMode === "balance" && billingCtx\.enforced/.test(synR) || !/estimatedCostUsd: estimatedChargeUsd,\s*consume: false/.test(synR)) errs.push("4ai: точный гейт POST /syntheses не сверяет resolveBilling с оценкой (только balance+enforced)");
-  if (!/estimatedCostUsd: estimatedChargeUsd,\s*\}\)\.catch\(/.test(synR)) errs.push("4ai: оценка не передаётся в generateSynthesis (слот повторит гейт по порогу)");
+  if (!/estimatedCostUsd: estimatedChargeUsd,\s*credits: synthesisCredits,\s*\}\)\.catch\(/.test(synR)) errs.push("4ai: оценка не передаётся в generateSynthesis (слот повторит гейт по порогу)");
   const genS = await rd("./services/generation-service.js".replace(/\.js$/, ".ts"));
-  if (!/\{ quota: "syntheses", estimatedCostUsd: opts\.estimatedCostUsd \}/.test(genS)) errs.push("4ai: generateSynthesis не пробрасывает estimatedCostUsd в withGenerationSlot");
+  if (!/\{ quota: "credits", units: opts\.credits \?\? creditsFor\("synthesis"\), estimatedCostUsd: opts\.estimatedCostUsd, op: "synthesis" \}/.test(genS)) errs.push("4ai: generateSynthesis не пробрасывает estimatedCostUsd в withGenerationSlot");
   const accS = await rd("./services/account-deletion.ts");
   if (/\.delete\(users\)/.test(accS)) errs.push("4ai: account-deletion удаляет строку users (RESTRICT-история 02 §2.20–2.21 требует анонимизации)");
   if (!/email: anonymizedEmail,[\s\S]{0,200}stripeCustomerId: null,/.test(accS) || !/hasActiveGenerationForUser\(userId\)/.test(accS)) errs.push("4ai: account-deletion — анонимизация неполна или без гейта активной генерации");
@@ -8313,6 +8341,38 @@ need(await import("./config/export-assets.js"),
     if (!plansMod.computePlanEconomics(pl, env4al.stripe.billingMarkup).ok) errs.push(`4al: тариф ${pl.name} убыточен при BILLING_MARKUP=${env4al.stripe.billingMarkup} — посев откажет`);
   }
   if (plansMod.PLANS.some((pl) => plansMod.computePlanEconomics(pl, 3).ok)) errs.push("4al: проверка экономики не реагирует на наценку (×3 проходит)");
+  // 0021 (кредиты, 2026-11-17): веса — из опорных стоимостей; миграция и посев переводят старые квоты теми же весами
+  const pe = await import("./config/plan-economics.js");
+  const ref = pe.REFERENCE_OPERATION_COST_USD;
+  for (const [op, cost] of [["synthesis", ref.synthesis], ["section", ref.regeneration], ["subsection", ref.subsection], ["mode", ref.mode], ["enrichment", ref.enrichment]] as const) {
+    if (pe.CREDIT_WEIGHTS[op] !== Math.max(1, Math.ceil(cost / pe.CREDIT_USD - 1e-9))) errs.push(`4al: вес ${op} ≠ опорной стоимости в кредитах`);
+  }
+  if (!(pe.CREDIT_WEIGHTS.subsection < pe.CREDIT_WEIGHTS.section && pe.CREDIT_WEIGHTS.enrichment < pe.CREDIT_WEIGHTS.mode && pe.CREDIT_WEIGHTS.section < pe.CREDIT_WEIGHTS.synthesis)) errs.push("4al: порядок весов нарушен (подраздел < раздел < синтез, обогащение < режим)");
+  const mig21 = await rd("./db/migrations/0021_credits.sql");
+  const w = pe.CREDIT_WEIGHTS;
+  for (const [col, wt] of [["syntheses", w.synthesis], ["regenerations", w.section], ["modes", w.mode], ["enrichments", w.enrichment]] as const) {
+    if (!new RegExp(`"quota_${col}" \\* ${wt}\\b`).test(mig21) || !new RegExp(`"used_${col}" \\* ${wt}\\b`).test(mig21)) errs.push(`4al: миграция 0021 переводит ${col} не весом ${wt} (CREDIT_WEIGHTS)`);
+  }
+  const legacy: Record<string, [number, number, number, number]> = { starter: [3, 5, 5, 10], pro: [9, 15, 15, 25], academic: [24, 35, 35, 80] };
+  for (const pl of plansMod.PLANS) {
+    const q = legacy[pl.name];
+    if (q && pl.quotaCredits !== pe.legacyQuotasToCredits({ syntheses: q[0], regenerations: q[1], modes: q[2], enrichments: q[3] })) errs.push(`4al: кредиты посева ${pl.name} ≠ прежним квотам по весам (миграция 0021 даст другое число)`);
+  }
+  if (pe.creditsForCost(0.0001) !== 1 || pe.creditsForCost(0.25) !== 25 || pe.creditsForCost(0.2501) !== 26) errs.push("4al: creditsForCost — не «вверх, не меньше одного»");
+  // клиентская подпись — зеркало creditsForCost и приоритета режимов
+  const bvS = await rd("../client/src/hooks/useBillingView.ts");
+  if (!/Math\.max\(1, Math\.ceil\(costUsd \/ view\.creditUsd - 1e-9\)\)/.test(bvS) || !/apiGet<BillingView>\("\/billing\/view"\)/.test(bvS)) errs.push("4al: useBillingView — не зеркало creditsForCost / не GET /billing/view");
+  const brS = await rd("./routes/billing.ts");
+  if (!/billingRoutes\.get\("\/view"/.test(brS) || brS.indexOf('billingRoutes.get("/view"') < brS.indexOf('billingRoutes.use("*", requireAuth)')) errs.push("4al: GET /billing/view нет или он до requireAuth");
+  // 2026-11-17: доработка после сбоя — без списания (подписка quota:null, баланс waiveBalance); планы — без двойного списания
+  const prS = await rd("./services/pause-resume-service.ts");
+  if ((prS.match(/waiveBalance: isServiceFailurePause\(ps\)/g) ?? []).length !== 3) errs.push("4al: не все ветки возобновления генерации несут waiveBalance (retry/skip, fill без недостающих, fill)");
+  const peS = await rd("./services/plan-executor.ts");
+  if (!/resumeSlotBillingFor\(steps, fromIndex, ps && ps\.kind === "plan" \? ps : null\)/.test(peS)) errs.push("4al: возобновление плана снова списывает оплаченные шаги");
+  // 0022: списанные кредиты пишутся в журнал там же, где потребляются (слот)
+  const gsS = await rd("./services/generation-service.ts");
+  if (!/if \(billing\.quotaConsumed\) \{\s*await recordCreditCharge\(/.test(gsS) || !/op: billingOpts\.op \?\? "operation"/.test(gsS)) errs.push("4al: withGenerationSlot не пишет credit_charges по потреблённым кредитам");
+  if (!/billingRoutes\.get\("\/credit-charges"/.test(brS) || !/synthesesRoutes\.get\("\/:id\/charges", requireAuth/.test(await rd("./routes/syntheses.ts"))) errs.push("4al: нет GET /billing/credit-charges или GET /syntheses/:id/charges");
   const plansS = await rd("./config/plans.ts");
   // 15.4: экономика переехала в общий модуль plan-economics (сид + сервер); plans.ts её реэкспортирует
   const econS = await rd("./config/plan-economics.ts");
@@ -8649,7 +8709,7 @@ async function section4ao(): Promise<void> {
   }
   if (!/access\.scope === "showcase"\) return c\.json\(showcaseForbiddenJson, 403\)/.test(expC) || !/exportHTML\(id, \{\s*includeLogs,\s*ownerView,?[\s\S]{0,200}?\}\)/.test(expC)) errs.push("4ao: export — нет гейта витрины / includeLogs / ownerView (13.2)");
   if (!/includeLogs\s*\?\s*await loadExportLogs/.test(heC) || !/includeLogs && \(genRows\.length/.test(heC) || !/function renderDocFooter/.test(heC) || !/docHTML \+= renderDocFooter\(s\)/.test(heC)) errs.push("4ao: html-exporter — лог не под includeLogs либо нет футера-зеркала (утрата 4.2)");
-  if (!/id="footerCost"[^<]*Токены: \$\{fmt\(row\.totalInputTokens\)\} вх\. \+ \$\{fmt\(row\.totalOutputTokens\)\} вых\. · Стоимость: \$\$\{cost\.toFixed\(4\)\} \(\$\{\(cost \* 100\)\.toFixed\(2\)\}¢\)/.test(heC)) errs.push("4ao: футер экспорта не в формате updateFooterCost клиента");
+  if (!/id="footerCost"[^<]*Токены: \$\{fmt\(row\.totalInputTokens\)\} вх\. \+ \$\{fmt\(row\.totalOutputTokens\)\} вых\. · Себестоимость: \$\$\{cost\.toFixed\(4\)\} \(\$\{\(cost \* 100\)\.toFixed\(2\)\}¢\)/.test(heC)) errs.push("4ao: футер экспорта не в формате updateFooterCost клиента");
   if (!/id="footerPhil"/.test(heC) || /свободный синтез/.test(heC)) errs.push("4ao: #footerPhil в экспорте отсутствует или несёт подпись «свободный синтез» (импорт 4.3 читает философов оттуда)");
   // (д) PATCH: visibility + флаги; синоним isPublic снят 8.7 (→ 400); duplicate → private
   if (!/SYNTHESIS_VISIBILITIES as readonly string\[\]\)\.includes\(body\.visibility\)/.test(synC) || !/details\.visibility = "private \| showcase \| full"/.test(synC)) errs.push("4ao: PATCH не валидирует visibility по перечислению с details.visibility");
@@ -8713,7 +8773,7 @@ async function section4ap(): Promise<void> {
   if (!/className="submit-btn app-landing-cta"/.test(landC)) errs.push("4ap: крупной кнопки «Создать аккаунт» в теле нет");
   if (!/status === "authenticated"\) return <Navigate to="\/catalog" replace \/>/.test(landC)) errs.push("4ap: вошедший на «/» не уходит в /catalog");
   const billC = strip(await rd("../client/src/pages/BillingPage.tsx"));
-  if (!/<PlansTable\s+plans=\{plans\}\s+renderAction=/.test(billC) || /<th>Тариф<\/th>/.test(billC)) errs.push("4ap: BillingPage держит свою таблицу тарифов вместо PlansTable");
+  if (!/<PlansTable\s+plans=\{plans\}\s+(?:credits=\{planCredits\}\s+)?renderAction=/.test(billC) || /<th>Тариф<\/th>/.test(billC)) errs.push("4ap: BillingPage держит свою таблицу тарифов вместо PlansTable");
   // synthesis-store: последовательная загрузка, разделы по ответу
   const stC = strip(await rd("../client/src/stores/synthesis-store.ts"));
   if (/Promise\.all\(\[\s*getSynthesis/.test(stC) || !/const synthesis = await getSynthesis\(id\);\s*const \{ summaries, sections, embedded \} = await sectionsFor\(synthesis\)/.test(stC)) errs.push("4ap: synthesis-store грузит /sections параллельно GET /:id (гостю 401, витрине 403)");
@@ -9169,7 +9229,7 @@ async function section4bb(): Promise<void> {
   const CE = await import("./services/cost-estimator.js");
   need(CE as Record<string, unknown>, ["contextBudgetForDepth", "DEFAULT_CONTEXT_BUDGET", "subsectionOutputChars"], "cost-estimator (12.3)");
   const REC = await import("./services/recommendations.js");
-  need(REC as Record<string, unknown>, ["rationaleWarning", "estimateExtractCost", "estimateExtractFromSizes", "buildExtractRequest", "EXTRACT_QUOTA"], "recommendations (12.3)");
+  need(REC as Record<string, unknown>, ["rationaleWarning", "estimateExtractCost", "estimateExtractFromSizes", "buildExtractRequest", "EXTRACT_CREDIT_OP"], "recommendations (12.3)");
   const SC = await import("./services/stripe-client.js");
   need(SC as Record<string, unknown>, ["isNoSuchCustomerError", "StripeError"], "stripe-client (12.3)");
   need(await import("./services/subscription-service.js"), ["withStripeCustomer", "resetStripeCustomer", "ensureStripeCustomer"], "subscription-service (12.3)");
@@ -9180,7 +9240,7 @@ async function section4bb(): Promise<void> {
 
   // 4bb-а (Д-6): статус done и plan_updated — ПОСЛЕ слота, во всех трёх прогонах
   const pe = strip(await rd("./services/plan-executor.ts"));
-  const slots = pe.split("await withGenerationSlot(").slice(1).map((x) => x.slice(0, x.indexOf("slotBillingFor(")));
+  const slots = pe.split("await withGenerationSlot(").slice(1).map((x) => x.slice(0, x.search(/[sS]lotBillingFor\(/)));
   if (slots.length !== 3 || slots.some((x) => x.length < 40)) errs.push(`4bb: в исполнителе ожидалось три прогона под withGenerationSlot (execute, confirm_step, resume), найдено ${slots.length} (Д-6)`);
   if (slots.some((x) => /finishPlanRun\(|sendPlanUpdated\(|setPlanStatus\(planId, "done"\)/.test(x))) errs.push("4bb: статус done либо plan_updated пишутся ВНУТРИ withGenerationSlot — клиент получит 409 на следующий запрос (Д-6)");
   const fin = pe.slice(pe.indexOf("async function finishPlanRun("), pe.indexOf("async function sendPlanUpdated("));
@@ -9245,7 +9305,7 @@ async function section4bb(): Promise<void> {
 
   // 4bb-е (Д-19): /estimate несёт бюджет контекста
   const synR = strip(await rd("./routes/syntheses.ts"));
-  if (!/const contextBudget = await contextBudgetForDepth\(depth\);\s*return c\.json\(\{ estimate: est, contextBudget \}\);/.test(synR)) errs.push("4bb: POST /syntheses/estimate обязан нести contextBudget из активного конфига (Д-19)");
+  if (!/const contextBudget = await contextBudgetForDepth\(depth\);\s*return c\.json\(\{ estimate: est, contextBudget(?:, credits: creditsForCost\(est\.cost\))? \}\);/.test(synR)) errs.push("4bb: POST /syntheses/estimate обязан нести contextBudget из активного конфига (Д-19)");
   const ceS = strip(await rd("./services/cost-estimator.ts"));
   if (count(ceS, /\b48000\b/g) !== 1 || count(ceS, /\?\? DEFAULT_CONTEXT_BUDGET/g) < 2) errs.push("4bb: запасной бюджет контекста обязан быть одной константой DEFAULT_CONTEXT_BUDGET (Д-19)");
 
@@ -10545,7 +10605,7 @@ async function section4bl(): Promise<void> {
   const adminApi = await rd("../client/src/api/admin.ts");
   for (const k of ["listAdminPlans", "updatePlan", "createPlanEdition", "createPlan"]) if (!new RegExp(`export function ${k}\\(`).test(adminApi)) errs.push(`4bl: client/api/admin без ${k}`);
   const bp = strip(await rd("../client/src/pages/BillingPage.tsx"));
-  if (!/getPlans\(\)/.test(bp)) errs.push("4bl: BillingPage берёт тарифы не из GET /billing/plans (только открытые)");
+  if (!/getPlans(?:WithCredits)?\(\)/.test(bp)) errs.push("4bl: BillingPage берёт тарифы не из GET /billing/plans (только открытые)");
   // deploy/*: абзац о правке тарифов админкой; dev-billing — без updated
   for (const f of ["../deploy/philosynth-termux.sh", "../deploy/philosynth-ubuntu.sh", "../deploy/philosynth-hosting.md", "../README.md"]) if (!/правятся админкой|правятся \*\*админкой\*\*/.test(await rd(f))) errs.push(`4bl: ${f.replace("../", "")} без абзаца «тарифы после первого посева правятся админкой»`);
   if (/created=0, updated=0/.test(await rd("../tools/dev-billing.sh"))) errs.push("4bl: dev-billing.sh ждёт исход updated у сида");
@@ -10935,7 +10995,7 @@ async function section4bp(): Promise<void> {
   // Д-83: право правки проверяется ДО предпроверки биллинга (рецензенту без оплаты — 403, не 402)
   for (const f of ["./routes/generation.ts", "./routes/modes.ts", "./routes/enrichment.ts", "./routes/recommendations.ts", "./routes/transforms.ts"]) {
     const s = src[f]!;
-    if (count(s, /requireAuth,\s*billingCheck\(/g) !== 0 || count(s, /requireAuth,\s*editRightFirst,\s*billingCheck\(/g) !== count(s, /billingCheck\(\{/g)) errs.push(`4bp: ${f} — billingCheck стоит раньше проверки права правки (editRightFirst): участник без права получил бы 402 вместо 403`);
+    if (count(s, /requireAuth,\s*billingCheck\(/g) !== 0 || count(s, /requireAuth,\s*editRightFirst,\s*billingCheck\(/g) !== count(s, /billingCheck\((?:\{|creditCharge\()/g)) errs.push(`4bp: ${f} — billingCheck стоит раньше проверки права правки (editRightFirst): участник без права получил бы 402 вместо 403`);
   }
 
   // 4bp-б: исполнитель — в каждой строке журнала и версии
@@ -11022,7 +11082,7 @@ async function section4bp(): Promise<void> {
 
   // 4bp-ж: описи i18n — ключи 17.1 с en/de (черновики)
   const STR = JSON.parse(await rd("../packages/shared/i18n/strings.json")) as { strings?: Record<string, { en?: string | null; de?: string | null }> };
-  for (const k of ["server.expectedVersion.conflict", "server.proposals.stale", "server.proposals.notOpen", "server.proposals.acceptNeedsEdit", "server.logFormatter.startedBy", "server.logFormatter.costHidden", "edit.editPlanPanel.editSubsection", "edit.versionHistory.sourceProposal", "synthesis.pauseModal.stepSubsectionEdit"]) {
+  for (const k of ["server.expectedVersion.conflict", "server.proposals.stale", "server.proposals.notOpen", "server.proposals.acceptNeedsEdit", "server.logFormatter.startedBy", "server.logFormatter.costPriceHidden" /* 2026-11-17: «Себестоимость» */, "edit.editPlanPanel.editSubsection", "edit.versionHistory.sourceProposal", "synthesis.pauseModal.stepSubsectionEdit"]) {
     const row = STR.strings?.[k];
     if (!row || !row.en || !row.de) errs.push(`4bp: ключ ${k} без строки таблицы или без en/de`);
   }

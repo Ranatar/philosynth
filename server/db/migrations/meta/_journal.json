@@ -148,6 +148,20 @@
       "when": 1794814874325,
       "tag": "0020_search_index",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794895254812,
+      "tag": "0021_credits",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794899830403,
+      "tag": "0022_credit_charges",
+      "breakpoints": true
     }
   ]
 }

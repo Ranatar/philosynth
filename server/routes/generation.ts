@@ -56,6 +56,7 @@ import type {
 import { tl } from "@philosynth/shared/i18n/t";
 import { editGate, editRightFirst } from "./edit-gate.js"; // 16.1
 import { canEditSynthesisOf } from "../services/capabilities.js"; // 16.1
+import { creditCharge } from "../config/plan-economics.js";
 
 export const generationRoutes = new Hono<AuthEnv>();
 
@@ -68,7 +69,7 @@ generationRoutes.post(
   "/:id/regenerate/:sectionKey",
   requireAuth,
   editRightFirst,
-  billingCheck({ quota: "regenerations" }), // 6.1
+  billingCheck(creditCharge("section")), // 6.1; кредиты 0021
   async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
@@ -95,7 +96,7 @@ generationRoutes.post(
   "/:id/regenerate-subsection",
   requireAuth,
   editRightFirst,
-  billingCheck({ quota: "regenerations" }), // 6.1
+  billingCheck(creditCharge("subsection")), // 6.1; кредиты 0021
   async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");

@@ -181,7 +181,7 @@ async function main() {
   await p.waitForSelector(".doc-section", { timeout: 20000 });
   await clickLang(p, "en");
   await p.waitForFunction(() => document.documentElement.lang === "en", { timeout: 5000 });
-  await p.waitForFunction(() => (document.querySelector(".brand-tagline")?.textContent ?? "").startsWith("Philosophical"), { timeout: 10000 }); // каталог en применён
+  await p.waitForFunction(() => (document.querySelector(".topbar-tagline")?.textContent ?? "").startsWith("Philosophical"), { timeout: 10000 }); // каталог en применён
   ok((await sql`select ui_locale from users where id=${A.id}`)[0].ui_locale === "en", "вошедший: ui_locale=en в БД");
   // шапка документа — метки-данные по месту показа
   const metaVals = await p.evaluate(() => [...document.querySelectorAll(".doc-meta-val")].map((e) => e.textContent.trim()));

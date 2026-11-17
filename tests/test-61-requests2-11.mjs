@@ -21,7 +21,7 @@
  *      active → POST /syntheses → used_syntheses = 1 → generation_complete;
  *      api_usage 'subscription'; GET /subscription отражает использование.
  *  R8  Исчерпание квоты: used_syntheses = quota → POST /syntheses → 403
- *      QUOTA_EXCEEDED (details.quotaType) → пополнить баланс → тот же
+ *      QUOTA_EXCEEDED (details.quotaType = credits, 0021) → пополнить баланс → тот же
  *      запрос проходит в режиме 'balance' (fallback).
  *  R9  Webhook invoice.paid: счётчики сброшены, период обновлён; повтор
  *      того же периода не сбрасывает; неверная подпись → 400.
@@ -281,7 +281,7 @@ try {
   ok((await getDecryptedKey(A.id)) === USER_KEY, "getDecryptedKey ≡ оригинал");
   const rowKey = (await db.select().from(apiKeys).where(eq(apiKeys.userId, A.id)))[0];
   ok(rowKey && !Buffer.from(rowKey.encryptedKey).toString("utf8").includes("USER-"), "в БД ключ не в открытом виде");
-  let dec = await resolveBilling(A.id, { quota: "modes" });
+  let dec = await resolveBilling(A.id, { quota: "credits", units: 8 });
   ok(dec.billingMode === "byo" && dec.apiKey === USER_KEY, "resolveBilling → mode byo с ключом пользователя");
   let op = await runOp(A, SA.id, wsA);
   ok(op.r.status === 200 && op.done, "операция запущена (billing-check пропустил) и завершена");
@@ -321,7 +321,7 @@ try {
   r = await api(B, "POST", "/billing/topup/confirm", { paymentIntentId: "pi_nope" });
   ok(r.status === 404, "confirm неизвестного PI → 404");
   ok(near(await balanceOf(B.id), 1), "users.balance_usd = 1.0000");
-  dec = await resolveBilling(B.id, { quota: "modes" });
+  dec = await resolveBilling(B.id, { quota: "credits", units: 8 });
   ok(dec.billingMode === "balance" && dec.apiKey === SERVER_KEY, "resolveBilling → mode balance с серверным ключом");
   op = await runOp(B, SB.id, wsB);
   ok(op.r.status === 200 && op.done && op.call?.apiKey === SERVER_KEY, "операция прошла серверным ключом");
@@ -417,11 +417,11 @@ try {
   await db.delete(subscriptionPlans).where(eq(subscriptionPlans.name, "starter"));
   const [plan] = await db.insert(subscriptionPlans).values({
     name: "starter", family: "starter", displayName: "Starter", priceUsd: "9.00", billingPeriod: "month",
-    quotaSyntheses: 3, quotaRegenerations: 10, quotaModes: 5, quotaEnrichments: 20, stripePriceId: "price_starter_61",
+    quotaCredits: 950, stripePriceId: "price_starter_61", // 0021: прежние 3/10/5/20 по весам
   }).returning();
   const F = await makeUser("f");
   r = await api(F, "GET", "/billing/plans");
-  ok(r.status === 200 && r.json.plans.some((p) => p.name === "starter" && p.priceUsd === 9 && p.quotaSyntheses === 3), "GET /plans содержит Starter");
+  ok(r.status === 200 && r.json.plans.some((p) => p.name === "starter" && p.priceUsd === 9 && p.quotaCredits === 950) && r.json.credits?.weights?.section > 0, "GET /plans содержит Starter и веса операций в кредитах");
   r = await api(F, "GET", "/billing/subscription");
   ok(r.status === 200 && r.json.subscription === null && r.json.plan === null, "GET /subscription без подписки → null");
   r = await api(F, "POST", "/billing/subscribe", { planId: "not-uuid" });
@@ -439,9 +439,15 @@ try {
   ok(wh.status === 200 && wh.json.handled && wh.json.action === "period_reset", "webhook invoice.paid → handled", J(wh.json));
   let subRow = await subOf(F.id);
   ok(subRow.status === "active" && Math.abs(subRow.currentPeriodEnd.getTime() / 1000 - pe) < 2, "подписка active, период из инвойса");
-  dec = await resolveBilling(F.id, { quota: "syntheses" });
+  dec = await resolveBilling(F.id, { quota: "credits", units: 1 });
   ok(dec.billingMode === "subscription" && dec.subscriptionId === subRow.id && dec.apiKey === SERVER_KEY, "resolveBilling → subscription (проверка без потребления)");
-  ok((await subOf(F.id)).usedSyntheses === 0, "checkQuota (consume:false) счётчик не тронул");
+  ok((await subOf(F.id)).usedCredits === 0, "checkQuota (consume:false) счётчик не тронул");
+  // 0021: синтез списывает кредиты по оценке состава — то же число, что отдаёт /estimate
+  const estF = await api(F, "POST", "/syntheses/estimate", SYNTH_BODY("overview"));
+  const synthCredits = estF.json?.credits;
+  ok(estF.status === 200 && Number.isInteger(synthCredits) && synthCredits > 8, "POST /syntheses/estimate называет кредиты синтеза", J(estF.json));
+  r = await api(F, "GET", "/billing/view");
+  ok(r.status === 200 && r.json.mode === "subscription" && r.json.creditsLeft === 950 && r.json.creditsQuota === 950, "GET /billing/view: подписка, 950 из 950", J(r.json));
   const wsF = openWs(F); await wsF.opened;
   const sinceF = wsF.mark();
   r = await api(F, "POST", "/syntheses", SYNTH_BODY("overview"));
@@ -450,26 +456,27 @@ try {
   const doneF = await wsF.waitFor((m) => m.type === "generation_complete" && m.synthesisId === synthF, 120000, sinceF);
   ok(!!doneF, "generation_complete получен", serverLog.slice(-800));
   subRow = await subOf(F.id);
-  ok(subRow.usedSyntheses === 1, "used_syntheses = 1 (один синтез, а не по разделу)", String(subRow.usedSyntheses));
+  ok(subRow.usedCredits === synthCredits, "used_credits = кредиты оценки синтеза (один раз за операцию, а не по разделу)", String(subRow.usedCredits));
   us = await usageOf(F.id);
   ok(us.length >= 2 && us.every((x) => x.billingMode === "subscription" && x.synthesisId === synthF), `api_usage 'subscription' на каждый вызов Claude (${us.length})`);
   ok(near(await balanceOf(F.id), 0) && (await txOf(F.id)).length === 0, "баланс/транзакции не тронуты");
   r = await api(F, "GET", "/billing/subscription");
-  ok(r.json.subscription?.status === "active" && r.json.usage.syntheses === 1 && r.json.quotas.syntheses === 3 && r.json.plan.name === "starter", "GET /subscription: usage/quotas");
+  ok(r.json.subscription?.status === "active" && r.json.usage.credits === synthCredits && r.json.quotas.credits === 950 && r.json.plan.name === "starter", "GET /subscription: usage/quotas (кредиты)");
   const rowF = (await db.select().from(syntheses).where(eq(syntheses.id, synthF)))[0];
   ok(rowF.status === "ready" && Number(rowF.totalCostUsd) > 0, "синтез ready, total_cost_usd > 0 (себестоимость документа)");
 
   /* ── R8 Исчерпание квоты → QUOTA_EXCEEDED / fallback на баланс ──────── */
   console.log("\n── R8: исчерпание квоты ──");
-  await db.update(userSubscriptions).set({ usedSyntheses: 3 }).where(eq(userSubscriptions.id, subRow.id));
+  // 0021: осталось 10 кредитов — на синтез не хватит, на режим (8) хватит
+  await db.update(userSubscriptions).set({ usedCredits: 940 }).where(eq(userSubscriptions.id, subRow.id));
   r = await api(F, "POST", "/syntheses", SYNTH_BODY("overview"));
-  ok(r.status === 403 && r.json.code === "QUOTA_EXCEEDED" && r.json.details?.quotaType === "syntheses" && r.json.details?.used === 3, "квота исчерпана, баланса нет → 403 QUOTA_EXCEEDED(details)", J(r.json));
+  ok(r.status === 403 && r.json.code === "QUOTA_EXCEEDED" && r.json.details?.quotaType === "credits" && r.json.details?.used === 940 && r.json.details?.needed === synthCredits, "кредитов на синтез не хватает, баланса нет → 403 QUOTA_EXCEEDED(details)", J(r.json));
   r = await api(F, "POST", `/syntheses/${synthF}/modes/adversarial/run`, { param: "Кант" });
-  ok(r.status === 200, "другая квота (modes) ещё есть → операция принята");
+  ok(r.status === 200, "на режим кредитов ещё хватает → операция принята");
   await wsF.waitFor((m) => m.type === "mode_done" && m.synthesisId === synthF, 60000);
-  ok((await subOf(F.id)).usedModes === 1, "used_modes = 1");
+  ok((await subOf(F.id)).usedCredits === 948, "used_credits + вес режима (8)");
   await setBalance(F.id, 2);
-  dec = await resolveBilling(F.id, { quota: "syntheses" });
+  dec = await resolveBilling(F.id, { quota: "credits", units: synthCredits });
   ok(dec.billingMode === "balance", "квота исчерпана, баланс есть → fallback на balance");
   const sinceF2 = wsF.mark();
   const before = (await usageOf(F.id)).length;
@@ -477,17 +484,17 @@ try {
   ok(r.status === 201 || r.status === 200, "POST /syntheses прошёл в режиме balance");
   const doneF2 = await wsF.waitFor((m) => m.type === "generation_complete" && m.synthesisId === r.json.id, 120000, sinceF2);
   ok(!!doneF2 && (await balanceOf(F.id)) < 2 && (await usageOf(F.id)).slice(before).every((x) => x.billingMode === "balance"), "генерация списала с баланса, api_usage 'balance'");
-  ok((await subOf(F.id)).usedSyntheses === 3, "квота не превышена (осталась 3/3)");
+  ok((await subOf(F.id)).usedCredits === 948, "кредиты не превышены (948 из 950)");
 
   /* ── R9 Webhook invoice.paid: сброс счётчиков ───────────────────────── */
   console.log("\n── R9: webhook ──");
   const ps2 = pe, pe2 = pe + 30 * 86400;
   wh = await webhook({ type: "invoice.paid", object: { id: "in_2", object: "invoice", subscription: stripeSubId, lines: { data: [{ period: { start: ps2, end: pe2 } }] } } });
   subRow = await subOf(F.id);
-  ok(wh.status === 200 && wh.json.action === "period_reset" && subRow.usedSyntheses === 0 && subRow.usedModes === 0 && Math.abs(subRow.currentPeriodStart.getTime() / 1000 - ps2) < 2 && Math.abs(subRow.currentPeriodEnd.getTime() / 1000 - pe2) < 2, "новый период: счётчики 0, границы обновлены");
-  await db.update(userSubscriptions).set({ usedSyntheses: 2 }).where(eq(userSubscriptions.id, subRow.id));
+  ok(wh.status === 200 && wh.json.action === "period_reset" && subRow.usedCredits === 0 && Math.abs(subRow.currentPeriodStart.getTime() / 1000 - ps2) < 2 && Math.abs(subRow.currentPeriodEnd.getTime() / 1000 - pe2) < 2, "новый период: счётчики 0, границы обновлены");
+  await db.update(userSubscriptions).set({ usedCredits: 2 }).where(eq(userSubscriptions.id, subRow.id));
   wh = await webhook({ type: "invoice.paid", object: { id: "in_2", object: "invoice", subscription: stripeSubId, lines: { data: [{ period: { start: ps2, end: pe2 } }] } } });
-  ok(wh.status === 200 && wh.json.action === "already_current" && (await subOf(F.id)).usedSyntheses === 2, "повтор того же периода (ретрай Stripe) счётчики не сбрасывает");
+  ok(wh.status === 200 && wh.json.action === "already_current" && (await subOf(F.id)).usedCredits === 2, "повтор того же периода (ретрай Stripe) счётчики не сбрасывает");
   wh = await webhook({ type: "invoice.paid", object: { id: "in_x", object: "invoice", subscription: "sub_unknown" } });
   ok(wh.status === 200 && wh.json.handled === false, "неизвестная подписка → 200 handled:false");
   wh = await webhook({ type: "invoice.paid", object: { id: "in_3", object: "invoice", subscription: stripeSubId } }, { badSig: true });
@@ -500,7 +507,7 @@ try {
   await setBalance(F.id, 0);
   r = await api(F, "POST", "/billing/subscription/cancel");
   ok(r.status === 200 && r.json.subscription.cancelAtPeriodEnd === true && stripeState.subs.get(stripeSubId).cancel_at_period_end === true, "cancel → cancel_at_period_end=true (и в Stripe)");
-  dec = await resolveBilling(F.id, { quota: "syntheses" });
+  dec = await resolveBilling(F.id, { quota: "credits", units: 1 });
   ok(dec.billingMode === "subscription", "до конца периода подписка продолжает работать");
   r = await api(F, "POST", "/billing/subscription/resume");
   ok(r.status === 200 && r.json.subscription.cancelAtPeriodEnd === false && stripeState.subs.get(stripeSubId).cancel_at_period_end === false, "resume → флаг снят");
@@ -511,7 +518,7 @@ try {
   subRow = await subOf(F.id);
   ok(wh.status === 200 && wh.json.action === "canceled" && subRow.status === "canceled", "subscription.deleted → status canceled");
   let threw = null;
-  try { await resolveBilling(F.id, { quota: "syntheses" }); } catch (e) { threw = e; }
+  try { await resolveBilling(F.id, { quota: "credits", units: 1 }); } catch (e) { threw = e; }
   ok(threw instanceof BillingError && threw.code === "BILLING_REQUIRED", "после отмены без баланса → BILLING_REQUIRED");
   r = await api(F, "GET", "/billing/subscription");
   ok(r.json.subscription?.status === "canceled", "GET /subscription показывает последнюю (canceled)");
@@ -530,13 +537,13 @@ try {
   await setBalance(G.id, 3);
   const wsG = openWs(G); await wsG.opened;
   op = await runOp(G, SG.id, wsG);
-  ok(op.done && op.call?.apiKey === G_KEY && (await usageOf(G.id)).at(-1).billingMode === "byo" && (await subOf(G.id)).usedModes === 0 && near(await balanceOf(G.id), 3), "1) всё есть → BYO (квота и баланс не тронуты)");
+  ok(op.done && op.call?.apiKey === G_KEY && (await usageOf(G.id)).at(-1).billingMode === "byo" && (await subOf(G.id)).usedCredits === 0 && near(await balanceOf(G.id), 3), "1) всё есть → BYO (квота и баланс не тронуты)");
   await api(G, "DELETE", `/billing/api-key/${kg.json.keyId}`);
   op = await runOp(G, SG.id, wsG);
-  ok(op.done && op.call?.apiKey === SERVER_KEY && (await usageOf(G.id)).at(-1).billingMode === "subscription" && (await subOf(G.id)).usedModes === 1 && near(await balanceOf(G.id), 3), "2) ключ удалён → подписка (used_modes=1, баланс не тронут)");
-  await db.update(userSubscriptions).set({ usedModes: 5 }).where(eq(userSubscriptions.userId, G.id));
+  ok(op.done && op.call?.apiKey === SERVER_KEY && (await usageOf(G.id)).at(-1).billingMode === "subscription" && (await subOf(G.id)).usedCredits === 8 && near(await balanceOf(G.id), 3), "2) ключ удалён → подписка (used_credits = вес режима 8, баланс не тронут)");
+  await db.update(userSubscriptions).set({ usedCredits: 945 }).where(eq(userSubscriptions.userId, G.id));
   op = await runOp(G, SG.id, wsG);
-  ok(op.done && op.call?.apiKey === SERVER_KEY && (await usageOf(G.id)).at(-1).billingMode === "balance" && (await balanceOf(G.id)) < 3 && (await subOf(G.id)).usedModes === 5, "3) квота исчерпана → баланс (списание, квота не превышена)");
+  ok(op.done && op.call?.apiKey === SERVER_KEY && (await usageOf(G.id)).at(-1).billingMode === "balance" && (await balanceOf(G.id)) < 3 && (await subOf(G.id)).usedCredits === 945, "3) кредитов меньше веса режима → баланс → баланс (списание, квота не превышена)");
   await setBalance(G.id, 0);
   r = await api(G, "POST", `/syntheses/${SG.id}/modes/adversarial/run`, { param: "Кант" });
   ok(r.status === 403 && r.json.code === "QUOTA_EXCEEDED", "4) без баланса → QUOTA_EXCEEDED (подписка есть, квоты нет)");

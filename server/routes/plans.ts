@@ -42,7 +42,7 @@ import {
   isGenerationActive,
   loadSynthesis,
 } from "../services/generation-service.js";
-import { countBillableSteps, executePlan } from "../services/plan-executor.js";
+import { countBillableSteps, creditsForSteps, executePlan } from "../services/plan-executor.js";
 import { isUuid } from "./syntheses.js";
 
 import type { Context } from "hono";
@@ -259,7 +259,7 @@ plansRoutes.post("/:id/plans/impact", requireAuth, async (c) => {
         ? await estimatePlanCost(id, row, philosophers, steps)
         : 0;
 
-    const response: PlanImpactResponse = { impact, estimatedCost };
+    const response: PlanImpactResponse = { impact, estimatedCost, estimatedCredits: creditsForSteps(steps, 0) };
     return c.json(response);
   } catch (err) {
     return errJson(c, err);
@@ -274,7 +274,10 @@ plansRoutes.post("/:id/plans/impact", requireAuth, async (c) => {
  * подписку или баланс ради готовой замены нельзя. Поэтому billingCheck стоит
  * не в цепочке middleware, а зовётся из обработчика после чтения плана.
  */
-const executeBillingCheck = billingCheck({ quota: "regenerations" });
+/* 0021: проверяется вся сумма кредитов плана (веса подтверждённых шагов),
+   а не одна единица — иначе подписчик с остатком на один шаг проходил бы
+   предпроверку и падал на взятии слота. */
+const executeBillingCheck = (credits: number) => billingCheck({ quota: "credits", units: credits });
 
 plansRoutes.post("/:id/plans/:planId/execute", requireAuth, async (c) => {
   const user = c.get("user");
@@ -302,7 +305,7 @@ plansRoutes.post("/:id/plans/:planId/execute", requireAuth, async (c) => {
       );
     }
     if (countBillableSteps(row.steps, 0) > 0) {
-      const denied = await executeBillingCheck(c, async () => undefined);
+      const denied = await executeBillingCheck(creditsForSteps(row.steps, 0))(c, async () => undefined);
       if (denied) return denied;
     }
   } catch (err) {

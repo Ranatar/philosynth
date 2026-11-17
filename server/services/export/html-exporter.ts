@@ -323,7 +323,8 @@ export function renderSchemaBadge(schema: string, genealogyRoot: ExportGenealogy
 }
 
 /** Футер документа [4202–4220] + формат updateFooterCost [5672]: «Токены: N
- *  вх. + M вых. · Стоимость: $X.XXXX (Y.YY¢)»; сессия = docNum; философы в
+ *  вх. + M вых. · Себестоимость: $X.XXXX (Y.YY¢)» (до 2026-11-17 — «Стоимость»:
+ *  у подписчика и плательщика с баланса это не сумма списания); сессия = docNum; философы в
  *  #footerPhil (импорт 4.3 читает их оттуда первым источником — поэтому
  *  здесь только философы или «—», без подписи «свободный синтез»). */
 function renderDocFooter(s: ExportSynthesis): string {
@@ -336,7 +337,7 @@ function renderDocFooter(s: ExportSynthesis): string {
     `<div class="doc-footer-left">PhiloSynth Pro™ · v1.0<br />` +
     `Документ сгенерирован на основе анализа ИИ (Claude)<br />` +
     `Сессия: <span id="sessionId">${esc(row.docNum || "—")}</span><br />` +
-    `<span id="footerCost" style="color: var(--gold)">Токены: ${fmt(row.totalInputTokens)} вх. + ${fmt(row.totalOutputTokens)} вых. · Стоимость: $${cost.toFixed(4)} (${(cost * 100).toFixed(2)}¢)</span>` +
+    `<span id="footerCost" style="color: var(--gold)">Токены: ${fmt(row.totalInputTokens)} вх. + ${fmt(row.totalOutputTokens)} вых. · Себестоимость: $${cost.toFixed(4)} (${(cost * 100).toFixed(2)}¢)</span>` +
     `</div>` +
     `<div class="doc-footer-right">` +
     (row.status === "ready" ? `<div class="validity-stamp">СИНТЕЗ ЗАВЕРШЁН</div><br />` : "") +

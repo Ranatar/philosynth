@@ -38,6 +38,7 @@ import { apiPost } from "../../api/client";
 import { getModeResults, regenerateModeResult } from "../../api/modes";
 import { getSubsectionImpact, regenerateSubsection } from "../../api/plans";
 import type { SectionEvent } from "../../hooks/useEditPlan";
+import { chargeLine, useBillingView } from "../../hooks/useBillingView";
 import { tl } from "@philosynth/shared/i18n/t";
 import { useSubsectionTitle } from "../../utils/subsection-titles"; // 14.2 (Д-59)
 
@@ -74,6 +75,7 @@ export function SubsectionRegenPanel({
   // (sectionKey/subsectionName, адреса запросов, itemKey) не меняются
   const subTitle = useSubsectionTitle();
   const [impact, setImpact] = useState<SubsectionImpactResponse | null>(null);
+  const billingView = useBillingView(); // 2026-11-17: подпись по способу оплаты
   const [impactState, setImpactState] = useState<
     "loading" | "ready" | "error"
   >("loading");
@@ -191,8 +193,8 @@ export function SubsectionRegenPanel({
     const modeNames = affected.map((a) => a.title).join(", ");
     const costStr =
       costTotal > 0
-        ? tl("edit.subsectionRegenPanel.costEstimatePrefix", "\nОценка стоимости: ≈ $") + costTotal.toFixed(4) +
-          " (" + (costTotal * 100).toFixed(2) + "¢), " +
+        ? tl("edit.subsectionRegenPanel.costEstimateLead", "\nОценка стоимости: ") +
+          chargeLine(billingView, { usd: costTotal, credits: affected.length * (billingView?.weights.mode ?? 0) || undefined }) + ", " +
           affected.length + tl("edit.subsectionRegenPanel.requestsAbbr", " запр.")
         : "";
     const doRegen = window.confirm(
@@ -435,7 +437,7 @@ export function SubsectionRegenPanel({
             )}
             {impact.estimate && (
               <div style={{ marginTop: 4 }}>
-                {tl("edit.subsectionRegenPanel.estimate", "≈ ${cost} (~{inTokens}K вх. + ~{outTokens}K вых.)", { cost: impact.estimate.cost.toFixed(4), inTokens: Math.round(impact.estimate.inTokens / 1000), outTokens: Math.round(impact.estimate.outTokens / 1000) })}
+                {tl("edit.subsectionRegenPanel.estimateCharge", "{charge} (~{inTokens}K вх. + ~{outTokens}K вых.)", { charge: chargeLine(billingView, { usd: impact.estimate.cost, op: "subsection" }), inTokens: Math.round(impact.estimate.inTokens / 1000), outTokens: Math.round(impact.estimate.outTokens / 1000) })}
               </div>
             )}
           </>

@@ -73,10 +73,12 @@ import {
   type AuthEnv,
 } from "../middleware/auth.js";
 import { billingCheck } from "../middleware/billing-check.js"; // 6.1
+import { creditsForCost } from "../config/plan-economics.js"; // 0021
 import {
   BillingError,
   billingErrorStatus,
   computeChargeUsd,
+  getSynthesisCharges,
   resolveBilling,
 } from "../services/billing-service.js"; // 7.1: точный гейт оценки
 import {
@@ -700,7 +702,9 @@ async function respondSynthesisFull(
 
 export const synthesesRoutes = new Hono<AuthEnv>();
 
-synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), async (c) => {
+// 0021: предпроверка — «есть хоть один кредит / баланс / ключ»; точная сумма
+// кредитов синтеза известна только по оценке состава (ниже, после разбора тела)
+synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "credits", units: 1 }), async (c) => {
   const user = c.get("user");
 
   let body: PostBody;
@@ -897,7 +901,13 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
         Оценка передаётся и слоту (withGenerationSlot повторяет гейт). ── */
   const billingCtx = c.get("billing");
   let estimatedChargeUsd: number | undefined;
-  if (billingCtx?.billingMode === "balance" && billingCtx.enforced) {
+  /* 0021: подписке синтез стоит кредитов по той же оценке (creditsForCost);
+     сбой оценки — вес опорного синтеза (generateSynthesis подставит сам). */
+  let synthesisCredits: number | undefined;
+  const needsEstimate =
+    billingCtx?.billingMode === "subscription" ||
+    (billingCtx?.billingMode === "balance" && billingCtx.enforced);
+  if (needsEstimate) {
     try {
       const est = await estimateSynthesisCost(user.id, {
         seed,
@@ -915,13 +925,15 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
         secCtx: sectionContexts,
       });
       estimatedChargeUsd = computeChargeUsd(est.cost);
+      synthesisCredits = creditsForCost(est.cost);
     } catch (err) {
       console.warn("[syntheses] точная оценка гейта недоступна, порог по умолчанию:", err);
     }
     if (estimatedChargeUsd !== undefined) {
       try {
         await resolveBilling(user.id, {
-          quota: "syntheses",
+          quota: "credits",
+          units: synthesisCredits,
           estimatedCostUsd: estimatedChargeUsd,
           consume: false,
         });
@@ -932,8 +944,8 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
               error: err.message,
               code: err.code,
               ...(err.details !== undefined
-                ? { details: { ...err.details, estimatedChargeUsd } }
-                : { details: { estimatedChargeUsd } }),
+                ? { details: { ...err.details, estimatedChargeUsd, credits: synthesisCredits } }
+                : { details: { estimatedChargeUsd, credits: synthesisCredits } }),
             },
             billingErrorStatus(err.code),
           );
@@ -1005,6 +1017,7 @@ synthesesRoutes.post("/", requireAuth, billingCheck({ quota: "syntheses" }), asy
   void generateSynthesis(synthesisId, user.id, {
     sectionContexts,
     estimatedCostUsd: estimatedChargeUsd,
+    credits: synthesisCredits,
   }).catch(
     async (err) => {
       const message =
@@ -1349,7 +1362,7 @@ synthesesRoutes.post("/estimate", requireAuth, async (c) => {
     // 12.3 (Д-19): бюджет контекста АКТИВНОГО конфига для глубины запроса —
     // аддитивно; клиентская копия CONTEXT_BUDGET_PREVIEW уходит в 12.4
     const contextBudget = await contextBudgetForDepth(depth);
-    return c.json({ estimate: est, contextBudget });
+    return c.json({ estimate: est, contextBudget, credits: creditsForCost(est.cost) }); // 0021: столько кредитов спишет синтез подписчику
   } catch (err) {
     // Оценка — вспомогательная: сбой Registry/конфигов не должен ронять форму
     console.warn("[syntheses] estimate failed:", err);
@@ -1522,6 +1535,17 @@ synthesesRoutes.get("/public", optionalAuth, async (c) => {
 /* Гостевой путь (optionalAuth): владелец — всё; чужой зарегистрированный —
  * по ступени (витрина без разделов, стоимость видна); гость — без
  * стоимости/токенов/паузы, при 'full' с телами разделов одним ответом. */
+
+/* ── GET /syntheses/:id/charges (0022): что документ стоил ЭТОМУ
+      пользователю — кредиты, баланс, свой ключ. Отдаёт только собственные
+      списания запросившего, поэтому доступа к документу не требует (чужой
+      или несуществующий документ — нули). ── */
+synthesesRoutes.get("/:id/charges", requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  if (!isUuid(id)) return c.json({ error: tl("common.synthesisNotFound", "Синтез не найден"), code: "NOT_FOUND" }, 404);
+  return c.json(await getSynthesisCharges(user.id, id));
+});
 
 synthesesRoutes.get("/:id", optionalAuth, async (c) => {
   const viewerUser = viewerOf(c);

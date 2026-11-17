@@ -51,9 +51,7 @@ export function priceMatchesPlan(price: StripePrice, plan: Pick<PlanSpec, "price
  */
 export function stripeProductDescriptionFor(plan: PlanSpec): string {
   return (
-    `PhiloSynth "${plan.displayName}" subscription: ${plan.quotaSyntheses} syntheses, ` +
-    `${plan.quotaRegenerations} regenerations, ${plan.quotaModes} modes, ` +
-    `${plan.quotaEnrichments} enrichments per ${plan.billingPeriod}`
+    `PhiloSynth "${plan.displayName}" subscription: ${plan.quotaCredits} credits per ${plan.billingPeriod}`
   );
 }
 

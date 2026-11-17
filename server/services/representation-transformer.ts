@@ -114,6 +114,7 @@ import { renderParseWarningsRu } from "./parse-warnings.js"; // 14.2 (Д-55)
 import { streamLogError } from "./gen-log-labels.js"; // 14.2 (Д-62)
 import type { GenLogLabel } from "@philosynth/shared/types/generation";
 import { tl } from "@philosynth/shared/i18n/t";
+import { creditCharge } from "../config/plan-economics.js";
 
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
   connectionManager.sendToUser(userId, msg);
@@ -672,7 +673,7 @@ export async function startTransform(
         recoverable: false,
       });
     }
-  }, { quota: "regenerations" }); // 6.1: квота подписки
+  }, creditCharge("section")); // 6.1: квота подписки (кредиты 0021)
 }
 
 /* ══ История ══════════════════════════════════════════════════════════ */

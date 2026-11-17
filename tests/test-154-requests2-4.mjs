@@ -124,7 +124,7 @@ async function typeInto(page, sel, value) { await page.$eval(sel, (el) => { el.v
 
 /* ══ Прогон ═════════════════════════════════════════════════════════════ */
 const mock = createStripeMock({ port: MOCK_PORT, bearer: STRIPE_KEY, idTag: "t154", log: () => {} });
-const spec = (name) => ({ name, displayName: "Тест 154", priceUsd: 19.99, billingPeriod: "month", quotaSyntheses: 3, quotaRegenerations: 5, quotaModes: 5, quotaEnrichments: 10 });
+const spec = (name) => ({ name, displayName: "Тест 154", priceUsd: 19.99, billingPeriod: "month", quotaCredits: 780 }); // 0021: одна квота — кредиты
 let A = null, U = null, U2 = null, fam = null, v2 = null, subId = null;
 let academicName = null;
 const startedAt = new Date();
@@ -170,23 +170,23 @@ try {
   subId = subRow?.id;
   const list = (await GET("/billing/admin/plans", A.cookie)).json.plans;
   ok(subRow?.status === "incomplete" && list.find((p) => p.id === fam.id)?.liveSubscriptions === 1, "список админки: подписка incomplete — живая (status ≠ canceled)", { subRow, live: list.find((p) => p.id === fam.id)?.liveSubscriptions });
-  const q = await call(`/billing/admin/plans/${fam.id}`, { method: "PATCH", body: { quotaSyntheses: 4, quotaModes: 6 }, cookie: A.cookie });
-  ok(q.status === 409 && q.json?.code === "PLAN_HAS_SUBSCRIPTIONS" && J(q.json.details?.lockedFields) === '["quotaSyntheses","quotaModes"]', "план с подпиской: правка квот отклонена 409 PLAN_HAS_SUBSCRIPTIONS с lockedFields", q.json);
+  const q = await call(`/billing/admin/plans/${fam.id}`, { method: "PATCH", body: { quotaCredits: 1000, priceUsd: 19.99 }, cookie: A.cookie });
+  ok(q.status === 409 && q.json?.code === "PLAN_HAS_SUBSCRIPTIONS" && J(q.json.details?.lockedFields) === '["quotaCredits"]', "план с подпиской: правка квот отклонена 409 PLAN_HAS_SUBSCRIPTIONS с lockedFields", q.json);
   const pp = await call(`/billing/admin/plans/${fam.id}`, { method: "PATCH", body: { priceUsd: 25 }, cookie: A.cookie });
   ok(pp.status === 409 && mock.state.prices.size === 2, "план с подпиской: правка цены отклонена, Price в Stripe не заведён", pp.json);
   const nm = await call(`/billing/admin/plans/${fam.id}`, { method: "PATCH", body: { displayName: "Тест 154 (переименован)" }, cookie: A.cookie });
   ok(nm.status === 200 && nm.json.plan.displayName === "Тест 154 (переименован)" && nm.json.plan.liveSubscriptions === 1, "план с подпиской: название правится на месте");
   // новая редакция
-  const e = await call(`/billing/admin/plans/${fam.id}/editions`, { body: { priceUsd: 24.99, quotaSyntheses: 5 }, cookie: A.cookie });
+  const e = await call(`/billing/admin/plans/${fam.id}/editions`, { body: { priceUsd: 24.99, quotaCredits: 1200 }, cookie: A.cookie });
   v2 = e.json?.plan;
-  ok(e.status === 201 && v2?.name === `${TAG}-v2` && v2.edition === 2 && v2.isActive && v2.quotaSyntheses === 5 && e.json.previous?.isActive === false, "«новая редакция» → строка -v2 с Price, прежняя закрыта для покупки", e.json);
+  ok(e.status === 201 && v2?.name === `${TAG}-v2` && v2.edition === 2 && v2.isActive && v2.quotaCredits === 1200 && e.json.previous?.isActive === false, "«новая редакция» → строка -v2 с Price, прежняя закрыта для покупки", e.json);
   const price3 = mock.state.prices.get(v2?.stripePriceId);
   ok(price3?.lookup_key === `philosynth_${TAG}-v2` && price3.unit_amount === 2499 && price3.product === price2.product && mock.state.prices.get(fam.stripePriceId).active !== false, "мок: Price редакции 2 под тем же Product; Price редакции 1 жив (подписчик продлевается)", price3);
   const pub = (await GET("/billing/plans")).json.plans;
   ok(!pub.some((p) => p.id === fam.id) && pub.some((p) => p.id === v2.id), "GET /billing/plans: прежняя редакция скрыта, новая видна");
   ok((await call("/billing/subscribe", { body: { planId: fam.id }, cookie: U2.cookie })).status === 404, "POST /subscribe на закрытую редакцию → 404");
   const ov = (await GET("/billing/subscription", U.cookie)).json;
-  ok(ov?.plan?.id === fam.id && ov.plan.quotaSyntheses === 3 && ov.quotas?.syntheses === 3, "подписчик: GET /billing/subscription — прежняя редакция, прежние квоты (3 синтеза)", ov?.quotas);
+  ok(ov?.plan?.id === fam.id && ov.plan.quotaCredits === 780 && ov.quotas?.credits === 780, "подписчик: GET /billing/subscription — прежняя редакция, прежние кредиты (780)", ov?.quotas);
   const s2 = await call("/billing/subscribe", { body: { planId: v2.id }, cookie: U2.cookie });
   const [sub2] = s2.json?.subscriptionId ? await sql`select plan_id from user_subscriptions where stripe_subscription_id=${s2.json.subscriptionId}` : [null];
   ok(s2.status === 201 && sub2?.plan_id === v2.id, "новый покупатель получает новую редакцию (plan_id = -v2)");
@@ -201,7 +201,7 @@ try {
   /* ════ R3: Д-75 — сид и вебхук ════ */
   if (want("R3")) {
     console.log("\n■ R3: Д-75 — seed:plans не переписывает, вебхук переносит plan_id");
-    const [acad] = await sql`select id, display_name, quota_syntheses, is_active, stripe_price_id from subscription_plans where name='academic'`;
+    const [acad] = await sql`select id, display_name, quota_credits, is_active, stripe_price_id from subscription_plans where name='academic'`;
     ok(!!acad, "посеянный academic на месте (стенд/сиды)");
     if (acad) {
       academicName = acad.display_name;
@@ -211,14 +211,14 @@ try {
       const out = (seed.stdout ?? "") + (seed.stderr ?? "");
       ok(seed.status === 0 && /created=0, skip=3 \(расходятся с plans\.ts: [1-3]\), fail=0/.test(out) && !/updated=/.test(out), "npm run seed:plans: rc 0, skip ×3 с числом расхождений, исхода updated нет", out.slice(-600));
       ok(/ПРЕДУПРЕЖДЕНИЕ: [1-3] из 3 тарифов в БД расходятся/.test(out) && /academic\.displayName: в БД .*\(154\), в plans\.ts Academic/.test(out) && /правится админкой/.test(out), "вывод: предупреждение по полю с отсылкой к админке", out.slice(-900));
-      const [acad2] = await sql`select display_name, quota_syntheses, is_active, stripe_price_id from subscription_plans where id=${acad.id}`;
-      ok(acad2.display_name === academicName + " (154)" && acad2.quota_syntheses === acad.quota_syntheses && acad2.is_active === acad.is_active && acad2.stripe_price_id === acad.stripe_price_id, "строка academic НЕ переписана (название, квоты, активность, Price прежние)");
+      const [acad2] = await sql`select display_name, quota_credits, is_active, stripe_price_id from subscription_plans where id=${acad.id}`;
+      ok(acad2.display_name === academicName + " (154)" && acad2.quota_credits === acad.quota_credits && acad2.is_active === acad.is_active && acad2.stripe_price_id === acad.stripe_price_id, "строка academic НЕ переписана (название, квоты, активность, Price прежние)");
       const SEED = await import("../scripts/seed/seed-plans.ts");
       const PL = await import("../server/config/plans.ts");
-      const sr = await SEED.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...PL.planByName("academic"), quotaSyntheses: acad.quota_syntheses - 1 }] });
-      ok(sr.counts.skip === 1 && sr.results[0].diverged?.some((d) => d.field === "quotaSyntheses" && d.inDb === String(acad.quota_syntheses)), "seedPlans с изменёнными квотами (как plans.ts) → skip + diverged по квоте", sr.results[0]);
-      const [acad3] = await sql`select quota_syntheses from subscription_plans where id=${acad.id}`;
-      ok(acad3.quota_syntheses === acad.quota_syntheses, "квота academic после сида прежняя");
+      const sr = await SEED.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...PL.planByName("academic"), quotaCredits: acad.quota_credits - 1 }] });
+      ok(sr.counts.skip === 1 && sr.results[0].diverged?.some((d) => d.field === "quotaCredits" && d.inDb === String(acad.quota_credits)), "seedPlans с изменёнными квотами (как plans.ts) → skip + diverged по квоте", sr.results[0]);
+      const [acad3] = await sql`select quota_credits from subscription_plans where id=${acad.id}`;
+      ok(acad3.quota_credits === acad.quota_credits, "квота academic после сида прежняя");
       const back = await call(`/billing/admin/plans/${acad.id}`, { method: "PATCH", body: { displayName: academicName }, cookie: A.cookie });
       ok(back.status === 200, "academic возвращено прежнее название");
       academicName = null;
@@ -237,7 +237,7 @@ try {
     const [after2] = await sql`select plan_id, status from user_subscriptions where id=${subId}`;
     ok(w2.status === 0 && /"action":"updated_plan"/.test(w2.stdout) && after2.plan_id === v2.id && after2.status === "active", "stripe-emit --price редакции 2: plan_id перенесён, статус active", w2.stdout.slice(-300));
     const ov2 = (await GET("/billing/subscription", U.cookie)).json;
-    ok(ov2?.plan?.id === v2.id && ov2.quotas?.syntheses === 5, "подписчик после переноса видит квоты редакции 2 (5 синтезов)", ov2?.quotas);
+    ok(ov2?.plan?.id === v2.id && ov2.quotas?.credits === 1200, "подписчик после переноса видит кредиты редакции 2 (1200)", ov2?.quotas);
     const w3 = emit(["customer.subscription.updated", stripeSub, "--status", "past_due"]);
     await sleep(300);
     const [after3] = await sql`select plan_id, status from user_subscriptions where id=${subId}`;
@@ -264,7 +264,7 @@ try {
     await click(ap, T(`plan-edit-${TAG}`));
     await waitSel(ap, T(`plan-edit-form-${TAG}`));
     const locked = await ap.$$eval(`${T(`plan-edit-form-${TAG}`)} [data-locked="1"]`, (els) => els.map((e) => ({ id: e.dataset.testid, disabled: e.disabled, title: e.title })));
-    ok(locked.length === 6 && locked.every((l) => l.disabled && /живые подписки/.test(l.title)), "поля цена/период/4 квоты заперты (disabled) с подсказкой о живых подписках", locked);
+    ok(locked.length === 3 && locked.every((l) => l.disabled && /живые подписки/.test(l.title)), "поля цена/период/кредиты заперты (disabled) с подсказкой о живых подписках", locked);
     ok(await exists(ap, T(`plan-edit-${TAG}-locked-note`)) && !(await ap.$eval(T(`plan-edit-${TAG}-displayName`), (e) => e.disabled)), "строка-пояснение под полями; название доступно");
     await ap.screenshot({ path: "/tmp/t154-plans.png", fullPage: true }).catch(() => {});
     await typeInto(ap, T(`plan-edit-${TAG}-displayName`), "Тест 154 из браузера");
@@ -286,7 +286,7 @@ try {
     await waitSel(ap, T(`plan-edition-form-${TAG}-v2`));
     ok(/Будет создана строка t154-\w+-v3/.test(await text(ap, T(`plan-edition-form-${TAG}-v2`))), "форма редакции называет имя будущей строки -v3");
     ok(!(await exists(ap, T(`plan-edition-warn-${TAG}-v2`))), "до первого клика предупреждения нет");
-    await typeInto(ap, T(`plan-edition-${TAG}-v2-quotaSyntheses`), "6");
+    await typeInto(ap, T(`plan-edition-${TAG}-v2-quotaCredits`), "1300");
     await click(ap, T(`plan-edition-submit-${TAG}-v2`));
     await waitSel(ap, T(`plan-edition-warn-${TAG}-v2`));
     const warnT = await text(ap, T(`plan-edition-warn-${TAG}-v2`));
@@ -295,14 +295,14 @@ try {
     ok(!(await exists(ap, T(`plan-edition-form-${TAG}-v2`))), "«Отмена» закрывает форму без создания");
     await click(ap, T(`plan-edition-${TAG}-v2`));
     await waitSel(ap, T(`plan-edition-form-${TAG}-v2`));
-    await typeInto(ap, T(`plan-edition-${TAG}-v2-quotaSyntheses`), "6");
+    await typeInto(ap, T(`plan-edition-${TAG}-v2-quotaCredits`), "1300");
     await click(ap, T(`plan-edition-submit-${TAG}-v2`));
     await waitSel(ap, T(`plan-edition-warn-${TAG}-v2`));
     await click(ap, T(`plan-edition-submit-${TAG}-v2`));
     await waitSel(ap, T(`plan-row-${TAG}-v3`));
     const r3 = await ap.$eval(T(`plan-row-${TAG}-v3`), (el) => ({ open: el.dataset.open, text: el.textContent }));
     const r2b = await ap.$eval(T(`plan-row-${TAG}-v2`), (el) => ({ open: el.dataset.open, live: el.dataset.live }));
-    ok(r3.open === "1" && /6 \/ 5 \/ 5 \/ 10/.test(r3.text) && r2b.open === "0" && r2b.live === "1" && /заведена и открыта/.test(await text(ap, T("plans-tab"))), "после подтверждения: -v3 открыта с новыми квотами, -v2 закрыта, подписка на ней", { r3, r2b });
+    ok(r3.open === "1" && /1\s?300/.test(r3.text) && r2b.open === "0" && r2b.live === "1" && /заведена и открыта/.test(await text(ap, T("plans-tab"))), "после подтверждения: -v3 открыта с новыми квотами, -v2 закрыта, подписка на ней", { r3, r2b });
     const [v3row] = await sql`select name, edition, is_active, stripe_price_id from subscription_plans where name=${TAG + "-v3"}`;
     ok(v3row?.edition === 3 && v3row.is_active && mock.state.prices.get(v3row.stripe_price_id)?.lookup_key === `philosynth_${TAG}-v3`, "БД и мок: редакция 3 с Price");
     // журнал на вкладке «Доступ» подписывает plan.*

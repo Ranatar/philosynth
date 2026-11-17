@@ -32,10 +32,20 @@
  * экономика не касается. PlanDefinition посева (plans.ts) — PlanSpec с
  * именем из PLAN_NAMES; строка редакции админки — PlanSpec с любым name.
  *
+ * Кредиты (решение пользователя 2026-11-17, миграция 0021): вместо четырёх
+ * квот (синтезы, перегенерации, режимы, обогащения) тариф несёт одну —
+ * кредиты. Кредит — CREDIT_USD себестоимости по ставкам оценщика; вес
+ * операции (CREDIT_WEIGHTS) — её опорная себестоимость в кредитах с
+ * округлением вверх. Синтез списывается по ОЦЕНКЕ своего состава
+ * (creditsForCost), вес synthesis — опорный синтез: им считает страница
+ * тарифа («≈ N концепций») и запасной путь без оценки. Экономика тарифа —
+ * quotaCredits × CREDIT_USD × BILLING_MARKUP ≤ цена.
+ *
  * Внутри блочных комментариев звёздочка со слешем закрывает комментарий —
  * поэтому пары колонок «used и quota» здесь пишутся словами (09 §8, 6.1).
  */
 import { CONTEXT_BUDGET } from "./fragment-share.js";
+import type { CreditOp } from "@philosynth/shared/types/billing";
 import {
   CHARS_PER_TOKEN,
   HTML_OVERHEAD,
@@ -57,19 +67,12 @@ export interface PlanSpec {
   /** Цена за период, USD (две цифры после точки — NUMERIC(10,2) в схеме) */
   priceUsd: number;
   billingPeriod: PlanBillingPeriod;
-  quotaSyntheses: number;
-  quotaRegenerations: number;
-  quotaModes: number;
-  quotaEnrichments: number;
+  /** Кредитов за период */
+  quotaCredits: number;
 }
 
-/** Четыре квоты тарифа — ключи полей PlanSpec, по ним и считает экономика. */
-export const PLAN_QUOTA_FIELDS = [
-  "quotaSyntheses",
-  "quotaRegenerations",
-  "quotaModes",
-  "quotaEnrichments",
-] as const;
+/** Квоты тарифа — ключи полей PlanSpec (с 0021 — одна, кредиты). */
+export const PLAN_QUOTA_FIELDS = ["quotaCredits"] as const;
 export type PlanQuotaField = (typeof PLAN_QUOTA_FIELDS)[number];
 
 /** Имя редакции: `[a-z0-9_-]`, 1–40 знаков (lookup_key Stripe и env-переменная
@@ -110,6 +113,10 @@ const MODE_PROMPT_BASE_CHARS = 800;
 const MODE_CONTEXT_BUDGET_CHARS = 12_000;
 /** Блок элемента в промпте обогащения (категория/связь с полями), симв. */
 const ENRICHMENT_ELEMENT_CHARS = 4000;
+/** Подразделов в разделе опорной модели (выход подраздела — 1/N раздела) */
+const REFERENCE_SUBSECTIONS = 4;
+/** Доля соседних подразделов во входе (estimateSubsectionCost: 0.4·(1−1/N)) */
+const SUBSECTION_INTRA_SHARE = 0.4;
 
 function usd(inChars: number, outChars: number): number {
   const inTokens = Math.ceil(inChars / CHARS_PER_TOKEN);
@@ -126,13 +133,15 @@ function sectionOutputChars(key: string): number {
 }
 
 export interface ReferenceOperationCosts {
-  /** Полный синтез опорного состава (квота syntheses) */
+  /** Полный синтез опорного состава */
   synthesis: number;
-  /** Перегенерация одного раздела среднего веса (квота regenerations) */
+  /** Перегенерация одного раздела среднего веса */
   regeneration: number;
-  /** Запуск режима (квота modes) */
+  /** Перегенерация одного подраздела раздела среднего веса */
+  subsection: number;
+  /** Запуск режима */
   mode: number;
-  /** Обогащение/обоснование элемента (квота enrichments) */
+  /** Обогащение/обоснование элемента */
   enrichment: number;
 }
 
@@ -154,6 +163,10 @@ export function computeReferenceOperationCosts(): ReferenceOperationCosts {
   const regenIn = passPrompt + budget;
   const regenOut = sectionOutputChars("_default");
 
+  // Подраздел: тот же вход раздела + соседние подразделы; выход — 1/N раздела.
+  const subIn = passPrompt + budget + Math.round(SUBSECTION_INTRA_SHARE * (1 - 1 / REFERENCE_SUBSECTIONS) * regenOut);
+  const subOut = Math.round(regenOut / REFERENCE_SUBSECTIONS);
+
   // Режим: формула estimateModeCost — выход ≈ средний раздел БЕЗ OUTPUT_MULTIPLIER.
   const modeIn = REFERENCE_SYS_CHARS + MODE_PROMPT_BASE_CHARS + MODE_CONTEXT_BUDGET_CHARS;
   const modeOut = Math.round(mw({ depth: REFERENCE_DEPTH }) * 3.5 * WORDS_TO_CHARS * HTML_OVERHEAD);
@@ -165,6 +178,7 @@ export function computeReferenceOperationCosts(): ReferenceOperationCosts {
   return {
     synthesis: usd(synthIn, synthOut),
     regeneration: usd(regenIn, regenOut),
+    subsection: usd(subIn, subOut),
     mode: usd(modeIn, modeOut),
     enrichment: usd(enrichIn, enrichOut),
   };
@@ -175,10 +189,61 @@ export const REFERENCE_OPERATION_COST_USD: Readonly<ReferenceOperationCosts> = O
   computeReferenceOperationCosts(),
 );
 
+/* ── Кредиты ─────────────────────────────────────────────────────────── */
+
+/** Себестоимость одного кредита по ставкам оценщика, USD, без наценки. */
+export const CREDIT_USD = 0.01;
+
+/** Себестоимость → кредиты: вверх, не меньше одного (операция с моделью не бесплатна). */
+export function creditsForCost(costUsd: number): number {
+  if (!Number.isFinite(costUsd) || costUsd <= 0) return 1;
+  return Math.max(1, Math.ceil(costUsd / CREDIT_USD - 1e-9));
+}
+
+/** Веса операций в кредитах — опорные себестоимости, округлённые вверх. */
+export function computeCreditWeights(
+  ref: ReferenceOperationCosts = REFERENCE_OPERATION_COST_USD,
+): Record<CreditOp, number> {
+  return {
+    synthesis: creditsForCost(ref.synthesis),
+    section: creditsForCost(ref.regeneration),
+    subsection: creditsForCost(ref.subsection),
+    mode: creditsForCost(ref.mode),
+    enrichment: creditsForCost(ref.enrichment),
+  };
+}
+
+export const CREDIT_WEIGHTS: Readonly<Record<CreditOp, number>> = Object.freeze(computeCreditWeights());
+
+/** Кредиты операции фиксированного веса. */
+export function creditsFor(op: CreditOp, count = 1): number {
+  return CREDIT_WEIGHTS[op] * Math.max(0, Math.floor(count));
+}
+
+/** Биллинг операции фиксированного веса — для billingCheck и withGenerationSlot. */
+export function creditCharge(op: CreditOp, count = 1): { quota: "credits"; units: number; op: CreditOp } {
+  return { quota: "credits", units: creditsFor(op, count), op };
+}
+
+/**
+ * Перевод прежних четырёх квот в кредиты — по весам операций (миграция 0021
+ * делает то же в SQL с весами, вписанными числами). Ценность тарифа для
+ * подписчика сохраняется: на кредиты можно сделать ровно то же, что на квоты.
+ */
+export function legacyQuotasToCredits(q: {
+  syntheses: number;
+  regenerations: number;
+  modes: number;
+  enrichments: number;
+}): number {
+  const w = CREDIT_WEIGHTS;
+  return q.syntheses * w.synthesis + q.regenerations * w.section + q.modes * w.mode + q.enrichments * w.enrichment;
+}
+
 /* ── Проверка экономики ──────────────────────────────────────────────── */
 
 export interface PlanEconomics {
-  /** Себестоимость полного исчерпания квот, USD */
+  /** Себестоимость полного исчерпания кредитов, USD */
   quotaCostUsd: number;
   /** То же × наценка — что взял бы режим баланса за те же операции */
   quotaChargeUsd: number;
@@ -186,24 +251,26 @@ export interface PlanEconomics {
   /** priceUsd − quotaChargeUsd; отрицательное — тариф убыточен */
   marginUsd: number;
   ok: boolean;
-  breakdown: Record<keyof ReferenceOperationCosts, { quota: number; costUsd: number }>;
+  /** Сколько операций каждого вида покрывают кредиты тарифа (если тратить
+   *  их только на этот вид) — раскладка страницы тарифа */
+  breakdown: Record<CreditOp, { weight: number; count: number }>;
 }
 
 export function computePlanEconomics(
   plan: PlanSpec,
   markup: number,
-  ref: ReferenceOperationCosts = REFERENCE_OPERATION_COST_USD,
+  weights: Readonly<Record<CreditOp, number>> = CREDIT_WEIGHTS,
 ): PlanEconomics {
   if (!Number.isFinite(markup) || markup <= 0) {
     throw new RangeError(`BILLING_MARKUP должен быть положительным числом, получено: ${markup}`);
   }
-  const breakdown = {
-    synthesis: { quota: plan.quotaSyntheses, costUsd: plan.quotaSyntheses * ref.synthesis },
-    regeneration: { quota: plan.quotaRegenerations, costUsd: plan.quotaRegenerations * ref.regeneration },
-    mode: { quota: plan.quotaModes, costUsd: plan.quotaModes * ref.mode },
-    enrichment: { quota: plan.quotaEnrichments, costUsd: plan.quotaEnrichments * ref.enrichment },
-  };
-  const quotaCostUsd = Object.values(breakdown).reduce((s, b) => s + b.costUsd, 0);
+  const breakdown = Object.fromEntries(
+    (Object.keys(weights) as CreditOp[]).map((op) => [
+      op,
+      { weight: weights[op], count: Math.floor(plan.quotaCredits / weights[op]) },
+    ]),
+  ) as PlanEconomics["breakdown"];
+  const quotaCostUsd = plan.quotaCredits * CREDIT_USD;
   const quotaChargeUsd = quotaCostUsd * markup;
   const marginUsd = plan.priceUsd - quotaChargeUsd;
   return {
@@ -224,7 +291,7 @@ export class PlanEconomicsError extends Error {
     // Текст — консольный отчёт сида (русский, как у сидов 0.3); ответ
     // админского маршрута собирает фразу tl() сам по economics (plan-admin.ts)
     super(
-      `тариф «${plan.name}» убыточен: квоты стоят $${economics.quotaCostUsd.toFixed(2)} ` +
+      `тариф «${plan.name}» убыточен: ${plan.quotaCredits} кредитов стоят $${economics.quotaCostUsd.toFixed(2)} ` +
         `себестоимости × BILLING_MARKUP ${markup} = $${economics.quotaChargeUsd.toFixed(2)} ` +
         `при цене $${plan.priceUsd.toFixed(2)} (не хватает $${(-economics.marginUsd).toFixed(2)}) — ` +
         `уменьшите квоты или поднимите цену`,

@@ -778,11 +778,11 @@ export async function formatCtxLog(
       // 17.1: стоимость строки не-владельца — владельцу и самому исполнителю
       if (costVisible(g.actorUserId, row.userId, audience))
         lines.push(
-          tl("server.logFormatter.costPrefix", "  Стоимость: $") + cost.toFixed(4) + " (" + (cost * 100).toFixed(2) + "¢)",
+          tl("server.logFormatter.costPricePrefix", "  Себестоимость: $") + cost.toFixed(4) + " (" + (cost * 100).toFixed(2) + "¢)",
         );
       else {
         hiddenCosts++;
-        lines.push(tl("server.logFormatter.costHidden", "  Стоимость: скрыта (оплатил исполнитель)"));
+        lines.push(tl("server.logFormatter.costPriceHidden", "  Себестоимость: скрыта (оплатил исполнитель)"));
       }
       if (errorText) {
         lines.push(tl("server.logFormatter.errorPrefix", "  ⚠ ОШИБКА: ") + errorText);
@@ -856,7 +856,7 @@ export async function formatCtxLog(
     lines.push(tl("server.logFormatter.inputShort", "Вход:  ") + num(t.inC) + tl("server.logFormatter.charsArrow", " симв. → ") + num(t.inT) + tl("server.logFormatter.tokens", " токенов"));
     lines.push(tl("server.logFormatter.outputShort", "Выход: ") + num(t.outC) + tl("server.logFormatter.charsArrow", " симв. → ") + num(t.outT) + tl("server.logFormatter.tokens", " токенов"));
     lines.push(
-      tl("server.logFormatter.costShort", "Стоимость: $") +
+      tl("server.logFormatter.costPriceShort", "Себестоимость: $") +
         t.cost.toFixed(4) +
         " (" +
         (t.cost * 100).toFixed(2) +
@@ -1071,8 +1071,8 @@ export async function formatPromptsForExport(
         tl("server.logFormatter.tokens", " токенов"),
     );
     if (costVisible(g.actorUserId, loaded.row.userId, audience)) // 17.1
-      lines.push(tl("server.logFormatter.costShort", "Стоимость: $") + Number(g.costUsd).toFixed(4));
-    else lines.push(tl("server.logFormatter.costHidden", "  Стоимость: скрыта (оплатил исполнитель)").trim());
+      lines.push(tl("server.logFormatter.costPriceShort", "Себестоимость: $") + Number(g.costUsd).toFixed(4));
+    else lines.push(tl("server.logFormatter.costPriceHidden", "  Себестоимость: скрыта (оплатил исполнитель)").trim());
     // ТЗ: информация о родительском контексте и бюджете раздела
     const meta = metaOf(g);
     const parentOv =

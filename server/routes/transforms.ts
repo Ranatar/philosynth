@@ -47,6 +47,7 @@ import {
 } from "./syntheses.js";
 import { tl } from "@philosynth/shared/i18n/t";
 import { editGate, editRightFirst } from "./edit-gate.js"; // 16.1
+import { creditCharge } from "../config/plan-economics.js";
 
 export const transformRoutes = new Hono<AuthEnv>();
 
@@ -79,10 +80,10 @@ async function postTransform(
   return c.json({ ok: true });
 }
 
-transformRoutes.post("/:id/transform/graph-to-theses", requireAuth, editRightFirst, billingCheck({ quota: "regenerations" }), (c) =>
+transformRoutes.post("/:id/transform/graph-to-theses", requireAuth, editRightFirst, billingCheck(creditCharge("section")), (c) =>
   postTransform(c, c.req.param("id"), "graph_to_theses"),
 );
-transformRoutes.post("/:id/transform/theses-to-graph", requireAuth, editRightFirst, billingCheck({ quota: "regenerations" }), (c) =>
+transformRoutes.post("/:id/transform/theses-to-graph", requireAuth, editRightFirst, billingCheck(creditCharge("section")), (c) =>
   postTransform(c, c.req.param("id"), "theses_to_graph"),
 );
 

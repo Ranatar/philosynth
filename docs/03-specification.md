@@ -565,9 +565,17 @@ POST   /syntheses              { seed, philosophers?: string[], sections: string
                                 //   затронуты; оценка передаётся слоту
                                 // Генерация начинается, клиент подключается по WebSocket
 
+GET    /syntheses/:id/charges  requireAuth → SynthesisCharges
+                                // 0022: что документ стоил ЗАПРОСИВШЕМУ: { credits,
+                                // balanceUsd (transactions 'usage'), byoUsd (api_usage
+                                // 'byo'), waivedCalls (вызовы 'balance' без транзакции) };
+                                // только свои списания — доступа к документу не требует
+
 POST   /syntheses/estimate     тело = телу POST /syntheses (беседа 1.5)
                                 → { estimate: { inTokens, outTokens, cost, passes },
-                                    contextBudget: number }
+                                    contextBudget: number, credits: number }
+                                // 0021: credits — столько кредитов спишет синтез
+                                // подписчику (creditsForCost(cost))
                                 // 12.3 (Д-19): contextBudget — БАЗОВЫЙ бюджет
                                 // контекста активного конфига context_budget для
                                 // глубины запроса (contextBudgetForDepth; запасное
@@ -1493,7 +1501,8 @@ POST   /syntheses/:id/regenerate-subsection
 POST   /syntheses/:id/plans/impact
                                 { regen: string[], remove: string[],
                                   add: string[], modeRegen?: [string, number][] }
-                                → { impact: CascadeImpactDto, estimatedCost }
+                                → { impact: CascadeImpactDto, estimatedCost, estimatedCredits }
+                                // 0021: estimatedCredits — те же действия в кредитах
                                 // Беседа 2.3: read-only превью каскада для
                                 // живой CascadePanel (прецеденты класса —
                                 // /syntheses/advice 1.5, /:key/context 1.6).
@@ -1857,10 +1866,28 @@ POST   /billing/topup/confirm   { paymentIntentId: string }
 
 GET    /billing/subscription    → { subscription: UserSubscription | null,
                                    plan: SubscriptionPlan | null,
-                                   usage: { syntheses, regenerations, modes, enrichments },
-                                   quotas: { syntheses, regenerations, modes, enrichments } }
+                                   usage: { credits },
+                                   quotas: { credits } }
+                                // 0021 (2026-11-17): квота одна — кредиты;
+                                // до 0021 — syntheses/regenerations/modes/enrichments
 
-GET    /billing/plans            → { plans: SubscriptionPlan[] }
+GET    /billing/credit-charges?page&limit → CreditChargeHistory
+                                // 0022: { items: { id, synthesisId|null, synthesisTitle,
+                                // credits, op, createdAt }[], total, totalCredits, page, limit }
+                                // — списания кредитов пользователя, новые сверху
+
+GET    /billing/view             → BillingView
+                                // 2026-11-17: как подписывать стоимость
+                                // операций: { mode: 'byo'|'subscription'|
+                                // 'balance'|'none' (приоритет resolveBilling,
+                                // без потребления), markup, balanceUsd,
+                                // creditUsd, weights: Record<CreditOp, number>,
+                                // creditsLeft?, creditsQuota?, balanceFallback? }
+
+GET    /billing/plans            → { plans: SubscriptionPlan[], credits: CreditInfo, markup }
+                                // 0021: SubscriptionPlan.quotaCredits вместо
+                                // четырёх квот; credits — веса операций для
+                                // раскладки «на что хватит» (PlansTable)
                                 // 8.6: БЕЗ ВХОДА (optionalAuth) — цена службы
                                 // видна до регистрации; единственный
                                 // billing-путь вне requireAuth сверх webhook.
@@ -3070,7 +3097,13 @@ Endpoint: `wss://host/ws?token={sessionToken}`
                              // модалку не открывает, pausedState берёт из
                              // GET /syntheses/:id; живые сообщения поля не несут
   estimates: { fillMissingSubs?: number, wholeSection?: number,
-               skipRemaining?: number } }  // серверный аналог _computeGenPauseEstimates
+               skipRemaining?: number,
+               missingSubs?: string[], streamingSub?: string | null,
+               serviceFailure?: boolean } }  // серверный аналог _computeGenPauseEstimates
+// 2026-11-17: fillMissingSubs/wholeSection — только починка раздела, остальные
+// разделы служба продолжает сама (skipRemaining); полная цена выбора —
+// починка + skipRemaining. missingSubs — недостающие с оборванным первым;
+// serviceFailure — доработка без списания с баланса (isServiceFailurePause)
 // kind='plan' (2.2): plan-полей сообщение не несёт — stepIdx/totalSteps/
 // failedOp клиент берёт из GET /syntheses/:id (pausedState); при
 // user-abort плана сообщение НЕ отправляется (reasonKind его исключает),
@@ -3237,6 +3270,7 @@ Endpoint: `wss://host/ws?token={sessionToken}`
   // 12.3 (Д-7): estimatedCost и costBreakdown считают только ВЗЯТЫЕ шаги —
   // всё, кроме 'skipped' и 'pending'; шаги, ждущие решения, — cascadePending
   estimatedCost: number;
+  estimatedCredits: number;   // 0021: взятые шаги в кредитах (сумма весов); cascadePending += credits
   // 10.2: бесплатное ОТДЕЛЬНО от платного (снятые шаги не считаются);
   // free — delete, edit_element и (15.2) delete_element, delete_subsection;
   // paid.costUsd ≡ estimatedCost
@@ -3267,9 +3301,9 @@ GENERATION_IN_PROGRESS — генерация уже запущена для э�
 PLAN_CONFLICT        — попытка исполнить план при активной генерации
 IMPORT_INVALID       — невалидный файл импорта
 INCOMPATIBLE_SECTIONS — несовместимая комбинация разделов
-QUOTA_EXCEEDED      — исчерпана квота подписки (тип квоты в details) И баланса
+QUOTA_EXCEEDED      — кредитов подписки на операцию не хватает И баланса
                       нет (при балансе ≥ порога — fallback на balance); details:
-                      quotaType, used, quota (ФАКТ 6.1)
+                      quotaType ('credits'), used, quota, needed (ФАКТ 6.1; 0021)
 BILLING_REQUIRED    — нет ни ключа, ни подписки, ни баланса (баланс = 0)
 STRIPE_UNAVAILABLE  — Stripe не настроен (STRIPE_SECRET_KEY пуст) — 503 у
                       пополнения/подписки (6.1)

@@ -20,11 +20,10 @@
  *  - «активная для биллинга» = status ∈ {active, trialing} и
  *    current_period_end > now; cancel_at_period_end=true работает до конца
  *    периода (протокол: «до конца периода работает — после canceled»);
- *  - квота потребляется ОДИН раз на операцию при взятии generation-слота
- *    (synthesis → syntheses, регенерация/добавление/подраздел →
- *    regenerations, режим → modes, обогащение → enrichments; план —
- *    по числу подтверждённых шагов регенерации), а не на каждый вызов
- *    Claude: иначе синтез из восьми разделов стоил бы восемь синтезов;
+ *  - квота потребляется ОДИН раз на операцию при взятии generation-слота,
+ *    а не на каждый вызов Claude. С миграции 0021 квота одна — кредиты:
+ *    операция списывает свой вес (config/plan-economics.ts CREDIT_WEIGHTS;
+ *    синтез — по оценке состава, план — сумма весов подтверждённых шагов);
  *  - 7.1: Stripe Customer ОДИН на пользователя — `ensureStripeCustomer`
  *    читает/заполняет users.stripe_customer_id (миграция 0003) и
  *    переиспользуется подпиской и пополнением (billing-service); до 7.1
@@ -60,12 +59,9 @@ const { subscriptionPlans, userSubscriptions, users } = schema;
 
 export type { QuotaType };
 
-export const QUOTA_TYPES: readonly QuotaType[] = [
-  "syntheses",
-  "regenerations",
-  "modes",
-  "enrichments",
-];
+/** С 0021 квота одна — кредиты (QuotaType оставлен ради формы
+ *  resolveBilling({ quota, units }) и деталей QUOTA_EXCEEDED). */
+export const QUOTA_TYPES: readonly QuotaType[] = ["credits"];
 
 export class SubscriptionError extends Error {
   code: "NOT_FOUND" | "VALIDATION_ERROR" | "QUOTA_EXCEEDED";
@@ -96,10 +92,7 @@ export function toPlanDto(p: PlanRow): SubscriptionPlan {
     displayName: p.displayName,
     priceUsd: Number(p.priceUsd),
     billingPeriod: p.billingPeriod,
-    quotaSyntheses: p.quotaSyntheses,
-    quotaRegenerations: p.quotaRegenerations,
-    quotaModes: p.quotaModes,
-    quotaEnrichments: p.quotaEnrichments,
+    quotaCredits: p.quotaCredits,
     stripePriceId: p.stripePriceId,
     isActive: p.isActive,
     createdAt: p.createdAt.toISOString(),
@@ -115,64 +108,21 @@ export function toSubscriptionDto(s: SubRow): UserSubscription {
     status: s.status,
     currentPeriodStart: s.currentPeriodStart.toISOString(),
     currentPeriodEnd: s.currentPeriodEnd.toISOString(),
-    usedSyntheses: s.usedSyntheses,
-    usedRegenerations: s.usedRegenerations,
-    usedModes: s.usedModes,
-    usedEnrichments: s.usedEnrichments,
+    usedCredits: s.usedCredits,
     cancelAtPeriodEnd: s.cancelAtPeriodEnd,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
   };
 }
 
-/* ── Колонки квот ────────────────────────────────────────────────────── */
+/* ── Колонки квоты ───────────────────────────────────────────────────── */
 
-const USED_COL = {
-  syntheses: userSubscriptions.usedSyntheses,
-  regenerations: userSubscriptions.usedRegenerations,
-  modes: userSubscriptions.usedModes,
-  enrichments: userSubscriptions.usedEnrichments,
-} as const;
-
-/** Имя поля Drizzle-строки для .set() */
-const USED_FIELD = {
-  syntheses: "usedSyntheses",
-  regenerations: "usedRegenerations",
-  modes: "usedModes",
-  enrichments: "usedEnrichments",
-} as const;
-
-const QUOTA_COL = {
-  syntheses: subscriptionPlans.quotaSyntheses,
-  regenerations: subscriptionPlans.quotaRegenerations,
-  modes: subscriptionPlans.quotaModes,
-  enrichments: subscriptionPlans.quotaEnrichments,
-} as const;
-
-function usedOf(s: SubRow, q: QuotaType): number {
-  switch (q) {
-    case "syntheses":
-      return s.usedSyntheses;
-    case "regenerations":
-      return s.usedRegenerations;
-    case "modes":
-      return s.usedModes;
-    case "enrichments":
-      return s.usedEnrichments;
-  }
+function usedOf(s: SubRow, _q: QuotaType): number {
+  return s.usedCredits;
 }
 
-function quotaOf(p: PlanRow, q: QuotaType): number {
-  switch (q) {
-    case "syntheses":
-      return p.quotaSyntheses;
-    case "regenerations":
-      return p.quotaRegenerations;
-    case "modes":
-      return p.quotaModes;
-    case "enrichments":
-      return p.quotaEnrichments;
-  }
+function quotaOf(p: PlanRow, _q: QuotaType): number {
+  return p.quotaCredits;
 }
 
 /* ── Планы ───────────────────────────────────────────────────────────── */
@@ -238,26 +188,16 @@ export async function getActiveSubscription(
     return {
       subscription: null,
       plan: null,
-      usage: { syntheses: 0, regenerations: 0, modes: 0, enrichments: 0 },
-      quotas: { syntheses: 0, regenerations: 0, modes: 0, enrichments: 0 },
+      usage: { credits: 0 },
+      quotas: { credits: 0 },
     };
   }
   const { subscription: s, plan: p } = found;
   return {
     subscription: toSubscriptionDto(s),
     plan: toPlanDto(p),
-    usage: {
-      syntheses: s.usedSyntheses,
-      regenerations: s.usedRegenerations,
-      modes: s.usedModes,
-      enrichments: s.usedEnrichments,
-    },
-    quotas: {
-      syntheses: p.quotaSyntheses,
-      regenerations: p.quotaRegenerations,
-      modes: p.quotaModes,
-      enrichments: p.quotaEnrichments,
-    },
+    usage: { credits: s.usedCredits },
+    quotas: { credits: p.quotaCredits },
   };
 }
 
@@ -499,17 +439,16 @@ export async function checkQuota(
   return { ok: used + units <= quota, used, quota, remaining: Math.max(0, quota - used) };
 }
 
-/** Атомарный инкремент used_* (без проверки квоты — учёт факта). */
+/** Атомарный инкремент used_credits (без проверки квоты — учёт факта). */
 export async function incrementUsage(
   subscriptionId: string,
-  quotaType: QuotaType,
+  _quotaType: QuotaType,
   units = 1,
 ): Promise<void> {
   if (units <= 0) return;
-  const col = USED_COL[quotaType];
   await db
     .update(userSubscriptions)
-    .set({ [USED_FIELD[quotaType]]: dsql`${col} + ${units}`, updatedAt: new Date() })
+    .set({ usedCredits: dsql`${userSubscriptions.usedCredits} + ${units}`, updatedAt: new Date() })
     .where(eq(userSubscriptions.id, subscriptionId));
 }
 
@@ -524,11 +463,11 @@ export async function consumeQuota(
   units = 1,
 ): Promise<QuotaStatus> {
   if (units <= 0) return checkQuota(subscriptionId, quotaType, 0);
-  const col = USED_COL[quotaType];
-  const quotaCol = QUOTA_COL[quotaType];
+  const col = userSubscriptions.usedCredits;
+  const quotaCol = subscriptionPlans.quotaCredits;
   const updated = await db
     .update(userSubscriptions)
-    .set({ [USED_FIELD[quotaType]]: dsql`${col} + ${units}`, updatedAt: new Date() })
+    .set({ usedCredits: dsql`${col} + ${units}`, updatedAt: new Date() })
     .where(
       and(
         eq(userSubscriptions.id, subscriptionId),
@@ -548,10 +487,7 @@ export async function resetUsageCounters(
   await db
     .update(userSubscriptions)
     .set({
-      usedSyntheses: 0,
-      usedRegenerations: 0,
-      usedModes: 0,
-      usedEnrichments: 0,
+      usedCredits: 0,
       ...(period
         ? { currentPeriodStart: period.start, currentPeriodEnd: period.end }
         : {}),

@@ -46,6 +46,7 @@ import { deleteMode, getModeResults, runMode as runModeApi } from "../../api/mod
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { ModeContent } from "./ModeContent";
 import { ModeTabBar } from "./ModeTabBar";
+import { chargeLine, useBillingView } from "../../hooks/useBillingView";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
 
@@ -117,6 +118,7 @@ export function ModeModal({
   const [results, setResults] = useState<ModeResult[]>([]);
   const [warnings, setWarnings] = useState<ModeDepsWarning[]>([]);
   const [estimate, setEstimate] = useState<ModeCostEstimate | null>(null);
+  const billingView = useBillingView(); // 2026-11-17: подпись по способу оплаты
   const [activeIndex, setActiveIndex] = useState(-1);
   const [param, setParam] = useState("");
   const [running, setRunning] = useState(false);
@@ -413,7 +415,7 @@ export function ModeModal({
               }}
             >
               {estimate
-                ? "≈ $" + estimate.cost.toFixed(4) + " (~" +
+                ? chargeLine(billingView, { usd: estimate.cost, op: "mode" }) + " (~" +
                   Math.round(estimate.inTokens / 1000) + tl("modes.modeModal.tokensInMid", "K вх. + ~") +
                   Math.round(estimate.outTokens / 1000) + tl("modes.modeModal.tokensOutTail", "K вых.)")
                 : ""}

@@ -90,6 +90,7 @@ import { buildSYS } from "./prompt-builder.js";
 import { renderTemplate } from "./prompt-registry.js";
 import { StreamError, classifyStreamError } from "./streaming-manager.js";
 import { tl } from "@philosynth/shared/i18n/t";
+import { creditCharge } from "../config/plan-economics.js";
 
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
   connectionManager.sendToUser(userId, msg);
@@ -830,7 +831,7 @@ export async function startEnrichment(
     } catch (err) {
       reportStreamError(synthesisId, userId, streamKey, err);
     }
-  }, { quota: "enrichments" }); // 6.1: квота подписки
+  }, creditCharge("enrichment")); // 6.1: квота подписки (кредиты 0021)
 }
 
 /** Запуск обоснования характеристики в собственном слоте (POST
@@ -849,7 +850,7 @@ export async function startJustification(
     } catch (err) {
       reportStreamError(synthesisId, userId, streamKey, err);
     }
-  }, { quota: "enrichments" }); // 6.1: квота подписки
+  }, creditCharge("enrichment")); // 6.1: квота подписки (кредиты 0021)
 }
 
 /* ══ История ══════════════════════════════════════════════════════════ */

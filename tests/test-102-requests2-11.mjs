@@ -178,7 +178,9 @@ async function waitPlan(planId, pred, label, ms = 30000) {
   // следующий запрос под ownerEditGate без паузы ловил бы 409 GENERATION_IN_PROGRESS
   for (;;) { const p = await planRow(planId); if (p && pred(p)) { await sleep(700); return p; } if (Date.now() - t0 > ms) throw new Error(`timeout: ${label}; статус ${p?.status}, шаги ${J(p?.steps?.map((s) => `${s.type}:${s.status}`))}`); await sleep(200); }
 }
-const usedRegen = async (userId) => (await sql`select used_regenerations n from user_subscriptions where user_id=${userId}`)[0]?.n ?? null;
+// 0021: квота одна — кредиты; шаг списывает свой вес (W)
+const W = { section: 26, subsection: 13, mode: 8, enrichment: 4 };
+const usedRegen = async (userId) => (await sql`select used_credits n from user_subscriptions where user_id=${userId}`)[0]?.n ?? null;
 const usageCount = async (userId) => (await sql`select count(*)::int n from api_usage where user_id=${userId}`)[0].n;
 const totals = async (id) => (await sql`select total_cost_usd c, total_input_tokens i from syntheses where id=${id}`)[0];
 const baseSteps = (plan) => plan.steps.filter((s) => !s.cascadeGenerated);
@@ -189,7 +191,7 @@ try {
   const A = await account("a"), B = await account("b"), C = await account("c");
   // A — подписчик: квота regenerations видна счётчиком
   const planNamet102 = "t102plan" + Date.now();
-  const [pl] = await sql`insert into subscription_plans (name, family, display_name, price_usd, quota_syntheses, quota_regenerations, quota_modes, quota_enrichments, stripe_price_id, is_active) values (${planNamet102}, ${planNamet102}, 'T102', 10, 5, 50, 5, 5, 'price_t102', false) returning id`;
+  const [pl] = await sql`insert into subscription_plans (name, family, display_name, price_usd, quota_credits, stripe_price_id, is_active) values (${planNamet102}, ${planNamet102}, 'T102', 10, 800, 'price_t102', false) returning id`;
   await sql`insert into user_subscriptions (user_id, plan_id, stripe_subscription_id, status, current_period_start, current_period_end) values (${A.id}, ${pl.id}, ${"sub_t102_" + Date.now()}, 'active', now() - interval '1 day', now() + interval '20 days')`;
 
   /* ════ R2 ════ */
@@ -218,7 +220,7 @@ try {
     const v0 = v.json.versions[0];
     ok(v0.changeSource === "recommendation" && v0.origin?.num === "2" && v0.origin?.round === 1 && v0.origin?.stepType === "edit_element" && v0.origin?.planId === r.json.plan.id, "версия: источник recommendation, origin — №2, раунд 1, план и шаг («почему»)", v0);
     ok(/ради/.test(String(v0.data.definition)), "снимок версии — прежнее определение («что»)");
-    ok((await usedRegen(A.id)) === q0, "квота regenerations НЕ израсходована", [q0, await usedRegen(A.id)]);
+    ok((await usedRegen(A.id)) === q0, "кредиты НЕ израсходованы", [q0, await usedRegen(A.id)]);
     ok((await usageCount(A.id)) === u0 && mock.calls === calls0, "api_usage не прибавилось, модель не звалась");
     const t1 = await totals(D1);
     ok(t1.c === t0.c && t1.i === t0.i, "стоимость документа не тронута");
@@ -263,7 +265,7 @@ try {
     ok(th1.formulation === "Новое значение поля, данное моделью", "новое значение записано (ограда, ёлочки и лишние пробелы сняты)", th1.formulation);
     const v0 = (await A.api("GET", `/syntheses/${D1}/elements/thesis/${th0.id}/versions`)).json.versions[0];
     ok(v0.changeSource === "recommendation" && v0.origin?.num === "4" && v0.origin?.stepType === "refine_element" && v0.data.formulation === th0.formulation, "версия с источником recommendation (№4, refine_element), снимок — прежняя формулировка");
-    ok((await usedRegen(A.id)) === q0 + 1, "квота regenerations израсходована: +1", [q0, await usedRegen(A.id)]);
+    ok((await usedRegen(A.id)) === q0 + W.enrichment, "кредиты израсходованы: + вес обогащения (refine_element)", [q0, await usedRegen(A.id)]);
     ok((await usageCount(A.id)) === u0 + 1, "api_usage +1 строка");
     const t1 = await totals(D1);
     ok(Number(t1.c) > Number(t0.c), "стоимость вошла в итог документа");
@@ -381,7 +383,7 @@ try {
     const q0 = await usedRegen(A.id);
     w.send({ type: "confirm_step", planId: r.json.plan.id, stepIndex: ci });
     p = await waitPlan(r.json.plan.id, (x) => x.steps[ci].status === "done", "R7 confirm_step critique", 60000);
-    ok((await usedRegen(A.id)) === q0 + 1, "перегенерация критики — платный шаг: квота +1");
+    ok((await usedRegen(A.id)) === q0 + W.section, "перегенерация критики — платный шаг: + вес раздела");
     mock.critiqueVariant = 1;
     await sleep(300);
     const opened = await A.api("POST", rec(D3, "/parse"));

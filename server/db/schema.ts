@@ -1019,14 +1019,10 @@ export const subscriptionPlans = pgTable(
   billingPeriod: text("billing_period", { enum: ["month", "year"] })
     .notNull()
     .default("month"),
-  /** Полных синтезов за период */
-  quotaSyntheses: integer("quota_syntheses").notNull(),
-  /** Перегенераций разделов за период */
-  quotaRegenerations: integer("quota_regenerations").notNull(),
-  /** Запусков режимов за период */
-  quotaModes: integer("quota_modes").notNull(),
-  /** Обогащений элементов за период */
-  quotaEnrichments: integer("quota_enrichments").notNull(),
+  /** Кредитов за период (миграция 0021 свела четыре квоты — синтезы,
+   *  перегенерации, режимы, обогащения — в одну; веса операций —
+   *  config/plan-economics.ts CREDIT_WEIGHTS) */
+  quotaCredits: integer("quota_credits").notNull(),
   /** Stripe Price ID */
   stripePriceId: text("stripe_price_id").notNull(),
   /** «открыт для покупки» (15.4): GET /billing/plans и POST /subscribe видят
@@ -1066,11 +1062,8 @@ export const userSubscriptions = pgTable(
     currentPeriodEnd: timestamp("current_period_end", {
       withTimezone: true,
     }).notNull(),
-    // Счётчики использования (сбрасываются в начале каждого периода)
-    usedSyntheses: integer("used_syntheses").notNull().default(0),
-    usedRegenerations: integer("used_regenerations").notNull().default(0),
-    usedModes: integer("used_modes").notNull().default(0),
-    usedEnrichments: integer("used_enrichments").notNull().default(0),
+    // Израсходовано кредитов (сбрасывается в начале каждого периода; 0021)
+    usedCredits: integer("used_credits").notNull().default(0),
     cancelAtPeriodEnd: boolean("cancel_at_period_end")
       .notNull()
       .default(false),
@@ -1086,6 +1079,45 @@ export const userSubscriptions = pgTable(
     index("idx_subscriptions_status")
       .on(t.status)
       .where(sql`${t.status} IN ('active', 'trialing')`),
+  ],
+);
+
+/* ─────────────────────── 2.23a. credit_charges ─────────────────────── */
+
+/**
+ * Журнал списаний кредитов подписки (решение пользователя 2026-11-17,
+ * миграция 0022): строка на операцию, взявшую кредиты под слотом
+ * генерации, — кто, за какой документ, сколько, за что. Деньги баланса
+ * уже журналируются transactions (synthesis_id), себестоимость BYO —
+ * api_usage; кредиты до 0022 списывались счётчиком used_credits без
+ * привязки к документу. Потребители: строка «С вас» в футере документа
+ * (GET /syntheses/:id/charges) и история на странице биллинга
+ * (GET /billing/credit-charges). Удаление документа строку не удаляет
+ * (SET NULL — как api_usage/transactions), удаление пользователя — да.
+ */
+export const creditCharges = pgTable(
+  "credit_charges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    synthesisId: uuid("synthesis_id").references(() => syntheses.id, {
+      onDelete: "set null",
+    }),
+    subscriptionId: uuid("subscription_id").references(() => userSubscriptions.id, {
+      onDelete: "set null",
+    }),
+    credits: integer("credits").notNull(),
+    /** Вид операции: synthesis | section | subsection | mode | enrichment | plan */
+    op: text("op").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_credit_charges_user").on(t.userId, t.createdAt),
+    index("idx_credit_charges_synthesis_user").on(t.synthesisId, t.userId),
   ],
 );
 

@@ -65,6 +65,7 @@
  *
  * linkedom по-прежнему только в utils/html-parser (инвариант 1.3).
  */
+import { creditCharge, creditsFor } from "../config/plan-economics.js";
 import { genLogActor } from "./actor-context.js"; // 17.1: исполнитель строки журнала
 import { createHash } from "node:crypto";
 
@@ -1026,8 +1027,9 @@ export function innerHtmlFromModelAnswer(answer: string): string | null {
   return table.outerHTML;
 }
 
-/** Квота ретрофита — одна на оценку (12.3), предпроверку роута и слот. */
-export const EXTRACT_QUOTA = "regenerations" as const;
+/** Вид операции ретрофита для кредитов (0021): таблица — подраздел критики.
+ *  Один на оценку (12.3), предпроверку роута и слот. */
+export const EXTRACT_CREDIT_OP = "subsection" as const;
 
 /** Запрос ретрофита, собранный БЕЗ обращения к модели. */
 export interface ExtractRequest {
@@ -1122,8 +1124,8 @@ export async function estimateExtractCost(
       depth: req.depth,
       critiqueSubsections: req.critiqueSubsections,
     }),
-    // во что обойдётся подписчику: одна единица той же квоты, что у ретрофита
-    quota: { type: EXTRACT_QUOTA, units: 1 },
+    // во что обойдётся подписчику: вес подраздела в кредитах — тот же, что спишет слот
+    quota: { type: "credits", units: creditsFor(EXTRACT_CREDIT_OP) },
   };
 }
 
@@ -1321,7 +1323,7 @@ export async function extractRecommendationsTable(
         usage: { ...run.usage, costUsd: run.costUsd },
       };
     },
-    { quota: EXTRACT_QUOTA },
+    creditCharge(EXTRACT_CREDIT_OP),
   );
   // withGenerationSlot возвращает void; result заполнен либо брошено исключение
   return result as unknown as RecommendationsExtractResponse;

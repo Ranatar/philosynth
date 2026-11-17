@@ -544,7 +544,7 @@ async function main() {
     console.log("R8: DocumentFooter (токены + стоимость как в БД)");
     const footerText = norm(await page.$eval(".doc-footer", (el) => el.innerText));
     ok(
-      footerText.includes("Стоимость: $1.2345 (123.45¢)"),
+      footerText.includes("Себестоимость: $1.2345 (123.45¢)"),
       "стоимость $X.XXXX — ровно totalCostUsd, без пересчёта",
     );
     ok(

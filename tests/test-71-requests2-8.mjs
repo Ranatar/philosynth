@@ -400,7 +400,7 @@ try {
   await db.delete(subscriptionPlans).where(eq(subscriptionPlans.name, "starter71"));
   const [plan] = await db.insert(subscriptionPlans).values({
     name: "starter71", family: "starter71", displayName: "Starter 71", priceUsd: "9.00", billingPeriod: "month",
-    quotaSyntheses: 3, quotaRegenerations: 10, quotaModes: 5, quotaEnrichments: 20, stripePriceId: "price_starter_71",
+    quotaCredits: 950, stripePriceId: "price_starter_71", // 0021: прежние 3/10/5/20 по весам
   }).returning();
   if (plan) {
     r = await api(A, "POST", "/billing/subscribe", { planId: plan.id });

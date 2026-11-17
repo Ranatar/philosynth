@@ -32,6 +32,7 @@ import {
   parseElementStepTarget,
 } from "@philosynth/shared/constants/edit-steps";
 import type { EditPlan, EditPlanStatus, EditStep, StepResult } from "@philosynth/shared/types/edit-plan";
+import { chargeLine, useBillingView } from "../../hooks/useBillingView";
 import { tl } from "@philosynth/shared/i18n/t";
 import { proposalNumberIn, useCollabStore } from "../../stores/collab-store"; // 17.2
 import { markupToLines } from "../../utils/proposals";
@@ -158,6 +159,7 @@ export function EditPlanPanel({
 }: EditPlanPanelProps) {
   // 17.2: номера и авторы предложений — из хранилища страницы
   const collabProposals = useCollabStore((s) => s.proposals);
+  const billingView = useBillingView(); // 2026-11-17
   return (
     <div
       style={{
@@ -179,7 +181,7 @@ export function EditPlanPanel({
         }}
       >
         {tl("edit.editPlanPanel.planTitle", "План редактирования · {status}{estimatedCost}", { status: planStatusLabel(plan.status), estimatedCost: plan.estimatedCost > 0 &&
-          ` · ≈ $${plan.estimatedCost.toFixed(4)} (${(plan.estimatedCost * 100).toFixed(2)}¢)` })}
+          ` · ${chargeLine(billingView, { usd: plan.estimatedCost, credits: plan.estimatedCredits })}` })}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {plan.steps.map((step, i) => {

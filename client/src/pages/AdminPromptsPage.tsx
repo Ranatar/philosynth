@@ -1590,22 +1590,16 @@ interface PlanFormState {
   displayName: string;
   priceUsd: string;
   billingPeriod: BillingPeriod;
-  quotaSyntheses: string;
-  quotaRegenerations: string;
-  quotaModes: string;
-  quotaEnrichments: string;
+  quotaCredits: string;
   isActive: boolean;
 }
 
-type PlanNumField = "priceUsd" | "quotaSyntheses" | "quotaRegenerations" | "quotaModes" | "quotaEnrichments";
+type PlanNumField = "priceUsd" | "quotaCredits";
 /** Поля, запертые при живых подписках (= PLAN_LOCKED_FIELDS сервера) */
-const PLAN_LOCKED: readonly (PlanNumField | "billingPeriod")[] = ["priceUsd", "billingPeriod", "quotaSyntheses", "quotaRegenerations", "quotaModes", "quotaEnrichments"];
+const PLAN_LOCKED: readonly (PlanNumField | "billingPeriod")[] = ["priceUsd", "billingPeriod", "quotaCredits"];
 
 const QUOTA_FIELDS: readonly { key: Exclude<PlanNumField, "priceUsd">; label: () => string }[] = [
-  { key: "quotaSyntheses", label: () => tl("adminPromptsPage.planQuotaSyntheses", "Синтезов") },
-  { key: "quotaRegenerations", label: () => tl("adminPromptsPage.planQuotaRegenerations", "Перегенераций") },
-  { key: "quotaModes", label: () => tl("adminPromptsPage.planQuotaModes", "Режимов") },
-  { key: "quotaEnrichments", label: () => tl("adminPromptsPage.planQuotaEnrichments", "Обогащений") },
+  { key: "quotaCredits", label: () => tl("adminPromptsPage.planQuotaCredits", "Кредитов") },
 ];
 
 function planFormOf(p: AdminPlanRow): PlanFormState {
@@ -1613,17 +1607,14 @@ function planFormOf(p: AdminPlanRow): PlanFormState {
     displayName: p.displayName,
     priceUsd: p.priceUsd.toFixed(2),
     billingPeriod: p.billingPeriod,
-    quotaSyntheses: String(p.quotaSyntheses),
-    quotaRegenerations: String(p.quotaRegenerations),
-    quotaModes: String(p.quotaModes),
-    quotaEnrichments: String(p.quotaEnrichments),
+    quotaCredits: String(p.quotaCredits),
     isActive: p.isActive,
   };
 }
 
 const EMPTY_PLAN_FORM: PlanFormState = {
   displayName: "", priceUsd: "", billingPeriod: "month",
-  quotaSyntheses: "", quotaRegenerations: "", quotaModes: "", quotaEnrichments: "", isActive: true,
+  quotaCredits: "", isActive: true,
 };
 
 /** Числа формы → PlanFieldsInput; пустое поле не шлётся (сервер берёт прежнее) */
@@ -1635,7 +1626,7 @@ function planFieldsOf(f: PlanFormState): PlanFieldsInput {
 }
 
 function quotasText(p: AdminPlanRow): string {
-  return `${fmtInt(p.quotaSyntheses)} / ${fmtInt(p.quotaRegenerations)} / ${fmtInt(p.quotaModes)} / ${fmtInt(p.quotaEnrichments)}`;
+  return fmtInt(p.quotaCredits);
 }
 
 /** Класс бейджа «открыт/закрыт» (литералы вне JSX — css-parity-audit) */
@@ -1851,10 +1842,7 @@ function PlansTab() {
         displayName: f.displayName ?? "",
         priceUsd: f.priceUsd ?? 0,
         billingPeriod: f.billingPeriod ?? "month",
-        quotaSyntheses: f.quotaSyntheses ?? 0,
-        quotaRegenerations: f.quotaRegenerations ?? 0,
-        quotaModes: f.quotaModes ?? 0,
-        quotaEnrichments: f.quotaEnrichments ?? 0,
+        quotaCredits: f.quotaCredits ?? 0,
         isActive: form.isActive,
       };
       const r = await createPlan(input);
@@ -1875,7 +1863,7 @@ function PlansTab() {
       <div className="form-group full">
         <div className="form-label">{tl("adminPromptsPage.plansTitle", "Тарифы и редакции")}</div>
         <div className="form-sublabel">
-          {tl("adminPromptsPage.plansNote", "Источник истины о тарифах — эта таблица, не код: посев заводит только отсутствующие. Название и «открыт для покупки» правятся на месте; цена, период и квоты — на месте лишь у тарифа без живых подписок (новая цена заводит новый Price в Stripe, прежний выключается). У тарифа с подписчиками — «Новая редакция»: новая строка и новый Price, прежняя закрывается для покупки, её подписчики дорабатывают на своих условиях. Квоты: синтезов / перегенераций / режимов / обогащений за период.")}
+          {tl("adminPromptsPage.plansNote", "Источник истины о тарифах — эта таблица, не код: посев заводит только отсутствующие. Название и «открыт для покупки» правятся на месте; цена, период и квоты — на месте лишь у тарифа без живых подписок (новая цена заводит новый Price в Stripe, прежний выключается). У тарифа с подписчиками — «Новая редакция»: новая строка и новый Price, прежняя закрывается для покупки, её подписчики дорабатывают на своих условиях. Квота — кредиты на период; операция списывает свой вес (раздел, подраздел, режим, обогащение; синтез — по оценке состава).")}
         </div>
         {status && <Status msg={status} />}
         <div
@@ -1937,7 +1925,7 @@ function PlansTab() {
                   <th>{tl("adminPromptsPage.planFamilyCol", "Семейство / редакция")}</th>
                   <th>{tl("adminPromptsPage.planDisplayName", "Название")}</th>
                   <th>{tl("adminPromptsPage.planPriceCol", "Цена")}</th>
-                  <th>{tl("adminPromptsPage.planQuotasCol", "Квоты")}</th>
+                  <th>{tl("adminPromptsPage.planCreditsCol", "Кредиты")}</th>
                   <th className="num">{tl("adminPromptsPage.planLiveCol", "Живых подписок")}</th>
                   <th>{tl("adminPromptsPage.planOpenCol", "Покупка")}</th>
                   <th />

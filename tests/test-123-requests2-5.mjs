@@ -259,7 +259,9 @@ async function makeDoc(user, opts = {}) {
 }
 const planRow = async (planId) => (await sql`select * from edit_plans where id=${planId}`)[0];
 const critiqueHtml = async (id) => (await sql`select html_content h from sections where synthesis_id=${id} and key='critique'`)[0]?.h ?? "";
-const usedRegen = async (userId) => (await sql`select used_regenerations n from user_subscriptions where user_id=${userId}`)[0]?.n ?? null;
+// 0021: квота одна — кредиты; операция списывает свой вес (W)
+const W = { section: 26, subsection: 13 };
+const usedRegen = async (userId) => (await sql`select used_credits n from user_subscriptions where user_id=${userId}`)[0]?.n ?? null;
 const usageCount = async (userId) => (await sql`select count(*)::int n from api_usage where user_id=${userId}`)[0].n;
 /** Перегенерация критики по HTTP; ждёт section_done этого запуска. */
 async function regenCritique(user, ws, id) {
@@ -285,7 +287,7 @@ try {
   await sql`update users set balance_usd = 50 where id in (${A.id}, ${B.id}, ${ADM.id})`;
   // A — подписчик: расход квоты regenerations виден счётчиком
   const planNamet123 = "t123plan" + Date.now();
-  const [pl] = await sql`insert into subscription_plans (name, family, display_name, price_usd, quota_syntheses, quota_regenerations, quota_modes, quota_enrichments, stripe_price_id, is_active) values (${planNamet123}, ${planNamet123}, 'T123', 10, 50, 500, 5, 5, 'price_t123', true) returning id`;
+  const [pl] = await sql`insert into subscription_plans (name, family, display_name, price_usd, quota_credits, stripe_price_id, is_active) values (${planNamet123}, ${planNamet123}, 'T123', 10, 800, 'price_t123', true) returning id`;
   await sql`insert into user_subscriptions (user_id, plan_id, stripe_subscription_id, status, current_period_start, current_period_end) values (${A.id}, ${pl.id}, ${"sub_t123_" + Date.now()}, 'active', now() - interval '1 day', now() + interval '20 days')`;
   const wsA = wsOf(A); await wsA.open;
 
@@ -560,12 +562,12 @@ try {
     const [tot0] = await sql`select total_cost_usd c, total_input_tokens i from syntheses where id=${D5}`;
     const es = await A.api("GET", rec(D5, "/extract/estimate"));
     ok(es.status === 200 && es.json.estimate.inTokens > 0 && es.json.estimate.outTokens > 0 && es.json.estimate.cost > 0, "GET …/recommendations/extract/estimate → оценка входа, выхода и цены", es.json);
-    ok(es.json.quota?.type === "regenerations" && es.json.quota.units === 1, "ответ называет, что спишется у подписчика: одна единица regenerations", es.json.quota);
+    ok(es.json.quota?.type === "credits" && es.json.quota.units === W.subsection, "ответ называет, что спишется у подписчика: вес подраздела в кредитах", es.json.quota);
     const [tot1] = await sql`select total_cost_usd c, total_input_tokens i from syntheses where id=${D5}`;
     ok(mock.calls === calls0 && (await usedRegen(A.id)) === q0 && (await usageCount(A.id)) === u0 && tot1.c === tot0.c && tot1.i === tot0.i, "мок Claude не получил запроса; квота, api_usage и итог документа не тронуты", [mock.calls - calls0, q0, await usedRegen(A.id)]);
     // оценка против настоящего вызова: вход — размер того же запроса
     const exr = await A.api("POST", rec(D5, "/extract"));
-    ok(exr.status === 200 && mock.calls === calls0 + 1 && (await usedRegen(A.id)) === q0 + 1, "сам ретрофит — одно обращение и одна единица квоты (оценка её лишь называла)", [exr.status, mock.calls - calls0]);
+    ok(exr.status === 200 && mock.calls === calls0 + 1 && (await usedRegen(A.id)) === q0 + W.subsection, "сам ретрофит — одно обращение и вес подраздела в кредитах (оценка её лишь называла)", [exr.status, mock.calls - calls0]);
     const [glx] = await sql`select input_chars ic, section_key k, section_label l from generation_log where synthesis_id=${D5} and source='subsection_regen' order by created_at desc limit 1`;
     ok(Math.ceil(glx.ic / CE.CHARS_PER_TOKEN) === es.json.estimate.inTokens, "оценка считала вход ТОЧНО по тому запросу, что затем ушёл модели (SYS + промпт)", [glx.ic, es.json.estimate.inTokens]);
     ok(glx.k === "critique:Таблица рекомендаций", "строка генлога ретрофита — ключом подраздела (в «фактический размер критики» оценок не попадает)", glx);
@@ -660,7 +662,7 @@ try {
     ok(tableAfterProse(done.html) && done.html.includes("Редакция без таблицы."), "section_done несёт критику УЖЕ с таблицей — сразу после прозы", [...done.html.matchAll(/data-section="([^"]+)"/g)].map((m) => m[1]).slice(-3));
     await waitIdle(A, D);
     ok(tableAfterProse(await critiqueHtml(D)), "в БД критика с таблицей");
-    ok((await usedRegen(A.id)) === q0 + 1, "квота: одна единица за перегенерацию — повтор своей единицы не берёт", [q0, await usedRegen(A.id)]);
+    ok((await usedRegen(A.id)) === q0 + W.section, "кредиты: вес раздела за перегенерацию — повтор своих кредитов не берёт", [q0, await usedRegen(A.id)]);
     const logs = await sql`select section_key k, section_label l, status s, metadata m from generation_log where synthesis_id=${D} and log_type='generation' order by created_at desc limit 2`;
     const retryRow = logs.find((x) => x.k === "critique:Таблица рекомендаций"), critRow = logs.find((x) => x.k === "critique");
     ok(!!retryRow && retryRow.s === "done" && /повтор: пропущена моделью/.test(retryRow.l), "генлог: строка повтора ключом подраздела с подписью «повтор: пропущена моделью»", logs.map((x) => [x.k, x.l]));

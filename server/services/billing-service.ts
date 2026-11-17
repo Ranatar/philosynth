@@ -34,6 +34,11 @@
  */
 import { and, desc, eq, gte, lte, sql as dsql } from "drizzle-orm";
 import type {
+  BillingView,
+  CreditCharge,
+  CreditChargeHistory,
+  CreditInfo,
+  SynthesisCharges,
   ApiUsage,
   BillingMode,
   TopupIntent,
@@ -48,6 +53,7 @@ import { db, schema } from "../db/index.js";
 import { env } from "../env.js";
 import { getDecryptedKey } from "./api-key-service.js";
 import { PRICE_IN, PRICE_OUT } from "./cost-estimator.js";
+import { CREDIT_USD, CREDIT_WEIGHTS } from "../config/plan-economics.js";
 import {
   setStreamUsageRecorder,
   type StreamBillingContext,
@@ -63,7 +69,7 @@ import {
 } from "./subscription-service.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
-const { users, transactions, apiUsage } = schema;
+const { users, transactions, apiUsage, creditCharges, syntheses } = schema;
 
 /* ── Ошибка биллинга (коды §4.3) ─────────────────────────────────────── */
 
@@ -457,6 +463,138 @@ export function toUsageDto(r: typeof apiUsage.$inferSelect): ApiUsage {
   };
 }
 
+/* ── Журнал списаний кредитов (0022) ─────────────────────────────────── */
+
+/** Строка журнала: операция под слотом взяла кредиты подписки. Ошибка
+ *  записи не роняет операцию — кредиты уже списаны, теряется лишь строка. */
+export async function recordCreditCharge(row: {
+  userId: string;
+  synthesisId: string | null;
+  subscriptionId: string | null;
+  credits: number;
+  op: string;
+}): Promise<void> {
+  if (!(row.credits > 0)) return;
+  try {
+    await db.insert(creditCharges).values(row);
+  } catch (err) {
+    console.error("[billing] строка credit_charges не записана:", err);
+  }
+}
+
+/**
+ * GET /syntheses/:id/charges — что этот документ стоил ЭТОМУ пользователю:
+ * кредиты подписки (credit_charges), деньги с баланса (transactions 'usage'),
+ * себестоимость по своему ключу (api_usage 'byo') и число вызовов, прошедших
+ * без списания (api_usage 'balance' без транзакции — доработка после сбоя).
+ */
+export async function getSynthesisCharges(userId: string, synthesisId: string): Promise<SynthesisCharges> {
+  const [cr] = await db
+    .select({ credits: dsql<string>`coalesce(sum(${creditCharges.credits}), 0)` })
+    .from(creditCharges)
+    .where(and(eq(creditCharges.userId, userId), eq(creditCharges.synthesisId, synthesisId)));
+  const [bal] = await db
+    .select({ usd: dsql<string>`coalesce(-sum(${transactions.amountUsd}), 0)` })
+    .from(transactions)
+    .where(and(eq(transactions.userId, userId), eq(transactions.synthesisId, synthesisId), eq(transactions.type, "usage")));
+  const [byo] = await db
+    .select({ usd: dsql<string>`coalesce(sum(${apiUsage.costUsd}), 0)` })
+    .from(apiUsage)
+    .where(and(eq(apiUsage.userId, userId), eq(apiUsage.synthesisId, synthesisId), eq(apiUsage.billingMode, "byo")));
+  const [balCalls] = await db
+    .select({ n: dsql<string>`count(*)` })
+    .from(apiUsage)
+    .where(and(eq(apiUsage.userId, userId), eq(apiUsage.synthesisId, synthesisId), eq(apiUsage.billingMode, "balance")));
+  const [balTx] = await db
+    .select({ n: dsql<string>`count(*)` })
+    .from(transactions)
+    .where(and(eq(transactions.userId, userId), eq(transactions.synthesisId, synthesisId), eq(transactions.type, "usage")));
+  return {
+    credits: Number(cr?.credits ?? 0),
+    balanceUsd: Number(bal?.usd ?? 0),
+    byoUsd: Number(byo?.usd ?? 0),
+    waivedCalls: Math.max(0, Number(balCalls?.n ?? 0) - Number(balTx?.n ?? 0)),
+  };
+}
+
+/** GET /billing/credit-charges — история списаний кредитов пользователя, новые сверху. */
+export async function getCreditChargeHistory(
+  userId: string,
+  opts: { limit?: number; page?: number } = {},
+): Promise<CreditChargeHistory> {
+  const limit = Math.min(100, Math.max(1, Math.floor(opts.limit ?? 20)));
+  const page = Math.max(1, Math.floor(opts.page ?? 1));
+  const rows = await db
+    .select({
+      id: creditCharges.id,
+      synthesisId: creditCharges.synthesisId,
+      title: syntheses.title,
+      credits: creditCharges.credits,
+      op: creditCharges.op,
+      createdAt: creditCharges.createdAt,
+    })
+    .from(creditCharges)
+    .leftJoin(syntheses, eq(syntheses.id, creditCharges.synthesisId))
+    .where(eq(creditCharges.userId, userId))
+    .orderBy(desc(creditCharges.createdAt))
+    .limit(limit)
+    .offset((page - 1) * limit);
+  const [tot] = await db
+    .select({ n: dsql<string>`count(*)`, credits: dsql<string>`coalesce(sum(${creditCharges.credits}), 0)` })
+    .from(creditCharges)
+    .where(eq(creditCharges.userId, userId));
+  return {
+    items: rows.map(
+      (r): CreditCharge => ({
+        id: r.id,
+        synthesisId: r.synthesisId,
+        synthesisTitle: r.title ?? null,
+        credits: r.credits,
+        op: r.op,
+        createdAt: r.createdAt.toISOString(),
+      }),
+    ),
+    total: Number(tot?.n ?? 0),
+    totalCredits: Number(tot?.credits ?? 0),
+    page,
+    limit,
+  };
+}
+
+/* ── Как показывать стоимость (2026-11-17) ───────────────────────────── */
+
+/** Веса операций и цена кредита — одни для страницы тарифа и всех подписей. */
+export function creditInfo(): CreditInfo {
+  return { creditUsd: CREDIT_USD, weights: { ...CREDIT_WEIGHTS } };
+}
+
+/**
+ * GET /billing/view: режим, в котором пойдёт следующая операция, — тем же
+ * приоритетом, что resolveBilling (BYO → подписка → баланс), без потребления.
+ * Клиент по нему подписывает стоимость: себестоимость (BYO), кредиты и
+ * остаток (подписка), себестоимость × наценка (баланс).
+ */
+export async function getBillingView(userId: string): Promise<BillingView> {
+  const base = { ...creditInfo(), markup: env.stripe.billingMarkup };
+  const balanceUsd = await getBalance(userId);
+  if (await getDecryptedKey(userId)) return { ...base, mode: "byo", balanceUsd };
+  const sub = await findBillableSubscription(userId);
+  if (sub) {
+    const quota = sub.plan.quotaCredits;
+    const left = Math.max(0, quota - sub.subscription.usedCredits);
+    return {
+      ...base,
+      mode: "subscription",
+      balanceUsd,
+      creditsLeft: left,
+      creditsQuota: quota,
+      balanceFallback: balanceUsd > 0,
+    };
+  }
+  if (balanceUsd > 0) return { ...base, mode: "balance", balanceUsd };
+  return { ...base, mode: "none", balanceUsd };
+}
+
 /* ── Определение режима биллинга (приоритет 01 §6) ───────────────────── */
 
 /** Решение биллинга операции — кладётся в контекст запроса (middleware)
@@ -471,19 +609,32 @@ export interface BillingDecision {
   enforced: boolean;
   /** Какая квота потреблена (consume=true) — для отката при сбое старта */
   quotaConsumed?: { subscriptionId: string; quotaType: QuotaType; units: number } | undefined;
+  /** Режим 'balance' без списания: доработка после сбоя на стороне службы
+   *  или API (решение пользователя 2026-11-17) — usage пишется в api_usage,
+   *  баланс не трогается */
+  waived?: boolean | undefined;
 }
 
 export interface ResolveBillingOptions {
   /** Квота подписки, нужная операции; null/undefined — операция без
    *  квоты (возобновление, продолжение после паузы) */
   quota?: QuotaType | null | undefined;
-  /** Единиц квоты (план — число шагов регенерации) */
+  /** Кредитов (вес операции; план — сумма весов подтверждённых шагов) */
   units?: number | undefined;
   /** Порог баланса для режима 'balance'; дефолт env.billing.minReserveUsd */
   estimatedCostUsd?: number | undefined;
   /** true — потребить квоту атомарно (слот); false — только проверить
    *  (middleware) */
   consume?: boolean | undefined;
+  /**
+   * Доработка после сбоя на стороне службы или API (обрыв, лимит токенов,
+   * зависший поток, сбой до потока, ошибка контекста) — решение пользователя
+   * 2026-11-17: за неё не списывается. Подписке это и так даёт quota: null;
+   * режиму 'balance' этот флаг снимает порог и списание (решение waived).
+   * Пауза по причине 'billing' (не хватило денег) флага НЕ получает —
+   * возобновление доводит оплачиваемую операцию, списание как обычно.
+   */
+  waiveBalance?: boolean | undefined;
 }
 
 /** Серверный ключ для режимов subscription/balance. */
@@ -508,7 +659,7 @@ export async function resolveBilling(
   }
 
   // 2. Активная подписка с остатком квоты
-  let quotaExceeded: { quotaType: QuotaType; used: number; quota: number } | null = null;
+  let quotaExceeded: { quotaType: QuotaType; used: number; quota: number; needed: number } | null = null;
   const sub = await findBillableSubscription(userId);
   if (sub) {
     const subscriptionId = sub.subscription.id;
@@ -534,7 +685,12 @@ export async function resolveBilling(
           : {}),
       };
     }
-    quotaExceeded = { quotaType: opts.quota, used: q.used, quota: q.quota };
+    quotaExceeded = { quotaType: opts.quota, used: q.used, quota: q.quota, needed: units };
+  }
+
+  // 3'. Доработка после сбоя службы/API — баланс не требуется и не списывается
+  if (opts.waiveBalance === true) {
+    return { billingMode: "balance", apiKey: serverApiKeyOrThrow(), enforced: true, waived: true };
   }
 
   // 3. Баланс ≥ порог
@@ -551,7 +707,7 @@ export async function resolveBilling(
   if (quotaExceeded) {
     throw new BillingError(
       "QUOTA_EXCEEDED",
-      tl("server.billingService.quotaExhausted", "Квота подписки «{quotaType}» исчерпана ({used}/{quota}), баланса недостаточно", { quotaType: quotaExceeded.quotaType, used: quotaExceeded.used, quota: quotaExceeded.quota }),
+      tl("server.billingService.creditsExhausted", "Кредитов подписки не хватает: нужно {needed}, осталось {left} из {quota}; баланса недостаточно", { needed: quotaExceeded.needed, left: Math.max(0, quotaExceeded.quota - quotaExceeded.used), quota: quotaExceeded.quota }),
       quotaExceeded,
     );
   }
@@ -584,7 +740,7 @@ export async function recordStreamUsage(
   if (usage.inputTokens === 0 && usage.outputTokens === 0) return;
   const synthesisId = ctx.synthesisId ?? null;
   const sectionKey = ctx.sectionKey ?? null;
-  if (ctx.billingMode === "balance") {
+  if (ctx.billingMode === "balance" && ctx.waived !== true) {
     await chargeUsage(ctx.userId, synthesisId, sectionKey, usage.inputTokens, usage.outputTokens);
     return;
   }

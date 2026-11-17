@@ -130,14 +130,16 @@ async function account(tag, name) {
   await sql`update users set balance_usd = 0 where id=${u.id}`;
   return { ...client(cookie), id: u.id, email, name: name ?? tag };
 }
-/** Подписка с квотой перегенераций (образец — test-123). */
-async function subscribe(user, regenQuota) {
+/** Подписка с квотой кредитов (образец — test-123; 0021: квота одна — кредиты). */
+const W = { section: 26, subsection: 13, enrichment: 4 };
+const E_CREDITS = 3 * W.section + W.subsection; // раздел, подраздел, план, раздел — и кредитов нет
+async function subscribe(user, credits) {
   const name = `t171plan-${TAG}-${planIds.length}`;
-  const [pl] = await sql`insert into subscription_plans (name, family, display_name, price_usd, quota_syntheses, quota_regenerations, quota_modes, quota_enrichments, stripe_price_id, is_active) values (${name}, ${name}, 'T171', 10, 50, ${regenQuota}, 50, 50, ${"price_" + name}, true) returning id`;
+  const [pl] = await sql`insert into subscription_plans (name, family, display_name, price_usd, quota_credits, stripe_price_id, is_active) values (${name}, ${name}, 'T171', 10, ${credits}, ${"price_" + name}, true) returning id`;
   planIds.push(pl.id);
   await sql`insert into user_subscriptions (user_id, plan_id, stripe_subscription_id, status, current_period_start, current_period_end) values (${user.id}, ${pl.id}, ${"sub_t171_" + TAG + planIds.length}, 'active', now() - interval '1 day', now() + interval '20 days')`;
 }
-const usedRegen = async (u) => (await sql`select used_regenerations n from user_subscriptions where user_id=${u.id}`)[0]?.n ?? null;
+const usedRegen = async (u) => (await sql`select used_credits n from user_subscriptions where user_id=${u.id}`)[0]?.n ?? null;
 const usageRows = async (u) => (await sql`select count(*)::int n from api_usage where user_id=${u.id}`)[0].n;
 async function importLive(user) {
   const fd = new FormData(); fd.append("file", new Blob([readFileSync(FILE, "utf8")], { type: "text/html" }), `t171-${TAG}.html`);
@@ -195,8 +197,8 @@ try {
   sp(["--import", "tsx", "index.ts"], ROOT + "server", { PORT: String(PORT), RATE_LIMIT_HTTP_PER_MINUTE: "100000", MAIL_TRANSPORT: "console", BILLING_ENFORCE: "true", ANTHROPIC_BASE_URL: `http://127.0.0.1:${MOCK_PORT}`, ANTHROPIC_API_KEY: "sk-ant-mock", NODE_ENV: "development" }, "/tmp/t171-server.log");
   await waitUp(`${BASE}/health`, "сервер");
   const O = await account("owner", "Владелец"), E = await account("ed", "Редактор"), R = await account("rev", "Рецензент"), X = await account("str", "Чужой");
-  await subscribe(O, 500);
-  await subscribe(E, 4);
+  await subscribe(O, 20000);
+  await subscribe(E, E_CREDITS);
   const S = await importLive(O);
   await armMock(S);
   const [mE] = await member(S, E, "editor");
@@ -224,7 +226,7 @@ try {
     const [gl] = await sql`select actor_user_id, status, cost_usd from generation_log where synthesis_id=${S} and section_key=${KEY} and log_type='generation' order by created_at desc limit 1`;
     const [us] = await sql`select user_id, billing_mode from api_usage where synthesis_id=${S} order by created_at desc limit 1`;
     ok(rg.status === 200 && gl?.status === "done" && (await sql`select html_content h from sections where synthesis_id=${S} and key=${KEY}`)[0].h.includes(`МОК ${TAG}`), `редактор перегенерировал раздел «${KEY}» на моке`, { rg: rg.status, gl, picked: mock.picked });
-    ok(e1.used === e0.used + 1 && e1.usage === e0.usage + 1 && us?.user_id === E.id && us.billing_mode === "subscription", "списана квота РЕДАКТОРА (+1), api_usage — на него, режим subscription", { e0, e1, us });
+    ok(e1.used === e0.used + W.section && e1.usage === e0.usage + 1 && us?.user_id === E.id && us.billing_mode === "subscription", "списаны кредиты РЕДАКТОРА (вес раздела), api_usage — на него, режим subscription", { e0, e1, us });
     ok(o1.used === o0.used && o1.usage === o0.usage, "счётчики владельца не изменились (квота и api_usage)", { o0, o1 });
     ok(gl.actor_user_id === E.id, "строка журнала несёт исполнителя — редактора");
     const v1a = await verOf(S);
@@ -235,7 +237,7 @@ try {
     await waitIdle(E, S);
     const v1 = await verOf(S);
     e1.used = await usedRegen(E); e1.usage = await usageRows(E);
-    ok(sr.status === 200 && v1.base === v0.base && v1.sub === v0.sub + 1 && e1.used === e0.used + 2 && (await usedRegen(O)) === o0.used, "перегенерация ПОДРАЗДЕЛА редактором: sub + 1 (прежнее правило), квота редактора +1, владельца — нет", { sr: sr.status, v0, v1, e1 });
+    ok(sr.status === 200 && v1.base === v0.base && v1.sub === v0.sub + 1 && e1.used === e0.used + W.section + W.subsection && (await usedRegen(O)) === o0.used, "перегенерация ПОДРАЗДЕЛА редактором: sub + 1 (прежнее правило), кредиты редактора + вес подраздела, владельца — нет", { sr: sr.status, v0, v1, e1 });
 
     // план с платным шагом — исполняет и оплачивает редактор
     const pl = await E.api("POST", `/syntheses/${S}/plans`, { regen: [KEY], remove: [], add: [], regenContexts: { [KEY]: "проверка плательщика" } });
@@ -247,7 +249,7 @@ try {
     const run = await runPlan(E, S, pl.json.plan.id);
     const e2 = { used: await usedRegen(E), usage: await usageRows(E) }, o2 = { used: await usedRegen(O), usage: await usageRows(O) };
     const [vm] = await sql`select actor_user_id, metadata from generation_log where synthesis_id=${S} and log_type='version_marker' order by created_at desc limit 1`;
-    ok(run.plan?.status === "done" && e2.used === e1.used + 1 && e2.usage === e1.usage + 1 && o2.used === o1.used && o2.usage === o1.usage, "план с платным шагом исполнен редактором: его квота +1, у владельца без изменений", { status: run.plan?.status, e1, e2, o1, o2 });
+    ok(run.plan?.status === "done" && e2.used === e1.used + W.section && e2.usage === e1.usage + 1 && o2.used === o1.used && o2.usage === o1.usage, "план с платным шагом исполнен редактором: его кредиты + вес раздела, у владельца без изменений", { status: run.plan?.status, e1, e2, o1, o2 });
     const v2 = await verOf(S);
     ok(vm?.actor_user_id === E.id && v2.base === v1.base + 1 && v2.sub === 0 && vm.metadata.version === v2.str, "version_marker плана — с исполнителем; номер документа: план с перегенерацией — base + 1, sub = 0 (прежнее правило)", { v1, v2, marker: vm?.metadata?.version });
 
@@ -263,7 +265,7 @@ try {
     const rg3 = await regen(E, S, KEY);
     const rg4 = await E.api("POST", `/syntheses/${S}/regenerate/${KEY}`, {});
     const eUsed = await usedRegen(E);
-    ok(rg3.status === 200 && eUsed === 4 && rg4.status === 403 && rg4.json?.code === "QUOTA_EXCEEDED" && rg4.json.details?.quota === 4, "редактор без квоты и баланса — отказ биллинга ЕМУ: 403 QUOTA_EXCEEDED (его квота 4/4)", { rg3: rg3.status, eUsed, rg4: rg4.status, body: rg4.json });
+    ok(rg3.status === 200 && eUsed === E_CREDITS && rg4.status === 403 && rg4.json?.code === "QUOTA_EXCEEDED" && rg4.json.details?.quota === E_CREDITS, "редактор без кредитов и баланса — отказ биллинга ЕМУ: 403 QUOTA_EXCEEDED (его кредиты израсходованы)", { rg3: rg3.status, eUsed, rg4: rg4.status, body: rg4.json });
     const pl402 = await E.api("POST", `/syntheses/${S}/plans`, { regen: [KEY], remove: [], add: [] });
     const ex402 = await E.api("POST", `/syntheses/${S}/plans/${pl402.json?.plan?.id}/execute`);
     ok(ex402.status === 403 && ex402.json?.code === "QUOTA_EXCEEDED", "исполнение платного плана редактором без квоты — тот же отказ биллинга ему", { s: ex402.status, c: ex402.json?.code });
@@ -276,7 +278,7 @@ try {
     ok(delByOwner.status === 200, "чужой черновик плана владелец удаляет (Д-84)", delByOwner.status);
     const oUsedBefore = await usedRegen(O);
     const rgO = await regen(O, S, KEY);
-    ok(rgO.status === 200 && (await usedRegen(O)) === oUsedBefore + 1 && (await usedRegen(E)) === 4, "владелец при этом генерирует на свою квоту; за редактора он не платил");
+    ok(rgO.status === 200 && (await usedRegen(O)) === oUsedBefore + W.section && (await usedRegen(E)) === E_CREDITS, "владелец при этом генерирует на свои кредиты; за редактора он не платил");
 
     // рецензент: 403 на всех путях правки — и под принуждением биллинга (у него нет ни подписки, ни баланса)
     const revPaths = [
@@ -336,12 +338,12 @@ try {
     const startedCount = (fO.json.text.match(/Запустил: Редактор/g) ?? []).length;
     ok(startedCount >= 3 && !/Запустил: Владелец/.test(fO.json.text) && blocks.length > 0, "«Запустил: Редактор» в журнале у строк редактора; «Запустил: Владелец» нет нигде", { startedCount });
     const fE = await E.api("GET", `/syntheses/${S}/logs/formatted`), fR0 = await R.api("GET", `/syntheses/${S}/logs/formatted`);
-    ok(fE.status === 200 && /Запустил: Редактор/.test(fE.json.text) && !/Стоимость: скрыта/.test(fE.json.text) && fR0.status === 403, "редактору журнал открыт, свои стоимости видны; рецензенту приватной — закрыт (флаги 8.6)", { fE: fE.status, fR0: fR0.status });
+    ok(fE.status === 200 && /Запустил: Редактор/.test(fE.json.text) && !/Себестоимость: скрыта/.test(fE.json.text) && fR0.status === 403, "редактору журнал открыт, свои стоимости видны; рецензенту приватной — закрыт (флаги 8.6)", { fE: fE.status, fR0: fR0.status });
     await sql`update syntheses set visibility='full', show_logs=true, show_prompts=true where id=${S}`;
     const lgX = await X.api("GET", `/syntheses/${S}/logs/generation`), fX = await X.api("GET", `/syntheses/${S}/logs/formatted`), prX = await X.api("GET", `/syntheses/${S}/logs/prompts`);
     const lgR = await R.api("GET", `/syntheses/${S}/logs/generation`);
     const xEd = lgX.json.entries.filter((e) => e.costHidden);
-    ok(lgX.status === 200 && lgX.json.entries.every((e) => !e.actor) && xEd.length === edRows.length && xEd.every((e) => e.costUsd === 0) && !/Запустил: /.test(fX.json.text) && /Стоимость: скрыта/.test(fX.json.text) && !/Редактор/.test(prX.json.text ?? ""), "читатель по show_logs: имён нет (журнал, текст, запросы); стоимость строк редактора скрыта", { hidden: xEd.length, expect: edRows.length });
+    ok(lgX.status === 200 && lgX.json.entries.every((e) => !e.actor) && xEd.length === edRows.length && xEd.every((e) => e.costUsd === 0) && !/Запустил: /.test(fX.json.text) && /Себестоимость: скрыта/.test(fX.json.text) && !/Редактор/.test(prX.json.text ?? ""), "читатель по show_logs: имён нет (журнал, текст, запросы); стоимость строк редактора скрыта", { hidden: xEd.length, expect: edRows.length });
     ok(lgR.json.entries.some((e) => e.actor?.name === "Редактор" && e.costHidden === true), "рецензент (участник) по show_logs: имя видит, стоимость чужой строки — нет");
     // выгрузка (Д-85)
     const exO = await O.api("GET", `/syntheses/${S}/export/html`), exX = await X.api("GET", `/syntheses/${S}/export/html`), exE = await E.api("GET", `/syntheses/${S}/export/html`);
@@ -349,7 +351,7 @@ try {
     const gO = costsOf(exO.text), gX = costsOf(exX.text), gE = costsOf(exE.text);
     const costSum = (g) => g.reduce((a, x) => a + x, 0);
     ok(exO.status === 200 && exX.status === 200 && !/Запустил: /.test(exO.text) && !/Запустил: /.test(exX.text) && !/Запустил: /.test(exE.text), "выгрузка HTML имён исполнителей не несёт никому (владелец, редактор, читатель)");
-    ok(gO.length > 0 && gO.length === gX.length && costSum(gX) < costSum(gO) && costSum(gE) > costSum(gX) && /Стоимость: скрыта/.test(exX.text) && !/Стоимость: скрыта/.test(exO.text), "выгрузка: стоимость строк редактора читателю нулевая и «скрыта», владельцу — полная, самому редактору его строки видны (Д-85)", { o: costSum(gO), x: costSum(gX), e: costSum(gE), n: gO.length });
+    ok(gO.length > 0 && gO.length === gX.length && costSum(gX) < costSum(gO) && costSum(gE) > costSum(gX) && /Себестоимость: скрыта/.test(exX.text) && !/Себестоимость: скрыта/.test(exO.text), "выгрузка: стоимость строк редактора читателю нулевая и «скрыта», владельцу — полная, самому редактору его строки видны (Д-85)", { o: costSum(gO), x: costSum(gX), e: costSum(gE), n: gO.length });
     await sql`update syntheses set visibility='private', show_logs=false, show_prompts=false where id=${S}`;
   }
 
@@ -404,7 +406,7 @@ try {
     console.log("\n■ R5: предложения");
     const P = `/syntheses/${S}/proposals`;
     // пополним редактору возможность платить за refine: новая квота
-    await sql`update user_subscriptions set used_regenerations = 0 where user_id=${E.id}`;
+    await sql`update user_subscriptions set used_credits = 0 where user_id=${E.id}`;
     const cA = cats[3], cB = cats[4];
     // replace из комментария
     const com = await R.api("POST", `/syntheses/${S}/comments`, { target: { kind: "category", id: cA.id }, body: "определение расплывчато", kind: "unclear" });
@@ -441,7 +443,7 @@ try {
     const r3 = await runPlan(E, S, a3.json.plan.id);
     const [cBnow] = await sql`select definition from categories where id=${cB.id}`;
     const v3 = (await O.api("GET", `/syntheses/${S}/elements/category/${cB.id}/versions`)).json.versions[0];
-    ok(r3.plan?.status === "done" && cBnow.definition === `Мок уточнил определение ${TAG}` && (await usedRegen(E)) === eBefore + 1 && (await usedRegen(O)) === oBefore && v3.changeSource === "proposal" && v3.origin.stepType === "refine_element" && (await R.api("GET", `${P}/${p3.json.id}`)).json.status === "accepted", "refine_element исполнен на моке: значение от модели, квота ПРИНЯВШЕГО +1, версия 'proposal', предложение accepted", { plan: r3.plan?.status, def: cBnow.definition, v3 });
+    ok(r3.plan?.status === "done" && cBnow.definition === `Мок уточнил определение ${TAG}` && (await usedRegen(E)) === eBefore + W.enrichment && (await usedRegen(O)) === oBefore && v3.changeSource === "proposal" && v3.origin.stepType === "refine_element" && (await R.api("GET", `${P}/${p3.json.id}`)).json.status === "accepted", "refine_element исполнен на моке: значение от модели, квота ПРИНЯВШЕГО +1, версия 'proposal', предложение accepted", { plan: r3.plan?.status, def: cBnow.definition, v3 });
     // stale
     const p4 = await R.api("POST", P, { target: { kind: "thesis", id: ths[1].id }, kind: "replace", field: "formulation", value: `устареет ${TAG}`, rationale: "r" });
     await O.api("PATCH", `/syntheses/${S}/theses/${ths[1].id}`, { formulation: `основа переписана ${TAG}` });

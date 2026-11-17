@@ -63,11 +63,13 @@ import { and, asc, eq, inArray, sql as dsql } from "drizzle-orm";
 import {
   ELEMENT_STEP_HOST,
   isDeletableElementKind,
+  creditOpOfStepType,
   isFreeStepType,
   parseElementStepTarget,
   parseSubsectionStepTarget,
 } from "@philosynth/shared/constants/edit-steps";
 
+import { creditsFor } from "../config/plan-economics.js";
 import { db } from "../db/index.js";
 import {
   editPlans,
@@ -110,6 +112,7 @@ import {
 } from "./generation-service.js";
 import {
   createPausedState,
+  isServiceFailurePause,
   setPlanResumeExecutor,
 } from "./pause-resume-service.js";
 import { STRUCTURE_SUBSECTION } from "./structure-tracker.js";
@@ -715,6 +718,7 @@ async function runPlanSteps(
         addCtx,
         ...reasonFields,
         reasonKind: (e.kind || "partial") as PauseReasonKind,
+        paidBy: handle.billing.billingMode, // 2026-11-17: чья причина паузы
       });
       await setPlanStatus(planId, "paused");
       // 15.2 (Д-78): маркер паузы пишет createPausedState — один pause_marker
@@ -824,12 +828,16 @@ async function appendCascadeSteps(
   });
 }
 
-/** 6.1: сколько единиц квоты regenerations стоит прогон плана с шага from —
- *  подтверждённые шаги, требующие вызова Claude (regen / add /
- *  regen_subsection / regen_mode / refine_element). Бесплатные (delete,
- *  edit_element — 10.2) не считаются. НОЛЬ — законный ответ: такой план идёт
- *  под бесплатным слотом (slotBillingFor). До 10.2 ноль поднимался до
- *  единицы, и план из одних delete стоил подписчику единицу квоты. */
+/** 0021: вид операции шага для кредитов — общий с клиентом (shared edit-steps). */
+export const creditOpOfStep = creditOpOfStepType;
+
+/** 6.1: сколько стоит прогон плана с шага from — подтверждённые шаги,
+ *  требующие вызова Claude (regen / add / regen_subsection / regen_mode /
+ *  refine_element). Бесплатные (delete, edit_element — 10.2) не считаются.
+ *  НОЛЬ — законный ответ: такой план идёт под бесплатным слотом
+ *  (slotBillingFor). До 10.2 ноль поднимался до единицы, и план из одних
+ *  delete стоил подписчику единицу квоты. countBillableSteps — число таких
+ *  шагов, creditsForSteps (0021) — сумма их весов в кредитах. */
 export function countBillableSteps(
   steps: readonly EditStep[],
   fromIndex = 0,
@@ -845,13 +853,43 @@ export function countBillableSteps(
   return n;
 }
 
+export function creditsForSteps(
+  steps: readonly EditStep[],
+  fromIndex = 0,
+): number {
+  let n = 0;
+  for (let i = fromIndex; i < steps.length; i++) {
+    const st = steps[i];
+    if (!st || st.status !== "confirmed") continue;
+    const op = creditOpOfStep(st.type);
+    if (op) n += creditsFor(op);
+  }
+  return n;
+}
+
 /** Биллинг слота прогона: платных шагов нет → бесплатный слот. */
 export function slotBillingFor(
   steps: readonly EditStep[],
   fromIndex = 0,
-): { quota: "regenerations"; units: number } | { free: true } {
-  const units = countBillableSteps(steps, fromIndex);
-  return units > 0 ? { quota: "regenerations", units } : { free: true };
+): { quota: "credits"; units: number; op: "plan" } | { free: true } {
+  const units = creditsForSteps(steps, fromIndex);
+  return units > 0 ? { quota: "credits", units, op: "plan" } : { free: true };
+}
+
+/**
+ * Биллинг возобновления плана после паузы (2026-11-17): шаги с from уже
+ * оплачены при запуске прогона (slotBillingFor брал их все) — повторно
+ * кредиты не списываются (до этого сорвавшийся шаг и все после него
+ * оплачивались дважды). Режим баланса после сбоя службы/API не списывает
+ * (isServiceFailurePause); пауза 'billing'/'auth' под BYO — как обычно.
+ */
+export function resumeSlotBillingFor(
+  steps: readonly EditStep[],
+  fromIndex: number,
+  ps: Parameters<typeof isServiceFailurePause>[0] | null | undefined,
+): { quota: null; waiveBalance: boolean } | { free: true } {
+  if (creditsForSteps(steps, fromIndex) === 0) return { free: true };
+  return { quota: null, waiveBalance: ps ? isServiceFailurePause(ps) : false };
 }
 
 /* ══ executePlan [19514] ══════════════════════════════════════════════ */
@@ -1090,7 +1128,7 @@ async function resumePlanExecutor(
     );
     if (!completed) return;
     await appendCascadeSteps(synthesisId, userId, planId, steps);
-  }, slotBillingFor(steps, fromIndex)); // 6.1: квота подписки; 10.2: либо бесплатный слот
+  }, resumeSlotBillingFor(steps, fromIndex, ps && ps.kind === "plan" ? ps : null)); // 6.1: квота подписки; 2026-11-17: шаги оплачены при запуске
   // 12.3 (Д-6): статус и plan_updated — после слота
   if (completed) await finishPlanRun(synthesisId, planId, userId, true);
 }

@@ -26,11 +26,25 @@ export type ResumeGenerationMode =
 /** Режим возобновления плана */
 export type ResumePlanMode = "retry" | "skip_step" | "stop";
 
-/** Серверный аналог _computeGenPauseEstimates: оценки стоимости действий */
+/**
+ * Серверный аналог _computeGenPauseEstimates: оценки стоимости действий,
+ * себестоимость USD. fillMissingSubs и wholeSection — ТОЛЬКО починка
+ * прерванного раздела; после неё служба сама продолжает остальные разделы,
+ * и их стоимость — skipRemaining («продолжение»). Полная цена выбора:
+ * починка + skipRemaining; у «Пропустить» — сам skipRemaining (2026-11-17).
+ */
 export interface PauseEstimates {
   fillMissingSubs?: number;
   wholeSection?: number;
   skipRemaining?: number;
+  /** Недостающие подразделы в порядке догенерации — с оборванным первым
+   *  (partialSubsections несёт и оборванный: в нём есть текст) */
+  missingSubs?: string[];
+  /** Оборванный подраздел (дописывается или генерируется заново) */
+  streamingSub?: string | null;
+  /** Пауза по вине службы/API — доработка без списания с баланса
+   *  (isServiceFailurePause); у подписки доработка без кредитов всегда */
+  serviceFailure?: boolean;
 }
 
 /* ── Клиент → Сервер (03-spec §3.1) ──────────────────────────────────── */

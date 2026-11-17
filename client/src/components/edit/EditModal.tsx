@@ -77,6 +77,7 @@ import { EditSectionCard } from "./EditSectionCard";
 import { ModeResultsPanel } from "./ModeResultsPanel";
 import { TransformHistory } from "./TransformHistory";
 import { SubsectionRegenPanel } from "./SubsectionRegenPanel";
+import { chargeLine, useBillingView } from "../../hooks/useBillingView";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
 
@@ -225,6 +226,8 @@ export function EditModal({
   /* ── Живой каскад: POST /plans/impact с debounce ── */
   const [impact, setImpact] = useState<CascadeImpactDto | null>(null);
   const [estimatedCost, setEstimatedCost] = useState(0);
+  const [estimatedCredits, setEstimatedCredits] = useState(0); // 0021
+  const billingView = useBillingView(); // 2026-11-17: подпись по способу оплаты
   const [impactLoading, setImpactLoading] = useState(false);
   const impactSeq = useRef(0);
 
@@ -265,6 +268,7 @@ export function EditModal({
           if (seq !== impactSeq.current) return;
           setImpact(r.impact);
           setEstimatedCost(r.estimatedCost);
+          setEstimatedCredits(r.estimatedCredits ?? 0);
         })
         .catch(() => {
           if (seq === impactSeq.current) setImpact(null);
@@ -437,17 +441,19 @@ export function EditModal({
   // СВЕРХ estimatedCost, если подтвердить все. Собственный подсчёт 10.3 снят;
   // estimatedCost плана 0 — законно (правка элемента + каскад): превью
   // чекбоксов его не подменяет
-  const fmtCost = (v: number) => `≈ $${v.toFixed(4)} (${(v * 100).toFixed(2)}¢)`;
+  // 2026-11-17: подпись по способу оплаты — себестоимость (BYO), с наценкой
+  // (баланс), кредиты и остаток (подписка)
+  const fmtCost = (usd: number, credits: number) => chargeLine(billingView, { usd, credits });
   const costText = plan
     ? plan.estimatedCost > 0
-      ? fmtCost(plan.estimatedCost)
+      ? fmtCost(plan.estimatedCost, plan.estimatedCredits)
       : plan.costBreakdown.paid.steps === 0 && plan.costBreakdown.free.steps > 0
         ? tl("edit.editModal.planFree", "План бесплатен: модель не зовётся")
         : plan.cascadePending.steps > 0
           ? tl("edit.editModal.takenNothingPaid", "Взятые шаги — без обращений к модели")
           : ""
     : estimatedCost > 0
-      ? fmtCost(estimatedCost)
+      ? fmtCost(estimatedCost, estimatedCredits)
       : removeArr.length > 0 && regenArr.length + addArr.length === 0
         ? tl("edit.editModal.deletionFree", "Удаление бесплатно")
         : "";
@@ -460,8 +466,8 @@ export function EditModal({
       (plan.cascadePending.steps > 0
         ? tl(
             "edit.editModal.cascadePending",
-            " · {pending} каскадных ждут решения — если подтвердить все, ещё ≈ ${pendingCost}",
-            { pending: plan.cascadePending.steps, pendingCost: plan.cascadePending.costUsd.toFixed(4) },
+            " · {pending} каскадных ждут решения — если подтвердить все, ещё {pendingCost}",
+            { pending: plan.cascadePending.steps, pendingCost: chargeLine(billingView, { usd: plan.cascadePending.costUsd, credits: plan.cascadePending.credits }) },
           )
         : "")
     : "";

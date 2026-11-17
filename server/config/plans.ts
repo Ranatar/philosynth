@@ -67,30 +67,24 @@ export const PLANS: readonly PlanDefinition[] = Object.freeze([
     displayName: "Starter",
     priceUsd: 9.99,
     billingPeriod: "month",
-    quotaSyntheses: 3,
-    quotaRegenerations: 5,
-    quotaModes: 5,
-    quotaEnrichments: 10,
+    // 0021: 3 синтезов + 5 перегенераций + 5 режимов + 10 обогащений по весам
+    quotaCredits: 780,
   },
   {
     name: "pro",
     displayName: "Pro",
     priceUsd: 29.99,
     billingPeriod: "month",
-    quotaSyntheses: 9,
-    quotaRegenerations: 15,
-    quotaModes: 15,
-    quotaEnrichments: 25,
+    // 0021: 9 синтезов + 15 перегенераций + 15 режимов + 25 обогащений по весам
+    quotaCredits: 2320,
   },
   {
     name: "academic",
     displayName: "Academic",
     priceUsd: 79.99,
     billingPeriod: "month",
-    quotaSyntheses: 24,
-    quotaRegenerations: 35,
-    quotaModes: 35,
-    quotaEnrichments: 80,
+    // 0021: 24 синтезов + 35 перегенераций + 35 режимов + 80 обогащений по весам
+    quotaCredits: 6070,
   },
 ] satisfies PlanDefinition[]);
 

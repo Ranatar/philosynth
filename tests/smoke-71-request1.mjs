@@ -118,10 +118,10 @@ check("pool-store.attachSynthesisId", /attachSynthesisId: \(id, synthesisId\) =>
 console.log("── 6. Биллинг: точный гейт и удаление аккаунта ──");
 const synRoutes = read("server/routes/syntheses.ts");
 check("estimateSynthesisCost вынесен и зовётся из /estimate и POST", (synRoutes.match(/estimateSynthesisCost\(user\.id, \{/g) ?? []).length === 2 && /async function estimateSynthesisCost\(/.test(synRoutes));
-check("гейт только для balance+enforced, сверка resolveBilling(estimatedCostUsd)", /billingCtx\?\.billingMode === "balance" && billingCtx\.enforced/.test(synRoutes) && /resolveBilling\(user\.id, \{\s*quota: "syntheses",\s*estimatedCostUsd: estimatedChargeUsd,\s*consume: false,/.test(synRoutes));
+check("гейт для подписки и balance+enforced, сверка resolveBilling(кредиты оценки, estimatedCostUsd)", /billingCtx\?\.billingMode === "balance" && billingCtx\.enforced/.test(synRoutes) && /resolveBilling\(user\.id, \{\s*quota: "credits",\s*units: synthesisCredits,\s*estimatedCostUsd: estimatedChargeUsd,\s*consume: false,/.test(synRoutes));
 check("оценка → слот (estimatedCostUsd в generateSynthesis)", /generateSynthesis\(synthesisId, user\.id, \{\s*sectionContexts,\s*estimatedCostUsd: estimatedChargeUsd,/.test(synRoutes));
 const genSrc = read("server/services/generation-service.ts");
-check("GenerateSynthesisOptions.estimatedCostUsd → withGenerationSlot", /estimatedCostUsd\?: number \| undefined;/.test(genSrc) && /\{ quota: "syntheses", estimatedCostUsd: opts\.estimatedCostUsd \}/.test(genSrc));
+check("GenerateSynthesisOptions.estimatedCostUsd → withGenerationSlot", /estimatedCostUsd\?: number \| undefined;/.test(genSrc) && /\{ quota: "credits", units: opts\.credits \?\? creditsFor\("synthesis"\), estimatedCostUsd: opts\.estimatedCostUsd, op: "synthesis" \}/.test(genSrc));
 check("hasActiveGenerationForUser экспортирован", /export function hasActiveGenerationForUser/.test(genSrc));
 const accSrc = read("server/services/account-deletion.ts");
 check("account-deletion: анонимизация, не DELETE users", /update\(users\)[\s\S]*?email: anonymizedEmail,[\s\S]*?stripeCustomerId: null,/.test(accSrc) && !/delete\(users\)/.test(accSrc));

@@ -5934,26 +5934,72 @@ font-size: 14px;
  * ═══════════════════════════════════════════════════════════════════ */
 
 @layer components {
-  /* — (1) Переключатель в шапке — */
+  /* — (1) Переключатель в шапке — выпадающий список (2026-11-17) — */
   .app-lang-switch {
+    position: relative;
+    display: inline-block;
+  }
+
+  .app-lang-switch .app-lang-toggle {
     display: inline-flex;
-    align-items: stretch;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .app-lang-switch .app-lang-caret {
+    font-size: 8px;
+    opacity: 0.8;
+  }
+
+  .app-lang-switch .app-lang-toggle[aria-expanded="true"] {
+    border-color: #fff;
+    color: #fff;
+  }
+
+  /* список — идиома .notif-dropdown: бумага, рамка --rule, прямые углы */
+  .app-lang-switch .app-lang-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 40;
+    min-width: 100%;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-lang-switch .app-lang-menu[hidden] {
+    display: none;
   }
 
   .app-lang-switch .app-lang-btn {
-    padding: 3px 8px;
-    margin-left: -1px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-mid);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-align: left;
+    white-space: nowrap;
+    padding: 6px 12px;
+    cursor: pointer;
   }
 
-  .app-lang-switch .app-lang-btn:first-child {
-    margin-left: 0;
+  .app-lang-switch .app-lang-btn:last-child {
+    border-bottom: none;
+  }
+
+  .app-lang-switch .app-lang-btn:hover {
+    background: var(--off);
+    color: var(--ink);
   }
 
   .app-lang-switch .app-lang-btn.active {
-    border-color: #fff;
-    color: #fff;
-    position: relative;
-    z-index: 1;
+    color: var(--blue-corp);
+    font-weight: 600;
   }
 
   /* — (2) Переключатель в профиле — */
@@ -5996,7 +6042,7 @@ font-size: 14px;
 }
 
 @media (max-width: 700px) {
-  .app-lang-switch .app-lang-btn {
+  .app-lang-switch .app-lang-toggle {
     padding: 3px 6px;
     letter-spacing: 1px;
   }

@@ -77,10 +77,10 @@ console.log("\n■ A. Исходники и чистые функции");
   ok(PLANS.assertPlanEconomics === ECON.assertPlanEconomics && PLANS.validatePlanSpec === ECON.validatePlanSpec && PLANS.PlanEconomicsError === ECON.PlanEconomicsError, "A1 plans.ts реэкспортирует экономику plan-economics — одна функция на сид и сервер");
   const pad = strip(rd("server/services/plan-admin.ts")), seedS = strip(rd("scripts/seed/seed-plans.ts"));
   ok(/assertPlanEconomics\(spec, env\.stripe\.billingMarkup\)/.test(pad) && /assertPlanEconomics\(plan, markup\)/.test(seedS) && !/cost-estimator/.test(pad + seedS), "A2 и plan-admin, и сид зовут assertPlanEconomics (не считают сами)");
-  const bad = ECON.validatePlanSpec({ name: "Bad Name", displayName: "", priceUsd: 1.234, billingPeriod: "week", quotaSyntheses: -1, quotaRegenerations: 1.5, quotaModes: 0, quotaEnrichments: 0 });
-  ok(["name", "displayName", "priceUsd", "billingPeriod", "quotaSyntheses", "quotaRegenerations"].every((f) => bad.some((i) => i.field === f)) && bad.length === 6, "A3 validatePlanSpec ловит имя, пустое название, цену, период, квоты", bad);
+  const bad = ECON.validatePlanSpec({ name: "Bad Name", displayName: "", priceUsd: 1.234, billingPeriod: "week", quotaCredits: 1.5 });
+  ok(["name", "displayName", "priceUsd", "billingPeriod", "quotaCredits"].every((f) => bad.some((i) => i.field === f)) && bad.length === 5, "A3 validatePlanSpec ловит имя, пустое название, цену, период, квоты", bad);
   let econErr = null;
-  try { ECON.assertPlanEconomics({ ...PLANS.planByName("starter"), quotaSyntheses: 500 }, 1.2); } catch (e) { econErr = e; }
+  try { ECON.assertPlanEconomics({ ...PLANS.planByName("starter"), quotaCredits: 500_000 }, 1.2); } catch (e) { econErr = e; }
   ok(econErr instanceof ECON.PlanEconomicsError && /убыточен/.test(econErr.message) && econErr.markup === 1.2, "A4 assertPlanEconomics: убыточный тариф → PlanEconomicsError с наценкой");
   const schemaS = rd("server/db/schema.ts"), mig = rd("server/db/migrations/0016_plan_editions.sql");
   ok(/family: text\("family"\)\.notNull\(\)/.test(schemaS) && /edition: integer\("edition"\)\.notNull\(\)\.default\(1\)/.test(schemaS) && /uq_subscription_plans_family_edition/.test(schemaS), "A5 schema: family NOT NULL, edition default 1, unique(family, edition)");
@@ -123,7 +123,7 @@ try {
   // B1 доступ
   ok((await get("/billing/admin/plans")).status === 401 && (await get("/billing/admin/plans", cu)).status === 403 && (await get("/billing/admin/plans", ca)).status === 200, "B1 GET /billing/admin/plans: 401 гостю, 403 пользователю, 200 администратору");
   // B2 новое семейство
-  const spec = { name: TAG, displayName: "Smoke 154", priceUsd: 19.99, billingPeriod: "month", quotaSyntheses: 3, quotaRegenerations: 5, quotaModes: 5, quotaEnrichments: 10 };
+  const spec = { name: TAG, displayName: "Smoke 154", priceUsd: 19.99, billingPeriod: "month", quotaCredits: 780 };
   const c1r = await req("POST", "/billing/admin/plans", spec, ca);
   const c1 = await c1r.json();
   ok(c1r.status === 201 && c1.plan?.family === TAG && c1.plan.edition === 1 && c1.plan.isActive && c1.plan.liveSubscriptions === 0 && /^price_/.test(c1.plan.stripePriceId), "B2a POST /billing/admin/plans → 201, редакция 1, открыт, Price", c1);
@@ -132,7 +132,7 @@ try {
   ok(prod && price1?.lookup_key === `philosynth_${TAG}` && price1.unit_amount === 1999 && price1.product === prod.id && /^PhiloSynth/.test(prod.description) && !/[А-Яа-я]/.test(prod.description), "B2b мок: Product семейства по metadata, Price с lookup_key редакции, описание английское");
   const dup = await req("POST", "/billing/admin/plans", spec, ca);
   ok(dup.status === 400 && (await dup.json()).code === "VALIDATION_ERROR", "B2c повтор имени → 400 VALIDATION_ERROR");
-  const lossy = await req("POST", "/billing/admin/plans", { ...spec, name: TAG + "-lossy", quotaSyntheses: 500 }, ca);
+  const lossy = await req("POST", "/billing/admin/plans", { ...spec, name: TAG + "-lossy", quotaCredits: 500_000 }, ca);
   const lossyJ = await lossy.json();
   ok(lossy.status === 400 && lossyJ.code === "VALIDATION_ERROR" && /убыточен/.test(lossyJ.details?.economics ?? ""), "B2d убыточный тариф → 400 с экономикой в details", lossyJ);
   ok(mock.state.prices.size === 1, "B2e отказанные тарифы Price в Stripe не завели");
@@ -142,24 +142,24 @@ try {
   const list = (await (await get("/billing/admin/plans", ca)).json()).plans;
   const row = list.find((p) => p.id === c1.plan.id);
   ok(row?.liveSubscriptions === 1 && list.every((p) => typeof p.family === "string" && typeof p.edition === "number"), "B3a список: живая подписка incomplete посчитана; family/edition у каждой строки");
-  const q = await req("PATCH", `/billing/admin/plans/${c1.plan.id}`, { quotaSyntheses: 4, priceUsd: 19.99 }, ca);
+  const q = await req("PATCH", `/billing/admin/plans/${c1.plan.id}`, { quotaCredits: 1000, priceUsd: 19.99 }, ca);
   const qj = await q.json();
-  ok(q.status === 409 && qj.code === "PLAN_HAS_SUBSCRIPTIONS" && J(qj.details?.lockedFields) === '["quotaSyntheses"]' && qj.details?.liveSubscriptions === 1, "B3b PATCH квот при живой подписке → 409 PLAN_HAS_SUBSCRIPTIONS, lockedFields только изменённые", qj);
+  ok(q.status === 409 && qj.code === "PLAN_HAS_SUBSCRIPTIONS" && J(qj.details?.lockedFields) === '["quotaCredits"]' && qj.details?.liveSubscriptions === 1, "B3b PATCH квот при живой подписке → 409 PLAN_HAS_SUBSCRIPTIONS, lockedFields только изменённые", qj);
   const nm = await req("PATCH", `/billing/admin/plans/${c1.plan.id}`, { displayName: "Smoke 154 R", isActive: false }, ca);
   const nmj = await nm.json();
   ok(nm.status === 200 && nmj.plan.displayName === "Smoke 154 R" && nmj.plan.isActive === false && nmj.plan.stripePriceId === c1.plan.stripePriceId, "B3c название и «открыт» правятся на месте при живой подписке; Price прежний", nmj);
   ok((await req("PATCH", `/billing/admin/plans/${c1.plan.id}`, { isActive: true }, ca)).status === 200, "B3d открыть обратно — можно (Price есть)");
   ok((await req("PATCH", "/billing/admin/plans/not-a-uuid", { displayName: "x" }, ca)).status === 400 && (await req("PATCH", "/billing/admin/plans/00000000-0000-4000-8000-000000000000", { displayName: "x" }, ca)).status === 404, "B3e PATCH: не UUID → 400, нет такого → 404");
   // B4 новая редакция
-  const e2r = await req("POST", `/billing/admin/plans/${c1.plan.id}/editions`, { priceUsd: 24.99, quotaSyntheses: 4 }, ca);
+  const e2r = await req("POST", `/billing/admin/plans/${c1.plan.id}/editions`, { priceUsd: 24.99, quotaCredits: 1000 }, ca);
   const e2 = await e2r.json();
-  ok(e2r.status === 201 && e2.plan.name === `${TAG}-v2` && e2.plan.edition === 2 && e2.plan.family === TAG && e2.plan.isActive && e2.plan.quotaSyntheses === 4 && e2.plan.quotaEnrichments === 10 && Number(e2.plan.priceUsd) === 24.99, "B4a POST …/editions → 201: -v2, редакция 2, поля предзаполнены прежней", e2);
+  ok(e2r.status === 201 && e2.plan.name === `${TAG}-v2` && e2.plan.edition === 2 && e2.plan.family === TAG && e2.plan.isActive && e2.plan.quotaCredits === 1000 && Number(e2.plan.priceUsd) === 24.99, "B4a POST …/editions → 201: -v2, редакция 2, поля предзаполнены прежней", e2);
   ok(e2.previous?.id === c1.plan.id && e2.previous.isActive === false && e2.previous.liveSubscriptions === 1, "B4b previous — прежняя редакция закрыта, живые подписки отданы");
   const price2 = mock.state.prices.get(e2.plan.stripePriceId);
   ok(price2?.lookup_key === `philosynth_${TAG}-v2` && price2.unit_amount === 2499 && price2.product === prod.id && mock.state.prices.get(c1.plan.stripePriceId).active !== false, "B4c Price редакции 2 под тем же Product; Price прежней не выключен (по нему продлеваются)");
   const [subRow] = await sql`select plan_id from user_subscriptions where id=${sub.id}`;
-  const [e1row] = await sql`select quota_syntheses, is_active from subscription_plans where id=${c1.plan.id}`;
-  ok(subRow.plan_id === c1.plan.id && e1row.quota_syntheses === 3 && e1row.is_active === false, "B4d подписчик остался на редакции 1 с прежними квотами");
+  const [e1row] = await sql`select quota_credits, is_active from subscription_plans where id=${c1.plan.id}`;
+  ok(subRow.plan_id === c1.plan.id && e1row.quota_credits === 780 && e1row.is_active === false, "B4d подписчик остался на редакции 1 с прежними квотами");
   const pub = (await (await get("/billing/plans")).json()).plans;
   ok(!pub.some((p) => p.id === c1.plan.id) && pub.some((p) => p.id === e2.plan.id), "B4e GET /billing/plans (BillingPage): закрытой редакции нет, открытая есть");
   const subFail = await req("POST", "/billing/subscribe", { planId: c1.plan.id }, cu);
@@ -190,18 +190,18 @@ try {
   const perj = await per.json();
   ok(per.status === 200 && perj.plan.billingPeriod === "year" && mock.state.prices.get(perj.plan.stripePriceId)?.recurring?.interval === "year", "B6b смена периода → Price с interval=year");
   // B7 сид не переписывает
-  const [st0] = await sql`select id, quota_syntheses, is_active, display_name from subscription_plans where name='starter'`;
+  const [st0] = await sql`select id, quota_credits, is_active, display_name from subscription_plans where name='starter'`;
   if (st0) {
     // квота меньше (больше — убыточно при цене starter) и другое название
-    const sr = await SEED.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...PLANS.planByName("starter"), displayName: st0.display_name + " X", quotaSyntheses: Math.max(0, st0.quota_syntheses - 1) }] });
-    const [st1] = await sql`select quota_syntheses, is_active, display_name from subscription_plans where id=${st0.id}`;
-    ok(sr.counts.skip === 1 && sr.results[0].diverged?.some((d) => d.field === "quotaSyntheses" && d.inDb === String(st0.quota_syntheses)) && sr.results[0].diverged.some((d) => d.field === "displayName") && sr.divergedCount === 1 && st1.quota_syntheses === st0.quota_syntheses && st1.display_name === st0.display_name, "B7a seedPlans на существующем starter с другими квотами/названием → skip + diverged, строка цела", sr.results[0]);
+    const sr = await SEED.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...PLANS.planByName("starter"), displayName: st0.display_name + " X", quotaCredits: Math.max(0, st0.quota_credits - 1) }] });
+    const [st1] = await sql`select quota_credits, is_active, display_name from subscription_plans where id=${st0.id}`;
+    ok(sr.counts.skip === 1 && sr.results[0].diverged?.some((d) => d.field === "quotaCredits" && d.inDb === String(st0.quota_credits)) && sr.results[0].diverged.some((d) => d.field === "displayName") && sr.divergedCount === 1 && st1.quota_credits === st0.quota_credits && st1.display_name === st0.display_name, "B7a seedPlans на существующем starter с другими квотами/названием → skip + diverged, строка цела", sr.results[0]);
     const sr2 = await SEED.seedPlans({ envSource: {}, markup: 1.2, plans: [PLANS.planByName("starter")] });
-    ok(sr2.counts.skip === 1 && sr2.divergedCount === (st0.quota_syntheses === PLANS.planByName("starter").quotaSyntheses && st0.display_name === "Starter" ? 0 : 1) && !("updated" in sr2.counts), "B7b повтор с plans.ts как есть — skip; исхода updated нет");
+    ok(sr2.counts.skip === 1 && sr2.divergedCount === (st0.quota_credits === PLANS.planByName("starter").quotaCredits && st0.display_name === "Starter" ? 0 : 1) && !("updated" in sr2.counts), "B7b повтор с plans.ts как есть — skip; исхода updated нет");
   } else {
     ok(false, "B7 starter не посеян — npm run seed:plans");
   }
-  const sr3 = await SEED.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...PLANS.planByName("pro"), name: "starter", quotaSyntheses: 500 }] });
+  const sr3 = await SEED.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...PLANS.planByName("pro"), name: "starter", quotaCredits: 500_000 }] });
   ok(sr3.counts.fail === 1 && /убыточен/.test(sr3.results[0].error ?? ""), "B7c убыточное описание → fail той же функцией экономики");
   // B8 след
   const audit = await sql`select action, actor_id, target_id, details from admin_audit where target_id like ${TAG + "%"} order by created_at`;

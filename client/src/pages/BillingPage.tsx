@@ -31,6 +31,8 @@ import type {
   ApiKeyInfo,
   ApiUsage,
   BillingMode,
+  CreditCharge,
+  CreditInfo,
   SubscriptionOverview,
   SubscriptionPlan,
   Transaction,
@@ -39,11 +41,13 @@ import type {
 } from "@philosynth/shared/types/billing";
 import type { SynthesisPreview } from "@philosynth/shared/types/synthesis";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
   confirmTopup,
   createTopup,
   deleteApiKey,
+  getCreditChargeHistory,
   getTransactionHistory,
   getUsageHistory,
   listApiKeys,
@@ -52,7 +56,7 @@ import {
 import { ApiError } from "../api/client";
 import {
   cancelSubscription,
-  getPlans,
+  getPlansWithCredits,
   getSubscription,
   resumeSubscription,
   subscribe,
@@ -580,18 +584,10 @@ const SUB_STATUS_LABELS = (): Record<string, string> => ({
   incomplete: tl("billingPage.subIncomplete", "ожидает оплаты"),
 });
 
-type QuotaKey = keyof SubscriptionOverview["quotas"];
-
-const QUOTA_LABELS = (): Record<QuotaKey, string> => ({
-  syntheses: tl("billingPage.quotaSyntheses", "синтезы"),
-  regenerations: tl("billingPage.quotaRegenerations", "перегенерации"),
-  modes: tl("billingPage.quotaModes", "режимы"),
-  enrichments: tl("billingPage.quotaEnrichments", "обогащения"),
-});
-
 function SubscriptionSection() {
   const [overview, setOverview] = useState<SubscriptionOverview | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null);
+  const [planCredits, setPlanCredits] = useState<CreditInfo | null>(null); // 0021
   const [choosing, setChoosing] = useState(false);
   const [payment, setPayment] = useState<{ clientSecret: string } | null>(null);
   const [pending, setPending] = useState(false);
@@ -613,7 +609,9 @@ function SubscriptionSection() {
     setChoosing(true);
     if (plans === null) {
       try {
-        setPlans(await getPlans());
+        const r = await getPlansWithCredits();
+        setPlans(r.plans);
+        setPlanCredits(r.credits);
       } catch (err) {
         setStatus({ text: billingErrorText(err, tl("billingPage.plansLoadFailed", "Не удалось загрузить тарифы")), kind: "err" });
       }
@@ -705,16 +703,14 @@ function SubscriptionSection() {
                 </tr>
               </thead>
               <tbody>
-                {(Object.keys(QUOTA_LABELS()) as QuotaKey[]).map((q) => (
-                  <tr key={q}>
-                    <td>{QUOTA_LABELS()[q]}</td>
-                    <td className="num">{fmtInt(overview.usage[q])}</td>
-                    <td className="num">{fmtInt(overview.quotas[q])}</td>
-                    <td className="num">
-                      {fmtInt(Math.max(0, overview.quotas[q] - overview.usage[q]))}
-                    </td>
-                  </tr>
-                ))}
+                <tr>
+                  <td>{tl("billingPage.quotaCredits", "кредиты")}</td>
+                  <td className="num">{fmtInt(overview.usage.credits)}</td>
+                  <td className="num">{fmtInt(overview.quotas.credits)}</td>
+                  <td className="num" data-testid="sub-credits-left">
+                    {fmtInt(Math.max(0, overview.quotas.credits - overview.usage.credits))}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -770,7 +766,7 @@ function SubscriptionSection() {
             <span className="masked-key-status absent">{tl("billingPage.notSubscribed", "не оформлена")}</span>
           </div>
           <div className="form-sublabel">
-            {tl("billingPage.subscriptionNote", "Подписка даёт квоты на период (синтезы, перегенерации, режимы, обогащения); при исчерпании квоты операции идут с баланса.")}
+            {tl("billingPage.subscriptionNoteCredits", "Подписка даёт кредиты на период; операция списывает свой вес (синтез — по составу и глубине). Когда кредиты кончаются, операции идут с баланса.")}
           </div>
           <div className="inline-edit-actions" style={{ borderTop: "none", paddingTop: 0 }}>
             <button
@@ -793,6 +789,7 @@ function SubscriptionSection() {
               та же разметка стоит на стартовой странице (цены без входа) */}
           <PlansTable
             plans={plans}
+            credits={planCredits}
             renderAction={(p) => (
               <button
                 type="button"
@@ -1128,6 +1125,107 @@ function TransactionsSection({ refreshToken }: { refreshToken: number }) {
   );
 }
 
+/* ── Секция «Списания кредитов» (0022) ───────────────────────────────── */
+
+const CREDIT_PAGE = 20;
+
+/** Вид операции журнала → подпись */
+const CREDIT_OP_LABELS = (): Record<string, string> => ({
+  synthesis: tl("billingPage.creditOpSynthesis", "синтез"),
+  section: tl("billingPage.creditOpSection", "раздел"),
+  subsection: tl("billingPage.creditOpSubsection", "подраздел"),
+  mode: tl("billingPage.creditOpMode", "режим"),
+  enrichment: tl("billingPage.creditOpEnrichment", "обогащение"),
+  plan: tl("billingPage.creditOpPlan", "план правки"),
+});
+
+function CreditChargesSection({ refreshToken }: { refreshToken: number }) {
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<CreditCharge[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalCredits, setTotalCredits] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    getCreditChargeHistory(page, CREDIT_PAGE)
+      .then((h) => {
+        if (cancelled) return;
+        setItems(h.items);
+        setTotal(h.total);
+        setTotalCredits(h.totalCredits);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(billingErrorText(err, tl("billingPage.creditChargesLoadFailed", "Не удалось загрузить списания кредитов")));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [page, refreshToken]);
+
+  // нет ни одной строки и не было подписки — секцию не показываем
+  if (!loading && !error && total === 0) return null;
+  const pages = Math.max(1, Math.ceil(total / CREDIT_PAGE));
+  const labels = CREDIT_OP_LABELS();
+
+  return (
+    <section className="input-form" data-testid="billing-credit-charges">
+      <SectionTitle>{tl("billingPage.creditCharges", "Списания кредитов")}</SectionTitle>
+      <div className="form-sublabel">
+        {tl("billingPage.creditChargesTotal", "Всего за всё время: {credits}", { credits: fmtInt(totalCredits) })}
+      </div>
+      <div className="data-table-wrap">
+        <div style={{ overflowX: "auto" }}>
+          <table className="data-table" data-testid="credit-charges-table">
+            <thead>
+              <tr>
+                <th>{tl("billingPage.date", "Дата")}</th>
+                <th>{tl("billingPage.creditOperation", "Операция")}</th>
+                <th>{tl("billingPage.creditDocument", "Документ")}</th>
+                <th className="num">{tl("billingPage.creditsCol", "Кредиты")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((r) => (
+                <tr key={r.id}>
+                  <td>{fmtDateShort(r.createdAt)}</td>
+                  <td>{labels[r.op] ?? r.op}</td>
+                  <td>
+                    {r.synthesisId ? (
+                      <Link to={`/synthesis/${r.synthesisId}`}>{r.synthesisTitle || `${r.synthesisId.slice(0, 8)}…`}</Link>
+                    ) : (
+                      <em>{tl("billingPage.creditDocumentDeleted", "документ удалён")}</em>
+                    )}
+                  </td>
+                  <td className="num">−{fmtInt(r.credits)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {error && <Status msg={{ text: error, kind: "err" }} />}
+        {total > CREDIT_PAGE && (
+          <div className="pager" data-testid="credit-charges-pager">
+            <button type="button" className="action-btn" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>
+              {tl("billingPage.back", "← назад")}
+            </button>
+            <span>{tl("billingPage.pageOf", "стр. {page} / {pages}", { page, pages })}</span>
+            <button type="button" className="action-btn" disabled={page >= pages || loading} onClick={() => setPage((p) => p + 1)}>
+              {tl("billingPage.forward", "вперёд →")}
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /* ── Страница ────────────────────────────────────────────────────────── */
 
 export function BillingPage() {
@@ -1139,6 +1237,7 @@ export function BillingPage() {
       <ApiKeySection />
       <BalanceSection onBalanceChanged={bump} />
       <SubscriptionSection />
+      <CreditChargesSection refreshToken={refreshToken} />
       <UsageSection refreshToken={refreshToken} />
       <TransactionsSection refreshToken={refreshToken} />
     </div>

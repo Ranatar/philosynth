@@ -92,6 +92,7 @@ import { StreamError, classifyStreamError } from "./streaming-manager.js";
 import { streamLogError } from "./gen-log-labels.js"; // 14.2 (Д-62)
 import type { GenLogLabel } from "@philosynth/shared/types/generation";
 import { tl } from "@philosynth/shared/i18n/t";
+import { creditCharge } from "../config/plan-economics.js";
 
 const sendToUser = (userId: string, msg: WsServerMessage): void =>
   connectionManager.sendToUser(userId, msg);
@@ -631,7 +632,7 @@ export async function startMode(
         recoverable: false,
       });
     }
-  }, { quota: "modes" }); // 6.1: квота подписки
+  }, creditCharge("mode")); // 6.1: квота подписки (кредиты 0021)
 }
 
 /**
@@ -679,7 +680,7 @@ export async function startModeRegen(
         recoverable: false,
       });
     }
-  }, { quota: "modes" }); // 6.1: квота подписки
+  }, creditCharge("mode")); // 6.1: квота подписки (кредиты 0021)
 }
 
 /* ══ regenerateModeSilent [23165] ════════════════════════════════════ */

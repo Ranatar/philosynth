@@ -174,13 +174,13 @@ async function main() {
   console.log("\n■ R2: гость меняет язык → шапка, лендинг, каталог по-английски без перезагрузки; после перезагрузки язык сохранён");
   const g = await newPage(browser, null);
   await g.goto(UI + "/", { waitUntil: "networkidle0" });
-  ok((await lang(g)) === "ru" && (await txt(g, ".brand-tagline")).startsWith("Система Синтеза"), "гость с ru-RU: язык ru, шапка русская", await txt(g, ".brand-tagline"));
+  ok((await lang(g)) === "ru" && (await txt(g, ".topbar-tagline")).startsWith("Платформа синтеза"), "гость с ru-RU: язык ru, шапка русская", await txt(g, ".topbar-tagline"));
   ok(g.catalogRequests.length === 0, "русский каталог не грузится (ru — в коде)");
   await g.waitForSelector('[data-testid="guest-links"]');
   const urlBefore = g.url();
   const navBefore = await g.evaluate(() => performance.getEntriesByType("navigation").length);
   await clickLang(g, "en");
-  await waitText(g, ".brand-tagline", "Philosophical Concept Synthesis");
+  await waitText(g, ".topbar-tagline", "Philosophical concept synthesis");
   ok((await lang(g)) === "en", "<html lang> = en");
   ok((await txt(g, '[data-testid="guest-links"]')).includes("Log in") && (await txt(g, '[data-testid="guest-links"]')).includes("Sign up"), "гостевые ссылки шапки по-английски", await txt(g, '[data-testid="guest-links"]'));
   ok((await g.evaluate(() => document.querySelector(".app-landing")?.textContent ?? "")).includes("Concept synthesis"), "лендинг по-английски");
@@ -192,7 +192,7 @@ async function main() {
   ok((await lang(g)) === "en" && !/Публичн|Каталог/.test(exploreText) && /Т113 русский документ/.test(exploreText), "публичный каталог: интерфейс английский, название концепции — как в документе", exploreText.slice(0, 200));
   ok((await g.evaluate(() => [...document.querySelectorAll(".cert-badge")].map((b) => b.textContent))).some((t) => /ready/i.test(t)), "подпись статуса карточки (static → фабрика) по-английски");
   await g.reload({ waitUntil: "networkidle0" });
-  ok((await lang(g)) === "en" && (await txt(g, ".brand-tagline")).startsWith("Philosophical"), "после перезагрузки язык сохранён (cookie)");
+  ok((await lang(g)) === "en" && (await txt(g, ".topbar-tagline")).startsWith("Philosophical"), "после перезагрузки язык сохранён (cookie)");
   const r = await fetch(`${BASE}/syntheses/${DOC}/sections/sum`, { headers: { Cookie: "ui_locale=en" } });
   ok(r.status === 401 && /required|log ?in|authoriz/i.test((await r.json()).error ?? ""), "сервер отвечает гостю на языке cookie (401 по-английски)");
   ok(g.errors.length === 0, "ошибок страницы нет", g.errors);
@@ -208,7 +208,7 @@ async function main() {
   ok(rowDe.ui_locale === "de" && rowDe.gen_lang === "German", "PATCH /auth/me { uiLocale: de } → ui_locale=de, gen_lang=German (правило владельца)", J(rowDe));
   ok((await lang(p)) === "de" && p.catalogRequests.filter((x) => x.startsWith("de-")).length === 1, "интерфейс de, каталог de загружен один раз", p.catalogRequests);
   // 12.5 (Д-45): с 11.4 каталог de влит — слоган немецкий
-  ok(/^System/.test(await txt(p, ".brand-tagline")), "каталог de влит (11.4) → слоган немецкий", await txt(p, ".brand-tagline"));
+  ok(/^Plattform/.test(await txt(p, ".topbar-tagline")), "каталог de влит (11.4) → слоган шапки немецкий", await txt(p, ".topbar-tagline"));
   await p.goto(UI + "/synthesis/new", { waitUntil: "networkidle0" });
   await p.waitForSelector('[data-testid="gen-lang-select"]');
   ok((await p.$eval('[data-testid="gen-lang-select"]', (s) => s.value)) === "German", "форма создания открывается с German (из user.gen_lang)");
@@ -244,7 +244,7 @@ async function main() {
   const badges = async () => p.evaluate(() => [...document.querySelectorAll(".cert-badge")].map((b) => b.textContent.trim()));
   ok((await badges()).some((t) => t === "ready") && !(await badges()).some((t) => t === "готов"), "статус карточки (STATUS_LABELS) по-английски", await badges());
   await clickLang(p, "ru");
-  await waitText(p, ".brand-tagline", "Система");
+  await waitText(p, ".topbar-tagline", "Платформа");
   ok((await nav()).includes("Каталог") && (await badges()).some((t) => t === "готов") && !(await badges()).some((t) => t === "ready"), "обратно на ru — подписи русские (не залипли)", await badges());
   await p.goto(UI + `/synthesis/${DOC}`, { waitUntil: "networkidle0" });
   await p.waitForSelector(".doc-section");
@@ -264,7 +264,7 @@ async function main() {
   console.log("\n■ R5: документ на русском, интерфейс английский → перегенерация по lang документа, интерфейс вокруг английский");
   await p.keyboard.press("Escape");
   await p.goto(UI + `/synthesis/${DOC}`, { waitUntil: "networkidle0" });
-  ok((await lang(p)) === "en" && (await txt(p, ".brand-tagline")).startsWith("Philosophical"), "интерфейс английский");
+  ok((await lang(p)) === "en" && (await txt(p, ".topbar-tagline")).startsWith("Philosophical"), "интерфейс английский");
   ok((await sql`select lang from syntheses where id=${DOC}`)[0].lang === "Russian", "lang документа — Russian");
   const before = claude.calls;
   const rg = await api(A, "POST", `/syntheses/${DOC}/regenerate/sum`, {});
@@ -286,10 +286,10 @@ async function main() {
   const q = await newPage(browser, null);
   await q.goto(UI + "/", { waitUntil: "networkidle0" });
   ok(q.catalogRequests.length === 0, "старт с ru — запросов каталога 0");
-  await clickLang(q, "en"); await waitText(q, ".brand-tagline", "Philosophical");
+  await clickLang(q, "en"); await waitText(q, ".topbar-tagline", "Philosophical");
   ok(q.catalogRequests.filter((x) => x.startsWith("en-")).length === 1, "смена на en — один запрос каталога", q.catalogRequests);
-  await clickLang(q, "ru"); await waitText(q, ".brand-tagline", "Система");
-  await clickLang(q, "en"); await waitText(q, ".brand-tagline", "Philosophical");
+  await clickLang(q, "ru"); await waitText(q, ".topbar-tagline", "Платформа");
+  await clickLang(q, "en"); await waitText(q, ".topbar-tagline", "Philosophical");
   ok(q.catalogRequests.filter((x) => x.startsWith("en-")).length === 1, "ru → en повторно — ни одного нового запроса (кэш)", q.catalogRequests);
   await clickLang(q, "de"); await sleep(500);
   ok(q.catalogRequests.filter((x) => x.startsWith("de-")).length === 1, "de — один запрос", q.catalogRequests);
@@ -310,7 +310,7 @@ async function main() {
     VALUES (${DOC}, 'graph', 'Граф категорий', 'generation', 'initial', 'done', 500, 600, 0.5, ${sql.json({ parseWarnings: WARN })})`;
   const secOwner = await api(A, "GET", `/syntheses/${DOC}/sections/graph`);
   ok(secOwner.json?.section?.parseWarnings?.length === 2, "сервер: владельцу parseWarnings в SectionFull");
-  await clickLang(p, "ru"); await waitText(p, ".brand-tagline", "Система");
+  await clickLang(p, "ru"); await waitText(p, ".topbar-tagline", "Платформа");
   await p.goto(UI + `/synthesis/${DOC}`, { waitUntil: "networkidle0" });
   await p.waitForSelector('[data-testid="parse-warnings-graph"]', { timeout: 15000 });
   // 12.5 (Д-45): с 12.4 (Д-48) заголовок блока — «Замечания к последней генерации (N замечаний)»
@@ -322,7 +322,7 @@ async function main() {
   await p.$eval('[data-testid="parse-warnings-graph"]', (d) => (d.open = true));
   const items = await p.evaluate(() => [...document.querySelectorAll('[data-testid="parse-warnings-graph"] li')].map((li) => li.textContent));
   ok(items.length === 2 && items[0].includes("bidirektional") && items[1].includes("Kern"), "раскрытие показывает оба предупреждения", items);
-  await clickLang(p, "en"); await waitText(p, ".brand-tagline", "Philosophical");
+  await clickLang(p, "en"); await waitText(p, ".topbar-tagline", "Philosophical");
   ok((await txt(p, '[data-testid="parse-warnings-graph"] summary')).includes("Notes on the last generation (2 notes)"), "пометка по-английски с английским плюралом", await txt(p, '[data-testid="parse-warnings-graph"] summary'));
   const other = await newPage(browser, B);
   await other.goto(UI + `/synthesis/${DOC}`, { waitUntil: "networkidle0" });

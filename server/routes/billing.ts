@@ -52,9 +52,13 @@ import {
   billingErrorStatus,
   confirmTopup,
   createTopup,
+  creditInfo,
+  getBillingView,
+  getCreditChargeHistory,
   getTransactionHistory,
   getUsageHistory,
 } from "../services/billing-service.js";
+import { env } from "../env.js";
 import {
   createPlanEdition,
   createPlanFamily,
@@ -153,7 +157,8 @@ billingRoutes.post("/webhook", async (c) => {
  *    (сессия, если есть, валидируется и подчищается). Регистрируется ДО
  *    requireAuth; остальные billing-пути не тронуты. ── */
 billingRoutes.get("/plans", optionalAuth, async (c) => {
-  return c.json({ plans: await getPlans() });
+  // 0021: веса операций в кредитах — для раскладки «на что хватит» тарифа
+  return c.json({ plans: await getPlans(), credits: creditInfo(), markup: env.stripe.billingMarkup });
 });
 
 billingRoutes.use("*", requireAuth);
@@ -264,7 +269,26 @@ billingRoutes.get("/transactions", async (c) => {
   return c.json(history);
 });
 
+/* ── GET /billing/credit-charges (0022): история списаний кредитов ───── */
+billingRoutes.get("/credit-charges", async (c) => {
+  const user = c.get("user");
+  const page = Number(c.req.query("page") ?? "1");
+  const limit = Number(c.req.query("limit") ?? "20");
+  return c.json(
+    await getCreditChargeHistory(user.id, {
+      page: Number.isFinite(page) ? page : 1,
+      limit: Number.isFinite(limit) ? limit : 20,
+    }),
+  );
+});
+
 /* ── Подписки ────────────────────────────────────────────────────────── */
+
+/* ── GET /billing/view (2026-11-17): как подписывать стоимость операций ── */
+billingRoutes.get("/view", async (c) => {
+  const user = c.get("user");
+  return c.json(await getBillingView(user.id));
+});
 
 billingRoutes.get("/subscription", async (c) => {
   const user = c.get("user");
@@ -324,7 +348,7 @@ function planFieldsOf(body: PlanBody): Record<string, unknown> {
   if (typeof body.displayName === "string") out.displayName = body.displayName;
   num("priceUsd");
   if (body.billingPeriod !== undefined) out.billingPeriod = body.billingPeriod;
-  for (const k of ["quotaSyntheses", "quotaRegenerations", "quotaModes", "quotaEnrichments"]) num(k);
+  for (const k of ["quotaCredits"]) num(k);
   return out;
 }
 

@@ -132,6 +132,8 @@ export interface StreamBillingContext {
   subscriptionId?: string | undefined;
   synthesisId?: string | null | undefined;
   sectionKey?: string | null | undefined;
+  /** 'balance' без списания (доработка после сбоя службы/API) */
+  waived?: boolean | undefined;
 }
 
 export type StreamUsageRecorder = (

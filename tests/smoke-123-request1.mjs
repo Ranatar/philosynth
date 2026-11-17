@@ -95,7 +95,7 @@ console.log("A. чистые функции");
   t("Д-7: cascadePending — число ждущих шагов и их оценка", cp.steps === 2 && cp.costUsd === 0.9, cp);
   t("Д-7: взятые — confirmed / running / done / failed; не взятые — pending и skipped", ["confirmed", "running", "done", "failed"].every((s) => ES.isTakenStep({ status: s })) && !ES.isTakenStep({ status: "pending" }) && !ES.isTakenStep({ status: "skipped" }) && ES.isPendingStep({ status: "pending" }) && !ES.isPendingStep({ status: "confirmed" }));
   const api = EP.toApiPlan({ id: "p", synthesisId: "s", status: "draft", currentStep: 0, steps, createdAt: new Date(0) }, { taken: 0.42, pending: 0.9 });
-  t("Д-7: toApiPlan — estimatedCost по взятым, pending отдельным полем", api.estimatedCost === 0.42 && api.costBreakdown.paid.costUsd === 0.42 && J(api.cascadePending) === J({ steps: 2, costUsd: 0.9 }), api);
+  t("Д-7: toApiPlan — estimatedCost по взятым, pending отдельным полем", api.estimatedCost === 0.42 && api.costBreakdown.paid.costUsd === 0.42 && J(api.cascadePending) === J({ steps: 2, costUsd: 0.9, credits: 26 + 8 }) && api.estimatedCredits === 26 /* 0021: веса раздела и режима */, api);
   const allDone = steps.map((s) => (s.status === "confirmed" ? { ...s, status: "done" } : s));
   t("Д-7: исполнение прогноз взятого не обнуляет (done остаётся в разбивке)", ES.planCostBreakdown(allDone, 0.42).paid.steps === 1 && ES.planCostBreakdown(allDone, 0.42).free.steps === 1);
 
@@ -118,7 +118,7 @@ console.log("A. чистые функции");
   t("Д-20: оценка ретрофита положительна (вход, выход, цена)", e1.inTokens > 0 && e1.outTokens > 0 && e1.cost > 0, e1);
   t("Д-20: вход растёт с запросом, выход от него не зависит", e2.inTokens > e1.inTokens && e2.cost > e1.cost && e2.outTokens === e1.outTokens, [e1, e2]);
   t("Д-20: таблица в счёте подразделов — один раз (есть она в документе или нет)", e3.outTokens === e1.outTokens);
-  t("Д-20: квота ретрофита названа константой", REC.EXTRACT_QUOTA === "regenerations");
+  t("Д-20: вид операции ретрофита назван константой (кредиты 0021)", REC.EXTRACT_CREDIT_OP === "subsection");
 
   // Д-21
   const crit = ["Внутренняя когерентность", "Слепые пятна", "Итоговая оценка", K.RECOMMENDATIONS_PROSE_SUBSECTION, K.RECOMMENDATIONS_TABLE_SUBSECTION];
@@ -366,7 +366,7 @@ try {
 
   /* ── Д-20: оценка ретрофита без модели ── */
   const est = await REC.estimateExtractCost(D.id);
-  t("Д-20: оценка ретрофита по живому документу — вход, выход, цена, квота", est.estimate.inTokens > 0 && est.estimate.outTokens > 0 && est.estimate.cost > 0 && est.quota.type === "regenerations" && est.quota.units === 1, est);
+  t("Д-20: оценка ретрофита по живому документу — вход, выход, цена, квота", est.estimate.inTokens > 0 && est.estimate.outTokens > 0 && est.estimate.cost > 0 && est.quota.type === "credits" && est.quota.units === 13, est);
   const req = await REC.buildExtractRequest(D.id);
   t("Д-20: вход оценки — точный размер запроса, который ушёл бы модели (SYS + промпт)", est.estimate.inTokens === REC.estimateExtractFromSizes({ sysChars: req.SYS.length, promptChars: req.prompt.length, depth: req.depth, critiqueSubsections: req.critiqueSubsections }).inTokens && req.prompt.includes("ПЕРЕЛОЖИТЬ в таблицу"));
   const usage = await db.select({ id: schema.apiUsage.id }).from(schema.apiUsage).where(eq(schema.apiUsage.userId, owner.id));

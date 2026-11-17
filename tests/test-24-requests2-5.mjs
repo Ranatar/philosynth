@@ -424,7 +424,7 @@ try {
   const gBlock = T.slice(gStart, gEnd);
   const orderIdx = [
     "ВХОД:", "Общие элементы", "Контекст пред. разделов", "Бюджет:",
-    "Задание секции", "ИТОГО", "ВЫХОД:", "Стоимость: $", "СЕКЦИИ:",
+    "Задание секции", "ИТОГО", "ВЫХОД:", "Себестоимость: $", "СЕКЦИИ:",
   ].map((m) => gBlock.indexOf(m));
   ok(orderIdx.every((v) => v >= 0) &&
      orderIdx.every((v, i) => i === 0 || v > orderIdx[i - 1]),
@@ -452,7 +452,7 @@ try {
       AND section_key <> '_genCommon'`;
   const inLine = T.match(/^Вход: {2}([\d\s\u00a0]+) симв\./m);
   const outLine = T.match(/^Выход: ([\d\s\u00a0]+) симв\./m);
-  const costLine = T.match(/^Стоимость: \$([\d.]+)/m);
+  const costLine = T.match(/^Себестоимость: \$([\d.]+)/m);
   const deSp = (s) => Number(s.replace(/[\s\u00a0]/g, ""));
   ok(inLine && deSp(inLine[1]) === tot.ic, "итог «Вход» == сумме input_chars БД",
     `${inLine?.[1]} vs ${tot.ic}`);
@@ -609,7 +609,7 @@ try {
     () => document.querySelector(".raw-modal-body pre").textContent);
   ok(textAfter !== textBefore, "контент модалки ОБНОВИЛСЯ без перезагрузки");
   const graphTail = textAfter.slice(textAfter.lastIndexOf(hdr(L.graph)));
-  ok(/ВЫХОД:/.test(graphTail) && /Стоимость: \$/.test(graphTail) &&
+  ok(/ВЫХОД:/.test(graphTail) && /Себестоимость: \$/.test(graphTail) &&
      !graphTail.includes("⟳ генерация"),
     "новый блок ГРАФ дописан: ВЫХОД + Стоимость, ⟳ исчез");
   ok((textAfter.match(/Разделов: \d+ из \d+/) ?? [""])[0].includes("из 4"),

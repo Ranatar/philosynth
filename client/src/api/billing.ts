@@ -23,6 +23,7 @@
 
 import type {
   ApiKeyInfo,
+  CreditChargeHistory,
   StoredApiKey,
   TopupIntent,
   TopupResult,
@@ -74,6 +75,11 @@ export function getUsageHistory(query: UsageQuery = {}): Promise<UsageHistory> {
     to: query.to || undefined,
     synthesisId: query.synthesisId || undefined,
   });
+}
+
+/** 0022: история списаний кредитов подписки (новые сверху). */
+export function getCreditChargeHistory(page = 1, limit = 20): Promise<CreditChargeHistory> {
+  return apiGet<CreditChargeHistory>("/billing/credit-charges", { page, limit });
 }
 
 export function getTransactionHistory(

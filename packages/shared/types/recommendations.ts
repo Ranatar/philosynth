@@ -99,8 +99,8 @@ export interface RecommendationsExtractEstimateResponse {
   /** Оценка одного обращения: вход — точный размер запроса, выход — как у
    *  подраздела (оценщик 1.1); cost — себестоимость, USD */
   estimate: { inTokens: number; outTokens: number; cost: number };
-  /** Что спишется у подписчика вместо денег */
-  quota: { type: "regenerations"; units: number };
+  /** Что спишется у подписчика вместо денег: кредиты по весу подраздела */
+  quota: { type: "credits"; units: number };
 }
 
 /* ── Постановка плана (беседа 10.2) ──────────────────────────────────── */

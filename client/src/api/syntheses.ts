@@ -18,7 +18,14 @@ import type {
   SynthesisPreview,
 } from "@philosynth/shared/types/synthesis";
 
+import type { SynthesisCharges } from "@philosynth/shared/types/billing";
+
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
+
+/** 0022: что документ стоил текущему пользователю (кредиты, баланс, свой ключ). */
+export function getSynthesisCharges(id: string): Promise<SynthesisCharges> {
+  return apiGet<SynthesisCharges>(`/syntheses/${id}/charges`);
+}
 
 /** Тело POST /syntheses и POST /syntheses/estimate (03-spec §2.2, v11:
  *  philosophers/participants опциональны — оба пусты = свободный синтез,
@@ -74,6 +81,8 @@ export interface SynthesisEstimate {
 export interface SynthesisEstimateResponse {
   estimate: SynthesisEstimate;
   contextBudget: number;
+  /** 0021: кредитов спишет синтез подписчику (creditsForCost оценки) */
+  credits?: number;
 }
 
 export function estimateSynthesisFull(

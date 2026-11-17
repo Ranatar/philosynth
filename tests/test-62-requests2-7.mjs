@@ -558,7 +558,7 @@ try {
   await db.delete(subscriptionPlans).where(eq(subscriptionPlans.name, "starter62"));
   const [plan] = await db.insert(subscriptionPlans).values({
     name: "starter62", family: "starter62", displayName: "Starter62", priceUsd: "9.00", billingPeriod: "month",
-    quotaSyntheses: 3, quotaRegenerations: 10, quotaModes: 5, quotaEnrichments: 20, stripePriceId: "price_starter_62",
+    quotaCredits: 950, stripePriceId: "price_starter_62", // 0021: прежние 3/10/5/20 по весам
   }).returning();
   await logout();
   await login(A);
@@ -582,11 +582,12 @@ try {
   await waitText(page, T("sub-status"), /активна/i);
   ok(true, "«Обновить» → статус «активна»");
   const quotas = await rows(page, T("sub-quotas"));
-  ok(quotas.length === 4 && quotas[0][0] === "синтезы" && intOf(quotas[0][2]) === 3 && intOf(quotas[0][3]) === 3, "таблица квот: синтезы 0/3, остаток 3", J(quotas));
+  // 0021: квота одна — кредиты
+  ok(quotas.length === 1 && quotas[0][0] === "кредиты" && intOf(quotas[0][1]) === 0 && intOf(quotas[0][2]) === 950 && intOf(quotas[0][3]) === 950, "таблица квоты: кредиты 0/950, остаток 950", J(quotas));
   await runOp(A, S1.id);
   await page.click(T("sub-refresh"));
-  await page.waitForFunction(() => { const tr = document.querySelectorAll('[data-testid="sub-quotas"] tbody tr')[2]; return tr && /1/.test(tr.children[1].innerText); }, { timeout: 15000 });
-  ok(true, "после режима: использовано режимов = 1 (квота потреблена)");
+  await page.waitForFunction(() => { const tr = document.querySelectorAll('[data-testid="sub-quotas"] tbody tr')[0]; return tr && /^8$/.test(tr.children[1].innerText.trim()); }, { timeout: 15000 });
+  ok(true, "после режима: использовано 8 кредитов (вес режима)");
   await page.click(T("sub-cancel"));
   await waitText(page, T("billing-subscription"), /отмена в конце периода/i);
   ok(true, "отмена → «отмена в конце периода»");

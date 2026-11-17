@@ -860,7 +860,7 @@ CREATE INDEX idx_usage_synthesis ON api_usage(synthesis_id);
 > **8.3 (2026-09-09) — откуда берутся строки.** Таблица сеется ТОЛЬКО
 > `scripts/seed-plans.ts` (`npm run seed:plans`) из описания
 > `server/config/plans.ts` — три тарифа (`starter`, `pro`, `academic`:
-> displayName, цена, период, четыре квоты) БЕЗ `stripe_price_id`. Price
+> displayName, цена, период, кредиты — до 0021 четыре квоты) БЕЗ `stripe_price_id`. Price
 > существует лишь в аккаунте Stripe владельца: его заводит
 > `scripts/stripe-create-prices.ts` (`npm run stripe:create-prices`,
 > идемпотентно по `lookup_key = philosynth_<name>`) и печатает строки
@@ -908,16 +908,27 @@ CREATE TABLE subscription_plans (
   display_name     TEXT NOT NULL,          -- 'Starter', 'Pro', 'Academic'
   price_usd        NUMERIC(10, 2) NOT NULL,
   billing_period   TEXT NOT NULL DEFAULT 'month',  -- 'month'|'year'
-  quota_syntheses     INT NOT NULL,  -- полных синтезов за период
-  quota_regenerations INT NOT NULL,  -- перегенераций разделов за период
-  quota_modes         INT NOT NULL,  -- запусков режимов за период
-  quota_enrichments   INT NOT NULL,  -- обогащений элементов за период
+  quota_credits    INT NOT NULL,     -- кредитов за период (0021; до неё — четыре квоты, см. ниже)
   stripe_price_id  TEXT NOT NULL,    -- Stripe Price ID (Price редакции)
   is_active        BOOLEAN NOT NULL DEFAULT true,  -- «открыт для покупки» (15.4)
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX uq_subscription_plans_family_edition ON subscription_plans(family, edition);  -- 15.4
 ```
+
+> **Кредиты (решение пользователя 2026-11-17, миграция 0021):** четыре квоты
+> (`quota_syntheses`, `quota_regenerations`, `quota_modes`,
+> `quota_enrichments`) сведены в одну — `quota_credits`. Кредит —
+> `CREDIT_USD` ($0.01) себестоимости по ставкам оценщика; операция списывает
+> свой вес (`config/plan-economics.ts` `CREDIT_WEIGHTS` — опорные
+> стоимости, округлённые вверх): раздел 26, подраздел 13, режим 8,
+> обогащение 4; синтез — по оценке своего состава (`creditsForCost`), опорный
+> (8 разделов, `standard`) ≈ 190. До 0021 одна «перегенерация» стоила
+> одинаково за раздел и за подраздел, а план из пяти шагов брал пять единиц
+> при любом их виде. Миграция переводит квоты и израсходованное теми же
+> весами (ценность тарифа для подписчика сохраняется; правило Д-75 о
+> неприкосновенности редакции касается правки квот, а не смены единицы).
+> Экономика: `quota_credits × CREDIT_USD × BILLING_MARKUP ≤ price_usd`.
 
 ### 2.23. user_subscriptions
 
@@ -939,11 +950,8 @@ CREATE TABLE user_subscriptions (
     -- 'active'|'past_due'|'canceled'|'trialing'|'incomplete'
   current_period_start    TIMESTAMPTZ NOT NULL,
   current_period_end      TIMESTAMPTZ NOT NULL,
-  -- Счётчики использования (сбрасываются в начале каждого периода)
-  used_syntheses          INT NOT NULL DEFAULT 0,
-  used_regenerations      INT NOT NULL DEFAULT 0,
-  used_modes              INT NOT NULL DEFAULT 0,
-  used_enrichments        INT NOT NULL DEFAULT 0,
+  -- Израсходовано кредитов (сбрасывается в начале каждого периода; 0021)
+  used_credits            INT NOT NULL DEFAULT 0,
   cancel_at_period_end    BOOLEAN NOT NULL DEFAULT false,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -952,6 +960,31 @@ CREATE TABLE user_subscriptions (
 CREATE INDEX idx_subscriptions_user ON user_subscriptions(user_id);
 CREATE INDEX idx_subscriptions_status ON user_subscriptions(status)
   WHERE status IN ('active', 'trialing');
+```
+
+
+### 2.23a. credit_charges
+
+Журнал списаний кредитов подписки (решение пользователя 2026-11-17,
+миграция 0022): строка на операцию, взявшую кредиты под слотом генерации
+(`withGenerationSlot` пишет её сразу после `consumeQuota`). Деньги баланса
+журналирует `transactions`, себестоимость своего ключа — `api_usage`; до
+0022 кредиты списывались только счётчиком `used_credits` без привязки к
+документу. Читают: `GET /syntheses/:id/charges` (строка «С вас» в футере)
+и `GET /billing/credit-charges` (история на странице биллинга).
+
+```sql
+CREATE TABLE credit_charges (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  synthesis_id     UUID REFERENCES syntheses(id) ON DELETE SET NULL,
+  subscription_id  UUID REFERENCES user_subscriptions(id) ON DELETE SET NULL,
+  credits          INT  NOT NULL,
+  op               TEXT NOT NULL,  -- synthesis|section|subsection|mode|enrichment|plan
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_credit_charges_user ON credit_charges(user_id, created_at);
+CREATE INDEX idx_credit_charges_synthesis_user ON credit_charges(synthesis_id, user_id);
 ```
 
 ### 2.24. category_type_catalog

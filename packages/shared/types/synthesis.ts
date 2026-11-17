@@ -116,6 +116,10 @@ export interface PauseReasonFields {
   maxTokensUsed?: number | undefined;
   /** stuck: порог молчания стрима, секунды */
   stuckSec?: number | undefined;
+  /** Чем оплачивался прерванный прогон (2026-11-17): после паузы 'billing'/'auth'
+   *  под BYO-ключом причина на стороне пользователя — доработка оплачивается
+   *  как обычно; любая другая пауза — сбой службы/API, доработка бесплатна */
+  paidBy?: "byo" | "subscription" | "balance" | undefined;
 }
 
 /** syntheses.paused_state, kind === "gen" — прервана основная генерация */

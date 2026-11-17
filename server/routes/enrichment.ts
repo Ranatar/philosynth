@@ -54,6 +54,7 @@ import {
 } from "./syntheses.js";
 import { tl } from "@philosynth/shared/i18n/t";
 import { editGate, editRightFirst } from "./edit-gate.js"; // 16.1
+import { creditCharge } from "../config/plan-economics.js";
 
 export const enrichmentRoutes = new Hono<AuthEnv>();
 
@@ -105,7 +106,7 @@ function fireAndForget(label: string, p: Promise<void>): void {
 
 /* ── POST /:id/enrich/category/:catId ────────────────────────────────── */
 
-enrichmentRoutes.post("/:id/enrich/category/:catId", requireAuth, editRightFirst, billingCheck({ quota: "enrichments" }), async (c) => {
+enrichmentRoutes.post("/:id/enrich/category/:catId", requireAuth, editRightFirst, billingCheck(creditCharge("enrichment")), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const catId = c.req.param("catId");
@@ -128,7 +129,7 @@ enrichmentRoutes.post("/:id/enrich/category/:catId", requireAuth, editRightFirst
 
 /* ── POST /:id/enrich/edge/:edgeId ───────────────────────────────────── */
 
-enrichmentRoutes.post("/:id/enrich/edge/:edgeId", requireAuth, editRightFirst, billingCheck({ quota: "enrichments" }), async (c) => {
+enrichmentRoutes.post("/:id/enrich/edge/:edgeId", requireAuth, editRightFirst, billingCheck(creditCharge("enrichment")), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const edgeId = c.req.param("edgeId");
@@ -151,7 +152,7 @@ enrichmentRoutes.post("/:id/enrich/edge/:edgeId", requireAuth, editRightFirst, b
 
 /* ── POST /:id/justify-characteristic ────────────────────────────────── */
 
-enrichmentRoutes.post("/:id/justify-characteristic", requireAuth, editRightFirst, billingCheck({ quota: "enrichments" }), async (c) => {
+enrichmentRoutes.post("/:id/justify-characteristic", requireAuth, editRightFirst, billingCheck(creditCharge("enrichment")), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const gate = await editGate(c, id, user.id);

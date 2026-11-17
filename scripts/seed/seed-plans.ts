@@ -118,10 +118,7 @@ export function diffFields(row: PlanRow, plan: PlanDefinition, priceFromEnv: str
   cmp("displayName", row.displayName, plan.displayName);
   cmp("priceUsd", Number(row.priceUsd), plan.priceUsd);
   cmp("billingPeriod", row.billingPeriod, plan.billingPeriod);
-  cmp("quotaSyntheses", row.quotaSyntheses, plan.quotaSyntheses);
-  cmp("quotaRegenerations", row.quotaRegenerations, plan.quotaRegenerations);
-  cmp("quotaModes", row.quotaModes, plan.quotaModes);
-  cmp("quotaEnrichments", row.quotaEnrichments, plan.quotaEnrichments);
+  cmp("quotaCredits", row.quotaCredits, plan.quotaCredits);
   if (priceFromEnv !== "") cmp("stripePriceId", row.stripePriceId, priceFromEnv);
   cmp("isActive", row.isActive, priceFromEnv !== "");
   return d;
@@ -178,10 +175,7 @@ async function seedOne(
       displayName: plan.displayName,
       priceUsd: priceString(plan.priceUsd),
       billingPeriod: plan.billingPeriod,
-      quotaSyntheses: plan.quotaSyntheses,
-      quotaRegenerations: plan.quotaRegenerations,
-      quotaModes: plan.quotaModes,
-      quotaEnrichments: plan.quotaEnrichments,
+      quotaCredits: plan.quotaCredits,
       stripePriceId,
       isActive,
     });

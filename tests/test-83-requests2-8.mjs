@@ -187,7 +187,7 @@ try {
   ok(plans3.status === 200 && plans3.json.plans.length === 3, "GET /billing/plans → три позиции", J(plans3.json));
   ok(plans3.json.plans.map((p) => p.name).join() === "starter,pro,academic" && plans3.json.plans.map((p) => p.priceUsd).join() === "9.99,29.99,79.99", "порядок по возрастанию цены: starter 9.99, pro 29.99, academic 79.99");
   const starterDto = plans3.json.plans[0];
-  ok(starterDto.quotaSyntheses === 3 && starterDto.quotaRegenerations === 5 && starterDto.quotaModes === 5 && starterDto.quotaEnrichments === 10 && starterDto.stripePriceId === "price_mock_starter" && starterDto.billingPeriod === "month", "DTO starter: квоты 3/5/5/10, price_mock_starter, month", J(starterDto));
+  ok(starterDto.quotaCredits === 780 && starterDto.stripePriceId === "price_mock_starter" && starterDto.billingPeriod === "month", "DTO starter: 780 кредитов (прежние 3/5/5/10 по весам, 0021), price_mock_starter, month", J(starterDto));
 
   browser = await puppeteer.launch({ executablePath: CHROME, headless: "shell", args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   const page = await browser.newPage();
@@ -296,13 +296,13 @@ try {
   ok(r7.rc === 1 && /STRIPE_SECRET_KEY пуст/.test(r7.out) && /Ни одного запроса к Stripe не сделано/.test(r7.out), "пустой ключ → отказ с объяснением, rc=1", r7.out.slice(-500));
   // /__mock/health сам считается запросом мока: после h3 ровно +1 (наш опрос), ничего от скрипта
   ok(!/created=|skip=/.test(r7.out) && (await mockHealth()).counts.requests === h3.counts.requests + 1, "ни одного запроса к моку — отказ до первого запроса");
-  const lossy = PLANS.map((p) => (p.name === "starter" ? { ...p, quotaSyntheses: 100 } : p));
+  const lossy = PLANS.map((p) => (p.name === "starter" ? { ...p, quotaCredits: 19_000 } : p));
   const econ = computePlanEconomics(lossy[0], 1.2);
   const r7b = await seedPlans({ plans: lossy, envSource: MOCK_PRICES, markup: 1.2 });
   const starterFail = r7b.results.find((r) => r.name === "starter");
-  ok(starterFail.outcome === "fail" && /убыточен/.test(starterFail.error) && /BILLING_MARKUP 1\.2/.test(starterFail.error) && r7b.counts.skip === 2, "квота 100 синтезов при цене $9.99 → fail с расчётом, соседи skip", J(starterFail));
+  ok(starterFail.outcome === "fail" && /убыточен/.test(starterFail.error) && /BILLING_MARKUP 1\.2/.test(starterFail.error) && r7b.counts.skip === 2, "19 000 кредитов при цене $9.99 → fail с расчётом, соседи skip", J(starterFail));
   ok(new RegExp(`\\$${econ.quotaChargeUsd.toFixed(2).replace(".", "\\.")}`).test(starterFail.error), "в объяснении — сумма квоты × наценки из computePlanEconomics", starterFail.error);
-  ok((await plansInDb()).find((p) => p.name === "starter").quotaSyntheses === 3, "строка starter не тронута (quota_syntheses = 3)");
+  ok((await plansInDb()).find((p) => p.name === "starter").quotaCredits === 780, "строка starter не тронута (quota_credits = 780)");
   const r7c = runScript("scripts/seed/seed-plans.ts", childEnv({ ...MOCK_PRICES, BILLING_MARKUP: "3" }));
   ok(r7c.rc === 1 && r7c.fail === 3 && /BILLING_MARKUP 3 =/.test(r7c.out), "BILLING_MARKUP=3 в окружении → все три тарифа fail (наценка читается при посеве)", r7c.out.slice(-700));
   ok((await plansInDb()).every((p) => p.isActive && Number(p.priceUsd) > 0), "БД после отказов — как была");
@@ -330,11 +330,11 @@ try {
   await page.waitForFunction(() => /^активна$/i.test(document.querySelector('[data-testid="sub-status"]')?.innerText.trim() ?? ""), { timeout: 20000 });
   ok(true, "«Обновить» → статус «активна»");
   const quotaRows = await page.$$eval(`${T("sub-quotas")} tbody tr`, (trs) => trs.map((tr) => [...tr.querySelectorAll("td")].map((td) => td.innerText.trim())));
-  ok(quotaRows.length === 4 && quotaRows.map((r) => r[2]).join() === "3,5,5,10" && quotaRows.every((r) => r[1] === "0") && quotaRows.map((r) => r[3]).join() === "3,5,5,10", "квоты видны: лимиты 3/5/5/10, использовано 0, остаток = лимит", J(quotaRows));
+  ok(quotaRows.length === 1 && quotaRows[0][2] === "780" && quotaRows[0][1] === "0" && quotaRows[0][3] === "780", "кредиты видны: лимит 780, использовано 0, остаток = лимит", J(quotaRows));
   subRow = (await db.select().from(userSubscriptions).where(eq(userSubscriptions.userId, row.id)))[0];
-  ok(subRow.status === "active" && subRow.usedSyntheses === 0, "БД: active, счётчики 0");
+  ok(subRow.status === "active" && subRow.usedCredits === 0, "БД: active, счётчик 0");
   const subApi = await page.evaluate(async () => (await fetch("/api/v1/billing/subscription")).json());
-  ok(subApi.plan?.name === "starter" && subApi.quotas.syntheses === 3 && subApi.quotas.enrichments === 10, "GET /billing/subscription: план starter, квоты из посева", J(subApi.quotas));
+  ok(subApi.plan?.name === "starter" && subApi.quotas.credits === 780, "GET /billing/subscription: план starter, кредиты из посева", J(subApi.quotas));
   // cancel
   await page.$eval(T("sub-cancel"), (el) => el.click());
   await page.waitForSelector(T("sub-resume"), { timeout: 20000 });

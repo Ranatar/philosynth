@@ -18,8 +18,15 @@
  *    вычисляется (серверный аналог — pause-resume-service);
  *  - partialSubsections в shared-типе — имена без chars (решение 1.4):
  *    список успевших подразделов показывается без размеров;
- *  - costHint «оценочная стоимость продолжения» [24801] опущен — те же
- *    числа несут кнопки (skipRemaining/wholeSection/fillMissingSubs);
+ *  - costHint «оценочная стоимость продолжения» [24801] ВОЗВРАЩЁН
+ *    (2026-11-17): fillMissingSubs и wholeSection — только починка раздела,
+ *    остальные разделы служба продолжает сама; без строки продолжения
+ *    кнопки были несопоставимы («Пропустить» выглядел самым дорогим, будучи
+ *    самым дешёвым). Кнопка несёт полную цену выбора: починка + продолжение;
+ *  - подпись по способу оплаты (useBillingView): BYO — себестоимость по
+ *    ключу; подписка — без списания (возобновление без кредитов, 6.1);
+ *    баланс — без списания после сбоя службы/API (estimates.serviceFailure),
+ *    иначе с наценкой;
  *  - auth-рендерер: форма ввода нового ключа — порт _resumeWithNewApiKey
  *    [25028] СДЕЛАН беседой 6.2 (долг §12 «Форма ввода ключа в
  *    auth-модалке»): ключ сохраняется POST /billing/api-key (BYO-Key 6.1,
@@ -60,6 +67,7 @@ import type {
 import { useState } from "react";
 
 import { storeApiKey } from "../../api/billing";
+import { chargeLine, fmtUsd, useBillingView } from "../../hooks/useBillingView";
 import { ApiError } from "../../api/client";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
@@ -69,9 +77,13 @@ const LABELS = KEY_LABELS as Record<string, string>;
 /** Порт _fmtCost [24666]: форматирование оценки для кнопки. */
 export function fmtCost(cost: number | null | undefined): string {
   if (cost == null) return "";
-  if (cost === 0) return "$0";
-  if (cost < 0.01) return "≈ " + (cost * 100).toFixed(2) + "¢";
-  return "≈ $" + cost.toFixed(3);
+  return fmtUsd(cost);
+}
+
+/** Полная цена выбора: починка раздела + продолжение (2026-11-17). */
+function totalOf(own: number | undefined, continuation: number | undefined): number | undefined {
+  if (own === undefined) return undefined;
+  return own + (continuation ?? 0);
 }
 
 /* ── Мелкие блоки разметки (аналог css-классов pause-* исходника) ────── */
@@ -172,11 +184,15 @@ function PauseBtn({
   );
 }
 
-function CostSpan({ cost, prefix }: { cost: number | null | undefined; prefix?: string }) {
-  const s = fmtCost(cost);
+/** Подпись стоимости кнопки: по способу оплаты; waived — доработка без списания. */
+function CostSpan({ cost, prefix, waived }: { cost: number | null | undefined; prefix?: string | undefined; waived?: boolean | undefined }) {
+  const view = useBillingView();
+  if (cost == null) return null;
+  const s = chargeLine(view, { usd: cost, waived });
   if (!s) return null;
+  const free = waived === true && (view?.mode === "subscription" || view?.mode === "balance");
   return (
-    <span className="pause-subtle"> ({prefix ? `${prefix} ` : ""}{s})</span>
+    <span className="pause-subtle"> ({prefix && !free ? `${prefix} ` : ""}{s})</span>
   );
 }
 
@@ -190,17 +206,31 @@ function completedListOf(ps: PausedStateGen): string {
   );
 }
 
-function GenContent({ ps }: { ps: PausedStateGen }) {
+/** «3 раздела» — плюрал по языку интерфейса (было «2 разделов»). */
+function sectionsCount(n: number): string {
+  return tl("synthesis.pauseModal.sectionsCount", "{n, plural, one {# раздел} few {# раздела} many {# разделов} other {# раздела}}", { n });
+}
+
+function GenContent({ ps, estimates }: { ps: PausedStateGen; estimates: PauseEstimates }) {
   const completedCount = (ps.completedPasses ?? []).length;
   const completedList = completedListOf(ps);
-  const completedWord = completedCount === 1 ? tl("synthesis.pauseModal.sectionWord", "раздел") : tl("common.sectionsGen", "разделов");
 
   if (ps.isPartial) {
     // Partial: единая ветка для любых причин обрыва (сеть, max-tokens,
     // stuck) — основная стратегия одинакова [24817]
-    const done = ps.partialSubsections ?? [];
     const expected = ps.expectedSubsections ?? [];
-    const missing = expected.filter((s) => !done.includes(s));
+    // 2026-11-17: списки — по серверному computeMissingSubs: partialSubsections
+    // несёт и ОБОРВАННЫЙ подраздел (в нём есть текст), а догенерируется он
+    // вместе с недостающими; без серверного списка — прежний расчёт
+    const missing = estimates.missingSubs ?? expected.filter((s) => !(ps.partialSubsections ?? []).includes(s));
+    const done = expected.filter((s) => !missing.includes(s));
+    const streamingSub = estimates.streamingSub ?? null;
+    const fill = estimates.fillMissingSubs;
+    const whole = estimates.wholeSection;
+    // «Дешевле перегенерации раздела» — только когда так и есть: каждый
+    // подраздел — отдельный запрос с почти всем контекстом раздела, и при
+    // трёх-четырёх недостающих догенерация выходит дороже
+    const fillCheaper = fill !== undefined && whole !== undefined ? fill < whole : null;
     const causeHint =
       ps.reasonKind === "max-tokens"
         ? tl("synthesis.pauseModal.maxTokensExceeded", " (превышен лимит max_tokens = {maxTokensUsed})", { maxTokensUsed: (ps.maxTokensUsed ?? 20000).toLocaleString("ru") })
@@ -210,14 +240,14 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
     return (
       <div className="pause-content">
         <p>
-          {tl("synthesis.pauseModal.sectionGeneration", "Генерация раздела")} <strong>{pauseSectionLabel(ps)}</strong> {tl("synthesis.pauseModal.brokeOff", "оборвалась{causeHint} — успело сгенерироваться", { causeHint })}
+          {tl("synthesis.pauseModal.sectionGeneration", "Генерация раздела")} <strong>{pauseSectionLabel(ps)}</strong> {tl("synthesis.pauseModal.brokeOff", "оборвалась{causeHint} — успело сгенерироваться", { causeHint })}{" "}
           <strong>
             {tl("synthesis.pauseModal.countOf", "{doneCount} из {expectedCount}", { doneCount: done.length, expectedCount: expected.length })}
-          </strong>{tl("synthesis.pauseModal.subsectionsDot", "подразделов.")}
+          </strong>{" "}{tl("synthesis.pauseModal.subsectionsOf", "{n, plural, one {подраздела} few {подразделов} many {подразделов} other {подразделов}}.", { n: expected.length })}
         </p>
         <ReasonBox ps={ps} />
         <InfoBox>
-          <strong>{tl("synthesis.pauseModal.completedEarlier", "Завершено ранее:")}</strong> {completedCount} {completedWord}
+          <strong>{tl("synthesis.pauseModal.completedEarlier", "Завершено ранее:")}</strong> {sectionsCount(completedCount)}
           {completedCount > 0 && (
             <>
               <br />
@@ -242,16 +272,29 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
               <br />
               <strong>{tl("synthesis.pauseModal.missing", "Недостающие:")}</strong>
               {missing.map((s) => (
-                <span key={s}>
+                <span key={s} data-testid="pause-missing-sub">
                   <br />• {s}
+                  {s === streamingSub && (
+                    <em className="pause-subtle"> {tl("synthesis.pauseModal.brokenSub", "(оборван)")}</em>
+                  )}
                 </span>
               ))}
             </>
           )}
         </InfoBox>
         <Subtle>
-          {tl("synthesis.pauseModal.recommendedLead", "Рекомендуется")} <strong>{tl("synthesis.pauseModal.generateRemaining", "догенерировать")}</strong> {tl("synthesis.pauseModal.onlyMissingNote", "только недостающие подразделы — они будут созданы по очереди с учётом уже готовых подразделов как контекста. Это дешевле перегенерации всего раздела.")}
+          {fillCheaper === false ? (
+            <>
+              {tl("synthesis.pauseModal.fillDearerNote", "Каждый недостающий подраздел генерируется отдельным запросом с контекстом всего раздела, поэтому при {n, plural, one {# недостающем} few {# недостающих} many {# недостающих} other {# недостающих}} догенерация дороже перегенерации раздела целиком. Догенерация сохраняет готовые подразделы; перегенерация пишет раздел заново.", { n: missing.length })}
+            </>
+          ) : (
+            <>
+              {tl("synthesis.pauseModal.recommendedLead", "Рекомендуется")} <strong>{tl("synthesis.pauseModal.generateRemaining", "догенерировать")}</strong> {tl("synthesis.pauseModal.onlyMissingNoteBase", "только недостающие подразделы — они будут созданы по очереди с учётом уже готовых подразделов как контекста.")}
+              {fillCheaper === true && <> {tl("synthesis.pauseModal.cheaperNote", "Это дешевле перегенерации всего раздела.")}</>}
+            </>
+          )}
         </Subtle>
+        <ContinuationHint estimates={estimates} />
       </div>
     );
   }
@@ -264,7 +307,7 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
       </p>
       <ReasonBox ps={ps} />
       <InfoBox>
-        <strong>{tl("synthesis.pauseModal.completedEarlier", "Завершено ранее:")}</strong> {completedCount} {completedWord}
+        <strong>{tl("synthesis.pauseModal.completedEarlier", "Завершено ранее:")}</strong> {sectionsCount(completedCount)}
         {completedCount > 0 && (
           <>
             <br />
@@ -277,8 +320,41 @@ function GenContent({ ps }: { ps: PausedStateGen }) {
       <Subtle>
         {tl("synthesis.pauseModal.possibleCauses", "Возможные причины: перегрузка API, проблемы с сетью, превышение лимита. Попробуйте ещё раз через несколько минут.")}
       </Subtle>
+      <ContinuationHint estimates={estimates} />
     </div>
   );
+}
+
+/** Строка стоимости продолжения (costHint [24801], возвращён 2026-11-17):
+ *  остальные разделы служба генерирует сама после любого выбора, кроме
+ *  «Остановить»; суммы кнопок её уже включают. */
+function ContinuationHint({ estimates }: { estimates: PauseEstimates }) {
+  const view = useBillingView();
+  const rest = estimates.skipRemaining;
+  if (rest === undefined) return null;
+  const waived = resumeWaived(view?.mode, estimates);
+  if (waived) {
+    return (
+      <p className="pause-subtle" data-testid="pause-continuation">
+        {tl("synthesis.pauseModal.resumeFree", "Доработка после сбоя — без списания: прерванная генерация уже оплачена.")}
+      </p>
+    );
+  }
+  return (
+    <p className="pause-subtle" data-testid="pause-continuation">
+      {rest > 0
+        ? tl("synthesis.pauseModal.continuationCost", "Оставшиеся разделы: {cost} — входит в сумму каждой кнопки, кроме «Остановить».", { cost: chargeLine(view, { usd: rest, waived }) })
+        : tl("synthesis.pauseModal.continuationNone", "Прерванный раздел — последний: после него генерировать нечего.")}
+    </p>
+  );
+}
+
+/** Доработка без списания: у подписки всегда (квота синтеза уже потреблена),
+ *  у баланса — после сбоя службы/API (решение 2026-11-17). */
+function resumeWaived(mode: string | undefined, estimates: PauseEstimates): boolean {
+  if (mode === "subscription") return true;
+  if (mode === "balance") return estimates.serviceFailure !== false;
+  return false;
 }
 
 function GenFooter({
@@ -290,30 +366,33 @@ function GenFooter({
   estimates: PauseEstimates;
   onResume: (mode: ResumeGenerationMode) => void;
 }) {
+  const view = useBillingView();
+  const waived = resumeWaived(view?.mode, estimates);
+  const rest = estimates.skipRemaining;
   if (ps.isPartial) {
     return (
       <>
         <PauseBtn
           kind="primary"
-          title={tl("synthesis.pauseModal.continueHint", "Продолжить раздел с обрывочного подраздела (самое экономное)")}
+          title={tl("synthesis.pauseModal.continueHintTotal", "Догенерировать недостающие подразделы и продолжить остальные разделы (сумма — всё вместе)")}
           onClick={() => onResume("fill-missing-subs")}
         >
           {tl("synthesis.pauseModal.generateMissing", "🎯 Догенерировать недостающие")}
-          <CostSpan cost={estimates.fillMissingSubs} />
+          <CostSpan cost={totalOf(estimates.fillMissingSubs, rest)} prefix={rest ? tl("synthesis.pauseModal.total", "итого") : undefined} waived={waived} />
         </PauseBtn>
         <PauseBtn
-          title={tl("synthesis.pauseModal.restartHint", "Очистить частичный контент и начать раздел заново")}
+          title={tl("synthesis.pauseModal.restartHintTotal", "Очистить частичный контент, написать раздел заново и продолжить остальные (сумма — всё вместе)")}
           onClick={() => onResume("retry")}
         >
           {tl("synthesis.pauseModal.restartSection", "↻ Весь раздел заново")}
-          <CostSpan cost={estimates.wholeSection} />
+          <CostSpan cost={totalOf(estimates.wholeSection, rest)} prefix={rest ? tl("synthesis.pauseModal.total", "итого") : undefined} waived={waived} />
         </PauseBtn>
         <PauseBtn
           title={tl("synthesis.pauseModal.skipHint", "Оставить частичный контент, продолжить со следующего раздела (оценка — стоимость оставшихся разделов)")}
           onClick={() => onResume("skip")}
         >
           {tl("synthesis.pauseModal.skip", "⤴ Пропустить")}
-          <CostSpan cost={estimates.skipRemaining} prefix={tl("synthesis.pauseModal.next", "далее")} />
+          <CostSpan cost={rest} prefix={tl("synthesis.pauseModal.total", "итого")} waived={waived} />
         </PauseBtn>
         <PauseBtn
           kind="danger"
@@ -329,18 +408,18 @@ function GenFooter({
     <>
       <PauseBtn
         kind="primary"
-        title={tl("synthesis.pauseModal.retryHint", "Повторить запрос на этот раздел")}
+        title={tl("synthesis.pauseModal.retryHintTotal", "Повторить запрос на этот раздел и продолжить остальные (сумма — всё вместе)")}
         onClick={() => onResume("retry")}
       >
         {tl("synthesis.pauseModal.retryNow", "↻ Повторить сейчас")}
-        <CostSpan cost={estimates.wholeSection} />
+        <CostSpan cost={totalOf(estimates.wholeSection, rest)} prefix={rest ? tl("synthesis.pauseModal.total", "итого") : undefined} waived={waived} />
       </PauseBtn>
       <PauseBtn
         title={tl("synthesis.pauseModal.skipSectionHint", "Пропустить этот раздел, продолжить со следующего (оценка — остальные разделы)")}
         onClick={() => onResume("skip")}
       >
         {tl("synthesis.pauseModal.skip", "⤴ Пропустить")}
-        <CostSpan cost={estimates.skipRemaining} prefix={tl("synthesis.pauseModal.next", "далее")} />
+        <CostSpan cost={rest} prefix={tl("synthesis.pauseModal.total", "итого")} waived={waived} />
       </PauseBtn>
       <PauseBtn
         kind="danger"
@@ -479,7 +558,6 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
   // [24965] перечисляет ключи разделов («sum»); здесь — их названия, как
   // в ветке gen (completedListOf) и в строке «Прервано на»
   const completedList = completedListOf(ps);
-  const completedWord = completedCount === 1 ? tl("synthesis.pauseModal.sectionWord", "раздел") : tl("common.sectionsGen", "разделов");
   return (
     <div className="pause-content">
       <p>
@@ -487,7 +565,7 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
       </p>
       <ReasonBox ps={ps} />
       <InfoBox>
-        <strong>{tl("synthesis.pauseModal.completedBeforePause", "Завершено до паузы:")}</strong> {completedCount} {completedWord}
+        <strong>{tl("synthesis.pauseModal.completedBeforePause", "Завершено до паузы:")}</strong> {sectionsCount(completedCount)}
         {completedCount > 0 && (
           <>
             <br />
@@ -763,11 +841,15 @@ export function PauseModal({
   let title: string;
   let body: React.ReactNode;
   let footer: React.ReactNode;
-  if (ps.reasonKind === "billing" && ps.kind === "gen") {
+  // 2026-11-17: 'billing'/'auth' под СЕРВЕРНЫМ ключом (подписка, баланс) —
+  // сбой службы, а не ключа пользователя: формы ввода ключа и ссылки на
+  // пополнение у Anthropic ему не нужны — общая ветка паузы
+  const serverKeyFailure = ps.paidBy === "subscription" || ps.paidBy === "balance";
+  if (ps.reasonKind === "billing" && ps.kind === "gen" && !serverKeyFailure) {
     title = tl("synthesis.pauseModal.titleBalance", "💳 Баланс API исчерпан");
     body = <BillingContent ps={ps} />;
     footer = <BillingFooter onResume={resumeGenConfirmed} />;
-  } else if (ps.reasonKind === "auth") {
+  } else if (ps.reasonKind === "auth" && !serverKeyFailure) {
     title = tl("synthesis.pauseModal.titleKeyInvalid", "🔑 API-ключ недействителен");
     body = <AuthContent ps={ps} form={keyForm} />;
     footer = (
@@ -783,7 +865,7 @@ export function PauseModal({
     title = ps.isPartial
       ? tl("synthesis.pauseModal.titleInterruptedMidway", "⏸ Раздел прерван в середине")
       : tl("synthesis.pauseModal.titleNotStarted", "⏸ Генерация не началась");
-    body = <GenContent ps={ps} />;
+    body = <GenContent ps={ps} estimates={estimates} />;
     footer = (
       <GenFooter ps={ps} estimates={estimates} onResume={resumeGenConfirmed} />
     );

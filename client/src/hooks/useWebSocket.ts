@@ -22,6 +22,18 @@ import type {
   WsServerMessage,
 } from "@philosynth/shared/types/ws-messages";
 
+import { invalidateBillingView } from "./useBillingView";
+
+/** События конца операции с моделью — после них подписи стоимости перечитывают остаток. */
+const BILLING_SETTLING: ReadonlySet<string> = new Set([
+  "generation_complete",
+  "generation_paused",
+  "plan_step_done",
+  "mode_done",
+  "transform_done",
+  "enrichment_done",
+]);
+
 export type WsStatus = "connecting" | "open" | "closed";
 
 export interface UseWebSocketOptions {
@@ -115,6 +127,8 @@ export function useWebSocket(
       const msg = parsed as WsServerMessage;
       if (msg && typeof msg === "object" && "type" in msg) {
         if (msg.type === "pong") return; // keep-alive гасится здесь
+        // 2026-11-17: операция закончилась — остаток кредитов / баланс сменился
+        if (BILLING_SETTLING.has(msg.type)) invalidateBillingView();
         onMessageRef.current?.(msg);
       }
     };

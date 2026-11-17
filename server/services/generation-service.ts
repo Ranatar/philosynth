@@ -97,6 +97,7 @@ import { createDbContextSource } from "./context-extractor.js";
 import { PRICE_IN, PRICE_OUT } from "./cost-estimator.js";
 import {
   BillingError,
+  recordCreditCharge,
   resolveBilling,
   type BillingDecision,
 } from "./billing-service.js";
@@ -166,6 +167,7 @@ import { pw, renderParseWarningsRu, sanitizeParseWarnings } from "./parse-warnin
 import { streamLogError } from "./gen-log-labels.js"; // 14.2 (Д-62): коды подписей и ошибок журнала
 import type { GenLogLabel } from "@philosynth/shared/types/generation";
 import type { ParseWarning, StoredParseWarning } from "@philosynth/shared/types/parse-warnings";
+import { creditCharge, creditsFor } from "../config/plan-economics.js";
 
 /* ══ Разъём провайдера родительского контекста (TODO 1.2 → 1.4) ═══════ */
 
@@ -730,6 +732,9 @@ export interface GenerateSynthesisOptions {
   /** 7.1: ожидаемое списание из точной оценки POST /syntheses — порог
    *  баланса для гейта слота (вместо BILLING_MIN_RESERVE_USD) */
   estimatedCostUsd?: number | undefined;
+  /** 0021: кредитов подписки — по оценке состава (creditsForCost); нет —
+   *  вес опорного синтеза (WS-старт черновика без оценки) */
+  credits?: number | undefined;
 }
 
 /**
@@ -773,6 +778,10 @@ export interface SlotBillingOptions {
   units?: number | undefined;
   /** Порог баланса для режима 'balance' (дефолт env.billing.minReserveUsd) */
   estimatedCostUsd?: number | undefined;
+  /** Доработка после сбоя службы/API — без списания с баланса (resolveBilling) */
+  waiveBalance?: boolean | undefined;
+  /** Вид операции для журнала списаний кредитов (credit_charges, 0022) */
+  op?: string | undefined;
   /**
    * 10.2: операция БЕЗ модели (план из одних edit_element / delete). Слот
    * берётся ради предохранителя и cancel, но биллинг не решается вовсе: ни
@@ -800,11 +809,13 @@ export function billingContextOf(
   subscriptionId?: string | undefined;
   synthesisId: string;
   sectionKey?: string | undefined;
+  waived?: boolean | undefined;
 } {
   return {
     userId: handle.userId,
     billingMode: handle.billing.billingMode,
     subscriptionId: handle.billing.subscriptionId,
+    ...(handle.billing.waived === true ? { waived: true } : {}),
     synthesisId: handle.synthesisId,
     ...(sectionKey !== undefined ? { sectionKey } : {}),
   };
@@ -859,6 +870,7 @@ export async function withGenerationSlot(
         quota: billingOpts.quota ?? null,
         units: billingOpts.units ?? 1,
         estimatedCostUsd: billingOpts.estimatedCostUsd,
+        waiveBalance: billingOpts.waiveBalance,
         consume: true,
       });
     } catch (err) {
@@ -866,6 +878,16 @@ export async function withGenerationSlot(
         throw new GenerationError(err.code, err.message, err.details);
       }
       throw err;
+    }
+    // 0022: списанные кредиты — в журнал по документу и пользователю
+    if (billing.quotaConsumed) {
+      await recordCreditCharge({
+        userId,
+        synthesisId,
+        subscriptionId: billing.quotaConsumed.subscriptionId,
+        credits: billing.quotaConsumed.units,
+        op: billingOpts.op ?? "operation",
+      });
     }
     // 17.1: исполнитель — контекст всей операции под слотом (версии и
     // строки журнала пишут его: element_versions / generation_log .actor_user_id)
@@ -893,7 +915,7 @@ export async function generateSynthesis(
       // 6.1: ключ — из решения биллинга (BYO пользователя или серверный)
       await runGenerationPasses(handle, row, philosophers, secCtx, handle.billing.apiKey);
     },
-    { quota: "syntheses", estimatedCostUsd: opts.estimatedCostUsd },
+    { quota: "credits", units: opts.credits ?? creditsFor("synthesis"), estimatedCostUsd: opts.estimatedCostUsd, op: "synthesis" },
   );
 }
 
@@ -901,6 +923,8 @@ export interface ResumeFromPassOptions {
   /** secCtx из снапшота genParams: переопределения sectionContexts POST
    *  для НЕдостигнутых проходов не персистентны в sections.sec_context */
   sectionContexts?: Record<string, string> | undefined;
+  /** Доработка после сбоя службы/API — без списания с баланса (2026-11-17) */
+  waiveBalance?: boolean | undefined;
 }
 
 /**
@@ -919,7 +943,8 @@ export async function resumeSynthesisFromPass(
 ): Promise<void> {
   registerParentContextProvider();
   // 6.1: возобновление — квота синтеза потреблена при старте, повторно
-  // не списывается (quota: null); режим/ключ определяются заново
+  // не списывается (quota: null); режим/ключ определяются заново.
+  // 2026-11-17: после сбоя службы/API не списывается и баланс (waiveBalance)
   await withGenerationSlot(
     synthesisId,
     userId,
@@ -934,7 +959,7 @@ export async function resumeSynthesisFromPass(
         source: "resume",
       });
     },
-    { quota: null },
+    { quota: null, waiveBalance: opts.waiveBalance },
   );
 }
 
@@ -1397,6 +1422,7 @@ export async function runGenerationPasses(
           sectionLabel,
           isPartial,
           ...reasonFields,
+          paidBy: run.billing.billingMode, // 2026-11-17: чья причина паузы
           timestamp: Date.now(),
           partialSubsections: doneSubs.map((s) => s.name),
           expectedSubsections: [...expectedSubs],
@@ -1576,6 +1602,7 @@ export async function runGenerationPasses(
         isPartial: false,
         reasonKind: "context-error",
         rawMessage,
+        paidBy: run.billing.billingMode,
         timestamp: Date.now(),
         partialSubsections: [],
         expectedSubsections: [],
@@ -2382,7 +2409,7 @@ export async function startSectionRegeneration(
         recoverable: false,
       });
     }
-  }, { quota: "regenerations" }); // 6.1: квота подписки
+  }, creditCharge("section")); // 6.1: квота подписки (кредиты 0021)
 }
 
 /* ── regenerateSubsection [20236–20476] (полный; долг 1.4b закрыт) ───── */
@@ -2866,7 +2893,7 @@ export async function startSubsectionRegeneration(
         recoverable: false,
       });
     }
-  }, { quota: "regenerations" }); // 6.1: квота подписки
+  }, creditCharge("subsection")); // 6.1: квота подписки (кредиты 0021)
 }
 
 /* ── Нумерация разделов [5730] + ссылки §N [5628] ────────────────────── */
