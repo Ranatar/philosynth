@@ -64,7 +64,7 @@ import {
   type LineagePosRow,
 } from "../services/lineage-service.js";
 import { parentOverheadForSection } from "../services/context-builder.js";
-import { reindexSynthesis } from "../services/search-index.js"; // 18.1: свежесть индекса поиска
+import { capsulePlainText, reindexSynthesis } from "../services/search-index.js"; // 18.1: свежесть индекса поиска; текст капсулы — и превью каталога
 import { normalizeSectionKey } from "../services/parent-context.js";
 import {
   optionalAuth,
@@ -305,13 +305,12 @@ export const metaNotAllowedJson = (title: string, synthesisId: string) =>
     details: { participants: synthesisId, title },
   }) as const;
 
-/** Превью капсулы для карточки каталога: HTML → плоский текст, 200 симв. */
+/** Превью капсулы для карточки каталога: плоский текст, 200 симв. Текст
+ *  — тот же, что у индекса поиска (capsulePlainText, 18.1): без «§ N»,
+ *  названия раздела и заголовка подраздела обёртки doc-section; голое
+ *  снятие тегов клало их в начало превью («§ 8 Капсула концепции Капсула…»). */
 function capsulePreviewOf(capsuleHtml: string): string {
-  return capsuleHtml
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 200);
+  return capsulePlainText(capsuleHtml).slice(0, 200);
 }
 
 /** Философы-родители по списку синтезов (для превью каталога;

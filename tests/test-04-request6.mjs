@@ -97,7 +97,9 @@ let m = await page.evaluate((vf) => {
         b.textContent.includes("Выйти"),
       ),
     ),
-    wordmarkVisible: visible(document.querySelector("header .brand-name")),
+    // правка 2026-11-17: полная .site-header — только на «/»; на каталоге
+    // вордмарк — знак .topbar (.app-topbar-brand)
+    wordmarkVisible: visible(document.querySelector("header .app-topbar-brand")),
     hOverflow: document.documentElement.scrollWidth > innerWidth,
   };
 }, visibleFn);

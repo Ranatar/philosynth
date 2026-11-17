@@ -5,7 +5,8 @@
  * Проверяет:
  *  1) неавторизованный вход на / → redirect на /login, форма рендерится;
  *  2) вход через форму (пользователь создан curl'ом);
- *  3) Layout: Header (вордмарк, email, «Выйти»), Sidebar, двойная линейка;
+ *  3) Layout: Header (вордмарк, email, «Выйти»), Sidebar; полная .site-header
+ *     внутри приложения не рисуется (правка 2026-11-17 — только на «/»);
  *  4) навигация Sidebar'ом по всем страницам + /synthesis/:id + 404;
  *  5) ошибки консоли браузера и упавшие запросы.
  */
@@ -77,26 +78,21 @@ const layout = await page.evaluate(() => {
     sidebarLinks: [...document.querySelectorAll("aside nav a")].map((a) =>
       a.textContent.trim(),
     ),
-    /* Правка 2026-09-02 (единство стилей с исходником): служебная
-       «двойная линейка» сервиса заменена контрактом исходника —
-       .site-header с нижней границей 3px var(--blue-corp) [3540]. */
-    headerRule: (() => {
-      const sh = document.querySelector(".site-header");
-      if (!sh) return "нет .site-header";
-      const cs = getComputedStyle(sh);
-      return cs.borderBottomWidth + " " + cs.borderBottomColor;
+    /* Правка 2026-11-17 (решение пользователя): полная .site-header —
+       только на стартовой «/»; внутри приложения (здесь — каталог) её
+       нет, ссылка «домой» — знак .topbar (.app-topbar-brand). */
+    siteHeaderAbsent: !document.querySelector(".site-header"),
+    topbarBrand: (() => {
+      const b = document.querySelector(".topbar .app-topbar-brand");
+      return b ? b.getAttribute("href") : "нет .app-topbar-brand";
     })(),
     h1: text("main h1"),
-    /* Шапка теперь двухчастная (исходник): .topbar на --blue-corp
-       и .site-header на --paper */
+    /* .topbar на --blue-corp (исходник) */
     topbarBg: (() => {
       const t = document.querySelector(".topbar");
       return t ? getComputedStyle(t).backgroundColor : "нет .topbar";
     })(),
-    paperBg: (() => {
-      const h = document.querySelector(".site-header");
-      return h ? getComputedStyle(h).backgroundColor : "нет .site-header";
-    })(),
+
   };
 });
 check("Header присутствует", layout.header);
@@ -104,21 +100,13 @@ check("вордмарк PhiloSynth", layout.wordmark);
 check("пользователь в шапке", layout.userShown);
 check("кнопка «Выйти»", layout.logoutBtn);
 check("Sidebar с навигацией", layout.sidebar, layout.sidebarLinks.join(", "));
-check(
-  "линейка шапки исходника (.site-header, 3px --blue-corp)",
-  layout.headerRule === "3px rgb(26, 40, 85)",
-  layout.headerRule,
-);
+check("внутри приложения нет полной .site-header (только на «/»)", layout.siteHeaderAbsent);
+check("знак .topbar — ссылка в каталог", layout.topbarBrand === "/catalog", layout.topbarBrand);
 check("заглушка каталога (h1)", layout.h1.includes("Каталог"), layout.h1);
 check(
   "фон .topbar = --blue-corp (#1a2855)",
   layout.topbarBg === "rgb(26, 40, 85)",
   layout.topbarBg,
-);
-check(
-  "фон .site-header = --paper (#fffef9)",
-  layout.paperBg === "rgb(255, 254, 249)",
-  layout.paperBg,
 );
 check(
   "«Промпты» скрыт для role=user",

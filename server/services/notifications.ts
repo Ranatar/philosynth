@@ -39,7 +39,6 @@ import { loadAddressIndex, resolveAddress } from "./discussion-address.js";
 import { notificationDigestLetter, type DigestLine } from "./mail/templates.js";
 import { tryEnqueue, type MailDbExecutor } from "./mail/outbox.js";
 import { tl } from "@philosynth/shared/i18n/t";
-import { tData } from "@philosynth/shared/i18n/data";
 import {
   NOTIFICATIONS_PAGE_DEFAULT,
   NOTIFICATIONS_PAGE_MAX,
@@ -51,6 +50,7 @@ import {
   type NotificationType,
 } from "@philosynth/shared/constants/notifications";
 import type { DiscussionAddress } from "@philosynth/shared/types/discussion";
+import { addressObjectLabel } from "@philosynth/shared/utils/address-label";
 import type {
   Notification,
   NotificationActor,
@@ -58,7 +58,6 @@ import type {
   NotificationPayload,
   NotificationSettings,
 } from "@philosynth/shared/types/notifications";
-import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 
 const { notifications, notificationSettings, syntheses, synthesisMembers, users, comments, reviews, reviewFindings } =
   schema;
@@ -334,14 +333,8 @@ export async function updateSettings(
 
 function addressLabel(addr: DiscussionAddress | null): string {
   if (!addr) return "";
-  switch (addr.kind) {
-    case "section":
-      return tData(KEY_LABELS[addr.key as keyof typeof KEY_LABELS] ?? addr.key);
-    case "synthesis":
-      return tl("server.notifications.addrSynthesis", "концепция в целом");
-    default:
-      return addr.key;
-  }
+  if (addr.kind === "synthesis") return tl("server.notifications.addrSynthesis", "концепция в целом");
+  return addressObjectLabel(addr);
 }
 
 /** Фраза уведомления на текущем языке контекста (сводка — runWithLocale

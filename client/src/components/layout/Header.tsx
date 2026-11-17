@@ -30,9 +30,17 @@
  * Беседа 16.2 (п. 4): колокольчик уведомлений (NotificationBell) в
  * .topbar-right у вошедшего, слева от имени: число непрочитанных опросом,
  * выпадающий список, «Прочитать всё».
+ *
+ * Правка 2026-11-17 (решение пользователя): полная шапка .site-header
+ * (вордмарк, девиз, описание, плашки) — только на стартовой странице «/»;
+ * экраны входа/регистрации рисуют свою (.site-header.auth-header) вне
+ * Layout. Внутри приложения — одна полоса .topbar: в исходнике шапка стоит
+ * над единственной страницей, а здесь съедала ~230px каждого экрана.
+ * Ссылка «домой», жившая на вордмарке .site-header, перенесена на знак
+ * .topbar (.app-topbar-brand): вошедшему — каталог, гостю — «/».
  */
 import { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuthStore } from "../../stores/auth-store";
 import { useT } from "../../i18n/useT";
@@ -109,6 +117,8 @@ export function Header({ onToggleSidebar, showBurger = true }: HeaderProps) {
   const status = useAuthStore((s) => s.status);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  // полная шапка — только на стартовой (см. шапку файла, правка 2026-11-17)
+  const showSiteHeader = useLocation().pathname === "/";
 
   async function handleLogout() {
     await logout();
@@ -130,7 +140,9 @@ export function Header({ onToggleSidebar, showBurger = true }: HeaderProps) {
               ☰
             </button>
           )}
-          <span>{tl("layout.header.brand", "PhiloSynth Pro™")}</span>
+          <Link to={user ? "/catalog" : "/"} className="app-topbar-brand" data-testid="topbar-brand">
+            {tl("layout.header.brand", "PhiloSynth Pro™")}
+          </Link>
           <span className="topbar-badge">{tl("layout.header.engineVersion", "Synthesis Engine v1.0")}</span>
           <span className="topbar-tagline">
             {tl("layout.header.tagline", "Платформа синтеза философских концепций · Claude-Powered · 3D/2D Graph")}
@@ -169,26 +181,28 @@ export function Header({ onToggleSidebar, showBurger = true }: HeaderProps) {
 
       {user && user.emailVerified === false && <UnverifiedEmailBanner email={user.email} />}
 
-      <div className="site-header">
-        <div>
-          <Link to={user ? "/catalog" : "/"} className="brand-link">
-            <div className="brand-name">
-              {tl("common.brandPhilo", "Philo")}<span>{tl("common.brandSynth", "Synth")}</span>
+      {showSiteHeader && (
+        <div className="site-header">
+          <div>
+            <Link to={user ? "/catalog" : "/"} className="brand-link">
+              <div className="brand-name">
+                {tl("common.brandPhilo", "Philo")}<span>{tl("common.brandSynth", "Synth")}</span>
+              </div>
+            </Link>
+            <div className="brand-tagline">
+              {tl("layout.header.heroTitle", "Система Синтеза Философских Концепций · Professional Grade")}
             </div>
-          </Link>
-          <div className="brand-tagline">
-            {tl("layout.header.heroTitle", "Система Синтеза Философских Концепций · Professional Grade")}
+            <div className="brand-desc">
+              {tl("layout.header.heroText", "Платформа для автоматизированного синтеза, анализа и формализации философских концепций на основе выбранных философских традиций. Генерация графов категорий с интерактивной 3D/2D-визуализацией, тезисов, диалогов, исторической контекстуализации и критического анализа — в формате единого структурированного документа.")}
+            </div>
           </div>
-          <div className="brand-desc">
-            {tl("layout.header.heroText", "Платформа для автоматизированного синтеза, анализа и формализации философских концепций на основе выбранных философских традиций. Генерация графов категорий с интерактивной 3D/2D-визуализацией, тезисов, диалогов, исторической контекстуализации и критического анализа — в формате единого структурированного документа.")}
+          <div className="header-badges">
+            <div className="cert-badge gold">{tl("layout.header.badgeAi", "★ AI-POWERED SYNTHESIS")}</div>
+            <div className="cert-badge">{tl("layout.header.badgeGraph", "THREE.JS + D3.JS GRAPH")}</div>
+            <div className="cert-badge">{tl("layout.header.badgeStreaming", "STREAMING OUTPUT")}</div>
           </div>
         </div>
-        <div className="header-badges">
-          <div className="cert-badge gold">{tl("layout.header.badgeAi", "★ AI-POWERED SYNTHESIS")}</div>
-          <div className="cert-badge">{tl("layout.header.badgeGraph", "THREE.JS + D3.JS GRAPH")}</div>
-          <div className="cert-badge">{tl("layout.header.badgeStreaming", "STREAMING OUTPUT")}</div>
-        </div>
-      </div>
+      )}
     </header>
   );
 }

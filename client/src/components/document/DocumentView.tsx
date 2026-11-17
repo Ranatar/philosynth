@@ -35,8 +35,10 @@ export interface DocumentViewProps {
   sections: readonly SectionFull[];
   /** Беседа 2.4: кнопка «◈ Лог» в футере */
   onOpenLog?: (() => void) | undefined;
-  /** Беседа 3.2: слот «под шапкой документа» — секция генеалогии
-   *  (аналог docHeaderExtras исходника; рендерит SynthesisPage) */
+  /** Беседа 3.2: секция генеалогии (рендерит SynthesisPage). Аналог
+   *  docHeaderExtras исходника — выводится ВНУТРИ шапки документа, в хвосте
+   *  её контейнера раскрывашек, а не под ней: на сером фоне страницы тёмная
+   *  схема древа теряет линии */
   afterHeader?: React.ReactNode;
   /** Беседа 5.2 (п. 7): правка строк таблиц тезисов/глоссария по месту */
   editable?: boolean | undefined;
@@ -99,8 +101,7 @@ export function DocumentView({
 
   return (
     <div>
-      <DocumentHeader synthesis={synthesis} />
-      {afterHeader}
+      <DocumentHeader synthesis={synthesis} extras={afterHeader} />
       {showcase ? (
         <div className="callout note app-showcase-notice" data-testid="showcase-notice">
           <span className="callout-label">{tl("document.documentView.showcase", "Витрина")}</span>

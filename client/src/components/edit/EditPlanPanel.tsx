@@ -31,7 +31,7 @@ import {
   isFreeStepType,
   parseElementStepTarget,
 } from "@philosynth/shared/constants/edit-steps";
-import type { EditPlan, EditStep, StepResult } from "@philosynth/shared/types/edit-plan";
+import type { EditPlan, EditPlanStatus, EditStep, StepResult } from "@philosynth/shared/types/edit-plan";
 import { tl } from "@philosynth/shared/i18n/t";
 import { proposalNumberIn, useCollabStore } from "../../stores/collab-store"; // 17.2
 import { markupToLines } from "../../utils/proposals";
@@ -129,6 +129,23 @@ function targetLabel(
     : `${labels(head)} → «${tail}»`;
 }
 
+/** Подпись статуса плана на языке интерфейса: заголовок панели и кнопка
+ *  модалки показывали машинное значение (DRAFT, DONE, paused…). */
+export function planStatusLabel(status: EditPlanStatus): string {
+  switch (status) {
+    case "draft":
+      return tl("edit.editPlanPanel.statusDraft", "черновик");
+    case "executing":
+      return tl("edit.editPlanPanel.statusExecuting", "исполняется");
+    case "paused":
+      return tl("edit.editPlanPanel.statusPaused", "приостановлен");
+    case "done":
+      return tl("edit.editPlanPanel.statusDone", "исполнен");
+    case "failed":
+      return tl("edit.editPlanPanel.statusFailed", "прерван ошибкой");
+  }
+}
+
 export function EditPlanPanel({
   plan,
   stepResults,
@@ -161,7 +178,7 @@ export function EditPlanPanel({
           marginBottom: 8,
         }}
       >
-        {tl("edit.editPlanPanel.planTitle", "План редактирования · {status}{estimatedCost}", { status: plan.status, estimatedCost: plan.estimatedCost > 0 &&
+        {tl("edit.editPlanPanel.planTitle", "План редактирования · {status}{estimatedCost}", { status: planStatusLabel(plan.status), estimatedCost: plan.estimatedCost > 0 &&
           ` · ≈ $${plan.estimatedCost.toFixed(4)} (${(plan.estimatedCost * 100).toFixed(2)}¢)` })}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

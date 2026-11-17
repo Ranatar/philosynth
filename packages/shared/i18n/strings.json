@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-11-16T17:07:18.913Z",
-    "imported": "2026-11-16T18:27:52.728Z"
+    "synced": "2026-11-17T01:28:24.965Z",
+    "imported": "2026-11-17T01:42:13.223Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -2762,28 +2762,28 @@
       "en": "No similar concepts found: no shared philosophers, no shared ancestors, no shared terms or categories.",
       "de": "Keine ähnlichen Konzepte gefunden: weder gemeinsame Philosophen noch gemeinsame Vorfahren noch gemeinsame Begriffe und Kategorien.",
       "from": {"en":"Похожих концепций не нашлось: ни общих философов, ни общих предков, ни общих терминов и категорий.","de":"Похожих концепций не нашлось: ни общих философов, ни общих предков, ни общих терминов и категорий."},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:311"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:312"]
     },
     "catalog.similar.footCapped": {
       "ru": "Каталог велик: сравнивались концепции с наибольшим числом общего.",
       "en": "The catalog is large: only the concepts with the most in common were compared.",
       "de": "Der Katalog ist groß: verglichen wurden die Konzepte mit den meisten Gemeinsamkeiten.",
       "from": {"en":"Каталог велик: сравнивались концепции с наибольшим числом общего.","de":"Каталог велик: сравнивались концепции с наибольшим числом общего."},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:326"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:327"]
     },
     "catalog.similar.footHow": {
       "ru": "Сходство считается по общим философам и предкам, методу, уровню и эпохам; термины и категории сравниваются только у концепций одного языка генерации.",
       "en": "Similarity is computed from shared philosophers and ancestors, method, level and epochs; terms and categories are compared only between concepts of the same generation language.",
       "de": "Die Ähnlichkeit ergibt sich aus gemeinsamen Philosophen und Vorfahren, Methode, Ebene und Epochen; Begriffe und Kategorien werden nur bei Konzepten derselben Generierungssprache verglichen.",
       "from": {"en":"Сходство считается по общим философам и предкам, методу, уровню и эпохам; термины и категории сравниваются только у концепций одного языка генерации.","de":"Сходство считается по общим философам и предкам, методу, уровню и эпохам; термины и категории сравниваются только у концепций одного языка генерации."},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:322"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:323"]
     },
     "catalog.similar.footShowcase": {
       "ru": "Эта концепция открыта вам витриной — её термины и категории не сравнивались.",
       "en": "This concept is open to you as a showcase — its terms and categories were not compared.",
       "de": "Dieses Konzept ist für Sie nur als Schaufenster geöffnet — seine Begriffe und Kategorien wurden nicht verglichen.",
       "from": {"en":"Эта концепция открыта вам витриной — её термины и категории не сравнивались.","de":"Эта концепция открыта вам витриной — её термины и категории не сравнивались."},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:324"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:325"]
     },
     "catalog.similar.gradeNotable": {
       "ru": "заметно похожа",
@@ -2825,21 +2825,21 @@
       "en": "Could not find similar concepts.",
       "de": "Ähnliche Konzepte konnten nicht ermittelt werden.",
       "from": {"en":"Не удалось подобрать похожие концепции.","de":"Не удалось подобрать похожие концепции."},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:279"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:280"]
     },
     "catalog.similar.noteGuest": {
       "ru": "среди публичных концепций",
       "en": "among public concepts",
       "de": "unter den öffentlichen Konzepten",
       "from": {"en":"среди публичных концепций","de":"среди публичных концепций"},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:294"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:295"]
     },
     "catalog.similar.noteUser": {
       "ru": "среди ваших, доступных вам и публичных концепций",
       "en": "among your own, shared with you and public concepts",
       "de": "unter Ihren eigenen, den für Sie freigegebenen und den öffentlichen Konzepten",
       "from": {"en":"среди ваших, доступных вам и публичных концепций","de":"среди ваших, доступных вам и публичных концепций"},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:295"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:296"]
     },
     "catalog.similar.reasonAncestors": {
       "ru": "Общие предки",
@@ -2930,7 +2930,7 @@
       "en": "Similar concepts",
       "de": "Ähnliche Konzepte",
       "from": {"en":"Похожие концепции","de":"Похожие концепции"},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:289","client/src/components/catalog/SimilarConcepts.tsx:291"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:290","client/src/components/catalog/SimilarConcepts.tsx:292"]
     },
     "catalog.synthesisCard.author": {
       "ru": "Автор: {authorName}",
@@ -3449,7 +3449,7 @@
       "en": "Philosophical Concept Synthesis",
       "de": "Synthese eines philosophischen Konzepts",
       "from": {"en":"Синтез Философской Концепции","de":"Синтез Философской Концепции"},
-      "where": ["server/services/generation-service.ts:3348"]
+      "where": ["server/services/generation-service.ts:3360"]
     },
     "common.authRequired": {
       "ru": "Требуется авторизация",
@@ -3484,7 +3484,7 @@
       "en": "Cancel",
       "de": "Abbrechen",
       "from": {"en":"Отмена","de":"Отмена"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:376","client/src/components/catalog/SynthesisCard.tsx:442","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/discussion/CommentThread.tsx:133","client/src/components/discussion/CommentThread.tsx:154","client/src/components/discussion/CommentThread.tsx:292","client/src/components/document/DocumentHeader.tsx:416","client/src/components/document/SectionView.tsx:462","client/src/components/document/SectionView.tsx:482","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:659","client/src/components/edit/ElementEditor.tsx:759","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/edit/VersionConflictNotice.tsx:58","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/proposals/ProposalDecisionPanel.tsx:398","client/src/components/proposals/ProposalDecisionPanel.tsx:450","client/src/components/proposals/ProposalDecisionPanel.tsx:466","client/src/components/proposals/ProposeForm.tsx:210","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1924","client/src/pages/AdminPromptsPage.tsx:1988","client/src/pages/AdminPromptsPage.tsx:2019","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434","client/src/pages/ReviewPage.tsx:121","client/src/pages/ReviewPage.tsx:139","client/src/pages/ReviewPage.tsx:368"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:376","client/src/components/catalog/SynthesisCard.tsx:442","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/discussion/CommentThread.tsx:133","client/src/components/discussion/CommentThread.tsx:154","client/src/components/discussion/CommentThread.tsx:292","client/src/components/document/DocumentHeader.tsx:420","client/src/components/document/SectionView.tsx:462","client/src/components/document/SectionView.tsx:482","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:659","client/src/components/edit/ElementEditor.tsx:759","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:462","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/edit/VersionConflictNotice.tsx:58","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/proposals/ProposalDecisionPanel.tsx:398","client/src/components/proposals/ProposalDecisionPanel.tsx:450","client/src/components/proposals/ProposalDecisionPanel.tsx:466","client/src/components/proposals/ProposeForm.tsx:210","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1924","client/src/pages/AdminPromptsPage.tsx:1988","client/src/pages/AdminPromptsPage.tsx:2019","client/src/pages/BillingPage.tsx:242","client/src/pages/BillingPage.tsx:367","client/src/pages/BillingPage.tsx:525","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434","client/src/pages/ReviewPage.tsx:121","client/src/pages/ReviewPage.tsx:139","client/src/pages/ReviewPage.tsx:368"]
     },
     "common.capsule": {
       "ru": "Капсула",
@@ -3723,14 +3723,14 @@
       "en": "Invalid data",
       "de": "Ungültige Daten",
       "from": {"en":"Невалидные данные","de":"Невалидные данные"},
-      "where": ["server/routes/auth.ts:240","server/routes/auth.ts:308","server/routes/auth.ts:370","server/routes/auth.ts:423","server/routes/auth.ts:532","server/routes/auth.ts:613","server/routes/auth.ts:659","server/routes/auth.ts:766","server/routes/auth.ts:888","server/routes/auth.ts:894","server/routes/discussion.ts:97","server/routes/enrichment.ts:74","server/routes/members.ts:71","server/routes/modes.ts:174","server/routes/notifications.ts:38","server/routes/recommendations.ts:120","server/routes/taxonomy.ts:70","server/services/element-editor.ts:237","server/services/element-editor.ts:1913","server/services/element-editor.ts:1953","server/services/element-editor.ts:1976","server/services/element-editor.ts:2169","server/services/element-enrichment.ts:670","server/services/element-enrichment.ts:726","server/services/expected-version.ts:43","server/services/members.ts:121","server/services/members.ts:130","server/services/notifications.ts:308","server/services/notifications.ts:316","server/services/notifications.ts:323","server/services/proposals.ts:121"]
+      "where": ["server/routes/auth.ts:240","server/routes/auth.ts:308","server/routes/auth.ts:370","server/routes/auth.ts:423","server/routes/auth.ts:532","server/routes/auth.ts:613","server/routes/auth.ts:659","server/routes/auth.ts:766","server/routes/auth.ts:888","server/routes/auth.ts:894","server/routes/discussion.ts:97","server/routes/enrichment.ts:74","server/routes/members.ts:71","server/routes/modes.ts:174","server/routes/notifications.ts:38","server/routes/recommendations.ts:120","server/routes/taxonomy.ts:70","server/services/element-editor.ts:237","server/services/element-editor.ts:1913","server/services/element-editor.ts:1953","server/services/element-editor.ts:1976","server/services/element-editor.ts:2169","server/services/element-enrichment.ts:670","server/services/element-enrichment.ts:726","server/services/expected-version.ts:43","server/services/members.ts:121","server/services/members.ts:130","server/services/notifications.ts:307","server/services/notifications.ts:315","server/services/notifications.ts:322","server/services/proposals.ts:121"]
     },
     "common.invalidJson": {
       "ru": "Невалидный JSON",
       "en": "Invalid JSON",
       "de": "Ungültiges JSON",
       "from": {"en":"Невалидный JSON","de":"Невалидный JSON"},
-      "where": ["server/routes/discussion.ts:100","server/routes/generation.ts:114","server/routes/generation.ts:169","server/routes/members.ts:74","server/routes/notifications.ts:41","server/routes/plans.ts:102","server/routes/plans.ts:143","server/routes/plans.ts:196","server/routes/recommendations.ts:204","server/routes/syntheses.ts:712","server/routes/syntheses.ts:1058","server/routes/syntheses.ts:1266","server/routes/syntheses.ts:1560"]
+      "where": ["server/routes/discussion.ts:100","server/routes/generation.ts:114","server/routes/generation.ts:169","server/routes/members.ts:74","server/routes/notifications.ts:41","server/routes/plans.ts:102","server/routes/plans.ts:143","server/routes/plans.ts:196","server/routes/recommendations.ts:204","server/routes/syntheses.ts:711","server/routes/syntheses.ts:1057","server/routes/syntheses.ts:1265","server/routes/syntheses.ts:1559"]
     },
     "common.justification": {
       "ru": "Обоснование",
@@ -3751,7 +3751,7 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:301","client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/discussion/DiscussionPanel.tsx:224","client/src/components/discussion/DiscussionTab.tsx:121","client/src/components/discussion/ReviewsTab.tsx:76","client/src/components/document/SectionView.tsx:385","client/src/components/document/SectionView.tsx:401","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/components/proposals/ProposalDecisionPanel.tsx:310","client/src/components/proposals/ProposalsTab.tsx:43","client/src/components/proposals/ProposeForm.tsx:177","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1894","client/src/pages/AdminPromptsPage.tsx:1921","client/src/pages/AdminPromptsPage.tsx:1930","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/AdminPromptsPage.tsx:2013","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:1311"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:302","client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/discussion/DiscussionPanel.tsx:224","client/src/components/discussion/DiscussionTab.tsx:121","client/src/components/discussion/ReviewsTab.tsx:76","client/src/components/document/SectionView.tsx:385","client/src/components/document/SectionView.tsx:401","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/components/proposals/ProposalDecisionPanel.tsx:310","client/src/components/proposals/ProposalsTab.tsx:43","client/src/components/proposals/ProposeForm.tsx:177","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1894","client/src/pages/AdminPromptsPage.tsx:1921","client/src/pages/AdminPromptsPage.tsx:1930","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/AdminPromptsPage.tsx:2013","client/src/pages/BillingPage.tsx:326","client/src/pages/BillingPage.tsx:670","client/src/pages/SynthesisPage.tsx:1311"]
     },
     "common.logIn": {
       "ru": "Войти",
@@ -3815,7 +3815,7 @@
       "en": "Ready replacement",
       "de": "Fertiger Ersatz",
       "from": {"en":"Готовая замена","de":"Готовая замена"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:295","client/src/components/edit/RecommendationsPanel.tsx:460"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:312","client/src/components/edit/RecommendationsPanel.tsx:460"]
     },
     "common.reassembled": {
       "ru": "Пересобранная",
@@ -3836,7 +3836,7 @@
       "en": "Save",
       "de": "Speichern",
       "from": {"en":"Сохранить","de":"Сохранить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:365","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/discussion/CommentThread.tsx:130","client/src/components/document/DocumentHeader.tsx:408","client/src/components/document/SectionView.tsx:458","client/src/components/edit/ElementEditor.tsx:751","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:244","client/src/pages/ReviewPage.tsx:118"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:365","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/discussion/CommentThread.tsx:130","client/src/components/document/DocumentHeader.tsx:412","client/src/components/document/SectionView.tsx:458","client/src/components/edit/ElementEditor.tsx:751","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1985","client/src/pages/BillingPage.tsx:410","client/src/pages/ProfilePage.tsx:244","client/src/pages/ReviewPage.tsx:118"]
     },
     "common.saving": {
       "ru": "Сохранение…",
@@ -3872,7 +3872,7 @@
       "de": "Synthese nicht gefunden",
       "from": {"en":"Синтез не найден","de":"Синтез не найден"},
       "static": true,
-      "where": ["server/routes/generation.ts:163","server/routes/generation.ts:288","server/routes/plans.ts:84","server/routes/plans.ts:96","server/routes/plans.ts:190","server/routes/syntheses.ts:286","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1529","server/services/export/common.ts:50","server/services/generation-service.ts:672","server/services/generation-service.ts:3250","server/services/pause-resume-service.ts:551","server/services/pause-resume-service.ts:931","server/services/proposals.ts:129","server/services/recommendation-planner.ts:492","server/ws/handler.ts:152","server/ws/handler.ts:167","server/ws/handler.ts:499","server/ws/handler.ts:520","server/ws/handler.ts:526"]
+      "where": ["server/routes/generation.ts:163","server/routes/generation.ts:288","server/routes/plans.ts:84","server/routes/plans.ts:96","server/routes/plans.ts:190","server/routes/syntheses.ts:286","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1529","server/services/export/common.ts:50","server/services/generation-service.ts:672","server/services/generation-service.ts:3262","server/services/pause-resume-service.ts:551","server/services/pause-resume-service.ts:931","server/services/proposals.ts:129","server/services/recommendation-planner.ts:492","server/ws/handler.ts:152","server/ws/handler.ts:167","server/ws/handler.ts:499","server/ws/handler.ts:520","server/ws/handler.ts:526"]
     },
     "common.term": {
       "ru": "Термин",
@@ -5835,7 +5835,7 @@
       "en": "Author",
       "de": "Autor",
       "from": {"en":"Автор","de":"Автор"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:450"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:455"]
     },
     "document.documentHeader.basedOn": {
       "ru": "На основе: {philosophers}",
@@ -5859,63 +5859,63 @@
       "en": "PhiloSynth Pro™ · Philosophical Concept Synthesis",
       "de": "PhiloSynth Pro™ · Synthese eines philosophischen Konzepts",
       "from": {"en":"PhiloSynth Pro™ · Синтез Философской Концепции","de":"PhiloSynth Pro™ · Синтез Философской Концепции"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:249"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:253"]
     },
     "document.documentHeader.capsuleEditorsOnly": {
       "ru": "Капсулу могут менять только владелец и редакторы.",
       "en": "Only the owner and editors can change the capsule.",
       "de": "Die Kapsel können nur Eigentümer und Redakteure ändern.",
       "from": {"en":"Капсулу могут менять только владелец и редакторы.","de":"Капсулу могут менять только владелец и редакторы."},
-      "where": ["client/src/components/document/DocumentHeader.tsx:118"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:122"]
     },
     "document.documentHeader.capsuleEmpty": {
       "ru": "Капсула не может быть пустой.",
       "en": "The capsule cannot be empty.",
       "de": "Die Kapsel darf nicht leer sein.",
       "from": {"en":"Капсула не может быть пустой.","de":"Капсула не может быть пустой."},
-      "where": ["client/src/components/document/DocumentHeader.tsx:173"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:177"]
     },
     "document.documentHeader.capsuleHeading": {
       "ru": "◈ Капсула концепции",
       "en": "◈ Concept capsule",
       "de": "◈ Kapsel des Konzepts",
       "from": {"en":"◈ Капсула концепции","de":"◈ Капсула концепции"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:302"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:306"]
     },
     "document.documentHeader.capsuleHistory": {
       "ru": "История версий капсулы",
       "en": "Capsule version history",
       "de": "Versionsverlauf der Kapsel",
       "from": {"en":"История версий капсулы","de":"История версий капсулы"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:328"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:332"]
     },
     "document.documentHeader.capsuleLabel": {
       "ru": "Капсула",
       "en": "Capsule",
       "de": "Kapsel",
       "from": {"en":"Капсула","de":"Капсула"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:345"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:349"]
     },
     "document.documentHeader.capsuleLockedGenerating": {
       "ru": "Генерация ещё идёт — правка капсулы заблокирована.",
       "en": "Generation is still running — capsule editing is locked.",
       "de": "Die Generierung läuft noch — die Bearbeitung der Kapsel ist gesperrt.",
       "from": {"en":"Генерация ещё идёт — правка капсулы заблокирована.","de":"Генерация ещё идёт — правка капсулы заблокирована."},
-      "where": ["client/src/components/document/DocumentHeader.tsx:117"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:121"]
     },
     "document.documentHeader.capsuleLockedShort": {
       "ru": "Идёт генерация — правка капсулы заблокирована",
       "en": "Generation in progress — capsule editing is locked",
       "de": "Generierung läuft — Kapselbearbeitung gesperrt",
       "from": {"en":"Идёт генерация — правка капсулы заблокирована","de":"Идёт генерация — правка капсулы заблокирована"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:309"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:313"]
     },
     "document.documentHeader.capsuleSaveFailed": {
       "ru": "Не удалось сохранить капсулу.",
       "en": "Failed to save the capsule.",
       "de": "Kapsel konnte nicht gespeichert werden.",
       "from": {"en":"Не удалось сохранить капсулу.","de":"Не удалось сохранить капсулу."},
-      "where": ["client/src/components/document/DocumentHeader.tsx:115","client/src/components/document/DocumentHeader.tsx:124"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:119","client/src/components/document/DocumentHeader.tsx:128"]
     },
     "document.documentHeader.capsuleValue": {
       "ru": "Капсула: {capsule}",
@@ -5923,63 +5923,63 @@
       "de": "Kapsel: {capsule}",
       "from": {"en":"Капсула: {capsule}","de":"Капсула: {capsule}"},
       "params": {"capsule":"v"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:122"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:126"]
     },
     "document.documentHeader.compiledDate": {
       "ru": "Дата составления",
       "en": "Date compiled",
       "de": "Erstellungsdatum",
       "from": {"en":"Дата составления","de":"Дата составления"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:433"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:438"]
     },
     "document.documentHeader.conceptSeed": {
       "ru": "Зерно концепции",
       "en": "Concept seed",
       "de": "Keim des Konzepts",
       "from": {"en":"Зерно концепции","de":"Зерно концепции"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:291"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:295"]
     },
     "document.documentHeader.conceptTitleLabel": {
       "ru": "Название концепции:",
       "en": "Concept title:",
       "de": "Titel des Konzepts:",
       "from": {"en":"Название концепции:","de":"Название концепции:"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:228"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:232"]
     },
     "document.documentHeader.depth": {
       "ru": "Глубина",
       "en": "Depth",
       "de": "Tiefe",
       "from": {"en":"Глубина","de":"Глубина"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:441"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:446"]
     },
     "document.documentHeader.documentNo": {
       "ru": "Документ №",
       "en": "Document No.",
       "de": "Dokument Nr.",
       "from": {"en":"Документ №","de":"Документ №"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:429"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:434"]
     },
     "document.documentHeader.editCapsule": {
       "ru": "Редактировать капсулу",
       "en": "Edit capsule",
       "de": "Kapsel bearbeiten",
       "from": {"en":"Редактировать капсулу","de":"Редактировать капсулу"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:310"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:314"]
     },
     "document.documentHeader.editTitle": {
       "ru": "Редактировать название",
       "en": "Edit title",
       "de": "Titel bearbeiten",
       "from": {"en":"Редактировать название","de":"Редактировать название"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:257"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:261"]
     },
     "document.documentHeader.extraContext": {
       "ru": "Дополнительный контекст",
       "en": "Additional context",
       "de": "Zusätzlicher Kontext",
       "from": {"en":"Дополнительный контекст","de":"Дополнительный контекст"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:295"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:299"]
     },
     "document.documentHeader.freeSynthesisSeed": {
       "ru": "Свободный синтез (на основе зерна)",
@@ -5994,14 +5994,14 @@
       "en": "How the context of parent concepts enters the section prompts",
       "de": "Wie der Kontext der Eltern-Konzepte in die Abschnittsprompts gelangt",
       "from": {"en":"Как контекст концепций-родителей попадает в промпты разделов","de":"Как контекст концепций-родителей попадает в промпты разделов"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:275"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:279"]
     },
     "document.documentHeader.schemaMonolithic": {
       "ru": "◈ родительский контекст: монолитный (legacy)",
       "en": "◈ parent context: monolithic (legacy)",
       "de": "◈ Elternkontext: monolithisch (legacy)",
       "from": {"en":"◈ родительский контекст: монолитный (legacy)","de":"◈ родительский контекст: монолитный (legacy)"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:109"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:113"]
     },
     "document.documentHeader.schemaOther": {
       "ru": "◈ родительский контекст: {schema}",
@@ -6009,56 +6009,56 @@
       "de": "◈ Elternkontext: {schema}",
       "from": {"en":"◈ родительский контекст: {schema}","de":"◈ родительский контекст: {schema}"},
       "params": {"schema":""},
-      "where": ["client/src/components/document/DocumentHeader.tsx:110"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:114"]
     },
     "document.documentHeader.schemaSelective": {
       "ru": "◈ родительский контекст: селективный v1",
       "en": "◈ parent context: selective v1",
       "de": "◈ Elternkontext: selektiv v1",
       "from": {"en":"◈ родительский контекст: селективный v1","de":"◈ родительский контекст: селективный v1"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:107"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:111"]
     },
     "document.documentHeader.synthesisLevel": {
       "ru": "Уровень синтеза",
       "en": "Synthesis level",
       "de": "Syntheseebene",
       "from": {"en":"Уровень синтеза","de":"Уровень синтеза"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:445"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:450"]
     },
     "document.documentHeader.synthesisMethod": {
       "ru": "Метод синтеза",
       "en": "Synthesis method",
       "de": "Synthesemethode",
       "from": {"en":"Метод синтеза","de":"Метод синтеза"},
-      "where": ["client/src/components/document/DocumentHeader.tsx:437"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:442"]
     },
     "document.documentHeader.titleOwnerOnly": {
       "ru": "Название может менять только владелец синтеза.",
       "en": "Only the owner of the synthesis can change the title.",
       "de": "Den Titel kann nur der Eigentümer der Synthese ändern.",
       "from": {"en":"Название может менять только владелец синтеза.","de":"Название может менять только владелец синтеза."},
-      "where": ["client/src/components/document/DocumentHeader.tsx:240"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:244"]
     },
     "document.documentHeader.titleSaveFailed": {
       "ru": "Не удалось сохранить название.",
       "en": "Failed to save the title.",
       "de": "Titel konnte nicht gespeichert werden.",
       "from": {"en":"Не удалось сохранить название.","de":"Не удалось сохранить название."},
-      "where": ["client/src/components/document/DocumentHeader.tsx:241"]
+      "where": ["client/src/components/document/DocumentHeader.tsx:245"]
     },
     "document.documentView.showcase": {
       "ru": "Витрина",
       "en": "Showcase",
       "de": "Schaufenster",
       "from": {"en":"Витрина","de":"Витрина"},
-      "where": ["client/src/components/document/DocumentView.tsx:106"]
+      "where": ["client/src/components/document/DocumentView.tsx:107"]
     },
     "document.documentView.showcaseNote": {
       "ru": "Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора.",
       "en": "The author has opened only the showcase of this concept: the capsule, metadata and participants. Section bodies, the category graph, theses and glossary are closed to everyone except the author.",
       "de": "Der Autor hat nur das Schaufenster dieses Konzepts geöffnet: Kapsel, Metadaten und Teilnehmer. Abschnittstexte, Kategoriegraph, Thesen und Glossar sind für alle außer dem Autor geschlossen.",
       "from": {"en":"Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора.","de":"Автор открыл только витрину этой концепции: капсулу, метаданные и состав участников. Тела разделов, граф категорий, тезисы и глоссарий закрыты для всех, кроме автора."},
-      "where": ["client/src/components/document/DocumentView.tsx:107"]
+      "where": ["client/src/components/document/DocumentView.tsx:108"]
     },
     "document.sectionView.conflictAdvice": {
       "ru": "Запись не сделана — чужая правка не затёрта. Перечитайте: текущий текст появится рядом, ваше набранное останется в поле, и запись можно будет повторить.",
@@ -6890,7 +6890,7 @@
       "en": "cascade",
       "de": "Kaskade",
       "from": {"en":"каскад","de":"каскад"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:235"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:252"]
     },
     "edit.editPlanPanel.charsCost": {
       "ru": "{outputChars} симв. · ${costUsd}",
@@ -6898,14 +6898,14 @@
       "de": "{outputChars} Zeichen · ${costUsd}",
       "from": {"en":"{outputChars} симв. · ${costUsd}","de":"{outputChars} симв. · ${costUsd}"},
       "params": {"outputChars":"result.outputChars.toLocaleString(\"ru\")","costUsd":"result.costUsd.toFixed(4)"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:247"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:264"]
     },
     "edit.editPlanPanel.confirm": {
       "ru": "подтвердить",
       "en": "confirm",
       "de": "bestätigen",
       "from": {"en":"подтвердить","de":"подтвердить"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:264"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:281"]
     },
     "edit.editPlanPanel.deleteElement": {
       "ru": "Удалить элемент",
@@ -6933,7 +6933,7 @@
       "en": "free",
       "de": "kostenlos",
       "from": {"en":"бесплатно","de":"бесплатно"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:225"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:242"]
     },
     "edit.editPlanPanel.planTitle": {
       "ru": "План редактирования · {status}{estimatedCost}",
@@ -6941,21 +6941,21 @@
       "de": "Bearbeitungsplan · {status}{estimatedCost}",
       "from": {"en":"План редактирования · {status}{estimatedCost}","de":"План редактирования · {status}{estimatedCost}"},
       "params": {"status":"plan.status","estimatedCost":"plan.estimatedCost > 0 &&\n          ` · ≈ $${plan.estimatedCost.toFixed(4)} (${(plan.estimatedCost * 100).toFixed(2)}¢)`"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:164"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:181"]
     },
     "edit.editPlanPanel.proposalNoNum": {
       "ru": "предложение",
       "en": "proposal",
       "de": "Vorschlag",
       "from": {"en":"предложение","de":"предложение"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:210"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:227"]
     },
     "edit.editPlanPanel.proposalNote": {
       "ru": "Замечание-основание (уйдёт доводом шага)",
       "en": "Underlying note (goes to the step as its argument)",
       "de": "Zugrunde liegende Anmerkung (geht als Begründung in den Schritt)",
       "from": {"en":"Замечание-основание (уйдёт доводом шага)","de":"Замечание-основание (уйдёт доводом шага)"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:289"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:306"]
     },
     "edit.editPlanPanel.proposalNum": {
       "ru": "предложение № {num}",
@@ -6963,7 +6963,7 @@
       "de": "Vorschlag Nr. {num}",
       "from": {"en":"предложение № {num}","de":"предложение № {num}"},
       "params": {"num":""},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:210"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:227"]
     },
     "edit.editPlanPanel.recommendationRound": {
       "ru": "рекомендация {nums} · раунд {round}",
@@ -6971,7 +6971,7 @@
       "de": "Empfehlung {nums} · Runde {round}",
       "from": {"en":"рекомендация {nums} · раунд {round}","de":"рекомендация {nums} · раунд {round}"},
       "params": {"nums":"recs.map((r) => `№ ${r.num}`).join(\", \")","round":"recs[0]?.round"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:200"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:217"]
     },
     "edit.editPlanPanel.refineElement": {
       "ru": "Уточнить элемент",
@@ -6999,28 +6999,63 @@
       "en": "skip",
       "de": "überspringen",
       "from": {"en":"пропустить","de":"пропустить"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:273"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:290"]
     },
     "edit.editPlanPanel.skipNotOpen": {
       "ru": "снят: предложение уже не открыто",
       "en": "removed: the proposal is no longer open",
       "de": "entfernt: Der Vorschlag ist nicht mehr offen",
       "from": {"en":"снят: предложение уже не открыто","de":"снят: предложение уже не открыто"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:221"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:238"]
     },
     "edit.editPlanPanel.skipStale": {
       "ru": "снят: предложение устарело — документ изменился",
       "en": "removed: the proposal is outdated — the document has changed",
       "de": "entfernt: Der Vorschlag ist veraltet — das Dokument hat sich geändert",
       "from": {"en":"снят: предложение устарело — документ изменился","de":"снят: предложение устарело — документ изменился"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:220"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:237"]
+    },
+    "edit.editPlanPanel.statusDone": {
+      "ru": "исполнен",
+      "en": "done",
+      "de": "ausgeführt",
+      "from": {"en":"исполнен","de":"исполнен"},
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:143"]
+    },
+    "edit.editPlanPanel.statusDraft": {
+      "ru": "черновик",
+      "en": "draft",
+      "de": "Entwurf",
+      "from": {"en":"черновик","de":"черновик"},
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:137"]
+    },
+    "edit.editPlanPanel.statusExecuting": {
+      "ru": "исполняется",
+      "en": "executing",
+      "de": "wird ausgeführt",
+      "from": {"en":"исполняется","de":"исполняется"},
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:139"]
+    },
+    "edit.editPlanPanel.statusFailed": {
+      "ru": "прерван ошибкой",
+      "en": "failed with an error",
+      "de": "mit Fehler abgebrochen",
+      "from": {"en":"прерван ошибкой","de":"прерван ошибкой"},
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:145"]
+    },
+    "edit.editPlanPanel.statusPaused": {
+      "ru": "приостановлен",
+      "en": "paused",
+      "de": "pausiert",
+      "from": {"en":"приостановлен","de":"приостановлен"},
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:141"]
     },
     "edit.editPlanPanel.subsectionText": {
       "ru": "Текст, который будет вписан",
       "en": "Text to be inserted",
       "de": "Text, der eingefügt wird",
       "from": {"en":"Текст, который будет вписан","de":"Текст, который будет вписан"},
-      "where": ["client/src/components/edit/EditPlanPanel.tsx:283"]
+      "where": ["client/src/components/edit/EditPlanPanel.tsx:300"]
     },
     "edit.editSectionCard.compressedByParents": {
       "ru": " (сжат родителями)",
@@ -13439,7 +13474,7 @@
       "en": "deleted user",
       "de": "gelöschter Benutzer",
       "from": {"en":"удалённый пользователь","de":"удалённый пользователь"},
-      "where": ["server/services/discussion.ts:140","server/services/log-audience.ts:72","server/services/log-audience.ts:93","server/services/members.ts:152","server/services/members.ts:433","server/services/members.ts:528","server/services/notifications.ts:166"]
+      "where": ["server/services/discussion.ts:140","server/services/log-audience.ts:72","server/services/log-audience.ts:93","server/services/members.ts:152","server/services/members.ts:433","server/services/members.ts:528","server/services/notifications.ts:165"]
     },
     "server.discussion.finding": {
       "ru": "Замечание",
@@ -14718,7 +14753,7 @@
       "de": "Der Abschnitt „{sectionKey}“ hat keine strukturierten parts.",
       "from": {"en":"Раздел «{sectionKey}» не имеет структурированных parts.","de":"Раздел «{sectionKey}» не имеет структурированных parts."},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2530"]
+      "where": ["server/services/generation-service.ts:2534"]
     },
     "server.generationService.sectionExists": {
       "ru": "Раздел «{sectionKey}» уже есть в документе",
@@ -14726,7 +14761,7 @@
       "de": "Der Abschnitt „{sectionKey}“ ist bereits im Dokument",
       "from": {"en":"Раздел «{sectionKey}» уже есть в документе","de":"Раздел «{sectionKey}» уже есть в документе"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2997"]
+      "where": ["server/services/generation-service.ts:3007"]
     },
     "server.generationService.sectionMissing": {
       "ru": "Раздел «{sectionKey}» отсутствует в документе",
@@ -14742,7 +14777,7 @@
       "de": "Der Abschnitt „{sectionKey}“ wurde in den Definitionen nicht gefunden.",
       "from": {"en":"Раздел «{sectionKey}» не найден в определениях.","de":"Раздел «{sectionKey}» не найден в определениях."},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:2154","server/services/generation-service.ts:2802","server/services/generation-service.ts:3030"]
+      "where": ["server/services/generation-service.ts:2154","server/services/generation-service.ts:2808","server/services/generation-service.ts:3040"]
     },
     "server.generationService.sectionUndeletable": {
       "ru": "Раздел «{sectionKey}» нельзя удалить",
@@ -14750,7 +14785,7 @@
       "de": "Der Abschnitt „{sectionKey}“ kann nicht gelöscht werden",
       "from": {"en":"Раздел «{sectionKey}» нельзя удалить","de":"Раздел «{sectionKey}» нельзя удалить"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:3255"]
+      "where": ["server/services/generation-service.ts:3267"]
     },
     "server.generationService.unknownError": {
       "ru": "неизвестная ошибка",
@@ -14765,7 +14800,7 @@
       "de": "Unbekannter Abschnitt „{sectionKey}“",
       "from": {"en":"Неизвестный раздел «{sectionKey}»","de":"Неизвестный раздел «{sectionKey}»"},
       "params": {"sectionKey":"sectionKey"},
-      "where": ["server/services/generation-service.ts:3003"]
+      "where": ["server/services/generation-service.ts:3013"]
     },
     "server.importService.depthUnrecognized": {
       "ru": "Глубина не распознана (найдено: «{depthDisplay}»). Подставлена «Стандартная» по умолчанию.",
@@ -16220,14 +16255,14 @@
       "en": "editor",
       "de": "Redakteur",
       "from": {"en":"редактор","de":"редактор"},
-      "where": ["server/services/mail/templates.ts:160","server/services/notifications.ts:354"]
+      "where": ["server/services/mail/templates.ts:160","server/services/notifications.ts:347"]
     },
     "server.mail.templates.roleReviewer": {
       "ru": "рецензент",
       "en": "reviewer",
       "de": "Rezensent",
       "from": {"en":"рецензент","de":"рецензент"},
-      "where": ["server/services/mail/templates.ts:161","server/services/notifications.ts:355"]
+      "where": ["server/services/mail/templates.ts:161","server/services/notifications.ts:348"]
     },
     "server.mail.templates.verifyButton": {
       "ru": "Подтвердить адрес",
@@ -16371,63 +16406,63 @@
       "en": "” and “",
       "de": "“ und „",
       "from": {"en":"» и «","de":"» и «"},
-      "where": ["server/services/meta-synthesis-service.ts:421"]
+      "where": ["server/services/meta-synthesis-service.ts:420"]
     },
     "server.metaSynthesisService.conceptsLead": {
       "ru": "Концепции «",
       "en": "Concepts “",
       "de": "Die Konzepte „",
       "from": {"en":"Концепции «","de":"Концепции «"},
-      "where": ["server/services/meta-synthesis-service.ts:421"]
+      "where": ["server/services/meta-synthesis-service.ts:420"]
     },
     "server.metaSynthesisService.graphOrDialogue": {
       "ru": "graph или dialogue",
       "en": "graph or dialogue",
       "de": "graph oder dialogue",
       "from": {"en":"graph или dialogue","de":"graph или dialogue"},
-      "where": ["server/services/meta-synthesis-service.ts:289"]
+      "where": ["server/services/meta-synthesis-service.ts:292"]
     },
     "server.metaSynthesisService.haveCommonAncestors": {
       "ru": "» имеют общих предков: ",
       "en": "” have common ancestors: ",
       "de": "“ haben gemeinsame Vorfahren: ",
       "from": {"en":"» имеют общих предков: ","de":"» имеют общих предков: "},
-      "where": ["server/services/meta-synthesis-service.ts:422"]
+      "where": ["server/services/meta-synthesis-service.ts:421"]
     },
     "server.metaSynthesisService.influenceDoubled": {
       "ru": "». Их влияние будет удвоено.",
       "en": "”. Their influence will be doubled.",
       "de": "“. Ihr Einfluss wird verdoppelt.",
       "from": {"en":"». Их влияние будет удвоено.","de":"». Их влияние будет удвоено."},
-      "where": ["server/services/meta-synthesis-service.ts:446"]
+      "where": ["server/services/meta-synthesis-service.ts:445"]
     },
     "server.metaSynthesisService.mayDominate": {
       "ru": ". Это может привести к доминированию их позиций.",
       "en": ". This may lead to their positions dominating.",
       "de": ". Das kann zur Dominanz ihrer Positionen führen.",
       "from": {"en":". Это может привести к доминированию их позиций.","de":". Это может привести к доминированию их позиций."},
-      "where": ["server/services/meta-synthesis-service.ts:423"]
+      "where": ["server/services/meta-synthesis-service.ts:422"]
     },
     "server.metaSynthesisService.noCategoryGraph": {
       "ru": "нет графа категорий",
       "en": "no category graph",
       "de": "kein Kategoriegraph",
       "from": {"en":"нет графа категорий","de":"нет графа категорий"},
-      "where": ["server/services/meta-synthesis-service.ts:296"]
+      "where": ["server/services/meta-synthesis-service.ts:299"]
     },
     "server.metaSynthesisService.noDialogue": {
       "ru": "нет диалога",
       "en": "no dialogue",
       "de": "kein Dialog",
       "from": {"en":"нет диалога","de":"нет диалога"},
-      "where": ["server/services/meta-synthesis-service.ts:297"]
+      "where": ["server/services/meta-synthesis-service.ts:300"]
     },
     "server.metaSynthesisService.ofConcept": {
       "ru": "концепции «",
       "en": "of the concept “",
       "de": "des Konzepts „",
       "from": {"en":"концепции «","de":"концепции «"},
-      "where": ["server/services/meta-synthesis-service.ts:446"]
+      "where": ["server/services/meta-synthesis-service.ts:445"]
     },
     "server.metaSynthesisService.participantNotFound": {
       "ru": "Концепция-участник {synthesisId} не найдена",
@@ -16435,21 +16470,21 @@
       "de": "Teilnehmerkonzept {synthesisId} nicht gefunden",
       "from": {"en":"Концепция-участник {synthesisId} не найдена","de":"Концепция-участник {synthesisId} не найдена"},
       "params": {"synthesisId":"synthesisId"},
-      "where": ["server/services/meta-synthesis-service.ts:183","server/services/meta-synthesis-service.ts:274"]
+      "where": ["server/services/meta-synthesis-service.ts:186","server/services/meta-synthesis-service.ts:277"]
     },
     "server.metaSynthesisService.philosophersLead": {
       "ru": "Философ(ы) ",
       "en": "Philosopher(s) ",
       "de": "Philosoph(en) ",
       "from": {"en":"Философ(ы) ","de":"Философ(ы) "},
-      "where": ["server/services/meta-synthesis-service.ts:444"]
+      "where": ["server/services/meta-synthesis-service.ts:443"]
     },
     "server.metaSynthesisService.selectedAndInGenealogy": {
       "ru": " выбран(ы) для синтеза и одновременно присутствуют в генеалогии ",
       "en": " are selected for the synthesis and are also present in the genealogy ",
       "de": " für die Synthese gewählt und zugleich in der Genealogie vorhanden ",
       "from": {"en":" выбран(ы) для синтеза и одновременно присутствуют в генеалогии ","de":" выбран(ы) для синтеза и одновременно присутствуют в генеалогии "},
-      "where": ["server/services/meta-synthesis-service.ts:445"]
+      "where": ["server/services/meta-synthesis-service.ts:444"]
     },
     "server.metaSynthesisService.unsuitableConcept": {
       "ru": "Концепция «{name}» не пригодна для мета-синтеза. Отсутствуют разделы: {sections}",
@@ -16457,7 +16492,7 @@
       "de": "Konzept „{name}“ ist für die Meta-Synthese nicht geeignet. Fehlende Abschnitte: {sections}",
       "from": {"en":"Концепция «{name}» не пригодна для мета-синтеза. Отсутствуют разделы: {sections}","de":"Концепция «{name}» не пригодна для мета-синтеза. Отсутствуют разделы: {sections}"},
       "params": {"name":"","sections":""},
-      "where": ["server/services/meta-synthesis-service.ts:308"]
+      "where": ["server/services/meta-synthesis-service.ts:311"]
     },
     "server.middleware.adminOnly.adminRequired": {
       "ru": "Требуются права администратора",
@@ -16569,7 +16604,7 @@
       "en": "the concept as a whole",
       "de": "die Konzeption insgesamt",
       "from": {"en":"концепция в целом","de":"концепция в целом"},
-      "where": ["server/services/notifications.ts:341"]
+      "where": ["server/services/notifications.ts:336"]
     },
     "server.notifications.badCategory": {
       "ru": "Допустимы только: {list}",
@@ -16577,7 +16612,7 @@
       "de": "Zulässig nur: {list}",
       "from": {"en":"Допустимы только: {list}","de":"Допустимы только: {list}"},
       "params": {"list":""},
-      "where": ["server/services/notifications.ts:307"]
+      "where": ["server/services/notifications.ts:306"]
     },
     "server.notifications.commentNew": {
       "ru": "{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}",
@@ -16585,7 +16620,7 @@
       "de": "{who} hat „{addr}“ in der Konzeption „{title}“ kommentiert{excerpt}",
       "from": {"en":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}","de":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}"},
       "params": {"who":"","addr":"","title":"","excerpt":""},
-      "where": ["server/services/notifications.ts:370"]
+      "where": ["server/services/notifications.ts:363"]
     },
     "server.notifications.commentReply": {
       "ru": "{who} ответил в вашей ветке в концепции «{title}»{excerpt}",
@@ -16593,7 +16628,7 @@
       "de": "{who} hat in Ihrem Thread in der Konzeption „{title}“ geantwortet{excerpt}",
       "from": {"en":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}","de":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}"},
       "params": {"who":"","title":"","excerpt":""},
-      "where": ["server/services/notifications.ts:372"]
+      "where": ["server/services/notifications.ts:365"]
     },
     "server.notifications.findingOutdated": {
       "ru": "Объект «{addr}» вашего замечания в концепции «{title}» изменился",
@@ -16601,7 +16636,7 @@
       "de": "Das Objekt „{addr}“ Ihrer Anmerkung in der Konzeption „{title}“ hat sich geändert",
       "from": {"en":"Объект «{addr}» вашего замечания в концепции «{title}» изменился","de":"Объект «{addr}» вашего замечания в концепции «{title}» изменился"},
       "params": {"addr":"","title":""},
-      "where": ["server/services/notifications.ts:376"]
+      "where": ["server/services/notifications.ts:369"]
     },
     "server.notifications.memberAccepted": {
       "ru": "{who} принял приглашение в концепцию «{title}»",
@@ -16609,7 +16644,7 @@
       "de": "{who} hat die Einladung zur Konzeption „{title}“ angenommen",
       "from": {"en":"{who} принял приглашение в концепцию «{title}»","de":"{who} принял приглашение в концепцию «{title}»"},
       "params": {"who":"","title":""},
-      "where": ["server/services/notifications.ts:362"]
+      "where": ["server/services/notifications.ts:355"]
     },
     "server.notifications.memberDeclined": {
       "ru": "{who} отклонил приглашение в концепцию «{title}»",
@@ -16617,7 +16652,7 @@
       "de": "{who} hat die Einladung zur Konzeption „{title}“ abgelehnt",
       "from": {"en":"{who} отклонил приглашение в концепцию «{title}»","de":"{who} отклонил приглашение в концепцию «{title}»"},
       "params": {"who":"","title":""},
-      "where": ["server/services/notifications.ts:364"]
+      "where": ["server/services/notifications.ts:357"]
     },
     "server.notifications.memberInvited": {
       "ru": "{who} приглашает вас в концепцию «{title}» в роли «{role}»",
@@ -16625,7 +16660,7 @@
       "de": "{who} lädt Sie zur Konzeption „{title}“ in der Rolle „{role}“ ein",
       "from": {"en":"{who} приглашает вас в концепцию «{title}» в роли «{role}»","de":"{who} приглашает вас в концепцию «{title}» в роли «{role}»"},
       "params": {"who":"","title":"","role":""},
-      "where": ["server/services/notifications.ts:360"]
+      "where": ["server/services/notifications.ts:353"]
     },
     "server.notifications.memberRemoved": {
       "ru": "Вы исключены из участников концепции «{title}»",
@@ -16633,7 +16668,7 @@
       "de": "Sie wurden aus den Teilnehmern der Konzeption „{title}“ ausgeschlossen",
       "from": {"en":"Вы исключены из участников концепции «{title}»","de":"Вы исключены из участников концепции «{title}»"},
       "params": {"title":""},
-      "where": ["server/services/notifications.ts:368"]
+      "where": ["server/services/notifications.ts:361"]
     },
     "server.notifications.memberRoleChanged": {
       "ru": "Ваша роль в концепции «{title}» теперь «{role}»",
@@ -16641,21 +16676,21 @@
       "de": "Ihre Rolle in der Konzeption „{title}“ ist jetzt „{role}“",
       "from": {"en":"Ваша роль в концепции «{title}» теперь «{role}»","de":"Ваша роль в концепции «{title}» теперь «{role}»"},
       "params": {"title":"","role":""},
-      "where": ["server/services/notifications.ts:366"]
+      "where": ["server/services/notifications.ts:359"]
     },
     "server.notifications.mustBeBoolean": {
       "ru": "Должно быть true или false",
       "en": "Must be true or false",
       "de": "Muss true oder false sein",
       "from": {"en":"Должно быть true или false","de":"Должно быть true или false"},
-      "where": ["server/services/notifications.ts:315"]
+      "where": ["server/services/notifications.ts:314"]
     },
     "server.notifications.nothingToChange": {
       "ru": "Нечего менять",
       "en": "Nothing to change",
       "de": "Nichts zu ändern",
       "from": {"en":"Нечего менять","de":"Нечего менять"},
-      "where": ["server/services/notifications.ts:322"]
+      "where": ["server/services/notifications.ts:321"]
     },
     "server.notifications.proposalCreated": {
       "ru": "{who} предложил изменение в концепции «{title}»",
@@ -16663,7 +16698,7 @@
       "de": "{who} hat eine Änderung in der Konzeption „{title}“ vorgeschlagen",
       "from": {"en":"{who} предложил изменение в концепции «{title}»","de":"{who} предложил изменение в концепции «{title}»"},
       "params": {"who":"","title":""},
-      "where": ["server/services/notifications.ts:378"]
+      "where": ["server/services/notifications.ts:371"]
     },
     "server.notifications.proposalDecided": {
       "ru": "По вашему предложению в концепции «{title}» принято решение",
@@ -16671,7 +16706,7 @@
       "de": "Über Ihren Vorschlag in der Konzeption „{title}“ wurde entschieden",
       "from": {"en":"По вашему предложению в концепции «{title}» принято решение","de":"По вашему предложению в концепции «{title}» принято решение"},
       "params": {"title":""},
-      "where": ["server/services/notifications.ts:380"]
+      "where": ["server/services/notifications.ts:373"]
     },
     "server.notifications.reviewPublished": {
       "ru": "{who} опубликовал рецензию на концепцию «{title}»{excerpt}",
@@ -16679,14 +16714,14 @@
       "de": "{who} hat eine Rezension der Konzeption „{title}“ veröffentlicht{excerpt}",
       "from": {"en":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}","de":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}"},
       "params": {"who":"","title":"","excerpt":""},
-      "where": ["server/services/notifications.ts:374"]
+      "where": ["server/services/notifications.ts:367"]
     },
     "server.notifications.someone": {
       "ru": "кто-то",
       "en": "someone",
       "de": "jemand",
       "from": {"en":"кто-то","de":"кто-то"},
-      "where": ["server/services/notifications.ts:350"]
+      "where": ["server/services/notifications.ts:343"]
     },
     "server.parseWarnings.graphDirUnknown": {
       "ru": "таблица связей, строка {row} («{src}» → «{tgt}»): направление «{dir}» не опознано (ожидается {expected}) — подставлено «{fallback}»",
@@ -18205,7 +18240,7 @@
       "en": "Compatibility analysis unavailable",
       "de": "Kompatibilitätsanalyse nicht verfügbar",
       "from": {"en":"Анализ совместимости недоступен","de":"Анализ совместимости недоступен"},
-      "where": ["server/routes/syntheses.ts:1104"]
+      "where": ["server/routes/syntheses.ts:1103"]
     },
     "server.routes.syntheses.conceptNotFound": {
       "ru": "концепция {cid} не найдена",
@@ -18213,7 +18248,7 @@
       "de": "Konzept {cid} nicht gefunden",
       "from": {"en":"концепция {cid} не найдена","de":"концепция {cid} не найдена"},
       "params": {"cid":"cid"},
-      "where": ["server/routes/syntheses.ts:842"]
+      "where": ["server/routes/syntheses.ts:841"]
     },
     "server.routes.syntheses.copySuffix": {
       "ru": "{title} (копия)",
@@ -18221,56 +18256,56 @@
       "de": "{title} (Kopie)",
       "from": {"en":"{title} (копия)","de":"{title} (копия)"},
       "params": {"title":"row.title"},
-      "where": ["server/routes/syntheses.ts:1721"]
+      "where": ["server/routes/syntheses.ts:1720"]
     },
     "server.routes.syntheses.duplicateParticipants": {
       "ru": "участники-концепции не должны повторяться",
       "en": "participant concepts must not repeat",
       "de": "Teilnehmerkonzepte dürfen sich nicht wiederholen",
       "from": {"en":"участники-концепции не должны повторяться","de":"участники-концепции не должны повторяться"},
-      "where": ["server/routes/syntheses.ts:830"]
+      "where": ["server/routes/syntheses.ts:829"]
     },
     "server.routes.syntheses.estimateUnavailable": {
       "ru": "Оценка стоимости недоступна",
       "en": "Cost estimate unavailable",
       "de": "Kostenschätzung nicht verfügbar",
       "from": {"en":"Оценка стоимости недоступна","de":"Оценка стоимости недоступна"},
-      "where": ["server/routes/syntheses.ts:1358"]
+      "where": ["server/routes/syntheses.ts:1357"]
     },
     "server.routes.syntheses.fieldRequired": {
       "ru": "Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta",
       "en": "At least one of the fields title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta is required",
       "de": "Mindestens eines der Felder title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta ist erforderlich",
       "from": {"en":"Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta","de":"Нужно хотя бы одно из полей title, extGraphMetrics, visibility, showAuthor, showLogs, showPrompts, allowMeta"},
-      "where": ["server/routes/syntheses.ts:1608"]
+      "where": ["server/routes/syntheses.ts:1607"]
     },
     "server.routes.syntheses.invalidEstimateParams": {
       "ru": "Невалидные параметры оценки",
       "en": "Invalid estimate parameters",
       "de": "Ungültige Parameter der Schätzung",
       "from": {"en":"Невалидные параметры оценки","de":"Невалидные параметры оценки"},
-      "where": ["server/routes/syntheses.ts:1322"]
+      "where": ["server/routes/syntheses.ts:1321"]
     },
     "server.routes.syntheses.invalidParams": {
       "ru": "Невалидные параметры",
       "en": "Invalid parameters",
       "de": "Ungültige Parameter",
       "from": {"en":"Невалидные параметры","de":"Невалидные параметры"},
-      "where": ["server/routes/search.ts:195","server/routes/similar.ts:55","server/routes/syntheses.ts:1078","server/routes/syntheses.ts:1409","server/routes/syntheses.ts:1422","server/routes/syntheses.ts:1600"]
+      "where": ["server/routes/search.ts:195","server/routes/similar.ts:55","server/routes/syntheses.ts:1077","server/routes/syntheses.ts:1408","server/routes/syntheses.ts:1421","server/routes/syntheses.ts:1599"]
     },
     "server.routes.syntheses.invalidSynthesisParams": {
       "ru": "Невалидные параметры синтеза",
       "en": "Invalid synthesis parameters",
       "de": "Ungültige Syntheseparameter",
       "from": {"en":"Невалидные параметры синтеза","de":"Невалидные параметры синтеза"},
-      "where": ["server/routes/syntheses.ts:807","server/routes/syntheses.ts:828","server/routes/syntheses.ts:840"]
+      "where": ["server/routes/syntheses.ts:806","server/routes/syntheses.ts:827","server/routes/syntheses.ts:839"]
     },
     "server.routes.syntheses.knownSectionKeysArrayExpected": {
       "ru": "массив известных ключей разделов",
       "en": "an array of known section keys",
       "de": "ein Array bekannter Abschnittsschlüssel",
       "from": {"en":"массив известных ключей разделов","de":"массив известных ключей разделов"},
-      "where": ["server/routes/syntheses.ts:1074"]
+      "where": ["server/routes/syntheses.ts:1073"]
     },
     "server.routes.syntheses.metaForbidden": {
       "ru": "Автор концепции «{title}» не разрешил использовать её в мета-синтезе",
@@ -18285,63 +18320,63 @@
       "en": "No access to a participant concept",
       "de": "Kein Zugriff auf das Teilnehmerkonzept",
       "from": {"en":"Нет доступа к концепции-участнику","de":"Нет доступа к концепции-участнику"},
-      "where": ["server/routes/syntheses.ts:850"]
+      "where": ["server/routes/syntheses.ts:849"]
     },
     "server.routes.syntheses.nonEmptyString": {
       "ru": "непустая строка",
       "en": "non-empty string",
       "de": "nichtleere Zeichenkette",
       "from": {"en":"непустая строка","de":"непустая строка"},
-      "where": ["server/routes/syntheses.ts:1567"]
+      "where": ["server/routes/syntheses.ts:1566"]
     },
     "server.routes.syntheses.participantArrayExpected": {
       "ru": "массив ParticipantInput",
       "en": "an array of ParticipantInput",
       "de": "ein Array von ParticipantInput",
       "from": {"en":"массив ParticipantInput","de":"массив ParticipantInput"},
-      "where": ["server/routes/syntheses.ts:734"]
+      "where": ["server/routes/syntheses.ts:733"]
     },
     "server.routes.syntheses.participantShape": {
       "ru": "элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}",
       "en": "items {type:'philosopher', name} | {type:'synthesis', synthesisId}",
       "de": "Elemente {type:'philosopher', name} | {type:'synthesis', synthesisId}",
       "from": {"en":"элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}","de":"элементы {type:'philosopher', name} | {type:'synthesis', synthesisId}"},
-      "where": ["server/routes/syntheses.ts:748"]
+      "where": ["server/routes/syntheses.ts:747"]
     },
     "server.routes.syntheses.participantSynthesisIdRequired": {
       "ru": "участник synthesis требует synthesisId (UUID)",
       "en": "a synthesis participant requires synthesisId (UUID)",
       "de": "ein Teilnehmer vom Typ synthesis braucht synthesisId (UUID)",
       "from": {"en":"участник synthesis требует synthesisId (UUID)","de":"участник synthesis требует synthesisId (UUID)"},
-      "where": ["server/routes/syntheses.ts:742"]
+      "where": ["server/routes/syntheses.ts:741"]
     },
     "server.routes.syntheses.participantUnsuitable": {
       "ru": "Концепция-участник непригодна для мета-синтеза",
       "en": "A participant concept is unsuitable for meta-synthesis",
       "de": "Das Teilnehmerkonzept ist für die Meta-Synthese ungeeignet",
       "from": {"en":"Концепция-участник непригодна для мета-синтеза","de":"Концепция-участник непригодна для мета-синтеза"},
-      "where": ["server/routes/syntheses.ts:866"]
+      "where": ["server/routes/syntheses.ts:865"]
     },
     "server.routes.syntheses.publicFlagRemoved": {
       "ru": "снят в 8.7 — используйте visibility",
       "en": "removed in 8.7 — use visibility",
       "de": "in 8.7 entfernt — visibility verwenden",
       "from": {"en":"снят в 8.7 — используйте visibility","de":"снят в 8.7 — используйте visibility"},
-      "where": ["server/routes/syntheses.ts:1586"]
+      "where": ["server/routes/syntheses.ts:1585"]
     },
     "server.routes.syntheses.sectionKeysArrayExpected": {
       "ru": "массив ключей разделов",
       "en": "an array of section keys",
       "de": "ein Array von Abschnittsschlüsseln",
       "from": {"en":"массив ключей разделов","de":"массив ключей разделов"},
-      "where": ["server/routes/syntheses.ts:771","server/routes/syntheses.ts:1307"]
+      "where": ["server/routes/syntheses.ts:770","server/routes/syntheses.ts:1306"]
     },
     "server.routes.syntheses.seedRequiredWithoutParticipants": {
       "ru": "обязателен при пустых philosophers/participants",
       "en": "required when philosophers/participants are empty",
       "de": "erforderlich, wenn philosophers/participants leer sind",
       "from": {"en":"обязателен при пустых philosophers/participants","de":"обязателен при пустых philosophers/participants"},
-      "where": ["server/routes/syntheses.ts:765"]
+      "where": ["server/routes/syntheses.ts:764"]
     },
     "server.routes.syntheses.showcaseOnly": {
       "ru": "Концепция открыта витриной: доступны капсула и метаданные, содержание — нет",
@@ -18356,63 +18391,63 @@
       "en": "Failed to start the generation",
       "de": "Generierung konnte nicht gestartet werden",
       "from": {"en":"Не удалось запустить генерацию","de":"Не удалось запустить генерацию"},
-      "where": ["server/routes/syntheses.ts:1012"]
+      "where": ["server/routes/syntheses.ts:1011"]
     },
     "server.routes.syntheses.stillGenerating": {
       "ru": "Синтез ещё генерируется — дождитесь завершения",
       "en": "The synthesis is still being generated — wait for it to finish",
       "de": "Die Synthese wird noch generiert — warten Sie auf den Abschluss",
       "from": {"en":"Синтез ещё генерируется — дождитесь завершения","de":"Синтез ещё генерируется — дождитесь завершения"},
-      "where": ["server/routes/syntheses.ts:1694"]
+      "where": ["server/routes/syntheses.ts:1693"]
     },
     "server.routes.syntheses.stopBeforeDelete": {
       "ru": "Генерация ещё идёт — остановите её перед удалением",
       "en": "Generation is still running — stop it before deleting",
       "de": "Die Generierung läuft noch — stoppen Sie sie vor dem Löschen",
       "from": {"en":"Генерация ещё идёт — остановите её перед удалением","de":"Генерация ещё идёт — остановите её перед удалением"},
-      "where": ["server/routes/syntheses.ts:1662"]
+      "where": ["server/routes/syntheses.ts:1661"]
     },
     "server.routes.syntheses.stringArrayExpected": {
       "ru": "массив строк",
       "en": "an array of strings",
       "de": "ein Array von Zeichenketten",
       "from": {"en":"массив строк","de":"массив строк"},
-      "where": ["server/routes/syntheses.ts:726"]
+      "where": ["server/routes/syntheses.ts:725"]
     },
     "server.routes.syntheses.titleMax300": {
       "ru": "не длиннее 300 символов",
       "en": "at most 300 characters",
       "de": "höchstens 300 Zeichen",
       "from": {"en":"не длиннее 300 символов","de":"не длиннее 300 символов"},
-      "where": ["server/routes/syntheses.ts:1569"]
+      "where": ["server/routes/syntheses.ts:1568"]
     },
     "server.routes.syntheses.unknownDepth": {
       "ru": "неизвестная глубина",
       "en": "unknown depth",
       "de": "unbekannte Tiefe",
       "from": {"en":"неизвестная глубина","de":"неизвестная глубина"},
-      "where": ["server/routes/syntheses.ts:785","server/routes/syntheses.ts:1315"]
+      "where": ["server/routes/syntheses.ts:784","server/routes/syntheses.ts:1314"]
     },
     "server.routes.syntheses.unknownLevel": {
       "ru": "неизвестный уровень",
       "en": "unknown level",
       "de": "unbekannte Ebene",
       "from": {"en":"неизвестный уровень","de":"неизвестный уровень"},
-      "where": ["server/routes/syntheses.ts:783","server/routes/syntheses.ts:1065","server/routes/syntheses.ts:1313"]
+      "where": ["server/routes/syntheses.ts:782","server/routes/syntheses.ts:1064","server/routes/syntheses.ts:1312"]
     },
     "server.routes.syntheses.unknownMethod": {
       "ru": "неизвестный метод",
       "en": "unknown method",
       "de": "unbekannte Methode",
       "from": {"en":"неизвестный метод","de":"неизвестный метод"},
-      "where": ["server/routes/syntheses.ts:781","server/routes/syntheses.ts:1063","server/routes/syntheses.ts:1311","server/routes/syntheses.ts:1424"]
+      "where": ["server/routes/syntheses.ts:780","server/routes/syntheses.ts:1062","server/routes/syntheses.ts:1310","server/routes/syntheses.ts:1423"]
     },
     "server.routes.syntheses.unknownSections": {
       "ru": "неизвестные разделы",
       "en": "unknown sections",
       "de": "unbekannte Abschnitte",
       "from": {"en":"неизвестные разделы","de":"неизвестные разделы"},
-      "where": ["server/routes/syntheses.ts:1304"]
+      "where": ["server/routes/syntheses.ts:1303"]
     },
     "server.routes.syntheses.unknownSectionsList": {
       "ru": "неизвестные разделы: {keys}",
@@ -18420,7 +18455,7 @@
       "de": "unbekannte Abschnitte: {keys}",
       "from": {"en":"неизвестные разделы: {keys}","de":"неизвестные разделы: {keys}"},
       "params": {"keys":""},
-      "where": ["server/routes/syntheses.ts:776"]
+      "where": ["server/routes/syntheses.ts:775"]
     },
     "server.routes.taxonomy.categoryTypeNotFound": {
       "ru": "Тип категории не найден",
@@ -22870,7 +22905,7 @@
       "en": "the concept as a whole",
       "de": "die Konzeption insgesamt",
       "from": {"en":"концепция в целом","de":"концепция в целом"},
-      "where": ["client/src/utils/notification-text.ts:18"]
+      "where": ["client/src/utils/notification-text.ts:16"]
     },
     "utils.notificationText.commentNew": {
       "ru": "{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}",
@@ -22878,7 +22913,7 @@
       "de": "{who} hat „{addr}“ in der Konzeption „{title}“ kommentiert{excerpt}",
       "from": {"en":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}","de":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}"},
       "params": {"who":"","addr":"","title":"","excerpt":""},
-      "where": ["client/src/utils/notification-text.ts:39"]
+      "where": ["client/src/utils/notification-text.ts:37"]
     },
     "utils.notificationText.commentReply": {
       "ru": "{who} ответил в вашей ветке в концепции «{title}»{excerpt}",
@@ -22886,7 +22921,7 @@
       "de": "{who} hat in Ihrem Thread in der Konzeption „{title}“ geantwortet{excerpt}",
       "from": {"en":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}","de":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}"},
       "params": {"who":"","title":"","excerpt":""},
-      "where": ["client/src/utils/notification-text.ts:41"]
+      "where": ["client/src/utils/notification-text.ts:39"]
     },
     "utils.notificationText.findingOutdated": {
       "ru": "Объект «{addr}» вашего замечания в концепции «{title}» изменился",
@@ -22894,7 +22929,7 @@
       "de": "Das Objekt „{addr}“ Ihrer Anmerkung in der Konzeption „{title}“ hat sich geändert",
       "from": {"en":"Объект «{addr}» вашего замечания в концепции «{title}» изменился","de":"Объект «{addr}» вашего замечания в концепции «{title}» изменился"},
       "params": {"addr":"","title":""},
-      "where": ["client/src/utils/notification-text.ts:45"]
+      "where": ["client/src/utils/notification-text.ts:43"]
     },
     "utils.notificationText.memberAccepted": {
       "ru": "{who} принял приглашение в концепцию «{title}»",
@@ -22902,7 +22937,7 @@
       "de": "{who} hat die Einladung zur Konzeption „{title}“ angenommen",
       "from": {"en":"{who} принял приглашение в концепцию «{title}»","de":"{who} принял приглашение в концепцию «{title}»"},
       "params": {"who":"","title":""},
-      "where": ["client/src/utils/notification-text.ts:31"]
+      "where": ["client/src/utils/notification-text.ts:29"]
     },
     "utils.notificationText.memberDeclined": {
       "ru": "{who} отклонил приглашение в концепцию «{title}»",
@@ -22910,7 +22945,7 @@
       "de": "{who} hat die Einladung zur Konzeption „{title}“ abgelehnt",
       "from": {"en":"{who} отклонил приглашение в концепцию «{title}»","de":"{who} отклонил приглашение в концепцию «{title}»"},
       "params": {"who":"","title":""},
-      "where": ["client/src/utils/notification-text.ts:33"]
+      "where": ["client/src/utils/notification-text.ts:31"]
     },
     "utils.notificationText.memberInvited": {
       "ru": "{who} приглашает вас в концепцию «{title}» в роли «{role}»",
@@ -22918,7 +22953,7 @@
       "de": "{who} lädt Sie zur Konzeption „{title}“ in der Rolle „{role}“ ein",
       "from": {"en":"{who} приглашает вас в концепцию «{title}» в роли «{role}»","de":"{who} приглашает вас в концепцию «{title}» в роли «{role}»"},
       "params": {"who":"","title":"","role":""},
-      "where": ["client/src/utils/notification-text.ts:29"]
+      "where": ["client/src/utils/notification-text.ts:27"]
     },
     "utils.notificationText.memberRemoved": {
       "ru": "Вы исключены из участников концепции «{title}»",
@@ -22926,7 +22961,7 @@
       "de": "Sie wurden aus den Teilnehmern der Konzeption „{title}“ ausgeschlossen",
       "from": {"en":"Вы исключены из участников концепции «{title}»","de":"Вы исключены из участников концепции «{title}»"},
       "params": {"title":""},
-      "where": ["client/src/utils/notification-text.ts:37"]
+      "where": ["client/src/utils/notification-text.ts:35"]
     },
     "utils.notificationText.memberRoleChanged": {
       "ru": "Ваша роль в концепции «{title}» теперь «{role}»",
@@ -22934,7 +22969,7 @@
       "de": "Ihre Rolle in der Konzeption „{title}“ ist jetzt „{role}“",
       "from": {"en":"Ваша роль в концепции «{title}» теперь «{role}»","de":"Ваша роль в концепции «{title}» теперь «{role}»"},
       "params": {"title":"","role":""},
-      "where": ["client/src/utils/notification-text.ts:35"]
+      "where": ["client/src/utils/notification-text.ts:33"]
     },
     "utils.notificationText.proposalAccepted": {
       "ru": "Ваше предложение в концепции «{title}» принято: план исполнен",
@@ -22942,7 +22977,7 @@
       "de": "Ihr Vorschlag im Konzept „{title}“ wurde angenommen: Der Plan ist ausgeführt",
       "from": {"en":"Ваше предложение в концепции «{title}» принято: план исполнен","de":"Ваше предложение в концепции «{title}» принято: план исполнен"},
       "params": {"title":""},
-      "where": ["client/src/utils/notification-text.ts:61"]
+      "where": ["client/src/utils/notification-text.ts:59"]
     },
     "utils.notificationText.proposalClosed": {
       "ru": "Ваше предложение в концепции «{title}» закрыто",
@@ -22950,7 +22985,7 @@
       "de": "Ihr Vorschlag im Konzept „{title}“ wurde geschlossen",
       "from": {"en":"Ваше предложение в концепции «{title}» закрыто","de":"Ваше предложение в концепции «{title}» закрыто"},
       "params": {"title":""},
-      "where": ["client/src/utils/notification-text.ts:65"]
+      "where": ["client/src/utils/notification-text.ts:63"]
     },
     "utils.notificationText.proposalCreated": {
       "ru": "{who} предложил изменение в концепции «{title}»",
@@ -22958,7 +22993,7 @@
       "de": "{who} hat eine Änderung in der Konzeption „{title}“ vorgeschlagen",
       "from": {"en":"{who} предложил изменение в концепции «{title}»","de":"{who} предложил изменение в концепции «{title}»"},
       "params": {"who":"","title":""},
-      "where": ["client/src/utils/notification-text.ts:49"]
+      "where": ["client/src/utils/notification-text.ts:47"]
     },
     "utils.notificationText.proposalDecided": {
       "ru": "По вашему предложению в концепции «{title}» принято решение",
@@ -22966,28 +23001,28 @@
       "de": "Über Ihren Vorschlag in der Konzeption „{title}“ wurde entschieden",
       "from": {"en":"По вашему предложению в концепции «{title}» принято решение","de":"По вашему предложению в концепции «{title}» принято решение"},
       "params": {"title":""},
-      "where": ["client/src/utils/notification-text.ts:66"]
+      "where": ["client/src/utils/notification-text.ts:64"]
     },
     "utils.notificationText.proposalKindNote": {
       "ru": " (замечание)",
       "en": " (note)",
       "de": " (Anmerkung)",
       "from": {"en":" (замечание)","de":" (замечание)"},
-      "where": ["client/src/utils/notification-text.ts:51"]
+      "where": ["client/src/utils/notification-text.ts:49"]
     },
     "utils.notificationText.proposalKindReplace": {
       "ru": " (готовая замена)",
       "en": " (ready replacement)",
       "de": " (fertiger Ersatz)",
       "from": {"en":" (готовая замена)","de":" (готовая замена)"},
-      "where": ["client/src/utils/notification-text.ts:53"]
+      "where": ["client/src/utils/notification-text.ts:51"]
     },
     "utils.notificationText.proposalRebased": {
       "ru": " — поверх текущего, взамен устаревшего",
       "en": " — on top of the current state, replacing an outdated one",
       "de": " — auf aktuellem Stand, anstelle eines veralteten",
       "from": {"en":" — поверх текущего, взамен устаревшего","de":" — поверх текущего, взамен устаревшего"},
-      "where": ["client/src/utils/notification-text.ts:55"]
+      "where": ["client/src/utils/notification-text.ts:53"]
     },
     "utils.notificationText.proposalRejected": {
       "ru": "Ваше предложение в концепции «{title}» отклонено",
@@ -22995,7 +23030,7 @@
       "de": "Ihr Vorschlag im Konzept „{title}“ wurde abgelehnt",
       "from": {"en":"Ваше предложение в концепции «{title}» отклонено","de":"Ваше предложение в концепции «{title}» отклонено"},
       "params": {"title":""},
-      "where": ["client/src/utils/notification-text.ts:63"]
+      "where": ["client/src/utils/notification-text.ts:61"]
     },
     "utils.notificationText.reviewPublished": {
       "ru": "{who} опубликовал рецензию на концепцию «{title}»{excerpt}",
@@ -23003,14 +23038,14 @@
       "de": "{who} hat eine Rezension der Konzeption „{title}“ veröffentlicht{excerpt}",
       "from": {"en":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}","de":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}"},
       "params": {"who":"","title":"","excerpt":""},
-      "where": ["client/src/utils/notification-text.ts:43"]
+      "where": ["client/src/utils/notification-text.ts:41"]
     },
     "utils.notificationText.someone": {
       "ru": "кто-то",
       "en": "someone",
       "de": "jemand",
       "from": {"en":"кто-то","de":"кто-то"},
-      "where": ["client/src/utils/notification-text.ts:23"]
+      "where": ["client/src/utils/notification-text.ts:21"]
     },
     "utils.proposals.acceptedEditElement": {
       "ru": "значение вписано",

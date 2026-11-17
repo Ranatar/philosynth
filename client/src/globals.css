@@ -3861,6 +3861,20 @@ font-size: 14px;
   text-decoration: none;
 }
 
+/* Знак «PhiloSynth Pro™» в .topbar — ссылка «домой» (правка 2026-11-17:
+   полная .site-header с вордмарком осталась только на стартовой). Цвет —
+   как у текста полосы (span исходника), наведение — акцент --gold-light */
+.app-topbar-brand {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.app-topbar-brand:hover {
+  color: var(--gold-light);
+  text-decoration: none;
+}
+
 /* Строка справа в .topbar исходника — статичный текст (opacity .5);
    у сервиса в ней интерактивные элементы, поэтому парная метка
    .app-topbar-right поднимает непрозрачность. Само правило исходника
@@ -4202,9 +4216,14 @@ font-size: 14px;
     margin: 4px 0 0;
   }
 
-  /* Кнопка «✎ Редактировать» в тёмной панели узла графа */
+  /* Кнопка «✎ Редактировать» в тёмной панели узла графа; столбец с
+     зазором — для кнопки опасного действия и записки второго шага в
+     панели связи (примитивы кита писаны под светлый .input-form) */
   .gm-panel-edit-row {
     margin: 0 0 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .gm-panel-edit-btn {
@@ -4873,13 +4892,7 @@ font-size: 14px;
   }
 
   /* Тёмная панель связи графа: кнопка опасного действия и записка
-     второго шага (примитивы кита писаны под светлый .input-form) */
-  .gm-panel-edit-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
+     второго шага (строка .gm-panel-edit-row — выше, при «✎ Редактировать») */
   .gm-panel-edit-btn.danger {
     border-color: var(--red);
     color: rgba(255, 255, 255, 0.7);
@@ -6467,8 +6480,10 @@ font-size: 14px;
  *     необратимо. Новых hex нет, углы прямые, теней нет.
  * ══════════════════════════════════════════════════════════════════ */
 @layer components {
-  /* (1) группа кнопок удаления элемента — вправо */
-  .element-delete {
+  /* (1) группа кнопок удаления элемента — вправо; так же — в карточке
+     правки подраздела (3) */
+  .element-delete,
+  .subsection-delete {
     margin-left: auto;
     display: inline-flex;
     gap: 6px;
@@ -6485,13 +6500,8 @@ font-size: 14px;
     margin-bottom: 6px;
   }
 
-  /* (3) карточка правки подраздела */
-  .subsection-delete {
-    margin-left: auto;
-    display: inline-flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
+  /* (3) карточка правки подраздела: группа .subsection-delete — общим
+     правилом с (1) */
 
   /* (4) строка шага удаления в панели плана */
   .plan-step-delete > div:first-child {
@@ -7037,10 +7047,7 @@ font-size: 14px;
   .discuss-block {
     margin-bottom: 20px;
   }
-  .discuss-beside {
-    border-top: 1px solid var(--rule);
-    padding-top: 12px;
-  }
+  .discuss-beside,
   .discuss-compose {
     border-top: 1px solid var(--rule);
     padding-top: 12px;
@@ -7921,7 +7928,8 @@ font-size: 14px;
     text-transform: uppercase;
     color: var(--gold);
   }
-  .similar-note {
+  .similar-note,
+  .similar-reason-key {
     font-family: var(--mono);
     font-size: 9px;
     letter-spacing: 1.5px;
@@ -8007,13 +8015,6 @@ font-size: 14px;
     gap: 10px;
     align-items: baseline;
   }
-  .similar-reason-key {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-  }
   .similar-reason-val {
     font-size: 12px;
     line-height: 1.6;
@@ -8062,6 +8063,25 @@ font-size: 14px;
   }
   .similar-card {
     padding: 12px 14px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Ссылка «◈ Потомки этой концепции в каталоге» под генеалогическим
+ * древом. В исходнике её нет (фильтр потомков — 8.7); древо выводится в
+ * тёмной шапке документа (#docHeaderExtras), где ссылка с базовым
+ * цветом --blue-mid сливалась с фоном. Цвет — акцент шапки исходника
+ * (.doc-meta-val.gold → --gold-light), типографика — .doc-meta-key.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  .header-disclosure-genealogy .genealogy-descendants a {
+    color: var(--gold-light);
+    opacity: 0.8;
+    transition: opacity 0.15s;
+  }
+  .header-disclosure-genealogy .genealogy-descendants a:hover {
+    opacity: 1;
   }
 }
 

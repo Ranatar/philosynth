@@ -72,7 +72,7 @@ import { getModes } from "../../api/modes";
 
 import { AddSectionPanel } from "./AddSectionPanel";
 import { CascadePanel } from "./CascadePanel";
-import { EditPlanPanel } from "./EditPlanPanel";
+import { EditPlanPanel, planStatusLabel } from "./EditPlanPanel";
 import { EditSectionCard } from "./EditSectionCard";
 import { ModeResultsPanel } from "./ModeResultsPanel";
 import { TransformHistory } from "./TransformHistory";
@@ -472,7 +472,7 @@ export function EditModal({
       ? tl("edit.editModal.execute", "▶ Исполнить")
       : plan.status === "executing"
         ? tl("edit.editModal.executing", "Исполняется…")
-        : plan.status;
+        : planStatusLabel(plan.status);
 
   return (
     <div

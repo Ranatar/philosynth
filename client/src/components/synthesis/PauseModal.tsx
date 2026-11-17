@@ -476,9 +476,9 @@ function PlanFooter({
 
 function BillingContent({ ps }: { ps: PausedStateGen }) {
   const completedCount = (ps.completedPasses ?? []).length;
-  const completedList = (ps.completedPasses ?? [])
-    .map((keys) => keys.join("+"))
-    .join(", ");
+  // [24965] перечисляет ключи разделов («sum»); здесь — их названия, как
+  // в ветке gen (completedListOf) и в строке «Прервано на»
+  const completedList = completedListOf(ps);
   const completedWord = completedCount === 1 ? tl("synthesis.pauseModal.sectionWord", "раздел") : tl("common.sectionsGen", "разделов");
   return (
     <div className="pause-content">
@@ -498,7 +498,7 @@ function BillingContent({ ps }: { ps: PausedStateGen }) {
         <strong>{tl("synthesis.pauseModal.interruptedAt", "Прервано на:")}</strong> {pauseSectionLabel(ps) || "?"}
       </InfoBox>
       <Subtle>
-        {tl("synthesis.pauseModal.topUpLead", "Пополните баланс на")}
+        {tl("synthesis.pauseModal.topUpLead", "Пополните баланс на")}{" "}
         <a
           href="https://console.anthropic.com/settings/billing"
           target="_blank"

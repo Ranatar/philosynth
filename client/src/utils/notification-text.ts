@@ -5,18 +5,16 @@
  * же, ключи — в пространстве клиента (пространства по пути файла).
  */
 import type { DiscussionAddress } from "@philosynth/shared/types/discussion";
+import { addressObjectLabel } from "@philosynth/shared/utils/address-label";
 import type { Notification } from "@philosynth/shared/types/notifications";
-import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
-import { tData } from "@philosynth/shared/i18n/data";
 import { tl } from "@philosynth/shared/i18n/t";
 
 import { roleLabel } from "../components/synthesis/MembersPanel";
 
 function addressLabel(addr: DiscussionAddress | null): string {
   if (!addr) return "";
-  if (addr.kind === "section") return tData(KEY_LABELS[addr.key as keyof typeof KEY_LABELS] ?? addr.key);
   if (addr.kind === "synthesis") return tl("utils.notificationText.addrSynthesis", "концепция в целом");
-  return addr.key;
+  return addressObjectLabel(addr);
 }
 
 export function notificationText(n: Notification): string {

@@ -1567,7 +1567,7 @@ export function SynthesisPage() {
           // (light: false, как в исходнике). Ссылки на родителей —
           // parentSyntheses (SynthesisFull) + кликабельные узлы дерева.
           isMetaSynthesis ? (
-            <details className="header-disclosure" open>
+            <details className="header-disclosure header-disclosure-genealogy" open>
               <summary>{tl("synthesisPage.genealogyTree", "Генеалогическое древо")}</summary>
               <div
                 className="disclosure-body"
@@ -1600,7 +1600,7 @@ export function SynthesisPage() {
                 )}
                 {/* 8.7: фильтр потомков зовёт /lineage/descendants (requireAuth) */}
                 {!isGuest && (
-                  <div className="doc-meta-key" style={{ marginTop: 8 }}>
+                  <div className="doc-meta-key genealogy-descendants" style={{ marginTop: 8 }}>
                     <Link to={`/catalog?descendantsOf=${synthesis.id}`}>
                       {tl("synthesisPage.descendantsInCatalog", "◈ Потомки этой концепции в каталоге")}
                     </Link>

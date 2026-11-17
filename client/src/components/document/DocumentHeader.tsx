@@ -57,6 +57,10 @@ import { tData } from "@philosynth/shared/i18n/data";
 
 export interface DocumentHeaderProps {
   synthesis: SynthesisFull;
+  /** Хвост контейнера docHeaderExtras — генеалогическое древо мета-синтеза
+   *  (updateGenealogyInHeader дописывает его в #docHeaderExtras ВНУТРИ
+   *  тёмной .doc-header; тёмная схема древа рассчитана на этот фон) */
+  extras?: React.ReactNode;
 }
 
 /** Три ветки подзаголовка [12126–12139] */
@@ -133,7 +137,7 @@ function Disclosure({ label, text }: { label: string; text: string }) {
   );
 }
 
-export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
+export function DocumentHeader({ synthesis, extras }: DocumentHeaderProps) {
   // 17.2 (Д-82): правка капсулы и её история — по праву правки (владелец |
   // редактор); название — управление (только владелец, как и на сервере)
   const canEdit = synthesis.capabilities?.edit ?? false;
@@ -422,6 +426,7 @@ export function DocumentHeader({ synthesis }: DocumentHeaderProps) {
             )}
           </details>
         )}
+        {extras}
       </div>
 
       <div className="doc-meta-grid" style={{ marginTop: 20 }}>

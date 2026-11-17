@@ -494,7 +494,7 @@ async function runStep(
       const usage = await addSection(handle, step.target, step.context ?? null, {
         fromPlan: true,
       });
-      return usageToResult(usage, 0);
+      return usageToResult(usage, usage.outputChars);
     }
     case "regen": {
       const usage = await regenerateSection(
@@ -503,19 +503,19 @@ async function runStep(
         step.context ?? null,
         { fromPlan: true },
       );
-      return usageToResult(usage, 0);
+      return usageToResult(usage, usage.outputChars);
     }
     case "regen_subsection": {
       const i = step.target.indexOf(":");
       const sectionKey = step.target.slice(0, i);
       const subsectionName = step.target.slice(i + 1);
-      const { usage } = await runSubsectionRegen(
+      const { usage, outputChars } = await runSubsectionRegen(
         handle,
         sectionKey,
         subsectionName,
         step.context !== undefined ? { userNote: step.context } : {},
       );
-      return usageToResult(usage, 0);
+      return usageToResult(usage, outputChars);
     }
     case "edit_element": {
       // 10.2: готовый текст — модель не зовётся, стоимость 0

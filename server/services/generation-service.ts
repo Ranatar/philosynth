@@ -2096,7 +2096,7 @@ export async function regenerateSection(
   sectionKey: string,
   newCtx: string | null | undefined,
   _opts: RegenerateSectionOpts = {},
-): Promise<{ inputTokens: number; outputTokens: number }> {
+): Promise<{ inputTokens: number; outputTokens: number; outputChars: number }> {
   const { synthesisId, userId } = handle;
   const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
   registerParentContextProvider();
@@ -2327,7 +2327,9 @@ export async function regenerateSection(
       },
       html: finalHtml,
     });
-    return usage;
+    // outputChars — длина полученного HTML (genEntry.outputChars [20138]):
+    // её показывает шаг плана «N симв. · $»
+    return { ...usage, outputChars: html.length };
   } catch (rawErr) {
     // [20705–20718]: genEntry → error; usage max-tokens учитывается
     const e =
@@ -2520,6 +2522,8 @@ export async function regenerateSubsection(
 ): Promise<{
   usage: { inputTokens: number; outputTokens: number };
   affectedSubs: string[];
+  /** Длина HTML подраздела (genEntry.outputChars [20416]) — для шага плана */
+  outputChars: number;
 }> {
   const { synthesisId, userId } = handle;
   const sectionKey = def.key;
@@ -2757,7 +2761,7 @@ export async function regenerateSubsection(
     } catch (e) {
       console.warn("getIntraDependents:", e);
     }
-    return { usage, affectedSubs };
+    return { usage, affectedSubs, outputChars: html.length };
   } catch (rawErr) {
     const e =
       rawErr instanceof StreamError ? rawErr : classifyStreamError(rawErr, false);
@@ -2792,6 +2796,8 @@ export async function runSubsectionRegen(
 ): Promise<{
   usage: { inputTokens: number; outputTokens: number };
   affectedSubs: string[];
+  /** Длина HTML подраздела (genEntry.outputChars [20416]) — для шага плана */
+  outputChars: number;
 }> {
   const { row, philosophers, secCtx } = await loadSynthesis(handle.synthesisId);
   const infra = await buildEditInfra(row, philosophers, secCtx);
@@ -2882,7 +2888,11 @@ async function recalcSectionNumbers(
   const renumberMap: Record<number, number> = {};
   let num = 1;
   for (const key of sectionOrder) {
-    if (!oldNums.has(key)) continue;
+    // [5736] `if (!def) { num++; continue; }`: раздел без строки (новый
+    // при addSection — его строка появится после стрима) занимает свою
+    // позицию; без приращения хвост за вставкой оставался на прежних
+    // номерах и совпадал с номером нового раздела
+    if (!oldNums.has(key)) { num += 1; continue; }
     const oldNum = oldNums.get(key) as number;
     if (oldNum !== num) {
       renumberMap[oldNum] = num;
@@ -2984,7 +2994,7 @@ export async function addSection(
   sectionKey: string,
   newCtx: string | null | undefined,
   _opts: AddSectionOpts = {},
-): Promise<{ inputTokens: number; outputTokens: number }> {
+): Promise<{ inputTokens: number; outputTokens: number; outputChars: number }> {
   const { synthesisId, userId } = handle;
   const apiKey = handle.billing.apiKey; // 6.1: BYO-Key пользователя либо серверный ключ
   registerParentContextProvider();
@@ -3193,7 +3203,9 @@ export async function addSection(
       },
       html: finalHtml,
     });
-    return usage;
+    // outputChars — длина полученного HTML (genEntry.outputChars [20138]):
+    // её показывает шаг плана «N симв. · $»
+    return { ...usage, outputChars: html.length };
   } catch (err) {
     /* ── Откат [21253–21264] ── */
     console.error("Ошибка добавления раздела:", sectionKey, err);
