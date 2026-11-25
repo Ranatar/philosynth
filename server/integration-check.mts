@@ -8364,8 +8364,15 @@ async function section4al(): Promise<void> {
   for (const pl of plansMod.PLANS) {
     const v = plansMod.validatePlanDefinition(pl);
     if (v.length) errs.push(`4al: описание ${pl.name} невалидно: ${v.join("; ")}`);
-    if (!plansMod.computePlanEconomics(pl, env4al.stripe.billingMarkup).ok) errs.push(`4al: тариф ${pl.name} убыточен при BILLING_MARKUP=${env4al.stripe.billingMarkup} — посев откажет`);
+    const econ4al = plansMod.computePlanEconomics(pl, env4al.stripe.planMinMarkup);
+    if (!econ4al.ok) errs.push(`4al: тариф ${pl.name} убыточен при PLAN_MIN_MARKUP=${env4al.stripe.planMinMarkup} — посев откажет`);
+    // 2026-11-25: кредит подписки не дороже кредита баланса — иначе подписка не нужна
+    if (!plansMod.planBeatsBalance(econ4al, env4al.stripe.billingMarkup)) errs.push(`4al: кредит тарифа ${pl.name} дороже кредита баланса (×${econ4al.effectiveMarkup.toFixed(2)} > BILLING_MARKUP ${env4al.stripe.billingMarkup})`);
   }
+  // Скидка растёт с тарифом: действующая наценка не растёт от starter к academic
+  const eff4al = plansMod.PLANS.map((pl) => plansMod.computePlanEconomics(pl, env4al.stripe.planMinMarkup).effectiveMarkup);
+  if (eff4al.some((m, i) => i > 0 && m > eff4al[i - 1]! + 1e-9)) errs.push(`4al: старший тариф дороже младшего за кредит (${eff4al.map((m) => m.toFixed(2)).join(" → ")})`);
+  if (!(env4al.stripe.planMinMarkup <= env4al.stripe.billingMarkup)) errs.push("4al: PLAN_MIN_MARKUP выше BILLING_MARKUP — ни один тариф не выгоднее баланса");
   if (plansMod.PLANS.some((pl) => plansMod.computePlanEconomics(pl, 3).ok)) errs.push("4al: проверка экономики не реагирует на наценку (×3 проходит)");
   // 0021 (кредиты, 2026-11-17): веса — из опорных стоимостей; миграция и посев переводят старые квоты теми же весами
   const pe = await import("./config/plan-economics.js");
@@ -8379,11 +8386,17 @@ async function section4al(): Promise<void> {
   for (const [col, wt] of [["syntheses", w.synthesis], ["regenerations", w.section], ["modes", w.mode], ["enrichments", w.enrichment]] as const) {
     if (!new RegExp(`"quota_${col}" \\* ${wt}\\b`).test(mig21) || !new RegExp(`"used_${col}" \\* ${wt}\\b`).test(mig21)) errs.push(`4al: миграция 0021 переводит ${col} не весом ${wt} (CREDIT_WEIGHTS)`);
   }
-  const legacy: Record<string, [number, number, number, number]> = { starter: [3, 5, 5, 10], pro: [9, 15, 15, 25], academic: [24, 35, 35, 80] };
-  for (const pl of plansMod.PLANS) {
-    const q = legacy[pl.name];
-    if (q && pl.quotaCredits !== pe.legacyQuotasToCredits({ syntheses: q[0], regenerations: q[1], modes: q[2], enrichments: q[3] })) errs.push(`4al: кредиты посева ${pl.name} ≠ прежним квотам по весам (миграция 0021 даст другое число)`);
-  }
+  // Сверка посева с прежними квотами снята 2026-11-25: сетка тарифов пересмотрена
+  // (наценки ×2.2/×2.0/×1.8 против баланса ×2.5); миграция 0021 переводит
+  // СТРОКИ БД весами (проверка выше), посев их не трогает (15.4).
+  if (pe.legacyQuotasToCredits({ syntheses: 1, regenerations: 1, modes: 1, enrichments: 1 }) !== w.synthesis + w.section + w.mode + w.enrichment) errs.push("4al: legacyQuotasToCredits — не по весам");
+  // Опорная модель произвольного состава совпадает с весом synthesis на опорном составе
+  if (Math.abs(pe.referenceSynthesisCostUsd(pe.REFERENCE_SYNTHESIS_SECTIONS) - ref.synthesis) > 1e-12 || Math.abs(pe.referenceSectionCostUsd() - ref.regeneration) > 1e-12) errs.push("4al: referenceSynthesisCostUsd/referenceSectionCostUsd разошлись с REFERENCE_OPERATION_COST_USD (сверка billing:calibrate врёт)");
+  // Пробный подарок (2026-11-25): один на пользователя, при подтверждении почты
+  const authS4al = await rd("./routes/auth.ts");
+  const bsS4al = await rd("./services/billing-service.ts");
+  if ((authS4al.match(/await grantTrialBalance\(tx, userId\);/g) ?? []).length !== 2) errs.push("4al: пробный подарок не начисляется в транзакциях подтверждения почты и сброса пароля");
+  if (!/type: "bonus"[\s\S]{0,120}\.onConflictDoNothing\(\)/.test(bsS4al) || !/uq_transactions_trial[\s\S]*WHERE "transactions"\."type" = 'bonus'/.test(await rd("./db/migrations/0023_trial_bonus.sql"))) errs.push("4al: пробный подарок не защищён от повтора (uq_transactions_trial + ON CONFLICT DO NOTHING)");
   if (pe.creditsForCost(0.0001) !== 1 || pe.creditsForCost(0.25) !== 25 || pe.creditsForCost(0.2501) !== 26) errs.push("4al: creditsForCost — не «вверх, не меньше одного»");
   // клиентская подпись — зеркало creditsForCost и приоритета режимов
   const bvS = await rd("../client/src/hooks/useBillingView.ts");
@@ -8431,7 +8444,11 @@ async function section4al(): Promise<void> {
   if (!/outcome: "skip",\s*diverged: diffFields\(/.test(seedC) || !/расходятся с server\/config\/plans\.ts/.test(seedS)) errs.push("4al: расхождение строки с plans.ts не печатается предупреждением");
   if (!/family: plan\.name,\s*edition: 1,/.test(seedC)) errs.push("4al: посеянный план — не редакция 1 своего семейства");
   if (!/ВНИМАНИЕ/.test(seedS) || !/не задана → план/.test(seedS)) errs.push("4al: предупреждение о неактивных планах не громкое / без имён переменных");
-  if (!/assertPlanEconomics\(plan, markup\)/.test(seedC) || !/env\.stripe\.billingMarkup/.test(seedC)) errs.push("4al: экономика не проверяется до записи / наценка не из env");
+  if (!/assertPlanEconomics\(plan, markup\)/.test(seedC) || !/opts\.markup \?\? env\.stripe\.planMinMarkup/.test(seedC)) errs.push("4al: экономика не проверяется до записи / порог наценки не PLAN_MIN_MARKUP из env");
+  if (!/planBeatsBalance\(econ, balanceMarkup\)/.test(seedC)) errs.push("4al: сид не предупреждает о тарифе дороже баланса");
+  const paS4al = await rd("./services/plan-admin.ts");
+  if (!/assertPlanEconomics\(spec, env\.stripe\.planMinMarkup\)/.test(paS4al)) errs.push("4al: админка проверяет экономику тарифа не порогом PLAN_MIN_MARKUP");
+  if (!/assertPlanSpec\(next, \{ economics: locked\.length > 0 \}\)/.test(paS4al)) errs.push("4al: переименование тарифа, заведённого при прежнем пороге, упирается в экономику (правка без цены/квот её не проверяет)");
   if ((seedC.match(/ADMIN_ACTIONS\.PLAN_SEEDED/g) ?? []).length !== 1 || !/db\.transaction\(async \(tx\) => \{[\s\S]*tx\.insert\(subscriptionPlans\)[\s\S]*writeAudit\(tx,/.test(seedC)) errs.push("4al: plan.seeded не пишется в транзакции с записью (created)");
   const aa = await import("./services/admin-audit.js");
   if (aa.ADMIN_ACTIONS.PLAN_SEEDED !== "plan.seeded") errs.push("4al: ADMIN_ACTIONS.PLAN_SEEDED нет");

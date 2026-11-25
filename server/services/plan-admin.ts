@@ -20,7 +20,7 @@
  *  - createPlanFamily(input, actor): новое семейство (редакция 1) — Product
  *    + Price; для сида plans.ts это не нужно, для админки — да.
  *
- * Экономика (квоты не дороже цены при BILLING_MARKUP) и структура —
+ * Экономика (квоты не дороже цены при PLAN_MIN_MARKUP) и структура —
  * ОДНОЙ функцией с сидом: config/plan-economics.ts (assertPlanEconomics,
  * validatePlanSpec). След — admin_audit той же транзакцией, что и строка
  * (8.1): plan.created / plan.updated / plan.edition.
@@ -129,8 +129,11 @@ function specOf(row: PlanRow): PlanSpec {
   };
 }
 
-/** Структура + экономика одной функцией с сидом; нарушения → 400. */
-export function assertPlanSpec(spec: PlanSpec): void {
+/** Структура + экономика одной функцией с сидом; нарушения → 400.
+ *  economics=false — только структура: правка названия/«открыт» у тарифа,
+ *  заведённого при прежнем пороге наценки, не должна упираться в новый
+ *  (2026-11-25: порог — PLAN_MIN_MARKUP; старые тарифы ×1.28–1.32 ниже 1.5). */
+export function assertPlanSpec(spec: PlanSpec, opts: { economics?: boolean } = {}): void {
   const issues = validatePlanSpec(spec);
   if (issues.length) {
     throw new PlanAdminError(
@@ -139,8 +142,9 @@ export function assertPlanSpec(spec: PlanSpec): void {
       Object.fromEntries(issues.map((i) => [i.field, i.text])),
     );
   }
+  if (opts.economics === false) return;
   try {
-    assertPlanEconomics(spec, env.stripe.billingMarkup);
+    assertPlanEconomics(spec, env.stripe.planMinMarkup);
   } catch (err) {
     if (err instanceof PlanEconomicsError) {
       throw new PlanAdminError(
@@ -203,7 +207,8 @@ export async function updatePlan(id: string, input: PlanUpdateInput, actor: Plan
     ...(input.billingPeriod !== undefined ? { billingPeriod: input.billingPeriod } : {}),
     ...Object.fromEntries(PLAN_QUOTA_FIELDS.filter((k) => input[k] !== undefined).map((k) => [k, input[k]])),
   };
-  assertPlanSpec(next);
+  // Экономика — только если тронуты цена, период или квоты
+  assertPlanSpec(next, { economics: locked.length > 0 });
   const isActive = input.isActive ?? row.isActive;
 
   // Цена/период изменились → новый Price (lookup_key редакции переносится)

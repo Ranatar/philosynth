@@ -60,6 +60,19 @@ test-183-request1-ui 20 ✓, test-183-requests2-3 65 ✓ (живой серве�
 запускается (путь `scripts/seed-plans.js`, ожидания посева до 15.4).
 Хроника — 08 Часть III.
 
+## Дополнение 2026-11-25 (вне бесед — тарифная сетка)
+
+Миграция 0023 `trial_bonus` (частичный уникальный индекс
+`uq_transactions_trial`; таблиц по-прежнему 43) — **следующая миграция —
+0024**. Наценки разведены: `BILLING_MARKUP` 2.5 (баланс) и
+`PLAN_MIN_MARKUP` 1.5 (порог тарифа); `TRIAL_BALANCE_USD` 6 — подарок при
+подтверждении почты. Посев тарифов — $9.99/450, $24.99/1250,
+$59.99/3300; строки БД не тронуты (правятся админкой). Новые строки
+`billingPage.txBonus`, `billing.plansTable.trialNote` — en/de утверждены.
+Новый харнесс `tests/test-trial-bonus.mjs`; сверка весов —
+`npm run billing:calibrate`. Серии сторожей не заняты (правлена 4al). 09
+§10, «Что оставили правки 2026-11-25».
+
 ## Универсальный минимум любой серверной беседы
 
 - `server/db/schema.ts` — 32 таблицы (с 9.1: + auth_tokens, mail_outbox; с 10.1: + recommendations; 11.2 — миграция 0010 `users.ui_locale/gen_lang`; 12.1 — миграция 0011 `theses.label`; 12.3 — миграции 0012 `recommendations.warning` и 0013 `recommendations.issues`; 15.1 — миграция 0014 `uq_lineage_parent_pair`; 15.3 — 0015 `email_change`; 15.4 — 0016 `plan_editions` (family/edition); 16.1 — 0017 `discussion` (+ synthesis_members, comments, reviews, review_revisions, review_findings — 37 таблиц); 16.2 — 0018 `members_notifications` (+ notifications, notification_settings — 39); 17.1 — 0019 `proposals_actor` (+ proposals, proposal_events — 41); 18.1 — 0020 `search_index` (+ synthesis_search — 42; наполняет `npm run search:reindex`); следующая — 0021), единственный

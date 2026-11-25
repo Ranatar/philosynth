@@ -201,7 +201,7 @@ try {
   /* ════ R3: Д-75 — сид и вебхук ════ */
   if (want("R3")) {
     console.log("\n■ R3: Д-75 — seed:plans не переписывает, вебхук переносит plan_id");
-    const [acad] = await sql`select id, display_name, quota_credits, is_active, stripe_price_id from subscription_plans where name='academic'`;
+    const [acad] = await sql`select id, display_name, price_usd, quota_credits, is_active, stripe_price_id from subscription_plans where name='academic'`;
     ok(!!acad, "посеянный academic на месте (стенд/сиды)");
     if (acad) {
       academicName = acad.display_name;
@@ -215,7 +215,7 @@ try {
       ok(acad2.display_name === academicName + " (154)" && acad2.quota_credits === acad.quota_credits && acad2.is_active === acad.is_active && acad2.stripe_price_id === acad.stripe_price_id, "строка academic НЕ переписана (название, квоты, активность, Price прежние)");
       const SEED = await import("../scripts/seed/seed-plans.ts");
       const PL = await import("../server/config/plans.ts");
-      const sr = await SEED.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...PL.planByName("academic"), quotaCredits: acad.quota_credits - 1 }] });
+      const sr = await SEED.seedPlans({ envSource: {}, markup: 1.2, plans: [{ ...PL.planByName("academic"), priceUsd: Number(acad.price_usd), quotaCredits: acad.quota_credits - 1 }] });
       ok(sr.counts.skip === 1 && sr.results[0].diverged?.some((d) => d.field === "quotaCredits" && d.inDb === String(acad.quota_credits)), "seedPlans с изменёнными квотами (как plans.ts) → skip + diverged по квоте", sr.results[0]);
       const [acad3] = await sql`select quota_credits from subscription_plans where id=${acad.id}`;
       ok(acad3.quota_credits === acad.quota_credits, "квота academic после сида прежняя");

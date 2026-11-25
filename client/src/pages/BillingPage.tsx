@@ -134,6 +134,7 @@ const TX_LABELS = (): Record<TransactionType, string> => ({
   topup: tl("billingPage.txTopUp", "пополнение"),
   usage: tl("billingPage.txCharge", "списание"),
   refund: tl("billingPage.txRefund", "возврат"),
+  bonus: tl("billingPage.txBonus", "пробный подарок"),
 });
 
 /** Бейдж режима/типа: gold — баланс/пополнение (литералы вне className —
@@ -142,7 +143,7 @@ function badgeClass(gold: boolean): string {
   return gold ? "cert-badge gold" : "cert-badge";
 }
 const modeBadgeClass = (m: BillingMode): string => badgeClass(m === "balance");
-const txBadgeClass = (t: TransactionType): string => badgeClass(t === "topup");
+const txBadgeClass = (t: TransactionType): string => badgeClass(t === "topup" || t === "bonus");
 
 const rowStyle: React.CSSProperties = {
   display: "flex",

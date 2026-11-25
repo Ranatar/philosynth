@@ -33,8 +33,10 @@
  *   - строка есть (совпадает или расходится)       → skip (+ предупреждение
  *     о расхождениях; «расходятся» считаются displayName/цена/период/квоты/
  *     stripe_price_id/активность);
- *   - описание невалидно / квоты дороже цены при текущем BILLING_MARKUP
- *     (общий модуль plan-economics) → fail, строка не пишется.
+ *   - описание невалидно / квоты дороже цены при текущем PLAN_MIN_MARKUP
+ *     (общий модуль plan-economics) → fail, строка не пишется;
+ *   - кредит тарифа дороже кредита баланса (BILLING_MARKUP) → результат
+ *     несёт pricierThanBalance, отчёт предупреждает (2026-11-25).
  *
  * Каждая created — строка admin_audit plan.seeded (actor_id NULL: действие
  * скрипта) той же транзакцией (8.1: журнал и дело неразделимы); skip и
@@ -43,7 +45,8 @@
  * Запуск: STRIPE_PRICE_STARTER=price_… … npm run seed:plans
  *   (или: npx tsx scripts/seed/seed-plans.ts). Код возврата: 1 при любом fail.
  * Переменные читаются из process.env в момент запуска (не через env.ts —
- * 09 §5 6.1: тот читается один раз при импорте), наценка — env.stripe.billingMarkup.
+ * 09 §5 6.1: тот читается один раз при импорте), порог наценки —
+ * env.stripe.planMinMarkup, наценка баланса — env.stripe.billingMarkup.
  */
 import { eq } from "drizzle-orm";
 
@@ -51,6 +54,7 @@ import {
   PLANS,
   PlanEconomicsError,
   assertPlanEconomics,
+  planBeatsBalance,
   priceEnvVarFor,
   validatePlanDefinition,
   type PlanDefinition,
@@ -81,6 +85,8 @@ export interface PlanSeedResult {
   priceMissing: boolean;
   isActive: boolean;
   stripePriceId: string;
+  /** Действующая наценка тарифа выше наценки баланса — тариф никому не выгоден */
+  pricierThanBalance?: { effectiveMarkup: number; balanceMarkup: number };
 }
 
 export interface SeedPlansReport {
@@ -96,8 +102,10 @@ export interface SeedPlansReport {
 export interface SeedPlansOptions {
   /** Источник STRIPE_PRICE_* (по умолчанию process.env) */
   envSource?: NodeJS.ProcessEnv;
-  /** Наценка для проверки экономики (по умолчанию env.stripe.billingMarkup) */
+  /** Порог наценки для проверки экономики (по умолчанию env.stripe.planMinMarkup) */
   markup?: number;
+  /** Наценка баланса для предупреждения (по умолчанию env.stripe.billingMarkup) */
+  balanceMarkup?: number;
   /** Описание тарифов (по умолчанию PLANS; тестам — подмена) */
   plans?: readonly PlanDefinition[];
 }
@@ -128,6 +136,7 @@ async function seedOne(
   plan: PlanDefinition,
   envSource: NodeJS.ProcessEnv,
   markup: number,
+  balanceMarkup: number,
 ): Promise<PlanSeedResult> {
   const envVar = priceEnvVarFor(plan.name);
   const priceFromEnv = (envSource[envVar] ?? "").trim();
@@ -139,14 +148,19 @@ async function seedOne(
   if (structural.length) {
     return { ...base, outcome: "fail", error: `описание невалидно: ${structural.join("; ")}`, isActive: false, stripePriceId: "" };
   }
+  let pricier: PlanSeedResult["pricierThanBalance"];
   try {
-    assertPlanEconomics(plan, markup);
+    const econ = assertPlanEconomics(plan, markup);
+    if (!planBeatsBalance(econ, balanceMarkup)) {
+      pricier = { effectiveMarkup: econ.effectiveMarkup, balanceMarkup };
+    }
   } catch (err) {
     if (err instanceof PlanEconomicsError) {
       return { ...base, outcome: "fail", error: err.message, isActive: false, stripePriceId: "" };
     }
     throw err;
   }
+  const warn = pricier ? { pricierThanBalance: pricier } : {};
 
   const [existing] = await db
     .select()
@@ -158,6 +172,7 @@ async function seedOne(
     // 15.4: существующее не переписывается — только отчёт о расхождениях
     return {
       ...base,
+      ...warn,
       outcome: "skip",
       diverged: diffFields(existing, plan, priceFromEnv),
       isActive: existing.isActive,
@@ -187,7 +202,7 @@ async function seedOne(
       details: { outcome: "created", isActive, priceMissing },
     });
   });
-  return { ...base, outcome: "created", isActive, stripePriceId };
+  return { ...base, ...warn, outcome: "created", isActive, stripePriceId };
 }
 
 /**
@@ -196,13 +211,14 @@ async function seedOne(
  */
 export async function seedPlans(opts: SeedPlansOptions = {}): Promise<SeedPlansReport> {
   const envSource = opts.envSource ?? process.env;
-  const markup = opts.markup ?? env.stripe.billingMarkup;
+  const markup = opts.markup ?? env.stripe.planMinMarkup;
+  const balanceMarkup = opts.balanceMarkup ?? env.stripe.billingMarkup;
   const plans = opts.plans ?? PLANS;
 
   const results: PlanSeedResult[] = [];
   for (const plan of plans) {
     try {
-      results.push(await seedOne(plan, envSource, markup));
+      results.push(await seedOne(plan, envSource, markup, balanceMarkup));
     } catch (err) {
       const e = err as { message?: string; cause?: { code?: string; message?: string } };
       results.push({
@@ -234,7 +250,7 @@ export function printReport(report: SeedPlansReport): void {
   console.log(
     `subscription_plans: created=${c.created}, skip=${c.skip}` +
       `${report.divergedCount ? ` (расходятся с plans.ts: ${report.divergedCount})` : ""}, fail=${c.fail}` +
-      ` (BILLING_MARKUP=${report.markup})`,
+      ` (PLAN_MIN_MARKUP=${report.markup})`,
   );
   for (const r of report.results) {
     const active = r.isActive ? "active" : "INACTIVE";
@@ -249,6 +265,17 @@ export function printReport(report: SeedPlansReport): void {
       case "fail":
         console.error(`  ${RED}FAIL${RESET}    ${r.name}: ${r.error}`);
         break;
+    }
+  }
+  const pricier = report.results.filter((r) => r.pricierThanBalance);
+  if (pricier.length) {
+    console.warn("");
+    for (const r of pricier) {
+      const p = r.pricierThanBalance!;
+      console.warn(
+        `${YELLOW}ПРЕДУПРЕЖДЕНИЕ: кредит тарифа «${r.name}» дороже кредита баланса — наценка ×${p.effectiveMarkup.toFixed(2)} ` +
+          `против BILLING_MARKUP ×${p.balanceMarkup}: оплата по счётчику выгоднее подписки${RESET}`,
+      );
     }
   }
   const diverged = report.results.filter((r) => r.outcome === "skip" && r.diverged?.length);

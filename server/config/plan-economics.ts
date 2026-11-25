@@ -8,10 +8,16 @@
  * («экономика проверяется одной функцией на обеих сторонах» — сторож 4bl).
  *
  * Правило заведения (текст беседы 8.3): тариф, у которого квоты дороже
- * цены, завести нельзя. «Дороже» считается тем же, чем считал бы режим
- * баланса: себестоимость операции по ставкам оценщика 1.1 × наценка
- * BILLING_MARKUP («По факту 6.1» п. 6) — иначе подписка была бы дешевле тех
- * же операций по счётчику, и служба платила бы за пользователя.
+ * цены, завести нельзя. «Дороже» — себестоимость квоты по ставкам
+ * оценщика 1.1 × НИЖНИЙ ПОРОГ наценки тарифа PLAN_MIN_MARKUP.
+ *
+ * До 2026-11-25 порогом служила наценка баланса BILLING_MARKUP: кредит
+ * подписки не мог стоить дешевле кредита баланса, и подписка не давала
+ * выгоды против оплаты по счётчику. Решение пользователя 2026-11-25: баланс
+ * — самый дорогой кредит (BILLING_MARKUP 2.5), тарифы — со скидкой против
+ * него, но не ниже порога (PLAN_MIN_MARKUP 1.5). Тариф с действующей
+ * наценкой выше баланса не запрещён, но бессмыслен — planBeatsBalance,
+ * предупреждение сида.
  *
  * Опорные стоимости операций (REFERENCE_OPERATION_COST_USD) выводятся из
  * констант cost-estimator.ts (CHARS_PER_TOKEN, PRICE_IN/OUT, mw,
@@ -39,7 +45,7 @@
  * округлением вверх. Синтез списывается по ОЦЕНКЕ своего состава
  * (creditsForCost), вес synthesis — опорный синтез: им считает страница
  * тарифа («≈ N концепций») и запасной путь без оценки. Экономика тарифа —
- * quotaCredits × CREDIT_USD × BILLING_MARKUP ≤ цена.
+ * quotaCredits × CREDIT_USD × PLAN_MIN_MARKUP ≤ цена.
  *
  * Внутри блочных комментариев звёздочка со слешем закрывает комментарий —
  * поэтому пары колонок «used и quota» здесь пишутся словами (09 §8, 6.1).
@@ -125,10 +131,10 @@ function usd(inChars: number, outChars: number): number {
 }
 
 /** Выход раздела в символах — формула estimateCost (1.1). */
-function sectionOutputChars(key: string): number {
+function sectionOutputChars(key: string, depth: string = REFERENCE_DEPTH): number {
   const mult = SECTION_OUTPUT_MULT[key] ?? SECTION_OUTPUT_MULT._default!;
   return Math.round(
-    mw({ depth: REFERENCE_DEPTH }) * mult * WORDS_TO_CHARS * HTML_OVERHEAD * OUTPUT_MULTIPLIER,
+    mw({ depth }) * mult * WORDS_TO_CHARS * HTML_OVERHEAD * OUTPUT_MULTIPLIER,
   );
 }
 
@@ -146,18 +152,42 @@ export interface ReferenceOperationCosts {
 }
 
 /** Себестоимость опорных операций по ставкам оценщика, USD (без наценки). */
+function budgetOf(depth: string): number {
+  return (CONTEXT_BUDGET as Record<string, number>)[depth] ?? CONTEXT_BUDGET[REFERENCE_DEPTH];
+}
+
+const REFERENCE_PASS_PROMPT_CHARS = REFERENCE_SYS_CHARS + REFERENCE_BASE_STATIC_CHARS + REFERENCE_SECTION_PROMPT_CHARS;
+
+/**
+ * Опорная (верхняя) себестоимость синтеза ПРОИЗВОЛЬНОГО состава и глубины —
+ * та же модель, что у веса synthesis: по разделу на проход, у всех проходов
+ * после первого — весь бюджет контекста. Нужна сверке веса с фактом
+ * (scripts/billing/credit-calibration.ts, 2026-11-25).
+ */
+export function referenceSynthesisCostUsd(keys: readonly string[], depth: string = REFERENCE_DEPTH): number {
+  const budget = budgetOf(depth);
+  let inChars = 0;
+  let outChars = 0;
+  keys.forEach((key, i) => {
+    inChars += REFERENCE_PASS_PROMPT_CHARS + (i > 0 ? budget : 0);
+    outChars += sectionOutputChars(key, depth);
+  });
+  return usd(inChars, outChars);
+}
+
+/** Опорная себестоимость перегенерации раздела key (полный контекст). */
+export function referenceSectionCostUsd(key: string = "_default", depth: string = REFERENCE_DEPTH): number {
+  return usd(REFERENCE_PASS_PROMPT_CHARS + budgetOf(depth), sectionOutputChars(key, depth));
+}
+
+/** Ожидаемый оценщиком выход раздела key при глубине depth, в токенах. */
+export function expectedSectionOutputTokens(key: string, depth: string = REFERENCE_DEPTH): number {
+  return Math.ceil(sectionOutputChars(key, depth) / CHARS_PER_TOKEN);
+}
+
 export function computeReferenceOperationCosts(): ReferenceOperationCosts {
   const budget = CONTEXT_BUDGET[REFERENCE_DEPTH];
-  const passPrompt = REFERENCE_SYS_CHARS + REFERENCE_BASE_STATIC_CHARS + REFERENCE_SECTION_PROMPT_CHARS;
-
-  // Синтез: по разделу на проход; контекст у всех проходов после первого —
-  // верхняя граница (весь бюджет глубины).
-  let synthIn = 0;
-  let synthOut = 0;
-  REFERENCE_SYNTHESIS_SECTIONS.forEach((key, i) => {
-    synthIn += passPrompt + (i > 0 ? budget : 0);
-    synthOut += sectionOutputChars(key);
-  });
+  const passPrompt = REFERENCE_PASS_PROMPT_CHARS;
 
   // Перегенерация: один раздел среднего веса с полным контекстом.
   const regenIn = passPrompt + budget;
@@ -176,7 +206,9 @@ export function computeReferenceOperationCosts(): ReferenceOperationCosts {
   const enrichOut = Math.round(modeOut / 2);
 
   return {
-    synthesis: usd(synthIn, synthOut),
+    // Синтез: по разделу на проход; контекст у всех проходов после первого —
+    // верхняя граница (весь бюджет глубины).
+    synthesis: referenceSynthesisCostUsd(REFERENCE_SYNTHESIS_SECTIONS),
     regeneration: usd(regenIn, regenOut),
     subsection: usd(subIn, subOut),
     mode: usd(modeIn, modeOut),
@@ -245,9 +277,11 @@ export function legacyQuotasToCredits(q: {
 export interface PlanEconomics {
   /** Себестоимость полного исчерпания кредитов, USD */
   quotaCostUsd: number;
-  /** То же × наценка — что взял бы режим баланса за те же операции */
+  /** То же × нижний порог наценки тарифа */
   quotaChargeUsd: number;
   priceUsd: number;
+  /** Действующая наценка тарифа: цена / себестоимость квоты */
+  effectiveMarkup: number;
   /** priceUsd − quotaChargeUsd; отрицательное — тариф убыточен */
   marginUsd: number;
   ok: boolean;
@@ -262,7 +296,7 @@ export function computePlanEconomics(
   weights: Readonly<Record<CreditOp, number>> = CREDIT_WEIGHTS,
 ): PlanEconomics {
   if (!Number.isFinite(markup) || markup <= 0) {
-    throw new RangeError(`BILLING_MARKUP должен быть положительным числом, получено: ${markup}`);
+    throw new RangeError(`PLAN_MIN_MARKUP должен быть положительным числом, получено: ${markup}`);
   }
   const breakdown = Object.fromEntries(
     (Object.keys(weights) as CreditOp[]).map((op) => [
@@ -277,10 +311,18 @@ export function computePlanEconomics(
     quotaCostUsd,
     quotaChargeUsd,
     priceUsd: plan.priceUsd,
+    effectiveMarkup: quotaCostUsd > 0 ? plan.priceUsd / quotaCostUsd : Infinity,
     marginUsd,
     ok: marginUsd >= 0,
     breakdown,
   };
+}
+
+/** Кредит тарифа не дороже кредита баланса (наценка баланса BILLING_MARKUP).
+ *  Нарушение не запрещает тариф — сид предупреждает: такой тариф никому не
+ *  выгоден против оплаты по счётчику. */
+export function planBeatsBalance(e: PlanEconomics, balanceMarkup: number): boolean {
+  return e.effectiveMarkup <= balanceMarkup + 1e-9;
 }
 
 export class PlanEconomicsError extends Error {
@@ -292,7 +334,7 @@ export class PlanEconomicsError extends Error {
     // админского маршрута собирает фразу tl() сам по economics (plan-admin.ts)
     super(
       `тариф «${plan.name}» убыточен: ${plan.quotaCredits} кредитов стоят $${economics.quotaCostUsd.toFixed(2)} ` +
-        `себестоимости × BILLING_MARKUP ${markup} = $${economics.quotaChargeUsd.toFixed(2)} ` +
+        `себестоимости × PLAN_MIN_MARKUP ${markup} = $${economics.quotaChargeUsd.toFixed(2)} ` +
         `при цене $${plan.priceUsd.toFixed(2)} (не хватает $${(-economics.marginUsd).toFixed(2)}) — ` +
         `уменьшите квоты или поднимите цену`,
     );

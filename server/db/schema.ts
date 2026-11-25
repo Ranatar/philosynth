@@ -937,7 +937,10 @@ export const transactions = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id),
-    type: text("type", { enum: ["topup", "usage", "refund"] }).notNull(),
+    /** bonus (2026-11-25, миграция 0023) — пробный подарок на баланс при
+     *  первом подтверждении почты; не больше одного на пользователя
+     *  (uq_transactions_trial) */
+    type: text("type", { enum: ["topup", "usage", "refund", "bonus"] }).notNull(),
     amountUsd: numeric("amount_usd", { precision: 10, scale: 6 }).notNull(),
     balanceAfter: numeric("balance_after", {
       precision: 10,
@@ -955,7 +958,10 @@ export const transactions = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("idx_transactions_user").on(t.userId)],
+  (t) => [
+    index("idx_transactions_user").on(t.userId),
+    uniqueIndex("uq_transactions_trial").on(t.userId).where(sql`${t.type} = 'bonus'`),
+  ],
 );
 
 /* ─────────────────────────── 2.21. api_usage ────────────────────────── */

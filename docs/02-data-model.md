@@ -817,7 +817,7 @@ CREATE INDEX idx_apikeys_user ON api_keys(user_id);
 CREATE TABLE transactions (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID NOT NULL REFERENCES users(id),
-  type          TEXT NOT NULL,  -- 'topup'|'usage'|'refund'
+  type          TEXT NOT NULL,  -- 'topup'|'usage'|'refund'|'bonus' (2026-11-25: пробный подарок)
   amount_usd    NUMERIC(10, 6) NOT NULL,
   balance_after NUMERIC(10, 4) NOT NULL,
   synthesis_id  UUID REFERENCES syntheses(id) ON DELETE SET NULL,  -- миграция 0002 (6.1): история переживает удаление синтеза
@@ -827,6 +827,9 @@ CREATE TABLE transactions (
 );
 
 CREATE INDEX idx_transactions_user ON transactions(user_id);
+-- 0023 (2026-11-25): пробный подарок — не больше одного на пользователя;
+-- начисление INSERT … ON CONFLICT DO NOTHING (billing-service grantTrialBalance)
+CREATE UNIQUE INDEX uq_transactions_trial ON transactions(user_id) WHERE type = 'bonus';
 ```
 
 ### 2.21. api_usage

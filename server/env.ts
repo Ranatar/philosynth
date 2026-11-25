@@ -124,7 +124,16 @@ export const env = {
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY ?? "",
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
-    billingMarkup: num("BILLING_MARKUP", 1.2),
+    /** Наценка режима 'balance' на себестоимость (с 2026-11-25 по умолчанию
+     *  2.5 — дороже кредита любой подписки, иначе подписка не нужна) */
+    billingMarkup: num("BILLING_MARKUP", 2.5),
+    /** Нижний порог наценки тарифа: цена ≥ квота × CREDIT_USD × порог
+     *  (проверка экономики сида и админки; с 2026-11-25 — отдельно от
+     *  BILLING_MARKUP, чтобы тарифы могли быть дешевле баланса) */
+    planMinMarkup: num("PLAN_MIN_MARKUP", 1.5),
+    /** Пробный подарок на баланс при первом подтверждении почты, USD
+     *  (0 — выключен); ≈ один синтез при BILLING_MARKUP */
+    trialBalanceUsd: num("TRIAL_BALANCE_USD", 6),
     /** База REST API Stripe (беседа 6.1): мок в тестах — тот же приём,
      *  что ANTHROPIC_BASE_URL. */
     apiBase: process.env.STRIPE_API_BASE ?? "https://api.stripe.com",

@@ -261,6 +261,41 @@ export async function confirmTopup(
   return { balanceUsd: Number(tx.balanceAfter), transaction: toTransactionDto(tx) };
 }
 
+/* ── Пробный подарок ─────────────────────────────────────────────────── */
+
+type TrialExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Пробный подарок на баланс (решение пользователя 2026-11-25): при первом
+ * подтверждении почты — TRIAL_BALANCE_USD на баланс, строка transactions
+ * типа 'bonus'. Не больше одного на пользователя: INSERT … ON CONFLICT DO
+ * NOTHING по uq_transactions_trial (миграция 0023) — зови сколько угодно
+ * раз, второй вызов ничего не начислит. Возвращает начисленное (0 — уже
+ * был или подарок выключен). Зовётся в транзакции подтверждения адреса,
+ * чтобы отказ одного не оставлял другое.
+ */
+export async function grantTrialBalance(exec: TrialExecutor, userId: string): Promise<number> {
+  const amount = env.stripe.trialBalanceUsd;
+  if (!(amount > 0)) return 0;
+  const [row] = await exec
+    .insert(transactions)
+    .values({ userId, type: "bonus", amountUsd: money6(amount), balanceAfter: "0" })
+    .onConflictDoNothing()
+    .returning({ id: transactions.id });
+  if (!row) return 0;
+  const [u] = await exec
+    .update(users)
+    .set({ balanceUsd: dsql`${users.balanceUsd} + ${money4(amount)}::numeric`, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning({ balanceUsd: users.balanceUsd });
+  if (!u) throw new BillingError("NOT_FOUND", tl("common.userNotFound", "Пользователь не найден"));
+  await exec
+    .update(transactions)
+    .set({ balanceAfter: money4(Number(u.balanceUsd)) })
+    .where(eq(transactions.id, row.id));
+  return amount;
+}
+
 /* ── Списание за использование ───────────────────────────────────────── */
 
 export interface ChargeResult {
@@ -565,7 +600,7 @@ export async function getCreditChargeHistory(
 
 /** Веса операций и цена кредита — одни для страницы тарифа и всех подписей. */
 export function creditInfo(): CreditInfo {
-  return { creditUsd: CREDIT_USD, weights: { ...CREDIT_WEIGHTS } };
+  return { creditUsd: CREDIT_USD, weights: { ...CREDIT_WEIGHTS }, trialBalanceUsd: env.stripe.trialBalanceUsd };
 }
 
 /**

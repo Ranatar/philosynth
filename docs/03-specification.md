@@ -366,6 +366,10 @@ POST   /auth/email/verify/request    (no body; requireAuth)
 
 POST   /auth/email/verify/confirm    { token }              // БЕЗ сессии
                                 → { ok: true }
+                                // 2026-11-25: в той же транзакции —
+                                // пробный подарок TRIAL_BALANCE_USD на
+                                // баланс (один на пользователя; так же
+                                // password-reset/confirm)
                                 // Ставит users.email_verified_at (уже
                                 // подтверждённому дату не двигает), гасит
                                 // довод. Просроченный, использованный,
@@ -1885,6 +1889,10 @@ GET    /billing/view             → BillingView
                                 // creditsLeft?, creditsQuota?, balanceFallback? }
 
 GET    /billing/plans            → { plans: SubscriptionPlan[], credits: CreditInfo, markup }
+                                // 2026-11-25: markup — наценка БАЛАНСА
+                                // (BILLING_MARKUP); credits.trialBalanceUsd —
+                                // пробный подарок (0 — выключен), PlansTable
+                                // пишет о нём под тарифами
                                 // 0021: SubscriptionPlan.quotaCredits вместо
                                 // четырёх квот; credits — веса операций для
                                 // раскладки «на что хватит» (PlansTable)

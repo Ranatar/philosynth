@@ -17,7 +17,7 @@
  * (lookup_key = stripeLookupKeyFor).
  *
  * Экономика тарифа (правило заведения 8.3: квоты не дороже цены при
- * BILLING_MARKUP) и структурная проверка живут с 15.4 в ОБЩЕМ модуле
+ * PLAN_MIN_MARKUP, с 2026-11-25) и структурная проверка живут с 15.4 в ОБЩЕМ модуле
  * config/plan-economics.ts — им пользуются и сид, и сервер; здесь они
  * реэкспортированы ради прежних потребителей (сторож 4al, тесты 8.3).
  * validatePlanDefinition сверх общей проверки требует name ∈ PLAN_NAMES:
@@ -37,6 +37,7 @@ export {
   computeReferenceOperationCosts,
   computePlanEconomics,
   assertPlanEconomics,
+  planBeatsBalance,
   PlanEconomicsError,
   validatePlanSpec,
   PLAN_QUOTA_FIELDS,
@@ -67,24 +68,24 @@ export const PLANS: readonly PlanDefinition[] = Object.freeze([
     displayName: "Starter",
     priceUsd: 9.99,
     billingPeriod: "month",
-    // 0021: 3 синтезов + 5 перегенераций + 5 режимов + 10 обогащений по весам
-    quotaCredits: 780,
+    // 2026-11-25: наценка ×2.22 (≈2 синтеза; до того 780 при ×1.28)
+    quotaCredits: 450,
   },
   {
     name: "pro",
     displayName: "Pro",
-    priceUsd: 29.99,
+    priceUsd: 24.99,
     billingPeriod: "month",
-    // 0021: 9 синтезов + 15 перегенераций + 15 режимов + 25 обогащений по весам
-    quotaCredits: 2320,
+    // 2026-11-25: наценка ×2.0 (≈6 синтезов; до того $29.99 / 2320)
+    quotaCredits: 1250,
   },
   {
     name: "academic",
     displayName: "Academic",
-    priceUsd: 79.99,
+    priceUsd: 59.99,
     billingPeriod: "month",
-    // 0021: 24 синтезов + 35 перегенераций + 35 режимов + 80 обогащений по весам
-    quotaCredits: 6070,
+    // 2026-11-25: наценка ×1.82 (≈17 синтезов; до того $79.99 / 6070)
+    quotaCredits: 3300,
   },
 ] satisfies PlanDefinition[]);
 

@@ -12,7 +12,8 @@
  */
 export type BillingMode = "byo" | "subscription" | "balance";
 
-export type TransactionType = "topup" | "usage" | "refund";
+/** bonus — пробный подарок на баланс (2026-11-25, миграция 0023) */
+export type TransactionType = "topup" | "usage" | "refund" | "bonus";
 
 /** Строка api_usage */
 export interface ApiUsage {
@@ -241,6 +242,9 @@ export interface CreditInfo {
   creditUsd: number;
   /** Вес операции в кредитах; synthesis — опорный синтез (8 разделов, глубина standard) */
   weights: Record<CreditOp, number>;
+  /** Пробный подарок на баланс при первом подтверждении почты, USD
+   *  (TRIAL_BALANCE_USD; 0 — выключен). 2026-11-25 */
+  trialBalanceUsd: number;
 }
 
 /**

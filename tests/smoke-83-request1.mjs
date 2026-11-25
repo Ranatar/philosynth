@@ -77,7 +77,7 @@ try {
   check("при BILLING_MARKUP=3 тарифы убыточны — проверка реагирует на наценку", at3.every((e) => !e.ok));
   let econErr = null;
   try { plans.assertPlanEconomics({ ...plans.PLANS[0], quotaCredits: 100_000 }, 1.2); } catch (e) { econErr = e; }
-  check("убыточный план → PlanEconomicsError с объяснением", econErr instanceof plans.PlanEconomicsError && /убыточен/.test(econErr.message) && /BILLING_MARKUP 1\.2/.test(econErr.message) && econErr.economics.ok === false);
+  check("убыточный план → PlanEconomicsError с объяснением", econErr instanceof plans.PlanEconomicsError && /убыточен/.test(econErr.message) && /PLAN_MIN_MARKUP 1\.2/.test(econErr.message) && econErr.economics.ok === false);
   let markupErr = null;
   try { plans.computePlanEconomics(plans.PLANS[0], 0); } catch (e) { markupErr = e; }
   check("наценка ≤ 0 → RangeError", markupErr instanceof RangeError);
@@ -113,7 +113,8 @@ try {
   const scp = await import("../scripts/seed/stripe-create-prices.ts");
   check("экспорт createPrices/envLines/priceMatchesPlan/priceCents", ["createPrices", "envLines", "priceMatchesPlan", "priceCents"].every((k) => typeof scp[k] === "function"));
   check("main не запустился при импорте (продуктов только smoke)", mock.state.products.size === 1);
-  check("priceCents(9.99) = 999, (79.99) = 7999", scp.priceCents(plans.PLANS[0]) === 999 && scp.priceCents(plans.PLANS[2]) === 7999);
+  // 2026-11-25: Academic — $59.99 (сетка тарифов пересмотрена)
+  check("priceCents(9.99) = 999, (59.99) = 5999", scp.priceCents(plans.PLANS[0]) === 999 && scp.priceCents(plans.PLANS[2]) === 5999);
   const r1 = await scp.createPrices();
   check("первый запуск: created ×3", r1.counts.created === 3 && r1.counts.skip === 0 && r1.counts.fail === 0, r1.counts);
   check("три продукта с metadata.philosynth_plan и три цены с lookup_key philosynth_*",

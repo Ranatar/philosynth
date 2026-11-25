@@ -99,6 +99,15 @@ export function PlansTable({ plans, credits, renderAction, testId }: PlansTableP
         </div>
       )}
       {credits && <CreditWeightsTable credits={credits} testId={testId ? `${testId}-weights` : undefined} />}
+      {credits && credits.trialBalanceUsd > 0 && (
+        <div className="form-sublabel" data-testid={testId ? `${testId}-trial-note` : undefined}>
+          {tl(
+            "billing.plansTable.trialNote",
+            "Без подписки и своего ключа: при подтверждении почты на баланс один раз начисляется {amount} — примерно одна концепция на пробу.",
+            { amount: "$" + credits.trialBalanceUsd.toFixed(2) },
+          )}
+        </div>
+      )}
     </>
   );
 }

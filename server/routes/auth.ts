@@ -119,6 +119,7 @@ import {
   type AuthEnv,
 } from "../middleware/auth.js";
 import { AccountDeletionError, deleteAccount } from "../services/account-deletion.js"; // 7.1
+import { grantTrialBalance } from "../services/billing-service.js"; // 2026-11-25: пробный подарок
 import {
   ADMIN_ACTIONS,
   ADMIN_SET_LOCK_KEY,
@@ -598,6 +599,8 @@ authRoutes.post("/email/verify/confirm", async (c) => {
       .update(schema.users)
       .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(schema.users.id, userId), isNull(schema.users.emailVerifiedAt)));
+    // 2026-11-25: пробный подарок на баланс — один на пользователя
+    await grantTrialBalance(tx, userId);
     return true;
   });
   return ok ? c.json({ ok: true }) : tokenInvalid(c);
@@ -680,6 +683,8 @@ authRoutes.post("/password-reset/confirm", async (c) => {
     await tx.delete(schema.sessions).where(eq(schema.sessions.userId, userId));
     // Адрес подтверждён этим же переходом — ждущие ссылки подтверждения не нужны
     await revokeTokens(tx, userId, "email_verify", now);
+    // Подтверждение адреса — и пробный подарок, если его ещё не было (2026-11-25)
+    await grantTrialBalance(tx, userId);
     return true;
   });
   if (!ok) return tokenInvalid(c);

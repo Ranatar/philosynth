@@ -21,8 +21,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-11-17T11:43:49.075Z",
-    "imported": "2026-11-25T07:54:26.904Z"
+    "synced": "2026-11-25T08:15:47.797Z",
+    "imported": "2026-11-25T08:15:55.303Z"
   },
   "strings": {
     "adminPromptsPage.accountDeletedDash": {
@@ -1631,6 +1631,14 @@
       "from": {"en":"Концепций","de":"Концепций"},
       "where": ["client/src/components/billing/PlansTable.tsx:29"]
     },
+    "billing.plansTable.trialNote": {
+      "ru": "Без подписки и своего ключа: при подтверждении почты на баланс один раз начисляется {amount} — примерно одна концепция на пробу.",
+      "en": "Without a subscription or your own key: confirming your email adds {amount} to your balance once — about one concept to try.",
+      "de": "Ohne Abo und eigenen Schlüssel: Bei der Bestätigung der E-Mail-Adresse werden einmalig {amount} gutgeschrieben – etwa ein Konzept zum Ausprobieren.",
+      "from": {"en":"Без подписки и своего ключа: при подтверждении почты на баланс один раз начисляется {amount} — примерно одна концепция на пробу.","de":"Без подписки и своего ключа: при подтверждении почты на баланс один раз начисляется {amount} — примерно одна концепция на пробу."},
+      "params": {"amount":""},
+      "where": ["client/src/components/billing/PlansTable.tsx:104"]
+    },
     "billing.plansTable.year": {
       "ru": "год",
       "en": "year",
@@ -1643,14 +1651,14 @@
       "en": "Credits",
       "de": "Credits",
       "from": {"en":"Кредитов","de":"Кредитов"},
-      "where": ["client/src/components/billing/PlansTable.tsx:125"]
+      "where": ["client/src/components/billing/PlansTable.tsx:134"]
     },
     "billing.weights.enrichment": {
       "ru": "Обогащение элемента, обоснование характеристики, точечная правка элемента",
       "en": "Element enrichment, characteristic justification, targeted element edit",
       "de": "Anreicherung eines Elements, Begründung einer Eigenschaft, gezielte Elementbearbeitung",
       "from": {"en":"Обогащение элемента, обоснование характеристики, точечная правка элемента","de":"Обогащение элемента, обоснование характеристики, точечная правка элемента"},
-      "where": ["client/src/components/billing/PlansTable.tsx:117"]
+      "where": ["client/src/components/billing/PlansTable.tsx:126"]
     },
     "billing.weights.footnote": {
       "ru": "Кредит — {creditUsd} себестоимости вызовов модели. Когда кредиты кончаются, операции идут с баланса по себестоимости с наценкой.",
@@ -1658,119 +1666,119 @@
       "de": "Ein Credit entspricht {creditUsd} Kosten der Modellaufrufe. Sind die Credits aufgebraucht, laufen Vorgänge über das Guthaben zum Selbstkostenpreis mit Aufschlag.",
       "from": {"en":"Кредит — {creditUsd} себестоимости вызовов модели. Когда кредиты кончаются, операции идут с баланса по себестоимости с наценкой.","de":"Кредит — {creditUsd} себестоимости вызовов модели. Когда кредиты кончаются, операции идут с баланса по себестоимости с наценкой."},
       "params": {"creditUsd":""},
-      "where": ["client/src/components/billing/PlansTable.tsx:148"]
+      "where": ["client/src/components/billing/PlansTable.tsx:157"]
     },
     "billing.weights.mode": {
       "ru": "Запуск или перегенерация режима",
       "en": "Running or regenerating a mode",
       "de": "Modus ausführen oder neu generieren",
       "from": {"en":"Запуск или перегенерация режима","de":"Запуск или перегенерация режима"},
-      "where": ["client/src/components/billing/PlansTable.tsx:116"]
+      "where": ["client/src/components/billing/PlansTable.tsx:125"]
     },
     "billing.weights.operation": {
       "ru": "Операция",
       "en": "Operation",
       "de": "Vorgang",
       "from": {"en":"Операция","de":"Операция"},
-      "where": ["client/src/components/billing/PlansTable.tsx:124"]
+      "where": ["client/src/components/billing/PlansTable.tsx:133"]
     },
     "billing.weights.resume": {
       "ru": "Доработка после сбоя службы или API (обрыв, лимит, зависший ответ)",
       "en": "Finishing after a service or API failure (dropped stream, limit, stalled reply)",
       "de": "Fortsetzen nach einem Dienst- oder API-Ausfall (Abbruch, Limit, hängende Antwort)",
       "from": {"en":"Доработка после сбоя службы или API (обрыв, лимит, зависший ответ)","de":"Доработка после сбоя службы или API (обрыв, лимит, зависший ответ)"},
-      "where": ["client/src/components/billing/PlansTable.tsx:142"]
+      "where": ["client/src/components/billing/PlansTable.tsx:151"]
     },
     "billing.weights.section": {
       "ru": "Перегенерация или добавление раздела, преобразование граф ↔ тезисы",
       "en": "Regenerating or adding a section, graph ↔ theses transform",
       "de": "Abschnitt neu generieren oder hinzufügen, Umwandlung Graph ↔ Thesen",
       "from": {"en":"Перегенерация или добавление раздела, преобразование граф ↔ тезисы","de":"Перегенерация или добавление раздела, преобразование граф ↔ тезисы"},
-      "where": ["client/src/components/billing/PlansTable.tsx:114"]
+      "where": ["client/src/components/billing/PlansTable.tsx:123"]
     },
     "billing.weights.subsection": {
       "ru": "Перегенерация подраздела, таблица рекомендаций",
       "en": "Regenerating a subsection, recommendations table",
       "de": "Unterabschnitt neu generieren, Empfehlungstabelle",
       "from": {"en":"Перегенерация подраздела, таблица рекомендаций","de":"Перегенерация подраздела, таблица рекомендаций"},
-      "where": ["client/src/components/billing/PlansTable.tsx:115"]
+      "where": ["client/src/components/billing/PlansTable.tsx:124"]
     },
     "billing.weights.synthesis": {
       "ru": "Синтез концепции, мета-синтез",
       "en": "Concept synthesis, meta-synthesis",
       "de": "Konzeptsynthese, Meta-Synthese",
       "from": {"en":"Синтез концепции, мета-синтез","de":"Синтез концепции, мета-синтез"},
-      "where": ["client/src/components/billing/PlansTable.tsx:111"]
+      "where": ["client/src/components/billing/PlansTable.tsx:120"]
     },
     "billing.weights.synthesisNote": {
       "ru": "по оценке состава и глубины; число — 8 разделов стандартной глубины",
       "en": "estimated from composition and depth; the figure is for 8 sections at standard depth",
       "de": "nach Schätzung von Zusammensetzung und Tiefe; die Zahl gilt für 8 Abschnitte in Standardtiefe",
       "from": {"en":"по оценке состава и глубины; число — 8 разделов стандартной глубины","de":"по оценке состава и глубины; число — 8 разделов стандартной глубины"},
-      "where": ["client/src/components/billing/PlansTable.tsx:112"]
+      "where": ["client/src/components/billing/PlansTable.tsx:121"]
     },
     "billingPage.active": {
       "ru": "активен",
       "en": "active",
       "de": "aktiv",
       "from": {"en":"активен","de":"активен"},
-      "where": ["client/src/pages/BillingPage.tsx:340"]
+      "where": ["client/src/pages/BillingPage.tsx:341"]
     },
     "billingPage.addKey": {
       "ru": "Добавить ключ",
       "en": "Add key",
       "de": "Schlüssel hinzufügen",
       "from": {"en":"Добавить ключ","de":"Добавить ключ"},
-      "where": ["client/src/pages/BillingPage.tsx:394"]
+      "where": ["client/src/pages/BillingPage.tsx:395"]
     },
     "billingPage.allSyntheses": {
       "ru": "Все синтезы",
       "en": "All syntheses",
       "de": "Alle Synthesen",
       "from": {"en":"Все синтезы","de":"Все синтезы"},
-      "where": ["client/src/pages/BillingPage.tsx:911"]
+      "where": ["client/src/pages/BillingPage.tsx:912"]
     },
     "billingPage.allTime": {
       "ru": "За всё время",
       "en": "All time",
       "de": "Gesamter Zeitraum",
       "from": {"en":"За всё время","de":"За всё время"},
-      "where": ["client/src/pages/BillingPage.tsx:928"]
+      "where": ["client/src/pages/BillingPage.tsx:929"]
     },
     "billingPage.amount": {
       "ru": "Сумма",
       "en": "Amount",
       "de": "Betrag",
       "from": {"en":"Сумма","de":"Сумма"},
-      "where": ["client/src/pages/BillingPage.tsx:1067"]
+      "where": ["client/src/pages/BillingPage.tsx:1068"]
     },
     "billingPage.amountRange": {
       "ru": "Сумма — от $1 до $1000",
       "en": "Amount — from $1 to $1000",
       "de": "Betrag — von $1 bis $1000",
       "from": {"en":"Сумма — от $1 до $1000","de":"Сумма — от $1 до $1000"},
-      "where": ["client/src/pages/BillingPage.tsx:451"]
+      "where": ["client/src/pages/BillingPage.tsx:452"]
     },
     "billingPage.apiKeyTitle": {
       "ru": "API-ключ Anthropic (BYO-Key)",
       "en": "Anthropic API key (BYO-Key)",
       "de": "Anthropic-API-Schlüssel (BYO-Key)",
       "from": {"en":"API-ключ Anthropic (BYO-Key)","de":"API-ключ Anthropic (BYO-Key)"},
-      "where": ["client/src/pages/BillingPage.tsx:327"]
+      "where": ["client/src/pages/BillingPage.tsx:328"]
     },
     "billingPage.back": {
       "ru": "← назад",
       "en": "← back",
       "de": "← zurück",
       "from": {"en":"← назад","de":"← назад"},
-      "where": ["client/src/pages/BillingPage.tsx:1108","client/src/pages/BillingPage.tsx:1216"]
+      "where": ["client/src/pages/BillingPage.tsx:1109","client/src/pages/BillingPage.tsx:1217"]
     },
     "billingPage.balanceAfter": {
       "ru": "Баланс после",
       "en": "Balance after",
       "de": "Guthaben danach",
       "from": {"en":"Баланс после","de":"Баланс после"},
-      "where": ["client/src/pages/BillingPage.tsx:1068"]
+      "where": ["client/src/pages/BillingPage.tsx:1069"]
     },
     "billingPage.balanceToppedUp": {
       "ru": "Баланс пополнен на {amountUsd}; текущий баланс {balanceUsd}",
@@ -1778,7 +1786,7 @@
       "de": "Guthaben um {amountUsd} aufgeladen; aktuelles Guthaben {balanceUsd}",
       "from": {"en":"Баланс пополнен на {amountUsd}; текущий баланс {balanceUsd}","de":"Баланс пополнен на {amountUsd}; текущий баланс {balanceUsd}"},
       "params": {"amountUsd":"fmtMoney(result.transaction.amountUsd)","balanceUsd":"fmtMoney(result.balanceUsd)"},
-      "where": ["client/src/pages/BillingPage.tsx:472"]
+      "where": ["client/src/pages/BillingPage.tsx:473"]
     },
     "billingPage.byAmount": {
       "ru": " на {amount}",
@@ -1786,84 +1794,84 @@
       "de": " um {amount}",
       "from": {"en":" на {amount}","de":" на {amount}"},
       "params": {"amount":"fmtMoney(amount)"},
-      "where": ["client/src/pages/BillingPage.tsx:568"]
+      "where": ["client/src/pages/BillingPage.tsx:569"]
     },
     "billingPage.byModes": {
       "ru": "По режимам:",
       "en": "By modes:",
       "de": "Nach Modi:",
       "from": {"en":"По режимам:","de":"По режимам:"},
-      "where": ["client/src/pages/BillingPage.tsx:1006"]
+      "where": ["client/src/pages/BillingPage.tsx:1007"]
     },
     "billingPage.byoKeyNote": {
       "ru": "С собственным ключом запросы к Claude идут через сервер с вашим ключом и не списываются с баланса; без ключа — подписка или баланс сервиса (приоритет: ключ → подписка → баланс).",
       "en": "With your own key, requests to Claude go through the server with your key and are not charged to the balance; without a key — the service subscription or balance (priority: key → subscription → balance).",
       "de": "Mit eigenem Schlüssel laufen Anfragen an Claude über den Server mit Ihrem Schlüssel und werden nicht vom Guthaben abgezogen; ohne Schlüssel — Abonnement oder Dienstguthaben (Priorität: Schlüssel → Abonnement → Guthaben).",
       "from": {"en":"С собственным ключом запросы к Claude идут через сервер с вашим ключом и не списываются с баланса; без ключа — подписка или баланс сервиса (приоритет: ключ → подписка → баланс).","de":"С собственным ключом запросы к Claude идут через сервер с вашим ключом и не списываются с баланса; без ключа — подписка или баланс сервиса (приоритет: ключ → подписка → баланс)."},
-      "where": ["client/src/pages/BillingPage.tsx:389"]
+      "where": ["client/src/pages/BillingPage.tsx:390"]
     },
     "billingPage.cancelAtPeriodEnd": {
       "ru": " · отмена в конце периода",
       "en": " · canceled at the end of the period",
       "de": " · Kündigung zum Periodenende",
       "from": {"en":" · отмена в конце периода","de":" · отмена в конце периода"},
-      "where": ["client/src/pages/BillingPage.tsx:685"]
+      "where": ["client/src/pages/BillingPage.tsx:686"]
     },
     "billingPage.cancelSubscription": {
       "ru": "Отменить подписку",
       "en": "Cancel subscription",
       "de": "Abonnement kündigen",
       "from": {"en":"Отменить подписку","de":"Отменить подписку"},
-      "where": ["client/src/pages/BillingPage.tsx:726"]
+      "where": ["client/src/pages/BillingPage.tsx:727"]
     },
     "billingPage.choosePlan": {
       "ru": "Выбрать тариф",
       "en": "Choose a plan",
       "de": "Tarif wählen",
       "from": {"en":"Выбрать тариф","de":"Выбрать тариф"},
-      "where": ["client/src/pages/BillingPage.tsx:748","client/src/pages/BillingPage.tsx:779"]
+      "where": ["client/src/pages/BillingPage.tsx:749","client/src/pages/BillingPage.tsx:780"]
     },
     "billingPage.confirmDeleteKey": {
       "ru": "Удалить активный API-ключ? Генерация пойдёт с подписки или баланса сервиса.",
       "en": "Delete the active API key? Generation will use the service subscription or balance.",
       "de": "Aktiven API-Schlüssel löschen? Die Generierung läuft dann über Abonnement oder Dienstguthaben.",
       "from": {"en":"Удалить активный API-ключ? Генерация пойдёт с подписки или баланса сервиса.","de":"Удалить активный API-ключ? Генерация пойдёт с подписки или баланса сервиса."},
-      "where": ["client/src/pages/BillingPage.tsx:378"]
+      "where": ["client/src/pages/BillingPage.tsx:379"]
     },
     "billingPage.confirmPayment": {
       "ru": "Подтвердить платёж",
       "en": "Confirm payment",
       "de": "Zahlung bestätigen",
       "from": {"en":"Подтвердить платёж","de":"Подтвердить платёж"},
-      "where": ["client/src/pages/BillingPage.tsx:521"]
+      "where": ["client/src/pages/BillingPage.tsx:522"]
     },
     "billingPage.confirming": {
       "ru": "Подтверждение…",
       "en": "Confirming…",
       "de": "Bestätigung…",
       "from": {"en":"Подтверждение…","de":"Подтверждение…"},
-      "where": ["client/src/pages/BillingPage.tsx:521"]
+      "where": ["client/src/pages/BillingPage.tsx:522"]
     },
     "billingPage.cost": {
       "ru": "Стоимость",
       "en": "Cost",
       "de": "Kosten",
       "from": {"en":"Стоимость","de":"Стоимость"},
-      "where": ["client/src/pages/BillingPage.tsx:965"]
+      "where": ["client/src/pages/BillingPage.tsx:966"]
     },
     "billingPage.creditCharges": {
       "ru": "Списания кредитов",
       "en": "Credit charges",
       "de": "Credit-Abbuchungen",
       "from": {"en":"Списания кредитов","de":"Списания кредитов"},
-      "where": ["client/src/pages/BillingPage.tsx:1179"]
+      "where": ["client/src/pages/BillingPage.tsx:1180"]
     },
     "billingPage.creditChargesLoadFailed": {
       "ru": "Не удалось загрузить списания кредитов",
       "en": "Could not load credit charges",
       "de": "Credit-Abbuchungen konnten nicht geladen werden",
       "from": {"en":"Не удалось загрузить списания кредитов","de":"Не удалось загрузить списания кредитов"},
-      "where": ["client/src/pages/BillingPage.tsx:1162"]
+      "where": ["client/src/pages/BillingPage.tsx:1163"]
     },
     "billingPage.creditChargesTotal": {
       "ru": "Всего за всё время: {credits}",
@@ -1871,203 +1879,203 @@
       "de": "Insgesamt: {credits}",
       "from": {"en":"Всего за всё время: {credits}","de":"Всего за всё время: {credits}"},
       "params": {"credits":""},
-      "where": ["client/src/pages/BillingPage.tsx:1181"]
+      "where": ["client/src/pages/BillingPage.tsx:1182"]
     },
     "billingPage.creditDocument": {
       "ru": "Документ",
       "en": "Document",
       "de": "Dokument",
       "from": {"en":"Документ","de":"Документ"},
-      "where": ["client/src/pages/BillingPage.tsx:1190"]
+      "where": ["client/src/pages/BillingPage.tsx:1191"]
     },
     "billingPage.creditDocumentDeleted": {
       "ru": "документ удалён",
       "en": "document deleted",
       "de": "Dokument gelöscht",
       "from": {"en":"документ удалён","de":"документ удалён"},
-      "where": ["client/src/pages/BillingPage.tsx:1203"]
+      "where": ["client/src/pages/BillingPage.tsx:1204"]
     },
     "billingPage.creditOpEnrichment": {
       "ru": "обогащение",
       "en": "enrichment",
       "de": "Anreicherung",
       "from": {"en":"обогащение","de":"обогащение"},
-      "where": ["client/src/pages/BillingPage.tsx:1138"]
+      "where": ["client/src/pages/BillingPage.tsx:1139"]
     },
     "billingPage.creditOpMode": {
       "ru": "режим",
       "en": "mode",
       "de": "Modus",
       "from": {"en":"режим","de":"режим"},
-      "where": ["client/src/pages/BillingPage.tsx:1137"]
+      "where": ["client/src/pages/BillingPage.tsx:1138"]
     },
     "billingPage.creditOpPlan": {
       "ru": "план правки",
       "en": "edit plan",
       "de": "Bearbeitungsplan",
       "from": {"en":"план правки","de":"план правки"},
-      "where": ["client/src/pages/BillingPage.tsx:1139"]
+      "where": ["client/src/pages/BillingPage.tsx:1140"]
     },
     "billingPage.creditOpSection": {
       "ru": "раздел",
       "en": "section",
       "de": "Abschnitt",
       "from": {"en":"раздел","de":"раздел"},
-      "where": ["client/src/pages/BillingPage.tsx:1135"]
+      "where": ["client/src/pages/BillingPage.tsx:1136"]
     },
     "billingPage.creditOpSubsection": {
       "ru": "подраздел",
       "en": "subsection",
       "de": "Unterabschnitt",
       "from": {"en":"подраздел","de":"подраздел"},
-      "where": ["client/src/pages/BillingPage.tsx:1136"]
+      "where": ["client/src/pages/BillingPage.tsx:1137"]
     },
     "billingPage.creditOpSynthesis": {
       "ru": "синтез",
       "en": "synthesis",
       "de": "Synthese",
       "from": {"en":"синтез","de":"синтез"},
-      "where": ["client/src/pages/BillingPage.tsx:1134"]
+      "where": ["client/src/pages/BillingPage.tsx:1135"]
     },
     "billingPage.creditOperation": {
       "ru": "Операция",
       "en": "Operation",
       "de": "Vorgang",
       "from": {"en":"Операция","de":"Операция"},
-      "where": ["client/src/pages/BillingPage.tsx:1189"]
+      "where": ["client/src/pages/BillingPage.tsx:1190"]
     },
     "billingPage.creditsCol": {
       "ru": "Кредиты",
       "en": "Credits",
       "de": "Credits",
       "from": {"en":"Кредиты","de":"Кредиты"},
-      "where": ["client/src/pages/BillingPage.tsx:1191"]
+      "where": ["client/src/pages/BillingPage.tsx:1192"]
     },
     "billingPage.customAmount": {
       "ru": "своя сумма",
       "en": "custom amount",
       "de": "eigener Betrag",
       "from": {"en":"своя сумма","de":"своя сумма"},
-      "where": ["client/src/pages/BillingPage.tsx:549"]
+      "where": ["client/src/pages/BillingPage.tsx:550"]
     },
     "billingPage.customAmountLabel": {
       "ru": "Своя сумма пополнения, USD",
       "en": "Custom top-up amount, USD",
       "de": "Eigener Aufladebetrag, USD",
       "from": {"en":"Своя сумма пополнения, USD","de":"Своя сумма пополнения, USD"},
-      "where": ["client/src/pages/BillingPage.tsx:558"]
+      "where": ["client/src/pages/BillingPage.tsx:559"]
     },
     "billingPage.customPeriod": {
       "ru": "Свой период",
       "en": "Custom period",
       "de": "Eigener Zeitraum",
       "from": {"en":"Свой период","de":"Свой период"},
-      "where": ["client/src/pages/BillingPage.tsx:929"]
+      "where": ["client/src/pages/BillingPage.tsx:930"]
     },
     "billingPage.date": {
       "ru": "Дата",
       "en": "Date",
       "de": "Datum",
       "from": {"en":"Дата","de":"Дата"},
-      "where": ["client/src/pages/BillingPage.tsx:960","client/src/pages/BillingPage.tsx:1064","client/src/pages/BillingPage.tsx:1188"]
+      "where": ["client/src/pages/BillingPage.tsx:961","client/src/pages/BillingPage.tsx:1065","client/src/pages/BillingPage.tsx:1189"]
     },
     "billingPage.enterCardData": {
       "ru": "Введите данные карты и подтвердите оплату.",
       "en": "Enter the card details and confirm the payment.",
       "de": "Geben Sie die Kartendaten ein und bestätigen Sie die Zahlung.",
       "from": {"en":"Введите данные карты и подтвердите оплату.","de":"Введите данные карты и подтвердите оплату."},
-      "where": ["client/src/pages/BillingPage.tsx:502"]
+      "where": ["client/src/pages/BillingPage.tsx:503"]
     },
     "billingPage.enterKey": {
       "ru": "Введите ключ",
       "en": "Enter a key",
       "de": "Schlüssel eingeben",
       "from": {"en":"Введите ключ","de":"Введите ключ"},
-      "where": ["client/src/pages/BillingPage.tsx:284"]
+      "where": ["client/src/pages/BillingPage.tsx:285"]
     },
     "billingPage.filterBySynthesis": {
       "ru": "Фильтр по синтезу",
       "en": "Filter by synthesis",
       "de": "Nach Synthese filtern",
       "from": {"en":"Фильтр по синтезу","de":"Фильтр по синтезу"},
-      "where": ["client/src/pages/BillingPage.tsx:908"]
+      "where": ["client/src/pages/BillingPage.tsx:909"]
     },
     "billingPage.firstInvoicePayment": {
       "ru": "Оплата первого инвойса подписки.",
       "en": "Payment of the first subscription invoice.",
       "de": "Zahlung der ersten Abonnementrechnung.",
       "from": {"en":"Оплата первого инвойса подписки.","de":"Оплата первого инвойса подписки."},
-      "where": ["client/src/pages/BillingPage.tsx:815"]
+      "where": ["client/src/pages/BillingPage.tsx:816"]
     },
     "billingPage.forward": {
       "ru": "вперёд →",
       "en": "forward →",
       "de": "weiter →",
       "from": {"en":"вперёд →","de":"вперёд →"},
-      "where": ["client/src/pages/BillingPage.tsx:1119","client/src/pages/BillingPage.tsx:1220"]
+      "where": ["client/src/pages/BillingPage.tsx:1120","client/src/pages/BillingPage.tsx:1221"]
     },
     "billingPage.fromDate": {
       "ru": "С даты",
       "en": "From date",
       "de": "Ab Datum",
       "from": {"en":"С даты","de":"С даты"},
-      "where": ["client/src/pages/BillingPage.tsx:939"]
+      "where": ["client/src/pages/BillingPage.tsx:940"]
     },
     "billingPage.historyLoadFailed": {
       "ru": "Не удалось загрузить историю",
       "en": "Failed to load the history",
       "de": "Verlauf konnte nicht geladen werden",
       "from": {"en":"Не удалось загрузить историю","de":"Не удалось загрузить историю"},
-      "where": ["client/src/pages/BillingPage.tsx:878"]
+      "where": ["client/src/pages/BillingPage.tsx:879"]
     },
     "billingPage.input": {
       "ru": "Вход",
       "en": "Input",
       "de": "Eingabe",
       "from": {"en":"Вход","de":"Вход"},
-      "where": ["client/src/pages/BillingPage.tsx:963"]
+      "where": ["client/src/pages/BillingPage.tsx:964"]
     },
     "billingPage.keyDeleteFailed": {
       "ru": "Не удалось удалить ключ",
       "en": "Failed to delete the key",
       "de": "Schlüssel konnte nicht gelöscht werden",
       "from": {"en":"Не удалось удалить ключ","de":"Не удалось удалить ключ"},
-      "where": ["client/src/pages/BillingPage.tsx:319"]
+      "where": ["client/src/pages/BillingPage.tsx:320"]
     },
     "billingPage.keyDeleted": {
       "ru": "Ключ удалён",
       "en": "Key deleted",
       "de": "Schlüssel gelöscht",
       "from": {"en":"Ключ удалён","de":"Ключ удалён"},
-      "where": ["client/src/pages/BillingPage.tsx:315"]
+      "where": ["client/src/pages/BillingPage.tsx:316"]
     },
     "billingPage.keyEncryptedNote": {
       "ru": "Ключ шифруется на сервере (AES-256-GCM) и в открытом виде не хранится; новый ключ деактивирует прежний.",
       "en": "The key is encrypted on the server (AES-256-GCM) and is not stored in plain form; a new key deactivates the previous one.",
       "de": "Der Schlüssel wird auf dem Server verschlüsselt (AES-256-GCM) und nicht im Klartext gespeichert; ein neuer Schlüssel deaktiviert den vorherigen.",
       "from": {"en":"Ключ шифруется на сервере (AES-256-GCM) и в открытом виде не хранится; новый ключ деактивирует прежний.","de":"Ключ шифруется на сервере (AES-256-GCM) и в открытом виде не хранится; новый ключ деактивирует прежний."},
-      "where": ["client/src/pages/BillingPage.tsx:418"]
+      "where": ["client/src/pages/BillingPage.tsx:419"]
     },
     "billingPage.keyNotSet": {
       "ru": "ключ не задан",
       "en": "no key set",
       "de": "kein Schlüssel gesetzt",
       "from": {"en":"ключ не задан","de":"ключ не задан"},
-      "where": ["client/src/pages/BillingPage.tsx:384"]
+      "where": ["client/src/pages/BillingPage.tsx:385"]
     },
     "billingPage.keyPlaceholder": {
       "ru": "sk-ant-api03-…",
       "en": "sk-ant-api03-…",
       "de": "sk-ant-api03-…",
       "from": {"en":"sk-ant-api03-…","de":"sk-ant-api03-…"},
-      "where": ["client/src/pages/BillingPage.tsx:402"]
+      "where": ["client/src/pages/BillingPage.tsx:403"]
     },
     "billingPage.keySaveFailed": {
       "ru": "Не удалось сохранить ключ",
       "en": "Failed to save the key",
       "de": "Schlüssel konnte nicht gespeichert werden",
       "from": {"en":"Не удалось сохранить ключ","de":"Не удалось сохранить ключ"},
-      "where": ["client/src/pages/BillingPage.tsx:295"]
+      "where": ["client/src/pages/BillingPage.tsx:296"]
     },
     "billingPage.keySaved": {
       "ru": "Ключ {prefix}… сохранён и активен",
@@ -2075,56 +2083,56 @@
       "de": "Schlüssel {prefix}… gespeichert und aktiv",
       "from": {"en":"Ключ {prefix}… сохранён и активен","de":"Ключ {prefix}… сохранён и активен"},
       "params": {"prefix":"stored.prefix"},
-      "where": ["client/src/pages/BillingPage.tsx:292"]
+      "where": ["client/src/pages/BillingPage.tsx:293"]
     },
     "billingPage.keysLoadFailed": {
       "ru": "Не удалось загрузить ключи",
       "en": "Failed to load the keys",
       "de": "Schlüssel konnten nicht geladen werden",
       "from": {"en":"Не удалось загрузить ключи","de":"Не удалось загрузить ключи"},
-      "where": ["client/src/pages/BillingPage.tsx:270"]
+      "where": ["client/src/pages/BillingPage.tsx:271"]
     },
     "billingPage.lastMonth": {
       "ru": "За месяц",
       "en": "Last month",
       "de": "Letzter Monat",
       "from": {"en":"За месяц","de":"За месяц"},
-      "where": ["client/src/pages/BillingPage.tsx:927"]
+      "where": ["client/src/pages/BillingPage.tsx:928"]
     },
     "billingPage.lastWeek": {
       "ru": "За неделю",
       "en": "Last week",
       "de": "Letzte Woche",
       "from": {"en":"За неделю","de":"За неделю"},
-      "where": ["client/src/pages/BillingPage.tsx:926"]
+      "where": ["client/src/pages/BillingPage.tsx:927"]
     },
     "billingPage.limit": {
       "ru": "Лимит",
       "en": "Limit",
       "de": "Limit",
       "from": {"en":"Лимит","de":"Лимит"},
-      "where": ["client/src/pages/BillingPage.tsx:701"]
+      "where": ["client/src/pages/BillingPage.tsx:702"]
     },
     "billingPage.loading": {
       "ru": "загрузка…",
       "en": "loading…",
       "de": "wird geladen…",
       "from": {"en":"загрузка…","de":"загрузка…"},
-      "where": ["client/src/pages/BillingPage.tsx:953"]
+      "where": ["client/src/pages/BillingPage.tsx:954"]
     },
     "billingPage.loadingPaymentForm": {
       "ru": "Загрузка платёжной формы…",
       "en": "Loading the payment form…",
       "de": "Zahlungsformular wird geladen…",
       "from": {"en":"Загрузка платёжной формы…","de":"Загрузка платёжной формы…"},
-      "where": ["client/src/pages/BillingPage.tsx:234"]
+      "where": ["client/src/pages/BillingPage.tsx:235"]
     },
     "billingPage.mode": {
       "ru": "Режим",
       "en": "Mode",
       "de": "Modus",
       "from": {"en":"Режим","de":"Режим"},
-      "where": ["client/src/pages/BillingPage.tsx:966"]
+      "where": ["client/src/pages/BillingPage.tsx:967"]
     },
     "billingPage.modeSummary": {
       "ru": "{modeLabel} — {requests} запр., {costUsd}",
@@ -2132,56 +2140,56 @@
       "de": "{modeLabel} — {requests} Anfr., {costUsd}",
       "from": {"en":"{modeLabel} — {requests} запр., {costUsd}","de":"{modeLabel} — {requests} запр., {costUsd}"},
       "params": {"modeLabel":"MODE_LABELS[m]","requests":"fmtInt(history.byMode[m].requests)","costUsd":"fmtUsd(history.byMode[m].costUsd)"},
-      "where": ["client/src/pages/BillingPage.tsx:1011"]
+      "where": ["client/src/pages/BillingPage.tsx:1012"]
     },
     "billingPage.noRecords": {
       "ru": "записей нет",
       "en": "no records",
       "de": "keine Einträge",
       "from": {"en":"записей нет","de":"записей нет"},
-      "where": ["client/src/pages/BillingPage.tsx:1000"]
+      "where": ["client/src/pages/BillingPage.tsx:1001"]
     },
     "billingPage.noSubscription": {
       "ru": "подписки нет",
       "en": "no subscription",
       "de": "kein Abonnement",
       "from": {"en":"подписки нет","de":"подписки нет"},
-      "where": ["client/src/pages/BillingPage.tsx:765"]
+      "where": ["client/src/pages/BillingPage.tsx:766"]
     },
     "billingPage.noTransactions": {
       "ru": "транзакций нет",
       "en": "no transactions",
       "de": "keine Transaktionen",
       "from": {"en":"транзакций нет","de":"транзакций нет"},
-      "where": ["client/src/pages/BillingPage.tsx:1097"]
+      "where": ["client/src/pages/BillingPage.tsx:1098"]
     },
     "billingPage.notSet": {
       "ru": "не задан",
       "en": "not set",
       "de": "nicht gesetzt",
       "from": {"en":"не задан","de":"не задан"},
-      "where": ["client/src/pages/BillingPage.tsx:385"]
+      "where": ["client/src/pages/BillingPage.tsx:386"]
     },
     "billingPage.notSubscribed": {
       "ru": "не оформлена",
       "en": "not subscribed",
       "de": "nicht abgeschlossen",
       "from": {"en":"не оформлена","de":"не оформлена"},
-      "where": ["client/src/pages/BillingPage.tsx:766"]
+      "where": ["client/src/pages/BillingPage.tsx:767"]
     },
     "billingPage.output": {
       "ru": "Выход",
       "en": "Output",
       "de": "Ausgabe",
       "from": {"en":"Выход","de":"Выход"},
-      "where": ["client/src/pages/BillingPage.tsx:964"]
+      "where": ["client/src/pages/BillingPage.tsx:965"]
     },
     "billingPage.ownKeyCostNote": {
       "ru": " · стоимость запросов со своим ключом — себестоимость, в итог не входит",
       "en": " · the cost of requests with your own key is at cost price and is not included in the total",
       "de": " · Kosten von Anfragen mit eigenem Schlüssel — Selbstkosten, nicht in der Summe enthalten",
       "from": {"en":" · стоимость запросов со своим ключом — себестоимость, в итог не входит","de":" · стоимость запросов со своим ключом — себестоимость, в итог не входит"},
-      "where": ["client/src/pages/BillingPage.tsx:1015"]
+      "where": ["client/src/pages/BillingPage.tsx:1016"]
     },
     "billingPage.pageOf": {
       "ru": "стр. {page} / {pages}",
@@ -2189,7 +2197,7 @@
       "de": "S. {page} / {pages}",
       "from": {"en":"стр. {page} / {pages}","de":"стр. {page} / {pages}"},
       "params": {"page":"page","pages":"pages"},
-      "where": ["client/src/pages/BillingPage.tsx:1111","client/src/pages/BillingPage.tsx:1218"]
+      "where": ["client/src/pages/BillingPage.tsx:1112","client/src/pages/BillingPage.tsx:1219"]
     },
     "billingPage.payAmount": {
       "ru": "Оплатить {amountUsd}",
@@ -2197,35 +2205,35 @@
       "de": "{amountUsd} bezahlen",
       "from": {"en":"Оплатить {amountUsd}","de":"Оплатить {amountUsd}"},
       "params": {"amountUsd":"fmtMoney(intent.amountUsd)"},
-      "where": ["client/src/pages/BillingPage.tsx:508"]
+      "where": ["client/src/pages/BillingPage.tsx:509"]
     },
     "billingPage.paySubscription": {
       "ru": "Оплатить подписку",
       "en": "Pay for the subscription",
       "de": "Abonnement bezahlen",
       "from": {"en":"Оплатить подписку","de":"Оплатить подписку"},
-      "where": ["client/src/pages/BillingPage.tsx:818"]
+      "where": ["client/src/pages/BillingPage.tsx:819"]
     },
     "billingPage.paying": {
       "ru": "Оплата…",
       "en": "Paying…",
       "de": "Zahlung…",
       "from": {"en":"Оплата…","de":"Оплата…"},
-      "where": ["client/src/pages/BillingPage.tsx:243"]
+      "where": ["client/src/pages/BillingPage.tsx:244"]
     },
     "billingPage.paymentAccepted": {
       "ru": "Оплата принята; статус подписки обновится после подтверждения Stripe.",
       "en": "Payment accepted; the subscription status will update after Stripe confirms it.",
       "de": "Zahlung angenommen; der Abonnementstatus wird nach der Bestätigung durch Stripe aktualisiert.",
       "from": {"en":"Оплата принята; статус подписки обновится после подтверждения Stripe.","de":"Оплата принята; статус подписки обновится после подтверждения Stripe."},
-      "where": ["client/src/pages/BillingPage.tsx:822"]
+      "where": ["client/src/pages/BillingPage.tsx:823"]
     },
     "billingPage.paymentCreateFailed": {
       "ru": "Не удалось создать платёж",
       "en": "Failed to create the payment",
       "de": "Zahlung konnte nicht erstellt werden",
       "from": {"en":"Не удалось создать платёж","de":"Не удалось создать платёж"},
-      "where": ["client/src/pages/BillingPage.tsx:459"]
+      "where": ["client/src/pages/BillingPage.tsx:460"]
     },
     "billingPage.paymentCreated": {
       "ru": "Платёж на {amountUsd} создан.",
@@ -2233,28 +2241,28 @@
       "de": "Zahlung über {amountUsd} erstellt.",
       "from": {"en":"Платёж на {amountUsd} создан.","de":"Платёж на {amountUsd} создан."},
       "params": {"amountUsd":"fmtMoney(intent.amountUsd)"},
-      "where": ["client/src/pages/BillingPage.tsx:500"]
+      "where": ["client/src/pages/BillingPage.tsx:501"]
     },
     "billingPage.paymentDeclined": {
       "ru": "Платёж отклонён",
       "en": "Payment declined",
       "de": "Zahlung abgelehnt",
       "from": {"en":"Платёж отклонён","de":"Платёж отклонён"},
-      "where": ["client/src/pages/BillingPage.tsx:214"]
+      "where": ["client/src/pages/BillingPage.tsx:215"]
     },
     "billingPage.paymentError": {
       "ru": "Ошибка платежа",
       "en": "Payment error",
       "de": "Zahlungsfehler",
       "from": {"en":"Ошибка платежа","de":"Ошибка платежа"},
-      "where": ["client/src/pages/BillingPage.tsx:225"]
+      "where": ["client/src/pages/BillingPage.tsx:226"]
     },
     "billingPage.paymentFormFailed": {
       "ru": "Не удалось загрузить платёжную форму",
       "en": "Failed to load the payment form",
       "de": "Zahlungsformular konnte nicht geladen werden",
       "from": {"en":"Не удалось загрузить платёжную форму","de":"Не удалось загрузить платёжную форму"},
-      "where": ["client/src/pages/BillingPage.tsx:190"]
+      "where": ["client/src/pages/BillingPage.tsx:191"]
     },
     "billingPage.paymentIncomplete": {
       "ru": "Платёж не завершён (статус: {status})",
@@ -2262,14 +2270,14 @@
       "de": "Zahlung nicht abgeschlossen (Status: {status})",
       "from": {"en":"Платёж не завершён (статус: {status})","de":"Платёж не завершён (статус: {status})"},
       "params": {"status":"result.paymentIntent?.status ?? \"неизвестен\""},
-      "where": ["client/src/pages/BillingPage.tsx:219"]
+      "where": ["client/src/pages/BillingPage.tsx:220"]
     },
     "billingPage.paymentNotConfirmed": {
       "ru": "Платёж не подтверждён",
       "en": "Payment not confirmed",
       "de": "Zahlung nicht bestätigt",
       "from": {"en":"Платёж не подтверждён","de":"Платёж не подтверждён"},
-      "where": ["client/src/pages/BillingPage.tsx:478"]
+      "where": ["client/src/pages/BillingPage.tsx:479"]
     },
     "billingPage.paymentsUnavailable": {
       "ru": "Платежи недоступны: Stripe не настроен на сервере.",
@@ -2283,14 +2291,14 @@
       "en": "period",
       "de": "Zeitraum",
       "from": {"en":"период","de":"период"},
-      "where": ["client/src/pages/BillingPage.tsx:692"]
+      "where": ["client/src/pages/BillingPage.tsx:693"]
     },
     "billingPage.periodFilter": {
       "ru": "Период",
       "en": "Period",
       "de": "Zeitraum",
       "from": {"en":"Период","de":"Период"},
-      "where": ["client/src/pages/BillingPage.tsx:923"]
+      "where": ["client/src/pages/BillingPage.tsx:924"]
     },
     "billingPage.planLine": {
       "ru": "тариф · {priceUsd} / {billingPeriod}",
@@ -2298,35 +2306,35 @@
       "de": "Tarif · {priceUsd} / {billingPeriod}",
       "from": {"en":"тариф · {priceUsd} / {billingPeriod}","de":"тариф · {priceUsd} / {billingPeriod}"},
       "params": {"priceUsd":"fmtMoney(plan.priceUsd)","billingPeriod":"periodWord(plan.billingPeriod)"},
-      "where": ["client/src/pages/BillingPage.tsx:677"]
+      "where": ["client/src/pages/BillingPage.tsx:678"]
     },
     "billingPage.plans": {
       "ru": "Тарифы",
       "en": "Plans",
       "de": "Tarife",
       "from": {"en":"Тарифы","de":"Тарифы"},
-      "where": ["client/src/pages/BillingPage.tsx:787"]
+      "where": ["client/src/pages/BillingPage.tsx:788"]
     },
     "billingPage.plansLoadFailed": {
       "ru": "Не удалось загрузить тарифы",
       "en": "Failed to load the plans",
       "de": "Tarife konnten nicht geladen werden",
       "from": {"en":"Не удалось загрузить тарифы","de":"Не удалось загрузить тарифы"},
-      "where": ["client/src/pages/BillingPage.tsx:616"]
+      "where": ["client/src/pages/BillingPage.tsx:617"]
     },
     "billingPage.quota": {
       "ru": "Квота",
       "en": "Quota",
       "de": "Kontingent",
       "from": {"en":"Квота","de":"Квота"},
-      "where": ["client/src/pages/BillingPage.tsx:699"]
+      "where": ["client/src/pages/BillingPage.tsx:700"]
     },
     "billingPage.quotaCredits": {
       "ru": "кредиты",
       "en": "credits",
       "de": "Credits",
       "from": {"en":"кредиты","de":"кредиты"},
-      "where": ["client/src/pages/BillingPage.tsx:707"]
+      "where": ["client/src/pages/BillingPage.tsx:708"]
     },
     "billingPage.recordsCount": {
       "ru": "{entriesCount} записей",
@@ -2334,49 +2342,49 @@
       "de": "{entriesCount} Einträge",
       "from": {"en":"{entriesCount} записей","de":"{entriesCount} записей"},
       "params": {"entriesCount":"fmtInt(entries.length)"},
-      "where": ["client/src/pages/BillingPage.tsx:953"]
+      "where": ["client/src/pages/BillingPage.tsx:954"]
     },
     "billingPage.refresh": {
       "ru": "Обновить",
       "en": "Refresh",
       "de": "Aktualisieren",
       "from": {"en":"Обновить","de":"Обновить"},
-      "where": ["client/src/pages/BillingPage.tsx:758"]
+      "where": ["client/src/pages/BillingPage.tsx:759"]
     },
     "billingPage.remaining": {
       "ru": "Остаток",
       "en": "Remaining",
       "de": "Rest",
       "from": {"en":"Остаток","de":"Остаток"},
-      "where": ["client/src/pages/BillingPage.tsx:702"]
+      "where": ["client/src/pages/BillingPage.tsx:703"]
     },
     "billingPage.replaceKey": {
       "ru": "Заменить ключ",
       "en": "Replace key",
       "de": "Schlüssel ersetzen",
       "from": {"en":"Заменить ключ","de":"Заменить ключ"},
-      "where": ["client/src/pages/BillingPage.tsx:394"]
+      "where": ["client/src/pages/BillingPage.tsx:395"]
     },
     "billingPage.resume": {
       "ru": "Возобновить",
       "en": "Resume",
       "de": "Fortsetzen",
       "from": {"en":"Возобновить","de":"Возобновить"},
-      "where": ["client/src/pages/BillingPage.tsx:737"]
+      "where": ["client/src/pages/BillingPage.tsx:738"]
     },
     "billingPage.section": {
       "ru": "Раздел",
       "en": "Section",
       "de": "Abschnitt",
       "from": {"en":"Раздел","de":"Раздел"},
-      "where": ["client/src/pages/BillingPage.tsx:962"]
+      "where": ["client/src/pages/BillingPage.tsx:963"]
     },
     "billingPage.serviceBalance": {
       "ru": "Баланс сервиса",
       "en": "Service balance",
       "de": "Dienstguthaben",
       "from": {"en":"Баланс сервиса","de":"Баланс сервиса"},
-      "where": ["client/src/pages/BillingPage.tsx:488"]
+      "where": ["client/src/pages/BillingPage.tsx:489"]
     },
     "billingPage.since": {
       "ru": "с {createdAt}",
@@ -2384,14 +2392,14 @@
       "de": "seit {createdAt}",
       "from": {"en":"с {createdAt}","de":"с {createdAt}"},
       "params": {"createdAt":"fmtDateShort(active.createdAt)"},
-      "where": ["client/src/pages/BillingPage.tsx:342"]
+      "where": ["client/src/pages/BillingPage.tsx:343"]
     },
     "billingPage.sourceBalance": {
       "ru": "баланс",
       "en": "balance",
       "de": "Guthaben",
       "from": {"en":"баланс","de":"баланс"},
-      "where": ["client/src/pages/BillingPage.tsx:130","client/src/pages/BillingPage.tsx:494"]
+      "where": ["client/src/pages/BillingPage.tsx:130","client/src/pages/BillingPage.tsx:495"]
     },
     "billingPage.sourceOwnKey": {
       "ru": "свой ключ",
@@ -2412,126 +2420,126 @@
       "en": "status",
       "de": "Status",
       "from": {"en":"статус","de":"статус"},
-      "where": ["client/src/pages/BillingPage.tsx:685"]
+      "where": ["client/src/pages/BillingPage.tsx:686"]
     },
     "billingPage.stripeTestMode": {
       "ru": "Stripe.js не настроен (VITE_STRIPE_PUBLISHABLE_KEY) — тестовый режим: подтверждение платежа сервером.",
       "en": "Stripe.js is not configured (VITE_STRIPE_PUBLISHABLE_KEY) — test mode: the payment is confirmed by the server.",
       "de": "Stripe.js ist nicht eingerichtet (VITE_STRIPE_PUBLISHABLE_KEY) — Testmodus: Zahlungsbestätigung durch den Server.",
       "from": {"en":"Stripe.js не настроен (VITE_STRIPE_PUBLISHABLE_KEY) — тестовый режим: подтверждение платежа сервером.","de":"Stripe.js не настроен (VITE_STRIPE_PUBLISHABLE_KEY) — тестовый режим: подтверждение платежа сервером."},
-      "where": ["client/src/pages/BillingPage.tsx:503"]
+      "where": ["client/src/pages/BillingPage.tsx:504"]
     },
     "billingPage.subActive": {
       "ru": "активна",
       "en": "active",
       "de": "aktiv",
       "from": {"en":"активна","de":"активна"},
-      "where": ["client/src/pages/BillingPage.tsx:580"]
+      "where": ["client/src/pages/BillingPage.tsx:581"]
     },
     "billingPage.subCanceled": {
       "ru": "отменена",
       "en": "canceled",
       "de": "gekündigt",
       "from": {"en":"отменена","de":"отменена"},
-      "where": ["client/src/pages/BillingPage.tsx:583"]
+      "where": ["client/src/pages/BillingPage.tsx:584"]
     },
     "billingPage.subIncomplete": {
       "ru": "ожидает оплаты",
       "en": "awaiting payment",
       "de": "wartet auf Zahlung",
       "from": {"en":"ожидает оплаты","de":"ожидает оплаты"},
-      "where": ["client/src/pages/BillingPage.tsx:584"]
+      "where": ["client/src/pages/BillingPage.tsx:585"]
     },
     "billingPage.subPastDue": {
       "ru": "просрочена оплата",
       "en": "payment overdue",
       "de": "Zahlung überfällig",
       "from": {"en":"просрочена оплата","de":"просрочена оплата"},
-      "where": ["client/src/pages/BillingPage.tsx:582"]
+      "where": ["client/src/pages/BillingPage.tsx:583"]
     },
     "billingPage.subTrialing": {
       "ru": "пробный период",
       "en": "trial period",
       "de": "Probezeit",
       "from": {"en":"пробный период","de":"пробный период"},
-      "where": ["client/src/pages/BillingPage.tsx:581"]
+      "where": ["client/src/pages/BillingPage.tsx:582"]
     },
     "billingPage.subscribe": {
       "ru": "Оформить",
       "en": "Subscribe",
       "de": "Abschließen",
       "from": {"en":"Оформить","de":"Оформить"},
-      "where": ["client/src/pages/BillingPage.tsx:801"]
+      "where": ["client/src/pages/BillingPage.tsx:802"]
     },
     "billingPage.subscribeFailed": {
       "ru": "Не удалось оформить подписку",
       "en": "Failed to subscribe",
       "de": "Abonnement konnte nicht abgeschlossen werden",
       "from": {"en":"Не удалось оформить подписку","de":"Не удалось оформить подписку"},
-      "where": ["client/src/pages/BillingPage.tsx:637"]
+      "where": ["client/src/pages/BillingPage.tsx:638"]
     },
     "billingPage.subscription": {
       "ru": "Подписка",
       "en": "Subscription",
       "de": "Abonnement",
       "from": {"en":"Подписка","de":"Подписка"},
-      "where": ["client/src/pages/BillingPage.tsx:666"]
+      "where": ["client/src/pages/BillingPage.tsx:667"]
     },
     "billingPage.subscriptionChangeFailed": {
       "ru": "Не удалось изменить подписку",
       "en": "Failed to change the subscription",
       "de": "Abonnement konnte nicht geändert werden",
       "from": {"en":"Не удалось изменить подписку","de":"Не удалось изменить подписку"},
-      "where": ["client/src/pages/BillingPage.tsx:654"]
+      "where": ["client/src/pages/BillingPage.tsx:655"]
     },
     "billingPage.subscriptionCreated": {
       "ru": "Подписка создана и ожидает оплаты первого инвойса; после оплаты статус обновится (webhook Stripe).",
       "en": "The subscription has been created and awaits payment of the first invoice; after payment the status will update (Stripe webhook).",
       "de": "Abonnement erstellt; es wartet auf die Zahlung der ersten Rechnung, danach wird der Status aktualisiert (Stripe-Webhook).",
       "from": {"en":"Подписка создана и ожидает оплаты первого инвойса; после оплаты статус обновится (webhook Stripe).","de":"Подписка создана и ожидает оплаты первого инвойса; после оплаты статус обновится (webhook Stripe)."},
-      "where": ["client/src/pages/BillingPage.tsx:631"]
+      "where": ["client/src/pages/BillingPage.tsx:632"]
     },
     "billingPage.subscriptionLoadFailed": {
       "ru": "Не удалось загрузить подписку",
       "en": "Failed to load the subscription",
       "de": "Abonnement konnte nicht geladen werden",
       "from": {"en":"Не удалось загрузить подписку","de":"Не удалось загрузить подписку"},
-      "where": ["client/src/pages/BillingPage.tsx:600"]
+      "where": ["client/src/pages/BillingPage.tsx:601"]
     },
     "billingPage.subscriptionNoteCredits": {
       "ru": "Подписка даёт кредиты на период; операция списывает свой вес (синтез — по составу и глубине). Когда кредиты кончаются, операции идут с баланса.",
       "en": "A subscription grants credits per period; each operation deducts its weight (a synthesis by composition and depth). When credits run out, operations are paid from the balance.",
       "de": "Ein Abonnement gewährt Credits pro Zeitraum; jeder Vorgang zieht sein Gewicht ab (eine Synthese nach Zusammensetzung und Tiefe). Sind die Credits aufgebraucht, laufen Vorgänge über das Guthaben.",
       "from": {"en":"Подписка даёт кредиты на период; операция списывает свой вес (синтез — по составу и глубине). Когда кредиты кончаются, операции идут с баланса.","de":"Подписка даёт кредиты на период; операция списывает свой вес (синтез — по составу и глубине). Когда кредиты кончаются, операции идут с баланса."},
-      "where": ["client/src/pages/BillingPage.tsx:769"]
+      "where": ["client/src/pages/BillingPage.tsx:770"]
     },
     "billingPage.subscriptionResumed": {
       "ru": "Подписка возобновлена",
       "en": "Subscription resumed",
       "de": "Abonnement fortgesetzt",
       "from": {"en":"Подписка возобновлена","de":"Подписка возобновлена"},
-      "where": ["client/src/pages/BillingPage.tsx:649"]
+      "where": ["client/src/pages/BillingPage.tsx:650"]
     },
     "billingPage.subscriptionWillCancel": {
       "ru": "Подписка будет отменена в конце периода",
       "en": "The subscription will be canceled at the end of the period",
       "de": "Das Abonnement wird zum Periodenende gekündigt",
       "from": {"en":"Подписка будет отменена в конце периода","de":"Подписка будет отменена в конце периода"},
-      "where": ["client/src/pages/BillingPage.tsx:649"]
+      "where": ["client/src/pages/BillingPage.tsx:650"]
     },
     "billingPage.synthesisSection": {
       "ru": "Синтез / раздел",
       "en": "Synthesis / section",
       "de": "Synthese / Abschnitt",
       "from": {"en":"Синтез / раздел","de":"Синтез / раздел"},
-      "where": ["client/src/pages/BillingPage.tsx:1066"]
+      "where": ["client/src/pages/BillingPage.tsx:1067"]
     },
     "billingPage.toDate": {
       "ru": "По дату",
       "en": "To date",
       "de": "Bis Datum",
       "from": {"en":"По дату","de":"По дату"},
-      "where": ["client/src/pages/BillingPage.tsx:947"]
+      "where": ["client/src/pages/BillingPage.tsx:948"]
     },
     "billingPage.topUp": {
       "ru": "Пополнить{amountValid}",
@@ -2539,7 +2547,7 @@
       "de": "Aufladen{amountValid}",
       "from": {"en":"Пополнить{amountValid}","de":"Пополнить{amountValid}"},
       "params": {"amountValid":"amountValid ? ` на ${fmtMoney(amount)}` : \"\""},
-      "where": ["client/src/pages/BillingPage.tsx:568"]
+      "where": ["client/src/pages/BillingPage.tsx:569"]
     },
     "billingPage.totalRequests": {
       "ru": "Итого ({requests} запросов)",
@@ -2547,21 +2555,28 @@
       "de": "Gesamt ({requests} Anfragen)",
       "from": {"en":"Итого ({requests} запросов)","de":"Итого ({requests} запросов)"},
       "params": {"requests":"fmtInt(history.totals.requests)"},
-      "where": ["client/src/pages/BillingPage.tsx:989"]
+      "where": ["client/src/pages/BillingPage.tsx:990"]
     },
     "billingPage.transactions": {
       "ru": "Транзакции",
       "en": "Transactions",
       "de": "Transaktionen",
       "from": {"en":"Транзакции","de":"Транзакции"},
-      "where": ["client/src/pages/BillingPage.tsx:1058"]
+      "where": ["client/src/pages/BillingPage.tsx:1059"]
     },
     "billingPage.transactionsLoadFailed": {
       "ru": "Не удалось загрузить транзакции",
       "en": "Failed to load the transactions",
       "de": "Transaktionen konnten nicht geladen werden",
       "from": {"en":"Не удалось загрузить транзакции","de":"Не удалось загрузить транзакции"},
-      "where": ["client/src/pages/BillingPage.tsx:1044"]
+      "where": ["client/src/pages/BillingPage.tsx:1045"]
+    },
+    "billingPage.txBonus": {
+      "ru": "пробный подарок",
+      "en": "trial credit",
+      "de": "Startguthaben",
+      "from": {"en":"пробный подарок","de":"пробный подарок"},
+      "where": ["client/src/pages/BillingPage.tsx:137"]
     },
     "billingPage.txCharge": {
       "ru": "списание",
@@ -2589,21 +2604,21 @@
       "en": "unknown",
       "de": "unbekannt",
       "from": {"en":"неизвестен","de":"неизвестен"},
-      "where": ["client/src/pages/BillingPage.tsx:219"]
+      "where": ["client/src/pages/BillingPage.tsx:220"]
     },
     "billingPage.usageHistory": {
       "ru": "История использования",
       "en": "Usage history",
       "de": "Nutzungsverlauf",
       "from": {"en":"История использования","de":"История использования"},
-      "where": ["client/src/pages/BillingPage.tsx:899"]
+      "where": ["client/src/pages/BillingPage.tsx:900"]
     },
     "billingPage.used": {
       "ru": "Использовано",
       "en": "Used",
       "de": "Verbraucht",
       "from": {"en":"Использовано","de":"Использовано"},
-      "where": ["client/src/pages/BillingPage.tsx:700"]
+      "where": ["client/src/pages/BillingPage.tsx:701"]
     },
     "catalog.catalogFilters.activeCount": {
       "ru": "{n, plural, one {задан # фильтр} few {задано # фильтра} many {задано # фильтров} other {задано # фильтра}}",
@@ -3658,7 +3673,7 @@
       "en": "Authorization required",
       "de": "Anmeldung erforderlich",
       "from": {"en":"Требуется авторизация","de":"Требуется авторизация"},
-      "where": ["server/middleware/auth.ts:238","server/middleware/billing-check.ts:62","server/routes/auth.ts:544","server/routes/search.ts:123","server/ws/handler.ts:626"]
+      "where": ["server/middleware/auth.ts:238","server/middleware/billing-check.ts:62","server/routes/auth.ts:545","server/routes/search.ts:123","server/ws/handler.ts:627"]
     },
     "common.brandPhilo": {
       "ru": "Philo",
@@ -3686,7 +3701,7 @@
       "en": "Cancel",
       "de": "Abbrechen",
       "from": {"en":"Отмена","de":"Отмена"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:376","client/src/components/catalog/SynthesisCard.tsx:442","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/discussion/CommentThread.tsx:133","client/src/components/discussion/CommentThread.tsx:154","client/src/components/discussion/CommentThread.tsx:292","client/src/components/document/DocumentHeader.tsx:420","client/src/components/document/SectionView.tsx:462","client/src/components/document/SectionView.tsx:482","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:659","client/src/components/edit/ElementEditor.tsx:759","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:464","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/edit/VersionConflictNotice.tsx:58","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/proposals/ProposalDecisionPanel.tsx:398","client/src/components/proposals/ProposalDecisionPanel.tsx:450","client/src/components/proposals/ProposalDecisionPanel.tsx:466","client/src/components/proposals/ProposeForm.tsx:210","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1912","client/src/pages/AdminPromptsPage.tsx:1976","client/src/pages/AdminPromptsPage.tsx:2007","client/src/pages/BillingPage.tsx:246","client/src/pages/BillingPage.tsx:371","client/src/pages/BillingPage.tsx:529","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434","client/src/pages/ReviewPage.tsx:121","client/src/pages/ReviewPage.tsx:139","client/src/pages/ReviewPage.tsx:368"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:376","client/src/components/catalog/SynthesisCard.tsx:442","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/discussion/CommentThread.tsx:133","client/src/components/discussion/CommentThread.tsx:154","client/src/components/discussion/CommentThread.tsx:292","client/src/components/document/DocumentHeader.tsx:420","client/src/components/document/SectionView.tsx:462","client/src/components/document/SectionView.tsx:482","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:659","client/src/components/edit/ElementEditor.tsx:759","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:464","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/edit/VersionConflictNotice.tsx:58","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/proposals/ProposalDecisionPanel.tsx:398","client/src/components/proposals/ProposalDecisionPanel.tsx:450","client/src/components/proposals/ProposalDecisionPanel.tsx:466","client/src/components/proposals/ProposeForm.tsx:210","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1912","client/src/pages/AdminPromptsPage.tsx:1976","client/src/pages/AdminPromptsPage.tsx:2007","client/src/pages/BillingPage.tsx:247","client/src/pages/BillingPage.tsx:372","client/src/pages/BillingPage.tsx:530","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434","client/src/pages/ReviewPage.tsx:121","client/src/pages/ReviewPage.tsx:139","client/src/pages/ReviewPage.tsx:368"]
     },
     "common.capsule": {
       "ru": "Капсула",
@@ -3728,7 +3743,7 @@
       "en": "Close",
       "de": "Schließen",
       "from": {"en":"Закрыть","de":"Закрыть"},
-      "where": ["client/src/components/discussion/DiscussionPanel.tsx:206","client/src/components/edit/EdgeCreateForm.tsx:143","client/src/components/edit/ElementEditor.tsx:699","client/src/components/edit/ElementEditor.tsx:867","client/src/components/edit/ElementEditor.tsx:874","client/src/components/edit/SectionHistory.tsx:87","client/src/components/edit/TransformPanel.tsx:175","client/src/components/lineage/LineageNodeActions.tsx:233","client/src/components/synthesis/PauseModal.tsx:897","client/src/components/synthesis/PauseModal.tsx:898","client/src/pages/BillingPage.tsx:807"]
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:206","client/src/components/edit/EdgeCreateForm.tsx:143","client/src/components/edit/ElementEditor.tsx:699","client/src/components/edit/ElementEditor.tsx:867","client/src/components/edit/ElementEditor.tsx:874","client/src/components/edit/SectionHistory.tsx:87","client/src/components/edit/TransformPanel.tsx:175","client/src/components/lineage/LineageNodeActions.tsx:233","client/src/components/synthesis/PauseModal.tsx:897","client/src/components/synthesis/PauseModal.tsx:898","client/src/pages/BillingPage.tsx:808"]
     },
     "common.closeWithIcon": {
       "ru": "✕ Закрыть",
@@ -3742,7 +3757,7 @@
       "en": "Really delete?",
       "de": "Wirklich löschen?",
       "from": {"en":"Точно удалить?","de":"Точно удалить?"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:430","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1113","client/src/pages/BillingPage.tsx:362","client/src/pages/ProfilePage.tsx:423"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:430","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1113","client/src/pages/BillingPage.tsx:363","client/src/pages/ProfilePage.tsx:423"]
     },
     "common.createAccount": {
       "ru": "Создать аккаунт",
@@ -3777,7 +3792,7 @@
       "en": "Delete",
       "de": "Löschen",
       "from": {"en":"Удалить","de":"Удалить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:481","client/src/components/edit/EditPlanPanel.tsx:55","client/src/components/edit/EditSectionCard.tsx:236","client/src/components/edit/ElementEditor.tsx:671","client/src/components/edit/ModeResultsPanel.tsx:121","client/src/pages/BillingPage.tsx:351"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:481","client/src/components/edit/EditPlanPanel.tsx:55","client/src/components/edit/EditSectionCard.tsx:236","client/src/components/edit/ElementEditor.tsx:671","client/src/components/edit/ModeResultsPanel.tsx:121","client/src/pages/BillingPage.tsx:352"]
     },
     "common.description": {
       "ru": "Описание",
@@ -3890,7 +3905,7 @@
       "en": "Generation is already in progress",
       "de": "Die Generierung läuft bereits",
       "from": {"en":"Генерация уже идёт","de":"Генерация уже идёт"},
-      "where": ["server/routes/edit-gate.ts:49","server/routes/lineage.ts:305","server/routes/plans.ts:303","server/services/plan-executor.ts:928","server/services/plan-executor.ts:1047"]
+      "where": ["server/routes/edit-gate.ts:49","server/routes/lineage.ts:305","server/routes/plans.ts:303","server/services/plan-executor.ts:929","server/services/plan-executor.ts:1048"]
     },
     "common.generative": {
       "ru": "Генеративная",
@@ -3925,7 +3940,7 @@
       "en": "Invalid data",
       "de": "Ungültige Daten",
       "from": {"en":"Невалидные данные","de":"Невалидные данные"},
-      "where": ["server/routes/auth.ts:240","server/routes/auth.ts:308","server/routes/auth.ts:370","server/routes/auth.ts:423","server/routes/auth.ts:532","server/routes/auth.ts:613","server/routes/auth.ts:659","server/routes/auth.ts:766","server/routes/auth.ts:888","server/routes/auth.ts:894","server/routes/discussion.ts:97","server/routes/enrichment.ts:75","server/routes/members.ts:71","server/routes/modes.ts:175","server/routes/notifications.ts:38","server/routes/recommendations.ts:122","server/routes/taxonomy.ts:70","server/services/element-editor.ts:237","server/services/element-editor.ts:1913","server/services/element-editor.ts:1953","server/services/element-editor.ts:1976","server/services/element-editor.ts:2169","server/services/element-enrichment.ts:671","server/services/element-enrichment.ts:727","server/services/expected-version.ts:43","server/services/members.ts:121","server/services/members.ts:130","server/services/notifications.ts:307","server/services/notifications.ts:315","server/services/notifications.ts:322","server/services/proposals.ts:121"]
+      "where": ["server/routes/auth.ts:241","server/routes/auth.ts:309","server/routes/auth.ts:371","server/routes/auth.ts:424","server/routes/auth.ts:533","server/routes/auth.ts:616","server/routes/auth.ts:662","server/routes/auth.ts:771","server/routes/auth.ts:893","server/routes/auth.ts:899","server/routes/discussion.ts:97","server/routes/enrichment.ts:75","server/routes/members.ts:71","server/routes/modes.ts:175","server/routes/notifications.ts:38","server/routes/recommendations.ts:122","server/routes/taxonomy.ts:70","server/services/element-editor.ts:237","server/services/element-editor.ts:1913","server/services/element-editor.ts:1953","server/services/element-editor.ts:1976","server/services/element-editor.ts:2169","server/services/element-enrichment.ts:671","server/services/element-enrichment.ts:727","server/services/expected-version.ts:43","server/services/members.ts:121","server/services/members.ts:130","server/services/notifications.ts:307","server/services/notifications.ts:315","server/services/notifications.ts:322","server/services/proposals.ts:121"]
     },
     "common.invalidJson": {
       "ru": "Невалидный JSON",
@@ -3953,7 +3968,7 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:302","client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/discussion/DiscussionPanel.tsx:224","client/src/components/discussion/DiscussionTab.tsx:121","client/src/components/discussion/ReviewsTab.tsx:76","client/src/components/document/SectionView.tsx:385","client/src/components/document/SectionView.tsx:401","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/components/proposals/ProposalDecisionPanel.tsx:310","client/src/components/proposals/ProposalsTab.tsx:43","client/src/components/proposals/ProposeForm.tsx:177","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1882","client/src/pages/AdminPromptsPage.tsx:1909","client/src/pages/AdminPromptsPage.tsx:1918","client/src/pages/AdminPromptsPage.tsx:1973","client/src/pages/AdminPromptsPage.tsx:2001","client/src/pages/BillingPage.tsx:330","client/src/pages/BillingPage.tsx:668","client/src/pages/SynthesisPage.tsx:1311"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:302","client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/discussion/DiscussionPanel.tsx:224","client/src/components/discussion/DiscussionTab.tsx:121","client/src/components/discussion/ReviewsTab.tsx:76","client/src/components/document/SectionView.tsx:385","client/src/components/document/SectionView.tsx:401","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/components/proposals/ProposalDecisionPanel.tsx:310","client/src/components/proposals/ProposalsTab.tsx:43","client/src/components/proposals/ProposeForm.tsx:177","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1882","client/src/pages/AdminPromptsPage.tsx:1909","client/src/pages/AdminPromptsPage.tsx:1918","client/src/pages/AdminPromptsPage.tsx:1973","client/src/pages/AdminPromptsPage.tsx:2001","client/src/pages/BillingPage.tsx:331","client/src/pages/BillingPage.tsx:669","client/src/pages/SynthesisPage.tsx:1311"]
     },
     "common.logIn": {
       "ru": "Войти",
@@ -3975,7 +3990,7 @@
       "de": "Kein Zugriff auf die Synthese",
       "from": {"en":"Нет доступа к синтезу","de":"Нет доступа к синтезу"},
       "static": true,
-      "where": ["server/routes/generation.ts:189","server/routes/plans.ts:218","server/routes/syntheses.ts:292","server/services/edit-planner.ts:1228","server/services/generation-service.ts:928","server/services/generation-service.ts:975","server/services/pause-resume-service.ts:558","server/services/pause-resume-service.ts:991","server/ws/handler.ts:176","server/ws/handler.ts:501","server/ws/handler.ts:528"]
+      "where": ["server/routes/generation.ts:189","server/routes/plans.ts:218","server/routes/syntheses.ts:292","server/services/edit-planner.ts:1228","server/services/generation-service.ts:928","server/services/generation-service.ts:975","server/services/pause-resume-service.ts:559","server/services/pause-resume-service.ts:1005","server/ws/handler.ts:177","server/ws/handler.ts:502","server/ws/handler.ts:529"]
     },
     "common.noveltyDegree": {
       "ru": "Степень новизны",
@@ -4003,7 +4018,7 @@
       "en": "Plan not found",
       "de": "Plan nicht gefunden",
       "from": {"en":"План не найден","de":"План не найден"},
-      "where": ["server/routes/plans.ts:120","server/routes/plans.ts:137","server/routes/plans.ts:161","server/routes/plans.ts:287","server/services/edit-planner.ts:1307","server/services/edit-planner.ts:1581","server/services/pause-resume-service.ts:1013","server/services/plan-executor.ts:1032"]
+      "where": ["server/routes/plans.ts:120","server/routes/plans.ts:137","server/routes/plans.ts:161","server/routes/plans.ts:287","server/services/edit-planner.ts:1307","server/services/edit-planner.ts:1581","server/services/pause-resume-service.ts:1027","server/services/plan-executor.ts:1033"]
     },
     "common.prehorizon": {
       "ru": "Предгоризонт",
@@ -4038,7 +4053,7 @@
       "en": "Save",
       "de": "Speichern",
       "from": {"en":"Сохранить","de":"Сохранить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:365","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/discussion/CommentThread.tsx:130","client/src/components/document/DocumentHeader.tsx:412","client/src/components/document/SectionView.tsx:458","client/src/components/edit/ElementEditor.tsx:751","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1973","client/src/pages/BillingPage.tsx:414","client/src/pages/ProfilePage.tsx:244","client/src/pages/ReviewPage.tsx:118"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:365","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/discussion/CommentThread.tsx:130","client/src/components/document/DocumentHeader.tsx:412","client/src/components/document/SectionView.tsx:458","client/src/components/edit/ElementEditor.tsx:751","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1973","client/src/pages/BillingPage.tsx:415","client/src/pages/ProfilePage.tsx:244","client/src/pages/ReviewPage.tsx:118"]
     },
     "common.saving": {
       "ru": "Сохранение…",
@@ -4066,7 +4081,7 @@
       "en": "Synthesis",
       "de": "Synthese",
       "from": {"en":"Синтез","de":"Синтез"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:40","client/src/components/pool/PoolCard.tsx:75","client/src/pages/BillingPage.tsx:961","server/services/export/png-exporter.ts:576"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:40","client/src/components/pool/PoolCard.tsx:75","client/src/pages/BillingPage.tsx:962","server/services/export/png-exporter.ts:576"]
     },
     "common.synthesisNotFound": {
       "ru": "Синтез не найден",
@@ -4074,7 +4089,7 @@
       "de": "Synthese nicht gefunden",
       "from": {"en":"Синтез не найден","de":"Синтез не найден"},
       "static": true,
-      "where": ["server/routes/generation.ts:164","server/routes/generation.ts:289","server/routes/plans.ts:84","server/routes/plans.ts:96","server/routes/plans.ts:190","server/routes/syntheses.ts:288","server/routes/syntheses.ts:1546","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1529","server/services/export/common.ts:50","server/services/generation-service.ts:674","server/services/generation-service.ts:3315","server/services/pause-resume-service.ts:556","server/services/pause-resume-service.ts:989","server/services/proposals.ts:129","server/services/recommendation-planner.ts:492","server/ws/handler.ts:152","server/ws/handler.ts:167","server/ws/handler.ts:499","server/ws/handler.ts:520","server/ws/handler.ts:526"]
+      "where": ["server/routes/generation.ts:164","server/routes/generation.ts:289","server/routes/plans.ts:84","server/routes/plans.ts:96","server/routes/plans.ts:190","server/routes/syntheses.ts:288","server/routes/syntheses.ts:1546","server/services/cascade-analyzer.ts:703","server/services/element-editor.ts:1529","server/services/export/common.ts:50","server/services/generation-service.ts:674","server/services/generation-service.ts:3315","server/services/pause-resume-service.ts:557","server/services/pause-resume-service.ts:1003","server/services/proposals.ts:129","server/services/recommendation-planner.ts:492","server/ws/handler.ts:153","server/ws/handler.ts:168","server/ws/handler.ts:500","server/ws/handler.ts:521","server/ws/handler.ts:527"]
     },
     "common.term": {
       "ru": "Термин",
@@ -4123,14 +4138,14 @@
       "en": "Type",
       "de": "Typ",
       "from": {"en":"Тип","de":"Тип"},
-      "where": ["client/src/components/edit/CategoryEditor.tsx:149","client/src/components/edit/CategoryEditor.tsx:215","client/src/components/edit/ElementEditor.tsx:909","client/src/components/edit/VersionHistory.tsx:118","client/src/components/graph/NodePanel.tsx:500","client/src/pages/BillingPage.tsx:1065"]
+      "where": ["client/src/components/edit/CategoryEditor.tsx:149","client/src/components/edit/CategoryEditor.tsx:215","client/src/components/edit/ElementEditor.tsx:909","client/src/components/edit/VersionHistory.tsx:118","client/src/components/graph/NodePanel.tsx:500","client/src/pages/BillingPage.tsx:1066"]
     },
     "common.userNotFound": {
       "ru": "Пользователь не найден",
       "en": "User not found",
       "de": "Benutzer nicht gefunden",
       "from": {"en":"Пользователь не найден","de":"Пользователь не найден"},
-      "where": ["server/routes/auth.ts:759","server/routes/auth.ts:825","server/services/account-deletion.ts:110","server/services/account-deletion.ts:143","server/services/billing-service.ts:138","server/services/billing-service.ts:248","server/services/billing-service.ts:296","server/services/subscription-service.ts:246"]
+      "where": ["server/routes/auth.ts:764","server/routes/auth.ts:830","server/services/account-deletion.ts:110","server/services/account-deletion.ts:143","server/services/billing-service.ts:138","server/services/billing-service.ts:248","server/services/billing-service.ts:291","server/services/billing-service.ts:331","server/services/subscription-service.ts:246"]
     },
     "common.verifying": {
       "ru": "Верифицирующая",
@@ -13410,7 +13425,7 @@
       "de": "Zu wenig Abo-Credits: benötigt {needed}, übrig {left} von {quota}; Guthaben reicht nicht",
       "from": {"en":"Кредитов подписки не хватает: нужно {needed}, осталось {left} из {quota}; баланса недостаточно","de":"Кредитов подписки не хватает: нужно {needed}, осталось {left} из {quota}; баланса недостаточно"},
       "params": {"needed":"","left":"","quota":""},
-      "where": ["server/services/billing-service.ts:723"]
+      "where": ["server/services/billing-service.ts:758"]
     },
     "server.billingService.insufficientFunds": {
       "ru": "Недостаточно средств: баланс ${balance}, требуется не менее ${threshold}",
@@ -13418,7 +13433,7 @@
       "de": "Unzureichendes Guthaben: Guthaben ${balance}, erforderlich mindestens ${threshold}",
       "from": {"en":"Недостаточно средств: баланс ${balance}, требуется не менее ${threshold}","de":"Недостаточно средств: баланс ${balance}, требуется не менее ${threshold}"},
       "params": {"balance":"balance.toFixed(4)","threshold":"threshold.toFixed(4)"},
-      "where": ["server/services/billing-service.ts:730"]
+      "where": ["server/services/billing-service.ts:765"]
     },
     "server.billingService.invalidTopUpAmount": {
       "ru": "Неверная сумма пополнения",
@@ -13432,7 +13447,7 @@
       "en": "No payment source: add an Anthropic API key, subscribe or top up the balance",
       "de": "Keine Zahlungsquelle: fügen Sie einen Anthropic-API-Schlüssel hinzu, schließen Sie ein Abonnement ab oder laden Sie das Guthaben auf",
       "from": {"en":"Нет источника оплаты: добавьте API-ключ Anthropic, оформите подписку или пополните баланс","de":"Нет источника оплаты: добавьте API-ключ Anthropic, оформите подписку или пополните баланс"},
-      "where": ["server/services/billing-service.ts:736"]
+      "where": ["server/services/billing-service.ts:771"]
     },
     "server.billingService.paymentIntentMissing": {
       "ru": "paymentIntentId не задан",
@@ -13467,7 +13482,7 @@
       "en": "The Anthropic API key is not set on the server",
       "de": "Der Anthropic-API-Schlüssel ist auf dem Server nicht gesetzt",
       "from": {"en":"API-ключ Anthropic не задан на сервере","de":"API-ключ Anthropic не задан на сервере"},
-      "where": ["server/services/billing-service.ts:653"]
+      "where": ["server/services/billing-service.ts:688"]
     },
     "server.cascadeAnalyzer.contextParen": {
       "ru": "» (контекст: ",
@@ -17195,35 +17210,35 @@
       "en": "Generation is already running — a repeated resume was rejected",
       "de": "Die Generierung läuft bereits — erneute Fortsetzung abgelehnt",
       "from": {"en":"Генерация уже выполняется — повторное возобновление отклонено","de":"Генерация уже выполняется — повторное возобновление отклонено"},
-      "where": ["server/services/pause-resume-service.ts:563"]
+      "where": ["server/services/pause-resume-service.ts:564"]
     },
     "server.pauseResumeService.needsPlanExecutor": {
       "ru": "Возобновление шагов плана требует plan-executor (беседа 2.2)",
       "en": "Resuming plan steps requires plan-executor (conversation 2.2)",
       "de": "Die Fortsetzung von Planschritten erfordert den plan-executor (Gespräch 2.2)",
       "from": {"en":"Возобновление шагов плана требует plan-executor (беседа 2.2)","de":"Возобновление шагов плана требует plan-executor (беседа 2.2)"},
-      "where": ["server/services/pause-resume-service.ts:1054"]
+      "where": ["server/services/pause-resume-service.ts:1068"]
     },
     "server.pauseResumeService.notPausedGeneration": {
       "ru": "Возобновление невозможно: синтез не находится в паузе генерации",
       "en": "Resume is impossible: the synthesis is not in a generation pause",
       "de": "Fortsetzung unmöglich: die Synthese befindet sich nicht in einer Generierungspause",
       "from": {"en":"Возобновление невозможно: синтез не находится в паузе генерации","de":"Возобновление невозможно: синтез не находится в паузе генерации"},
-      "where": ["server/services/pause-resume-service.ts:570"]
+      "where": ["server/services/pause-resume-service.ts:571"]
     },
     "server.pauseResumeService.notPausedPlan": {
       "ru": "Возобновление невозможно: синтез не находится в паузе плана",
       "en": "Resume is impossible: the synthesis is not in a plan pause",
       "de": "Fortsetzung unmöglich: die Synthese befindet sich nicht in einer Planpause",
       "from": {"en":"Возобновление невозможно: синтез не находится в паузе плана","de":"Возобновление невозможно: синтез не находится в паузе плана"},
-      "where": ["server/services/pause-resume-service.ts:997"]
+      "where": ["server/services/pause-resume-service.ts:1011"]
     },
     "server.pauseResumeService.paramsLost": {
       "ru": "Невозможно возобновить: параметры генерации утеряны",
       "en": "Cannot resume: the generation parameters are lost",
       "de": "Fortsetzung unmöglich: die Generierungsparameter sind verloren",
       "from": {"en":"Невозможно возобновить: параметры генерации утеряны","de":"Невозможно возобновить: параметры генерации утеряны"},
-      "where": ["server/services/pause-resume-service.ts:734"]
+      "where": ["server/services/pause-resume-service.ts:748"]
     },
     "server.pauseResumeService.unknownPlanResumeMode": {
       "ru": "Неизвестный режим возобновления плана: {mode}",
@@ -17231,7 +17246,7 @@
       "de": "Unbekannter Fortsetzungsmodus des Plans: {mode}",
       "from": {"en":"Неизвестный режим возобновления плана: {mode}","de":"Неизвестный режим возобновления плана: {mode}"},
       "params": {"mode":"String(mode)"},
-      "where": ["server/services/pause-resume-service.ts:1003"]
+      "where": ["server/services/pause-resume-service.ts:1017"]
     },
     "server.pauseResumeService.unknownResumeMode": {
       "ru": "Неизвестный режим возобновления: {mode}",
@@ -17239,7 +17254,7 @@
       "de": "Unbekannter Fortsetzungsmodus: {mode}",
       "from": {"en":"Неизвестный режим возобновления: {mode}","de":"Неизвестный режим возобновления: {mode}"},
       "params": {"mode":"String(mode)"},
-      "where": ["server/services/pause-resume-service.ts:578"]
+      "where": ["server/services/pause-resume-service.ts:579"]
     },
     "server.planExecutor.badDeleteElementTarget": {
       "ru": "Цель шага delete_element не «вид:id» удаляемого элемента: {target}",
@@ -17247,7 +17262,7 @@
       "de": "Das Ziel des Schritts delete_element ist nicht „Art:id“ eines löschbaren Elements: {target}",
       "from": {"en":"Цель шага delete_element не «вид:id» удаляемого элемента: {target}","de":"Цель шага delete_element не «вид:id» удаляемого элемента: {target}"},
       "params": {"target":""},
-      "where": ["server/services/plan-executor.ts:542"]
+      "where": ["server/services/plan-executor.ts:543"]
     },
     "server.planExecutor.badDeleteSubsectionTarget": {
       "ru": "Цель шага delete_subsection не «раздел:подраздел»: {target}",
@@ -17255,7 +17270,7 @@
       "de": "Das Ziel des Schritts delete_subsection ist nicht „Abschnitt:Unterabschnitt“: {target}",
       "from": {"en":"Цель шага delete_subsection не «раздел:подраздел»: {target}","de":"Цель шага delete_subsection не «раздел:подраздел»: {target}"},
       "params": {"target":""},
-      "where": ["server/services/plan-executor.ts:556"]
+      "where": ["server/services/plan-executor.ts:557"]
     },
     "server.planExecutor.badEditSubsectionStep": {
       "ru": "Шаг edit_subsection без адреса «раздел:подраздел» или без разметки: {target}",
@@ -17263,14 +17278,14 @@
       "de": "Schritt edit_subsection ohne Adresse „Abschnitt:Unterabschnitt“ oder ohne Markup: {target}",
       "from": {"en":"Шаг edit_subsection без адреса «раздел:подраздел» или без разметки: {target}","de":"Шаг edit_subsection без адреса «раздел:подраздел» или без разметки: {target}"},
       "params": {"target":""},
-      "where": ["server/services/plan-executor.ts:571"]
+      "where": ["server/services/plan-executor.ts:572"]
     },
     "server.planExecutor.cascadeReason": {
       "ru": "каскад: разделы зависят от изменённых",
       "en": "cascade: sections depend on the changed ones",
       "de": "Kaskade: Abschnitte hängen von den geänderten ab",
       "from": {"en":"каскад: разделы зависят от изменённых","de":"каскад: разделы зависят от изменённых"},
-      "where": ["server/services/plan-executor.ts:795"]
+      "where": ["server/services/plan-executor.ts:796"]
     },
     "server.planExecutor.confirmUnavailable": {
       "ru": "Подтверждение шага недоступно для плана в статусе «{status}»",
@@ -17278,7 +17293,7 @@
       "de": "Schrittbestätigung für einen Plan im Status „{status}“ nicht verfügbar",
       "from": {"en":"Подтверждение шага недоступно для плана в статусе «{status}»","de":"Подтверждение шага недоступно для плана в статусе «{status}»"},
       "params": {"status":"row.status"},
-      "where": ["server/services/plan-executor.ts:1043"]
+      "where": ["server/services/plan-executor.ts:1044"]
     },
     "server.planExecutor.modeResultNotFound": {
       "ru": "Результат режима {modeKey}[{index}] не найден",
@@ -17286,28 +17301,28 @@
       "de": "Modusergebnis {modeKey}[{index}] nicht gefunden",
       "from": {"en":"Результат режима {modeKey}[{index}] не найден","de":"Результат режима {modeKey}[{index}] не найден"},
       "params": {"modeKey":"modeKey","index":"index"},
-      "where": ["server/services/plan-executor.ts:231"]
+      "where": ["server/services/plan-executor.ts:232"]
     },
     "server.planExecutor.needsModeService": {
       "ru": "Перегенерация режимов требует mode-service (беседа 4.1)",
       "en": "Regenerating modes requires mode-service (conversation 4.1)",
       "de": "Die Neugenerierung von Modi erfordert den mode-service (Gespräch 4.1)",
       "from": {"en":"Перегенерация режимов требует mode-service (беседа 4.1)","de":"Перегенерация режимов требует mode-service (беседа 4.1)"},
-      "where": ["server/services/plan-executor.ts:583"]
+      "where": ["server/services/plan-executor.ts:584"]
     },
     "server.planExecutor.noConfirmedSteps": {
       "ru": "В плане нет подтверждённых шагов",
       "en": "The plan has no confirmed steps",
       "de": "Der Plan enthält keine bestätigten Schritte",
       "from": {"en":"В плане нет подтверждённых шагов","de":"В плане нет подтверждённых шагов"},
-      "where": ["server/services/plan-executor.ts:932"]
+      "where": ["server/services/plan-executor.ts:933"]
     },
     "server.planExecutor.noPlanAccess": {
       "ru": "Нет доступа к плану",
       "en": "No access to the plan",
       "de": "Kein Zugriff auf den Plan",
       "from": {"en":"Нет доступа к плану","de":"Нет доступа к плану"},
-      "where": ["server/services/plan-executor.ts:1034"]
+      "where": ["server/services/plan-executor.ts:1035"]
     },
     "server.planExecutor.planNotExecutable": {
       "ru": "План в статусе «{status}» нельзя исполнить",
@@ -17315,7 +17330,7 @@
       "de": "Ein Plan im Status „{status}“ kann nicht ausgeführt werden",
       "from": {"en":"План в статусе «{status}» нельзя исполнить","de":"План в статусе «{status}» нельзя исполнить"},
       "params": {"status":"row.status"},
-      "where": ["server/services/plan-executor.ts:924"]
+      "where": ["server/services/plan-executor.ts:925"]
     },
     "server.planExecutor.planNotResumable": {
       "ru": "План в статусе «{status}» нельзя возобновить",
@@ -17323,7 +17338,7 @@
       "de": "Ein Plan im Status „{status}“ kann nicht fortgesetzt werden",
       "from": {"en":"План в статусе «{status}» нельзя возобновить","de":"План в статусе «{status}» нельзя возобновить"},
       "params": {"status":"row.status"},
-      "where": ["server/services/plan-executor.ts:1096"]
+      "where": ["server/services/plan-executor.ts:1097"]
     },
     "server.planExecutor.stepNotAwaiting": {
       "ru": "Шаг {stepIndex} не ожидает подтверждения",
@@ -17331,14 +17346,14 @@
       "de": "Schritt {stepIndex} wartet nicht auf Bestätigung",
       "from": {"en":"Шаг {stepIndex} не ожидает подтверждения","de":"Шаг {stepIndex} не ожидает подтверждения"},
       "params": {"stepIndex":"stepIndex"},
-      "where": ["server/services/plan-executor.ts:1054"]
+      "where": ["server/services/plan-executor.ts:1055"]
     },
     "server.planExecutor.structureReason": {
       "ru": "состав разделов изменился — обновить «Структуру документа»",
       "en": "the set of sections changed — update “Document structure”",
       "de": "der Abschnittsbestand hat sich geändert — „Dokumentstruktur“ aktualisieren",
       "from": {"en":"состав разделов изменился — обновить «Структуру документа»","de":"состав разделов изменился — обновить «Структуру документа»"},
-      "where": ["server/services/plan-executor.ts:820"]
+      "where": ["server/services/plan-executor.ts:821"]
     },
     "server.planExecutor.unknownStepType": {
       "ru": "Неизвестный тип шага: {type}",
@@ -17346,7 +17361,7 @@
       "de": "Unbekannter Schritttyp: {type}",
       "from": {"en":"Неизвестный тип шага: {type}","de":"Неизвестный тип шага: {type}"},
       "params": {"type":"String(step.type)"},
-      "where": ["server/services/plan-executor.ts:593"]
+      "where": ["server/services/plan-executor.ts:594"]
     },
     "server.promptRegistry.configNotFound": {
       "ru": "Конфигурация «{key}» не найдена{detail}",
@@ -18045,49 +18060,49 @@
       "en": "Already registered",
       "de": "Bereits registriert",
       "from": {"en":"Уже зарегистрирован","de":"Уже зарегистрирован"},
-      "where": ["server/routes/auth.ts:284"]
+      "where": ["server/routes/auth.ts:285"]
     },
     "server.routes.auth.emailChangeRequested": {
       "ru": "Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час",
       "en": "If the address is free, an email with a confirmation link has been sent to it — the link is valid for an hour",
       "de": "Falls die Adresse frei ist, wurde eine E-Mail mit einem Bestätigungslink dorthin gesendet — der Link gilt eine Stunde",
       "from": {"en":"Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час","de":"Если адрес свободен, на него отправлено письмо со ссылкой для подтверждения — ссылка действует час"},
-      "where": ["server/routes/auth.ts:928"]
+      "where": ["server/routes/auth.ts:933"]
     },
     "server.routes.auth.emailQueueFailed": {
       "ru": "Не удалось поставить письмо в очередь — попробуйте позже",
       "en": "Failed to queue the email — try again later",
       "de": "Die E-Mail konnte nicht in die Warteschlange gestellt werden — versuchen Sie es später",
       "from": {"en":"Не удалось поставить письмо в очередь — попробуйте позже","de":"Не удалось поставить письмо в очередь — попробуйте позже"},
-      "where": ["server/routes/auth.ts:581"]
+      "where": ["server/routes/auth.ts:582"]
     },
     "server.routes.auth.emailTaken": {
       "ru": "Пользователь с таким email уже зарегистрирован",
       "en": "A user with this email is already registered",
       "de": "Ein Benutzer mit dieser E-Mail ist bereits registriert",
       "from": {"en":"Пользователь с таким email уже зарегистрирован","de":"Пользователь с таким email уже зарегистрирован"},
-      "where": ["server/routes/auth.ts:282"]
+      "where": ["server/routes/auth.ts:283"]
     },
     "server.routes.auth.expectedRole": {
       "ru": "Ожидается 'user' или 'admin'",
       "en": "'user' or 'admin' expected",
       "de": "Erwartet wird 'user' oder 'admin'",
       "from": {"en":"Ожидается 'user' или 'admin'","de":"Ожидается 'user' или 'admin'"},
-      "where": ["server/routes/auth.ts:768"]
+      "where": ["server/routes/auth.ts:773"]
     },
     "server.routes.auth.invalidEmail": {
       "ru": "Невалидный email",
       "en": "Invalid email",
       "de": "Ungültige E-Mail",
       "from": {"en":"Невалидный email","de":"Невалидный email"},
-      "where": ["server/routes/auth.ts:181","server/routes/auth.ts:615","server/routes/auth.ts:885","server/services/members.ts:131"]
+      "where": ["server/routes/auth.ts:182","server/routes/auth.ts:618","server/routes/auth.ts:890","server/services/members.ts:131"]
     },
     "server.routes.auth.lastAdminForbidden": {
       "ru": "Нельзя понизить последнего администратора — сначала назначьте второго",
       "en": "The last administrator cannot be demoted — appoint a second one first",
       "de": "Der letzte Administrator kann nicht herabgestuft werden — ernennen Sie zuerst einen zweiten",
       "from": {"en":"Нельзя понизить последнего администратора — сначала назначьте второго","de":"Нельзя понизить последнего администратора — сначала назначьте второго"},
-      "where": ["server/routes/auth.ts:830"]
+      "where": ["server/routes/auth.ts:835"]
     },
     "server.routes.auth.maxLength": {
       "ru": "Максимальная длина — {maxLength} символов",
@@ -18095,42 +18110,42 @@
       "de": "Maximale Länge — {maxLength} Zeichen",
       "from": {"en":"Максимальная длина — {maxLength} символов","de":"Максимальная длина — {maxLength} символов"},
       "params": {"maxLength":"DISPLAY_NAME_MAX_LENGTH"},
-      "where": ["server/routes/auth.ts:506","server/routes/auth.ts:524"]
+      "where": ["server/routes/auth.ts:507","server/routes/auth.ts:525"]
     },
     "server.routes.auth.mustBeNonEmptyString": {
       "ru": "Должно быть непустой строкой",
       "en": "Must be a non-empty string",
       "de": "Muss eine nichtleere Zeichenkette sein",
       "from": {"en":"Должно быть непустой строкой","de":"Должно быть непустой строкой"},
-      "where": ["server/routes/auth.ts:523"]
+      "where": ["server/routes/auth.ts:524"]
     },
     "server.routes.auth.mustBeString": {
       "ru": "Должно быть строкой",
       "en": "Must be a string",
       "de": "Muss eine Zeichenkette sein",
       "from": {"en":"Должно быть строкой","de":"Должно быть строкой"},
-      "where": ["server/routes/auth.ts:191","server/routes/auth.ts:502"]
+      "where": ["server/routes/auth.ts:192","server/routes/auth.ts:503"]
     },
     "server.routes.auth.ownRoleForbidden": {
       "ru": "Свою роль изменить нельзя — попросите другого администратора",
       "en": "You cannot change your own role — ask another administrator",
       "de": "Die eigene Rolle lässt sich nicht ändern — bitten Sie einen anderen Administrator",
       "from": {"en":"Свою роль изменить нельзя — попросите другого администратора","de":"Свою роль изменить нельзя — попросите другого администратора"},
-      "where": ["server/routes/auth.ts:778"]
+      "where": ["server/routes/auth.ts:783"]
     },
     "server.routes.auth.requiredField": {
       "ru": "Обязательное поле",
       "en": "Required field",
       "de": "Pflichtfeld",
       "from": {"en":"Обязательное поле","de":"Обязательное поле"},
-      "where": ["server/routes/auth.ts:180","server/routes/auth.ts:183","server/routes/auth.ts:363","server/routes/auth.ts:364","server/routes/auth.ts:423","server/routes/auth.ts:529","server/routes/auth.ts:615","server/routes/auth.ts:654","server/routes/auth.ts:884","server/routes/auth.ts:886"]
+      "where": ["server/routes/auth.ts:181","server/routes/auth.ts:184","server/routes/auth.ts:364","server/routes/auth.ts:365","server/routes/auth.ts:424","server/routes/auth.ts:530","server/routes/auth.ts:618","server/routes/auth.ts:657","server/routes/auth.ts:889","server/routes/auth.ts:891"]
     },
     "server.routes.auth.sameEmail": {
       "ru": "Это текущий адрес учётной записи",
       "en": "This is the current address of the account",
       "de": "Das ist die aktuelle Adresse des Kontos",
       "from": {"en":"Это текущий адрес учётной записи","de":"Это текущий адрес учётной записи"},
-      "where": ["server/routes/auth.ts:896"]
+      "where": ["server/routes/auth.ts:901"]
     },
     "server.routes.auth.uiLocaleAllowed": {
       "ru": "Допустимые языки интерфейса: {locales}",
@@ -18138,28 +18153,28 @@
       "de": "Zulässige Oberflächensprachen: {locales}",
       "from": {"en":"Допустимые языки интерфейса: {locales}","de":"Допустимые языки интерфейса: {locales}"},
       "params": {"locales":""},
-      "where": ["server/routes/auth.ts:514"]
+      "where": ["server/routes/auth.ts:515"]
     },
     "server.routes.auth.wrongCredentials": {
       "ru": "Неверный email или пароль",
       "en": "Wrong email or password",
       "de": "Falsche E-Mail oder falsches Passwort",
       "from": {"en":"Неверный email или пароль","de":"Неверный email или пароль"},
-      "where": ["server/routes/auth.ts:330"]
+      "where": ["server/routes/auth.ts:331"]
     },
     "server.routes.auth.wrongCurrentPassword": {
       "ru": "Неверный текущий пароль",
       "en": "Wrong current password",
       "de": "Falsches aktuelles Passwort",
       "from": {"en":"Неверный текущий пароль","de":"Неверный текущий пароль"},
-      "where": ["server/routes/auth.ts:391"]
+      "where": ["server/routes/auth.ts:392"]
     },
     "server.routes.auth.wrongPassword": {
       "ru": "Неверный пароль",
       "en": "Wrong password",
       "de": "Falsches Passwort",
       "from": {"en":"Неверный пароль","de":"Неверный пароль"},
-      "where": ["server/routes/auth.ts:435","server/routes/auth.ts:925"]
+      "where": ["server/routes/auth.ts:436","server/routes/auth.ts:930"]
     },
     "server.routes.billing.invalidParams": {
       "ru": "Невалидные параметры",
@@ -19051,42 +19066,42 @@
       "en": "direction: graph_to_theses | theses_to_graph expected",
       "de": "direction: erwartet wird graph_to_theses | theses_to_graph",
       "from": {"en":"direction: ожидается graph_to_theses | theses_to_graph","de":"direction: ожидается graph_to_theses | theses_to_graph"},
-      "where": ["server/ws/handler.ts:518"]
+      "where": ["server/ws/handler.ts:519"]
     },
     "server.ws.handler.elementTypeExpected": {
       "ru": "elementType: ожидается category | edge",
       "en": "elementType: category | edge expected",
       "de": "elementType: erwartet wird category | edge",
       "from": {"en":"elementType: ожидается category | edge","de":"elementType: ожидается category | edge"},
-      "where": ["server/ws/handler.ts:491"]
+      "where": ["server/ws/handler.ts:492"]
     },
     "server.ws.handler.resumeGenerationFailed": {
       "ru": "Не удалось возобновить генерацию",
       "en": "Failed to resume the generation",
       "de": "Generierung konnte nicht fortgesetzt werden",
       "from": {"en":"Не удалось возобновить генерацию","de":"Не удалось возобновить генерацию"},
-      "where": ["server/ws/handler.ts:327"]
+      "where": ["server/ws/handler.ts:328"]
     },
     "server.ws.handler.resumePlanFailed": {
       "ru": "Не удалось возобновить план",
       "en": "Failed to resume the plan",
       "de": "Plan konnte nicht fortgesetzt werden",
       "from": {"en":"Не удалось возобновить план","de":"Не удалось возобновить план"},
-      "where": ["server/ws/handler.ts:353"]
+      "where": ["server/ws/handler.ts:354"]
     },
     "server.ws.handler.startFailed": {
       "ru": "Не удалось запустить генерацию",
       "en": "Failed to start the generation",
       "de": "Generierung konnte nicht gestartet werden",
       "from": {"en":"Не удалось запустить генерацию","de":"Не удалось запустить генерацию"},
-      "where": ["server/ws/handler.ts:208"]
+      "where": ["server/ws/handler.ts:209"]
     },
     "server.ws.handler.synthesisOrElementNotFound": {
       "ru": "Синтез или элемент не найден",
       "en": "Synthesis or element not found",
       "de": "Synthese oder Element nicht gefunden",
       "from": {"en":"Синтез или элемент не найден","de":"Синтез или элемент не найден"},
-      "where": ["server/ws/handler.ts:493"]
+      "where": ["server/ws/handler.ts:494"]
     },
     "shared.auth.passwordMinLength": {
       "ru": "Минимальная длина пароля — {minLength} символов",
