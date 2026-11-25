@@ -3076,6 +3076,9 @@ test-61; те же шесть маршрутов + `/v1/products`, `/v1/prices` 
   `npm run billing:calibrate`. Опорная модель произвольного состава —
   `referenceSynthesisCostUsd`/`referenceSectionCostUsd`; на опорном составе
   они обязаны совпасть с `REFERENCE_OPERATION_COST_USD` (4al).
+- **Сетка `plans.ts` на стоящей службе — `npm run plans:sync`**, а не
+  правка строк SQL: скрипт идёт через `updatePlan`/`createPlanEdition`
+  (Price в Stripe, редакции, admin_audit с актором NULL; сторож 4al).
 - **Модель генерации меняется не константой**: `PRICE_IN/OUT`, выход
   разделов (`SECTION_OUTPUT_MULT`, `CHARS_PER_TOKEN`) и бюджеты подобраны
   под Sonnet 4.6; у другой модели — свой расход токенов. Смена — отдельная

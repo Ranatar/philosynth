@@ -210,6 +210,12 @@ bash deploy/philosynth-ubuntu.sh            # setup: миграции и сид�
 bash deploy/philosynth-ubuntu.sh start
 ```
 
+Один раз после обновления на сетку тарифов 2026-11-25 — привести цены
+стоящей службы к `plans.ts`: `(cd ~/philosynth && npm run plans:sync)` для
+показа, затем `npm run plans:sync -- --apply` (подробно —
+`deploy/philosynth-hosting.md`, «Пересмотр цен 2026-11-25»); и убрать из
+`.env` строку `BILLING_MARKUP=1.2`, если она там есть.
+
 Один раз при переходе на беседу 13.1 (Д-63) — чистка уже сохранённой
 разметки: `(cd ~/philosynth && npm run sanitize:stored-html -- --dry)` для
 отчёта, затем без `--dry`. Что и зачем — `deploy/philosynth-hosting.md`

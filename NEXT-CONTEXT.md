@@ -67,7 +67,8 @@ test-183-request1-ui 20 ✓, test-183-requests2-3 65 ✓ (живой серве�
 0024**. Наценки разведены: `BILLING_MARKUP` 2.5 (баланс) и
 `PLAN_MIN_MARKUP` 1.5 (порог тарифа); `TRIAL_BALANCE_USD` 6 — подарок при
 подтверждении почты. Посев тарифов — $9.99/450, $24.99/1250,
-$59.99/3300; строки БД не тронуты (правятся админкой). Новые строки
+$59.99/3300; строки БД не тронуты — на стоящей службе их приводит
+`npm run plans:sync -- --apply` (без `--apply` — показ). Новые строки
 `billingPage.txBonus`, `billing.plansTable.trialNote` — en/de утверждены.
 Новый харнесс `tests/test-trial-bonus.mjs`; сверка весов —
 `npm run billing:calibrate`. Серии сторожей не заняты (правлена 4al). 09

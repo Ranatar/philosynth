@@ -13702,8 +13702,11 @@ check:integration OK (+ 2aa/4al/5aa).
 > test-154 сверял квоты посева ценой из plans.ts при квоте из БД.
 > Проверки: typecheck, audit, check:integration (4al), test-trial-bonus
 > 12 ✓, test-credits-repair 18 ✓, test-61 111 ✓, test-62 101 ✓, test-154
-> 49 ✓, smoke-83 62/8 (как до правок). Доки —
-> `scripts/patches/patch-docs-plan-grid.py`.
+> 49 ✓, smoke-83 62/8 (как до правок). Тем же днём — `npm run
+> plans:sync` (`scripts/seed/sync-plans.ts`): стоящая служба приводится к
+> сетке функциями админки (правка на месте без подписок, новая редакция с
+> ними); проверен на стенде против мока Stripe (skip / edition / update,
+> повтор — skip ×3). Доки — `scripts/patches/patch-docs-plan-grid.py`.
 
 > **Правки 2026-11-17 (вне бесед — кредиты и их проверка)**: три коммита
 > вне бесед — 213ebbc (прогон на симуляторе: одна шапка, древо, нумерация,

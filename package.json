@@ -26,6 +26,7 @@
     "seed:taxonomy": "tsx scripts/seed/seed-taxonomy.ts",
     "seed:admin": "tsx scripts/seed/bootstrap-admin.ts",
     "seed:plans": "tsx scripts/seed/seed-plans.ts",
+    "plans:sync": "tsx scripts/seed/sync-plans.ts",
     "stripe:create-prices": "tsx scripts/seed/stripe-create-prices.ts",
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
     "check:dotfiles": "node scripts/checks/check-dotfiles.mjs",

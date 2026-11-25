@@ -8448,6 +8448,10 @@ async function section4al(): Promise<void> {
   if (!/planBeatsBalance\(econ, balanceMarkup\)/.test(seedC)) errs.push("4al: сид не предупреждает о тарифе дороже баланса");
   const paS4al = await rd("./services/plan-admin.ts");
   if (!/assertPlanEconomics\(spec, env\.stripe\.planMinMarkup\)/.test(paS4al)) errs.push("4al: админка проверяет экономику тарифа не порогом PLAN_MIN_MARKUP");
+  // plans:sync (2026-11-25): развёрнутая служба приводится к plans.ts функциями админки, не прямой записью
+  const spS4al = await rd("../scripts/seed/sync-plans.ts");
+  if (!/await updatePlan\(cur\.id, input, \{ id: null \}\)/.test(spS4al) || !/await createPlanEdition\(cur\.id, input, \{ id: null \}\)/.test(spS4al) || /\.update\(schema\.subscriptionPlans\)|\.insert\(schema\.subscriptionPlans\)/.test(spS4al)) errs.push("4al: plans:sync пишет тарифы мимо plan-admin (updatePlan/createPlanEdition)");
+  if (!/args\.includes\("--apply"\)/.test(spS4al) || !/if \(!opts\.apply\) continue;/.test(spS4al)) errs.push("4al: plans:sync меняет тарифы без --apply");
   if (!/assertPlanSpec\(next, \{ economics: locked\.length > 0 \}\)/.test(paS4al)) errs.push("4al: переименование тарифа, заведённого при прежнем пороге, упирается в экономику (правка без цены/квот её не проверяет)");
   if ((seedC.match(/ADMIN_ACTIONS\.PLAN_SEEDED/g) ?? []).length !== 1 || !/db\.transaction\(async \(tx\) => \{[\s\S]*tx\.insert\(subscriptionPlans\)[\s\S]*writeAudit\(tx,/.test(seedC)) errs.push("4al: plan.seeded не пишется в транзакции с записью (created)");
   const aa = await import("./services/admin-audit.js");

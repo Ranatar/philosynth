@@ -61,7 +61,8 @@ type PlanRow = typeof subscriptionPlans.$inferSelect;
 type Exec = Parameters<typeof writeAudit>[0];
 
 export interface PlanActor {
-  id: string;
+  /** null — действие скрипта (plans:sync, 2026-11-25), как у plan.seeded */
+  id: string | null;
   ip?: string | null;
 }
 

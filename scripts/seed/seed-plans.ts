@@ -294,6 +294,10 @@ export function printReport(report: SeedPlansReport): void {
       `${YELLOW}  Тариф после первого посева правится админкой (вкладка «Тарифы»): название и «открыт для покупки» — на месте, ` +
         `цена/период/квоты — на месте без живых подписок, иначе новой редакцией. plans.ts — только начальный посев.${RESET}`,
     );
+    console.warn(
+      `${YELLOW}  Привести цену, период и кредиты всех тарифов к plans.ts одной командой: npm run plans:sync (показ), ` +
+        `npm run plans:sync -- --apply (сделать).${RESET}`,
+    );
   }
   if (report.missingPriceVars.length) {
     console.warn("");
