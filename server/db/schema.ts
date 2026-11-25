@@ -964,6 +964,25 @@ export const transactions = pgTable(
   ],
 );
 
+/* ────────────────────────── 2.20a. trial_grants ─────────────────────── */
+
+/**
+ * Адреса, получившие пробный подарок (2026-11-25, миграция 0024; решение
+ * пользователя: на одну и ту же почту подарок дважды не даётся).
+ * uq_transactions_trial держит «один на учётную запись», но удаление
+ * учётной записи освобождает адрес (email → deleted-…@deleted.invalid), и
+ * новая регистрация на тот же ящик получала подарок снова. Здесь — отпечаток
+ * АДРЕСА (billing-service trialEmailHash: SHA-256 нормализованного адреса,
+ * сам адрес не хранится), без ссылки на пользователя: строка переживает
+ * удаление учётной записи.
+ */
+export const trialGrants = pgTable("trial_grants", {
+  emailHash: text("email_hash").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 /* ─────────────────────────── 2.21. api_usage ────────────────────────── */
 
 export const apiUsage = pgTable(

@@ -11,6 +11,11 @@
  *      режим 'balance' (подарок тратится как обычный баланс)
  *   T5 подтверждение через сброс пароля (адрес не подтверждали) — подарок
  *      тоже один
+ *   T6 удаление учётной записи и новая регистрация на ТОТ ЖЕ адрес —
+ *      подарка нет (trial_grants помнит адрес, миграция 0024)
+ *   T7 адрес с меткой «+…» того же ящика — подарка нет
+ *   T8 подарок, выданный до 0024 (в trial_grants адреса нет): удаление
+ *      учётной записи записывает адрес, новая регистрация подарка не даёт
  *
  * Запуск: node --import tsx tests/test-trial-bonus.mjs (PG+Redis подняты)
  */
@@ -99,8 +104,8 @@ async function lastToken(email, re) {
 const VERIFY_RE = /\/verify-email\/([A-Za-z0-9_%-]+)/;
 const RESET_RE = /\/reset-password\/([A-Za-z0-9_%-]+)/;
 
-async function register(tag) {
-  const email = `ttb-${tag}-${Date.now()}@test.local`;
+async function register(tag, emailOverride) {
+  const email = emailOverride ?? `ttb-${tag}-${Date.now()}@test.local`;
   const password = "Passw0rd!123";
   const reg = await post("/auth/register", { email, password });
   if (reg.status !== 201 && reg.status !== 200) throw new Error("register: " + JSON.stringify(reg.body));
@@ -112,6 +117,23 @@ async function register(tag) {
   return { email, password, id: u.id, cookie: `philosynth_session=${m[1]}` };
 }
 const balanceOf = async (id) => Number((await sql`select balance_usd from users where id=${id}`)[0].balance_usd);
+/** Регистрация + подтверждение почты по ссылке из письма. */
+async function registerVerified(tag, emailOverride) {
+  const u = await register(tag, emailOverride);
+  const tok = await lastToken(u.email, VERIFY_RE);
+  const conf = await post("/auth/email/verify/confirm", { token: tok });
+  if (conf.status !== 200) throw new Error(`verify ${tag}: ` + JSON.stringify(conf.body));
+  return u;
+}
+async function deleteMe(u) {
+  const r = await fetch(`${BASE}/auth/me`, {
+    method: "DELETE",
+    headers: { "content-type": "application/json", cookie: u.cookie },
+    body: JSON.stringify({ password: u.password }),
+  });
+  return { status: r.status, body: await r.json().catch(() => null) };
+}
+const STARTED = new Date();
 const bonusesOf = (id) => sql`select amount_usd::float8 as amount, balance_after::float8 as after from transactions where user_id=${id} and type='bonus'`;
 
 async function main() {
@@ -159,6 +181,35 @@ async function main() {
     await sql`insert into transactions (user_id, type, amount_usd, balance_after) values (${B.id}, 'bonus', 6, 0)`;
   } catch (e) { dup = e.code; }
   ok(dup === "23505", "uq_transactions_trial не пускает второй bonus", dup);
+
+  console.log("── T6–T8: один подарок на адрес ──");
+  const C = await registerVerified("c");
+  ok((await balanceOf(C.id)) === TRIAL, "T6 первая учётная запись адреса подарок получила");
+  const delC = await deleteMe(C);
+  const [goneC] = await sql`select email from users where id=${C.id}`;
+  ok(delC.status === 200 && goneC.email !== C.email, "T6 учётная запись удалена, адрес освобождён", { delC, goneC });
+  const C2 = await registerVerified("c2", C.email);
+  ok(C2.id !== C.id && (await balanceOf(C2.id)) === 0 && (await bonusesOf(C2.id)).length === 0, "T6 новая регистрация на тот же адрес — подарка нет", await bonusesOf(C2.id));
+  const [verC2] = await sql`select email_verified_at is not null as v from users where id=${C2.id}`;
+  ok(verC2.v === true, "T6 само подтверждение адреса при этом принято");
+
+  const D = await registerVerified("d");
+  const plusEmail = D.email.replace("@", "+second@");
+  const D2 = await registerVerified("d2", plusEmail);
+  ok((await balanceOf(D.id)) === TRIAL && (await balanceOf(D2.id)) === 0 && (await bonusesOf(D2.id)).length === 0, "T7 тот же ящик с меткой «+…» — подарка нет", { plusEmail });
+  const E = await registerVerified("e", `ttb-e+tag-${Date.now()}@test.local`);
+  ok((await balanceOf(E.id)) === TRIAL, "T7 адрес с меткой, чей ящик подарка не получал, — подарок есть");
+
+  const F = await registerVerified("f");
+  const before = (await sql`select count(*)::int as n from trial_grants`)[0].n;
+  await sql`delete from trial_grants where created_at = (select max(created_at) from trial_grants)`;
+  ok((await sql`select count(*)::int as n from trial_grants`)[0].n === before - 1, "T8 подготовка: адрес F убран из trial_grants (подарок «до 0024»)");
+  const delF = await deleteMe(F);
+  ok(delF.status === 200 && (await sql`select count(*)::int as n from trial_grants`)[0].n === before, "T8 удаление учётной записи записало адрес в trial_grants", delF);
+  const F2 = await registerVerified("f2", F.email);
+  ok((await balanceOf(F2.id)) === 0, "T8 новая регистрация на адрес — подарка нет");
+  const raw = await sql`select count(*)::int as n from trial_grants where email_hash like '%@%'`;
+  ok(raw[0].n === 0, "в trial_grants нет адресов в открытом виде");
 }
 
 try {
@@ -173,6 +224,7 @@ try {
     await sql`delete from transactions where user_id=${id}`;
     await sql`delete from users where id=${id}`.catch(() => {});
   }
+  await sql`delete from trial_grants where created_at >= ${STARTED}`.catch(() => {});
   await sql.end({ timeout: 2 }).catch(() => {});
   // npx порождает tsx дочерним — гасим группой, иначе процесс теста висит
   try { process.kill(-serverProc.pid, "SIGKILL"); } catch { serverProc?.kill("SIGKILL"); }

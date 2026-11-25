@@ -169,6 +169,13 @@
       "when": 1795594229874,
       "tag": "0023_trial_bonus",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795601261357,
+      "tag": "0024_trial_grants",
+      "breakpoints": true
     }
   ]
 }

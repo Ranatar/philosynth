@@ -44,16 +44,17 @@
 import { closeProposalsOfMember } from "./proposal-links.js"; // 17.1
 import { randomUUID } from "node:crypto";
 
-import { count, eq, inArray, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 import { db, schema } from "../db/index.js";
 import { hashPassword } from "../middleware/auth.js";
 import { ADMIN_ACTIONS, ADMIN_SET_LOCK_KEY, writeAudit, type DbExecutor } from "./admin-audit.js"; // 8.1
+import { rememberTrialEmail } from "./billing-service.js"; // 2026-11-25: подарок — один на адрес
 import { hasActiveGenerationForUser } from "./generation-service.js";
 import { cancelSubscription, SubscriptionError } from "./subscription-service.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
-const { users, sessions, apiKeys, syntheses, userSubscriptions, adminAudit, authTokens, synthesisMembers, notifications, notificationSettings } = schema;
+const { users, sessions, apiKeys, transactions, syntheses, userSubscriptions, adminAudit, authTokens, synthesisMembers, notifications, notificationSettings } = schema;
 
 export class AccountDeletionError extends Error {
   constructor(
@@ -180,6 +181,19 @@ export async function deleteAccount(
       .update(userSubscriptions)
       .set({ status: "canceled", cancelAtPeriodEnd: true, updatedAt: new Date() })
       .where(eq(userSubscriptions.userId, userId));
+    // 2026-11-25: адрес, получивший пробный подарок, запоминается ДО
+    // анонимизации — иначе новая регистрация на тот же ящик получила бы
+    // подарок снова (подарки до миграции 0024 и адрес, сменённый после
+    // подарка, в trial_grants ещё не записаны)
+    const [gift] = await tx
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(and(eq(transactions.userId, userId), eq(transactions.type, "bonus")))
+      .limit(1);
+    if (gift) {
+      const [cur] = await tx.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+      if (cur) await rememberTrialEmail(tx, cur.email);
+    }
     await tx
       .update(users)
       .set({

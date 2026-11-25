@@ -78,6 +78,10 @@ process.env.ANTHROPIC_API_KEY = SERVER_KEY;
 process.env.API_KEY_ENCRYPTION_SECRET = ENC_SECRET;
 process.env.STRIPE_WEBHOOK_SECRET = WH_SECRET;
 process.env.BILLING_ENFORCE = "true";
+// Наценка — та же, с какой поднят сервер теста (ниже BILLING_MARKUP: "1.2"):
+// computeChargeUsd считает ожидаемое списание в ЭТОМ процессе, а умолчание
+// env.ts с 2026-11-25 — 2.5 (до того совпадало с 1.2 случайно)
+process.env.BILLING_MARKUP = "1.2";
 
 let passed = 0, failed = 0;
 const fails = [];

@@ -830,6 +830,14 @@ CREATE INDEX idx_transactions_user ON transactions(user_id);
 -- 0023 (2026-11-25): пробный подарок — не больше одного на пользователя;
 -- начисление INSERT … ON CONFLICT DO NOTHING (billing-service grantTrialBalance)
 CREATE UNIQUE INDEX uq_transactions_trial ON transactions(user_id) WHERE type = 'bonus';
+
+-- 0024 (2026-11-25): пробный подарок — не больше одного на АДРЕС. Отпечаток
+-- адреса (SHA-256 нормализованного адреса; сам адрес не хранится), без
+-- ссылки на пользователя: строка переживает удаление учётной записи
+CREATE TABLE trial_grants (
+  email_hash  TEXT PRIMARY KEY,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
 ### 2.21. api_usage

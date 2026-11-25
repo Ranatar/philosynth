@@ -32,6 +32,8 @@
  *     'balance' → chargeUsage. Регистрируется побочным эффектом импорта
  *     модуля (образец: setModeRegenerator 4.1).
  */
+import { createHash } from "node:crypto";
+
 import { and, desc, eq, gte, lte, sql as dsql } from "drizzle-orm";
 import type {
   BillingView,
@@ -69,7 +71,7 @@ import {
 } from "./subscription-service.js";
 import { tl } from "@philosynth/shared/i18n/t";
 
-const { users, transactions, apiUsage, creditCharges, syntheses } = schema;
+const { users, transactions, trialGrants, apiUsage, creditCharges, syntheses } = schema;
 
 /* ── Ошибка биллинга (коды §4.3) ─────────────────────────────────────── */
 
@@ -266,17 +268,59 @@ export async function confirmTopup(
 type TrialExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
+ * Адрес, как его считает пробный подарок: регистр и пробелы сняты, метка
+ * «+…» в имени ящика отброшена (name+1@host и name@host — один ящик у
+ * подавляющего большинства почтовых служб). Точки в имени не трогаются —
+ * это особенность одной службы, а не правило.
+ */
+export function normalizeTrialEmail(email: string): string {
+  const e = email.trim().toLowerCase();
+  const at = e.lastIndexOf("@");
+  if (at <= 0) return e;
+  const local = e.slice(0, at);
+  const plus = local.indexOf("+");
+  return (plus > 0 ? local.slice(0, plus) : local) + e.slice(at);
+}
+
+/** Отпечаток адреса для trial_grants: сам адрес в таблице не хранится. */
+export function trialEmailHash(email: string): string {
+  return createHash("sha256").update("philosynth:trial-grant:v1:" + normalizeTrialEmail(email)).digest("hex");
+}
+
+/**
+ * Запомнить, что адрес получил подарок (идемпотентно). true — адрес записан
+ * сейчас, false — уже был. Зовётся начислением и удалением учётной записи
+ * (до анонимизации адреса — для подарков, выданных до миграции 0024, и для
+ * адреса, сменённого после подарка).
+ */
+export async function rememberTrialEmail(exec: TrialExecutor, email: string): Promise<boolean> {
+  const [row] = await exec
+    .insert(trialGrants)
+    .values({ emailHash: trialEmailHash(email) })
+    .onConflictDoNothing()
+    .returning({ emailHash: trialGrants.emailHash });
+  return !!row;
+}
+
+/**
  * Пробный подарок на баланс (решение пользователя 2026-11-25): при первом
  * подтверждении почты — TRIAL_BALANCE_USD на баланс, строка transactions
  * типа 'bonus'. Не больше одного на пользователя: INSERT … ON CONFLICT DO
- * NOTHING по uq_transactions_trial (миграция 0023) — зови сколько угодно
- * раз, второй вызов ничего не начислит. Возвращает начисленное (0 — уже
- * был или подарок выключен). Зовётся в транзакции подтверждения адреса,
- * чтобы отказ одного не оставлял другое.
+ * NOTHING по uq_transactions_trial (миграция 0023) — и не больше одного на
+ * АДРЕС: trial_grants (миграция 0024) помнит отпечаток адреса и после
+ * удаления учётной записи. Зови сколько угодно раз — второй вызов ничего
+ * не начислит. Возвращает начисленное (0 — уже был у пользователя или у
+ * адреса, или подарок выключен). Зовётся в транзакции подтверждения
+ * адреса, чтобы отказ одного не оставлял другое.
  */
 export async function grantTrialBalance(exec: TrialExecutor, userId: string): Promise<number> {
   const amount = env.stripe.trialBalanceUsd;
   if (!(amount > 0)) return 0;
+  const [who] = await exec.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  if (!who) throw new BillingError("NOT_FOUND", tl("common.userNotFound", "Пользователь не найден"));
+  // Адрес уже получал подарок (в том числе удалённой учётной записью) — второго нет.
+  // Записывается и тогда, когда подарок у пользователя уже есть (выдан до 0024)
+  if (!(await rememberTrialEmail(exec, who.email))) return 0;
   const [row] = await exec
     .insert(transactions)
     .values({ userId, type: "bonus", amountUsd: money6(amount), balanceAfter: "0" })

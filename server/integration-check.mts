@@ -8396,6 +8396,13 @@ async function section4al(): Promise<void> {
   const authS4al = await rd("./routes/auth.ts");
   const bsS4al = await rd("./services/billing-service.ts");
   if ((authS4al.match(/await grantTrialBalance\(tx, userId\);/g) ?? []).length !== 2) errs.push("4al: пробный подарок не начисляется в транзакциях подтверждения почты и сброса пароля");
+  // …и один на АДРЕС (миграция 0024): отпечаток адреса проверяется раньше начисления и переживает удаление учётной записи
+  const gt4al = bsS4al.slice(bsS4al.indexOf("export async function grantTrialBalance("));
+  if (!(gt4al.indexOf("await rememberTrialEmail(exec, who.email)") > 0 && gt4al.indexOf("await rememberTrialEmail(exec, who.email)") < gt4al.indexOf('type: "bonus"'))) errs.push("4al: пробный подарок не сверяется с адресом (trial_grants) до начисления");
+  const ad4al = await rd("./services/account-deletion.ts");
+  if (!(ad4al.indexOf("await rememberTrialEmail(tx, cur.email)") > 0 && ad4al.indexOf("await rememberTrialEmail(tx, cur.email)") < ad4al.indexOf("email: anonymizedEmail,"))) errs.push("4al: удаление учётной записи не запоминает адрес с подарком до анонимизации");
+  const bs4al = await import("./services/billing-service.js");
+  if (bs4al.normalizeTrialEmail("  Name+Tag@Host.org ") !== "name@host.org" || bs4al.normalizeTrialEmail("a.b@host.org") !== "a.b@host.org" || bs4al.trialEmailHash("x+1@h.io") !== bs4al.trialEmailHash("X@h.io") || !/^[0-9a-f]{64}$/.test(bs4al.trialEmailHash("x@h.io"))) errs.push("4al: отпечаток адреса подарка — не по нормализованному адресу (регистр, метка «+…») или не SHA-256");
   if (!/type: "bonus"[\s\S]{0,120}\.onConflictDoNothing\(\)/.test(bsS4al) || !/uq_transactions_trial[\s\S]*WHERE "transactions"\."type" = 'bonus'/.test(await rd("./db/migrations/0023_trial_bonus.sql"))) errs.push("4al: пробный подарок не защищён от повтора (uq_transactions_trial + ON CONFLICT DO NOTHING)");
   if (pe.creditsForCost(0.0001) !== 1 || pe.creditsForCost(0.25) !== 25 || pe.creditsForCost(0.2501) !== 26) errs.push("4al: creditsForCost — не «вверх, не меньше одного»");
   // клиентская подпись — зеркало creditsForCost и приоритета режимов
