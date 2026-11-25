@@ -2976,6 +2976,7 @@
     "synthesis.pauseModal.reasonUserAbort": "Generation was stopped manually.",
     "synthesis.pauseModal.recommendedLead": "It is recommended to",
     "synthesis.pauseModal.remaining": "Remaining:",
+    "synthesis.pauseModal.repairFree": "Repairing the interrupted section after a failure is free of charge.",
     "synthesis.pauseModal.restartHintTotal": "Clear the partial content, write the section anew and continue with the rest (total covers both)",
     "synthesis.pauseModal.restartSection": "↻ Whole section again",
     "synthesis.pauseModal.resumeFree": "Finishing after a failure is free of charge: the interrupted generation is already paid for.",

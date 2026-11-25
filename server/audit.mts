@@ -68,7 +68,7 @@ const PAIRS: Pair[] = [
     // участникам и только у правок не-владельца (services/log-audience)
     schemaOnly: ["actorUserId"], typeOnly: ["actor"] },
   { table: "editPlans", file: "edit-plan.ts", iface: "EditPlan",
-    schemaOnly: ["userId", "updatedAt"], typeOnly: ["estimatedCost", "costBreakdown", "cascadePending"] }, // costBreakdown (10.2), cascadePending (12.3, Д-7) — вычисляемые, как estimatedCost
+    schemaOnly: ["userId", "updatedAt"], typeOnly: ["estimatedCost", "estimatedCredits", "costBreakdown", "cascadePending"] }, // costBreakdown (10.2), cascadePending (12.3, Д-7), estimatedCredits (0021) — вычисляемые, как estimatedCost
   { table: "modeResults", file: "modes.ts", iface: "ModeResult" },
   { table: "generationLog", file: "generation.ts", iface: "GenLogEntry",
     // 17.1: исполнитель строки — колонка id; наружу actor (участникам) и

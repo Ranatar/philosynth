@@ -778,8 +778,11 @@ export interface SlotBillingOptions {
   units?: number | undefined;
   /** Порог баланса для режима 'balance' (дефолт env.billing.minReserveUsd) */
   estimatedCostUsd?: number | undefined;
-  /** Доработка после сбоя службы/API — без списания с баланса (resolveBilling) */
+  /** Починка после сбоя службы/API — без списания с баланса (resolveBilling) */
   waiveBalance?: boolean | undefined;
+  /** За починкой под этим слотом идёт платное продолжение — порог баланса
+   *  проверяется (resolveBilling paidContinuation) */
+  paidContinuation?: boolean | undefined;
   /** Вид операции для журнала списаний кредитов (credit_charges, 0022) */
   op?: string | undefined;
   /**
@@ -800,6 +803,18 @@ export const FREE_SLOT_BILLING: BillingDecision = {
 };
 
 /** Контекст учёта для streamSection (6.1) — из ручки слота. */
+/**
+ * Тот же слот без права «не списывать»: решение waived покрывает только
+ * починку прерванного (раздел, недостающие подразделы, сорвавшийся шаг
+ * плана) — всё, что идёт под слотом после неё, получает эту копию, и баланс
+ * платит за каждый вызов как обычно (решение пользователя 2026-11-17:
+ * «следующий раздел — это уже новый запрос к API»).
+ */
+export function withoutWaiver<H extends { billing: BillingDecision }>(handle: H): H {
+  if (handle.billing.waived !== true) return handle;
+  return { ...handle, billing: { ...handle.billing, waived: false } };
+}
+
 export function billingContextOf(
   handle: GenerationSlotHandle,
   sectionKey?: string,
@@ -871,6 +886,7 @@ export async function withGenerationSlot(
         units: billingOpts.units ?? 1,
         estimatedCostUsd: billingOpts.estimatedCostUsd,
         waiveBalance: billingOpts.waiveBalance,
+        paidContinuation: billingOpts.paidContinuation,
         consume: true,
       });
     } catch (err) {
@@ -923,8 +939,12 @@ export interface ResumeFromPassOptions {
   /** secCtx из снапшота genParams: переопределения sectionContexts POST
    *  для НЕдостигнутых проходов не персистентны в sections.sec_context */
   sectionContexts?: Record<string, string> | undefined;
-  /** Доработка после сбоя службы/API — без списания с баланса (2026-11-17) */
-  waiveBalance?: boolean | undefined;
+  /** Починка после сбоя службы/API (2026-11-17): проход startIdx — повтор
+   *  прерванного раздела, с баланса за него не списывается; проходы после
+   *  него платные. При skip (startIdx — следующий раздел) не ставится */
+  waiveFirstPass?: boolean | undefined;
+  /** После прохода startIdx есть ещё проходы — слот проверяет порог баланса */
+  paidContinuation?: boolean | undefined;
 }
 
 /**
@@ -944,7 +964,8 @@ export async function resumeSynthesisFromPass(
   registerParentContextProvider();
   // 6.1: возобновление — квота синтеза потреблена при старте, повторно
   // не списывается (quota: null); режим/ключ определяются заново.
-  // 2026-11-17: после сбоя службы/API не списывается и баланс (waiveBalance)
+  // 2026-11-17: после сбоя службы/API с баланса не списывается починка —
+  // один проход startIdx (waiveFirstPass); остальные проходы платные
   await withGenerationSlot(
     synthesisId,
     userId,
@@ -957,9 +978,10 @@ export async function resumeSynthesisFromPass(
       await runGenerationPasses(handle, row, philosophers, secCtx, handle.billing.apiKey, {
         startIdx,
         source: "resume",
+        ...(opts.waiveFirstPass === true ? { waivedPassIdx: startIdx } : {}),
       });
     },
-    { quota: null, waiveBalance: opts.waiveBalance },
+    { quota: null, waiveBalance: opts.waiveFirstPass === true, paidContinuation: opts.paidContinuation },
   );
 }
 
@@ -1008,6 +1030,10 @@ export interface RunGenerationOptions {
   /** source строк генлога (_runGenPassesFromIdx [25573]: 'init'|'resume';
    *  в терминах 02 §2.15 — 'initial'|'resume') */
   source?: "initial" | "resume" | undefined;
+  /** Единственный проход, на который действует решение waived слота (починка
+   *  прерванного раздела); остальным — withoutWaiver. Без него решение
+   *  waived в цикле не действует вовсе (продолжение после догенерации) */
+  waivedPassIdx?: number | undefined;
 }
 
 /**
@@ -1310,7 +1336,7 @@ export async function runGenerationPasses(
                 attemptHtml = htmlSoFar;
                 onDelta(delta, totalChars, htmlSoFar);
               },
-              { signal: run.signal, billing: billingContextOf(run, passKey) },
+              { signal: run.signal, billing: billingContextOf(i === options.waivedPassIdx ? run : withoutWaiver(run), passKey) },
             );
             html = attemptHtml;
             break;

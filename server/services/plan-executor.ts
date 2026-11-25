@@ -109,12 +109,14 @@ import {
   runSubsectionRegen,
   withGenerationSlot,
   type GenerationSlotHandle,
+  withoutWaiver,
 } from "./generation-service.js";
 import {
   createPausedState,
   isServiceFailurePause,
   setPlanResumeExecutor,
 } from "./pause-resume-service.js";
+import { resolveBilling } from "./billing-service.js"; // предпроверка оплаты возобновления
 import { STRUCTURE_SUBSECTION } from "./structure-tracker.js";
 import { classifyStreamError, pauseReasonFields, StreamError } from "./streaming-manager.js";
 import type { GenLogLabel } from "@philosynth/shared/types/generation"; // 14.2 (Д-62)
@@ -608,6 +610,9 @@ async function runPlanSteps(
   fromIndex: number,
   regenCtx: Record<string, string>,
   addCtx: Record<string, string>,
+  /** 2026-11-17: единственный шаг под решением waived слота (повтор
+   *  сорвавшегося после сбоя службы/API); остальным — withoutWaiver */
+  waivedStepIdx?: number,
 ): Promise<boolean> {
   const { synthesisId, userId } = handle;
   const [synthRow] = await db
@@ -665,7 +670,7 @@ async function runPlanSteps(
     sendToUser(userId, { type: "plan_step_started", planId, stepIndex: i });
 
     try {
-      const result = await runStep(handle, step, planId, i);
+      const result = await runStep(i === waivedStepIdx ? handle : withoutWaiver(handle), step, planId, i);
       step.status = "done";
       step.result = result;
       await persistSteps(planId, steps, i + 1);
@@ -881,15 +886,25 @@ export function slotBillingFor(
  * оплачены при запуске прогона (slotBillingFor брал их все) — повторно
  * кредиты не списываются (до этого сорвавшийся шаг и все после него
  * оплачивались дважды). Режим баланса после сбоя службы/API не списывает
- * (isServiceFailurePause); пауза 'billing'/'auth' под BYO — как обычно.
+ * ПОЧИНКУ — повтор сорвавшегося шага (retry; isServiceFailurePause): шаги
+ * после него — новые запросы к API, баланс платит за них как обычно
+ * (paidContinuation — слот проверяет порог). Пропуск шага и остановка плана
+ * пользователем (user-abort) ничего бесплатным не делают; пауза
+ * 'billing'/'auth' под BYO — как обычно.
  */
 export function resumeSlotBillingFor(
   steps: readonly EditStep[],
   fromIndex: number,
   ps: Parameters<typeof isServiceFailurePause>[0] | null | undefined,
-): { quota: null; waiveBalance: boolean } | { free: true } {
+  mode: "retry" | "skip_step" = "skip_step",
+): { quota: null; waiveBalance: boolean; paidContinuation: boolean } | { free: true } {
   if (creditsForSteps(steps, fromIndex) === 0) return { free: true };
-  return { quota: null, waiveBalance: ps ? isServiceFailurePause(ps) : false };
+  const waiveBalance = mode === "retry" && !!ps && isServiceFailurePause(ps);
+  return {
+    quota: null,
+    waiveBalance,
+    paidContinuation: waiveBalance && creditsForSteps(steps, fromIndex + 1) > 0,
+  };
 }
 
 /* ══ executePlan [19514] ══════════════════════════════════════════════ */
@@ -1095,6 +1110,17 @@ async function resumePlanExecutor(
 
   const steps: EditStep[] = [...row.steps];
   const failedStep = steps[stepIdx];
+
+  // Предпроверка оплаты ДО любых изменений (статусы шагов, рекомендации,
+  // снятие паузы): отказ биллинга обязан оставить план на паузе. Шаги — как
+  // их увидит слот: сорвавшийся шаг при retry снова подтверждён
+  {
+    const preview = steps.map((s, i) =>
+      i === stepIdx && mode === "retry" && s.status === "failed" ? { ...s, status: "confirmed" as const } : s);
+    const slot = resumeSlotBillingFor(preview, stepIdx + (mode === "skip_step" ? 1 : 0), ps && ps.kind === "plan" ? ps : null, mode);
+    if (!("free" in slot)) await resolveBilling(userId, slot);
+  }
+
   let fromIndex = stepIdx;
   if (failedStep && failedStep.status === "failed") {
     if (mode === "retry") {
@@ -1123,12 +1149,13 @@ async function resumePlanExecutor(
 
   let completed = false;
   await withGenerationSlot(synthesisId, userId, async (handle) => {
+    // 2026-11-17: решение waived слота — только повтору сорвавшегося шага
     completed = await runPlanSteps(
-      handle, planId, steps, fromIndex, regenCtx, addCtx,
+      handle, planId, steps, fromIndex, regenCtx, addCtx, mode === "retry" ? fromIndex : undefined,
     );
     if (!completed) return;
     await appendCascadeSteps(synthesisId, userId, planId, steps);
-  }, resumeSlotBillingFor(steps, fromIndex, ps && ps.kind === "plan" ? ps : null)); // 6.1: квота подписки; 2026-11-17: шаги оплачены при запуске
+  }, resumeSlotBillingFor(steps, fromIndex, ps && ps.kind === "plan" ? ps : null, mode)); // 6.1: квота подписки; 2026-11-17: шаги оплачены при запуске
   // 12.3 (Д-6): статус и plan_updated — после слота
   if (completed) await finishPlanRun(synthesisId, planId, userId, true);
 }

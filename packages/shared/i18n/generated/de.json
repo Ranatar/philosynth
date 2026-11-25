@@ -2976,6 +2976,7 @@
     "synthesis.pauseModal.reasonUserAbort": "Die Generierung wurde manuell gestoppt.",
     "synthesis.pauseModal.recommendedLead": "Empfohlen",
     "synthesis.pauseModal.remaining": "Verbleibend:",
+    "synthesis.pauseModal.repairFree": "Die Reparatur des unterbrochenen Abschnitts nach einem Ausfall ist kostenlos.",
     "synthesis.pauseModal.restartHintTotal": "Teilinhalt löschen, Abschnitt neu schreiben und mit den übrigen fortfahren (Summe umfasst beides)",
     "synthesis.pauseModal.restartSection": "↻ Ganzer Abschnitt neu",
     "synthesis.pauseModal.resumeFree": "Das Fortsetzen nach einem Ausfall ist kostenlos: die unterbrochene Generierung ist bereits bezahlt.",

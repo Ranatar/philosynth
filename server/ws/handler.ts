@@ -68,6 +68,7 @@ import {
   transformStreamKey,
 } from "../services/representation-transformer.js";
 import { PlanError } from "../services/edit-planner.js";
+import { BillingError } from "../services/billing-service.js"; // отказ предпроверки возобновления — с кодом
 import {
   computePauseEstimates,
   PauseResumeError,
@@ -320,7 +321,7 @@ async function handleResumeGeneration(
     await resumeGeneration(synthesisId, user.id, mode);
   } catch (err) {
     const message =
-      err instanceof PauseResumeError || err instanceof GenerationError
+      err instanceof PauseResumeError || err instanceof GenerationError || err instanceof BillingError
         ? `${err.code}: ${err.message}`
         : err instanceof Error
           ? err.message
@@ -346,7 +347,7 @@ async function handleResumePlan(
     await resumePlan(synthesisId, planId, user.id, mode);
   } catch (err) {
     const message =
-      err instanceof PauseResumeError || err instanceof GenerationError
+      err instanceof PauseResumeError || err instanceof GenerationError || err instanceof BillingError
         ? `${err.code}: ${err.message}`
         : err instanceof Error
           ? err.message

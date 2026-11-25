@@ -25,8 +25,9 @@
  *    самым дешёвым). Кнопка несёт полную цену выбора: починка + продолжение;
  *  - подпись по способу оплаты (useBillingView): BYO — себестоимость по
  *    ключу; подписка — без списания (возобновление без кредитов, 6.1);
- *    баланс — без списания после сбоя службы/API (estimates.serviceFailure),
- *    иначе с наценкой;
+ *    баланс — после сбоя службы/API (estimates.serviceFailure) без списания
+ *    только ПОЧИНКА прерванного раздела, оставшиеся разделы — с наценкой
+ *    (каждый — новый запрос к API); кнопка несёт то, что реально спишется;
  *  - auth-рендерер: форма ввода нового ключа — порт _resumeWithNewApiKey
  *    [25028] СДЕЛАН беседой 6.2 (долг §12 «Форма ввода ключа в
  *    auth-модалке»): ключ сохраняется POST /billing/api-key (BYO-Key 6.1,
@@ -80,10 +81,11 @@ export function fmtCost(cost: number | null | undefined): string {
   return fmtUsd(cost);
 }
 
-/** Полная цена выбора: починка раздела + продолжение (2026-11-17). */
-function totalOf(own: number | undefined, continuation: number | undefined): number | undefined {
+/** Полная цена выбора: починка раздела + продолжение (2026-11-17);
+ *  repairFree — починка без списания, в сумме остаётся одно продолжение. */
+function totalOf(own: number | undefined, continuation: number | undefined, repairFree = false): number | undefined {
   if (own === undefined) return undefined;
-  return own + (continuation ?? 0);
+  return (repairFree ? 0 : own) + (continuation ?? 0);
 }
 
 /* ── Мелкие блоки разметки (аналог css-классов pause-* исходника) ────── */
@@ -332,8 +334,7 @@ function ContinuationHint({ estimates }: { estimates: PauseEstimates }) {
   const view = useBillingView();
   const rest = estimates.skipRemaining;
   if (rest === undefined) return null;
-  const waived = resumeWaived(view?.mode, estimates);
-  if (waived) {
+  if (continuationWaived(view?.mode)) {
     return (
       <p className="pause-subtle" data-testid="pause-continuation">
         {tl("synthesis.pauseModal.resumeFree", "Доработка после сбоя — без списания: прерванная генерация уже оплачена.")}
@@ -342,16 +343,27 @@ function ContinuationHint({ estimates }: { estimates: PauseEstimates }) {
   }
   return (
     <p className="pause-subtle" data-testid="pause-continuation">
+      {repairWaived(view?.mode, estimates) && (
+        <span data-testid="pause-repair-free">
+          {tl("synthesis.pauseModal.repairFree", "Починка прерванного раздела после сбоя — без списания.")}{" "}
+        </span>
+      )}
       {rest > 0
-        ? tl("synthesis.pauseModal.continuationCost", "Оставшиеся разделы: {cost} — входит в сумму каждой кнопки, кроме «Остановить».", { cost: chargeLine(view, { usd: rest, waived }) })
+        ? tl("synthesis.pauseModal.continuationCost", "Оставшиеся разделы: {cost} — входит в сумму каждой кнопки, кроме «Остановить».", { cost: chargeLine(view, { usd: rest }) })
         : tl("synthesis.pauseModal.continuationNone", "Прерванный раздел — последний: после него генерировать нечего.")}
     </p>
   );
 }
 
-/** Доработка без списания: у подписки всегда (квота синтеза уже потреблена),
- *  у баланса — после сбоя службы/API (решение 2026-11-17). */
-function resumeWaived(mode: string | undefined, estimates: PauseEstimates): boolean {
+/** Продолжение (остальные разделы) без списания — только у подписки: кредиты
+ *  за весь состав взяты при старте синтеза. Баланс платит за каждый раздел. */
+function continuationWaived(mode: string | undefined): boolean {
+  return mode === "subscription";
+}
+
+/** Починка прерванного раздела без списания: у подписки всегда, у баланса —
+ *  после сбоя службы/API (решение 2026-11-17: только починка, не остаток). */
+function repairWaived(mode: string | undefined, estimates: PauseEstimates): boolean {
   if (mode === "subscription") return true;
   if (mode === "balance") return estimates.serviceFailure !== false;
   return false;
@@ -367,8 +379,13 @@ function GenFooter({
   onResume: (mode: ResumeGenerationMode) => void;
 }) {
   const view = useBillingView();
-  const waived = resumeWaived(view?.mode, estimates);
   const rest = estimates.skipRemaining;
+  // «Пропустить» — одно продолжение: без списания только у подписки
+  const restFree = continuationWaived(view?.mode);
+  // починка: у баланса после сбоя — без списания; кнопка несёт одно
+  // продолжение, а если его нет (последний раздел) — «без списания»
+  const repairFree = repairWaived(view?.mode, estimates);
+  const waived = restFree || (repairFree && !rest);
   if (ps.isPartial) {
     return (
       <>
@@ -378,21 +395,21 @@ function GenFooter({
           onClick={() => onResume("fill-missing-subs")}
         >
           {tl("synthesis.pauseModal.generateMissing", "🎯 Догенерировать недостающие")}
-          <CostSpan cost={totalOf(estimates.fillMissingSubs, rest)} prefix={rest ? tl("synthesis.pauseModal.total", "итого") : undefined} waived={waived} />
+          <CostSpan cost={totalOf(estimates.fillMissingSubs, rest, repairFree)} prefix={rest ? tl("synthesis.pauseModal.total", "итого") : undefined} waived={waived} />
         </PauseBtn>
         <PauseBtn
           title={tl("synthesis.pauseModal.restartHintTotal", "Очистить частичный контент, написать раздел заново и продолжить остальные (сумма — всё вместе)")}
           onClick={() => onResume("retry")}
         >
           {tl("synthesis.pauseModal.restartSection", "↻ Весь раздел заново")}
-          <CostSpan cost={totalOf(estimates.wholeSection, rest)} prefix={rest ? tl("synthesis.pauseModal.total", "итого") : undefined} waived={waived} />
+          <CostSpan cost={totalOf(estimates.wholeSection, rest, repairFree)} prefix={rest ? tl("synthesis.pauseModal.total", "итого") : undefined} waived={waived} />
         </PauseBtn>
         <PauseBtn
           title={tl("synthesis.pauseModal.skipHint", "Оставить частичный контент, продолжить со следующего раздела (оценка — стоимость оставшихся разделов)")}
           onClick={() => onResume("skip")}
         >
           {tl("synthesis.pauseModal.skip", "⤴ Пропустить")}
-          <CostSpan cost={rest} prefix={tl("synthesis.pauseModal.total", "итого")} waived={waived} />
+          <CostSpan cost={rest} prefix={tl("synthesis.pauseModal.total", "итого")} waived={restFree} />
         </PauseBtn>
         <PauseBtn
           kind="danger"
@@ -412,14 +429,14 @@ function GenFooter({
         onClick={() => onResume("retry")}
       >
         {tl("synthesis.pauseModal.retryNow", "↻ Повторить сейчас")}
-        <CostSpan cost={totalOf(estimates.wholeSection, rest)} prefix={rest ? tl("synthesis.pauseModal.total", "итого") : undefined} waived={waived} />
+        <CostSpan cost={totalOf(estimates.wholeSection, rest, repairFree)} prefix={rest ? tl("synthesis.pauseModal.total", "итого") : undefined} waived={waived} />
       </PauseBtn>
       <PauseBtn
         title={tl("synthesis.pauseModal.skipSectionHint", "Пропустить этот раздел, продолжить со следующего (оценка — остальные разделы)")}
         onClick={() => onResume("skip")}
       >
         {tl("synthesis.pauseModal.skip", "⤴ Пропустить")}
-        <CostSpan cost={rest} prefix={tl("synthesis.pauseModal.total", "итого")} waived={waived} />
+        <CostSpan cost={rest} prefix={tl("synthesis.pauseModal.total", "итого")} waived={restFree} />
       </PauseBtn>
       <PauseBtn
         kind="danger"

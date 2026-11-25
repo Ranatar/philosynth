@@ -99,6 +99,7 @@ import {
   regenerateSubsection,
   resumeSynthesisFromPass,
   runGenerationPasses,
+  withoutWaiver,
   setPauseEstimatesProvider,
   withGenerationSlot,
   type SynthesisRow,
@@ -122,6 +123,7 @@ import {
 import { buildEffectiveDeps, resolveContextDeps } from "./synthesis-engine.js";
 import { tl } from "@philosynth/shared/i18n/t";
 import { canEditSynthesisOf } from "./capabilities.js"; // 16.1
+import { resolveBilling } from "./billing-service.js"; // предпроверка оплаты возобновления
 
 /* ══ Константы ════════════════════════════════════════════════════════ */
 
@@ -578,6 +580,19 @@ export async function resumeGeneration(
     );
   }
 
+  // Предпроверка оплаты ДО любых изменений: отказ биллинга (пуст баланс, нет
+  // ключа) обязан оставить синтез на паузе. Слот проверяет то же, но уже
+  // после снятия pausedState — без предпроверки отказ оставлял синтез в
+  // 'generating' без паузы и без прогона (возобновить было нечем)
+  if (mode !== "stop") {
+    const waive = mode !== "skip" && isServiceFailurePause(ps);
+    await resolveBilling(userId, {
+      quota: null,
+      waiveBalance: waive,
+      paidContinuation: waive && (await hasPassesAfter(ps)),
+    });
+  }
+
   // resume-marker [25081]
   await logPauseEvent(synthesisId, "resume_marker", {
     kind: "gen",
@@ -611,14 +626,21 @@ export async function resumeGeneration(
  * списывается как обычно. Нехватка баланса службы посреди операции паузы не
  * даёт: баланс сверяется с оценкой при старте, а списывается по факту
  * каждого вызова. У подписки возобновление и так без квоты (6.1).
- * Сознательной паузы в службе нет: остановка пользователем (user-abort)
+ * Сознательная пауза: остановка ГЕНЕРАЦИИ пользователем (user-abort)
  * pausedState не создаёт — частичный результат финализируется, а доработка
- * идёт обычной платной правкой (добавить/перегенерировать раздел).
+ * идёт обычной платной правкой. Остановка ПЛАНА паузу создаёт
+ * (plan-executor, reasonKind 'user-abort') — это решение пользователя, а не
+ * сбой: возобновление списывается как обычно.
+ *
+ * Бесплатна после сбоя только ПОЧИНКА прерванного — повтор раздела,
+ * догенерация его подразделов, повтор сорвавшегося шага плана; всё, что
+ * служба генерирует после неё, — новые запросы к API за счёт баланса.
  */
 export function isServiceFailurePause(ps: {
   reasonKind?: PauseReasonKind | undefined;
   paidBy?: "byo" | "subscription" | "balance" | undefined;
 }): boolean {
+  if (ps.reasonKind === "user-abort") return false;
   const accountReason = ps.reasonKind === "billing" || ps.reasonKind === "auth";
   if (!accountReason) return true;
   // 'billing'/'auth' — ответ API о ключе: ключ пользователя (BYO) — его
@@ -660,10 +682,27 @@ async function resumeRetryOrSkip(
     fromPassIdx: startIdx,
   });
 
+  // 2026-11-17: без списания с баланса — только повтор прерванного раздела
+  // (retry после сбоя службы/API); skip начинает со следующего раздела —
+  // новые запросы, списание как обычно. Есть ли проходы после прерванного,
+  // знает раскладка проходов снимка; снимок не восстановился — считаем, что есть
+  const waiveFirstPass = mode === "retry" && isServiceFailurePause(ps);
   await resumeSynthesisFromPass(synthesisId, userId, startIdx, {
     sectionContexts: genParamsSecCtx(ps),
-    waiveBalance: isServiceFailurePause(ps),
+    ...(waiveFirstPass
+      ? { waiveFirstPass: true, paidContinuation: await hasPassesAfter(ps) }
+      : {}),
   });
+}
+
+/** Есть ли проходы после прерванного (платное продолжение после починки). */
+async function hasPassesAfter(ps: PausedStateGen): Promise<boolean> {
+  try {
+    const infra = await rebuildInfra(ps);
+    return infra ? ps.passIdx + 1 < infra.passes.length : true;
+  } catch {
+    return true;
+  }
 }
 
 /**
@@ -745,9 +784,9 @@ async function resumeFillMissingSubs(
       mode: "fill-missing-subs",
       fromPassIdx: ps.passIdx + 1,
     });
+    // недостающих нет — чинить нечего: дальше только новые разделы, платно
     await resumeSynthesisFromPass(synthesisId, userId, ps.passIdx + 1, {
       sectionContexts: p.secCtx,
-      waiveBalance: isServiceFailurePause(ps),
     });
     return;
   }
@@ -832,8 +871,10 @@ async function resumeFillMissingSubs(
       //    циклом под тем же слотом ──
       const fresh = await loadSynthesis(synthesisId);
       Object.assign(fresh.secCtx, p.secCtx);
+      // 2026-11-17: решение waived слота покрывало догенерацию подразделов
+      // (починку); следующие разделы — платно (withoutWaiver)
       await runGenerationPasses(
-        handle,
+        withoutWaiver(handle),
         fresh.row,
         fresh.philosophers,
         fresh.secCtx,
@@ -920,7 +961,7 @@ async function resumeFillMissingSubs(
         estimates: await computePauseEstimates(synthesisId, newPs),
       });
     }
-  }, { quota: null, waiveBalance: isServiceFailurePause(ps) }); // 6.1: квота подписки; 2026-11-17: баланс после сбоя службы
+  }, { quota: null, waiveBalance: isServiceFailurePause(ps), paidContinuation: ps.passIdx + 1 < infra.passes.length }); // 6.1: квота подписки; 2026-11-17: с баланса не списывается починка после сбоя службы
 }
 
 /* ══ resumePlan (kind='plan') [25910] ═════════════════════════════════ */

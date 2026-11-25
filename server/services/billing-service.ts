@@ -609,9 +609,10 @@ export interface BillingDecision {
   enforced: boolean;
   /** Какая квота потреблена (consume=true) — для отката при сбое старта */
   quotaConsumed?: { subscriptionId: string; quotaType: QuotaType; units: number } | undefined;
-  /** Режим 'balance' без списания: доработка после сбоя на стороне службы
-   *  или API (решение пользователя 2026-11-17) — usage пишется в api_usage,
-   *  баланс не трогается */
+  /** Режим 'balance': слоту разрешено не списывать ПОЧИНКУ прерванного после
+   *  сбоя службы или API (решение пользователя 2026-11-17) — её usage пишется
+   *  в api_usage, баланс не трогается; продолжение под тем же слотом платное
+   *  (вызывающий снимает флаг — generation-service withoutWaiver) */
   waived?: boolean | undefined;
 }
 
@@ -633,8 +634,17 @@ export interface ResolveBillingOptions {
    * режиму 'balance' этот флаг снимает порог и списание (решение waived).
    * Пауза по причине 'billing' (не хватило денег) флага НЕ получает —
    * возобновление доводит оплачиваемую операцию, списание как обычно.
+   *
+   * Бесплатна только ПОЧИНКА прерванного (раздел, шаг плана): каждый
+   * следующий раздел — новый запрос к API, и баланс платит за него по факту.
+   * Решение waived лишь разрешает слоту не списывать; какой вызов под ним
+   * починка, решает вызывающий (generation-service withoutWaiver).
    */
   waiveBalance?: boolean | undefined;
+  /** Вместе с waiveBalance: за починкой под тем же слотом идёт платное
+   *  продолжение (остальные разделы, следующие шаги плана) — порог баланса
+   *  проверяется как у обычного возобновления; решение остаётся waived */
+  paidContinuation?: boolean | undefined;
 }
 
 /** Серверный ключ для режимов subscription/balance. */
@@ -688,21 +698,24 @@ export async function resolveBilling(
     quotaExceeded = { quotaType: opts.quota, used: q.used, quota: q.quota, needed: units };
   }
 
-  // 3'. Доработка после сбоя службы/API — баланс не требуется и не списывается
-  if (opts.waiveBalance === true) {
+  // 3'. Починка после сбоя службы/API, за которой ничего платного не идёт, —
+  //     баланс не требуется и не списывается
+  const waived = opts.waiveBalance === true;
+  if (waived && opts.paidContinuation !== true) {
     return { billingMode: "balance", apiKey: serverApiKeyOrThrow(), enforced: true, waived: true };
   }
 
-  // 3. Баланс ≥ порог
+  // 3. Баланс ≥ порог (с починкой под тем же слотом — решение остаётся waived:
+  //    не списывается только она, withoutWaiver снимает флаг с продолжения)
   const balance = await getBalance(userId);
   const threshold = opts.estimatedCostUsd ?? env.billing.minReserveUsd;
   if (balance > 0 && balance >= threshold) {
-    return { billingMode: "balance", apiKey: serverApiKeyOrThrow(), enforced: true };
+    return { billingMode: "balance", apiKey: serverApiKeyOrThrow(), enforced: true, ...(waived ? { waived: true } : {}) };
   }
 
   // 4. Отказ (или долг при выключенном принуждении)
   if (!env.billing.enforce) {
-    return { billingMode: "balance", apiKey: serverApiKeyOrThrow(), enforced: false };
+    return { billingMode: "balance", apiKey: serverApiKeyOrThrow(), enforced: false, ...(waived ? { waived: true } : {}) };
   }
   if (quotaExceeded) {
     throw new BillingError(

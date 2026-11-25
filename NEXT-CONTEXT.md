@@ -47,6 +47,19 @@ test-183-request1-ui 20 ✓, test-183-requests2-3 65 ✓ (живой серве�
 на импортах образца; Chrome 131 на сборке, сервер :3000 без мока). Доки —
 `patch-docs-conv183.py` (три части).
 
+## Дополнение 2026-11-17 (вне бесед — кредиты)
+
+Снимок выше — на 2026-11-16; после него вне бесед: квота подписки — кредиты
+(миграция 0021), журнал списаний `credit_charges` (миграция 0022) — таблиц
+43, **следующая миграция — 0023**; серии сторожей не заняты (правлены 4ag,
+4al, 5x, 4bp). Без списания с баланса после сбоя — только починка
+прерванного (09 §10, «Что оставили правки 2026-11-17»). Новая строка
+`synthesis.pauseModal.repairFree` — en/de утверждены, черновиков в таблице
+нет. Давно красные и сегодняшними правками не тронутые: test-123
+(6 ✗), test-16b (1 ✗), test-24 (11 ✗), смоуки 61/71/123; test-83 не
+запускается (путь `scripts/seed-plans.js`, ожидания посева до 15.4).
+Хроника — 08 Часть III.
+
 ## Универсальный минимум любой серверной беседы
 
 - `server/db/schema.ts` — 32 таблицы (с 9.1: + auth_tokens, mail_outbox; с 10.1: + recommendations; 11.2 — миграция 0010 `users.ui_locale/gen_lang`; 12.1 — миграция 0011 `theses.label`; 12.3 — миграции 0012 `recommendations.warning` и 0013 `recommendations.issues`; 15.1 — миграция 0014 `uq_lineage_parent_pair`; 15.3 — 0015 `email_change`; 15.4 — 0016 `plan_editions` (family/edition); 16.1 — 0017 `discussion` (+ synthesis_members, comments, reviews, review_revisions, review_findings — 37 таблиц); 16.2 — 0018 `members_notifications` (+ notifications, notification_settings — 39); 17.1 — 0019 `proposals_actor` (+ proposals, proposal_events — 41); 18.1 — 0020 `search_index` (+ synthesis_search — 42; наполняет `npm run search:reindex`); следующая — 0021), единственный

@@ -170,7 +170,7 @@ try {
   subId = subRow?.id;
   const list = (await GET("/billing/admin/plans", A.cookie)).json.plans;
   ok(subRow?.status === "incomplete" && list.find((p) => p.id === fam.id)?.liveSubscriptions === 1, "список админки: подписка incomplete — живая (status ≠ canceled)", { subRow, live: list.find((p) => p.id === fam.id)?.liveSubscriptions });
-  const q = await call(`/billing/admin/plans/${fam.id}`, { method: "PATCH", body: { quotaCredits: 1000, priceUsd: 19.99 }, cookie: A.cookie });
+  const q = await call(`/billing/admin/plans/${fam.id}`, { method: "PATCH", body: { quotaCredits: 1000 }, cookie: A.cookie }); // цена уже 21.99 (шаг выше): её в теле нет, иначе заперто было бы два поля
   ok(q.status === 409 && q.json?.code === "PLAN_HAS_SUBSCRIPTIONS" && J(q.json.details?.lockedFields) === '["quotaCredits"]', "план с подпиской: правка квот отклонена 409 PLAN_HAS_SUBSCRIPTIONS с lockedFields", q.json);
   const pp = await call(`/billing/admin/plans/${fam.id}`, { method: "PATCH", body: { priceUsd: 25 }, cookie: A.cookie });
   ok(pp.status === 409 && mock.state.prices.size === 2, "план с подпиской: правка цены отклонена, Price в Stripe не заведён", pp.json);

@@ -42,8 +42,10 @@ export interface PauseEstimates {
   missingSubs?: string[];
   /** Оборванный подраздел (дописывается или генерируется заново) */
   streamingSub?: string | null;
-  /** Пауза по вине службы/API — доработка без списания с баланса
-   *  (isServiceFailurePause); у подписки доработка без кредитов всегда */
+  /** Пауза по вине службы/API (isServiceFailurePause): с баланса не
+   *  списывается ПОЧИНКА прерванного раздела (fillMissingSubs/wholeSection);
+   *  оставшиеся разделы (skipRemaining) — платно. У подписки доработка без
+   *  кредитов всегда */
   serviceFailure?: boolean;
 }
 

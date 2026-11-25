@@ -3103,7 +3103,8 @@ Endpoint: `wss://host/ws?token={sessionToken}`
 // 2026-11-17: fillMissingSubs/wholeSection — только починка раздела, остальные
 // разделы служба продолжает сама (skipRemaining); полная цена выбора —
 // починка + skipRemaining. missingSubs — недостающие с оборванным первым;
-// serviceFailure — доработка без списания с баланса (isServiceFailurePause)
+// serviceFailure — пауза по вине службы/API (isServiceFailurePause): с баланса
+// не списывается починка (fillMissingSubs/wholeSection), skipRemaining — платно
 // kind='plan' (2.2): plan-полей сообщение не несёт — stepIdx/totalSteps/
 // failedOp клиент берёт из GET /syntheses/:id (pausedState); при
 // user-abort плана сообщение НЕ отправляется (reasonKind его исключает),

@@ -570,7 +570,8 @@ try {
   // 8.2: строка ищется по имени, а не «единственная»: на общей БД лежат планы других стендов
   // (test-71 оставляет starter71 — у него подписка анонимизированного пользователя, FK; с 8.3 план назван starter62, чтобы не сносить посеянный `starter`)
   const starterRow = planRow.find((r) => r[0] === "Starter62");
-  ok(!!starterRow && /\$9\.00/.test(starterRow[1]) && intOf(starterRow[2]) === 3, "таблица тарифов: Starter62 $9.00 / 3 синтеза", J(planRow));
+  // 0021: вторая колонка — кредиты тарифа (950), третья — «на что хватит» в синтезах (950 / 190 → ≈ 5)
+  ok(!!starterRow && /\$9\.00/.test(starterRow[1]) && intOf(starterRow[2]) === 950 && /^≈\s*5$/.test(String(starterRow[3]).trim()), "таблица тарифов: Starter62 $9.00 / 950 кредитов / ≈ 5 синтезов", J(planRow));
   await page.click(T("sub-plan-starter62"));
   await page.waitForSelector(T("sub-status"), { timeout: 15000 });
   ok(/ожидает оплаты/i.test(await text(page, T("sub-status"))), "после «Оформить» — статус «ожидает оплаты» (incomplete)");

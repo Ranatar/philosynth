@@ -2600,7 +2600,7 @@ await rClose();
 // totals, resetUsageCounters, история DESC, createVersion/activateVersion
 // реестра со сбросом кэша, ON DELETE SET NULL истории (миграция 0002),
 // RESTRICT истории по user_id и CASCADE подписок при удалении пользователя.
-{
+async function section5x(): Promise<void> {
   const prevEnforce = process.env.BILLING_ENFORCE;
   const { env: env5x } = await import("./env.js");
   // env читается один раз при импорте — правим объект (только здесь)
@@ -2625,14 +2625,14 @@ await rClose();
     catch (e) { if (!(e instanceof bs.BillingError) || e.code !== code) errs.push(`5x: ${label} — ожидался ${code}, получено ${(e as { code?: string }).code ?? String(e)}`); }
   };
   // (а) ничего нет → BILLING_REQUIRED; баланс ниже порога → INSUFFICIENT
-  await expectCode(() => bs.resolveBilling(uid, { quota: "modes" }), "BILLING_REQUIRED", "пустой пользователь");
+  await expectCode(() => bs.resolveBilling(uid, { quota: "credits" }), "BILLING_REQUIRED", "пустой пользователь");
   await db5x.update(sch5x.users).set({ balanceUsd: "0.0010" }).where(eq5x(sch5x.users.id, uid));
-  await expectCode(() => bs.resolveBilling(uid, { quota: "modes" }), "INSUFFICIENT_BALANCE", "баланс 0.001");
+  await expectCode(() => bs.resolveBilling(uid, { quota: "credits" }), "INSUFFICIENT_BALANCE", "баланс 0.001");
   // (б) баланс ≥ порога → balance с серверным ключом; порог из аргумента
   await db5x.update(sch5x.users).set({ balanceUsd: "1.0000" }).where(eq5x(sch5x.users.id, uid));
-  const dBal = await bs.resolveBilling(uid, { quota: "modes" });
+  const dBal = await bs.resolveBilling(uid, { quota: "credits" });
   if (dBal.billingMode !== "balance" || dBal.apiKey !== env5x.anthropic.apiKey || !dBal.enforced) errs.push("5x: resolveBilling при балансе ≠ balance/серверный ключ");
-  await expectCode(() => bs.resolveBilling(uid, { quota: "modes", estimatedCostUsd: 5 }), "INSUFFICIENT_BALANCE", "порог estimatedCostUsd=5 при балансе 1");
+  await expectCode(() => bs.resolveBilling(uid, { quota: "credits", estimatedCostUsd: 5 }), "INSUFFICIENT_BALANCE", "порог estimatedCostUsd=5 при балансе 1");
   // (в) BYO: один активный, round-trip через БД, приоритет
   const key1 = "sk-ant-api03-iq5x-" + "a".repeat(50);
   const key2 = "sk-ant-api03-iq5x-" + "b".repeat(50);
@@ -2644,7 +2644,7 @@ await rClose();
   if (keys.length !== 2 || keys.filter((k) => k.isActive).length !== 1 || !keys.find((k) => k.id === st2.keyId)?.isActive) errs.push("5x: второй ключ не вытеснил первый");
   const raw = (await db5x.select().from(sch5x.apiKeys).where(eq5x(sch5x.apiKeys.id, st2.keyId)))[0]!;
   if (Buffer.from(raw.encryptedKey as Uint8Array).toString("latin1").includes("iq5x")) errs.push("5x: ключ в БД в открытом виде");
-  const dByo = await bs.resolveBilling(uid, { quota: "modes" });
+  const dByo = await bs.resolveBilling(uid, { quota: "credits" });
   if (dByo.billingMode !== "byo" || dByo.apiKey !== key2) errs.push("5x: приоритет BYO нарушен");
   try { ak.validateApiKeyFormat("sk-openai-xxxxxxxxxxxxxxxxx"); errs.push("5x: чужой префикс принят"); } catch (e) { if (!(e instanceof ak.ApiKeyError)) errs.push("5x: валидация формата — не ApiKeyError"); }
   await ak.deleteApiKey(st2.keyId, uid); await ak.deleteApiKey(st1.keyId, uid);
@@ -2679,6 +2679,31 @@ await rClose();
   // 2026-11-17: доработка после сбоя службы/API — баланс не требуется (waived)
   const dWaive = await bs.resolveBilling(uid, { quota: null, waiveBalance: true });
   if (dWaive.billingMode !== "balance" || dWaive.waived !== true) errs.push("5x: waiveBalance не дал режим balance без списания");
+  // …но если за починкой идёт платное продолжение — порог баланса действует (здесь баланс нулевой)
+  await expectCode(() => bs.resolveBilling(uid, { quota: null, waiveBalance: true, paidContinuation: true }), "BILLING_REQUIRED", "починка с платным продолжением при пустом балансе");
+  {
+    const gs5x = await import("./services/generation-service.js");
+    const pr5x = await import("./services/pause-resume-service.js");
+    const pe5x = await import("./services/plan-executor.js");
+    const h = { billing: dWaive, tag: 1 };
+    const hw = gs5x.withoutWaiver(h);
+    if (hw === h || hw.billing.waived !== false || h.billing.waived !== true || hw.tag !== 1) errs.push("5x: withoutWaiver не снял waived с копии (или испортил исходный слот)");
+    if (gs5x.withoutWaiver(hw) !== hw) errs.push("5x: withoutWaiver пересоздаёт слот без waived");
+    // чья причина паузы: остановка пользователем — не сбой; billing/auth — сбой только под серверным ключом
+    const sf = pr5x.isServiceFailurePause;
+    if (sf({ reasonKind: "user-abort", paidBy: "balance" }) || !sf({ reasonKind: "max-tokens", paidBy: "balance" }) || sf({ reasonKind: "billing", paidBy: "byo" }) || !sf({ reasonKind: "auth", paidBy: "balance" }) || sf({ reasonKind: "billing" })) errs.push("5x: isServiceFailurePause — остановка пользователем/причина ключа пользователя сочтена сбоем службы (или наоборот)");
+    // план: бесплатен только повтор сорвавшегося шага после сбоя; пропуск и остановка — нет
+    const st = (type: string) => ({ type, target: "graph", status: "confirmed" }) as never;
+    const two = [st("regen"), st("regen")], one = [st("regen")];
+    const fail = { reasonKind: "partial" as const, paidBy: "balance" as const };
+    const rb = pe5x.resumeSlotBillingFor;
+    const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    if (!same(rb(two, 0, fail, "retry"), { quota: null, waiveBalance: true, paidContinuation: true })) errs.push("5x: retry шага с продолжением — не «починка + порог баланса»");
+    if (!same(rb(one, 0, fail, "retry"), { quota: null, waiveBalance: true, paidContinuation: false })) errs.push("5x: retry последнего шага — не «починка без порога»");
+    if (!same(rb(two, 1, fail, "skip_step"), { quota: null, waiveBalance: false, paidContinuation: false })) errs.push("5x: пропуск шага сделал следующие шаги бесплатными");
+    if (!same(rb(two, 0, { reasonKind: "user-abort", paidBy: "balance" }, "retry"), { quota: null, waiveBalance: false, paidContinuation: false })) errs.push("5x: остановка плана пользователем дала бесплатное возобновление");
+    if (!same(rb([{ type: "delete", target: "graph", status: "confirmed" } as never], 0, fail, "retry"), { free: true })) errs.push("5x: план без платных шагов — не бесплатный слот");
+  }
   if ((await bs.getBillingView(uid)).mode !== "none") errs.push("5x: getBillingView без источника — не none");
   if (ss.mapStripeStatus("incomplete_expired") !== "canceled" || ss.mapStripeStatus("trialing") !== "trialing") errs.push("5x: mapStripeStatus");
   // (д) chargeUsage: наценка, balance_after, api_usage; recordApiUsage byo вне totals
@@ -2743,6 +2768,7 @@ await rClose();
   await db5x.delete(sch5x.subscriptionPlans).where(eq5x(sch5x.subscriptionPlans.id, planId));
   (env5x.billing as { enforce: boolean }).enforce = prevEnforce === "true";
 }
+await section5x();
 
 // ── 5y (беседа 7.1): живые проверки долгов §12 против БД (ДО закрытия пула) ──
 // Stripe не гоняем (ensureStripeCustomer — тест R2в test-71). Здесь:
@@ -7878,7 +7904,7 @@ need(await import("./config/export-assets.js"),
   const gsSrc = await rd("./services/generation-service.ts");
   if (!/billing: BillingDecision;/.test(gsSrc)) errs.push("4ag: GenerationSlotHandle без billing");
   if (!/consume: true,/.test(gsSrc) || !/resolveBilling\(userId, \{/.test(gsSrc)) errs.push("4ag: withGenerationSlot не зовёт resolveBilling(consume:true)");
-  if (!/billing: billingContextOf\(run, passKey\)/.test(gsSrc) || !/billing: billingContextOf\(handle, streamKey\)/.test(gsSrc)) errs.push("4ag: streamSection без контекста учёта (главный цикл / streamWithRetries)");
+  if (!/billing: billingContextOf\(i === options\.waivedPassIdx \? run : withoutWaiver\(run\), passKey\)/.test(gsSrc) || !/billing: billingContextOf\(handle, streamKey\)/.test(gsSrc)) errs.push("4ag: streamSection без контекста учёта (главный цикл / streamWithRetries)");
   const acsg = gsSrc.slice(gsSrc.indexOf("export function assertCanStartGeneration"));
   if (/env\.anthropic\.apiKey/.test(acsg.slice(0, acsg.indexOf("\n}\n")))) errs.push("4ag: assertCanStartGeneration всё ещё проверяет серверный ключ (гейт — у биллинга)");
   const svcNames = ["generation-service", "mode-service", "element-enrichment", "representation-transformer", "pause-resume-service", "plan-executor"];
@@ -7888,7 +7914,7 @@ need(await import("./config/export-assets.js"),
   const slotAwaits = (svcAll.match(/await withGenerationSlot\(/g) ?? []).length;
   // 0021: слот — по весу операции (creditCharge), сумме шагов плана (slotBillingFor),
   // без квоты при возобновлении (quota: null / resumeSlotBillingFor) — у каждого
-  const slotQuotas = (svcAll.match(/\}, (?:creditCharge\("\w+"\)|\{ quota: null[^}]*\}|(?:resumeS|s)lotBillingFor\([^;]*?\))\); \/\/ 6\.1: квота подписки/g) ?? []).length + (svcAll.match(/^\s*\{ quota: (?:"credits", units: opts\.credits \?\? creditsFor\("synthesis"\), estimatedCostUsd: opts\.estimatedCostUsd, op: "synthesis"|null, waiveBalance: opts\.waiveBalance) \},\n\s*\);/gm) ?? []).length;
+  const slotQuotas = (svcAll.match(/\}, (?:creditCharge\("\w+"\)|\{ quota: null[^}]*\}|(?:resumeS|s)lotBillingFor\([^;]*?\))\); \/\/ 6\.1: квота подписки/g) ?? []).length + (svcAll.match(/^\s*\{ quota: (?:"credits", units: opts\.credits \?\? creditsFor\("synthesis"\), estimatedCostUsd: opts\.estimatedCostUsd, op: "synthesis"|null, waiveBalance: opts\.waiveFirstPass === true, paidContinuation: opts\.paidContinuation) \},\n\s*\);/gm) ?? []).length;
   if (slotAwaits !== 13 || slotQuotas !== slotAwaits) errs.push(`4ag: квоты заданы не у всех withGenerationSlot (${slotQuotas}/${slotAwaits}, ожидалось 13)`);
   const smSrc = await rd("./services/streaming-manager.ts");
   if (!/await recordUsageIfBilled\(opts\.billing, synthesisId, sectionKey, err\.usage\)/.test(smSrc)) errs.push("4ag: max-tokens без учёта usage");
@@ -8321,7 +8347,7 @@ need(await import("./config/export-assets.js"),
 // подписок, журнал plan.seeded), скрипт заведения Prices (без БД, отказ до
 // первого запроса), обвязка (npm, .env.example, .env.local.example, стенд
 // сеет идемпотентно, termux-скрипт), тесты не сносят посеянный starter.
-{
+async function section4al(): Promise<void> {
   const fsm = await import("node:fs/promises");
   const rd = (p: string) => fsm.readFile(new URL(p, import.meta.url), "utf8");
   // 2aa — модули и экспорты
@@ -8364,11 +8390,23 @@ need(await import("./config/export-assets.js"),
   if (!/Math\.max\(1, Math\.ceil\(costUsd \/ view\.creditUsd - 1e-9\)\)/.test(bvS) || !/apiGet<BillingView>\("\/billing\/view"\)/.test(bvS)) errs.push("4al: useBillingView — не зеркало creditsForCost / не GET /billing/view");
   const brS = await rd("./routes/billing.ts");
   if (!/billingRoutes\.get\("\/view"/.test(brS) || brS.indexOf('billingRoutes.get("/view"') < brS.indexOf('billingRoutes.use("*", requireAuth)')) errs.push("4al: GET /billing/view нет или он до requireAuth");
-  // 2026-11-17: доработка после сбоя — без списания (подписка quota:null, баланс waiveBalance); планы — без двойного списания
+  // 2026-11-17: после сбоя с баланса не списывается только ПОЧИНКА прерванного (повтор раздела, догенерация
+  // подразделов, повтор шага плана); продолжение — платно (withoutWaiver); планы — без двойного списания кредитов
   const prS = await rd("./services/pause-resume-service.ts");
-  if ((prS.match(/waiveBalance: isServiceFailurePause\(ps\)/g) ?? []).length !== 3) errs.push("4al: не все ветки возобновления генерации несут waiveBalance (retry/skip, fill без недостающих, fill)");
+  if (!/const waiveFirstPass = mode === "retry" && isServiceFailurePause\(ps\);/.test(prS)) errs.push("4al: повтор прерванного раздела не привязан к retry после сбоя службы (skip бесплатным быть не должен)");
+  if ((prS.match(/waiveBalance: isServiceFailurePause\(ps\)/g) ?? []).length !== 1) errs.push("4al: waiveBalance в pause-resume — не только у слота догенерации подразделов");
+  if (!/runGenerationPasses\(\s*withoutWaiver\(handle\),/.test(prS)) errs.push("4al: продолжение после догенерации подразделов идёт под решением waived (следующие разделы стали бы бесплатными)");
+  if (/ps\.passIdx \+ 1, \{[^}]*waive/.test(prS)) errs.push("4al: возобновление со СЛЕДУЮЩЕГО раздела несёт признак бесплатности");
+  // предпроверка оплаты возобновления — раньше первого изменения (иначе отказ слота оставляет синтез в 'generating' без паузы)
+  const rg4al = prS.slice(prS.indexOf("export async function resumeGeneration("));
+  if (!(rg4al.indexOf("await resolveBilling(userId, {") > 0 && rg4al.indexOf("await resolveBilling(userId, {") < rg4al.indexOf('await logPauseEvent(synthesisId, "resume_marker"'))) errs.push("4al: resumeGeneration не предпроверяет оплату до снятия паузы");
+  const rp4al = (await rd("./services/plan-executor.ts")).split("async function resumePlanExecutor(")[1] ?? "";
+  if (!(rp4al.indexOf("await resolveBilling(userId, slot)") > 0 && rp4al.indexOf("await resolveBilling(userId, slot)") < rp4al.indexOf("let fromIndex = stepIdx;"))) errs.push("4al: resumePlan не предпроверяет оплату до изменения шагов");
+  const gsS4al = await rd("./services/generation-service.ts");
+  if (!/billingContextOf\(i === options\.waivedPassIdx \? run : withoutWaiver\(run\), passKey\)/.test(gsS4al)) errs.push("4al: цикл проходов не ограничивает решение waived одним проходом");
   const peS = await rd("./services/plan-executor.ts");
-  if (!/resumeSlotBillingFor\(steps, fromIndex, ps && ps\.kind === "plan" \? ps : null\)/.test(peS)) errs.push("4al: возобновление плана снова списывает оплаченные шаги");
+  if (!/resumeSlotBillingFor\(steps, fromIndex, ps && ps\.kind === "plan" \? ps : null, mode\)/.test(peS)) errs.push("4al: возобновление плана снова списывает оплаченные шаги или не различает retry/skip_step");
+  if (!/runStep\(i === waivedStepIdx \? handle : withoutWaiver\(handle\), step, planId, i\)/.test(peS)) errs.push("4al: шаги плана после повторённого идут под решением waived");
   // 0022: списанные кредиты пишутся в журнал там же, где потребляются (слот)
   const gsS = await rd("./services/generation-service.ts");
   if (!/if \(billing\.quotaConsumed\) \{\s*await recordCreditCharge\(/.test(gsS) || !/op: billingOpts\.op \?\? "operation"/.test(gsS)) errs.push("4al: withGenerationSlot не пишет credit_charges по потреблённым кредитам");
@@ -8424,6 +8462,7 @@ need(await import("./config/export-assets.js"),
   if (/insert\(subscriptionPlans\)/.test(t82) || !/subscriptionPlans\.name, "starter"\)/.test(t82)) errs.push("4al: test-82 заводит план руками вместо посева стенда");
   if (/TODO\(8\.3\)/.test(plansS + seedS + scpS + devS + (await rd("./services/stripe-client.ts")))) errs.push("4al: устаревшие метки TODO(8.3)");
 }
+await section4al();
 
 // ── 2ab/4am (беседа 8.4): управление своим содержимым — каталог, капсула, связь (клиент) ──
 // Сервер не правился: три транспорта 1.6 (DELETE/duplicate/PATCH title),
@@ -11047,7 +11086,7 @@ async function section4bp(): Promise<void> {
   if (trusted !== 1) errs.push(`4bp: trustProposalRefs: true — только у службы предложений (найдено ${trusted})`);
   if (!/if \(!trusted \|\| !Array\.isArray\(v\)\) return undefined;/.test(ep.slice(ep.indexOf("const asProposalRefs"))) || !/const trustedProp = opts\.trustProposalRefs === true;/.test(ep)) errs.push("4bp: ссылки на предложения из тела запроса не отбрасываются");
   const run = pe.slice(pe.indexOf("async function runPlanSteps("), pe.indexOf("async function appendCascadeSteps("));
-  if (!(run.indexOf("proposalStepBlockers(synthesisId, planId, step.proposals)") > 0 && run.indexOf("proposalStepBlockers(") < run.indexOf("await runStep(handle, step, planId, i)")) || !/step\.skipReason = /.test(run) || !/await acceptStepProposals\(synthesisId, planId, i, step, userId\);/.test(run)) errs.push("4bp: исполнитель плана — заслон устаревшего предложения перед шагом / принятие после шага отсутствуют");
+  if (!(run.indexOf("proposalStepBlockers(synthesisId, planId, step.proposals)") > 0 && run.indexOf("proposalStepBlockers(") < run.indexOf("await runStep(i === waivedStepIdx ? handle : withoutWaiver(handle), step, planId, i)")) || !/step\.skipReason = /.test(run) || !/await acceptStepProposals\(synthesisId, planId, i, step, userId\);/.test(run)) errs.push("4bp: исполнитель плана — заслон устаревшего предложения перед шагом / принятие после шага отсутствуют");
   if (!/await releaseStepProposals\(synthesisId, planId, failedStep, userId, "step_skipped"\);/.test(pe)) errs.push("4bp: пропуск шага человеком обязан освобождать предложение (не отклонять)");
   if (!/subsectionEdits: subsectionEditsFromSteps\(activeBase\)/.test(ep) || !/subsectionEdits: subsectionEditsFromSteps\(base\)/.test(ep) || !/regenProposals: regenProposalsFromSteps\(base\)/.test(ep)) errs.push("4bp: updatePlan теряет шаг edit_subsection / ссылки на предложения при пересборке");
   // номер документа: бесплатная правка подраздела версию не поднимает (formatVersion и правила роста прежние)
