@@ -383,17 +383,12 @@ export async function computeSectionAdvice(
     const missing = cfg.needs.filter((depId) => !isSelectedId(depId));
     if (missing.length > 0) {
       const missingNames = missing.map((id) => "«" + labelOf(id) + "»").join(", ");
-      const word = missing.length === 1 ? tl("server.compatAdvisor.sectionGen", "раздела") : tl("common.sectionsGen", "разделов");
+      // Правка после L.1: фраза — одной строкой таблицы; «раздела/разделов» выбирает плюрал
+      // (=1 — единственное: числа рядом со словом нет), а не склейка кусков — иначе в
+      // переводе не согласовать предлог и артикль. Русский текст — дословно исходник.
       warnings.push({
         icon: "⚠",
-        text:
-          tl("server.compatAdvisor.withoutPrefix", "Без ") +
-          word +
-          " " +
-          missingNames +
-          tl("server.compatAdvisor.sectionQuoteLead", " раздел «") +
-          cfg.label +
-          tl("server.compatAdvisor.poorQuality", "» будет ненадлежащего качества!"),
+        text: tl("server.compatAdvisor.missingSectionsWarning", "Без {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {missingNames} раздел «{label}» будет ненадлежащего качества!", { n: missing.length, missingNames, label: cfg.label }),
       });
     }
   }
@@ -477,17 +472,9 @@ export async function computeSectionAdvice(
     for (const [srcSecId, consumers] of Object.entries(benefitMap)) {
       const srcLabel = labelOf(srcSecId);
       const consumerList = consumers.map((c) => "«" + c + "»").join(", ");
-      const word = consumers.length === 1 ? tl("server.compatAdvisor.sectionGen", "раздела") : tl("common.sectionsGen", "разделов");
       recommendations.push({
         icon: "💡",
-        text:
-          tl("server.compatAdvisor.inclusionLead", "Включение «") +
-          srcLabel +
-          tl("server.compatAdvisor.mayImprove", "» может улучшить качество ") +
-          word +
-          " " +
-          consumerList +
-          tl("server.compatAdvisor.extraContextParen", " (дополнительный контекст)."),
+        text: tl("server.compatAdvisor.inclusionMayImprove", "Включение «{srcLabel}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст).", { srcLabel, n: consumers.length, consumerList }),
       });
     }
   }

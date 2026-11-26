@@ -306,7 +306,8 @@ async function main() {
   ok(J(browserCats) === J(nodeCats) && J(nodeCats) === J(["one", "other", "other", "other", "many"]), `категории fr для ${NS.join(", ")}: ${nodeCats.join(", ")} (Chrome 131 = Node)`, J([browserCats, nodeCats]));
   for (const [key, arg, words] of PL) {
     const got = NS.map((n) => formatMessage(frCat[key], { [arg]: n }, L));
-    const want = NS.map((n, i) => `${n} ${words[nodeCats[i]]}`);
+    // «#» печатается с разделителями языка (правка после L.1): 10⁶ — «1 000 000 de …»
+    const want = NS.map((n, i) => `${n.toLocaleString(L)} ${words[nodeCats[i]]}`);
     ok(got.every((s, i) => s === want[i] || s.endsWith(want[i])), `${key}: ${got.join(" | ")}`, J(want));
   }
   {

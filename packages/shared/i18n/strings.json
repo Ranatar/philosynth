@@ -22,8 +22,8 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-11-26T12:47:26.581Z",
-    "imported": "2026-11-26T12:47:39.765Z",
+    "synced": "2026-11-26T19:01:06.162Z",
+    "imported": "2026-11-26T19:01:17.218Z",
     "langAdded": {
       "fr": "2026-11-26T11:36:47.274Z"
     }
@@ -4626,14 +4626,6 @@
       "from": {"en":"Раздел не найден","de":"Раздел не найден","fr":"Раздел не найден"},
       "where": ["server/routes/sections.ts:200","server/services/element-editor.ts:1871","server/services/element-editor.ts:1930","server/services/element-editor.ts:2151","server/services/recommendations.ts:1253"]
     },
-    "common.sectionsGen": {
-      "ru": "разделов",
-      "en": "sections",
-      "de": "Abschnitte",
-      "fr": "sections",
-      "from": {"en":"разделов","de":"разделов","fr":"разделов"},
-      "where": ["client/src/components/edit/CascadePanel.tsx:223","server/services/compat-advisor.ts:386","server/services/compat-advisor.ts:480"]
-    },
     "common.synthesis": {
       "ru": "Синтез",
       "en": "Synthesis",
@@ -7523,7 +7515,7 @@
       "de": "hinzufügen ↓",
       "fr": "ajouter ↓",
       "from": {"en":"добавить ↓","de":"добавить ↓","fr":"добавить ↓"},
-      "where": ["client/src/components/edit/CascadePanel.tsx:245"]
+      "where": ["client/src/components/edit/CascadePanel.tsx:244"]
     },
     "edit.cascadePanel.addedSectionDeps": {
       "ru": "Зависимости добавляемых разделов",
@@ -7608,14 +7600,14 @@
       "params": {"replacedLabel":"s.replacedLabel"},
       "where": ["client/src/components/edit/CascadePanel.tsx:215"]
     },
-    "edit.cascadePanel.inclusionMayImprove": {
-      "ru": "Включение «{label}» может улучшить качество {word} {consumerList} (дополнительный контекст).",
-      "en": "Including “{label}” may improve the quality of {word} {consumerList} (additional context).",
-      "de": "Die Aufnahme von „{label}“ kann die Qualität {word} {consumerList} verbessern (zusätzlicher Kontext).",
-      "fr": "L’inclusion de « {label} » peut améliorer la qualité de {word} {consumerList} (contexte supplémentaire).",
-      "from": {"en":"Включение «{label}» может улучшить качество {word} {consumerList} (дополнительный контекст).","de":"Включение «{label}» может улучшить качество {word} {consumerList} (дополнительный контекст).","fr":"Включение «{label}» может улучшить качество {word} {consumerList} (дополнительный контекст)."},
-      "params": {"label":"r.label","word":"word","consumerList":"consumerList"},
-      "where": ["client/src/components/edit/CascadePanel.tsx:228"]
+    "edit.cascadePanel.inclusionMayImproveCount": {
+      "ru": "Включение «{label}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст).",
+      "en": "Including “{label}” may improve the quality of {n, plural, one {section} other {sections}} {consumerList} (additional context).",
+      "de": "Die Aufnahme von „{label}“ kann die Qualität {n, plural, one {des Abschnitts} other {der Abschnitte}} {consumerList} verbessern (zusätzlicher Kontext).",
+      "fr": "L’inclusion de « {label} » peut améliorer la qualité {n, plural, one {de la section} many {des sections} other {des sections}} {consumerList} (contexte supplémentaire).",
+      "from": {"en":"Включение «{label}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст).","de":"Включение «{label}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст).","fr":"Включение «{label}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст)."},
+      "params": {"label":"","n":"","consumerList":""},
+      "where": ["client/src/components/edit/CascadePanel.tsx:227"]
     },
     "edit.cascadePanel.markUp": {
       "ru": "отметить ↑",
@@ -7623,7 +7615,7 @@
       "de": "markieren ↑",
       "fr": "marquer ↑",
       "from": {"en":"отметить ↑","de":"отметить ↑","fr":"отметить ↑"},
-      "where": ["client/src/components/edit/CascadePanel.tsx:154","client/src/components/edit/CascadePanel.tsx:285"]
+      "where": ["client/src/components/edit/CascadePanel.tsx:154","client/src/components/edit/CascadePanel.tsx:284"]
     },
     "edit.cascadePanel.missingRequiredContext": {
       "ru": "«{label}»: отсутствует обязательный контекст {srcNames}.",
@@ -7657,14 +7649,6 @@
       "fr": "Des dépendances requises manquent — la qualité des sections ajoutées sera réduite.",
       "from": {"en":"Обязательные зависимости отсутствуют — качество добавляемых разделов будет снижено.","de":"Обязательные зависимости отсутствуют — качество добавляемых разделов будет снижено.","fr":"Обязательные зависимости отсутствуют — качество добавляемых разделов будет снижено."},
       "where": ["client/src/components/edit/CascadePanel.tsx:92"]
-    },
-    "edit.cascadePanel.sectionGen": {
-      "ru": "раздела",
-      "en": "section",
-      "de": "des Abschnitts",
-      "fr": "la section",
-      "from": {"en":"раздела","de":"раздела","fr":"раздела"},
-      "where": ["client/src/components/edit/CascadePanel.tsx:223"]
     },
     "edit.cascadePanel.weakReplacement": {
       "ru": "слабая замена",
@@ -15380,7 +15364,7 @@
       "fr": "« {secLabel} » : le contexte « {ctxKey} » ",
       "from": {"en":"«{secLabel}»: контекст «{ctxKey}» ","de":"«{secLabel}»: контекст «{ctxKey}» ","fr":"«{secLabel}»: контекст «{ctxKey}» "},
       "params": {"secLabel":"secLabel","ctxKey":"(CTX_LABELS as Record<string, string>)[ctxKey] ?? ctxKey"},
-      "where": ["server/services/compat-advisor.ts:549"]
+      "where": ["server/services/compat-advisor.ts:536"]
     },
     "server.compatAdvisor.contradictoryDirectives": {
       "ru": ". Результат будет содержать противоречивые директивы!",
@@ -15388,7 +15372,7 @@
       "de": ". Das Ergebnis wird widersprüchliche Anweisungen enthalten!",
       "fr": ". Le résultat contiendra des directives contradictoires !",
       "from": {"en":". Результат будет содержать противоречивые директивы!","de":". Результат будет содержать противоречивые директивы!","fr":". Результат будет содержать противоречивые директивы!"},
-      "where": ["server/services/compat-advisor.ts:423"]
+      "where": ["server/services/compat-advisor.ts:418"]
     },
     "server.compatAdvisor.equivalentReplacement": {
       "ru": "равноценная замена",
@@ -15396,7 +15380,7 @@
       "de": "gleichwertiger Ersatz",
       "fr": "substitut équivalent",
       "from": {"en":"равноценная замена","de":"равноценная замена","fr":"равноценная замена"},
-      "where": ["server/services/compat-advisor.ts:537"]
+      "where": ["server/services/compat-advisor.ts:524"]
     },
     "server.compatAdvisor.excludeOrChange": {
       "ru": ". Рекомендуется исключить этот раздел или изменить параметры.",
@@ -15404,15 +15388,7 @@
       "de": ". Es wird empfohlen, diesen Abschnitt auszuschließen oder die Parameter zu ändern.",
       "fr": ". Il est recommandé d’exclure cette section ou de changer les paramètres.",
       "from": {"en":". Рекомендуется исключить этот раздел или изменить параметры.","de":". Рекомендуется исключить этот раздел или изменить параметры.","fr":". Рекомендуется исключить этот раздел или изменить параметры."},
-      "where": ["server/services/compat-advisor.ts:437"]
-    },
-    "server.compatAdvisor.extraContextParen": {
-      "ru": " (дополнительный контекст).",
-      "en": " (additional context).",
-      "de": " (zusätzlicher Kontext).",
-      "fr": " (contexte supplémentaire).",
-      "from": {"en":" (дополнительный контекст).","de":" (дополнительный контекст).","fr":" (дополнительный контекст)."},
-      "where": ["server/services/compat-advisor.ts:490"]
+      "where": ["server/services/compat-advisor.ts:432"]
     },
     "server.compatAdvisor.hardConflict": {
       "ru": "Жёсткий конфликт",
@@ -15428,15 +15404,16 @@
       "de": "“ hat einen harten Konflikt (✗✗) mit der aktuellen Kombination ",
       "fr": " » est en conflit dur (✗✗) avec la combinaison actuelle ",
       "from": {"en":"» имеет жёсткий конфликт (✗✗) с текущей комбинацией ","de":"» имеет жёсткий конфликт (✗✗) с текущей комбинацией ","fr":"» имеет жёсткий конфликт (✗✗) с текущей комбинацией "},
-      "where": ["server/services/compat-advisor.ts:419"]
+      "where": ["server/services/compat-advisor.ts:414"]
     },
-    "server.compatAdvisor.inclusionLead": {
-      "ru": "Включение «",
-      "en": "Including “",
-      "de": "Die Aufnahme von „",
-      "fr": "L’inclusion de « ",
-      "from": {"en":"Включение «","de":"Включение «","fr":"Включение «"},
-      "where": ["server/services/compat-advisor.ts:484"]
+    "server.compatAdvisor.inclusionMayImprove": {
+      "ru": "Включение «{srcLabel}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст).",
+      "en": "Including “{srcLabel}” may improve the quality of {n, plural, one {section} other {sections}} {consumerList} (additional context).",
+      "de": "Die Aufnahme von „{srcLabel}“ kann die Qualität {n, plural, one {des Abschnitts} other {der Abschnitte}} {consumerList} verbessern (zusätzlicher Kontext).",
+      "fr": "L’inclusion de « {srcLabel} » peut améliorer la qualité {n, plural, one {de la section} many {des sections} other {des sections}} {consumerList} (contexte supplémentaire).",
+      "from": {"en":"Включение «{srcLabel}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст).","de":"Включение «{srcLabel}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст).","fr":"Включение «{srcLabel}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст)."},
+      "params": {"srcLabel":"","n":"","consumerList":""},
+      "where": ["server/services/compat-advisor.ts:477"]
     },
     "server.compatAdvisor.manageableTension": {
       "ru": "Управляемое напряжение",
@@ -15446,13 +15423,14 @@
       "from": {"en":"Управляемое напряжение","de":"Управляемое напряжение","fr":"Управляемое напряжение"},
       "where": ["server/services/compat-advisor.ts:271"]
     },
-    "server.compatAdvisor.mayImprove": {
-      "ru": "» может улучшить качество ",
-      "en": "” may improve the quality of ",
-      "de": "“ kann die Qualität verbessern ",
-      "fr": " » peut améliorer la qualité de ",
-      "from": {"en":"» может улучшить качество ","de":"» может улучшить качество ","fr":"» может улучшить качество "},
-      "where": ["server/services/compat-advisor.ts:486"]
+    "server.compatAdvisor.missingSectionsWarning": {
+      "ru": "Без {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {missingNames} раздел «{label}» будет ненадлежащего качества!",
+      "en": "Without {n, plural, one {section} other {sections}} {missingNames} the section “{label}” will be of inadequate quality!",
+      "de": "Ohne {n, plural, one {den Abschnitt} other {die Abschnitte}} {missingNames} wird der Abschnitt „{label}“ von unzureichender Qualität sein!",
+      "fr": "Sans {n, plural, one {la section} many {les sections} other {les sections}} {missingNames}, la section « {label} » sera d’une qualité insuffisante !",
+      "from": {"en":"Без {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {missingNames} раздел «{label}» будет ненадлежащего качества!","de":"Без {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {missingNames} раздел «{label}» будет ненадлежащего качества!","fr":"Без {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {missingNames} раздел «{label}» будет ненадлежащего качества!"},
+      "params": {"n":"","missingNames":"","label":""},
+      "where": ["server/services/compat-advisor.ts:391"]
     },
     "server.compatAdvisor.moderateConflict": {
       "ru": "Умеренный конфликт",
@@ -15468,7 +15446,7 @@
       "de": "“ hat einen moderaten Konflikt (✗) mit der aktuellen Kombination ",
       "fr": " » est en conflit modéré (✗) avec la combinaison actuelle ",
       "from": {"en":"» имеет умеренный конфликт (✗) с текущей комбинацией ","de":"» имеет умеренный конфликт (✗) с текущей комбинацией ","fr":"» имеет умеренный конфликт (✗) с текущей комбинацией "},
-      "where": ["server/services/compat-advisor.ts:433"]
+      "where": ["server/services/compat-advisor.ts:428"]
     },
     "server.compatAdvisor.parameterCompatibility": {
       "ru": "Совместимость параметров",
@@ -15484,15 +15462,7 @@
       "de": "teilweiser Ersatz",
       "fr": "substitut partiel",
       "from": {"en":"частичная замена","de":"частичная замена","fr":"частичная замена"},
-      "where": ["server/services/compat-advisor.ts:539"]
-    },
-    "server.compatAdvisor.poorQuality": {
-      "ru": "» будет ненадлежащего качества!",
-      "en": "” will be of inadequate quality!",
-      "de": "“ wird von unzureichender Qualität sein!",
-      "fr": " » sera d’une qualité insuffisante !",
-      "from": {"en":"» будет ненадлежащего качества!","de":"» будет ненадлежащего качества!","fr":"» будет ненадлежащего качества!"},
-      "where": ["server/services/compat-advisor.ts:396"]
+      "where": ["server/services/compat-advisor.ts:526"]
     },
     "server.compatAdvisor.productiveParadox": {
       "ru": "Продуктивный парадокс",
@@ -15510,29 +15480,13 @@
       "from": {"en":"Надёжное качество","de":"Надёжное качество","fr":"Надёжное качество"},
       "where": ["server/services/compat-advisor.ts:270"]
     },
-    "server.compatAdvisor.sectionGen": {
-      "ru": "раздела",
-      "en": "section",
-      "de": "des Abschnitts",
-      "fr": "la section",
-      "from": {"en":"раздела","de":"раздела","fr":"раздела"},
-      "where": ["server/services/compat-advisor.ts:386","server/services/compat-advisor.ts:480"]
-    },
     "server.compatAdvisor.sectionLead": {
       "ru": "Раздел «",
       "en": "Section “",
       "de": "Der Abschnitt „",
       "fr": "La section « ",
       "from": {"en":"Раздел «","de":"Раздел «","fr":"Раздел «"},
-      "where": ["server/services/compat-advisor.ts:417","server/services/compat-advisor.ts:431"]
-    },
-    "server.compatAdvisor.sectionQuoteLead": {
-      "ru": " раздел «",
-      "en": " the section “",
-      "de": " Abschnitt „",
-      "fr": " la section « ",
-      "from": {"en":" раздел «","de":" раздел «","fr":" раздел «"},
-      "where": ["server/services/compat-advisor.ts:394"]
+      "where": ["server/services/compat-advisor.ts:412","server/services/compat-advisor.ts:426"]
     },
     "server.compatAdvisor.structuralResonance": {
       "ru": "Структурный резонанс",
@@ -15549,7 +15503,7 @@
       "fr": "est utilisé comme {qLabel} pour le contexte manquant.",
       "from": {"en":"используется как {qLabel} для недостающего контекста.","de":"используется как {qLabel} для недостающего контекста.","fr":"используется как {qLabel} для недостающего контекста."},
       "params": {"qLabel":"qLabel"},
-      "where": ["server/services/compat-advisor.ts:550"]
+      "where": ["server/services/compat-advisor.ts:537"]
     },
     "server.compatAdvisor.weakReplacement": {
       "ru": "слабая замена",
@@ -15557,15 +15511,7 @@
       "de": "schwacher Ersatz",
       "fr": "substitut faible",
       "from": {"en":"слабая замена","de":"слабая замена","fr":"слабая замена"},
-      "where": ["server/services/compat-advisor.ts:540"]
-    },
-    "server.compatAdvisor.withoutPrefix": {
-      "ru": "Без ",
-      "en": "Without ",
-      "de": "Ohne ",
-      "fr": "Sans ",
-      "from": {"en":"Без ","de":"Без ","fr":"Без "},
-      "where": ["server/services/compat-advisor.ts:390"]
+      "where": ["server/services/compat-advisor.ts:527"]
     },
     "server.discussion.addressObject": {
       "ru": "Объект адреса",
@@ -17502,9 +17448,9 @@
     },
     "server.logFormatter.budgetMode": {
       "ru": "  Режим бюджета секций:     ",
-      "en": "  Section budget mode:      ",
-      "de": "  Budgetmodus der Abschnitte:  ",
-      "fr": "  Mode budgétaire de la section :      ",
+      "en": "  Section budget mode:        ",
+      "de": "  Budgetmodus der Abschnitte: ",
+      "fr": "  Mode budgétaire de la section :     ",
       "from": {"en":"  Режим бюджета секций:     ","de":"  Режим бюджета секций:     ","fr":"  Режим бюджета секций:     "},
       "where": ["server/services/log-formatter.ts:313"]
     },
@@ -17863,9 +17809,9 @@
     },
     "server.logFormatter.formattingRules": {
       "ru": "  Правила форматирования    ",
-      "en": "  Formatting rules          ",
-      "de": "  Formatierungsregeln       ",
-      "fr": "  Règles de mise en forme          ",
+      "en": "  Formatting rules            ",
+      "de": "  Formatierungsregeln         ",
+      "fr": "  Règles de mise en forme             ",
       "from": {"en":"  Правила форматирования    ","de":"  Правила форматирования    ","fr":"  Правила форматирования    "},
       "where": ["server/services/log-formatter.ts:201"]
     },
@@ -17879,17 +17825,17 @@
     },
     "server.logFormatter.inCommonElements": {
       "ru": "  Общие элементы             ",
-      "en": "  Common elements            ",
-      "de": "  Gemeinsame Elemente        ",
-      "fr": "  Éléments communs            ",
+      "en": "  Common elements              ",
+      "de": "  Gemeinsame Elemente          ",
+      "fr": "  Éléments communs                     ",
       "from": {"en":"  Общие элементы             ","de":"  Общие элементы             ","fr":"  Общие элементы             "},
       "where": ["server/services/log-formatter.ts:539","server/services/log-formatter.ts:579"]
     },
     "server.logFormatter.inParentContext": {
       "ru": "  Контекст родителей         ",
-      "en": "  Parent context             ",
-      "de": "  Kontext der Eltern         ",
-      "fr": "  Contexte des parents             ",
+      "en": "  Parent context               ",
+      "de": "  Kontext der Eltern           ",
+      "fr": "  Contexte des parents                 ",
       "from": {"en":"  Контекст родителей         ","de":"  Контекст родителей         ","fr":"  Контекст родителей         "},
       "where": ["server/services/log-formatter.ts:544"]
     },
@@ -17927,8 +17873,8 @@
     },
     "server.logFormatter.inputShort": {
       "ru": "Вход:  ",
-      "en": "Input: ",
-      "de": "Eingabe:  ",
+      "en": "Input:  ",
+      "de": "Eingabe: ",
       "fr": "Entrée : ",
       "from": {"en":"Вход:  ","de":"Вход:  ","fr":"Вход:  "},
       "where": ["server/services/log-formatter.ts:857"]
@@ -17983,9 +17929,9 @@
     },
     "server.logFormatter.modeContext": {
       "ru": "  Контекст режима            ",
-      "en": "  Mode context               ",
-      "de": "  Kontext des Modus          ",
-      "fr": "  Contexte du mode               ",
+      "en": "  Mode context                 ",
+      "de": "  Kontext des Modus            ",
+      "fr": "  Contexte du mode                     ",
       "from": {"en":"  Контекст режима            ","de":"  Контекст режима            ","fr":"  Контекст режима            "},
       "where": ["server/services/log-formatter.ts:742"]
     },
@@ -18191,9 +18137,9 @@
     },
     "server.logFormatter.prevSectionsContext": {
       "ru": "  Контекст пред. разделов   ",
-      "en": "  Previous sections context ",
-      "de": "  Kontext vorh. Abschnitte  ",
-      "fr": "  Contexte des sections précédentes ",
+      "en": "  Previous sections context   ",
+      "de": "  Kontext vorh. Abschnitte    ",
+      "fr": "  Contexte des sections précédentes   ",
       "from": {"en":"  Контекст пред. разделов   ","de":"  Контекст пред. разделов   ","fr":"  Контекст пред. разделов   "},
       "where": ["server/services/log-formatter.ts:587"]
     },
@@ -18215,9 +18161,9 @@
     },
     "server.logFormatter.qualityRequirements": {
       "ru": "  Требования к качеству     ",
-      "en": "  Quality requirements      ",
-      "de": "  Qualitätsanforderungen    ",
-      "fr": "  Exigences de qualité      ",
+      "en": "  Quality requirements        ",
+      "de": "  Qualitätsanforderungen      ",
+      "fr": "  Exigences de qualité                ",
       "from": {"en":"  Требования к качеству     ","de":"  Требования к качеству     ","fr":"  Требования к качеству     "},
       "where": ["server/services/log-formatter.ts:206","server/services/log-formatter.ts:213"]
     },
@@ -18303,17 +18249,17 @@
     },
     "server.logFormatter.sectionExtraContext": {
       "ru": "  Доп. контекст раздела      ",
-      "en": "  Extra section context      ",
-      "de": "  Zus. Kontext des Abschnitts ",
-      "fr": "  Contexte supplémentaire      ",
+      "en": "  Extra section context        ",
+      "de": "  Zus. Kontext des Abschnitts  ",
+      "fr": "  Contexte supplémentaire              ",
       "from": {"en":"  Доп. контекст раздела      ","de":"  Доп. контекст раздела      ","fr":"  Доп. контекст раздела      "},
       "where": ["server/services/log-formatter.ts:732"]
     },
     "server.logFormatter.sectionTask": {
       "ru": "  Задание секции             ",
-      "en": "  Section task               ",
-      "de": "  Aufgabe des Abschnitts     ",
-      "fr": "  Tâche de la section               ",
+      "en": "  Section task                 ",
+      "de": "  Aufgabe des Abschnitts       ",
+      "fr": "  Tâche de la section                  ",
       "from": {"en":"  Задание секции             ","de":"  Задание секции             ","fr":"  Задание секции             "},
       "where": ["server/services/log-formatter.ts:747"]
     },
@@ -18343,9 +18289,9 @@
     },
     "server.logFormatter.serviceFrame": {
       "ru": "  Служебный каркас          ",
-      "en": "  Service frame             ",
-      "de": "  Dienstgerüst              ",
-      "fr": "  Cadre du service             ",
+      "en": "  Service frame               ",
+      "de": "  Dienstgerüst                ",
+      "fr": "  Cadre du service                    ",
       "from": {"en":"  Служебный каркас          ","de":"  Служебный каркас          ","fr":"  Служебный каркас          "},
       "where": ["server/services/log-formatter.ts:304"]
     },
@@ -18384,9 +18330,9 @@
     },
     "server.logFormatter.synthesisParams": {
       "ru": "  Параметры синтеза          ",
-      "en": "  Synthesis parameters       ",
-      "de": "  Syntheseparameter          ",
-      "fr": "  Paramètres de la synthèse       ",
+      "en": "  Synthesis parameters         ",
+      "de": "  Syntheseparameter            ",
+      "fr": "  Paramètres de la synthèse            ",
       "from": {"en":"  Параметры синтеза          ","de":"  Параметры синтеза          ","fr":"  Параметры синтеза          "},
       "where": ["server/services/log-formatter.ts:298"]
     },
@@ -18401,16 +18347,16 @@
     "server.logFormatter.synthesisParamsStatic": {
       "ru": "  Параметры синтеза (статика)",
       "en": "  Synthesis parameters (static)",
-      "de": "  Syntheseparameter (statisch)",
+      "de": "  Syntheseparameter (statisch) ",
       "fr": "  Paramètres de la synthèse (statiques)",
       "from": {"en":"  Параметры синтеза (статика)","de":"  Параметры синтеза (статика)","fr":"  Параметры синтеза (статика)"},
       "where": ["server/services/log-formatter.ts:230"]
     },
     "server.logFormatter.systemPrompt": {
       "ru": "  Системный промпт          ",
-      "en": "  System prompt             ",
-      "de": "  Systemprompt              ",
-      "fr": "  Prompt système             ",
+      "en": "  System prompt               ",
+      "de": "  Systemprompt                ",
+      "fr": "  Prompt système                      ",
       "from": {"en":"  Системный промпт          ","de":"  Системный промпт          ","fr":"  Системный промпт          "},
       "where": ["server/services/log-formatter.ts:195"]
     },
@@ -18464,9 +18410,9 @@
     },
     "server.logFormatter.total": {
       "ru": "                       ИТОГО ",
-      "en": "                       TOTAL ",
-      "de": "                       GESAMT ",
-      "fr": "                       TOTAL ",
+      "en": "                         TOTAL ",
+      "de": "                        GESAMT ",
+      "fr": "                                 TOTAL ",
       "from": {"en":"                       ИТОГО ","de":"                       ИТОГО ","fr":"                       ИТОГО "},
       "where": ["server/services/log-formatter.ts:750"]
     },
@@ -19199,7 +19145,7 @@
       "ru": "{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}",
       "en": "{who} commented on “{addr}” in the concept “{title}”{excerpt}",
       "de": "{who} hat „{addr}“ in der Konzeption „{title}“ kommentiert{excerpt}",
-      "fr": "{who} a commenté « {addr} » dans le concept « {title} »{excerpt}",
+      "fr": "{who} a commenté « {addr} » dans le concept « {title} »{excerpt}",
       "from": {"en":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}","de":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}","fr":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}"},
       "params": {"who":"","addr":"","title":"","excerpt":""},
       "where": ["server/services/notifications.ts:363"]
@@ -19208,7 +19154,7 @@
       "ru": "{who} ответил в вашей ветке в концепции «{title}»{excerpt}",
       "en": "{who} replied in your thread in the concept “{title}”{excerpt}",
       "de": "{who} hat in Ihrem Thread in der Konzeption „{title}“ geantwortet{excerpt}",
-      "fr": "{who} a répondu dans votre fil du concept « {title} »{excerpt}",
+      "fr": "{who} a répondu dans votre fil du concept « {title} »{excerpt}",
       "from": {"en":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}","de":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}","fr":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}"},
       "params": {"who":"","title":"","excerpt":""},
       "where": ["server/services/notifications.ts:365"]
@@ -19305,7 +19251,7 @@
       "ru": "{who} опубликовал рецензию на концепцию «{title}»{excerpt}",
       "en": "{who} published a review of the concept “{title}”{excerpt}",
       "de": "{who} hat eine Rezension der Konzeption „{title}“ veröffentlicht{excerpt}",
-      "fr": "{who} a publié une évaluation du concept « {title} »{excerpt}",
+      "fr": "{who} a publié une évaluation du concept « {title} »{excerpt}",
       "from": {"en":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}","de":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}","fr":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}"},
       "params": {"who":"","title":"","excerpt":""},
       "where": ["server/services/notifications.ts:367"]
@@ -26392,7 +26338,7 @@
       "ru": "{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}",
       "en": "{who} commented on “{addr}” in the concept “{title}”{excerpt}",
       "de": "{who} hat „{addr}“ in der Konzeption „{title}“ kommentiert{excerpt}",
-      "fr": "{who} a commenté « {addr} » dans le concept « {title} »{excerpt}",
+      "fr": "{who} a commenté « {addr} » dans le concept « {title} »{excerpt}",
       "from": {"en":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}","de":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}","fr":"{who} оставил комментарий к «{addr}» в концепции «{title}»{excerpt}"},
       "params": {"who":"","addr":"","title":"","excerpt":""},
       "where": ["client/src/utils/notification-text.ts:37"]
@@ -26401,7 +26347,7 @@
       "ru": "{who} ответил в вашей ветке в концепции «{title}»{excerpt}",
       "en": "{who} replied in your thread in the concept “{title}”{excerpt}",
       "de": "{who} hat in Ihrem Thread in der Konzeption „{title}“ geantwortet{excerpt}",
-      "fr": "{who} a répondu dans votre fil du concept « {title} »{excerpt}",
+      "fr": "{who} a répondu dans votre fil du concept « {title} »{excerpt}",
       "from": {"en":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}","de":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}","fr":"{who} ответил в вашей ветке в концепции «{title}»{excerpt}"},
       "params": {"who":"","title":"","excerpt":""},
       "where": ["client/src/utils/notification-text.ts:39"]
@@ -26533,7 +26479,7 @@
       "ru": "{who} опубликовал рецензию на концепцию «{title}»{excerpt}",
       "en": "{who} published a review of the concept “{title}”{excerpt}",
       "de": "{who} hat eine Rezension der Konzeption „{title}“ veröffentlicht{excerpt}",
-      "fr": "{who} a publié une évaluation du concept « {title} »{excerpt}",
+      "fr": "{who} a publié une évaluation du concept « {title} »{excerpt}",
       "from": {"en":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}","de":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}","fr":"{who} опубликовал рецензию на концепцию «{title}»{excerpt}"},
       "params": {"who":"","title":"","excerpt":""},
       "where": ["client/src/utils/notification-text.ts:41"]

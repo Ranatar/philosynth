@@ -220,12 +220,11 @@ export function CascadePanel({
         {/* E4. Рекомендации по optional */}
         {recommendations.map((r) => {
           const consumerList = r.consumers.map((c) => `«${c}»`).join(", ");
-          const word = r.consumers.length === 1 ? tl("edit.cascadePanel.sectionGen", "раздела") : tl("common.sectionsGen", "разделов");
           return (
             <div key={"rec-" + r.src} className="sec-recommend-item">
               <span className="rec-icon">💡</span>
               <span>
-                {tl("edit.cascadePanel.inclusionMayImprove", "Включение «{label}» может улучшить качество {word} {consumerList} (дополнительный контекст).", { label: r.label, word, consumerList })}
+                {tl("edit.cascadePanel.inclusionMayImproveCount", "Включение «{label}» может улучшить качество {n, plural, =1 {раздела} one {разделов} few {разделов} many {разделов} other {разделов}} {consumerList} (дополнительный контекст).", { label: r.label, n: r.consumers.length, consumerList })}
               </span>
               <button
                 type="button"

@@ -86,7 +86,8 @@ console.log("═══ 2. t.ts: разбор сообщения и ICU-плюр�
 const ruP = "{n, plural, one {# рекомендация} few {# рекомендации} many {# рекомендаций} other {# рекомендации}}";
 const expect = { 1: "1 рекомендация", 2: "2 рекомендации", 5: "5 рекомендаций", 11: "11 рекомендаций", 21: "21 рекомендация", 22: "22 рекомендации", 25: "25 рекомендаций", 101: "101 рекомендация", 0: "0 рекомендаций" };
 for (const [n, want] of Object.entries(expect)) ok(`ru ${n}`, formatMessage(ruP, { n: Number(n) }) === want, formatMessage(ruP, { n: Number(n) }));
-ok("ru дробное → other", formatMessage(ruP, { n: 1.5 }) === "1.5 рекомендации");
+// правка после L.1: «#» — число в записи языка каталога (русская десятичная запятая)
+ok("ru дробное → other", formatMessage(ruP, { n: 1.5 }) === "1,5 рекомендации");
 const enP = "{n, plural, one {# recommendation} other {# recommendations}}";
 ok("en 1/2", formatMessage(enP, { n: 1 }, "en") === "1 recommendation" && formatMessage(enP, { n: 2 }, "en") === "2 recommendations");
 ok("точная форма =0", formatMessage("{n, plural, =0 {нет} one {#} other {#}}", { n: 0 }) === "нет");

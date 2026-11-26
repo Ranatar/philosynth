@@ -198,6 +198,17 @@ function printValue(v: string | number | boolean | null | undefined): string {
   return v == null || typeof v === "boolean" ? "" : String(v);
 }
 
+/** Число на месте «#» плюрала — с разделителями языка каталога, как в ICU
+ *  («12 345 строк», «12,345 lines»); не число — как обычная подстановка. */
+function printCount(v: string | number | boolean | null | undefined, locale: string): string {
+  if (typeof v !== "number" || !Number.isFinite(v)) return printValue(v);
+  try {
+    return v.toLocaleString(locale);
+  } catch {
+    return String(v);
+  }
+}
+
 function selectForm(
   forms: Readonly<Record<string, readonly MessagePart[]>>,
   value: unknown,
@@ -237,7 +248,7 @@ function renderParts(
       const has = params && Object.prototype.hasOwnProperty.call(params, p.name);
       const value = has ? params[p.name] : undefined;
       const form = selectForm(p.forms, value, locale);
-      out += renderParts(form, params, locale, has ? printValue(value) : "");
+      out += renderParts(form, params, locale, has ? printCount(value, locale) : "");
     }
   }
   return out;
