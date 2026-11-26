@@ -51,7 +51,7 @@ const MOCK_PORT = 3887;
 const UI = `http://localhost:${VITE_PORT}`;
 const API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
 const DB_URL = process.env.DATABASE_URL ?? "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
-const CHROME = process.env.CHROME_PATH ?? "/opt/google/chrome/chrome";
+const CHROME = [`${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/opt/google/chrome/chrome"].find((p) => p && process.getBuiltinModule("node:fs").existsSync(p));
 const ROOT = new URL("../", import.meta.url).pathname;
 
 let passed = 0, failed = 0;

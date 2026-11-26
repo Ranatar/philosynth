@@ -22,8 +22,7 @@ import { RESULTS, withModes } from "./modes-fixture.mjs";
 const FILE = process.env.TMR_FILE ?? "/mnt/user-data/uploads/PS-6933-6RIK-vmeschayuschiy-razlom-rgG2.html";
 const UI = "http://localhost:5199";
 const API = "http://localhost:3000/api/v1";
-const CHROME = process.env.CHROME_PATH ??
-  `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`;
+const CHROME = [`${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH].find((p) => p && existsSync(p));
 if (!existsSync(FILE)) { console.log("TMR_FILE не задан или файла нет — пропуск"); process.exit(0); }
 try { if (!(await fetch(`${API}/health`)).ok) throw 0; }
 catch { console.log("стенд не поднят (bash tools/dev-billing.sh) — пропуск"); process.exit(0); }

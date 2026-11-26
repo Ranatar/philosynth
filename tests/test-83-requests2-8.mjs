@@ -50,7 +50,7 @@ const ROOT = new URL("../", import.meta.url).pathname;
 const UI = "http://127.0.0.1:5199";
 const API = "http://127.0.0.1:3000/api/v1";
 const MOCK = "http://127.0.0.1:3866";
-const CHROME = process.env.CHROME_PATH ?? "/opt/google/chrome/chrome";
+const CHROME = [`${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/opt/google/chrome/chrome"].find((p) => p && process.getBuiltinModule("node:fs").existsSync(p));
 const ENV_LOCAL = ROOT + ".env.local";
 const ENV_BAK = ROOT + ".env.local.t83-bak";
 const TSX = ROOT + "node_modules/.bin/tsx";

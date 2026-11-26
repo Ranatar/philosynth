@@ -55,8 +55,8 @@ const DB_NAME = "philosynth_t91";
 const ADMIN_URL = process.env.DATABASE_URL ?? "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
 const DB_URL = ADMIN_URL.replace(/\/[^/]+$/, `/${DB_NAME}`);
 const CHROME_CANDIDATES = [
-  process.env.CHROME_PATH,
   `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`,
+  process.env.CHROME_PATH,
   "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome",
   "/opt/google/chrome/chrome",
 ].filter(Boolean);

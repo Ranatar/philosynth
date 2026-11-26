@@ -43,7 +43,7 @@ const API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
 const UI = `http://127.0.0.1:${VITE_PORT}`;
 const DB_URL = "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
 // 12.5 (Д-25): системного /opt/google/chrome/chrome в песочнице нет — Chrome 131 из кэша puppeteer
-const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+const CHROME = [`${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
 if (!CHROME) { console.error("Chrome 131 не найден — задайте CHROME_PATH"); process.exit(2); }
 // клиент с 11.3 открывается на языке браузера (en-US в headless) — Accept-Language ru через CDP
 async function ruPage(page) { const cdp = await page.createCDPSession(); await cdp.send("Network.setUserAgentOverride", { userAgent: await page.browser().userAgent(), acceptLanguage: "ru-RU,ru" }); return page; }

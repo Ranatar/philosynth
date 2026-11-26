@@ -19,5 +19,8 @@ npm i --no-save puppeteer-core@23
 ```
 
 Харнессы ищут бинарник в `~/.cache/puppeteer/chrome/linux-131.0.6778.204/
-chrome-linux64/chrome`; иной путь — переменная `CHROME_PATH`. Целостность
+chrome-linux64/chrome` ПЕРВЫМ; `CHROME_PATH` — запасной путь (беседа L.2: в
+песочнице `CHROME_PATH` ведёт на системный Chrome 153, и харнессы, ставившие
+его первым, молча шли не на 131). Новый харнесс — тот же порядок; строку
+«(браузер: …)» в выводе читать. Целостность
 частей — `sha256sum -c chrome/SHA256SUMS`.

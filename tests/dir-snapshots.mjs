@@ -34,7 +34,7 @@ const VITE_PORT = 5199;
 const API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
 const UI = `http://127.0.0.1:${VITE_PORT}`;
 const DB_URL = process.env.DATABASE_URL ?? "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
-const CHROME = [process.env.CHROME_PATH, `${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`].find((p) => p && existsSync(p));
+const CHROME = [`${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH].find((p) => p && existsSync(p));
 if (!CHROME) { console.error("нет Chrome 131 (chrome/README.md)"); process.exit(1); }
 
 let serverProc, viteProc;

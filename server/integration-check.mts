@@ -12043,13 +12043,18 @@ async function section4bv(): Promise<void> {
   const len = (s: string) => [...s].length;
   const cell = (k: string, l: string): string => { const v = table.strings["server.logFormatter." + k]?.[l]; return typeof v === "string" ? v : ""; };
   const ALIGNED = ["systemPrompt", "formattingRules", "qualityRequirements", "serviceFrame", "budgetMode", "prevSectionsContext", "synthesisParams", "synthesisParamsStatic", "inCommonElements", "inParentContext", "sectionExtraContext", "modeContext", "sectionTask", "total"];
-  for (const k of [...ALIGNED, "inputShort", "outputShort"]) if (!cell(k, "ru")) errs.push(`4bv: в таблице нет строки server.logFormatter.${k} (список выровненных подписей сторожа устарел)`);
+  for (const k of [...ALIGNED, "inputShort", "outputShort", "prevSectionsFirst", "averageWeight"]) if (!cell(k, "ru")) errs.push(`4bv: в таблице нет строки server.logFormatter.${k} (список выровненных подписей сторожа устарел)`);
   for (const l of table.meta.languages) {
     if (l === "ru") continue;
     const shifts = new Set(ALIGNED.map((k) => len(cell(k, l)) - len(cell(k, "ru"))));
     if (shifts.size !== 1) errs.push(`4bv: подписи журнала [${l}] разной ширины относительно русских (сдвиги ${[...shifts].join(", ")}) — колонка чисел разъедется; добить пробелами до общего сдвига`);
     if (/\S$/.test(cell("total", l)) || !/^\s+\S/.test(cell("total", l))) errs.push(`4bv: server.logFormatter.total [${l}] — подпись прижимается вправо, хвост — один пробел`);
     if (len(cell("inputShort", l)) !== len(cell("outputShort", l))) errs.push(`4bv: server.logFormatter.inputShort/outputShort [${l}] — разной ширины`);
+    // L.2: строка «первый раздел» ставит «—» в ту же колонку, что русская (отступ от подписи
+    // prevSectionsContext), «Средний вес» — той же ширины, что русский (число — в ту же колонку)
+    const dashOff = (x: string) => [...cell("prevSectionsFirst", x)].indexOf("—") - len(cell("prevSectionsContext", x));
+    if (!cell("prevSectionsFirst", l).startsWith(cell("prevSectionsContext", l)) || dashOff(l) !== dashOff("ru")) errs.push(`4bv: server.logFormatter.prevSectionsFirst [${l}] — не подпись prevSectionsContext с «—» в колонке русской (отступ ${dashOff(l)}, нужен ${dashOff("ru")})`);
+    if (len(cell("averageWeight", l)) !== len(cell("averageWeight", "ru"))) errs.push(`4bv: server.logFormatter.averageWeight [${l}] — ширина ${len(cell("averageWeight", l))}, у русской ${len(cell("averageWeight", "ru"))}`);
   }
   if (len(cell("inputShort", "ru")) !== len(cell("outputShort", "ru"))) errs.push("4bv: inputShort/outputShort [ru] — разной ширины");
 

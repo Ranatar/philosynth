@@ -47,7 +47,7 @@ if (!FILE || !existsSync(FILE)) { console.log("T122_FILE не задан или 
 const ROOT = new URL("../", import.meta.url).pathname;
 const PORT = 3000, UI_PORT = 5222, MOCK_PORT = 3922;
 const BASE = `http://127.0.0.1:${PORT}/api/v1`, UI = `http://127.0.0.1:${UI_PORT}`;
-const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+const CHROME = [`${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
 const sql = postgres(process.env.DATABASE_URL ?? "postgres://philosynth:philosynth_dev@localhost:5432/philosynth");
 const J = (o) => JSON.stringify(o);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

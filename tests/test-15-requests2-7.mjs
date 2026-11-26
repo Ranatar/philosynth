@@ -34,7 +34,7 @@ import { homedir } from "node:os";
 
 // 12.5: браузер харнессов — Chrome 131 (09 §1, 12.2 п.5; CHROME_PATH — иной путь).
 // Системного /opt/google/chrome/chrome в песочнице больше нет.
-const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+const CHROME = [`${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
 if (!CHROME) { console.error("Chrome 131 не найден — задайте CHROME_PATH"); process.exit(2); }
 /** 12.5: клиент с 11.3 открывается на языке браузера (headless — en-US), а
  *  харнесс ищет русские подписи: язык страницы — CDP (09 §4, 11.3/12.2). */

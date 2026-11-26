@@ -48,7 +48,7 @@ const VITE_PORT = 5199;
 const API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
 const DB_URL = "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
 const CHROME =
-  process.env.CHROME_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+  [`${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"].find((p) => p && process.getBuiltinModule("node:fs").existsSync(p));
 const ROOT = new URL("..", import.meta.url).pathname;
 
 let passed = 0;

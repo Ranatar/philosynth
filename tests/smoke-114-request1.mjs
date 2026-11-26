@@ -38,12 +38,15 @@ const S = table.strings;
 const enCat = JSON.parse(rd("packages/shared/i18n/generated/en.json"));
 const deCat = JSON.parse(rd("packages/shared/i18n/generated/de.json"));
 const frCat = JSON.parse(rd("packages/shared/i18n/generated/fr.json"));
+const esCat = JSON.parse(rd("packages/shared/i18n/generated/es.json"));
 const withCat = (cat, fn) => { setCatalogProvider(() => cat); try { return fn(); } finally { setCatalogProvider(null); } };
 
 /* ── 1. Карта «значение → ключ» ── */
 console.log("1. карта DATA_KEYS");
 const dataRows = Object.entries(S).filter(([, r]) => r.data && !r.obsolete);
-ok("data-строк в таблице 410", dataRows.length === 410, String(dataRows.length));
+// 410 — на 11.4; 14.1 добавила три data-строки (server.modeService.*Description — зеркала MODE_UI
+// сервера), ожидание не обновили, строка была давно красной до L.2
+ok("data-строк в таблице 413", dataRows.length === 413, String(dataRows.length));
 ok("каждая data-строка представлена в карте", dataRows.every(([, r]) => r.ru in DATA_KEYS));
 ok("карта ведёт на живые ключи с тем же ru", Object.entries(DATA_KEYS).every(([ru, k]) => S[k] && !S[k].obsolete && S[k].ru === ru));
 ok("значения файлов-данных без отметки data — в карте (Диалектический → common.dialectical)", DATA_KEYS["Диалектический"] === "common.dialectical" && DATA_KEYS["Основание"] === "common.ground");
@@ -77,6 +80,7 @@ ok("без каталога — русский", tData(ML.dialectical) === "Ди
 ok("en: метки метода/уровня/глубины", withCat(enCat, () => [tData(ML.dialectical), tData(SL.generative), tData(DL.deep)].join("|")) === "Dialectical|Generative|Deep");
 ok("de: метки", withCat(deCat, () => [tData(ML.analytical), tData(SL.comparative)].join("|")) === "Analytisch|Vergleichend");
 ok("fr: метки и таксономия (черновик беседы L.1)", withCat(frCat, () => [tData(ML.dialectical), tData("Онтологическая"), tData(SL.comparative)].join("|")) === "Dialectique|Ontologique|Comparatif");
+ok("es: метки и таксономия (черновик беседы L.2)", withCat(esCat, () => [tData(ML.dialectical), tData("Онтологическая"), tData(SL.comparative)].join("|")) === "Dialéctico|Ontológica|Comparativo");
 ok("en: разделы KEY_LABELS все переводятся", withCat(enCat, () => Object.values(KEY_LABELS).every((v) => tData(v) !== v && /^[A-Za-z]/.test(tData(v)))));
 ok("en: CTX_LABELS все переводятся", withCat(enCat, () => Object.values(CTX_LABELS).every((v) => tData(v) !== v)));
 ok("en: философы и эпохи переводятся", withCat(enCat, () => PHILOSOPHERS.every((p) => tData(p) !== p) && PHILOSOPHER_EPOCHS.every((e) => tData(e.label) !== e.label)));

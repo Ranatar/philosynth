@@ -2208,7 +2208,7 @@
     "server.logFormatter.pauseHeading": "  ⏸  PAUSE",
     "server.logFormatter.pauseSection": "    Section: ",
     "server.logFormatter.prevSectionsContext": "  Previous sections context   ",
-    "server.logFormatter.prevSectionsFirst": "  Previous sections context         — (first section)",
+    "server.logFormatter.prevSectionsFirst": "  Previous sections context           — (first section)",
     "server.logFormatter.promptUnavailable": "[prompt unavailable (imported record)]",
     "server.logFormatter.qualityRequirements": "  Quality requirements        ",
     "server.logFormatter.regenerated": "  Regenerated: ",

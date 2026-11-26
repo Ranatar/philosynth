@@ -99,12 +99,15 @@ console.log(`${dry ? "(--dry) " : ""}язык «${lang}» (Intl: ${locale}; фо
 for (const s of report) console.log("• " + s);
 console.log(`
 Осталось рукой (беседа L, пункты 2–4; 07 §8):
-  2. packages/shared/i18n/locales.ts — UI_LOCALES += "${lang}", UI_TO_GEN.${lang} = <язык генерации из LANG_OPTIONS>;
+  2. packages/shared/i18n/locales.ts — UI_LOCALES += "${lang}", UI_TO_GEN.${lang} = <value строки GEN_LANGS>
+     (нет строки — сначала пункт 2а шаблона L: строка GEN_LANGS по решению владельца);
      client/src/i18n/i18n-store.ts — UI_LOCALE_NAMES.${lang} = <самоназвание> (не переводится, MIRROR_EXCLUSIONS по тексту).
      Сторож 4aw требует LANGS ≡ UI_LOCALES — до этой правки check:integration красный.
   3. Черновик: npm run i18n:export -- --lang ${lang} --dry --out i18n-request.${lang}.json → перевод всех строк
      (подстановки {имя} сохранить; формы плюрала: ${pluralCategoriesOf(locale).join(", ")}) →
      npm run i18n:import -- i18n-request.${lang}.json --draft → npm run i18n:split → npm run i18n:check -- --strict.
      Без черновика --strict красный у каждого ключа («нет перевода ${lang}») — так задумано 11.4.
+     Подписи журнала server.logFormatter.* (список — сторож 4bv) добить пробелами до одного сдвига ширины.
   4. Сторожа 4aw/4ax/4ay и тесты 112–114 языки берут из UI_LOCALES (12.5) — править их не нужно;
+     smoke-114 п.3 — проверка tData ${lang}; тестовые запросы — tests/test-L-requests.mjs --lang ${lang};
      NEXT-CONTEXT — состояние языков.`);

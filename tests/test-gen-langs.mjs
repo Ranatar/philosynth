@@ -137,7 +137,7 @@ try {
   ok(/<html lang="grc">/.test(grcHtml) && grcHtml.includes("Noto+Sans:") && grcHtml.includes("Noto+Serif:") && grcHtml.includes("Noto+Sans+Mono:"), "древнегреческий: lang=grc, семейства Noto в ссылке шрифтов файла");
 
   console.log("\n■ G6: арабский экспорт в браузере");
-  const chromePath = [process.env.CHROME_PATH, `${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/opt/google/chrome/chrome"].find((p) => p && existsSync(p));
+  const chromePath = [`${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/opt/google/chrome/chrome"].find((p) => p && existsSync(p));
   let puppeteer = null;
   try { puppeteer = (await import("puppeteer-core")).default; } catch { /* нет */ }
   if (!chromePath || !puppeteer) {

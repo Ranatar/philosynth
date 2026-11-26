@@ -48,7 +48,7 @@ const ONLY = new Set(process.argv.slice(2));
 const run = (name) => ONLY.size === 0 || ONLY.has(name);
 const ROOT = new URL("../", import.meta.url).pathname;
 const API = "http://127.0.0.1:3000/api/v1", UI = "http://127.0.0.1:5199", MOCK_PORT = 3913;
-const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+const CHROME = [`${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
 const sql = postgres(process.env.DATABASE_URL ?? "postgres://philosynth:philosynth_dev@localhost:5432/philosynth");
 const J = (o) => JSON.stringify(o);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

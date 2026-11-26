@@ -49,7 +49,7 @@ const ROOT = new URL("../", import.meta.url).pathname;
 // Сервер — :3000: vite preview проксирует /api и /ws по server.proxy (vite.config), иного адреса сборка не знает
 const PORT = 3000, UI_PORT = 5225, MOCK_PORT = 3927, MAX_TOKENS = 4000;
 const BASE = `http://127.0.0.1:${PORT}/api/v1`, UI = `http://127.0.0.1:${UI_PORT}`;
-const CHROME = [process.env.CHROME_PATH, `${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
+const CHROME = [`${homedir()}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome"].find((p) => p && existsSync(p));
 const DB_URL = process.env.DATABASE_URL ?? "postgres://philosynth:philosynth_dev@localhost:5432/philosynth";
 process.env.DATABASE_URL = DB_URL;
 const sql = postgres(DB_URL, { onnotice: () => {} });

@@ -49,7 +49,7 @@ const UI = `http://127.0.0.1:${VITE_PORT}`;
 const PG_BASE = "postgres://philosynth:philosynth_dev@localhost:5432";
 const DB_NAME = "philosynth_t81";
 const DB_URL = `${PG_BASE}/${DB_NAME}`;
-const CHROME = process.env.CHROME_PATH ?? "/opt/google/chrome/chrome";
+const CHROME = [`${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/opt/google/chrome/chrome"].find((p) => p && process.getBuiltinModule("node:fs").existsSync(p));
 const ROOT = new URL("../", import.meta.url).pathname;
 const TSX = join(ROOT, "node_modules/.bin/tsx");
 
