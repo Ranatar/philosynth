@@ -62,6 +62,8 @@ import { asc, eq } from "drizzle-orm";
 import { DL, ML, SL } from "@philosynth/shared/constants/labels";
 import { KEY_LABELS } from "@philosynth/shared/constants/section-labels";
 import { esc } from "@philosynth/shared/utils/escape";
+import { genLangContentAttrs, genLangHtmlTag } from "@philosynth/shared/i18n/locales";
+import { GEN_SCRIPT_EXPORT_CSS, GEN_SCRIPT_FONT_FAMILIES } from "@philosynth/shared/i18n/gen-script-css";
 
 import {
   EXPORT_GM_OVERLAY_HTML,
@@ -252,6 +254,12 @@ export function renderDocTOC(tocSections: readonly TocSection[]): string {
   return lines.join("\n");
 }
 
+/** Атрибуты lang/dir содержимого документа строкой (таблица GEN_LANGS). */
+function genLangContentAttrsHtml(lang: string | null | undefined): string {
+  const a = genLangContentAttrs(lang);
+  return (a.lang ? ` lang="${esc(a.lang)}"` : "") + ` dir="${a.dir}"`;
+}
+
 function renderDocHeader(s: ExportSynthesis, genealogyRoot: ExportGenealogyNode | null): string {
   const row = s.row;
   // Текст капсулы — как extractCapsuleText клиента: текстовое содержимое
@@ -267,7 +275,7 @@ function renderDocHeader(s: ExportSynthesis, genealogyRoot: ExportGenealogyNode 
   if (capsuleText)
     extras.push(
       `<details class="header-disclosure-capsule" open><summary>◈ Капсула концепции</summary>` +
-        `<div class="disclosure-body">${esc(capsuleText)}</div></details>`,
+        `<div class="disclosure-body"${genLangContentAttrsHtml(row.lang)}>${esc(capsuleText)}</div></details>`,
     );
   // Древо — последним блоком шапки, как container.appendChild исходника [22443]
   const genealogyBlock = renderGenealogyDisclosure(genealogyRoot);
@@ -280,7 +288,7 @@ function renderDocHeader(s: ExportSynthesis, genealogyRoot: ExportGenealogyNode 
   return (
     `<div class="doc-header">` +
     `<div class="doc-type">PhiloSynth Pro™ · Синтез Философской Концепции</div>` +
-    `<div class="doc-title">${esc(row.title)}</div>` +
+    `<div class="doc-title" dir="auto">${esc(row.title)}</div>` +
     `<div class="doc-subtitle">${esc(subtitleForExport(s))}</div>` +
     renderSchemaBadge(row.parentContextSchema, genealogyRoot) +
     (extras.length
@@ -687,6 +695,9 @@ export async function exportHTML(
   const tocHTML = renderDocTOC(tocSections);
 
   let docHTML = renderDocHeader(s, genealogyRoot) + tocHTML;
+  // Тела разделов — язык и направление письма документа (арабский, фарси —
+  // справа налево); шапка, оглавление и футер остаются в направлении страницы
+  const contentAttrs = genLangContentAttrsHtml(row.lang);
   for (const toc of tocSections) {
     const key = toc.key;
     const sec = byKey.get(key)!;
@@ -698,7 +709,7 @@ export async function exportHTML(
       ? addTocAnchors(sec.htmlContent, key, toc.subsections)
       : stripTocTraces(sec.htmlContent).html;
     docHTML +=
-      `<div class="doc-body">` +
+      `<div class="doc-body"${contentAttrs}>` +
       btns +
       `<a id="sec-${esc(key)}"></a>` +
       bodyHTML +
@@ -872,19 +883,12 @@ export async function exportHTML(
   }
 
   // ── Язык (квирк GEN_LANG — см. шапку модуля) ──
-  const docLang = row.lang || "Russian";
-  const htmlLang =
-    docLang === "Russian" ? "ru" :
-    docLang === "English" ? "en" :
-    docLang === "German" ? "de" :
-    docLang === "French" ? "fr" :
-    docLang === "Spanish" ? "es" :
-    docLang === "Chinese" ? "zh" :
-    docLang === "Japanese" ? "ja" :
-    docLang === "Latin" ? "la" : "en";
+  // Тег — из таблицы языков генерации (2026-11-26); прежняя цепочка
+  // тернарников знала восемь языков и звала английским всякий прочий
+  const htmlLang = genLangHtmlTag(row.lang);
 
   // Шаблон файла — дословно [18189]
-  const html = `<!DOCTYPE html><html lang="${htmlLang}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${esc(row.title)}</title><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">${styles}<style>body{background:#f2f0eb;padding:32px}#docOutput{max-width:1100px;margin:0 auto}</style></head><body><div id="docOutput">${modesSection}${docHTML}</div>${graphSection}${stateJSON}</body></html>`;
+  const html = `<!DOCTYPE html><html lang="${htmlLang}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${esc(row.title)}</title><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&${GEN_SCRIPT_FONT_FAMILIES}&display=swap" rel="stylesheet">${styles}${GEN_SCRIPT_EXPORT_CSS}<style>body{background:#f2f0eb;padding:32px}#docOutput{max-width:1100px;margin:0 auto}</style></head><body><div id="docOutput">${modesSection}${docHTML}</div>${graphSection}${stateJSON}</body></html>`;
   return html;
 }
 

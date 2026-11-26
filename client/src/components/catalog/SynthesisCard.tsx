@@ -257,7 +257,7 @@ export function SynthesisCard({
       data-synthesis-id={synthesis.id}
     >
       <div className="catalog-card-head">
-        <div className="section-title" style={{ margin: 0, padding: 0, border: "none" }}>
+        <div className="section-title" style={{ margin: 0, padding: 0, border: "none" }} dir="auto">
           {synthesis.title}
         </div>
         <span className="header-badges" style={{ flexDirection: "row", gap: 6 }}>
@@ -292,7 +292,7 @@ export function SynthesisCard({
       )}
 
       {synthesis.capsulePreview && (
-        <p className="catalog-card-preview">{synthesis.capsulePreview}</p>
+        <p className="catalog-card-preview" dir="auto">{synthesis.capsulePreview}</p>
       )}
 
       {/* Беседа 18.2 (п. 3): где найдено — фрагмент с подсветкой и термин */}

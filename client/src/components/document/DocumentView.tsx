@@ -117,6 +117,7 @@ export function DocumentView({
             <SectionView
               key={section.key}
               section={section}
+              contentLang={synthesis.lang}
               editable={editable}
               onRowEdit={onRowEdit}
               inlineEditor={inlineEditorFor?.(section.key)}

@@ -41,7 +41,7 @@ export function SearchFragmentView({ fragment, fuzzy = false }: SearchFragmentVi
         {fragmentSourceLabel(fragment.source)}
         {fuzzy ? tl("catalog.searchFragment.fuzzySuffix", " · похожее") : ""}
       </span>
-      <span className="search-fragment-text">
+      <span className="search-fragment-text" dir="auto">
         {fragment.parts.map((part, i) =>
           part.hit ? (
             <mark key={i} className={hitCls} data-testid="search-hit">

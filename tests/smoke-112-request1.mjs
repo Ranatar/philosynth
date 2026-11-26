@@ -73,7 +73,8 @@ ok("LANGS инструментов ≡ UI_LOCALES, LANG_LOCALE покрывае�
 ok("UI_TO_GEN задан каждому языку UI_LOCALES", UI_LOCALES.every((l) => l in UI_TO_GEN));
 ok("UI_TO_GEN ⊆ LANG_OPTIONS (один список)", Object.values(UI_TO_GEN).every((g) => GEN_LANG_VALUES.includes(g)));
 ok("GEN_FALLBACK = English и есть в LANG_OPTIONS", GEN_FALLBACK === "English" && GEN_LANG_VALUES.includes(GEN_FALLBACK));
-ok("LANG_OPTIONS — 9 пар, «__custom» последним", LANG_OPTIONS.length === 9 && LANG_OPTIONS.at(-1)[0] === "__custom" && !GEN_LANG_VALUES.includes("__custom"));
+// 2026-11-26: список выводится из таблицы GEN_LANGS (15 языков) + «Другой…»
+ok("LANG_OPTIONS — 16 пар, «__custom» последним", LANG_OPTIONS.length === 16 && LANG_OPTIONS.at(-1)[0] === "__custom" && !GEN_LANG_VALUES.includes("__custom"));
 ok("genLangForUi: ru→Russian, en→English, de→German", genLangForUi("ru") === "Russian" && genLangForUi("en") === "English" && genLangForUi("de") === "German");
 // 12.5 (тестовые запросы): «чужой» язык — первый из списка, которого нет в UI_LOCALES (fr может стать языком беседы L)
 const FOREIGN = ["fr", "it", "es", "pt", "eo", "tlh"].find((l) => !UI_LOCALES.includes(l));

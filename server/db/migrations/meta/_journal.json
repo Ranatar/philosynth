@@ -176,6 +176,13 @@
       "when": 1795601261357,
       "tag": "0024_trial_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795682366881,
+      "tag": "0025_gen_langs_search",
+      "breakpoints": true
     }
   ]
 }

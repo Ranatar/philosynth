@@ -134,7 +134,7 @@ function SimilarCard({ item, target }: { item: SimilarSynthesisItem; target: Sim
   return (
     <article className={CARD_CLASS[grade]} data-testid="similar-card" data-synthesis-id={item.id} data-grade={grade}>
       <div className="similar-card-head">
-        <Link className="similar-card-title" to={`/synthesis/${item.id}`} data-testid="similar-card-title">
+        <Link className="similar-card-title" to={`/synthesis/${item.id}`} data-testid="similar-card-title" dir="auto">
           {item.title}
         </Link>
         <span className={GRADE_CLASS[grade]} data-testid="similar-grade">

@@ -53,6 +53,7 @@ import { buildCapsuleHtml } from "../../utils/capsule-html";
 import { extractCapsuleText } from "../../utils/concept-file";
 import { SectionHistory } from "../edit/SectionHistory";
 import { tl } from "@philosynth/shared/i18n/t";
+import { genLangContentAttrs } from "@philosynth/shared/i18n/locales";
 import { tData } from "@philosynth/shared/i18n/data";
 
 export interface DocumentHeaderProps {
@@ -253,7 +254,7 @@ export function DocumentHeader({ synthesis, extras }: DocumentHeaderProps) {
         {tl("document.documentHeader.brandFull", "PhiloSynth Pro™ · Синтез Философской Концепции")}
       </div>
       <div className="doc-title">
-        {synthesis.title}
+        <span dir="auto">{synthesis.title}</span>
         {canManage && (
           <button
             type="button"
@@ -372,6 +373,7 @@ export function DocumentHeader({ synthesis, extras }: DocumentHeaderProps) {
             {capsuleEdit ? (
               <div className="disclosure-body inline-edit-form" data-testid="capsule-form">
                 <textarea
+                  dir="auto"
                   className="form-textarea"
                   rows={6}
                   value={capsuleEdit.text}
@@ -422,7 +424,7 @@ export function DocumentHeader({ synthesis, extras }: DocumentHeaderProps) {
                 </div>
               </div>
             ) : (
-              <div className="disclosure-body" data-testid="capsule-text">{capsuleText}</div>
+              <div className="disclosure-body" data-testid="capsule-text" {...genLangContentAttrs(synthesis.lang)}>{capsuleText}</div>
             )}
           </details>
         )}

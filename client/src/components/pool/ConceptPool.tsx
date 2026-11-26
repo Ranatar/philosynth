@@ -361,6 +361,7 @@ export function ConceptPool() {
           {previewOpen && (
             <div
               className="disclosure-body pool-preview-body"
+              dir="auto"
               // <script> через innerHTML не исполняются; контент — файл,
               // который пользователь сам загрузил в свой браузер
               dangerouslySetInnerHTML={{ __html: previewHtml }}

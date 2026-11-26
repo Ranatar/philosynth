@@ -10,10 +10,12 @@
  *    концепции-родители из synthesis_lineage (счётчики те же);
  *  - фолбэки на значения формы (getPhil()/select.value) вырождены: на
  *    сервере параметры всегда в строке syntheses;
- *  - GEN_LANG (глобал вкладки) → syntheses.lang.
+ *  - GEN_LANG (глобал вкладки) → syntheses.lang; суффикс языка — из таблицы
+ *    GEN_LANGS (shared/i18n/locales, 2026-11-26).
  */
 import { METHOD_CODE, LEVEL_CODE, ORDER_CODE, DEPTH_CODE } from "@philosynth/shared/constants/methods";
 import { PHIL_FILENAME } from "@philosynth/shared/constants/phil-filename";
+import { genLangFileSuffix } from "@philosynth/shared/i18n/locales";
 import { transliterate } from "@philosynth/shared/utils/transliterate";
 import { formatVersionFilename } from "@philosynth/shared/utils/version";
 
@@ -74,9 +76,11 @@ export function getDocFilename(input: DocFilenameInput, ext?: string): string {
   const ver = verStr !== "v1" ? "-" + verStr : "";
 
   // ── Сборка ──
-  const docLang = input.lang || "Russian";
-  const langSuffix =
-    docLang === "Russian" ? "" : "-" + docLang.slice(0, 2).toLowerCase();
+  // Суффикс языка — из таблицы языков генерации (2026-11-26): у прежних
+  // языков правило исходника «две первые буквы» (German → -ge), у новых —
+  // код BCP 47 (Ancient Greek → -grc); язык, введённый руками, — две буквы
+  const suffix = genLangFileSuffix(input.lang);
+  const langSuffix = suffix ? "-" + suffix : "";
   const parts = [num, namePart, paramCode].filter(Boolean);
   return parts.join("-") + ver + langSuffix + (ext ? "." + ext : "");
 }

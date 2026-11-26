@@ -150,7 +150,8 @@ CREATE TABLE syntheses (
   ext_graph_metrics BOOLEAN NOT NULL DEFAULT false,  -- расширенные характеристики графа (v10)
   keep_full_budget  BOOLEAN NOT NULL DEFAULT false,  -- не ужимать бюджет секций под давлением родителей (v11, tz_budget_mode)
   context          TEXT NOT NULL DEFAULT '',  -- доп. контекст пользователя
-  lang             TEXT NOT NULL DEFAULT 'Russian',
+  lang             TEXT NOT NULL DEFAULT 'Russian',  -- значение GEN_LANGS (shared/i18n/locales)
+                                             -- либо язык, введённый руками; CHECK нет
   
   -- Состояние
   title            TEXT NOT NULL DEFAULT 'Синтез Философской Концепции',
@@ -1796,9 +1797,11 @@ CREATE INDEX idx_proposal_events_proposal ON proposal_events(proposal_id, create
 CREATE TABLE synthesis_search (
   synthesis_id  UUID PRIMARY KEY REFERENCES syntheses(id) ON DELETE CASCADE,
   config        TEXT NOT NULL DEFAULT 'simple',
-    -- словарь документа по syntheses.lang: Russian → russian, English →
-    -- english, German → german, иной язык → simple (shared
-    -- SEARCH_TS_CONFIG_BY_LANG); нужен ts_headline при выдаче фрагмента
+    -- словарь документа по syntheses.lang — поле search таблицы языков
+    -- генерации GEN_LANGS (shared/i18n/locales; 0025, 2026-11-26): russian,
+    -- english, german, french, italian, spanish, portuguese, arabic; прочие
+    -- языки (китайский, японский, фарси, латынь, древнегреческий, вэньянь,
+    -- санскрит, введённые руками) → simple; нужен ts_headline при выдаче фрагмента
   title_tsv     TSVECTOR NOT NULL,  -- название (вес A)
   seed_tsv      TSVECTOR NOT NULL,  -- зерно (вес B)
   capsule_tsv   TSVECTOR NOT NULL,  -- капсула: всё, что ищется у ВИТРИНЫ
@@ -1809,7 +1812,8 @@ CREATE TABLE synthesis_search (
                                            --  «термин — определение»
   indexed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT synthesis_search_config_check
-    CHECK (config IN ('russian','english','german','simple'))
+    CHECK (config IN ('russian','english','german','french','italian',
+                      'spanish','portuguese','arabic','simple'))  -- 0025
 );
 CREATE INDEX idx_synthesis_search_title   ON synthesis_search USING gin(title_tsv);
 CREATE INDEX idx_synthesis_search_seed    ON synthesis_search USING gin(seed_tsv);
@@ -1820,7 +1824,8 @@ CREATE INDEX idx_synthesis_search_elements_trgm ON synthesis_search USING gin(el
 ```
 
 - **Каждый `tsvector` — сумма двух разборов текста:** словарём документа
-  (`config`) и `simple`. Запрос разбирается всеми четырьмя словарями и
+  (`config`) и `simple`. Запрос разбирается всеми словарями
+  (`SEARCH_TS_CONFIGS`, девять с `simple`) и
   объединяется через «или» (язык запроса неизвестен), так что русский
   запрос находит словоформы в русском документе, а точное слово — в любом.
 - **Отдельная таблица, а не колонки `syntheses`:** строку `syntheses` весь
@@ -1838,6 +1843,10 @@ CREATE INDEX idx_synthesis_search_elements_trgm ON synthesis_search USING gin(el
   `--missing`, `--synthesis <uuid>`) — той же функцией, что зовут писатели;
   копия сборки документа в SQL миграции разошлась бы с ней при первой
   правке. Он же — починка после сбоя. `deploy/*` зовут его после миграций.
+- **Смена словаря языка — миграция снимает строки, `--missing` их
+  возвращает** (0025, 2026-11-26): строки документов на французском,
+  итальянском, испанском, португальском и арабском, собранные прежде
+  `simple`, миграция удаляет; пересобирает их `search:reindex -- --missing`.
 - **Прав в индексе нет.** Кому что открыто, решается на каждом запросе по
   строкам `syntheses` и `synthesis_members` (03 §2.21); строка индекса сама
   ничего не открывает. У концепции без строки индекса (до первого

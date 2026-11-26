@@ -7,6 +7,7 @@
  * содержание — капсула, имена категорий и термины глоссария с определениями
  * (тезисы и тексты разделов в индекс НЕ входят — решение пользователя).
  */
+import { GEN_LANGS, genLangInfo, type GenLangSearchConfig } from "../i18n/locales.js";
 
 /** Список каталога, в котором идёт поиск. Гостю — только `public`. */
 export const SEARCH_SCOPES = ["mine", "shared", "public"] as const;
@@ -73,22 +74,39 @@ export const SEARCH_FIELDS_BY_LEVEL: Readonly<Record<SearchReadLevel, readonly S
 
 /**
  * Словарь полнотекстового поиска PostgreSQL по языку генерации
- * (`syntheses.lang`, значения LANG_OPTIONS). Три языка генерации с
- * морфологией; у прочих — только `simple` (слова как есть). Каждый документ
- * индекса несёт лексемы СВОЕГО словаря плюс `simple`.
+ * (`syntheses.lang`). С 2026-11-26 выводится из таблицы языков генерации
+ * (shared/i18n/locales GEN_LANGS, поле `search`): морфология snowball есть у
+ * русского, английского, немецкого, французского, итальянского, испанского,
+ * португальского и арабского; у прочих (китайский, японский, фарси, латынь,
+ * древнегреческий, вэньянь, санскрит) — только `simple` (слова как есть).
+ * Каждый документ индекса несёт лексемы СВОЕГО словаря плюс `simple`;
+ * запрос разбирается всеми словарями (язык запроса неизвестен).
  */
-export const SEARCH_TS_CONFIG_BY_LANG: Readonly<Record<string, SearchTsConfig>> = {
-  Russian: "russian",
-  English: "english",
-  German: "german",
-};
-export const SEARCH_TS_CONFIGS = ["russian", "english", "german", "simple"] as const;
+export const SEARCH_TS_CONFIGS = [
+  "russian",
+  "english",
+  "german",
+  "french",
+  "italian",
+  "spanish",
+  "portuguese",
+  "arabic",
+  "simple",
+] as const;
 export type SearchTsConfig = (typeof SEARCH_TS_CONFIGS)[number];
 export const SEARCH_TS_FALLBACK: SearchTsConfig = "simple";
 
-/** Словарь по языку генерации; неизвестный язык — `simple`. */
+/** Таблица GEN_LANGS не может назвать словарь, которого нет в SEARCH_TS_CONFIGS. */
+const _searchConfigsCover: GenLangSearchConfig extends SearchTsConfig ? true : never = true;
+void _searchConfigsCover;
+
+export const SEARCH_TS_CONFIG_BY_LANG: Readonly<Record<string, SearchTsConfig>> = Object.fromEntries(
+  GEN_LANGS.filter((l) => l.search !== null).map((l) => [l.value, l.search as SearchTsConfig]),
+);
+
+/** Словарь по языку генерации (без регистра); неизвестный язык — `simple`. */
 export function searchTsConfigFor(lang: string | null | undefined): SearchTsConfig {
-  return SEARCH_TS_CONFIG_BY_LANG[(lang ?? "").trim()] ?? SEARCH_TS_FALLBACK;
+  return genLangInfo(lang)?.search ?? SEARCH_TS_FALLBACK;
 }
 
 /** Пределы запроса. */

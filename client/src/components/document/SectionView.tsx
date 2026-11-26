@@ -115,6 +115,7 @@ import {
 
 import { subsectionSlugId } from "./TableOfContents";
 import { tl } from "@philosynth/shared/i18n/t";
+import { genLangContentAttrs } from "@philosynth/shared/i18n/locales";
 
 /** Строка таблицы, редактируемая по месту (беседа 5.2, п. 7) */
 export type EditableRowKind = "thesis" | "glossary_term";
@@ -132,6 +133,10 @@ export interface EditableRowRef {
 
 export interface SectionViewProps {
   section: SectionFull;
+  /** 2026-11-26: язык генерации документа (syntheses.lang) — атрибуты
+   *  lang/dir тела раздела по таблице GEN_LANGS (арабский, фарси — справа
+   *  налево); не задан — тело в направлении страницы */
+  contentLang?: string | undefined;
   /** Беседа 5.2 (п. 7): рисовать кнопки ✎ на строках таблиц тезисов/
    *  глоссария (добавляются В СТРОКУ HTML до вставки — грабля 1.6b) */
   editable?: boolean | undefined;
@@ -286,6 +291,10 @@ export function renderSubsectionEditor(
     return e;
   };
   const form = el("div", "inline-edit-form subsection-edit-form");
+  // Форма — часть интерфейса (его языки пишутся слева направо), а тело
+  // раздела бывает справа налево (арабский, фарси): направление формы
+  // задано явно, текст правки на месте — по своей первой букве (dir="auto")
+  form.setAttribute("dir", "ltr");
   form.setAttribute("data-subsection-editor", edit.name);
 
   if (edit.phase === "saved") {
@@ -381,6 +390,7 @@ export function renderSubsectionEditor(
     body.setAttribute("data-subsection-editor-body", "1");
     body.setAttribute("contenteditable", edit.phase === "ready" ? "true" : "false");
     body.setAttribute("spellcheck", "true");
+    body.setAttribute("dir", "auto");
     body.setAttribute("aria-label", tl("document.sectionView.richBodyLabel", "Текст подраздела"));
     if (edit.phase === "loading") body.appendChild(el("p", "rich-editor-loading", tl("common.loading", "Загрузка…")));
     else fillEditable(doc, body, edit.draft);
@@ -582,6 +592,7 @@ export function enrichSectionHtml(
 
 export function SectionView({
   section,
+  contentLang,
   editable = false,
   onRowEdit,
   inlineEditor,
@@ -821,6 +832,7 @@ export function SectionView({
       )}
       <div className="doc-body-host" ref={hostRef}>
         <div
+          {...(contentLang !== undefined ? genLangContentAttrs(contentLang) : {})}
           dangerouslySetInnerHTML={innerHtmlProp}
           onClick={handleClick}
           onMouseDown={handleMouseDown}

@@ -74,12 +74,12 @@ export function TableOfContents({
                       ⟳{" "}
                     </span>
                   )}
-                  § {summary.sectionNum} — {label}
+                  § {summary.sectionNum} — <bdi>{label}</bdi>
                 </a>
               </p>
               {summary.subsections.map((subName) => (
                 <p className="toc-sub-link" key={subName}>
-                  <a href={`#${subsectionSlugId(key, subName)}`}>{subsectionTitleFrom(summary.subsectionTitles, subName)}</a>
+                  <a href={`#${subsectionSlugId(key, subName)}`} dir="auto">{subsectionTitleFrom(summary.subsectionTitles, subName)}</a>
                 </p>
               ))}
             </div>

@@ -1687,6 +1687,7 @@ export function SynthesisPage() {
       <ModeModal
         open={modeOpen !== null}
         synthesisId={synthesis.id}
+        contentLang={synthesis.lang}
         modeKey={modeOpen}
         onClose={() => setModeOpen(null)}
         onResultsChanged={onModeResultsChanged}

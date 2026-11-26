@@ -1994,8 +1994,9 @@ export const synthesisSearch = pgTable(
     synthesisId: uuid("synthesis_id")
       .primaryKey()
       .references(() => syntheses.id, { onDelete: "cascade" }),
-    /** Словарь документа: 'russian' | 'english' | 'german' | 'simple'
-     *  (shared searchTsConfigFor по syntheses.lang) */
+    /** Словарь документа: один из SEARCH_TS_CONFIGS (shared
+     *  searchTsConfigFor по syntheses.lang; 0025 — + french, italian,
+     *  spanish, portuguese, arabic) */
     config: text("config").notNull().default("simple"),
     titleTsv: tsvector("title_tsv").notNull(),
     seedTsv: tsvector("seed_tsv").notNull(),
@@ -2024,7 +2025,7 @@ export const synthesisSearch = pgTable(
     ),
     check(
       "synthesis_search_config_check",
-      sql`${t.config} IN ('russian', 'english', 'german', 'simple')`,
+      sql`${t.config} IN ('russian', 'english', 'german', 'french', 'italian', 'spanish', 'portuguese', 'arabic', 'simple')`,
     ),
   ],
 );

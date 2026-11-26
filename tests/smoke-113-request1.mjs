@@ -115,7 +115,8 @@ ok("жёсткого «Russian» нет", !/"Russian"/.test(form));
 ok("умолчание: user.genLang, иначе genLangForUi(язык интерфейса)", /const initialGenLang = \(userGenLang \?\? ""\)\.trim\(\) \|\| genLangForUi\(uiLocale\);/.test(form));
 ok("значение вне списка → ветка «Другой…» с ним в поле", /GEN_LANG_VALUES\.includes\(initialGenLang\) \? initialGenLang : LANG_CUSTOM_VALUE/.test(form) && /GEN_LANG_VALUES\.includes\(initialGenLang\) \? "" : initialGenLang/.test(form));
 ok("смена языка вошедшим → setGenLang (PATCH { genLang }), интерфейс не трогается", /void setGenLang\(v\);/.test(form) && !/setUiLocale|setLocale\(/.test(form));
-ok("«Другой…» через tl() по месту, самоназвания как есть", /v === LANG_CUSTOM_VALUE \? tl\("synthesis\.synthesisForm\.otherLanguage", "Другой…"\) : l/.test(form));
+// 2026-11-26: экспериментальным языкам — переведённая пометка к самоназванию (оно подставляется как есть)
+ok("«Другой…» через tl() по месту, самоназвания как есть", /v === LANG_CUSTOM_VALUE\s*\?\s*tl\("synthesis\.synthesisForm\.otherLanguage", "Другой…"\)\s*:\s*genLangInfo\(v\)\?\.experimental\s*\?\s*tl\("synthesis\.synthesisForm\.experimentalLanguageOption", "\{lang\} — экспериментально", \{ lang: l \}\)\s*:\s*l\}/.test(form));
 ok("словари опций формы — фабрики, зовутся при отрисовке", /const METHOD_OPTIONS = \(\) => \[/.test(form) && /\{DEPTH_OPTIONS\(\)\.map\(/.test(form));
 
 /* ── 6. static → фабрики; машинные значения ── */

@@ -8,15 +8,21 @@
  * Обогащение enrichSectionHtml (1.6b) здесь НЕ нужно: у режимов нет
  * якорной hash-навигации и подразделов.
  */
+import { genLangContentAttrs } from "@philosynth/shared/i18n/locales";
+
 export interface ModeContentProps {
   html: string;
+  /** 2026-11-26: язык генерации документа — lang/dir результата режима
+   *  (таблица GEN_LANGS); не задан — направление по первой букве текста */
+  contentLang?: string | undefined;
 }
 
-export function ModeContent({ html }: ModeContentProps) {
+export function ModeContent({ html, contentLang }: ModeContentProps) {
   return (
     <div
       id="modeContent"
       className="doc-content"
+      {...(contentLang !== undefined ? genLangContentAttrs(contentLang) : { dir: "auto" as const })}
       // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: html }}
     />

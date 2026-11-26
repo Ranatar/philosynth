@@ -93,6 +93,7 @@ import {
   LANG_CUSTOM_VALUE,
   LANG_OPTIONS,
   genLangForUi,
+  genLangInfo,
 } from "@philosynth/shared/i18n/locales";
 import { tl } from "@philosynth/shared/i18n/t";
 
@@ -715,10 +716,25 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
           >
             {LANG_OPTIONS.map(([v, l]) => (
               <option key={v} value={v}>
-                {v === LANG_CUSTOM_VALUE ? tl("synthesis.synthesisForm.otherLanguage", "Другой…") : l}
+                {v === LANG_CUSTOM_VALUE
+                  ? tl("synthesis.synthesisForm.otherLanguage", "Другой…")
+                  : genLangInfo(v)?.experimental
+                    ? tl("synthesis.synthesisForm.experimentalLanguageOption", "{lang} — экспериментально", { lang: l })
+                    : l}
               </option>
             ))}
           </select>
+          {/* 2026-11-26: языки, на которых модель пишет заметно хуже прочих
+              (GEN_LANGS.experimental), — предупреждение под списком; то же
+              при языке, введённом руками, если он есть в таблице */}
+          {genLangInfo(langChoice === LANG_CUSTOM_VALUE ? customLang : langChoice)?.experimental && (
+            <div className={sublabelCls} role="note" data-testid="gen-lang-experimental" style={{ marginTop: 6 }}>
+              {tl(
+                "synthesis.synthesisForm.experimentalLanguageNote",
+                "Экспериментальный язык: короткие формы удаются, но в длинном связном тексте раздела модель ошибается заметно чаще, чем на прочих языках (грамматика, сомнительные слова, неуклюжие кальки современных понятий). Текст выглядит убедительнее, чем он есть, — сверяйте его с тем, кто язык читает.",
+              )}
+            </div>
+          )}
         </div>
         {langChoice === LANG_CUSTOM_VALUE && (
           <div className="form-group">
@@ -731,7 +747,7 @@ export function SynthesisForm({ onSubmit, busy, serverError }: SynthesisFormProp
               }}
               onBlur={() => commitGenLang(customLang)}
               data-testid="gen-lang-custom"
-              placeholder={tl("synthesis.synthesisForm.customLanguagePlaceholder", "e.g. Korean, Ancient Greek, Hindi")}
+              placeholder={tl("synthesis.synthesisForm.customLanguagePlaceholder", "e.g. Korean, Hebrew, Hindi")}
               className="form-input"
             />
           </div>

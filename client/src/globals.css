@@ -8141,6 +8141,47 @@ font-size: 14px;
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+ * Письменности языков генерации (2026-11-26, вне бесед): арабский и фарси
+ * справа налево, санскрит — деванагари. Блок между метками — ДОСЛОВНО
+ * GEN_SCRIPT_CSS (packages/shared/i18n/gen-script-css.ts; тот же текст уходит
+ * в экспорт HTML), сторож 4bu сверяет побайтно. Вне @layer: правила
+ * исходника (часть 2) не слоёные и перебили бы слоёные.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* gen-script-css: begin (packages/shared/i18n/gen-script-css.ts) */
+:root {
+  --mono: "IBM Plex Mono", "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", monospace;
+  --sans: "IBM Plex Sans", "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", sans-serif;
+  --serif: "Playfair Display", "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", serif;
+}
+[dir="rtl"] .doc-table th {
+  text-align: right;
+}
+[dir="rtl"] .callout {
+  border-left: none;
+  border-right: 3px solid;
+}
+[dir="rtl"] .doc-content ul,
+[dir="rtl"] .doc-content ol {
+  margin: 8px 20px 14px 0;
+}
+:is(:lang(ar), :lang(fa), :lang(sa)) .doc-content {
+  font-size: 14px;
+  line-height: 2;
+}
+:is(:lang(ar), :lang(fa), :lang(sa)) :is(.section-num, .doc-content h4, .doc-content h5, .doc-table th, .callout-label) {
+  letter-spacing: normal;
+  text-transform: none;
+}
+:is(:lang(ar), :lang(fa), :lang(sa)) :is(.doc-content h4, .doc-content h5) {
+  font-size: 13px;
+}
+:is(:lang(ar), :lang(fa), :lang(sa)) :is(.section-num, .doc-table th, .callout-label) {
+  font-size: 11px;
+}
+/* gen-script-css: end */
+
 /* Утилиты Tailwind — последними: они точечные и должны перебивать
    классы исходника там, где компонент их сознательно применяет. */
 @tailwind utilities;

@@ -105,6 +105,8 @@ export interface ModeModalProps {
    * файла (buildModesExportSection [17565] снимает .mode-modal-params).
    */
   readOnly?: boolean | undefined;
+  /** 2026-11-26: язык генерации документа (направление письма результата) */
+  contentLang?: string | undefined;
 }
 
 export function ModeModal({
@@ -114,6 +116,7 @@ export function ModeModal({
   onClose,
   onResultsChanged,
   readOnly = false,
+  contentLang,
 }: ModeModalProps) {
   const [results, setResults] = useState<ModeResult[]>([]);
   const [warnings, setWarnings] = useState<ModeDepsWarning[]>([]);
@@ -437,7 +440,7 @@ export function ModeModal({
         />
 
         <div className="mode-modal-body" id="modeBody">
-          <ModeContent html={contentHtml} />
+          <ModeContent html={contentHtml} contentLang={contentLang} />
         </div>
 
         <div className="mode-modal-footer">

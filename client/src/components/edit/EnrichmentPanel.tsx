@@ -268,6 +268,7 @@ export function EnrichmentPanel({
             {isOpen && (
               <div
                 className="enrich-card-body doc-content"
+                dir="auto"
                 dangerouslySetInnerHTML={{ __html: e.content }}
               />
             )}

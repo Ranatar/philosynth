@@ -66,7 +66,7 @@ philosynth-service/
 │       │   │                           #  EVENT_TYPES / ACCEPT_METHODS, пределы текстов и страницы
 │       │   ├── search.ts               # 18.1: SEARCH_SCOPES / FIELDS / PHIL_MODES / PHIL_AREAS / SORTS /
 │       │   │                           #  MATCH_KINDS / FRAGMENT_SOURCES / READ_LEVELS, SEARCH_FIELDS_BY_LEVEL,
-│       │   │                           #  словари по языку (searchTsConfigFor), пределы и порог триграмм
+│       │   │                           #  словари по языку (searchTsConfigFor — из GEN_LANGS), пределы и порог триграмм
 │       │   ├── similarity.ts           # 18.3: SIMILARITY_FEATURES / WEIGHTS (сумма 100) / GRADES /
 │       │   │                           #  GRADE_MIN + similarityGradeOf, признаки текста и свидетельства,
 │       │   │                           #  SIMILAR_LIMIT_*, SIMILAR_CANDIDATE_CAP, SIMILAR_REASON_ITEMS_MAX
@@ -90,8 +90,11 @@ philosynth-service/
 │       │   │                           # вариант; ICU-плюралы по Intl.PluralRules языка каталога;
 │       │   │                           # setCatalogProvider({ locale, strings })
 │       │   ├── locales.ts              # UI_LOCALES, UI_TO_GEN, GEN_FALLBACK, genLangForUi (правило
-│       │   │                           # владельца интерфейс → генерация); LANG_OPTIONS формы (из
-│       │   │                           # SynthesisForm 1.5) — один список
+│       │   │                           # владельца интерфейс → генерация); GEN_LANGS — таблица языков
+│       │   │                           # генерации (2026-11-26), из неё LANG_OPTIONS формы, словари
+│       │   │                           # поиска, html lang/dir, суффикс файла, имя языка для модели
+│       │   ├── gen-script-css.ts       # 2026-11-26: правила письменностей (rtl ar/fa, деванагари) —
+│       │   │                           # один текст клиенту (globals.css) и экспорту HTML
 │       │   ├── strings.json            # мастер-таблица переводов (ru/en/de, from, draft, params,
 │       │   │                           # where, отметки data/static/obsolete); правится инструментами
 │       │   ├── data.ts                 # 11.4: перевод ДАННЫХ по месту показа — displayKey(value),

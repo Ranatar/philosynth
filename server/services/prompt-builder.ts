@@ -43,6 +43,7 @@ import type {
   SynthLevel,
 } from "@philosynth/shared/types/synthesis";
 import { DL, ML, SL } from "@philosynth/shared/constants/labels";
+import { genLangPromptName } from "@philosynth/shared/i18n/locales";
 import {
   type CardinalityParams,
   hasConceptParticipants,
@@ -205,10 +206,13 @@ export async function buildSYS(
         : "full";
   const philList = p?.phil?.length ? p.phil.join(", ") : "";
   const lang = p?.lang || "Russian";
+  // Имя языка для модели — из таблицы GEN_LANGS (2026-11-26): у санскрита,
+  // вэньяня, древнегреческого и фарси оно уточняет письменность и норму
+  // («Sanskrit, written in Devanagari script …»); прочим — значение как есть
   const langInstruction =
     lang === "Russian"
       ? ""
-      : await renderTemplate("system.lang_instruction", { lang });
+      : await renderTemplate("system.lang_instruction", { lang: genLangPromptName(lang) });
   const participantsNote = philList
     ? await renderTemplate("system.participants_note", { philosophers: philList })
     : "";

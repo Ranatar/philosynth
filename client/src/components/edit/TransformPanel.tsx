@@ -263,6 +263,7 @@ export function TransformPanel({
           {busy && livePreview && (
             <div
               className="doc-content transform-live"
+              dir="auto"
               data-testid="transform-live"
               dangerouslySetInnerHTML={{ __html: livePreview }}
             />

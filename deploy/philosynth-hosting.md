@@ -228,6 +228,7 @@ WantedBy=multi-user.target
 ```bash
 npm run build
 npm run db:migrate
+npm run search:reindex -- --missing   # индекс поиска концепций (0020; 0025 — после словарей языков)
 npm run seed:prompts && npm run seed:configs && npm run seed:taxonomy
 npm run stripe:create-prices      # вашим sk_live_, печатает STRIPE_PRICE_*
 # вписать напечатанное в .env, затем:
@@ -331,6 +332,7 @@ Stripe. Расходятся — значит какое-то событие web
 sudo -u philos git -C /home/philos/philosynth pull
 sudo -u philos npm ci --prefix /home/philos/philosynth
 sudo -u philos npm run --prefix /home/philos/philosynth db:migrate
+sudo -u philos npm run --prefix /home/philos/philosynth search:reindex -- --missing
 sudo -u philos npm run --prefix /home/philos/philosynth seed:prompts
 sudo -u philos npm run --prefix /home/philos/philosynth seed:configs
 sudo -u philos npm run --prefix /home/philos/philosynth build
