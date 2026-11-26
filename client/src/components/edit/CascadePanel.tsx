@@ -128,7 +128,7 @@ export function CascadePanel({
                     style={{
                       fontSize: 9,
                       color: "var(--gold)",
-                      marginLeft: 6,
+                      marginInlineStart: 6,
                     }}
                   >
                     {tl("edit.cascadePanel.charsFrom", "{chars} симв. от {source}", { chars: w.chars.toLocaleString("ru"), source: labels(w.source) })}
@@ -146,7 +146,7 @@ export function CascadePanel({
                     color: "var(--gold)",
                     padding: "2px 8px",
                     cursor: "pointer",
-                    marginLeft: "auto",
+                    marginInlineStart: "auto",
                   }}
                   onClick={() => onMarkRegen(depKey)}
                 >
@@ -193,7 +193,7 @@ export function CascadePanel({
                       color: "var(--red)",
                       padding: "2px 6px",
                       cursor: "pointer",
-                      marginLeft: 4,
+                      marginInlineStart: 4,
                       flexShrink: 0,
                     }}
                     onClick={() => onMarkAdd(s.src)}
@@ -236,7 +236,7 @@ export function CascadePanel({
                   color: "var(--blue-corp)",
                   padding: "2px 8px",
                   cursor: "pointer",
-                  marginLeft: "auto",
+                  marginInlineStart: "auto",
                   flexShrink: 0,
                 }}
                 onClick={() => onMarkAdd(r.src)}
@@ -277,7 +277,7 @@ export function CascadePanel({
                   color: "var(--violet)",
                   padding: "2px 8px",
                   cursor: "pointer",
-                  marginLeft: "auto",
+                  marginInlineStart: "auto",
                 }}
                 onClick={() => onMarkModeRegen(am.modeKey, am.index)}
               >

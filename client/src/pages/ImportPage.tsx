@@ -138,7 +138,7 @@ function LineageCandidateBlock({
     >
       <span className="callout-label">{label}</span>
       {tl("importPage.parentInFile", "В файле указана концепция-родитель „{parentName}“. В базе найдено:", { parentName: candidate.parentName })}
-      <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+      <ul style={{ margin: "6px 0 0", paddingInlineStart: 18 }}>
         {candidate.matches.map((m) => {
           const armed = state.arm === m.id;
           return (

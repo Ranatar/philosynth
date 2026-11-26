@@ -57,7 +57,7 @@
   font-weight: 600;
   color: var(--blue-corp);
   min-width: 34px;
-  text-align: right;
+  text-align: end;
 }
 
 .char-slider-why {
@@ -109,7 +109,7 @@
    не всплывающим окном: в документе всплывашки некуда девать */
 .char-justification {
   grid-column: 1 / -1;
-  border-left: 3px solid var(--gold);
+  border-inline-start: 3px solid var(--gold);
   background: var(--white);
   padding: 8px 12px;
   font-size: 12px;
@@ -240,7 +240,7 @@
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--ink-mid);
-  text-align: left;
+  text-align: start;
   padding: 7px 12px;
   border-bottom: 1px solid var(--rule-strong);
   white-space: nowrap;
@@ -259,7 +259,7 @@
 .data-table .num {
   font-family: var(--mono);
   font-size: 11px;
-  text-align: right;
+  text-align: end;
   white-space: nowrap;
 }
 
@@ -396,7 +396,7 @@
 }
 
 .version-item.current {
-  border-left: 3px solid var(--green-check);
+  border-inline-start: 3px solid var(--green-check);
 }
 
 .version-num {
@@ -433,7 +433,8 @@
 
 .diff-line {
   display: block;
-  padding: 1px 12px 1px 24px;
+  padding-block: 1px;
+  padding-inline: 24px 12px;
   position: relative;
   white-space: pre-wrap;
 }
@@ -494,12 +495,13 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  padding: 5px 12px 5px 22px;
+  padding-block: 5px;
+  padding-inline: 22px 12px;
   font-family: var(--mono);
   font-size: 11px;
   color: var(--ink-mid);
   cursor: pointer;
-  border-left: 3px solid transparent;
+  border-inline-start: 3px solid transparent;
 }
 
 .key-tree-item:hover {
@@ -508,7 +510,7 @@
 
 .key-tree-item.active {
   background: var(--blue-light);
-  border-left-color: var(--blue-corp);
+  border-inline-start-color: var(--blue-corp);
   color: var(--blue-corp);
 }
 
@@ -603,7 +605,7 @@ tr:hover > td > .inline-edit-btn,
 }
 
 .inline-edit-form {
-  border-left: 3px solid var(--blue-corp);
+  border-inline-start: 3px solid var(--blue-corp);
   background: var(--white);
   padding: 12px 14px;
   margin: 4px 0;
@@ -625,7 +627,7 @@ tr:hover > td > .inline-edit-btn,
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--gold);
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 /* ═══ 8. Панель обогащения (5.4: EnrichmentPanel) ═════════════════════
@@ -635,7 +637,7 @@ tr:hover > td > .inline-edit-btn,
 
 .enrich-card {
   border: 1px solid var(--rule);
-  border-left: 3px solid var(--violet);
+  border-inline-start: 3px solid var(--violet);
   background: var(--paper);
   padding: 10px 14px;
   margin-top: 8px;
@@ -697,7 +699,7 @@ tr:hover > td > .inline-edit-btn,
 }
 
 .transform-warn {
-  border-left: 3px solid var(--red);
+  border-inline-start: 3px solid var(--red);
   background: #fff5f5;
   padding: 8px 12px;
   font-size: 12px;

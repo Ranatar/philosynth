@@ -78,7 +78,7 @@ function NodeBlock({
     return (
       <div className="gm-panel-ep-block">
         <div className="gm-panel-ep-label">{labelPrefix}</div>
-        <div className="gm-panel-ep-name">{nodeName}</div>
+        <div className="gm-panel-ep-name" dir="auto">{nodeName}</div>
         <div className="gm-panel-ep-missing">{tl("graph.edgePanel.notInGraph", "не найден в графе")}</div>
       </div>
     );
@@ -96,7 +96,7 @@ function NodeBlock({
           className="gm-panel-dot"
           style={{ background: color, width: 7, height: 7 }}
         />
-        <div className="gm-panel-ep-name">{n.name}</div>
+        <div className="gm-panel-ep-name" dir="auto">{n.name}</div>
       </div>
       <div className="gm-panel-badges" style={{ marginBottom: 4 }}>
         <span className="gm-panel-badge" style={{ borderColor: color, color }}>
@@ -124,6 +124,7 @@ function NodeBlock({
       {n.def ? (
         <div
           className="gm-panel-def"
+          dir="auto"
           style={{ marginBottom: 6, fontSize: 9.5 }}
         >
           {n.def}
@@ -340,7 +341,7 @@ export default function EdgePanel({
         </div>
       ) : null}
       {edgeData.desc ? (
-        <div className="gm-panel-def">{edgeData.desc}</div>
+        <div className="gm-panel-def" dir="auto">{edgeData.desc}</div>
       ) : null}
       <div className="gm-panel-metrics">
         <Metric

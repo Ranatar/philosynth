@@ -92,7 +92,7 @@ export function CostEstimate({ params }: CostEstimateProps) {
         fontSize: 9,
         color: "var(--ink-dim)",
         letterSpacing: "0.5px",
-        textAlign: "right",
+        textAlign: "end",
       }}
     >
       {loading ? tl("synthesis.costEstimate.estimating", "оценка…") : shown}

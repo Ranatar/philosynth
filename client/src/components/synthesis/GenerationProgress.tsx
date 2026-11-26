@@ -132,7 +132,7 @@ export function GenerationProgress({
             <span className="step-icon">{STEP_ICON[s.status]}</span>
             <span>{s.label}</span>
             {s.chars > 0 && (
-              <span style={{ marginLeft: "auto" }}>
+              <span style={{ marginInlineStart: "auto" }}>
                 {tl("synthesis.generationProgress.chars", "{chars} симв.", { chars: s.chars.toLocaleString("ru-RU") })}
               </span>
             )}

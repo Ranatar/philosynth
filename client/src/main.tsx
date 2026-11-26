@@ -5,6 +5,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App";
+import "./fonts.css"; // шрифты из проекта (client/public/fonts), генерат scripts/fonts/vendor-fonts.mjs
 import "./globals.css";
 import { tl } from "@philosynth/shared/i18n/t";
 

@@ -206,7 +206,7 @@ export function EditPlanPanel({
                 padding: "4px 8px",
                 border: "1px solid var(--rule)",
                 background: step.cascadeGenerated ? "#fffbee" : "transparent",
-                borderLeft: step.cascadeGenerated
+                borderInlineStart: step.cascadeGenerated
                   ? "3px solid var(--gold)"
                   : "1px solid var(--rule)",
               }}
@@ -246,7 +246,7 @@ export function EditPlanPanel({
                 {step.cascadeGenerated && (
                   <span
                     style={{
-                      marginLeft: 6,
+                      marginInlineStart: 6,
                       fontSize: 9,
                       color: "var(--gold)",
                     }}
@@ -258,7 +258,7 @@ export function EditPlanPanel({
               {result && (
                 <span
                   style={{
-                    marginLeft: "auto",
+                    marginInlineStart: "auto",
                     fontSize: 9,
                     color: "var(--ink-dim)",
                   }}
@@ -269,7 +269,7 @@ export function EditPlanPanel({
               {pendingActionable && (
                 <span
                   style={{
-                    marginLeft: result ? 8 : "auto",
+                    marginInlineStart: result ? 8 : "auto",
                     display: "flex",
                     gap: 4,
                   }}

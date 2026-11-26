@@ -11,6 +11,14 @@
   B. Расхождения внутри совпавших правил. Для одноимённых селекторов —
      свойства, которых нет в порте, и свойства с изменённым значением.
      Это и есть «упрощения», в отличие от «упущений» пункта A.
+     С 2026-11-26 объявления ИСХОДНИКА перед сравнением переводятся в
+     логическую запись таблицей css_logical.to_logical (margin-left →
+     margin-inline-start, text-align: left → start …): интерфейс зависит от
+     направления письма, а при письме слева направо логическое свойство
+     вычисляется в то же, что физическое. Число переведённых объявлений
+     печатается отдельной строкой; всё вне таблицы — по-прежнему расхождение,
+     и физическое свойство, оставшееся в порте там, где таблица его
+     переводит, — тоже.
   C. Висячие классы. Классы в разметке клиента (не Tailwind), под которые
      нет ни одного правила: элемент рисуется браузерным дефолтом.
   D. Экспорт. Совпадает ли EXPORT_SOURCE_RAW_CSS в
@@ -28,6 +36,9 @@ import json
 import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from css_logical import logical_decls  # noqa: E402  (таблица равнозначностей сторон)
 
 # ──────────────────────────────────────────────────────────────────────────
 # Разбор CSS
@@ -273,16 +284,21 @@ def report_diffs(source_rules, target_rules) -> None:
         merged.setdefault(rule_key(rule), {}).update(rule["decls"])
     print("\n═══ B. Расхождения внутри совпавших правил ═══\n")
     count = 0
+    mapped_total = 0
     for rule in source_rules:
         key = rule_key(rule)
         if key not in merged:
             continue
         target = merged[key]
-        dropped = [p for p in rule["decls"] if p not in target]
+        # исходник — в логической записи (таблица css_logical); порт обязан
+        # совпасть с ней дословно
+        expected, mapped = logical_decls(rule["decls"], rule["sel"])
+        mapped_total += mapped
+        dropped = [p for p in expected if p not in target]
         changed = [
-            (p, rule["decls"][p], target[p])
-            for p in rule["decls"]
-            if p in target and target[p] != rule["decls"][p]
+            (p, expected[p], target[p])
+            for p in expected
+            if p in target and target[p] != expected[p]
         ]
         if not dropped and not changed:
             continue
@@ -294,6 +310,7 @@ def report_diffs(source_rules, target_rules) -> None:
             parts.append("иначе: " + ", ".join(f"{p} {a} → {b}" for p, a, b in changed))
         print(f"  {rule['sel']}\n      " + "\n      ".join(parts))
     print(f"\n  итого правил с расхождениями: {count}")
+    print(f"  объявлений исходника, сверенных в логической записи (сторона → начало/конец строки): {mapped_total}")
 
 
 def report_dangling(client_dir, target_classes, source_classes) -> None:

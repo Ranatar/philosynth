@@ -374,7 +374,9 @@ export default function GraphModal({
   const clusterLabels = G.topology?.clusterLabels || [];
 
   return (
-    <div className="gm-overlay visible">
+    // 2026-11-26: окно графа — остров слева направо при любом направлении
+    // интерфейса (холст, координаты панелей); тексты модели внутри — dir="auto"
+    <div className="gm-overlay visible" dir="ltr">
       <div
         ref={tooltipRef}
         style={{

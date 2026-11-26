@@ -102,7 +102,7 @@ export function PoolCard({
 
       {/* Колонка 3: информация */}
       <div className="pool-card-info">
-        <div className="pool-card-name">{c.name}</div>
+        <div className="pool-card-name" dir="auto">{c.name}</div>
         {c.subtitle && c.subtitle !== "—" && (
           <div className="pool-card-basis">{c.subtitle}</div>
         )}

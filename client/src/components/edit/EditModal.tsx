@@ -535,7 +535,7 @@ export function EditModal({
                   letterSpacing: 0.3,
                 }}
               >
-                <span style={{ marginRight: 6 }}>⚡</span>
+                <span style={{ marginInlineEnd: 6 }}>⚡</span>
                 {synthesis.structureSections === null
                   ? tl("edit.editModal.structureUnknown", "Актуальность подраздела «Структура документа» в Резюме не определена. Рекомендуется обновить.")
                   : tl("edit.editModal.structureOutdated", "Подраздел «Структура документа» в Резюме устарел (перечень разделов изменился).")}
@@ -568,7 +568,7 @@ export function EditModal({
                 color: "var(--green-check)",
               }}
             >
-              <span style={{ marginRight: 6 }}>✓</span>{tl("edit.editModal.structureUpdated", "Подраздел «Структура документа» обновлён.")}
+              <span style={{ marginInlineEnd: 6 }}>✓</span>{tl("edit.editModal.structureUpdated", "Подраздел «Структура документа» обновлён.")}
             </div>
           )}
 

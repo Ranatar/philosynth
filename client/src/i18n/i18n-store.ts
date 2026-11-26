@@ -31,6 +31,7 @@ import {
   DEFAULT_UI_LOCALE,
   UI_LOCALES,
   isUiLocale,
+  uiLocaleDir,
   type UiLocale,
 } from "@philosynth/shared/i18n/locales";
 import { setCatalogProvider, type CatalogSource } from "@philosynth/shared/i18n/t";
@@ -45,6 +46,15 @@ export const UI_LOCALE_NAMES: Readonly<Record<UiLocale, string>> = {
   en: "English",
   de: "Deutsch",
 };
+
+/** <html lang> и <html dir> по языку интерфейса (2026-11-26): направление —
+ *  из uiLocaleDir; стили клиента написаны логическими свойствами и
+ *  зеркалятся от этого атрибута. Только в браузере. */
+export function applyDocumentLocale(locale: UiLocale): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.lang = locale;
+  document.documentElement.dir = uiLocaleDir(locale);
+}
 
 type CatalogLoader = () => Promise<unknown>;
 
@@ -155,7 +165,7 @@ export const useI18nStore = create<I18nState>((set, get) => ({
   async setLocale(locale) {
     if (!isUiLocale(locale)) return;
     writeLocaleCookie(locale);
-    if (typeof document !== "undefined") document.documentElement.lang = locale;
+    applyDocumentLocale(locale);
     if (locale === get().locale) return; // тот же язык — ни запроса, ни перерисовки
     const cached = loaded.get(locale);
     set({ locale, catalog: cached ?? null, loading: cached === undefined && locale !== DEFAULT_UI_LOCALE, version: get().version + 1 });
@@ -186,7 +196,7 @@ setCatalogProvider(() => useI18nStore.getState().catalog);
    дать en или de), и <html lang> — тоже. Только в браузере. */
 if (typeof document !== "undefined") {
   const initial = useI18nStore.getState().locale;
-  document.documentElement.lang = initial;
+  applyDocumentLocale(initial);
   if (initial !== DEFAULT_UI_LOCALE) {
     useI18nStore.setState({ loading: true });
     void loadCatalog(initial).then((cat) => {

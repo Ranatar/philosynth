@@ -35,6 +35,7 @@ import { getCategories, getTheses } from "../../api/elements";
 import { useTransformStream, type TransformDoneEvent } from "../../hooks/useTransformStream";
 import { DIRECTION_LABELS, TransformHistory, summaryText } from "./TransformHistory";
 import { tl } from "@philosynth/shared/i18n/t";
+import { useContentLangAttrs } from "../../hooks/useContentLangAttrs";
 
 export const TARGET_SECTION_TITLES = (): Readonly<Record<TransformDirection, string>> => ({
   graph_to_theses: tl("edit.transformPanel.thesisCorpus", "Корпус тезисов"),
@@ -87,6 +88,7 @@ export function TransformPanel({
   onTransformed,
   onClose,
 }: TransformPanelProps) {
+  const contentAttrs = useContentLangAttrs();
   const [direction, setDirection] = useState<TransformDirection>(initialDirection);
   const [counts, setCounts] = useState<TransformCounts | null>(null);
   const [countsError, setCountsError] = useState<string | null>(null);
@@ -263,7 +265,7 @@ export function TransformPanel({
           {busy && livePreview && (
             <div
               className="doc-content transform-live"
-              dir="auto"
+              {...contentAttrs}
               data-testid="transform-live"
               dangerouslySetInnerHTML={{ __html: livePreview }}
             />

@@ -12,8 +12,9 @@
  *  - warmup — серверная копия graph-physics (тела 1:1);
  *  - typeColor возвращает number (как в исходнике) — hexStr тот же;
  *  - alert("Нет графа.") → ExportError NO_GRAPH (роут: 400);
- *  - шрифты 'IBM Plex Mono/Sans' в контейнере не установлены — node-canvas
- *    возьмёт системный фолбэк (геометрия и содержание не меняются).
+ *  - шрифты 'IBM Plex Mono/Sans' и письменностей (арабская вязь,
+ *    деванагари, политоника) — из проекта: server/assets/fonts,
+ *    регистрация png-fonts.ts (2026-11-26); установка в систему не нужна.
  * Тело рисования в остальном 1:1, включая квирки (glow через
  * shadowOffsetX=3000, неиспользуемая saved в inner-ветке — сохранена
  * комментарием).
@@ -21,6 +22,7 @@
 import { createCanvas } from "canvas";
 
 import { ExportError } from "./common.js";
+import { ensurePngFonts, PNG_MONO, PNG_SANS } from "./png-fonts.js";
 import { emptyTopology, loadGModel } from "./graph-model.js";
 import { warmup } from "./graph-physics.js";
 import {
@@ -40,6 +42,7 @@ import { tDataLoose } from "@philosynth/shared/i18n/data"; // 14.1 (Д-56): ти
 /** Ядро на готовой модели G — возвращает PNG-буфер. */
 export function buildPNG(G: GModel): Buffer {
   if (!G.nodes.length) throw new ExportError("NO_GRAPH", tl("common.noGraph", "Нет графа."));
+  ensurePngFonts(); // шрифты проекта — до createCanvas
   const style = createGraphStyle(G);
 
   const topo = G.topology || emptyTopology();
@@ -361,7 +364,7 @@ export function buildPNG(G: GModel): Buffer {
     const label = (clLabels[clIdx] || tl("server.export.pngExporter.clusterFallback", "Кластер {n}", { n: clIdx + 1 }))
       .replace(/^[IVXLCDM]+\s*[-–—]\s*/i, "")
       .trim();
-    ctx.font = "600 13px 'IBM Plex Mono', monospace";
+    ctx.font = `600 13px ${PNG_MONO}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = clColor + "88";
@@ -525,7 +528,7 @@ export function buildPNG(G: GModel): Buffer {
   }
 
   // ── 4. Подписи ────────────────────────────────────────────────
-  ctx.font = "500 13px 'IBM Plex Sans', sans-serif";
+  ctx.font = `500 13px ${PNG_SANS}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "bottom";
 
@@ -617,8 +620,8 @@ export function buildPNG(G: GModel): Buffer {
   ctx.strokeRect(LX - 10, LY - 14, 310, legendH + 10);
 
   let ly = LY;
-  const secFont = "600 9px 'IBM Plex Mono', monospace";
-  const itemFont = "500 10px 'IBM Plex Mono', monospace";
+  const secFont = `600 9px ${PNG_MONO}`;
+  const itemFont = `500 10px ${PNG_MONO}`;
   const secColor = "rgba(255,255,255,0.45)";
   const txtColor = "#c8c0b0";
 
@@ -740,7 +743,7 @@ export function buildPNG(G: GModel): Buffer {
   }
 
   // ── Подсказка ──
-  ctx.font = "500 9px 'IBM Plex Mono', monospace";
+  ctx.font = `500 9px ${PNG_MONO}`;
   ctx.fillStyle = "rgba(255,255,255,0.28)";
   ctx.fillText(tl("server.export.pngExporter.directionLegend", "→ однонаправл. · ↔ двунаправл. · ↺ рефлексив."), LX, ly);
 

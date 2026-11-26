@@ -11839,7 +11839,7 @@ async function section4bt(): Promise<void> {
   // закрытие беседы и Фазы 18
   if (!/\*\*По факту 18\.3 \(завершение — [^)]*\)\.\*\* → `docs\/08-history\.md`/.test(d07) || !/#### По факту 18\.3 \(завершение — /.test(d08) || !/\*\*18\.3 закрыта 2026-11-16 — ФАЗА 18 ЗАКРЫТА\*\*/.test(d07)) errs.push("4bt: 07/08 без «По факту 18.3 (завершение …)» либо врезка «Фаза 18» не закрыта");
   const nextCtx = await rd("../NEXT-CONTEXT.md");
-  if (!/18\.3 — 2bi\/4bt\/5ba; следующая серия — 2bj\/4bu\/5bb/.test(nextCtx) || !/ФАЗА 18 ЗАКРЫТА; реестр §12 пуст/.test(nextCtx) || (nextCtx.match(/^## Состояние на /gm) ?? []).length !== 1) errs.push("4bt: NEXT-CONTEXT — не один снимок состояния либо без закрытия Фазы 18 и следующей серии сторожа");
+  if (!/18\.3 — 2bi\/4bt\/5ba; (?:2026-11-26 языки генерации — 2bj\/4bu\/5bb; следующая серия — 2bk\/4bv\/5bc|следующая серия — 2bj\/4bu\/5bb)/.test(nextCtx) || !/ФАЗА 18 ЗАКРЫТА; реестр §12 пуст/.test(nextCtx) || (nextCtx.match(/^## Состояние на /gm) ?? []).length !== 1) errs.push("4bt: NEXT-CONTEXT — не один снимок состояния либо без закрытия Фазы 18 и следующей серии сторожа");
   if (!/\| 18 — поиск и похожие концепции \| 18\.1–18\.3 \| ЗАКРЫТА 2026-11-16/.test(await rd("../README.md"))) errs.push("4bt: README — строка Фазы 18 не закрыта");
   if ((en.strings["catalog.similar.title"] ?? "") !== "Similar concepts" || (de.strings["catalog.similar.title"] ?? "") !== "Ähnliche Konzepte") errs.push("4bt: переводы блока «Похожие концепции» не те, что утверждены");
   const table = JSON.parse(await rd("../packages/shared/i18n/strings.json")) as { strings: Record<string, { draft?: string[] }> };
@@ -11919,9 +11919,52 @@ async function section4bu(): Promise<void> {
   if (b < 0 || e < b || css.slice(b + GS.GEN_SCRIPT_CSS_BEGIN.length, e).trim() !== GS.GEN_SCRIPT_CSS.trim()) errs.push("4bu: globals.css — блок gen-script-css не совпадает с GEN_SCRIPT_CSS (клиент и экспорт разошлись)");
   const before = css.slice(0, Math.max(b, 0)).replace(/\/\*[\s\S]*?\*\//g, "");
   if ((before.match(/\{/g)?.length ?? 0) !== (before.match(/\}/g)?.length ?? 0)) errs.push("4bu: globals.css — блок gen-script-css внутри @layer или иного блока (правила исходника его перебьют)");
-  if (!(await rd("../client/index.html")).includes(GS.GEN_SCRIPT_FONT_FAMILIES)) errs.push("4bu: client/index.html — нет шрифтов письменностей (GEN_SCRIPT_FONT_FAMILIES)");
+  // шрифты — в проекте (2026-11-26, вторая правка): ссылок на внешние службы в клиенте нет,
+  // каждое семейство стеков GEN_SCRIPT_CSS объявлено в fonts.css, каждый файл лежит в client/public/fonts
+  const indexHtml = await rd("../client/index.html");
+  if (/fonts\.(googleapis|gstatic)\.com/.test(indexHtml)) errs.push("4bu: client/index.html — шрифты снова ссылкой на внешнюю службу (они лежат в client/public/fonts)");
+  const mainSrc = await rd("../client/src/main.tsx");
+  if (!/import "\.\/fonts\.css";[^\n]*\nimport "\.\/globals\.css";/.test(mainSrc)) errs.push("4bu: client/src/main.tsx — fonts.css не подключён перед globals.css");
+  const fontsCss = await rd("../client/src/fonts.css");
+  if (/https?:\/\//.test(fontsCss.replace(/\/\*[\s\S]*?\*\//g, ""))) errs.push("4bu: client/src/fonts.css — внешний адрес в @font-face");
+  const stackFamilies = new Set([...GS.GEN_SCRIPT_CSS.matchAll(/"([^"]+)"/g)].map((m) => m[1]!).filter((f) => f !== "rtl" && f !== "grc"));
+  for (const fam of stackFamilies) if (!fontsCss.includes(`font-family: "${fam}";`)) errs.push(`4bu: семейство «${fam}» названо в стеках GEN_SCRIPT_CSS, но в client/src/fonts.css его нет (scripts/fonts/vendor-fonts.mjs)`);
+  for (const fam of stackFamilies) if (!GS.GEN_SCRIPT_FONT_FAMILIES.includes(fam.replace(/ /g, "+") + ":") && !/^(IBM Plex Mono|IBM Plex Sans|Playfair Display)$/.test(fam)) errs.push(`4bu: семейство «${fam}» не названо в GEN_SCRIPT_FONT_FAMILIES — в экспортированном файле его не будет`);
+  for (const m of fontsCss.matchAll(/url\("\/fonts\/([^"]+)"\)/g)) {
+    try { await fsm.access(new URL(`../client/public/fonts/${m[1]}`, import.meta.url)); } catch { errs.push(`4bu: client/public/fonts/${m[1]} — файла нет, а fonts.css на него ссылается`); }
+  }
+  for (const fam of ["Noto Sans", "Noto Serif", "Noto Sans Mono"]) if (!new RegExp(`/\\* ${fam} · greek-ext \\*/`).test(fontsCss)) errs.push(`4bu: ${fam} — нет подмножества greek-ext (политоника древнегреческого)`);
+  if (!/:lang\(grc\) \{[^}]*--sans: "Noto Sans"/.test(GS.GEN_SCRIPT_CSS)) errs.push("4bu: GEN_SCRIPT_CSS — под :lang(grc) стек не начинается с Noto (слово набирается двумя шрифтами)");
+  // правила — на :dir() и на :lang() самого элемента: .doc-content, несущий lang/dir сам (режимы, обогащения), их получает
+  if (/\[dir="rtl"\]/.test(GS.GEN_SCRIPT_CSS) || !/\.doc-content:is\(:lang\(ar\)/.test(GS.GEN_SCRIPT_CSS) || !/\.doc-content :is\(ul, ol\):dir\(rtl\)/.test(GS.GEN_SCRIPT_CSS)) errs.push("4bu: GEN_SCRIPT_CSS — правила снова на предке ([dir=rtl] X / :lang() X): режимы и обогащения их не получат");
+  for (const f of ["EnrichmentPanel", "TransformPanel"]) if (!/\{\.\.\.contentAttrs\}/.test(await rd(`../client/src/components/edit/${f}.tsx`))) errs.push(`4bu: ${f} — содержимое без lang/dir документа (useContentLangAttrs)`);
+  if (!/data-content-dir=/.test(hx) || !/modeContent\.setAttribute\("dir", contentDir\)/.test(hx) || !/buildModesExportSection\(modeRows, row\.lang\)/.test(hx)) errs.push("4bu: html-exporter — режимы выгрузки без lang/dir документа");
+  // PNG: шрифты проекта регистрируются до createCanvas
+  const PF = await import("./services/export/png-fonts.js");
+  if (PF.ensurePngFonts().length !== 6) errs.push(`4bu: png-fonts — зарегистрировано ${PF.ensurePngFonts().length} из 6 шрифтов server/assets/fonts`);
+  const pngSrc = strip(await rd("./services/export/png-exporter.ts"));
+  if (!/ensurePngFonts\(\);[\s\S]*createCanvas\(W, H\)/.test(pngSrc) || /'IBM Plex (Mono|Sans)'/.test(pngSrc)) errs.push("4bu: png-exporter — шрифты не из png-fonts (ensurePngFonts до createCanvas, стеки PNG_MONO/PNG_SANS)");
   const sv = strip(await rd("../client/src/components/document/SectionView.tsx"));
-  if (!/genLangContentAttrs\(contentLang\)/.test(sv) || !/form\.setAttribute\("dir", "ltr"\)/.test(sv)) errs.push("4bu: SectionView — тело раздела без lang/dir документа либо форма правки без dir=ltr");
+  if (!/genLangContentAttrs\(contentLang\)/.test(sv) || !/form\.setAttribute\("dir", uiDirOfPage\(\)\)/.test(sv)) errs.push("4bu: SectionView — тело раздела без lang/dir документа либо форма правки не в направлении интерфейса (uiDirOfPage)");
+  // 4bu-е: направление ИНТЕРФЕЙСА (2026-11-26, третья правка) — dir на <html> по языку, стили — логическими свойствами
+  if (LOC.uiLocaleDir("ar") !== "rtl" || LOC.uiLocaleDir("fa-IR") !== "rtl" || LOC.uiLocaleDir("he") !== "rtl" || LOC.uiLocaleDir("ru") !== "ltr" || LOC.uiLocaleDir("") !== "ltr" || LOC.UI_LOCALES.some((l: string) => LOC.uiLocaleDir(l) !== "ltr" && !LOC.RTL_UI_LANGS.includes(l))) errs.push("4bu: uiLocaleDir — ar/fa/he справа налево, ru и пусто слева направо");
+  const i18nStoreSrc = strip(await rd("../client/src/i18n/i18n-store.ts"));
+  if (!/document\.documentElement\.dir = uiLocaleDir\(locale\)/.test(i18nStoreSrc) || /document\.documentElement\.lang = (locale|initial);\s*\n\s*(if|const|\})/.test(i18nStoreSrc.replace(/export function applyDocumentLocale[\s\S]*?\n\}/, ""))) errs.push("4bu: i18n-store — <html dir> не ставится вместе с <html lang> (applyDocumentLocale)");
+  {
+    const cp = await import("node:child_process");
+    const r = cp.spawnSync("python3", [new URL("../scripts/checks/css_logical.py", import.meta.url).pathname, "--check"], { encoding: "utf8" });
+    if (r.status !== 0) errs.push(`4bu: globals.css — объявления с привязкой к стороне (${(r.stdout || r.stderr || "").trim()}); прогнать python3 scripts/checks/css_logical.py`);
+  }
+  const uiDirBlock = css.slice(css.indexOf("/* ui-dir: begin */"), css.indexOf("/* ui-dir: end */"));
+  for (const [what, re] of [["острова кода слева направо", /\.diff-line,[\s\S]*direction: ltr/], ["стрелка списка", /\.form-select:dir\(rtl\)/], ["боковая панель", /\.app-sidebar-mobile:dir\(rtl\)[\s\S]*translateX\(100%\)/], ["маркеры раскрытия", /summary:dir\(rtl\)::before/], ["разрядка вязи", /:lang\(ar\)[^{]*\* \{\s*letter-spacing: normal !important/]] as [string, RegExp][]) if (!re.test(uiDirBlock)) errs.push(`4bu: globals.css, блок ui-dir — нет правила «${what}»`);
+  if (!/className="gm-overlay visible" dir="ltr"/.test(await rd("../client/src/components/graph/GraphModal.tsx"))) errs.push("4bu: GraphModal — окно графа не остров слева направо (dir=ltr на корне)");
+  {
+    const fsn = await import("node:fs");
+    const walk = (d: string): string[] => fsn.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(`${d}/${e.name}`) : /\.tsx$/.test(e.name) ? [`${d}/${e.name}`] : []);
+    const root = new URL("../client/src", import.meta.url).pathname;
+    const physical = walk(root).filter((f) => /\b(margin|padding|border)(Left|Right):|textAlign: *"(left|right)"/.test(fsn.readFileSync(f, "utf8"))).map((f) => f.slice(root.length + 1));
+    if (physical.length) errs.push(`4bu: встроенные стили с привязкой к стороне (marginLeft → marginInlineStart …): ${physical.join(", ")}`);
+  }
   if (!/contentLang=\{synthesis\.lang\}/.test(await rd("../client/src/components/document/DocumentView.tsx"))) errs.push("4bu: DocumentView не передаёт язык документа разделам");
   const form = strip(await rd("../client/src/components/synthesis/SynthesisForm.tsx"));
   if (!/data-testid="gen-lang-experimental"/.test(form) || !/genLangInfo\(v\)\?\.experimental/.test(form)) errs.push("4bu: SynthesisForm — нет пометки и предупреждения экспериментального языка");

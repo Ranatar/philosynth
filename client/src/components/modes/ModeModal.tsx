@@ -402,7 +402,7 @@ export function ModeModal({
                 className="action-btn"
                 id="modeAbortBtn"
                 title={tl("modes.modeModal.stopHint", "Остановить генерацию режима")}
-                style={{ marginLeft: 4 }}
+                style={{ marginInlineStart: 4 }}
                 onClick={handleAbort}
               >
                 {tl("modes.modeModal.stop", "⏹ Остановить")}

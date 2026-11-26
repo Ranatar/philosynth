@@ -35,6 +35,24 @@ export function isUiLocale(v: unknown): v is UiLocale {
   return typeof v === "string" && (UI_LOCALES as readonly string[]).includes(v);
 }
 
+/**
+ * Направление письма ИНТЕРФЕЙСА (2026-11-26, вне бесед). Языки, которые
+ * пишутся справа налево, перечислены по основному подтегу BCP 47 — список
+ * шире нынешних UI_LOCALES намеренно: язык интерфейса, добавленный беседой
+ * L, получает направление отсюда, без правок компонентов. Клиент ставит
+ * результат атрибутом `dir` на <html> рядом с `lang` (i18n-store), стили
+ * клиента написаны логическими свойствами (scripts/checks/css_logical.py) и
+ * зеркалятся сами; то, что логическими свойствами не выражается, — блок
+ * «Направление интерфейса» в части 3 globals.css.
+ */
+export type UiDir = "ltr" | "rtl";
+export const RTL_UI_LANGS: readonly string[] = ["ar", "fa", "he", "ur", "ps", "sd", "ug", "yi", "dv", "ckb"];
+
+export function uiLocaleDir(locale: string | null | undefined): UiDir {
+  const primary = (locale ?? "").trim().toLowerCase().split(/[-_]/)[0] ?? "";
+  return RTL_UI_LANGS.includes(primary) ? "rtl" : "ltr";
+}
+
 /** Правило владельца: язык генерации, соответствующий языку интерфейса. */
 export function genLangForUi(locale: string): string {
   return isUiLocale(locale) ? UI_TO_GEN[locale] : GEN_FALLBACK;

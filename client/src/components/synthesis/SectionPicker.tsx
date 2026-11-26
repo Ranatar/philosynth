@@ -147,7 +147,7 @@ export function SectionPicker({
               {key === "graph" && checked && (
                 <div
                   className="sec-item-row"
-                  style={{ marginLeft: 28, marginTop: 2 }}
+                  style={{ marginInlineStart: 28, marginTop: 2 }}
                 >
                   <label
                     className="checkbox-item"

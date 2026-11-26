@@ -267,6 +267,12 @@ function escapeForTextarea(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** Направление ИНТЕРФЕЙСА — атрибут dir живой страницы (ставит i18n-store);
+ *  doc формы бывает разобранным DOMParser-документом, у него dir нет. */
+export function uiDirOfPage(): "ltr" | "rtl" {
+  return typeof document !== "undefined" && document.documentElement.getAttribute("dir") === "rtl" ? "rtl" : "ltr";
+}
+
 /** Форма правки — на месте содержимого подраздела, под его <h4> (9.2, п. 4b) */
 export function renderSubsectionEditor(
   doc: Document,
@@ -291,10 +297,11 @@ export function renderSubsectionEditor(
     return e;
   };
   const form = el("div", "inline-edit-form subsection-edit-form");
-  // Форма — часть интерфейса (его языки пишутся слева направо), а тело
-  // раздела бывает справа налево (арабский, фарси): направление формы
-  // задано явно, текст правки на месте — по своей первой букве (dir="auto")
-  form.setAttribute("dir", "ltr");
+  // Форма — часть интерфейса, а тело раздела бывает иного направления
+  // (арабский документ в русском интерфейсе и наоборот): форма берёт
+  // направление ИНТЕРФЕЙСА (<html dir>, ставит i18n-store), текст правки
+  // на месте — по своей первой букве (dir="auto")
+  form.setAttribute("dir", uiDirOfPage());
   form.setAttribute("data-subsection-editor", edit.name);
 
   if (edit.phase === "saved") {

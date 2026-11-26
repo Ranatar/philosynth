@@ -21,7 +21,7 @@
       "static — строка вычисляется при импорте модуля и при смене языка сама не обновится."
     ],
     "paramsRenamed": "2026-09-23T08:35:02.522Z",
-    "synced": "2026-11-26T09:21:49.620Z",
+    "synced": "2026-11-26T11:08:39.632Z",
     "imported": "2026-11-26T09:21:50.406Z"
   },
   "strings": {
@@ -3659,7 +3659,7 @@
       "en": "Antithesis",
       "de": "Antithese",
       "from": {"en":"Антитезис","de":"Антитезис"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:42","client/src/components/graph/NodePanel.tsx:60","server/services/export/png-exporter.ts:578"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:42","client/src/components/graph/NodePanel.tsx:60","server/services/export/png-exporter.ts:581"]
     },
     "common.appTitle": {
       "ru": "Синтез Философской Концепции",
@@ -3694,14 +3694,14 @@
       "en": "Bridge",
       "de": "Brücke",
       "from": {"en":"Мост","de":"Мост"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:45","client/src/components/graph/GraphLegend.tsx:70","client/src/components/graph/NodePanel.tsx:57","server/services/export/png-exporter.ts:593"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:45","client/src/components/graph/GraphLegend.tsx:70","client/src/components/graph/NodePanel.tsx:57","server/services/export/png-exporter.ts:596"]
     },
     "common.cancel": {
       "ru": "Отмена",
       "en": "Cancel",
       "de": "Abbrechen",
       "from": {"en":"Отмена","de":"Отмена"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:376","client/src/components/catalog/SynthesisCard.tsx:442","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/discussion/CommentThread.tsx:133","client/src/components/discussion/CommentThread.tsx:154","client/src/components/discussion/CommentThread.tsx:292","client/src/components/document/DocumentHeader.tsx:422","client/src/components/document/SectionView.tsx:472","client/src/components/document/SectionView.tsx:492","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:659","client/src/components/edit/ElementEditor.tsx:759","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:464","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:246","client/src/components/edit/VersionConflictNotice.tsx:58","client/src/components/graph/EdgePanel.tsx:331","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/proposals/ProposalDecisionPanel.tsx:398","client/src/components/proposals/ProposalDecisionPanel.tsx:450","client/src/components/proposals/ProposalDecisionPanel.tsx:466","client/src/components/proposals/ProposeForm.tsx:210","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1912","client/src/pages/AdminPromptsPage.tsx:1976","client/src/pages/AdminPromptsPage.tsx:2007","client/src/pages/BillingPage.tsx:247","client/src/pages/BillingPage.tsx:372","client/src/pages/BillingPage.tsx:530","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434","client/src/pages/ReviewPage.tsx:121","client/src/pages/ReviewPage.tsx:139","client/src/pages/ReviewPage.tsx:368"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:376","client/src/components/catalog/SynthesisCard.tsx:442","client/src/components/catalog/VisibilityControl.tsx:222","client/src/components/discussion/CommentThread.tsx:133","client/src/components/discussion/CommentThread.tsx:154","client/src/components/discussion/CommentThread.tsx:292","client/src/components/document/DocumentHeader.tsx:422","client/src/components/document/SectionView.tsx:479","client/src/components/document/SectionView.tsx:499","client/src/components/edit/EdgeCreateForm.tsx:219","client/src/components/edit/ElementEditor.tsx:659","client/src/components/edit/ElementEditor.tsx:759","client/src/components/edit/RecommendationsPanel.tsx:672","client/src/components/edit/SubsectionRegenPanel.tsx:464","client/src/components/edit/TaxonomySelector.tsx:502","client/src/components/edit/TransformPanel.tsx:248","client/src/components/edit/VersionConflictNotice.tsx:58","client/src/components/graph/EdgePanel.tsx:332","client/src/components/lineage/LineageNodeActions.tsx:182","client/src/components/lineage/LineageNodeActions.tsx:324","client/src/components/proposals/ProposalDecisionPanel.tsx:398","client/src/components/proposals/ProposalDecisionPanel.tsx:450","client/src/components/proposals/ProposalDecisionPanel.tsx:466","client/src/components/proposals/ProposeForm.tsx:210","client/src/components/synthesis/GenerationProgress.tsx:112","client/src/components/synthesis/MembersPanel.tsx:303","client/src/pages/AdminPromptsPage.tsx:1087","client/src/pages/AdminPromptsPage.tsx:1122","client/src/pages/AdminPromptsPage.tsx:1392","client/src/pages/AdminPromptsPage.tsx:1912","client/src/pages/AdminPromptsPage.tsx:1976","client/src/pages/AdminPromptsPage.tsx:2007","client/src/pages/BillingPage.tsx:247","client/src/pages/BillingPage.tsx:372","client/src/pages/BillingPage.tsx:530","client/src/pages/ImportPage.tsx:167","client/src/pages/ImportPage.tsx:435","client/src/pages/ProfilePage.tsx:434","client/src/pages/ReviewPage.tsx:121","client/src/pages/ReviewPage.tsx:139","client/src/pages/ReviewPage.tsx:368"]
     },
     "common.capsule": {
       "ru": "Капсула",
@@ -3715,35 +3715,35 @@
       "en": "Category graph",
       "de": "Kategoriegraph",
       "from": {"en":"Граф категорий","de":"Граф категорий"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:41","client/src/pages/LandingPage.tsx:50"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:42","client/src/pages/LandingPage.tsx:50"]
     },
     "common.central": {
       "ru": "Центральная",
       "en": "Central",
       "de": "Zentral",
       "from": {"en":"Центральная","de":"Центральная"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:46","client/src/components/graph/GraphLegend.tsx:73","client/src/components/graph/NodePanel.tsx:55","server/services/export/png-exporter.ts:594"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:46","client/src/components/graph/GraphLegend.tsx:73","client/src/components/graph/NodePanel.tsx:55","server/services/export/png-exporter.ts:597"]
     },
     "common.centrality": {
       "ru": "Центральность",
       "en": "Centrality",
       "de": "Zentralität",
       "from": {"en":"Центральность","de":"Центральность"},
-      "where": ["client/src/components/edit/CategoryEditor.tsx:217","client/src/components/edit/VersionHistory.tsx:120","client/src/components/graph/EdgePanel.tsx:134","client/src/components/graph/NodePanel.tsx:323"]
+      "where": ["client/src/components/edit/CategoryEditor.tsx:217","client/src/components/edit/VersionHistory.tsx:120","client/src/components/graph/EdgePanel.tsx:135","client/src/components/graph/NodePanel.tsx:323"]
     },
     "common.certainty": {
       "ru": "Определённость",
       "en": "Certainty",
       "de": "Bestimmtheit",
       "from": {"en":"Определённость","de":"Определённость"},
-      "where": ["client/src/components/edit/CategoryEditor.tsx:218","client/src/components/edit/VersionHistory.tsx:121","client/src/components/graph/EdgePanel.tsx:140","client/src/components/graph/EdgePanel.tsx:374","client/src/components/graph/NodePanel.tsx:329"]
+      "where": ["client/src/components/edit/CategoryEditor.tsx:218","client/src/components/edit/VersionHistory.tsx:121","client/src/components/graph/EdgePanel.tsx:141","client/src/components/graph/EdgePanel.tsx:375","client/src/components/graph/NodePanel.tsx:329"]
     },
     "common.close": {
       "ru": "Закрыть",
       "en": "Close",
       "de": "Schließen",
       "from": {"en":"Закрыть","de":"Закрыть"},
-      "where": ["client/src/components/discussion/DiscussionPanel.tsx:206","client/src/components/edit/EdgeCreateForm.tsx:143","client/src/components/edit/ElementEditor.tsx:699","client/src/components/edit/ElementEditor.tsx:867","client/src/components/edit/ElementEditor.tsx:874","client/src/components/edit/SectionHistory.tsx:87","client/src/components/edit/TransformPanel.tsx:175","client/src/components/lineage/LineageNodeActions.tsx:233","client/src/components/synthesis/PauseModal.tsx:897","client/src/components/synthesis/PauseModal.tsx:898","client/src/pages/BillingPage.tsx:808"]
+      "where": ["client/src/components/discussion/DiscussionPanel.tsx:206","client/src/components/edit/EdgeCreateForm.tsx:143","client/src/components/edit/ElementEditor.tsx:699","client/src/components/edit/ElementEditor.tsx:867","client/src/components/edit/ElementEditor.tsx:874","client/src/components/edit/SectionHistory.tsx:87","client/src/components/edit/TransformPanel.tsx:177","client/src/components/lineage/LineageNodeActions.tsx:233","client/src/components/synthesis/PauseModal.tsx:897","client/src/components/synthesis/PauseModal.tsx:898","client/src/pages/BillingPage.tsx:808"]
     },
     "common.closeWithIcon": {
       "ru": "✕ Закрыть",
@@ -3757,7 +3757,7 @@
       "en": "Really delete?",
       "de": "Wirklich löschen?",
       "from": {"en":"Точно удалить?","de":"Точно удалить?"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:430","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:319","client/src/pages/AdminPromptsPage.tsx:1113","client/src/pages/BillingPage.tsx:363","client/src/pages/ProfilePage.tsx:423"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:430","client/src/components/edit/RecommendationsPanel.tsx:665","client/src/components/graph/EdgePanel.tsx:320","client/src/pages/AdminPromptsPage.tsx:1113","client/src/pages/BillingPage.tsx:363","client/src/pages/ProfilePage.tsx:423"]
     },
     "common.createAccount": {
       "ru": "Создать аккаунт",
@@ -3799,7 +3799,7 @@
       "en": "Description",
       "de": "Beschreibung",
       "from": {"en":"Описание","de":"Описание"},
-      "where": ["client/src/components/edit/EdgeEditor.tsx:158","client/src/components/edit/ElementEditor.tsx:929","client/src/components/edit/EnrichmentPanel.tsx:43","client/src/components/edit/EnrichmentPanel.tsx:59","client/src/components/edit/TaxonomySelector.tsx:465","client/src/pages/AdminPromptsPage.tsx:1023"]
+      "where": ["client/src/components/edit/EdgeEditor.tsx:158","client/src/components/edit/ElementEditor.tsx:929","client/src/components/edit/EnrichmentPanel.tsx:44","client/src/components/edit/EnrichmentPanel.tsx:60","client/src/components/edit/TaxonomySelector.tsx:465","client/src/pages/AdminPromptsPage.tsx:1023"]
     },
     "common.dialectical": {
       "ru": "Диалектический",
@@ -3820,21 +3820,21 @@
       "en": "one-way",
       "de": "einseitig",
       "from": {"en":"однонаправленная","de":"однонаправленная"},
-      "where": ["client/src/components/edit/TaxonomySelector.tsx:96","client/src/components/graph/EdgePanel.tsx:224","client/src/pages/AdminPromptsPage.tsx:876"]
+      "where": ["client/src/components/edit/TaxonomySelector.tsx:96","client/src/components/graph/EdgePanel.tsx:225","client/src/pages/AdminPromptsPage.tsx:876"]
     },
     "common.directionReflexive": {
       "ru": "рефлексивная",
       "en": "reflexive",
       "de": "reflexiv",
       "from": {"en":"рефлексивная","de":"рефлексивная"},
-      "where": ["client/src/components/edit/TaxonomySelector.tsx:98","client/src/components/graph/EdgePanel.tsx:221","client/src/pages/AdminPromptsPage.tsx:878"]
+      "where": ["client/src/components/edit/TaxonomySelector.tsx:98","client/src/components/graph/EdgePanel.tsx:222","client/src/pages/AdminPromptsPage.tsx:878"]
     },
     "common.directionTwoWay": {
       "ru": "двунаправленная",
       "en": "two-way",
       "de": "wechselseitig",
       "from": {"en":"двунаправленная","de":"двунаправленная"},
-      "where": ["client/src/components/edit/TaxonomySelector.tsx:97","client/src/components/graph/EdgePanel.tsx:223","client/src/pages/AdminPromptsPage.tsx:877","client/src/utils/template-placeholders.ts:94"]
+      "where": ["client/src/components/edit/TaxonomySelector.tsx:97","client/src/components/graph/EdgePanel.tsx:224","client/src/pages/AdminPromptsPage.tsx:877","client/src/utils/template-placeholders.ts:94"]
     },
     "common.edgeType": {
       "ru": "Тип связи",
@@ -3848,7 +3848,7 @@
       "en": "✎ Edit",
       "de": "✎ Bearbeiten",
       "from": {"en":"✎ Редактировать","de":"✎ Редактировать"},
-      "where": ["client/src/components/edit/ElementEditor.tsx:780","client/src/components/graph/EdgePanel.tsx:281","client/src/components/graph/NodePanel.tsx:294"]
+      "where": ["client/src/components/edit/ElementEditor.tsx:780","client/src/components/graph/EdgePanel.tsx:282","client/src/components/graph/NodePanel.tsx:294"]
     },
     "common.elementNotFound": {
       "ru": "Элемент не найден",
@@ -3884,7 +3884,7 @@
       "en": "Formalized",
       "de": "Formalisiert",
       "from": {"en":"Формализованная","de":"Формализованная"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:53","client/src/components/graph/NodePanel.tsx:69","server/services/export/png-exporter.ts:585"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:53","client/src/components/graph/NodePanel.tsx:69","server/services/export/png-exporter.ts:588"]
     },
     "common.formulation": {
       "ru": "Формулировка",
@@ -3912,7 +3912,7 @@
       "en": "Generative",
       "de": "Generativ",
       "from": {"en":"Генеративная","de":"Генеративная"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:43","client/src/components/graph/GraphLegend.tsx:67","client/src/components/graph/NodePanel.tsx:61","server/services/export/png-exporter.ts:592"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:43","client/src/components/graph/GraphLegend.tsx:67","client/src/components/graph/NodePanel.tsx:61","server/services/export/png-exporter.ts:595"]
     },
     "common.graphLower": {
       "ru": "граф",
@@ -3926,14 +3926,14 @@
       "en": "Ground",
       "de": "Begründung",
       "from": {"en":"Основание","de":"Основание"},
-      "where": ["client/src/components/edit/RecommendationsPanel.tsx:544","client/src/components/graph/GraphLegend.tsx:52","client/src/components/graph/NodePanel.tsx:68","server/services/export/png-exporter.ts:584"]
+      "where": ["client/src/components/edit/RecommendationsPanel.tsx:544","client/src/components/graph/GraphLegend.tsx:52","client/src/components/graph/NodePanel.tsx:68","server/services/export/png-exporter.ts:587"]
     },
     "common.integrating": {
       "ru": "Интегрирующая",
       "en": "Integrating",
       "de": "Integrierend",
       "from": {"en":"Интегрирующая","de":"Интегрирующая"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:51","client/src/components/graph/NodePanel.tsx:67","server/services/export/png-exporter.ts:583"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:51","client/src/components/graph/NodePanel.tsx:67","server/services/export/png-exporter.ts:586"]
     },
     "common.invalidData": {
       "ru": "Невалидные данные",
@@ -3954,7 +3954,7 @@
       "en": "Justification",
       "de": "Begründung",
       "from": {"en":"Обоснование","de":"Обоснование"},
-      "where": ["client/src/components/edit/ElementEditor.tsx:951","client/src/components/edit/EnrichmentPanel.tsx:45","client/src/components/edit/EnrichmentPanel.tsx:53","client/src/components/edit/EnrichmentPanel.tsx:61","client/src/components/edit/ThesisEditor.tsx:90","client/src/components/edit/VersionHistory.tsx:124"]
+      "where": ["client/src/components/edit/ElementEditor.tsx:951","client/src/components/edit/EnrichmentPanel.tsx:46","client/src/components/edit/EnrichmentPanel.tsx:54","client/src/components/edit/EnrichmentPanel.tsx:62","client/src/components/edit/ThesisEditor.tsx:90","client/src/components/edit/VersionHistory.tsx:124"]
     },
     "common.kant": {
       "ru": "Кант",
@@ -3968,7 +3968,7 @@
       "en": "Loading…",
       "de": "Wird geladen…",
       "from": {"en":"Загрузка…","de":"Загрузка…"},
-      "where": ["client/src/components/catalog/SimilarConcepts.tsx:302","client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/discussion/DiscussionPanel.tsx:224","client/src/components/discussion/DiscussionTab.tsx:121","client/src/components/discussion/ReviewsTab.tsx:76","client/src/components/document/SectionView.tsx:395","client/src/components/document/SectionView.tsx:411","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/components/proposals/ProposalDecisionPanel.tsx:310","client/src/components/proposals/ProposalsTab.tsx:43","client/src/components/proposals/ProposeForm.tsx:177","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1882","client/src/pages/AdminPromptsPage.tsx:1909","client/src/pages/AdminPromptsPage.tsx:1918","client/src/pages/AdminPromptsPage.tsx:1973","client/src/pages/AdminPromptsPage.tsx:2001","client/src/pages/BillingPage.tsx:331","client/src/pages/BillingPage.tsx:669","client/src/pages/SynthesisPage.tsx:1311"]
+      "where": ["client/src/components/catalog/SimilarConcepts.tsx:302","client/src/components/catalog/VisibilityControl.tsx:160","client/src/components/discussion/DiscussionPanel.tsx:224","client/src/components/discussion/DiscussionTab.tsx:121","client/src/components/discussion/ReviewsTab.tsx:76","client/src/components/document/SectionView.tsx:402","client/src/components/document/SectionView.tsx:418","client/src/components/edit/EditSectionCard.tsx:169","client/src/components/layout/NotificationBell.tsx:183","client/src/components/layout/NotificationSettings.tsx:78","client/src/components/lineage/LineageNodeActions.tsx:263","client/src/components/logs/ContextLogViewer.tsx:157","client/src/components/proposals/ProposalDecisionPanel.tsx:310","client/src/components/proposals/ProposalsTab.tsx:43","client/src/components/proposals/ProposeForm.tsx:177","client/src/pages/AdminPromptsPage.tsx:448","client/src/pages/AdminPromptsPage.tsx:771","client/src/pages/AdminPromptsPage.tsx:1014","client/src/pages/AdminPromptsPage.tsx:1342","client/src/pages/AdminPromptsPage.tsx:1431","client/src/pages/AdminPromptsPage.tsx:1545","client/src/pages/AdminPromptsPage.tsx:1549","client/src/pages/AdminPromptsPage.tsx:1882","client/src/pages/AdminPromptsPage.tsx:1909","client/src/pages/AdminPromptsPage.tsx:1918","client/src/pages/AdminPromptsPage.tsx:1973","client/src/pages/AdminPromptsPage.tsx:2001","client/src/pages/BillingPage.tsx:331","client/src/pages/BillingPage.tsx:669","client/src/pages/SynthesisPage.tsx:1311"]
     },
     "common.logIn": {
       "ru": "Войти",
@@ -3982,7 +3982,7 @@
       "en": "No graph.",
       "de": "Kein Graph.",
       "from": {"en":"Нет графа.","de":"Нет графа."},
-      "where": ["server/services/export/json-exporter.ts:53","server/services/export/mmd-exporter.ts:31","server/services/export/png-exporter.ts:42"]
+      "where": ["server/services/export/json-exporter.ts:53","server/services/export/mmd-exporter.ts:31","server/services/export/png-exporter.ts:44"]
     },
     "common.noSynthesisAccess": {
       "ru": "Нет доступа к синтезу",
@@ -4011,7 +4011,7 @@
       "en": "Peripheral",
       "de": "Peripher",
       "from": {"en":"Периферийная","de":"Периферийная"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:55","client/src/components/graph/GraphLegend.tsx:76","client/src/components/graph/NodePanel.tsx:56","server/services/export/png-exporter.ts:595"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:55","client/src/components/graph/GraphLegend.tsx:76","client/src/components/graph/NodePanel.tsx:56","server/services/export/png-exporter.ts:598"]
     },
     "common.planNotFound": {
       "ru": "План не найден",
@@ -4025,7 +4025,7 @@
       "en": "Pre-horizon",
       "de": "Vorhorizont",
       "from": {"en":"Предгоризонт","de":"Предгоризонт"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:50","client/src/components/graph/NodePanel.tsx:66","server/services/export/png-exporter.ts:582"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:50","client/src/components/graph/NodePanel.tsx:66","server/services/export/png-exporter.ts:585"]
     },
     "common.readyReplacement": {
       "ru": "Готовая замена",
@@ -4039,7 +4039,7 @@
       "en": "Reassembled",
       "de": "Neu zusammengesetzt",
       "from": {"en":"Пересобранная","de":"Пересобранная"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:48","client/src/components/graph/NodePanel.tsx:64","server/services/export/png-exporter.ts:580"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:48","client/src/components/graph/NodePanel.tsx:64","server/services/export/png-exporter.ts:583"]
     },
     "common.regenerate": {
       "ru": "Перегенерировать",
@@ -4053,14 +4053,14 @@
       "en": "Save",
       "de": "Speichern",
       "from": {"en":"Сохранить","de":"Сохранить"},
-      "where": ["client/src/components/catalog/SynthesisCard.tsx:365","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/discussion/CommentThread.tsx:130","client/src/components/document/DocumentHeader.tsx:414","client/src/components/document/SectionView.tsx:468","client/src/components/edit/ElementEditor.tsx:751","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1973","client/src/pages/BillingPage.tsx:415","client/src/pages/ProfilePage.tsx:244","client/src/pages/ReviewPage.tsx:118"]
+      "where": ["client/src/components/catalog/SynthesisCard.tsx:365","client/src/components/catalog/VisibilityControl.tsx:211","client/src/components/discussion/CommentThread.tsx:130","client/src/components/document/DocumentHeader.tsx:414","client/src/components/document/SectionView.tsx:475","client/src/components/edit/ElementEditor.tsx:751","client/src/pages/AdminPromptsPage.tsx:1084","client/src/pages/AdminPromptsPage.tsx:1973","client/src/pages/BillingPage.tsx:415","client/src/pages/ProfilePage.tsx:244","client/src/pages/ReviewPage.tsx:118"]
     },
     "common.saving": {
       "ru": "Сохранение…",
       "en": "Saving…",
       "de": "Wird gespeichert…",
       "from": {"en":"Сохранение…","de":"Сохранение…"},
-      "where": ["client/src/components/document/SectionView.tsx:468","client/src/components/edit/ElementEditor.tsx:751","client/src/components/synthesis/PauseModal.tsx:726","client/src/pages/ProfilePage.tsx:244"]
+      "where": ["client/src/components/document/SectionView.tsx:475","client/src/components/edit/ElementEditor.tsx:751","client/src/components/synthesis/PauseModal.tsx:726","client/src/pages/ProfilePage.tsx:244"]
     },
     "common.sectionNotFound": {
       "ru": "Раздел не найден",
@@ -4081,7 +4081,7 @@
       "en": "Synthesis",
       "de": "Synthese",
       "from": {"en":"Синтез","de":"Синтез"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:40","client/src/components/pool/PoolCard.tsx:75","client/src/pages/BillingPage.tsx:962","server/services/export/png-exporter.ts:576"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:40","client/src/components/pool/PoolCard.tsx:75","client/src/pages/BillingPage.tsx:962","server/services/export/png-exporter.ts:579"]
     },
     "common.synthesisNotFound": {
       "ru": "Синтез не найден",
@@ -4110,7 +4110,7 @@
       "en": "Thesis",
       "de": "These",
       "from": {"en":"Тезис","de":"Тезис"},
-      "where": ["client/src/components/edit/ElementEditor.tsx:152","client/src/components/edit/ElementEditor.tsx:278","client/src/components/graph/GraphLegend.tsx:41","client/src/components/graph/NodePanel.tsx:59","server/services/export/png-exporter.ts:577"]
+      "where": ["client/src/components/edit/ElementEditor.tsx:152","client/src/components/edit/ElementEditor.tsx:278","client/src/components/graph/GraphLegend.tsx:41","client/src/components/graph/NodePanel.tsx:59","server/services/export/png-exporter.ts:580"]
     },
     "common.thesisType": {
       "ru": "Тип тезиса",
@@ -4152,7 +4152,7 @@
       "en": "Verifying",
       "de": "Verifizierend",
       "from": {"en":"Верифицирующая","de":"Верифицирующая"},
-      "where": ["client/src/components/graph/GraphLegend.tsx:54","client/src/components/graph/NodePanel.tsx:70","server/services/export/png-exporter.ts:586"]
+      "where": ["client/src/components/graph/GraphLegend.tsx:54","client/src/components/graph/NodePanel.tsx:70","server/services/export/png-exporter.ts:589"]
     },
     "createSynthesisPage.doneOpening": {
       "ru": "Готово — открываю документ…",
@@ -6320,56 +6320,56 @@
       "en": "Nothing was saved — the other person's edit is intact. Re-read: the current text will appear alongside, what you typed stays in the field, and you can save again.",
       "de": "Nichts wurde gespeichert — die fremde Änderung ist unberührt. Neu einlesen: Der aktuelle Text erscheint daneben, Ihre Eingabe bleibt im Feld, und Sie können erneut speichern.",
       "from": {"en":"Запись не сделана — чужая правка не затёрта. Перечитайте: текущий текст появится рядом, ваше набранное останется в поле, и запись можно будет повторить.","de":"Запись не сделана — чужая правка не затёрта. Перечитайте: текущий текст появится рядом, ваше набранное останется в поле, и запись можно будет повторить."},
-      "where": ["client/src/components/document/SectionView.tsx:452"]
+      "where": ["client/src/components/document/SectionView.tsx:459"]
     },
     "document.sectionView.conflictLabel": {
       "ru": "Конфликт версий",
       "en": "Version conflict",
       "de": "Versionskonflikt",
       "from": {"en":"Конфликт версий","de":"Конфликт версий"},
-      "where": ["client/src/components/document/SectionView.tsx:442"]
+      "where": ["client/src/components/document/SectionView.tsx:449"]
     },
     "document.sectionView.conflictReread": {
       "ru": "Перечитать и повторить",
       "en": "Re-read and retry",
       "de": "Neu einlesen und wiederholen",
       "from": {"en":"Перечитать и повторить","de":"Перечитать и повторить"},
-      "where": ["client/src/components/document/SectionView.tsx:456"]
+      "where": ["client/src/components/document/SectionView.tsx:463"]
     },
     "document.sectionView.conflictRereadNote": {
       "ru": "Перечитано: ниже — текущий текст подраздела в документе; в поле — ваше набранное. Сведите их и сохраните снова.",
       "en": "Re-read: below is the subsection's current text in the document; the field holds what you typed. Reconcile them and save again.",
       "de": "Neu eingelesen: Unten steht der aktuelle Text des Unterabschnitts im Dokument; im Feld steht Ihre Eingabe. Führen Sie beides zusammen und speichern Sie erneut.",
       "from": {"en":"Перечитано: ниже — текущий текст подраздела в документе; в поле — ваше набранное. Сведите их и сохраните снова.","de":"Перечитано: ниже — текущий текст подраздела в документе; в поле — ваше набранное. Сведите их и сохраните снова."},
-      "where": ["client/src/components/document/SectionView.tsx:445"]
+      "where": ["client/src/components/document/SectionView.tsx:452"]
     },
     "document.sectionView.conflictRereading": {
       "ru": "Перечитываю…",
       "en": "Re-reading…",
       "de": "Lese neu ein…",
       "from": {"en":"Перечитываю…","de":"Перечитываю…"},
-      "where": ["client/src/components/document/SectionView.tsx:455"]
+      "where": ["client/src/components/document/SectionView.tsx:462"]
     },
     "document.sectionView.deleteConfirm": {
       "ru": "Точно удалить?",
       "en": "Really delete?",
       "de": "Wirklich löschen?",
       "from": {"en":"Точно удалить?","de":"Точно удалить?"},
-      "where": ["client/src/components/document/SectionView.tsx:487"]
+      "where": ["client/src/components/document/SectionView.tsx:494"]
     },
     "document.sectionView.deleteSubsection": {
       "ru": "Удалить подраздел",
       "en": "Delete subsection",
       "de": "Unterabschnitt löschen",
       "from": {"en":"Удалить подраздел","de":"Удалить подраздел"},
-      "where": ["client/src/components/document/SectionView.tsx:500"]
+      "where": ["client/src/components/document/SectionView.tsx:507"]
     },
     "document.sectionView.deleteSubsectionHint": {
       "ru": "Убрать подраздел из раздела целиком (снимок версии раздела остаётся)",
       "en": "Remove the whole subsection from the section (a version snapshot of the section is kept)",
       "de": "Den ganzen Unterabschnitt aus dem Abschnitt entfernen (ein Versionsschnappschuss des Abschnitts bleibt erhalten)",
       "from": {"en":"Убрать подраздел из раздела целиком (снимок версии раздела остаётся)","de":"Убрать подраздел из раздела целиком (снимок версии раздела остаётся)"},
-      "where": ["client/src/components/document/SectionView.tsx:504"]
+      "where": ["client/src/components/document/SectionView.tsx:511"]
     },
     "document.sectionView.deleteSubsectionNested": {
       "ru": "Вложенные подразделы уйдут вместе с ним: {names}.",
@@ -6377,21 +6377,21 @@
       "de": "Verschachtelte Unterabschnitte gehen mit ihm: {names}.",
       "from": {"en":"Вложенные подразделы уйдут вместе с ним: {names}.","de":"Вложенные подразделы уйдут вместе с ним: {names}."},
       "params": {"names":""},
-      "where": ["client/src/components/document/SectionView.tsx:517"]
+      "where": ["client/src/components/document/SectionView.tsx:524"]
     },
     "document.sectionView.deleteSubsectionWarn": {
       "ru": "Подраздел уйдёт из раздела целиком вместе с заголовком; набранное в поле пропадёт. Снимок версии раздела сохранится, откат вернёт подраздел; перегенерация раздела тоже вернёт его, если он есть в карте подразделов.",
       "en": "The subsection will be removed from the section entirely, heading included; what you typed in the field will be lost. A version snapshot of the section is kept and a rollback brings the subsection back; regenerating the section also brings it back if it is in the subsection map.",
       "de": "Der Unterabschnitt wird samt Überschrift vollständig aus dem Abschnitt entfernt; das im Feld Eingegebene geht verloren. Ein Versionsschnappschuss des Abschnitts bleibt erhalten, ein Rollback bringt den Unterabschnitt zurück; das Neugenerieren des Abschnitts bringt ihn ebenfalls zurück, wenn er in der Unterabschnittskarte steht.",
       "from": {"en":"Подраздел уйдёт из раздела целиком вместе с заголовком; набранное в поле пропадёт. Снимок версии раздела сохранится, откат вернёт подраздел; перегенерация раздела тоже вернёт его, если он есть в карте подразделов.","de":"Подраздел уйдёт из раздела целиком вместе с заголовком; набранное в поле пропадёт. Снимок версии раздела сохранится, откат вернёт подраздел; перегенерация раздела тоже вернёт его, если он есть в карте подразделов."},
-      "where": ["client/src/components/document/SectionView.tsx:515"]
+      "where": ["client/src/components/document/SectionView.tsx:522"]
     },
     "document.sectionView.deleting": {
       "ru": "Удаление…",
       "en": "Deleting…",
       "de": "Wird gelöscht…",
       "from": {"en":"Удаление…","de":"Удаление…"},
-      "where": ["client/src/components/document/SectionView.tsx:486"]
+      "where": ["client/src/components/document/SectionView.tsx:493"]
     },
     "document.sectionView.edit": {
       "ru": "Правка",
@@ -6426,63 +6426,63 @@
       "en": "⟳ edited",
       "de": "⟳ geändert",
       "from": {"en":"⟳ изменён","de":"⟳ изменён"},
-      "where": ["client/src/components/document/SectionView.tsx:827"]
+      "where": ["client/src/components/document/SectionView.tsx:834"]
     },
     "document.sectionView.editedHint": {
       "ru": "Раздел изменён после генерации: перегенерация, правка таблицы или подраздела",
       "en": "Section changed after generation: regeneration, a table edit or a subsection edit",
       "de": "Abschnitt nach der Generierung geändert: Neugenerierung, Tabellen- oder Unterabschnittsänderung",
       "from": {"en":"Раздел изменён после генерации: перегенерация, правка таблицы или подраздела","de":"Раздел изменён после генерации: перегенерация, правка таблицы или подраздела"},
-      "where": ["client/src/components/document/SectionView.tsx:824"]
+      "where": ["client/src/components/document/SectionView.tsx:831"]
     },
     "document.sectionView.gotIt": {
       "ru": "Понятно",
       "en": "Got it",
       "de": "Verstanden",
       "from": {"en":"Понятно","de":"Понятно"},
-      "where": ["client/src/components/document/SectionView.tsx:319"]
+      "where": ["client/src/components/document/SectionView.tsx:326"]
     },
     "document.sectionView.headingNotEditable": {
       "ru": "Заголовок подраздела здесь не правится.",
       "en": "The subsection heading is not edited here.",
       "de": "Die Überschrift des Unterabschnitts wird hier nicht bearbeitet.",
       "from": {"en":"Заголовок подраздела здесь не правится.","de":"Заголовок подраздела здесь не правится."},
-      "where": ["client/src/components/document/SectionView.tsx:420"]
+      "where": ["client/src/components/document/SectionView.tsx:427"]
     },
     "document.sectionView.keysHint": {
       "ru": "Esc — отмена · Ctrl+Enter — сохранить",
       "en": "Esc — cancel · Ctrl+Enter — save",
       "de": "Esc — abbrechen · Ctrl+Enter — speichern",
       "from": {"en":"Esc — отмена · Ctrl+Enter — сохранить","de":"Esc — отмена · Ctrl+Enter — сохранить"},
-      "where": ["client/src/components/document/SectionView.tsx:478"]
+      "where": ["client/src/components/document/SectionView.tsx:485"]
     },
     "document.sectionView.markupHelp": {
       "ru": "Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. ",
       "en": "Editable markup: <p> — paragraph, <strong> — emphasis, <ul>/<ol> with <li> — lists, <h5> — subheading, <table> — table. ",
       "de": "Bearbeitet wird das Markup: <p> — Absatz, <strong> — Hervorhebung, <ul>/<ol> mit <li> — Listen, <h5> — Zwischenüberschrift, <table> — Tabelle. ",
       "from": {"en":"Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. ","de":"Правится разметка: <p> — абзац, <strong> — выделение, <ul>/<ol> с <li> — списки, <h5> — подзаголовок, <table> — таблица. "},
-      "where": ["client/src/components/document/SectionView.tsx:419"]
+      "where": ["client/src/components/document/SectionView.tsx:426"]
     },
     "document.sectionView.nestedSubsectionLine": {
       "ru": " Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять.",
       "en": " The line “subsection N” marks a nested subsection: it has its own editing, do not delete the line.",
       "de": " Die Zeile „Unterabschnitt N“ markiert die Stelle eines eingebetteten Unterabschnitts: er wird separat bearbeitet, die Zeile nicht löschen.",
       "from": {"en":" Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять.","de":" Строка «подраздел N» — место вложенного подраздела: у него своя правка, строку не удалять."},
-      "where": ["client/src/components/document/SectionView.tsx:424"]
+      "where": ["client/src/components/document/SectionView.tsx:431"]
     },
     "document.sectionView.nestedSubsectionPlaque": {
       "ru": " Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить.",
       "en": " The “nested subsection” plaque marks a nested subsection: it has its own editor; the plaque cannot be deleted or moved.",
       "de": " Die Plakette „verschachtelter Unterabschnitt“ markiert einen verschachtelten Unterabschnitt: er wird gesondert bearbeitet; die Plakette kann weder gelöscht noch verschoben werden.",
       "from": {"en":" Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить.","de":" Плашка «вложенный подраздел» — место вложенного подраздела: у него своя правка, плашку нельзя удалить или переставить."},
-      "where": ["client/src/components/document/SectionView.tsx:423"]
+      "where": ["client/src/components/document/SectionView.tsx:430"]
     },
     "document.sectionView.parseWarningsLead": {
       "ru": "Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте.",
       "en": "What the service noticed while accepting the model's answer: substitutions during analysis into tables (a value recognised by position or replaced with a default) and omissions — subsections missing from the answer. The section is kept as is; check what is named below and regenerate if needed.",
       "de": "Was der Dienst beim Annehmen der Modellantwort bemerkt hat: Ersetzungen bei der Auswertung in Tabellen (ein Wert nach Position erkannt oder durch einen Standardwert ersetzt) und Auslassungen — Unterabschnitte, die in der Antwort fehlten. Der Abschnitt bleibt, wie er ist; prüfen Sie das unten Genannte und generieren Sie bei Bedarf neu.",
       "from": {"en":"Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте.","de":"Что служба заметила, принимая ответ модели: подстановки при разборе в таблицы (значение опознано по месту или заменено умолчанием) и пропуски — подразделы, которых в ответе не оказалось. Раздел сохранён как есть; сверьте названное ниже и при нужде перегенерируйте."},
-      "where": ["client/src/components/document/SectionView.tsx:856"]
+      "where": ["client/src/components/document/SectionView.tsx:863"]
     },
     "document.sectionView.parsedWithLosses": {
       "ru": "⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})",
@@ -6490,91 +6490,91 @@
       "de": "⚠ Anmerkungen zur letzten Generierung ({n, plural, one {# Anmerkung} other {# Anmerkungen}})",
       "from": {"en":"⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})","de":"⚠ Замечания к последней генерации ({n, plural, one {# замечание} few {# замечания} many {# замечаний} other {# замечания}})"},
       "params": {"n":""},
-      "where": ["client/src/components/document/SectionView.tsx:852"]
+      "where": ["client/src/components/document/SectionView.tsx:859"]
     },
     "document.sectionView.richBodyLabel": {
       "ru": "Текст подраздела",
       "en": "Subsection text",
       "de": "Text des Unterabschnitts",
       "from": {"en":"Текст подраздела","de":"Текст подраздела"},
-      "where": ["client/src/components/document/SectionView.tsx:394"]
+      "where": ["client/src/components/document/SectionView.tsx:401"]
     },
     "document.sectionView.richHelp": {
       "ru": "Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. ",
       "en": "Edit the text in place: the panel buttons insert a paragraph, subheading, emphasis, lists, a table, callouts and risk labels — exactly what the document markup allows; pasted content is reduced to the same set. ",
       "de": "Der Text wird an Ort und Stelle bearbeitet: Die Schaltflächen setzen Absatz, Zwischenüberschrift, Hervorhebung, Listen, Tabelle, Hinweiskästen und Risikomarken — genau das, was die Dokumentauszeichnung zulässt; Eingefügtes wird auf dieselbe Menge zurückgeführt. ",
       "from": {"en":"Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. ","de":"Правится текст на месте: кнопки панели ставят абзац, подзаголовок, выделение, списки, таблицу, выноски и метки риска — ровно то, что допускает разметка документа; вставка из буфера приводится к ней же. "},
-      "where": ["client/src/components/document/SectionView.tsx:418"]
+      "where": ["client/src/components/document/SectionView.tsx:425"]
     },
     "document.sectionView.savedServerFixedMarkup": {
       "ru": "Сохранено. Сервер поправил разметку:",
       "en": "Saved. The server corrected the markup:",
       "de": "Gespeichert. Der Server hat das Markup korrigiert:",
       "from": {"en":"Сохранено. Сервер поправил разметку:","de":"Сохранено. Сервер поправил разметку:"},
-      "where": ["client/src/components/document/SectionView.tsx:313"]
+      "where": ["client/src/components/document/SectionView.tsx:320"]
     },
     "document.sectionView.savedWithNotes": {
       "ru": "Сохранено.",
       "en": "Saved.",
       "de": "Gespeichert.",
       "from": {"en":"Сохранено.","de":"Сохранено."},
-      "where": ["client/src/components/document/SectionView.tsx:305"]
+      "where": ["client/src/components/document/SectionView.tsx:312"]
     },
     "document.sectionView.sectionExtraContext": {
       "ru": "Дополнительный контекст раздела",
       "en": "Additional section context",
       "de": "Zusätzlicher Kontext des Abschnitts",
       "from": {"en":"Дополнительный контекст раздела","de":"Дополнительный контекст раздела"},
-      "where": ["client/src/components/document/SectionView.tsx:873"]
+      "where": ["client/src/components/document/SectionView.tsx:880"]
     },
     "document.sectionView.serverFixedMarkup": {
       "ru": "Сервер поправил разметку:",
       "en": "The server adjusted the markup:",
       "de": "Der Server hat das Markup angepasst:",
       "from": {"en":"Сервер поправил разметку:","de":"Сервер поправил разметку:"},
-      "where": ["client/src/components/document/SectionView.tsx:312"]
+      "where": ["client/src/components/document/SectionView.tsx:319"]
     },
     "document.sectionView.subsectionMarkup": {
       "ru": "Разметка подраздела",
       "en": "Subsection markup",
       "de": "Markup des Unterabschnitts",
       "from": {"en":"Разметка подраздела","de":"Разметка подраздела"},
-      "where": ["client/src/components/document/SectionView.tsx:399"]
+      "where": ["client/src/components/document/SectionView.tsx:406"]
     },
     "document.sectionView.toContents": {
       "ru": "К содержанию",
       "en": "To contents",
       "de": "Zum Inhalt",
       "from": {"en":"К содержанию","de":"К содержанию"},
-      "where": ["client/src/components/document/SectionView.tsx:532"]
+      "where": ["client/src/components/document/SectionView.tsx:539"]
     },
     "document.sectionView.viewMarkup": {
       "ru": "Разметка",
       "en": "Markup",
       "de": "Auszeichnung",
       "from": {"en":"Разметка","de":"Разметка"},
-      "where": ["client/src/components/document/SectionView.tsx:376"]
+      "where": ["client/src/components/document/SectionView.tsx:383"]
     },
     "document.sectionView.viewMarkupHint": {
       "ru": "Показать разметку подраздела полем (прежний вид правки)",
       "en": "Show the subsection markup in a field (the previous editing view)",
       "de": "Auszeichnung des Unterabschnitts als Feld anzeigen (bisherige Bearbeitungsansicht)",
       "from": {"en":"Показать разметку подраздела полем (прежний вид правки)","de":"Показать разметку подраздела полем (прежний вид правки)"},
-      "where": ["client/src/components/document/SectionView.tsx:380"]
+      "where": ["client/src/components/document/SectionView.tsx:387"]
     },
     "document.sectionView.viewRich": {
       "ru": "Текст",
       "en": "Text",
       "de": "Text",
       "from": {"en":"Текст","de":"Текст"},
-      "where": ["client/src/components/document/SectionView.tsx:376"]
+      "where": ["client/src/components/document/SectionView.tsx:383"]
     },
     "document.sectionView.viewRichHint": {
       "ru": "Вернуться к правке текста на месте",
       "en": "Back to editing the text in place",
       "de": "Zurück zur Bearbeitung des Textes an Ort und Stelle",
       "from": {"en":"Вернуться к правке текста на месте","de":"Вернуться к правке текста на месте"},
-      "where": ["client/src/components/document/SectionView.tsx:381"]
+      "where": ["client/src/components/document/SectionView.tsx:388"]
     },
     "document.tableOfContents.contents": {
       "ru": "Содержание",
@@ -7771,49 +7771,49 @@
       "en": "philosophical grounds of the category and its place in the graph",
       "de": "philosophische Grundlagen der Kategorie und ihres Platzes im Graphen",
       "from": {"en":"философские основания категории и её места в графе","de":"философские основания категории и её места в графе"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:45"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:46"]
     },
     "edit.enrichmentPanel.characteristicJustification": {
       "ru": "Обоснование характеристики",
       "en": "Characteristic justification",
       "de": "Begründung des Merkmals",
       "from": {"en":"Обоснование характеристики","de":"Обоснование характеристики"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:63"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:64"]
     },
     "edit.enrichmentPanel.counterarguments": {
       "ru": "Контраргументы",
       "en": "Counterarguments",
       "de": "Gegenargumente",
       "from": {"en":"Контраргументы","de":"Контраргументы"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:54","client/src/components/edit/EnrichmentPanel.tsx:62"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:55","client/src/components/edit/EnrichmentPanel.tsx:63"]
     },
     "edit.enrichmentPanel.counterargumentsHint": {
       "ru": "возражения против связи, аналоги в других системах",
       "en": "objections to the relation, analogues in other systems",
       "de": "Einwände gegen die Beziehung, Analogien in anderen Systemen",
       "from": {"en":"возражения против связи, аналоги в других системах","de":"возражения против связи, аналоги в других системах"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:54"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:55"]
     },
     "edit.enrichmentPanel.edgeGrounds": {
       "ru": "философское обоснование связи",
       "en": "philosophical justification of the relation",
       "de": "philosophische Begründung der Beziehung",
       "from": {"en":"философское обоснование связи","de":"философское обоснование связи"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:53"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:54"]
     },
     "edit.enrichmentPanel.enrich": {
       "ru": "Обогатить",
       "en": "Enrich",
       "de": "Anreichern",
       "from": {"en":"Обогатить","de":"Обогатить"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:200"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:202"]
     },
     "edit.enrichmentPanel.enriching": {
       "ru": "Обогащение…",
       "en": "Enriching…",
       "de": "Anreicherung…",
       "from": {"en":"Обогащение…","de":"Обогащение…"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:200"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:202"]
     },
     "edit.enrichmentPanel.enrichmentTitle": {
       "ru": "Обогащение{elementLabel}",
@@ -7821,28 +7821,28 @@
       "de": "Anreicherung{elementLabel}",
       "from": {"en":"Обогащение{elementLabel}","de":"Обогащение{elementLabel}"},
       "params": {"elementLabel":"elementLabel ? ` · ${elementLabel}` : \"\""},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:177"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:179"]
     },
     "edit.enrichmentPanel.evolution": {
       "ru": "Эволюция",
       "en": "Evolution",
       "de": "Evolution",
       "from": {"en":"Эволюция","de":"Эволюция"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:44","client/src/components/edit/EnrichmentPanel.tsx:60"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:45","client/src/components/edit/EnrichmentPanel.tsx:61"]
     },
     "edit.enrichmentPanel.evolutionHint": {
       "ru": "как категория может измениться в свете современных тенденций",
       "en": "how the category may change in light of current trends",
       "de": "wie sich die Kategorie im Licht aktueller Tendenzen verändern kann",
       "from": {"en":"как категория может измениться в свете современных тенденций","de":"как категория может измениться в свете современных тенденций"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:44"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:45"]
     },
     "edit.enrichmentPanel.extendedDescription": {
       "ru": "расширенное описание, трактовки, аналоги",
       "en": "extended description, interpretations, analogues",
       "de": "erweiterte Beschreibung, Deutungen, Analogien",
       "from": {"en":"расширенное описание, трактовки, аналоги","de":"расширенное описание, трактовки, аналоги"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:43"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:44"]
     },
     "edit.enrichmentPanel.generatingChars": {
       "ru": "генерируется… · {liveChars} симв.",
@@ -7850,35 +7850,35 @@
       "de": "wird generiert… · {liveChars} Zeichen",
       "from": {"en":"генерируется… · {liveChars} симв.","de":"генерируется… · {liveChars} симв."},
       "params": {"liveChars":"stream.liveChars.toLocaleString(\"ru\")"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:231"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:233"]
     },
     "edit.enrichmentPanel.loadingHistory": {
       "ru": "загрузка истории…",
       "en": "loading history…",
       "de": "Verlauf wird geladen…",
       "from": {"en":"загрузка истории…","de":"загрузка истории…"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:238"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:240"]
     },
     "edit.enrichmentPanel.noEnrichments": {
       "ru": "Обогащений ещё нет.",
       "en": "No enrichments yet.",
       "de": "Noch keine Anreicherungen.",
       "from": {"en":"Обогащений ещё нет.","de":"Обогащений ещё нет."},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:241"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:243"]
     },
     "edit.enrichmentPanel.otherOperation": {
       "ru": "Идёт другая операция — дождитесь её завершения",
       "en": "Another operation is in progress — wait for it to finish",
       "de": "Ein anderer Vorgang läuft — warten Sie auf seinen Abschluss",
       "from": {"en":"Идёт другая операция — дождитесь её завершения","de":"Идёт другая операция — дождитесь её завершения"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:194"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:196"]
     },
     "edit.enrichmentPanel.pointRequest": {
       "ru": "Точечный запрос к Claude по этому элементу",
       "en": "A targeted request to Claude about this element",
       "de": "Gezielte Anfrage an Claude zu diesem Element",
       "from": {"en":"Точечный запрос к Claude по этому элементу","de":"Точечный запрос к Claude по этому элементу"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:195"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:197"]
     },
     "edit.enrichmentPanel.usageLine": {
       "ru": "{createdAt} · {inputTokens} вх. + {outputTokens} вых. · ${costUsd}",
@@ -7886,7 +7886,7 @@
       "de": "{createdAt} · {inputTokens} ein + {outputTokens} aus · ${costUsd}",
       "from": {"en":"{createdAt} · {inputTokens} вх. + {outputTokens} вых. · ${costUsd}","de":"{createdAt} · {inputTokens} вх. + {outputTokens} вых. · ${costUsd}"},
       "params": {"createdAt":"fmtDate(e.createdAt)","inputTokens":"e.inputTokens.toLocaleString(\"ru\")","outputTokens":"e.outputTokens.toLocaleString(\"ru\")","costUsd":"e.costUsd.toFixed(4)"},
-      "where": ["client/src/components/edit/EnrichmentPanel.tsx:265"]
+      "where": ["client/src/components/edit/EnrichmentPanel.tsx:267"]
     },
     "edit.glossaryTermEditor.acceptedDefinition": {
       "ru": "Принятое определение в данной концепции",
@@ -8785,7 +8785,7 @@
       "en": "Another transformation",
       "de": "Weitere Transformation",
       "from": {"en":"Ещё одна трансформация","de":"Ещё одна трансформация"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:281"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:283"]
     },
     "edit.transformPanel.completed": {
       "ru": "✓ {direction} — выполнено",
@@ -8793,7 +8793,7 @@
       "de": "✓ {direction} — ausgeführt",
       "from": {"en":"✓ {direction} — выполнено","de":"✓ {direction} — выполнено"},
       "params": {"direction":"DIRECTION_LABELS[done.direction]"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:274"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:276"]
     },
     "edit.transformPanel.confirmTransform": {
       "ru": "Подтвердите: {direction}, раздел будет заменён целиком.",
@@ -8801,21 +8801,21 @@
       "de": "Bestätigen Sie: {direction}, der Abschnitt wird vollständig ersetzt.",
       "from": {"en":"Подтвердите: {direction}, раздел будет заменён целиком.","de":"Подтвердите: {direction}, раздел будет заменён целиком."},
       "params": {"direction":"DIRECTION_LABELS[direction]"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:234"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:236"]
     },
     "edit.transformPanel.countersFailed": {
       "ru": "Не удалось загрузить счётчики",
       "en": "Failed to load the counters",
       "de": "Zähler konnten nicht geladen werden",
       "from": {"en":"Не удалось загрузить счётчики","de":"Не удалось загрузить счётчики"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:115"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:117"]
     },
     "edit.transformPanel.directConversion": {
       "ru": "Прямая конверсия: источник — единственный вход, контекст остальных разделов не используется.",
       "en": "Direct conversion: the source is the only input, the context of other sections is not used.",
       "de": "Direkte Konversion: die Quelle ist der einzige Input, der Kontext der übrigen Abschnitte wird nicht verwendet.",
       "from": {"en":"Прямая конверсия: источник — единственный вход, контекст остальных разделов не используется.","de":"Прямая конверсия: источник — единственный вход, контекст остальных разделов не используется."},
-      "where": ["client/src/components/edit/TransformPanel.tsx:203"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:205"]
     },
     "edit.transformPanel.generatingChars": {
       "ru": "{direction}: генерируется… {liveChars} симв.",
@@ -8823,56 +8823,56 @@
       "de": "{direction}: wird generiert… {liveChars} Zeichen",
       "from": {"en":"{direction}: генерируется… {liveChars} симв.","de":"{direction}: генерируется… {liveChars} симв."},
       "params": {"direction":"DIRECTION_LABELS[direction]","liveChars":"stream.liveChars.toLocaleString(\"ru\")"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:258"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:260"]
     },
     "edit.transformPanel.graphToTheses": {
       "ru": "Граф → Тезисы",
       "en": "Graph → Theses",
       "de": "Graph → Thesen",
       "from": {"en":"Граф → Тезисы","de":"Граф → Тезисы"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:190"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:192"]
     },
     "edit.transformPanel.history": {
       "ru": "История трансформаций",
       "en": "Transformation history",
       "de": "Verlauf der Transformationen",
       "from": {"en":"История трансформаций","de":"История трансформаций"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:290"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:292"]
     },
     "edit.transformPanel.loadingCounters": {
       "ru": "Загрузка счётчиков…",
       "en": "Loading counters…",
       "de": "Zähler werden geladen…",
       "from": {"en":"Загрузка счётчиков…","de":"Загрузка счётчиков…"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:209"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:211"]
     },
     "edit.transformPanel.noGraphToTransform": {
       "ru": "Нет графа — трансформировать нечего. Сначала сгенерируйте раздел «Граф категорий».",
       "en": "No graph — nothing to transform. First generate the “Category graph” section.",
       "de": "Kein Graph — nichts zu transformieren. Generieren Sie zuerst den Abschnitt „Kategoriegraph“.",
       "from": {"en":"Нет графа — трансформировать нечего. Сначала сгенерируйте раздел «Граф категорий».","de":"Нет графа — трансформировать нечего. Сначала сгенерируйте раздел «Граф категорий»."},
-      "where": ["client/src/components/edit/TransformPanel.tsx:64"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:65"]
     },
     "edit.transformPanel.noGraphYet": {
       "ru": "Графа в документе ещё нет — он будет построен из тезисов.",
       "en": "There is no graph in the document yet — it will be built from the theses.",
       "de": "Das Dokument hat noch keinen Graphen — er wird aus den Thesen aufgebaut.",
       "from": {"en":"Графа в документе ещё нет — он будет построен из тезисов.","de":"Графа в документе ещё нет — он будет построен из тезисов."},
-      "where": ["client/src/components/edit/TransformPanel.tsx:58"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:59"]
     },
     "edit.transformPanel.noThesesToTransform": {
       "ru": "Нет тезисов — трансформировать нечего. Сначала сгенерируйте раздел «Корпус тезисов».",
       "en": "No theses — nothing to transform. First generate the “Thesis corpus” section.",
       "de": "Keine Thesen — nichts zu transformieren. Generieren Sie zuerst den Abschnitt „Thesenkorpus“.",
       "from": {"en":"Нет тезисов — трансформировать нечего. Сначала сгенерируйте раздел «Корпус тезисов».","de":"Нет тезисов — трансформировать нечего. Сначала сгенерируйте раздел «Корпус тезисов»."},
-      "where": ["client/src/components/edit/TransformPanel.tsx:66"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:67"]
     },
     "edit.transformPanel.noThesesYet": {
       "ru": "Тезисов в документе ещё нет — раздел будет создан из графа.",
       "en": "There are no theses in the document yet — the section will be created from the graph.",
       "de": "Das Dokument hat noch keine Thesen — der Abschnitt wird aus dem Graphen erstellt.",
       "from": {"en":"Тезисов в документе ещё нет — раздел будет создан из графа.","de":"Тезисов в документе ещё нет — раздел будет создан из графа."},
-      "where": ["client/src/components/edit/TransformPanel.tsx:55"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:56"]
     },
     "edit.transformPanel.replaceGraph": {
       "ru": "Будут заменены текущие категории: {categories} и связи: {edges}.",
@@ -8880,7 +8880,7 @@
       "de": "Ersetzt werden die aktuellen Kategorien: {categories} und Beziehungen: {edges}.",
       "from": {"en":"Будут заменены текущие категории: {categories} и связи: {edges}.","de":"Будут заменены текущие категории: {categories} и связи: {edges}."},
       "params": {"categories":"counts.categories","edges":"counts.edges"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:57"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:58"]
     },
     "edit.transformPanel.replaceTheses": {
       "ru": "Будут заменены текущие тезисы: {theses}.",
@@ -8888,7 +8888,7 @@
       "de": "Ersetzt werden die aktuellen Thesen: {theses}.",
       "from": {"en":"Будут заменены текущие тезисы: {theses}.","de":"Будут заменены текущие тезисы: {theses}."},
       "params": {"theses":"counts.theses"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:54"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:55"]
     },
     "edit.transformPanel.starting": {
       "ru": "{direction}: запуск…",
@@ -8896,42 +8896,42 @@
       "de": "{direction}: Start…",
       "from": {"en":"{direction}: запуск…","de":"{direction}: запуск…"},
       "params": {"direction":"DIRECTION_LABELS[direction]"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:259"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:261"]
     },
     "edit.transformPanel.thesesToGraph": {
       "ru": "Тезисы → Граф",
       "en": "Theses → Graph",
       "de": "Thesen → Graph",
       "from": {"en":"Тезисы → Граф","de":"Тезисы → Граф"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:200"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:202"]
     },
     "edit.transformPanel.thesisCorpus": {
       "ru": "Корпус тезисов",
       "en": "Thesis corpus",
       "de": "Thesenkorpus",
       "from": {"en":"Корпус тезисов","de":"Корпус тезисов"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:40"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:41"]
     },
     "edit.transformPanel.title": {
       "ru": "⇄ Трансформация представлений",
       "en": "⇄ Representation transformation",
       "de": "⇄ Transformation der Darstellungen",
       "from": {"en":"⇄ Трансформация представлений","de":"⇄ Трансформация представлений"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:169"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:171"]
     },
     "edit.transformPanel.toDocument": {
       "ru": "К документу",
       "en": "To the document",
       "de": "Zum Dokument",
       "from": {"en":"К документу","de":"К документу"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:284"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:286"]
     },
     "edit.transformPanel.transform": {
       "ru": "Преобразовать",
       "en": "Transform",
       "de": "Transformieren",
       "from": {"en":"Преобразовать","de":"Преобразовать"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:229"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:231"]
     },
     "edit.transformPanel.usageLine": {
       "ru": "{inputTokens} вх. + {outputTokens} вых. · ${costUsd}",
@@ -8939,21 +8939,21 @@
       "de": "{inputTokens} ein + {outputTokens} aus · ${costUsd}",
       "from": {"en":"{inputTokens} вх. + {outputTokens} вых. · ${costUsd}","de":"{inputTokens} вх. + {outputTokens} вых. · ${costUsd}"},
       "params": {"inputTokens":"done.usage.inputTokens.toLocaleString(\"ru\")","outputTokens":"done.usage.outputTokens.toLocaleString(\"ru\")","costUsd":"done.usage.costUsd.toFixed(4)"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:277"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:279"]
     },
     "edit.transformPanel.versionKept": {
       "ru": "Текущая версия сохранится в истории и доступна для отката.",
       "en": "The current version will be saved in the history and available for rollback.",
       "de": "Die aktuelle Version bleibt im Verlauf und kann zurückgesetzt werden.",
       "from": {"en":"Текущая версия сохранится в истории и доступна для отката.","de":"Текущая версия сохранится в истории и доступна для отката."},
-      "where": ["client/src/components/edit/TransformPanel.tsx:209"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:211"]
     },
     "edit.transformPanel.waitTransformation": {
       "ru": "Дождитесь завершения трансформации",
       "en": "Wait for the transformation to finish",
       "de": "Warten Sie auf den Abschluss der Transformation",
       "from": {"en":"Дождитесь завершения трансформации","de":"Дождитесь завершения трансформации"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:175"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:177"]
     },
     "edit.transformPanel.willOverwrite": {
       "ru": "Раздел «{direction}» будет перезаписан.",
@@ -8961,14 +8961,14 @@
       "de": "Der Abschnitt „{direction}“ wird überschrieben.",
       "from": {"en":"Раздел «{direction}» будет перезаписан.","de":"Раздел «{direction}» будет перезаписан."},
       "params": {"direction":"TARGET_SECTION_TITLES[direction]"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:208"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:210"]
     },
     "edit.transformPanel.yesTransform": {
       "ru": "Да, преобразовать",
       "en": "Yes, transform",
       "de": "Ja, transformieren",
       "from": {"en":"Да, преобразовать","de":"Да, преобразовать"},
-      "where": ["client/src/components/edit/TransformPanel.tsx:243"]
+      "where": ["client/src/components/edit/TransformPanel.tsx:245"]
     },
     "edit.versionConflict.generic": {
       "ru": "Документ изменили, пока вы правили.",
@@ -9365,98 +9365,98 @@
       "en": "Context. depend.",
       "de": "Kontextabh.",
       "from": {"en":"Контекст. завис.","de":"Контекст. завис."},
-      "where": ["client/src/components/graph/EdgePanel.tsx:398"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:399"]
     },
     "graph.edgePanel.deleteEdge": {
       "ru": "Удалить связь",
       "en": "Delete relation",
       "de": "Beziehung löschen",
       "from": {"en":"Удалить связь","de":"Удалить связь"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:292"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:293"]
     },
     "graph.edgePanel.deleteEdgeIcon": {
       "ru": "✕ Удалить связь",
       "en": "✕ Delete relation",
       "de": "✕ Beziehung löschen",
       "from": {"en":"✕ Удалить связь","de":"✕ Удалить связь"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:301"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:302"]
     },
     "graph.edgePanel.deleteEdgeNote": {
       "ru": "Связь будет удалена; таблица связей документа перерисуется. Снимок останется в истории версий.",
       "en": "The relation will be deleted; the document's relation table will be re-rendered. A snapshot will remain in the version history.",
       "de": "Die Beziehung wird gelöscht; die Beziehungstabelle des Dokuments wird neu gezeichnet. Der Schnappschuss bleibt im Versionsverlauf.",
       "from": {"en":"Связь будет удалена; таблица связей документа перерисуется. Снимок останется в истории версий.","de":"Связь будет удалена; таблица связей документа перерисуется. Снимок останется в истории версий."},
-      "where": ["client/src/components/graph/EdgePanel.tsx:307"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:308"]
     },
     "graph.edgePanel.deleting": {
       "ru": "Удаляю…",
       "en": "Deleting…",
       "de": "Wird gelöscht…",
       "from": {"en":"Удаляю…","de":"Удаляю…"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:319"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:320"]
     },
     "graph.edgePanel.edge": {
       "ru": "Связь",
       "en": "Relation",
       "de": "Beziehung",
       "from": {"en":"Связь","de":"Связь"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:244"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:245"]
     },
     "graph.edgePanel.edgeStrength": {
       "ru": "Сила связи",
       "en": "Relation strength",
       "de": "Stärke der Beziehung",
       "from": {"en":"Сила связи","de":"Сила связи"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:347"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:348"]
     },
     "graph.edgePanel.editEdge": {
       "ru": "Редактировать связь",
       "en": "Edit relation",
       "de": "Beziehung bearbeiten",
       "from": {"en":"Редактировать связь","de":"Редактировать связь"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:274"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:275"]
     },
     "graph.edgePanel.extendedHeading": {
       "ru": "РАСШИРЕННЫЕ",
       "en": "EXTENDED",
       "de": "ERWEITERT",
       "from": {"en":"РАСШИРЕННЫЕ","de":"РАСШИРЕННЫЕ"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:371"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:372"]
     },
     "graph.edgePanel.historicalSupportShort": {
       "ru": "Ист. подкрепл.",
       "en": "Hist. support",
       "de": "Hist. Stützung",
       "from": {"en":"Ист. подкрепл.","de":"Ист. подкрепл."},
-      "where": ["client/src/components/graph/EdgePanel.tsx:386"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:387"]
     },
     "graph.edgePanel.innovation": {
       "ru": "Инновация",
       "en": "Innovation",
       "de": "Innovation",
       "from": {"en":"Инновация","de":"Инновация"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:380"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:381"]
     },
     "graph.edgePanel.lockedGenerating": {
       "ru": "Идёт генерация — правки заблокированы",
       "en": "Generation in progress — edits are locked",
       "de": "Generierung läuft — Bearbeitungen gesperrt",
       "from": {"en":"Идёт генерация — правки заблокированы","de":"Идёт генерация — правки заблокированы"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:273","client/src/components/graph/EdgePanel.tsx:291"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:274","client/src/components/graph/EdgePanel.tsx:292"]
     },
     "graph.edgePanel.logicalNecessityShort": {
       "ru": "Лог. необходим.",
       "en": "Log. necessity",
       "de": "Log. Notwend.",
       "from": {"en":"Лог. необходим.","de":"Лог. необходим."},
-      "where": ["client/src/components/graph/EdgePanel.tsx:392"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:393"]
     },
     "graph.edgePanel.nodeHeading": {
       "ru": "УЗЕЛ",
       "en": "NODE",
       "de": "KNOTEN",
       "from": {"en":"УЗЕЛ","de":"УЗЕЛ"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:408"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:409"]
     },
     "graph.edgePanel.notInGraph": {
       "ru": "не найден в графе",
@@ -9470,14 +9470,14 @@
       "en": "SOURCE",
       "de": "QUELLE",
       "from": {"en":"ИСТОЧНИК","de":"ИСТОЧНИК"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:408"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:409"]
     },
     "graph.edgePanel.targetHeading": {
       "ru": "ЦЕЛЬ",
       "en": "TARGET",
       "de": "ZIEL",
       "from": {"en":"ЦЕЛЬ","de":"ЦЕЛЬ"},
-      "where": ["client/src/components/graph/EdgePanel.tsx:417"]
+      "where": ["client/src/components/graph/EdgePanel.tsx:418"]
     },
     "graph.graph2D.cluster": {
       "ru": "Кластер {clIdx}",
@@ -9759,35 +9759,35 @@
       "en": "+ Relation",
       "de": "+ Beziehung",
       "from": {"en":"+ Связь","de":"+ Связь"},
-      "where": ["client/src/components/graph/GraphModal.tsx:426"]
+      "where": ["client/src/components/graph/GraphModal.tsx:428"]
     },
     "graph.graphModal.clusters": {
       "ru": "◎ Кластеры",
       "en": "◎ Clusters",
       "de": "◎ Cluster",
       "from": {"en":"◎ Кластеры","de":"◎ Кластеры"},
-      "where": ["client/src/components/graph/GraphModal.tsx:410"]
+      "where": ["client/src/components/graph/GraphModal.tsx:412"]
     },
     "graph.graphModal.controls2d": {
       "ru": "Перетаскивание узлов · Зум: колёсико",
       "en": "Drag nodes · Zoom: wheel",
       "de": "Knoten ziehen · Zoom: Mausrad",
       "from": {"en":"Перетаскивание узлов · Зум: колёсико","de":"Перетаскивание узлов · Зум: колёсико"},
-      "where": ["client/src/components/graph/GraphModal.tsx:502"]
+      "where": ["client/src/components/graph/GraphModal.tsx:504"]
     },
     "graph.graphModal.controls3d": {
       "ru": "Вращение: мышь · Зум: колёсико · Перетаскивание узлов",
       "en": "Rotate: mouse · Zoom: wheel · Drag nodes",
       "de": "Drehen: Maus · Zoom: Mausrad · Knoten ziehen",
       "from": {"en":"Вращение: мышь · Зум: колёсико · Перетаскивание узлов","de":"Вращение: мышь · Зум: колёсико · Перетаскивание узлов"},
-      "where": ["client/src/components/graph/GraphModal.tsx:501"]
+      "where": ["client/src/components/graph/GraphModal.tsx:503"]
     },
     "graph.graphModal.createEdgeHint": {
       "ru": "Создать связь между категориями (7.1)",
       "en": "Create a relation between categories (7.1)",
       "de": "Beziehung zwischen Kategorien erstellen (7.1)",
       "from": {"en":"Создать связь между категориями (7.1)","de":"Создать связь между категориями (7.1)"},
-      "where": ["client/src/components/graph/GraphModal.tsx:423"]
+      "where": ["client/src/components/graph/GraphModal.tsx:425"]
     },
     "graph.graphModal.deleteEdgeFailed": {
       "ru": "Не удалось удалить связь.",
@@ -9822,21 +9822,21 @@
       "en": "JSON",
       "de": "JSON",
       "from": {"en":"JSON","de":"JSON"},
-      "where": ["client/src/components/graph/GraphModal.tsx:466"]
+      "where": ["client/src/components/graph/GraphModal.tsx:468"]
     },
     "graph.graphModal.exportMmd": {
       "ru": "MMD",
       "en": "MMD",
       "de": "MMD",
       "from": {"en":"MMD","de":"MMD"},
-      "where": ["client/src/components/graph/GraphModal.tsx:454"]
+      "where": ["client/src/components/graph/GraphModal.tsx:456"]
     },
     "graph.graphModal.exportPng": {
       "ru": "PNG",
       "en": "PNG",
       "de": "PNG",
       "from": {"en":"PNG","de":"PNG"},
-      "where": ["client/src/components/graph/GraphModal.tsx:460"]
+      "where": ["client/src/components/graph/GraphModal.tsx:462"]
     },
     "graph.graphModal.lockedGenerating": {
       "ru": "Генерация ещё идёт — правки заблокированы.",
@@ -9850,7 +9850,7 @@
       "en": "No graph data — the “Graph” section has not been generated yet.",
       "de": "Keine Graphdaten — der Abschnitt „Graph“ ist noch nicht generiert.",
       "from": {"en":"Нет данных графа — раздел «Граф» ещё не сгенерирован.","de":"Нет данных графа — раздел «Граф» ещё не сгенерирован."},
-      "where": ["client/src/components/graph/GraphModal.tsx:490"]
+      "where": ["client/src/components/graph/GraphModal.tsx:492"]
     },
     "graph.graphModal.other": {
       "ru": "другое",
@@ -9864,35 +9864,35 @@
       "en": "◈ Category Graph",
       "de": "◈ Kategoriegraph",
       "from": {"en":"◈ Граф Категорий","de":"◈ Граф Категорий"},
-      "where": ["client/src/components/graph/GraphModal.tsx:397"]
+      "where": ["client/src/components/graph/GraphModal.tsx:399"]
     },
     "graph.graphModal.toTheses": {
       "ru": "→ Тезисы",
       "en": "→ Theses",
       "de": "→ Thesen",
       "from": {"en":"→ Тезисы","de":"→ Тезисы"},
-      "where": ["client/src/components/graph/GraphModal.tsx:436"]
+      "where": ["client/src/components/graph/GraphModal.tsx:438"]
     },
     "graph.graphModal.toThesesHint": {
       "ru": "Трансформировать граф в тезисы (Representation Transformer)",
       "en": "Transform the graph into theses (Representation Transformer)",
       "de": "Graph in Thesen transformieren (Representation Transformer)",
       "from": {"en":"Трансформировать граф в тезисы (Representation Transformer)","de":"Трансформировать граф в тезисы (Representation Transformer)"},
-      "where": ["client/src/components/graph/GraphModal.tsx:433"]
+      "where": ["client/src/components/graph/GraphModal.tsx:435"]
     },
     "graph.graphModal.view2d": {
       "ru": "2D",
       "en": "2D",
       "de": "2D",
       "from": {"en":"2D","de":"2D"},
-      "where": ["client/src/components/graph/GraphModal.tsx:416"]
+      "where": ["client/src/components/graph/GraphModal.tsx:418"]
     },
     "graph.graphModal.view3d": {
       "ru": "3D",
       "en": "3D",
       "de": "3D",
       "from": {"en":"3D","de":"3D"},
-      "where": ["client/src/components/graph/GraphModal.tsx:404"]
+      "where": ["client/src/components/graph/GraphModal.tsx:406"]
     },
     "graph.nodePanel.addEdge": {
       "ru": "+ Связь",
@@ -11124,7 +11124,7 @@
       "en": "Element #root not found in index.html",
       "de": "Element #root in index.html nicht gefunden",
       "from": {"en":"Элемент #root не найден в index.html","de":"Элемент #root не найден в index.html"},
-      "where": ["client/src/main.tsx:13"]
+      "where": ["client/src/main.tsx:14"]
     },
     "members.acceptedAt": {
       "ru": "принял {date}",
@@ -14744,14 +14744,14 @@
       "en": "bold outline",
       "de": "fette Umrandung",
       "from": {"en":"жирная обводка","de":"жирная обводка"},
-      "where": ["server/services/export/png-exporter.ts:594"]
+      "where": ["server/services/export/png-exporter.ts:597"]
     },
     "server.export.pngExporter.categoryTypesHeading": {
       "ru": "ТИПЫ КАТЕГОРИЙ",
       "en": "CATEGORY TYPES",
       "de": "KATEGORIETYPEN",
       "from": {"en":"ТИПЫ КАТЕГОРИЙ","de":"ТИПЫ КАТЕГОРИЙ"},
-      "where": ["server/services/export/png-exporter.ts:635"]
+      "where": ["server/services/export/png-exporter.ts:638"]
     },
     "server.export.pngExporter.clusterFallback": {
       "ru": "Кластер {n}",
@@ -14759,98 +14759,98 @@
       "de": "Cluster {n}",
       "from": {"en":"Кластер {n}","de":"Кластер {n}"},
       "params": {"n":""},
-      "where": ["server/services/export/png-exporter.ts:361"]
+      "where": ["server/services/export/png-exporter.ts:364"]
     },
     "server.export.pngExporter.clustersHeading": {
       "ru": "КЛАСТЕРЫ",
       "en": "CLUSTERS",
       "de": "CLUSTER",
       "from": {"en":"КЛАСТЕРЫ","de":"КЛАСТЕРЫ"},
-      "where": ["server/services/export/png-exporter.ts:725"]
+      "where": ["server/services/export/png-exporter.ts:728"]
     },
     "server.export.pngExporter.core": {
       "ru": "Ядро",
       "en": "Core",
       "de": "Kern",
       "from": {"en":"Ядро","de":"Ядро"},
-      "where": ["server/services/export/png-exporter.ts:591"]
+      "where": ["server/services/export/png-exporter.ts:594"]
     },
     "server.export.pngExporter.dashedOutline": {
       "ru": "пунктирная обводка",
       "en": "dashed outline",
       "de": "gepunktete Umrandung",
       "from": {"en":"пунктирная обводка","de":"пунктирная обводка"},
-      "where": ["server/services/export/png-exporter.ts:593"]
+      "where": ["server/services/export/png-exporter.ts:596"]
     },
     "server.export.pngExporter.deconstructedShort": {
       "ru": "Деконструиров.",
       "en": "Deconstructed",
       "de": "Dekonstruiert",
       "from": {"en":"Деконструиров.","de":"Деконструиров."},
-      "where": ["server/services/export/png-exporter.ts:579"]
+      "where": ["server/services/export/png-exporter.ts:582"]
     },
     "server.export.pngExporter.directionLegend": {
       "ru": "→ однонаправл. · ↔ двунаправл. · ↺ рефлексив.",
       "en": "→ one-way · ↔ two-way · ↺ reflexive",
       "de": "→ einseitig · ↔ wechselseitig · ↺ reflexiv",
       "from": {"en":"→ однонаправл. · ↔ двунаправл. · ↺ рефлексив.","de":"→ однонаправл. · ↔ двунаправл. · ↺ рефлексив."},
-      "where": ["server/services/export/png-exporter.ts:745"]
+      "where": ["server/services/export/png-exporter.ts:748"]
     },
     "server.export.pngExporter.edgeTypesHeading": {
       "ru": "ТИПЫ СВЯЗЕЙ",
       "en": "RELATION TYPES",
       "de": "BEZIEHUNGSTYPEN",
       "from": {"en":"ТИПЫ СВЯЗЕЙ","de":"ТИПЫ СВЯЗЕЙ"},
-      "where": ["server/services/export/png-exporter.ts:705"]
+      "where": ["server/services/export/png-exporter.ts:708"]
     },
     "server.export.pngExporter.glow": {
       "ru": "свечение (glow)",
       "en": "glow",
       "de": "Leuchten (glow)",
       "from": {"en":"свечение (glow)","de":"свечение (glow)"},
-      "where": ["server/services/export/png-exporter.ts:592"]
+      "where": ["server/services/export/png-exporter.ts:595"]
     },
     "server.export.pngExporter.horizonExpansionShort": {
       "ru": "Расш. горизонта",
       "en": "Horizon exp.",
       "de": "Horizonterw.",
       "from": {"en":"Расш. горизонта","de":"Расш. горизонта"},
-      "where": ["server/services/export/png-exporter.ts:581"]
+      "where": ["server/services/export/png-exporter.ts:584"]
     },
     "server.export.pngExporter.innerSilhouette": {
       "ru": "внутренний силуэт",
       "en": "inner silhouette",
       "de": "innere Silhouette",
       "from": {"en":"внутренний силуэт","de":"внутренний силуэт"},
-      "where": ["server/services/export/png-exporter.ts:591"]
+      "where": ["server/services/export/png-exporter.ts:594"]
     },
     "server.export.pngExporter.otherType": {
       "ru": "другое",
       "en": "other",
       "de": "Sonstiges",
       "from": {"en":"другое","de":"другое"},
-      "where": ["server/services/export/png-exporter.ts:551"]
+      "where": ["server/services/export/png-exporter.ts:554"]
     },
     "server.export.pngExporter.proceduralRolesShape": {
       "ru": "ПРОЦЕССУАЛЬНЫЕ РОЛИ (ФОРМА)",
       "en": "PROCEDURAL ROLES (SHAPE)",
       "de": "PROZESSUALE ROLLEN (FORM)",
       "from": {"en":"ПРОЦЕССУАЛЬНЫЕ РОЛИ (ФОРМА)","de":"ПРОЦЕССУАЛЬНЫЕ РОЛИ (ФОРМА)"},
-      "where": ["server/services/export/png-exporter.ts:649"]
+      "where": ["server/services/export/png-exporter.ts:652"]
     },
     "server.export.pngExporter.structuralRolesMarker": {
       "ru": "СТРУКТУРНЫЕ РОЛИ (МАРКЕР)",
       "en": "STRUCTURAL ROLES (MARKER)",
       "de": "STRUKTURELLE ROLLEN (MARKER)",
       "from": {"en":"СТРУКТУРНЫЕ РОЛИ (МАРКЕР)","de":"СТРУКТУРНЫЕ РОЛИ (МАРКЕР)"},
-      "where": ["server/services/export/png-exporter.ts:667"]
+      "where": ["server/services/export/png-exporter.ts:670"]
     },
     "server.export.pngExporter.thinOutline": {
       "ru": "тонкая обводка",
       "en": "thin outline",
       "de": "dünne Umrandung",
       "from": {"en":"тонкая обводка","de":"тонкая обводка"},
-      "where": ["server/services/export/png-exporter.ts:595"]
+      "where": ["server/services/export/png-exporter.ts:598"]
     },
     "server.genLogLabels.added": {
       "ru": "{section} [добавлен]",

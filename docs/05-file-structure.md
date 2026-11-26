@@ -93,8 +93,11 @@ philosynth-service/
 │       │   │                           # владельца интерфейс → генерация); GEN_LANGS — таблица языков
 │       │   │                           # генерации (2026-11-26), из неё LANG_OPTIONS формы, словари
 │       │   │                           # поиска, html lang/dir, суффикс файла, имя языка для модели
-│       │   ├── gen-script-css.ts       # 2026-11-26: правила письменностей (rtl ar/fa, деванагари) —
-│       │   │                           # один текст клиенту (globals.css) и экспорту HTML
+│       │   ├── gen-script-css.ts       # 2026-11-26: правила письменностей (rtl ar/fa, деванагари,
+│       │   │                           # политоника grc — стеки с Noto) — один текст клиенту
+│       │   │                           # (globals.css) и экспорту HTML; правила на :dir(rtl) и на
+│       │   │                           # :lang() САМОГО элемента; GEN_SCRIPT_FONT_FAMILIES — ссылка
+│       │   │                           # шрифтов ТОЛЬКО экспортированного файла
 │       │   ├── strings.json            # мастер-таблица переводов (ru/en/de, from, draft, params,
 │       │   │                           # where, отметки data/static/obsolete); правится инструментами
 │       │   ├── data.ts                 # 11.4: перевод ДАННЫХ по месту показа — displayKey(value),
@@ -668,7 +671,12 @@ philosynth-service/
 │   ├── index.html
 │   │
 │   ├── src/
-│   │   ├── main.tsx                    # React entry point
+│   │   ├── main.tsx                    # React entry point; fonts.css — перед globals.css
+│   │   ├── fonts.css                   # ГЕНЕРАТ scripts/fonts/vendor-fonts.mjs: @font-face шрифтов
+│   │   │                               # из client/public/fonts (2026-11-26; ссылок на Google
+│   │   │                               # Fonts в клиенте нет — сторож 4bu)
+│   │   ├── hooks/useContentLangAttrs.ts # lang/dir содержимого документа вне тел разделов
+│   │   │                               # (обогащения, просмотр преобразования) — язык из стора
 │   │   ├── App.tsx                     # Router (React Router)
 │   │   ├── globals.css                 # Три части (правка 2026-09-02):
 │   │   │                               #  1) :root исходника + базовый слой;
@@ -1072,7 +1080,21 @@ philosynth-service/
 │   │   ├── check-dotfiles.mjs          # 8.7: сторож правок .env.example/.gitignore
 │   │   │                               # 9.1: + восемь переменных почты и MAIL_TRANSPORT стенда
 │   │   ├── check-map-04.py             # сходимость карты 04 с фактом
-│   │   └── css-parity-audit.py         # единство globals.css с блоком <style> исходника
+│   │   ├── css_logical.py              # 2026-11-26: таблица равнозначностей «сторона → начало/
+│   │   │                               # конец строки» (margin-left → margin-inline-start …);
+│   │   │                               # скриптом переписывает globals.css (идемпотентно,
+│   │   │                               # --check — сторож 4bu), модулем — сверка паритета
+│   │   ├── png-diff.py                 # попиксельное сравнение каталогов снимков
+│   │   │                               # tests/dir-snapshots.mjs (до/после правки стилей)
+│   │   └── css-parity-audit.py         # единство globals.css с блоком <style> исходника;
+│   │                                   # с 2026-11-26 исходник сверяется в ЛОГИЧЕСКОЙ записи
+│   ├── fonts/vendor-fonts.mjs          # 2026-11-26: сборка шрифтов клиента из пакетов @fontsource
+│   │                                   # → client/public/fonts/*.woff2 (96 файлов, ~1,4 МБ:
+│   │                                   # IBM Plex Mono/Sans, Playfair Display, IBM Plex Sans
+│   │                                   # Arabic/Devanagari, Noto Sans/Serif/Sans Mono — только
+│   │                                   # greek и greek-ext) + LICENSES.md + client/src/fonts.css
+│   # server/assets/fonts/*.ttf         # шрифты PNG-экспорта (node-canvas), регистрация —
+│   #                                   # server/services/export/png-fonts.ts (ensurePngFonts)
 │   ├── extract/                        # извлечение из одностраничника (12.5, Д-39: ROOT генераторов —
 │   │   │                               # два уровня вверх, extract-by-name.py — здесь же)
 │   │   ├── extract-by-name.py          # фрагменты ПО ИМЕНАМ из 04-code-reuse-map;

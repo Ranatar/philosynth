@@ -116,6 +116,8 @@ try {
 
   console.log("\n■ G5: экспорт HTML");
   await sql`INSERT INTO sections (synthesis_id, key, section_num, title, html_content) VALUES (${ar}, 'graph', 2, 'البنية المقولية', ${AR_SECTION})`;
+  // режим — в выгрузке его окно обязано получить язык и направление документа
+  await sql`INSERT INTO mode_results (synthesis_id, mode_key, param_value, html_content) VALUES (${ar}, 'adversarial', 'كانط', ${'<h4>اعتراض</h4><p>نص الاعتراض.</p><ul><li>أولاً</li></ul>'})`;
   const html = await exportHTML(ar);
   ok(/<html lang="ar">/.test(html), "<html lang=\"ar\">");
   ok(html.includes(`<div class="doc-body" lang="ar" dir="rtl">`), "тело раздела — lang=ar dir=rtl");
@@ -128,6 +130,11 @@ try {
   const ko = await mkSynthesis("Korean", `철학 ${tag}`);
   const koHtml = await exportHTML(ko);
   ok(/<html lang="und">/.test(koHtml), "язык, введённый руками, — lang=und (прежде звался английским)");
+  ok(/id="philosynth-modes"[^>]*data-content-dir="rtl"[^>]*data-content-lang="ar"/.test(html), "режимы выгрузки несут язык и направление документа");
+  const grcDoc = await mkSynthesis("Ancient Greek", `Περὶ ἀληθείας ${tag}`);
+  await sql`INSERT INTO sections (synthesis_id, key, section_num, title, html_content) VALUES (${grcDoc}, 'sum', 1, 'Περὶ τῆς ἀληθείας', ${'<div class="doc-section"><div class="section-num">§ 1</div><div class="section-title">Περὶ τῆς ἀληθείας</div><div class="doc-content"><div data-section="Цели и задачи"><h4>Σκοποί</h4><p>Ἡ ἀλήθεια τοῦ ὄντος ᾗ ὄν ἐστιν.</p></div></div></div>'})`;
+  const grcHtml = await exportHTML(grcDoc);
+  ok(/<html lang="grc">/.test(grcHtml) && grcHtml.includes("Noto+Sans:") && grcHtml.includes("Noto+Serif:") && grcHtml.includes("Noto+Sans+Mono:"), "древнегреческий: lang=grc, семейства Noto в ссылке шрифтов файла");
 
   console.log("\n■ G6: арабский экспорт в браузере");
   const chromePath = [process.env.CHROME_PATH, `${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, "/opt/google/chrome/chrome"].find((p) => p && existsSync(p));
@@ -167,6 +174,25 @@ try {
       ok(st.h4Spacing === "normal" && st.h4Size === "13px", "заголовок подраздела: без разрядки, 13 px", st);
       ok(st.ulMarginRight === "20px", "отступ списка справа", st.ulMarginRight);
       ok(/IBM Plex Sans Arabic/.test(st.sansVar), "стек --sans с IBM Plex Sans Arabic", st.sansVar);
+      // режим в выгрузке: окно открыто кнопкой файла
+      const mode = await page.evaluate(() => {
+        window.openExportedMode("adversarial");
+        const mc = document.getElementById("modeContent");
+        const cs = (el) => (el ? getComputedStyle(el) : null);
+        return { dir: mc?.getAttribute("dir"), lang: mc?.getAttribute("lang"), direction: cs(mc)?.direction, size: cs(mc)?.fontSize, ulRight: cs(mc?.querySelector("ul"))?.marginRight, ulLeft: cs(mc?.querySelector("ul"))?.marginLeft, h4Spacing: cs(mc?.querySelector("h4"))?.letterSpacing };
+      });
+      ok(mode.dir === "rtl" && mode.lang === "ar" && mode.direction === "rtl", "режим в выгрузке — lang=ar dir=rtl", mode);
+      ok(mode.size === "14px" && mode.ulRight === "20px" && mode.ulLeft === "0px" && mode.h4Spacing === "normal", "режим: кегль 14, отступ списка справа, без разрядки (lang/dir на самом .doc-content)", mode);
+      // древнегреческий: стеки под :lang(grc) начинаются с Noto, прописные сняты
+      const gpage = await browser.newPage();
+      await gpage.setContent(grcHtml.replace(/<link href="https:\/\/fonts[^>]*>/, ""), { waitUntil: "domcontentloaded" });
+      const g = await gpage.evaluate(() => {
+        const cs = (sel) => { const el = document.querySelector(sel); return el ? getComputedStyle(el) : null; };
+        return { body: cs(".doc-content p")?.fontFamily, title: cs(".section-title")?.fontFamily, h4: cs(".doc-content h4")?.fontFamily, h4Case: cs(".doc-content h4")?.textTransform };
+      });
+      ok(/^"?Noto Sans"?,/.test(g.body ?? "") && /^"?Noto Serif"?,/.test(g.title ?? "") && /^"?Noto Sans Mono"?,/.test(g.h4 ?? ""), "древнегреческий: текст, заголовок и подзаголовок — с Noto первым в стеке", g);
+      ok(g.h4Case === "none", "древнегреческий: прописные в подзаголовке сняты", g.h4Case);
+      await gpage.close();
       mkdirSync(new URL("./out/", import.meta.url), { recursive: true });
       const shot = new URL("./out/gen-langs-ar.png", import.meta.url).pathname;
       await (await page.$('.doc-body[dir="rtl"]'))?.screenshot({ path: shot });

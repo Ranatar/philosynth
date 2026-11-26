@@ -166,7 +166,7 @@ export function CompatAdvisor({
                     <button
                       type="button"
                       className="compat-replace-btn"
-                      style={{ marginLeft: 8 }}
+                      style={{ marginInlineStart: 8 }}
                       onClick={() => onApplyReplacement("order", oa.recommended)}
                     >
                       {tl("synthesis.compatAdvisor.switchTo", "Переключить на {orderLabel}", { orderLabel })}

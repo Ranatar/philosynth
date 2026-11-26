@@ -34,6 +34,7 @@ import {
 } from "../../hooks/useEnrichmentStream";
 import type { EnrichableElementKind } from "../../api/enrichment";
 import { tl } from "@philosynth/shared/i18n/t";
+import { useContentLangAttrs } from "../../hooks/useContentLangAttrs";
 
 export const CATEGORY_ENRICHMENT_OPTIONS = (): readonly {
   type: CategoryEnrichmentType;
@@ -89,6 +90,7 @@ export function EnrichmentPanel({
   refreshKey = 0,
   onEnriched,
 }: EnrichmentPanelProps) {
+  const contentAttrs = useContentLangAttrs();
   const [history, setHistory] = useState<ElementEnrichment[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [choosing, setChoosing] = useState(false);
@@ -230,7 +232,7 @@ export function EnrichmentPanel({
             </span>
             <span>{tl("edit.enrichmentPanel.generatingChars", "генерируется… · {liveChars} симв.", { liveChars: stream.liveChars.toLocaleString("ru") })}</span>
           </div>
-          <div className="enrich-card-body">{stream.liveText}</div>
+          <div className="enrich-card-body" {...contentAttrs}>{stream.liveText}</div>
         </div>
       )}
 
@@ -268,7 +270,7 @@ export function EnrichmentPanel({
             {isOpen && (
               <div
                 className="enrich-card-body doc-content"
-                dir="auto"
+                {...contentAttrs}
                 dangerouslySetInnerHTML={{ __html: e.content }}
               />
             )}

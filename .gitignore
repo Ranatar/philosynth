@@ -19,6 +19,9 @@ dump.rdb
 .cache/
 *.zip
 
+# Снимки и выгрузки браузерных харнессов
+tests/out/
+
 # Логи и системное
 *.log
 npm-debug.log*

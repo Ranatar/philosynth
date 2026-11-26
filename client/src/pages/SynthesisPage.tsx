@@ -1370,7 +1370,7 @@ export function SynthesisPage() {
                   style={{
                     position: "absolute",
                     top: "100%",
-                    right: 0,
+                    insetInlineEnd: 0,
                     zIndex: 50,
                     display: "flex",
                     flexDirection: "column",
@@ -1384,7 +1384,7 @@ export function SynthesisPage() {
                       key={fmt}
                       type="button"
                       className="action-btn"
-                      style={{ border: "none", textAlign: "left" }}
+                      style={{ border: "none", textAlign: "start" }}
                       onClick={() => {
                         setExportOpen(false);
                         downloadExport(id ?? "", fmt);

@@ -64,6 +64,9 @@ const SA_SUM = `<div class="doc-section"><div class="section-num">§ 1</div><div
 <div data-section="Цели и задачи"><h4>उद्देश्यानि</h4><p>अस्य ग्रन्थस्य उद्देश्यं नूतनस्य दर्शनस्य निर्माणम् अस्ति।</p>
 <div class="callout gold"><span class="callout-label">सूत्रम्</span>सत्यं ज्ञानम् अनन्तम्।</div></div></div></div>`;
 
+const GRC_SUM = `<div class="doc-section"><div class="section-num">§ 1</div><div class="section-title">Περὶ τῆς ἀληθείας</div><div class="doc-content">
+<div data-section="Цели и задачи"><h4>Σκοποί</h4><p>Ἡ ἀλήθεια τοῦ ὄντος ᾗ ὄν ἐστιν· ὁ δὲ λόγος ἀποφαίνεται τὸ ἀληθές.</p></div></div></div>`;
+
 const sql = postgres(DB_URL, { max: 2, onnotice: () => {} });
 const tag = "glu" + Math.random().toString(36).slice(2, 6);
 let browser;
@@ -96,15 +99,23 @@ try {
     RETURNING id`)[0].id;
   const AR = await mk("Arabic", "فلسفة المعرفة", ["capsule", "sum", "graph"], `<div data-section="Капсула"><h4>الكبسولة</h4><p>تركيب جدلي بين الوجود والمعرفة.</p></div>`);
   await sql`INSERT INTO sections (synthesis_id, key, section_num, title, html_content) VALUES (${AR}, 'sum', 1, 'الملخّص', ${AR_SUM}), (${AR}, 'graph', 2, 'البنية المقولية', ${AR_GRAPH})`;
+  const GRC = await mk("Ancient Greek", "Περὶ ἀληθείας", ["sum"], "");
+  await sql`INSERT INTO sections (synthesis_id, key, section_num, title, html_content) VALUES (${GRC}, 'sum', 1, 'Περὶ τῆς ἀληθείας', ${GRC_SUM})`;
   const SA = await mk("Sanskrit", "ज्ञानदर्शनम्", ["sum"], "");
   await sql`INSERT INTO sections (synthesis_id, key, section_num, title, html_content) VALUES (${SA}, 'sum', 1, 'सारांशः', ${SA_SUM})`;
 
   browser = await puppeteer.launch({ executablePath: CHROME, args: ["--no-sandbox"], headless: true });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 1000 });
-  // шрифты Google в песочнице недоступны — не ждать их
+  // шрифты — из проекта (client/public/fonts): к внешним службам клиент ходить не должен
+  const externalFontRequests = [];
+  const localFontRequests = [];
   await page.setRequestInterception(true);
-  page.on("request", (r) => (/fonts\.(googleapis|gstatic)\.com/.test(r.url()) ? r.abort() : r.continue()));
+  page.on("request", (r) => {
+    if (/fonts\.(googleapis|gstatic)\.com/.test(r.url())) { externalFontRequests.push(r.url()); return r.abort(); }
+    if (/\/fonts\/[^/]+\.woff2$/.test(r.url())) localFontRequests.push(r.url().split("/").pop());
+    return r.continue();
+  });
   await page.goto(`${UI}/login`, { waitUntil: "domcontentloaded" });
   const fill = async (sel, v) => { await page.waitForSelector(sel); await page.$eval(sel, (el, x) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, x); el.dispatchEvent(new Event("input", { bubbles: true })); }, v); };
   await fill("input[type=email]", email);
@@ -187,6 +198,44 @@ try {
   ok(sa.dir === "ltr" && sa.h4 === "normal" && sa.label === "normal", "деванагари: слева направо, разрядка снята", sa);
   await page.screenshot({ path: OUT + "gen-langs-ui-sa.png", fullPage: true });
   console.log(`  · снимок: ${OUT}gen-langs-ui-sa.png`);
+
+  console.log("\n■ U5: древнегреческий и шрифты из проекта");
+  await page.goto(`${UI}/synthesis/${GRC}`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('.doc-body-host > div[lang="grc"]', { timeout: 20000 });
+  await page.evaluate(() => document.fonts.ready);
+  await sleep(500);
+  const gr = await page.evaluate(() => {
+    const host = document.querySelector('.doc-body-host > div[lang="grc"]');
+    const cs = (el) => (el ? getComputedStyle(el) : null);
+    const loaded = [...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family.replace(/"/g, ""));
+    return { p: cs(host?.querySelector(".doc-content p"))?.fontFamily, title: cs(host?.querySelector(".section-title"))?.fontFamily, h4Case: cs(host?.querySelector(".doc-content h4"))?.textTransform, loaded: [...new Set(loaded)] };
+  });
+  ok(/^"?Noto Sans"?,/.test(gr.p ?? "") && /^"?Noto Serif"?,/.test(gr.title ?? "") && gr.h4Case === "none", "стеки под lang=grc начинаются с Noto, прописные сняты", gr);
+  ok(gr.loaded.includes("Noto Sans") && gr.loaded.includes("Noto Serif"), "Noto Sans и Noto Serif загружены браузером (политоника — одним шрифтом)", gr.loaded);
+  ok(localFontRequests.some((f) => /^noto-sans-greek-ext-/.test(f)) && localFontRequests.some((f) => /^ibm-plex-sans-arabic-arabic-/.test(f)) && localFontRequests.some((f) => /^ibm-plex-sans-devanagari-devanagari-/.test(f)), "файлы письменностей отданы из /fonts (greek-ext, arabic, devanagari)", [...new Set(localFontRequests)].length);
+  ok(externalFontRequests.length === 0, "ни одного запроса к fonts.googleapis.com / fonts.gstatic.com", externalFontRequests.slice(0, 3));
+  await page.screenshot({ path: OUT + "gen-langs-ui-grc.png", fullPage: true });
+  console.log(`  · снимок: ${OUT}gen-langs-ui-grc.png`);
+
+  console.log("\n■ U6: направление интерфейса");
+  const htmlDir = await page.evaluate(() => document.documentElement.getAttribute("dir"));
+  ok(htmlDir === "ltr", "<html dir> ставится по языку интерфейса (ru/en/de — ltr)", htmlDir);
+  // языка интерфейса справа налево пока нет — направление навязано атрибутом
+  await page.goto(`${UI}/synthesis/${SA}`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('.doc-body-host > div[lang="sa"]', { timeout: 20000 });
+  const ui = await page.evaluate(() => {
+    const cs = (sel) => { const el = document.querySelector(sel); return el ? getComputedStyle(el) : null; };
+    const x = (sel) => document.querySelector(sel)?.getBoundingClientRect().left ?? null;
+    const measure = () => ({ sidebar: x(".app-sidebar-desktop"), doc: x(".doc-header"), headerAlign: cs(".doc-title")?.textAlign, headerDir: cs(".doc-header")?.direction, bodyDir: cs('.doc-body-host > div[lang="sa"] .doc-content')?.direction, callout: [cs('.doc-body-host .callout')?.borderLeftWidth, cs('.doc-body-host .callout')?.borderRightWidth] });
+    const ltr = measure();
+    document.documentElement.setAttribute("dir", "rtl");
+    const rtl = measure();
+    document.documentElement.setAttribute("dir", "ltr");
+    return { ltr, rtl };
+  });
+  ok(ui.ltr.sidebar < ui.ltr.doc && ui.rtl.sidebar > ui.rtl.doc, "боковая панель переезжает на сторону начала строки", ui);
+  ok(ui.rtl.headerDir === "rtl" && ui.rtl.bodyDir === "ltr", "шапка документа — в направлении интерфейса, тело санскритского документа — слева направо", ui.rtl);
+  ok(ui.rtl.callout?.[0] === "3px" && ui.rtl.callout?.[1] === "0px", "врезка документа слева направо держит черту слева при интерфейсе справа налево", ui.rtl.callout);
 } catch (e) {
   failed++;
   console.error("СБОЙ:", e);

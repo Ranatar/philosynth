@@ -124,7 +124,7 @@ export function EditSectionCard({
                 color: badgeColor(score),
                 border: `1px solid ${badgeColor(score)}`,
                 padding: "1px 5px",
-                marginLeft: 6,
+                marginInlineStart: 6,
                 cursor: "help",
                 verticalAlign: "middle",
               }}
@@ -240,7 +240,7 @@ export function EditSectionCard({
           <button
             type="button"
             className={"edit-sec-btn" + (historyOpen ? " active" : "")}
-            style={{ marginLeft: "auto" }}
+            style={{ marginInlineStart: "auto" }}
             onClick={() => setHistoryOpen((v) => !v)}
             data-testid={`edit-card-history-${key}`}
           >

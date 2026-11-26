@@ -281,7 +281,7 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8278'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
-  padding-right: 32px;
+  padding-inline-end: 32px;
 }
 .checkboxes-row {
   display: grid;
@@ -327,7 +327,7 @@ body {
 }
 .sec-item-row .checkbox-item {
   flex: 1;
-  border-right: none;
+  border-inline-end: none;
 }
 .sec-ctx-btn {
   display: none;
@@ -335,7 +335,7 @@ body {
   width: 26px;
   padding: 0;
   border: 1px solid var(--rule);
-  border-left: 1px solid var(--rule-strong);
+  border-inline-start: 1px solid var(--rule-strong);
   background: var(--white);
   color: var(--ink-dim);
   font-family: var(--mono);
@@ -350,7 +350,7 @@ body {
 .sec-item-wrap._checked .sec-ctx-btn {
   display: flex;
   border-color: var(--blue-corp);
-  border-left-color: var(--blue-corp);
+  border-inline-start-color: var(--blue-corp);
 }
 .sec-item-wrap._checked .sec-ctx-btn:hover {
   background: var(--blue-light);
@@ -365,7 +365,7 @@ body {
 }
 .sec-item-wrap._checked.capsule-check .sec-ctx-btn {
   border-color: var(--violet);
-  border-left-color: var(--violet);
+  border-inline-start-color: var(--violet);
 }
 .sec-item-wrap._checked.capsule-check .sec-ctx-btn:hover {
   background: var(--violet-light);
@@ -497,7 +497,7 @@ body {
 .progress-panel {
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-left: 4px solid var(--blue-corp);
+  border-inline-start: 4px solid var(--blue-corp);
   padding: 24px 28px;
   margin-bottom: 28px;
   display: none;
@@ -592,7 +592,8 @@ body {
   padding-top: 20px;
 }
 .doc-meta-item {
-  padding: 0 20px 0 0;
+  padding-block: 0;
+  padding-inline: 0 20px;
 }
 .doc-meta-key {
   font-family: var(--mono);
@@ -664,7 +665,7 @@ body {
 }
 .toc-sub-link {
   margin: 2px 0;
-  padding-left: 24px;
+  padding-inline-start: 24px;
   font-size: 12px;
 }
 .toc-sub-link a {
@@ -679,7 +680,7 @@ body {
   font-size: 10px;
   color: var(--ink-dim);
   text-decoration: none;
-  margin-left: 8px;
+  margin-inline-start: 8px;
   opacity: 0.4;
   transition: opacity 0.15s;
   vertical-align: middle;
@@ -744,7 +745,8 @@ body {
 }
 .doc-content ul,
 .doc-content ol {
-  margin: 8px 0 14px 20px;
+  margin-block: 8px 14px;
+  margin-inline: 20px 0;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -775,7 +777,7 @@ body {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   padding: 9px 14px;
-  text-align: left;
+  text-align: start;
   font-weight: 500;
 }
 .doc-table td {
@@ -792,7 +794,7 @@ body {
   background: var(--blue-light);
 }
 .callout {
-  border-left: 3px solid;
+  border-inline-start: 3px solid;
   padding: 12px 16px;
   margin: 16px 0;
   font-size: 12px;
@@ -907,7 +909,7 @@ body {
   height: 14px;
   background: var(--blue-corp);
   vertical-align: middle;
-  margin-left: 2px;
+  margin-inline-start: 2px;
   animation: blink-cursor 0.7s infinite;
 }
 @keyframes blink-cursor {
@@ -938,7 +940,7 @@ body {
   font-family: var(--mono);
   font-size: 9px;
   color: var(--ink-dim);
-  text-align: right;
+  text-align: end;
   line-height: 1.8;
 }
 .validity-stamp {
@@ -1086,7 +1088,7 @@ body {
   font-size: 10px;
   letter-spacing: 1px;
   text-transform: uppercase;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   transition: all .12s;
 }
@@ -1097,9 +1099,9 @@ body {
 .gm-tabs {
   display: flex;
   gap: 4px;
-  margin-right: 16px;
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
-  padding-right: 16px;
+  margin-inline-end: 16px;
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.15);
+  padding-inline-end: 16px;
 }
 .gm-body {
   flex: 1;
@@ -1287,7 +1289,7 @@ body {
   letter-spacing:.5px; 
   text-transform:uppercase;
   color:rgba(255,255,255,.35); 
-  margin-right:4px;
+  margin-inline-end: 4px;
 }
 /* ── Определение ──────────────────────────────────────────────────────────── */
 .gm-panel-def {
@@ -1295,8 +1297,8 @@ body {
   margin-bottom: 9px;
   font-size: 10px;
   line-height: 1.6;
-  border-left: 2px solid rgba(255,255,255,.1);
-  padding-left: 8px;
+  border-inline-start: 2px solid rgba(255,255,255,.1);
+  padding-inline-start: 8px;
 }
 /* ── Происхождение / генеалогия ──────────────────────────────────────────── */
 .gm-panel-orig {
@@ -1639,7 +1641,7 @@ body {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   padding: 9px 14px;
-  text-align: left;
+  text-align: start;
   font-weight: 500;
 }
 .mode-modal-body .doc-content td {
@@ -1717,11 +1719,11 @@ body {
 .mode-tab-date {
   font-size: 8px;
   color: var(--ink-dim);
-  margin-left: 4px;
+  margin-inline-start: 4px;
 }
 .mode-tab-close {
   font-size: 11px;
-  margin-left: 6px;
+  margin-inline-start: 6px;
   opacity: 0;
   cursor: pointer;
   color: var(--red);
@@ -1859,7 +1861,7 @@ body {
     padding: 14px 18px;
   }
   .doc-footer-right {
-    text-align: left;
+    text-align: start;
   }
 }
 
@@ -2007,7 +2009,7 @@ body {
 /* Severity levels */
 .compat-panel[data-severity="synergy-max"] {
   border-color: var(--green-check);
-  border-left: 4px solid var(--green-check);
+  border-inline-start: 4px solid var(--green-check);
 }
 .compat-panel[data-severity="synergy-max"] .compat-header {
   background: #f0fff4;
@@ -2018,7 +2020,7 @@ body {
 
 .compat-panel[data-severity="synergy"] {
   border-color: #2a7d3f;
-  border-left: 4px solid #2a7d3f;
+  border-inline-start: 4px solid #2a7d3f;
 }
 .compat-panel[data-severity="synergy"] .compat-header {
   background: #f4fdf6;
@@ -2029,7 +2031,7 @@ body {
 
 .compat-panel[data-severity="stable"] {
   border-color: var(--blue-corp);
-  border-left: 4px solid var(--blue-corp);
+  border-inline-start: 4px solid var(--blue-corp);
 }
 .compat-panel[data-severity="stable"] .compat-header {
   background: var(--blue-light);
@@ -2040,7 +2042,7 @@ body {
 
 .compat-panel[data-severity="tension"] {
   border-color: var(--gold);
-  border-left: 4px solid var(--gold);
+  border-inline-start: 4px solid var(--gold);
 }
 .compat-panel[data-severity="tension"] .compat-header {
   background: #fffbee;
@@ -2051,7 +2053,7 @@ body {
 
 .compat-panel[data-severity="conflict"] {
   border-color: #c44;
-  border-left: 4px solid #c44;
+  border-inline-start: 4px solid #c44;
 }
 .compat-panel[data-severity="conflict"] .compat-header {
   background: #fff5f5;
@@ -2062,7 +2064,7 @@ body {
 
 .compat-panel[data-severity="hard-conflict"] {
   border-color: var(--red);
-  border-left: 4px solid var(--red);
+  border-inline-start: 4px solid var(--red);
 }
 .compat-panel[data-severity="hard-conflict"] .compat-header {
   background: #fff0f0;
@@ -2145,7 +2147,8 @@ body {
   padding: 5px 12px;
   cursor: pointer;
   transition: all 0.15s;
-  margin: 0 4px 4px 0;
+  margin-block: 0 4px;
+  margin-inline: 0 4px;
 }
 .compat-replace-btn:hover {
   background: var(--blue-corp);
@@ -2154,7 +2157,7 @@ body {
 .compat-replace-btn .replace-rating {
   font-size: 9px;
   opacity: 0.7;
-  margin-left: 4px;
+  margin-inline-start: 4px;
 }
 
 /* Section advice callout inside compat panel */
@@ -2601,7 +2604,7 @@ body {
   background: #fff5f5;
   border: 1px solid var(--red);
   padding: 2px 8px;
-  margin-left: 8px;
+  margin-inline-start: 8px;
 }
 
 /* ── IMPORT ── */
@@ -2676,7 +2679,7 @@ body {
   color: var(--red);
 }
 .cascade-item-status {
-  margin-left: auto;
+  margin-inline-start: auto;
   font-size: 9px;
   letter-spacing: 0.5px;
   opacity: 0.7;
@@ -2903,7 +2906,7 @@ body {
   background: var(--blue-light);
 }
 .pool-card.synth-on {
-  border-left: 3px solid var(--violet);
+  border-inline-start: 3px solid var(--violet);
 }
 .pool-card-controls {
   display: flex;
@@ -3017,7 +3020,7 @@ padding-top: 20px;
 position: relative;
 list-style: none;
 margin: 0;
-padding-left: 0;
+padding-inline-start: 0;
 }
 
 /* Вертикальная линия от родителя к горизонтальной перемычке */
@@ -3123,7 +3126,7 @@ text-overflow: ellipsis;
 /* ── Зерно внутри карточки (раскрывающееся, для родительских узлов) ── */
 .gen-card-seed-details {
 margin-top: 4px;
-text-align: left;
+text-align: start;
 }
 .gen-card-seed-details summary {
 cursor: pointer;
@@ -3156,17 +3159,17 @@ color: rgba(255, 255, 255, 0.5);
 margin-top: 4px;
 padding: 6px 8px;
 background: rgba(0, 0, 0, 0.10);
-border-left: 2px solid rgba(255, 255, 255, 0.25);
+border-inline-start: 2px solid rgba(255, 255, 255, 0.25);
 max-height: 150px;
 overflow-y: auto;
-text-align: left;
+text-align: start;
 white-space: pre-line;
 }
 
 /* ── Капсула внутри карточки (раскрывающаяся) ── */
 .gen-card-capsule {
 margin-top: 6px;
-text-align: left;
+text-align: start;
 }
 .gen-card-capsule summary {
 cursor: pointer;
@@ -3198,10 +3201,10 @@ color: rgba(255, 255, 255, 0.65);
 margin-top: 6px;
 padding: 6px 8px;
 background: rgba(0, 0, 0, 0.15);
-border-left: 2px solid var(--gold);
+border-inline-start: 2px solid var(--gold);
 max-height: 200px;
 overflow-y: auto;
-text-align: left;
+text-align: start;
 white-space: pre-wrap;
 }
 
@@ -3375,7 +3378,7 @@ font-size: 14px;
   color: var(--gold);
   font-size: 14px;
   padding: 2px 6px;
-  margin-left: 8px;
+  margin-inline-start: 8px;
   opacity: 0.5;
   vertical-align: middle;
   transition: opacity 0.2s;
@@ -3451,7 +3454,7 @@ font-size: 14px;
 }
 .pause-info-box {
   background: var(--off);
-  border-left: 3px solid var(--gold);
+  border-inline-start: 3px solid var(--gold);
   padding: 10px 14px;
   margin: 12px 0;
   font-family: var(--mono);
@@ -3462,7 +3465,7 @@ font-size: 14px;
 .pause-info-box strong { color: var(--ink); font-weight: 600; }
 .pause-reason-box {
   background: #fff4f4;
-  border-left: 3px solid var(--red);
+  border-inline-start: 3px solid var(--red);
   padding: 10px 14px;
   margin: 12px 0;
   font-family: var(--mono);
@@ -3637,14 +3640,14 @@ font-size: 14px;
     display: block;
     background: var(--paper);
     border: 1px solid var(--rule);
-    border-left: 3px solid var(--rule-strong);
+    border-inline-start: 3px solid var(--rule-strong);
     padding: 16px 20px;
     transition: border-color 0.15s;
   }
 
   .catalog-card:hover {
     border-color: var(--blue-corp);
-    border-left-color: var(--blue-corp);
+    border-inline-start-color: var(--blue-corp);
     text-decoration: none;
   }
 
@@ -3899,7 +3902,7 @@ font-size: 14px;
   flex-shrink: 0;
   width: 232px;
   background: var(--paper);
-  border-right: 1px solid var(--rule);
+  border-inline-end: 1px solid var(--rule);
   padding: 24px 0;
 }
 
@@ -3924,7 +3927,7 @@ font-size: 14px;
   text-transform: uppercase;
   color: var(--ink-mid);
   text-decoration: none;
-  border-left: 3px solid transparent;
+  border-inline-start: 3px solid transparent;
   transition: all 0.15s;
 }
 
@@ -3937,7 +3940,7 @@ font-size: 14px;
 .app-nav-link.active {
   color: var(--blue-corp);
   background: var(--blue-light);
-  border-left-color: var(--blue-corp);
+  border-inline-start-color: var(--blue-corp);
   font-weight: 500;
 }
 
@@ -3967,7 +3970,8 @@ font-size: 14px;
   .app-sidebar-mobile {
     display: block;
     position: fixed;
-    inset: 0 auto 0 0;
+    inset-block: 0;
+    inset-inline: 0 auto;
     z-index: 9000;
     transform: translateX(-100%);
     transition: transform 0.2s;
@@ -4036,7 +4040,7 @@ font-size: 14px;
   }
 
   .version-item.current {
-    border-left: 3px solid var(--green-check);
+    border-inline-start: 3px solid var(--green-check);
   }
 
   .version-num {
@@ -4073,7 +4077,8 @@ font-size: 14px;
 
   .diff-line {
     display: block;
-    padding: 1px 12px 1px 24px;
+    padding-block: 1px;
+    padding-inline: 24px 12px;
     position: relative;
     white-space: pre-wrap;
   }
@@ -4131,7 +4136,7 @@ font-size: 14px;
   }
 
   .inline-edit-form {
-    border-left: 3px solid var(--blue-corp);
+    border-inline-start: 3px solid var(--blue-corp);
     background: var(--white);
     padding: 12px 14px;
     margin: 4px 0;
@@ -4153,7 +4158,7 @@ font-size: 14px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--gold);
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 
   /* — обвязка сервиса — */
@@ -4163,8 +4168,8 @@ font-size: 14px;
   .doc-table th.inline-edit-cell,
   .doc-table td.inline-edit-cell {
     width: 28px;
-    padding-left: 4px;
-    padding-right: 4px;
+    padding-inline-start: 4px;
+    padding-inline-end: 4px;
     text-align: center;
     white-space: nowrap;
   }
@@ -4306,7 +4311,7 @@ font-size: 14px;
     font-weight: 600;
     color: var(--blue-corp);
     min-width: 34px;
-    text-align: right;
+    text-align: end;
   }
 
   .char-slider-why {
@@ -4358,7 +4363,7 @@ font-size: 14px;
      не всплывающим окном: в документе всплывашки некуда девать */
   .char-justification {
     grid-column: 1 / -1;
-    border-left: 3px solid var(--gold);
+    border-inline-start: 3px solid var(--gold);
     background: var(--white);
     padding: 8px 12px;
     font-size: 12px;
@@ -4461,7 +4466,7 @@ font-size: 14px;
 
   .enrich-card {
     border: 1px solid var(--rule);
-    border-left: 3px solid var(--violet);
+    border-inline-start: 3px solid var(--violet);
     background: var(--paper);
     padding: 10px 14px;
     margin-top: 8px;
@@ -4647,7 +4652,7 @@ font-size: 14px;
   .gm-info-panel .char-justification {
     background: rgba(255, 255, 255, 0.05);
     color: rgba(200, 192, 176, 0.9);
-    border-left-color: var(--gold-light);
+    border-inline-start-color: var(--gold-light);
   }
 
   .gm-info-panel .char-justification-part {
@@ -4760,7 +4765,7 @@ font-size: 14px;
   }
 
   .transform-warn {
-    border-left: 3px solid var(--red);
+    border-inline-start: 3px solid var(--red);
     background: #fff5f5;
     padding: 8px 12px;
     font-size: 12px;
@@ -4910,7 +4915,7 @@ font-size: 14px;
     letter-spacing: 1px;
     line-height: 1.6;
     color: rgba(255, 255, 255, 0.7);
-    border-left: 2px solid var(--red);
+    border-inline-start: 2px solid var(--red);
     padding: 4px 8px;
   }
 
@@ -4918,7 +4923,7 @@ font-size: 14px;
   .header-disclosure-capsule summary .doc-title-edit-btn {
     font-size: 12px;
     padding: 0 5px;
-    margin-left: 6px;
+    margin-inline-start: 6px;
   }
 
   .header-disclosure-capsule summary .doc-title-edit-btn:disabled {
@@ -4994,8 +4999,8 @@ font-size: 14px;
   }
 
   .app-landing-feature {
-    border-left: 3px solid var(--rule-strong);
-    padding-left: 14px;
+    border-inline-start: 3px solid var(--rule-strong);
+    padding-inline-start: 14px;
   }
 
   .app-landing-feature .form-label {
@@ -5048,7 +5053,7 @@ font-size: 14px;
     justify-content: space-between;
     gap: 10px 16px;
     border: 1px solid var(--gold);
-    border-left: 4px solid var(--gold);
+    border-inline-start: 4px solid var(--gold);
     background: var(--paper);
     padding: 10px 16px;
     margin-bottom: 14px;
@@ -5128,7 +5133,7 @@ font-size: 14px;
 
   /* «Что увидит посторонний» — словами, читаемым шрифтом, под золотой чертой */
   .visibility-audience {
-    border-left: 3px solid var(--gold);
+    border-inline-start: 3px solid var(--gold);
     background: var(--paper);
     padding: 8px 12px;
     margin-top: 12px;
@@ -5162,7 +5167,7 @@ font-size: 14px;
 @layer components {
   /* (1) карандаш в строке <h4>: после ⏫, не капителью заголовка */
   .doc-content h4 > .subsection-edit-btn {
-    margin-left: 8px;
+    margin-inline-start: 8px;
     vertical-align: middle;
     letter-spacing: 0;
     line-height: 1.2;
@@ -5199,7 +5204,8 @@ font-size: 14px;
   }
 
   .subsection-edit-warnings {
-    margin: 6px 0 0 18px;
+    margin-block: 6px 0;
+    margin-inline: 18px 0;
     font-size: 12px;
     color: var(--ink-mid);
   }
@@ -5210,7 +5216,7 @@ font-size: 14px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--ink-dim);
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 }
 
@@ -5264,7 +5270,7 @@ font-size: 14px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--ink-mid);
-    text-align: left;
+    text-align: start;
     padding: 7px 12px;
     border-bottom: 1px solid var(--rule-strong);
     white-space: nowrap;
@@ -5283,7 +5289,7 @@ font-size: 14px;
   .data-table .num {
     font-family: var(--mono);
     font-size: 11px;
-    text-align: right;
+    text-align: end;
     white-space: nowrap;
   }
 
@@ -5418,12 +5424,13 @@ font-size: 14px;
     align-items: baseline;
     justify-content: space-between;
     gap: 8px;
-    padding: 5px 12px 5px 22px;
+    padding-block: 5px;
+    padding-inline: 22px 12px;
     font-family: var(--mono);
     font-size: 11px;
     color: var(--ink-mid);
     cursor: pointer;
-    border-left: 3px solid transparent;
+    border-inline-start: 3px solid transparent;
   }
 
   .key-tree-item:hover {
@@ -5432,7 +5439,7 @@ font-size: 14px;
 
   .key-tree-item.active {
     background: var(--blue-light);
-    border-left-color: var(--blue-corp);
+    border-inline-start-color: var(--blue-corp);
     color: var(--blue-corp);
   }
 
@@ -5552,7 +5559,7 @@ font-size: 14px;
 
   .rec-item.selected {
     border-color: var(--blue-corp);
-    border-left: 3px solid var(--blue-corp);
+    border-inline-start: 3px solid var(--blue-corp);
     background: var(--blue-light);
   }
 
@@ -5595,7 +5602,7 @@ font-size: 14px;
   }
 
   .rec-toggle {
-    margin-left: auto;
+    margin-inline-start: auto;
     font-family: var(--mono);
     font-size: 9px;
     letter-spacing: 1.5px;
@@ -5638,7 +5645,7 @@ font-size: 14px;
   }
 
   .rec-element-kind {
-    margin-left: 6px;
+    margin-inline-start: 6px;
     font-family: var(--mono);
     font-size: 8.5px;
     font-weight: 400;
@@ -5657,7 +5664,7 @@ font-size: 14px;
 
   /* (2) пометка «стоит ли это денег» */
   .rec-cost {
-    margin-left: auto;
+    margin-inline-start: auto;
     font-family: var(--mono);
     font-size: 9px;
     font-weight: 600;
@@ -5695,8 +5702,8 @@ font-size: 14px;
 
   .rec-row-detail {
     margin: 6px 0 4px;
-    padding-left: 10px;
-    border-left: 2px solid var(--rule);
+    padding-inline-start: 10px;
+    border-inline-start: 2px solid var(--rule);
   }
 
   .rec-action-text {
@@ -5873,7 +5880,7 @@ font-size: 14px;
   /* (6) шаг плана из рекомендации и «почему» версии */
   .plan-step-rec,
   .plan-step-free {
-    margin-left: 8px;
+    margin-inline-start: 8px;
     font-size: 9px;
     letter-spacing: 1px;
   }
@@ -5888,11 +5895,13 @@ font-size: 14px;
   }
 
   .plan-step-value {
-    margin: 2px 0 4px 24px;
+    margin-block: 2px 4px;
+    margin-inline: 24px 0;
   }
 
   .version-origin {
-    padding: 4px 12px 8px 34px;
+    padding-block: 4px 8px;
+    padding-inline: 34px 12px;
     border-bottom: 1px solid var(--rule);
     font-family: var(--mono);
     font-size: 9.5px;
@@ -5905,7 +5914,7 @@ font-size: 14px;
 @media (max-width: 700px) {
   .rec-cost,
   .rec-toggle {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 
   .rec-past-row {
@@ -5960,7 +5969,7 @@ font-size: 14px;
   .app-lang-switch .app-lang-menu {
     position: absolute;
     top: calc(100% + 4px);
-    right: 0;
+    inset-inline-end: 0;
     z-index: 40;
     min-width: 100%;
     background: var(--paper);
@@ -5982,7 +5991,7 @@ font-size: 14px;
     font-size: 9px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    text-align: left;
+    text-align: start;
     white-space: nowrap;
     padding: 6px 12px;
     cursor: pointer;
@@ -6033,7 +6042,7 @@ font-size: 14px;
 
   .parse-warnings-list {
     margin: 0;
-    padding-left: 20px;
+    padding-inline-start: 20px;
   }
 
   .parse-warnings-list li {
@@ -6116,7 +6125,7 @@ font-size: 14px;
   }
 
   .section-actions .section-edited-mark {
-    margin-right: auto;
+    margin-inline-end: auto;
     align-self: center;
   }
 
@@ -6173,7 +6182,8 @@ font-size: 14px;
 
   /* — (7) Заметки о следствиях правки подраздела (Д-34) — */
   .subsection-edit-notes {
-    margin: 4px 0 6px 18px;
+    margin-block: 4px 6px;
+    margin-inline: 18px 0;
     font-size: 12px;
     color: var(--ink);
   }
@@ -6209,8 +6219,8 @@ font-size: 14px;
   }
 
   .rich-editor-table-ops {
-    padding-left: 10px;
-    border-left: 1px solid var(--rule);
+    padding-inline-start: 10px;
+    border-inline-start: 1px solid var(--rule);
   }
 
   .rich-editor-btn {
@@ -6241,7 +6251,7 @@ font-size: 14px;
   }
 
   .rich-editor-toggle {
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 
   .rich-editor-toggle[aria-pressed="true"] {
@@ -6322,7 +6332,7 @@ font-size: 14px;
     flex-wrap: wrap;
     gap: 4px 6px;
     justify-content: center;
-    text-align: left;
+    text-align: start;
   }
 
   .gen-card-action-btn {
@@ -6411,7 +6421,7 @@ font-size: 14px;
 
   .gen-link-item-title {
     flex: 1 1 120px;
-    text-align: left;
+    text-align: start;
   }
 
   .gen-link-item-date {
@@ -6424,7 +6434,7 @@ font-size: 14px;
   .gen-link-item-btns {
     display: inline-flex;
     gap: 4px;
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 
   .gen-link-empty,
@@ -6434,7 +6444,7 @@ font-size: 14px;
     font-size: 9px;
     letter-spacing: 0.5px;
     color: rgba(255, 255, 255, 0.5);
-    text-align: left;
+    text-align: start;
   }
 
   .gen-link-note {
@@ -6530,7 +6540,7 @@ font-size: 14px;
      правки подраздела (3) */
   .element-delete,
   .subsection-delete {
-    margin-left: auto;
+    margin-inline-start: auto;
     display: inline-flex;
     gap: 6px;
     flex-wrap: wrap;
@@ -6551,7 +6561,7 @@ font-size: 14px;
 
   /* (4) строка шага удаления в панели плана */
   .plan-step-delete > div:first-child {
-    border-left: 3px solid var(--red);
+    border-inline-start: 3px solid var(--red);
   }
 
   /* (5) пометка «удаление · бесплатно» */
@@ -6660,7 +6670,7 @@ font-size: 14px;
 
   /* (5) кнопки тулбара */
   .plan-toolbar-btns {
-    margin-left: auto;
+    margin-inline-start: auto;
     display: flex;
     gap: 6px;
   }
@@ -6782,7 +6792,7 @@ font-size: 14px;
     font-family: var(--mono);
     font-size: 11px;
     color: var(--ink-mid);
-    text-align: right;
+    text-align: end;
   }
   .members-row-note.warn {
     color: var(--red);
@@ -6805,7 +6815,7 @@ font-size: 14px;
   .notif-count {
     position: absolute;
     top: -4px;
-    right: -6px;
+    inset-inline-end: -6px;
     min-width: 16px;
     padding: 0 4px;
     font-family: var(--mono);
@@ -6821,7 +6831,7 @@ font-size: 14px;
   .notif-dropdown {
     position: absolute;
     top: calc(100% + 6px);
-    right: 0;
+    inset-inline-end: 0;
     z-index: 40;
     width: 360px;
     max-width: calc(100vw - 24px);
@@ -6830,7 +6840,7 @@ font-size: 14px;
     background: var(--paper);
     border: 1px solid var(--rule);
     color: var(--ink);
-    text-align: left;
+    text-align: start;
   }
   .notif-head,
   .notif-foot {
@@ -6867,13 +6877,13 @@ font-size: 14px;
   }
   .notif-item {
     border-bottom: 1px solid var(--rule);
-    border-left: 3px solid transparent;
+    border-inline-start: 3px solid transparent;
   }
   .notif-item:last-child {
     border-bottom: none;
   }
   .notif-item.unread {
-    border-left-color: var(--gold);
+    border-inline-start-color: var(--gold);
     background: var(--blue-light);
   }
   .notif-item-btn {
@@ -6886,7 +6896,7 @@ font-size: 14px;
     border: none;
     color: inherit;
     font: inherit;
-    text-align: left;
+    text-align: start;
     cursor: pointer;
   }
   .notif-item-btn:hover {
@@ -7026,7 +7036,7 @@ font-size: 14px;
 
   /* (2) счётчик на вкладке */
   .page-tab-count {
-    margin-left: 6px;
+    margin-inline-start: 6px;
     font-weight: 600;
     color: var(--gold);
   }
@@ -7039,18 +7049,18 @@ font-size: 14px;
     transition: padding-right 0.15s;
   }
   .discuss-dock-open {
-    padding-right: 440px;
+    padding-inline-end: 440px;
   }
   .discuss-dock {
     position: fixed;
     top: 0;
-    right: 0;
+    inset-inline-end: 0;
     bottom: 0;
     width: 420px;
     display: flex;
     flex-direction: column;
     background: var(--paper);
-    border-left: 1px solid var(--rule);
+    border-inline-start: 1px solid var(--rule);
     z-index: 40;
   }
   .discuss-dock-head {
@@ -7243,9 +7253,10 @@ font-size: 14px;
     margin: 4px 0;
   }
   .discuss-reply {
-    margin: 8px 0 0 14px;
-    padding-left: 10px;
-    border-left: 2px solid var(--rule);
+    margin-block: 8px 0;
+    margin-inline: 14px 0;
+    padding-inline-start: 10px;
+    border-inline-start: 2px solid var(--rule);
   }
   .discuss-actions {
     display: flex;
@@ -7264,8 +7275,8 @@ font-size: 14px;
     border-top: none;
   }
   .discuss-replacement {
-    border-left: 2px solid var(--gold);
-    padding-left: 10px;
+    border-inline-start: 2px solid var(--gold);
+    padding-inline-start: 10px;
     margin-top: 4px;
   }
 
@@ -7445,7 +7456,7 @@ font-size: 14px;
 
 @media (max-width: 900px) {
   .discuss-dock-open {
-    padding-right: 0;
+    padding-inline-end: 0;
   }
   .discuss-dock {
     width: 100%;
@@ -7535,7 +7546,7 @@ font-size: 14px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--ink-dim);
-    margin-right: 6px;
+    margin-inline-end: 6px;
   }
 
   /* (2) форма предложения и панель решения */
@@ -7589,8 +7600,8 @@ font-size: 14px;
   }
   .proposal-rationale {
     margin: 4px 0 10px;
-    padding-left: 12px;
-    border-left: 2px solid var(--rule-strong);
+    padding-inline-start: 12px;
+    border-inline-start: 2px solid var(--rule-strong);
   }
   .proposal-accept {
     margin: 10px 0;
@@ -7640,7 +7651,7 @@ font-size: 14px;
 
   /* (4) шаг плана по предложению */
   .plan-step-skip {
-    margin-left: 8px;
+    margin-inline-start: 8px;
     font-size: 9px;
     letter-spacing: 1px;
     color: var(--red);
@@ -7718,7 +7729,7 @@ font-size: 14px;
     flex: 0 0 auto;
     padding-top: 6px;
     padding-bottom: 6px;
-    border-right: none;
+    border-inline-end: none;
     font-family: var(--mono);
     font-size: 10px;
     letter-spacing: 1px;
@@ -7740,7 +7751,7 @@ font-size: 14px;
     padding: 16px 20px;
     background: var(--paper);
     border: 1px solid var(--rule);
-    border-left: 3px solid var(--rule-strong);
+    border-inline-start: 3px solid var(--rule-strong);
   }
   .catalog-filters-grid {
     display: grid;
@@ -7817,8 +7828,8 @@ font-size: 14px;
     align-items: baseline;
     gap: 4px 10px;
     margin-top: 8px;
-    padding-left: 10px;
-    border-left: 2px solid var(--rule-strong);
+    padding-inline-start: 10px;
+    border-inline-start: 2px solid var(--rule-strong);
     font-size: 12px;
     line-height: 1.7;
     color: var(--ink-mid);
@@ -7889,8 +7900,8 @@ font-size: 14px;
   .catalog-empty-hints {
     display: inline-block;
     margin: 8px 0 0;
-    padding-left: 18px;
-    text-align: left;
+    padding-inline-start: 18px;
+    text-align: start;
     font-size: 12px;
     line-height: 1.7;
     list-style: square;
@@ -8002,14 +8013,14 @@ font-size: 14px;
   .similar-card {
     background: var(--paper);
     border: 1px solid var(--rule);
-    border-left: 3px solid var(--rule-strong);
+    border-inline-start: 3px solid var(--rule-strong);
     padding: 14px 20px;
   }
   .similar-card.strong {
-    border-left-color: var(--gold);
+    border-inline-start-color: var(--gold);
   }
   .similar-card.weak {
-    border-left-color: var(--rule);
+    border-inline-start-color: var(--rule);
   }
   .similar-card-head {
     display: flex;
@@ -8089,8 +8100,8 @@ font-size: 14px;
   }
   .similar-skip {
     margin-top: 10px;
-    padding-left: 10px;
-    border-left: 2px solid var(--rule-strong);
+    padding-inline-start: 10px;
+    border-inline-start: 2px solid var(--rule-strong);
     font-family: var(--mono);
     font-size: 9px;
     letter-spacing: 1px;
@@ -8142,6 +8153,60 @@ font-size: 14px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+ * Направление интерфейса (2026-11-26, вне бесед). Атрибут dir на <html>
+ * ставит i18n-store по языку интерфейса (uiLocaleDir, shared/i18n/locales).
+ * Стороны в правилах выше записаны ЛОГИЧЕСКИМИ свойствами
+ * (scripts/checks/css_logical.py — одна таблица равнозначностей со
+ * скриптом паритета) и зеркалятся сами. Здесь — только то, что
+ * логическими свойствами не выражается; блок помечен метками, сторож 4bu
+ * сверяет его состав. Вне @layer — по той же причине, что блок ниже.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* ui-dir: begin */
+/* (1) Острова слева направо при любом направлении интерфейса: исходный
+   код, разметка и построчные сравнения — их отступы и знаки «+/−» стоят
+   по левому краю; граф — холст с координатами (корень окна несёт dir="ltr"
+   в разметке, GraphModal). */
+.raw-modal-body pre,
+.diff-line,
+.form-textarea.subsection-edit-source,
+.plan-step-markup {
+  direction: ltr;
+  text-align: left;
+}
+/* (2) Стрелка выпадающего списка — картинкой фона: сторона задаётся явно */
+.form-select:dir(rtl) {
+  background-position: left 12px center;
+}
+/* (3) Выезжающая боковая панель: сторона — inset-inline, сдвиг — зеркально */
+@media (max-width: 900px) {
+  .app-sidebar-mobile:dir(rtl) {
+    transform: translateX(100%);
+  }
+  .app-sidebar-mobile.open:dir(rtl) {
+    transform: translateX(0);
+  }
+}
+/* (4) Маркеры раскрытия «▶ / ▸» смотрят по ходу чтения; раскрытые (поворот
+   на 90° — вниз) от направления не зависят */
+:is(.header-disclosure, .header-disclosure-capsule, .sec-disclosure, .gen-card-seed-details, .gen-card-capsule):not([open]) > summary:dir(rtl)::before,
+#docTOC:not([open]) .toc-arrow:dir(rtl) {
+  transform: scaleX(-1);
+}
+/* (5) Блик шапки документа — у края конца строки */
+.doc-header:dir(rtl)::before {
+  right: auto;
+  left: 0;
+  transform: scaleX(-1);
+}
+/* (6) Разрядка рвёт соединения вязи: в интерфейсе на языке арабского
+   письма её нет нигде (правила письменностей ниже — о ДОКУМЕНТЕ) */
+:root:is(:lang(ar), :lang(fa), :lang(ur), :lang(ps), :lang(sd), :lang(ug), :lang(ckb)) * {
+  letter-spacing: normal !important;
+}
+/* ui-dir: end */
+
+/* ═══════════════════════════════════════════════════════════════════
  * Письменности языков генерации (2026-11-26, вне бесед): арабский и фарси
  * справа налево, санскрит — деванагари. Блок между метками — ДОСЛОВНО
  * GEN_SCRIPT_CSS (packages/shared/i18n/gen-script-css.ts; тот же текст уходит
@@ -8151,33 +8216,43 @@ font-size: 14px;
 
 /* gen-script-css: begin (packages/shared/i18n/gen-script-css.ts) */
 :root {
-  --mono: "IBM Plex Mono", "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", monospace;
-  --sans: "IBM Plex Sans", "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", sans-serif;
-  --serif: "Playfair Display", "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", serif;
+  --mono: "IBM Plex Mono", "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", "Noto Sans Mono", monospace;
+  --sans: "IBM Plex Sans", "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", "Noto Sans", sans-serif;
+  --serif: "Playfair Display", "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", "Noto Serif", serif;
 }
-[dir="rtl"] .doc-table th {
+:lang(grc) {
+  --mono: "Noto Sans Mono", "IBM Plex Mono", monospace;
+  --sans: "Noto Sans", "IBM Plex Sans", sans-serif;
+  --serif: "Noto Serif", "Playfair Display", serif;
+}
+[lang="grc"] {
+  font-family: var(--sans);
+}
+.doc-table th:dir(rtl) {
   text-align: right;
 }
-[dir="rtl"] .callout {
+.callout:dir(rtl) {
   border-left: none;
   border-right: 3px solid;
 }
-[dir="rtl"] .doc-content ul,
-[dir="rtl"] .doc-content ol {
+.doc-content :is(ul, ol):dir(rtl) {
   margin: 8px 20px 14px 0;
 }
-:is(:lang(ar), :lang(fa), :lang(sa)) .doc-content {
+.doc-content:is(:lang(ar), :lang(fa), :lang(sa)) {
   font-size: 14px;
   line-height: 2;
 }
-:is(:lang(ar), :lang(fa), :lang(sa)) :is(.section-num, .doc-content h4, .doc-content h5, .doc-table th, .callout-label) {
+:is(.section-num, .doc-content h4, .doc-content h5, .doc-table th, .callout-label):is(:lang(ar), :lang(fa), :lang(sa)) {
   letter-spacing: normal;
   text-transform: none;
 }
-:is(:lang(ar), :lang(fa), :lang(sa)) :is(.doc-content h4, .doc-content h5) {
+:is(.section-num, .doc-content h4, .doc-content h5, .doc-table th, .callout-label):lang(grc) {
+  text-transform: none;
+}
+:is(.doc-content h4, .doc-content h5):is(:lang(ar), :lang(fa), :lang(sa)) {
   font-size: 13px;
 }
-:is(:lang(ar), :lang(fa), :lang(sa)) :is(.section-num, .doc-table th, .callout-label) {
+:is(.section-num, .doc-table th, .callout-label):is(:lang(ar), :lang(fa), :lang(sa)) {
   font-size: 11px;
 }
 /* gen-script-css: end */

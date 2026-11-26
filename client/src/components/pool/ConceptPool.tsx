@@ -291,7 +291,7 @@ export function ConceptPool() {
                 className="pool-catalog-row"
               >
                 <div className="pool-card-info">
-                  <div className="pool-card-name">{s.title}</div>
+                  <div className="pool-card-name" dir="auto">{s.title}</div>
                   <div className="pool-card-meta">
                     {s.philosophers.length > 0
                       ? s.philosophers.join(", ")

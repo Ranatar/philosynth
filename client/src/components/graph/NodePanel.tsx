@@ -123,7 +123,7 @@ function EdgeRow({ l, dir }: { l: PanelLink; dir: "out" | "in" | "ref" }) {
         {dir === "out" ? "→" : dir === "in" ? "←" : "↺"}
       </span>
       <div>
-        <div className="gm-panel-edge-name">{other}</div>
+        <div className="gm-panel-edge-name" dir="auto">{other}</div>
         <div className="gm-panel-edge-meta">
           {tDataLoose(l.type) || "—"}
           {l.desc ? " · " + l.desc : ""}
@@ -234,7 +234,7 @@ export default function NodePanel({
     <div className={"gm-info-panel" + (visible ? " visible" : "")}>
       <div className="gm-panel-header">
         <div className="gm-panel-dot" style={{ background: color }} />
-        <div className="gm-panel-name">{d.name}</div>
+        <div className="gm-panel-name" dir="auto">{d.name}</div>
         <button
           className="gm-panel-close"
           onClick={(e) => {
@@ -311,11 +311,11 @@ export default function NodePanel({
         </div>
       ) : null}
       {edit ? <InlineEditBlock edit={edit} /> : null}
-      <div className="gm-panel-def">{d.def || ""}</div>
+      <div className="gm-panel-def" dir="auto">{d.def || ""}</div>
       {d.orig ? (
         <div className="gm-panel-orig">
           <div className="gm-panel-orig-label">{tl("graph.nodePanel.originGenealogy", "Происхождение / генеалогия")}</div>
-          <div className="gm-panel-orig-text">{d.orig}</div>
+          <div className="gm-panel-orig-text" dir="auto">{d.orig}</div>
         </div>
       ) : null}
       <div className="gm-panel-metrics">

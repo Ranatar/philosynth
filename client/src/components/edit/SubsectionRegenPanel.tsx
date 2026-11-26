@@ -373,7 +373,7 @@ export function SubsectionRegenPanel({
                       display: "inline-flex",
                       fontSize: 9,
                       color: "var(--gold)",
-                      marginLeft: i === 0 ? 4 : 10,
+                      marginInlineStart: i === 0 ? 4 : 10,
                     }}
                   >
                     <input
@@ -407,7 +407,7 @@ export function SubsectionRegenPanel({
                             display: "inline-flex",
                             fontSize: 9,
                             color: "var(--gold)",
-                            marginRight: 8,
+                            marginInlineEnd: 8,
                           }}
                         >
                           <input

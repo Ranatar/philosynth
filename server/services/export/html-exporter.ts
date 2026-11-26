@@ -363,7 +363,7 @@ interface ModeRow {
   createdAt: Date;
 }
 
-export function buildModesExportSection(modeRows: ModeRow[]): string {
+export function buildModesExportSection(modeRows: ModeRow[], lang?: string | null): string {
   // Группировка по режиму (порядок createdAt ASC внутри — как runMode
   // наполнял DOC_STATE.modes[key].push)
   const byKey = new Map<string, ModeRow[]>();
@@ -377,7 +377,14 @@ export function buildModesExportSection(modeRows: ModeRow[]): string {
   if (!allResults.length) return "";
 
   // ── 1. Данные: скрытые блоки с HTML-контентом ──
-  let dataHTML = '<div id="philosynth-modes" style="display:none">';
+  // 2026-11-26: язык и направление письма результатов — атрибутами данных на
+  // контейнере (разметку .philosynth-mode читает импорт — её не трогаем);
+  // скрипт окна переносит их на #modeContent (арабский, фарси — справа налево)
+  const contentAttrs = genLangContentAttrs(lang);
+  let dataHTML =
+    `<div id="philosynth-modes" style="display:none" data-content-dir="${contentAttrs.dir}"` +
+    (contentAttrs.lang ? ` data-content-lang="${esc(contentAttrs.lang)}"` : "") +
+    ">";
   for (const [key, results] of allResults) {
     const title = getModeConfig(key)?.title || key;
     for (const r of results) {
@@ -463,7 +470,14 @@ export function buildModesExportSection(modeRows: ModeRow[]): string {
           for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.toggle("active", i === idx);
           }
-          document.getElementById("modeContent").innerHTML = results[idx].html;
+          var modeContent = document.getElementById("modeContent");
+          modeContent.innerHTML = results[idx].html;
+          // 2026-11-26: язык и направление письма документа (не из исходника)
+          var modesBox = document.getElementById("philosynth-modes");
+          var contentDir = modesBox && modesBox.getAttribute("data-content-dir");
+          var contentLang = modesBox && modesBox.getAttribute("data-content-lang");
+          if (contentDir) modeContent.setAttribute("dir", contentDir);
+          if (contentLang) modeContent.setAttribute("lang", contentLang);
           document.getElementById("modeInfo").textContent =
             results[idx].param + " \\u00b7 " +
             new Date(results[idx].timestamp).toLocaleString("ru-RU");
@@ -734,7 +748,7 @@ export async function exportHTML(
     .from(modeResults)
     .where(eq(modeResults.synthesisId, synthesisId))
     .orderBy(asc(modeResults.createdAt));
-  const modesSection = buildModesExportSection(modeRows);
+  const modesSection = buildModesExportSection(modeRows, row.lang);
 
   // ── CSS-аудит: контент = всё, что уйдёт в файл ──
   const contentToCheck = docHTML + graphSection + (modesSection || "");
