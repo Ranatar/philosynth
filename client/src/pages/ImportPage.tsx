@@ -44,6 +44,7 @@ import { LoadingSpinner } from "../components/shared/LoadingSpinner";
 import type { LineageCandidate } from "@philosynth/shared/types/lineage";
 import type { ImportWarning } from "@philosynth/shared/types/synthesis";
 import { tl } from "@philosynth/shared/i18n/t";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 type Phase = "idle" | "uploading" | "done";
 
@@ -77,7 +78,7 @@ function fmtDate(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
+    : d.toLocaleDateString(uiIntlLocale(), { day: "2-digit", month: "long", year: "numeric" });
 }
 
 interface CandidateBlockProps {

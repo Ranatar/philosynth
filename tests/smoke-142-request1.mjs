@@ -171,7 +171,16 @@ try {
     && RE.placeholderNameOf("подраздел 2: Nested — edited separately, do not delete this line") === "Nested"
     && RE.placeholderNameOf("подраздел 3: Критика — границы — wird separat bearbeitet, Zeile nicht löschen") === "Критика — границы"
     && RE.placeholderNameOf("подраздел 4: Без хвоста") === "Без хвоста", "A20 placeholderNameOf: русский хвост, en-хвост, de-хвост (по последнему тире, тире в имени целое), без хвоста");
-  ok(["ru", "en", "de"].includes(STR.stripeLocale()), "A21 stripeLocale — язык хранилища интерфейса (ru/en/de)", STR.stripeLocale());
+  {
+    // L.1: язык Elements — язык хранилища, если его знает Stripe (таблица
+    // Stripe в utils/stripe.ts), а не цепочка ru/en/de; каждый язык UI_LOCALES
+    // (все они у Stripe есть) — сам собой, чужой Stripe код — «auto»
+    const prev = I18N.useI18nStore.getState().locale;
+    const got = I18N.UI_LOCALES.map((l) => { I18N.useI18nStore.setState({ locale: l }); return [l, STR.stripeLocale()]; });
+    I18N.useI18nStore.setState({ locale: "fa" }); const fa = STR.stripeLocale();
+    I18N.useI18nStore.setState({ locale: prev });
+    ok(got.every(([l, s]) => l === s) && fa === "auto", "A21 stripeLocale — язык хранилища интерфейса, если Stripe его знает; иначе auto", { got, fa });
+  }
 
   /* ══ B. Живой сервер ════════════════════════════════════════════════ */
   console.log("\nB. Живой сервер");

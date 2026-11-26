@@ -49,6 +49,7 @@ import { ModeTabBar } from "./ModeTabBar";
 import { chargeLine, useBillingView } from "../../hooks/useBillingView";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 /* ── Клиентская статика MODE_CONFIG [22578] (дословно) ─────────────── */
 
@@ -206,8 +207,8 @@ export function ModeModal({
           setLiveHtml("");
           setRunChars(0);
           setDoneInfo(
-            msg.usage.inputTokens.toLocaleString("ru") + tl("modes.modeModal.tokensInSuffix", " вх. + ") +
-              msg.usage.outputTokens.toLocaleString("ru") + tl("modes.modeModal.tokensOutCost", " вых. · $") +
+            msg.usage.inputTokens.toLocaleString(uiIntlLocale()) + tl("modes.modeModal.tokensInSuffix", " вх. + ") +
+              msg.usage.outputTokens.toLocaleString(uiIntlLocale()) + tl("modes.modeModal.tokensOutCost", " вых. · $") +
               msg.usage.costUsd.toFixed(4),
           );
           void refetch(msg.index);
@@ -305,7 +306,7 @@ export function ModeModal({
   const footerInfo = doneInfo
     ? doneInfo
     : active
-      ? `${tData(ui.desc)} · ${active.paramValue} · ${new Date(active.createdAt).toLocaleString("ru-RU")}`
+      ? `${tData(ui.desc)} · ${active.paramValue} · ${new Date(active.createdAt).toLocaleString(uiIntlLocale())}`
       : tData(ui.desc) || "—";
 
   const contentHtml = running

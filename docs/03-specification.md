@@ -258,7 +258,7 @@ GET    /auth/me                → { user: { id, email, displayName, role, balan
                                 // 9.1: emailVerified = users.email_verified_at
                                 // IS NOT NULL. Нужен полосе «Адрес не
                                 // подтверждён» в шапке; НИЧЕГО не ограничивает.
-                                // 11.2: uiLocale ('ru'|'en'|'de'|null) и genLang
+                                // 11.2: uiLocale (значение UI_LOCALES | null) и genLang
                                 // (значение syntheses.lang | null) — users.ui_locale /
                                 // gen_lang; null — не выбирал. AuthUser сервера и
                                 // клиента несут оба поля (сторож 4e).
@@ -274,8 +274,8 @@ PATCH  /auth/me                { displayName?, uiLocale?, genLang? }  — хот
                                             emailVerified, uiLocale, genLang } }
                                 // 11.2 — связь языков ОДНОСТОРОННЯЯ (правило
                                 // владельца, Фаза 11): {uiLocale} пишет ui_locale И
-                                // gen_lang = genLangForUi(uiLocale) (ru→Russian,
-                                // en→English, de→German, иначе English); {genLang}
+                                // gen_lang = genLangForUi(uiLocale) (UI_TO_GEN:
+                                // язык интерфейса → язык генерации, иначе English); {genLang}
                                 // пишет только gen_lang (trim, ≤ 60), ui_locale не
                                 // трогает. uiLocale вне UI_LOCALES → VALIDATION_ERROR
                                 // + details.uiLocale; genLang пустой → details.genLang;

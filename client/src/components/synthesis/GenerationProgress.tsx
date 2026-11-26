@@ -26,6 +26,7 @@ import { PauseBadge } from "./PauseModal";
 import type { SectionProgress } from "../../hooks/useStreamingGeneration";
 import { useSecondStep } from "../../hooks/useSecondStep";
 import { tl } from "@philosynth/shared/i18n/t";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 const STEP_ICON: Record<SectionProgress["status"], string> = {
   pending: "◯",
@@ -133,7 +134,7 @@ export function GenerationProgress({
             <span>{s.label}</span>
             {s.chars > 0 && (
               <span style={{ marginInlineStart: "auto" }}>
-                {tl("synthesis.generationProgress.chars", "{chars} симв.", { chars: s.chars.toLocaleString("ru-RU") })}
+                {tl("synthesis.generationProgress.chars", "{chars} симв.", { chars: s.chars.toLocaleString(uiIntlLocale()) })}
               </span>
             )}
             {s.status === "streaming" && s.subsections.length > 0 && (

@@ -35,6 +35,7 @@ import {
 import type { EnrichableElementKind } from "../../api/enrichment";
 import { tl } from "@philosynth/shared/i18n/t";
 import { useContentLangAttrs } from "../../hooks/useContentLangAttrs";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export const CATEGORY_ENRICHMENT_OPTIONS = (): readonly {
   type: CategoryEnrichmentType;
@@ -66,7 +67,7 @@ export const ENRICHMENT_TYPE_LABELS = (): Record<string, string> => ({
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("ru-RU");
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(uiIntlLocale());
 }
 
 export interface EnrichmentPanelProps {
@@ -230,7 +231,7 @@ export function EnrichmentPanel({
             <span className="enrich-card-type">
               {ENRICHMENT_TYPE_LABELS()[streamingHere.enrichmentType] ?? streamingHere.enrichmentType}
             </span>
-            <span>{tl("edit.enrichmentPanel.generatingChars", "генерируется… · {liveChars} симв.", { liveChars: stream.liveChars.toLocaleString("ru") })}</span>
+            <span>{tl("edit.enrichmentPanel.generatingChars", "генерируется… · {liveChars} симв.", { liveChars: stream.liveChars.toLocaleString(uiIntlLocale()) })}</span>
           </div>
           <div className="enrich-card-body" {...contentAttrs}>{stream.liveText}</div>
         </div>
@@ -264,7 +265,7 @@ export function EnrichmentPanel({
                 {ENRICHMENT_TYPE_LABELS()[e.enrichmentType] ?? e.enrichmentType}
               </span>
               <span>
-                {tl("edit.enrichmentPanel.usageLine", "{createdAt} · {inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { createdAt: fmtDate(e.createdAt), inputTokens: e.inputTokens.toLocaleString("ru"), outputTokens: e.outputTokens.toLocaleString("ru"), costUsd: e.costUsd.toFixed(4) })}
+                {tl("edit.enrichmentPanel.usageLine", "{createdAt} · {inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { createdAt: fmtDate(e.createdAt), inputTokens: e.inputTokens.toLocaleString(uiIntlLocale()), outputTokens: e.outputTokens.toLocaleString(uiIntlLocale()), costUsd: e.costUsd.toFixed(4) })}
               </span>
             </div>
             {isOpen && (

@@ -26,6 +26,7 @@ import {
   markNotificationRead,
 } from "../../api/notifications";
 import { notificationLink, notificationText } from "../../utils/notification-text";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export const NOTIFICATIONS_POLL_MS = 30_000;
 const PAGE = 20;
@@ -37,7 +38,7 @@ function timeAgo(iso: string): string {
   if (min < 60) return tl("notificationBell.minutesAgo", "{n} мин назад", { n: min });
   const h = Math.floor(min / 60);
   if (h < 24) return tl("notificationBell.hoursAgo", "{n} ч назад", { n: h });
-  return new Date(iso).toLocaleDateString();
+  return new Date(iso).toLocaleDateString(uiIntlLocale());
 }
 
 export function NotificationBell() {

@@ -12,6 +12,7 @@ import type { AddressKind, AddressState, CommentKind } from "@philosynth/shared/
 import type { AddressCounts, AddressTarget, Comment, DiscussionSummary } from "@philosynth/shared/types/discussion";
 import { addressKeyOf, categoryKey, edgeKey, termKey } from "@philosynth/shared/utils/discussion-address";
 import { tl } from "@philosynth/shared/i18n/t";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 /**
  * Цель обсуждения, найденная по месту в документе. `key` — ключ адреса КАК
@@ -205,7 +206,7 @@ export function fmtWhen(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString(undefined, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString(uiIntlLocale(), { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 /** Подпись автора: имя + пометки (владелец / бывший участник / удалённый). */

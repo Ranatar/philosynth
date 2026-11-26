@@ -7,6 +7,8 @@
  * («18 402»). Даты — локаль браузера, короткий формат для таблиц.
  */
 
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
+
 export function fmtUsd(v: number, digits = 4): string {
   if (!Number.isFinite(v)) return "—";
   const sign = v < 0 ? "−" : "";
@@ -20,6 +22,8 @@ export function fmtMoney(v: number): string {
 
 export function fmtInt(v: number): string {
   if (!Number.isFinite(v)) return "—";
+  // L.1: разделитель тысяч — языка интерфейса; русский — прежний тонкий пробел UI-кита
+  if (uiIntlLocale() !== "ru") return Math.round(v).toLocaleString(uiIntlLocale());
   return Math.round(v)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, "\u202f");
@@ -29,6 +33,10 @@ export function fmtInt(v: number): string {
 export function fmtDateShort(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
+  const sameYear0 = d.getFullYear() === new Date().getFullYear();
+  // L.1: порядок дня/месяца — языка интерфейса; русский — прежний «01.09 14:22»
+  if (uiIntlLocale() !== "ru")
+    return d.toLocaleString(uiIntlLocale(), { day: "2-digit", month: "2-digit", ...(sameYear0 ? {} : { year: "2-digit" }), hour: "2-digit", minute: "2-digit" });
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const hh = String(d.getHours()).padStart(2, "0");
@@ -42,7 +50,7 @@ export function fmtDateShort(iso: string): string {
 export function fmtDateLong(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString(uiIntlLocale(), { day: "numeric", month: "long", year: "numeric" });
 }
 
 /** ISO-дата (YYYY-MM-DD) для <input type="date"> и query from/to */

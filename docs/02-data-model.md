@@ -70,7 +70,7 @@ CREATE TABLE users (
   stripe_customer_id TEXT UNIQUE,  -- 7.1 (миграция 0003): один Stripe Customer на пользователя,
                                    -- создаётся при первом topup/подписке (ensureStripeCustomer)
   email_verified_at TIMESTAMPTZ,   -- 9.1 (миграция 0006): NULL — адрес не подтверждён
-  ui_locale     TEXT,              -- 11.2 (миграция 0010): язык интерфейса 'ru'|'en'|'de'
+  ui_locale     TEXT,              -- 11.2 (миграция 0010): язык интерфейса — значение UI_LOCALES
                                    -- (UI_LOCALES, shared/i18n/locales); NULL — не выбирал:
                                    -- язык запроса по cookie ui_locale и Accept-Language.
                                    -- Проверяется кодом, не CHECK (список растёт без миграции)

@@ -40,6 +40,7 @@ import { tl } from "@philosynth/shared/i18n/t";
 import { subsectionTitleFrom } from "../../utils/subsection-titles"; // 14.2 (Д-59)
 
 import { SectionHistory } from "./SectionHistory";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export interface EditSectionCardProps {
   synthesisId: string;
@@ -171,7 +172,7 @@ export function EditSectionCard({
           {previewState === "ready" && preview && (
             <div style={{ fontFamily: "var(--mono)", fontSize: 10 }}>
               <div style={{ color: "var(--ink-mid)", marginBottom: 4 }}>
-                {tl("edit.editSectionCard.contextStats", "Обязательных: {reqFound}/{reqTotal} · опц.: {optIncluded}/{optTotal} · бюджет: {totalUsed}/{budget} симв.", { reqFound: preview.reqFound, reqTotal: preview.reqTotal, optIncluded: preview.optIncluded, optTotal: preview.optTotal, totalUsed: preview.totalUsed.toLocaleString("ru"), budget: preview.budget.toLocaleString("ru") })}
+                {tl("edit.editSectionCard.contextStats", "Обязательных: {reqFound}/{reqTotal} · опц.: {optIncluded}/{optTotal} · бюджет: {totalUsed}/{budget} симв.", { reqFound: preview.reqFound, reqTotal: preview.reqTotal, optIncluded: preview.optIncluded, optTotal: preview.optTotal, totalUsed: preview.totalUsed.toLocaleString(uiIntlLocale()), budget: preview.budget.toLocaleString(uiIntlLocale()) })}
                 {preview.budgetMode === "shrink" &&
                   preview.parentOverhead > 0 &&
                   tl("edit.editSectionCard.compressedByParents", " (сжат родителями)")}

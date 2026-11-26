@@ -32,7 +32,7 @@ import { placeholderNames, pluralFormsOf, pluralCategoriesOf } from "../../packa
 export const FN = "tl";
 export const FN_MODULE = "@philosynth/shared/i18n/t";
 export const TABLE_PATH = "packages/shared/i18n/strings.json";
-export const LANGS = ["ru", "en", "de"];
+export const LANGS = ["ru", "en", "de", "fr"];
 export const NAMES_PATH = "scripts/i18n/names.json";
 
 /* ───────────── Имена ключей ───────────── */
@@ -162,7 +162,7 @@ export function pluralFormProblems(text, lang) {
 }
 
 /** Язык колонки таблицы по имени языка (ru/en/de совпадают с BCP-47). */
-export const LANG_LOCALE = { ru: "ru", en: "en", de: "de" };
+export const LANG_LOCALE = { ru: "ru", en: "en", de: "de", fr: "fr" };
 
 /* ───────────── Мастер-таблица ───────────── */
 

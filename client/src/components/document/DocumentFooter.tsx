@@ -40,6 +40,7 @@ import { getSynthesisCharges } from "../../api/syntheses";
 import { fmtCredits, fmtUsd } from "../../hooks/useBillingView";
 import { useAuthStore } from "../../stores/auth-store";
 import { tl } from "@philosynth/shared/i18n/t";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export interface DocumentFooterProps {
   synthesis: SynthesisFull;
@@ -105,7 +106,7 @@ export function DocumentFooter({ synthesis, onOpenLog }: DocumentFooterProps) {
             title={tl("document.documentFooter.costPriceHint", "Сколько стоили обращения к модели по ставкам API — свойство документа, кто бы за них ни платил. Списание зависит от способа оплаты: подписка — кредиты, баланс — с наценкой, свой ключ — счёт Anthropic.")}
             data-testid="doc-footer-cost"
           >
-            {tl("document.documentFooter.tokensCostPrice", "Токены: {totalInputTokens} вх. + {totalOutputTokens} вых. · Себестоимость: ${costUsd} ({costCents}¢)", { totalInputTokens: (synthesis.totalInputTokens as number).toLocaleString("ru"), totalOutputTokens: (synthesis.totalOutputTokens as number).toLocaleString("ru"), costUsd: (cost as number).toFixed(4), costCents: ((cost as number) * 100).toFixed(2) })}
+            {tl("document.documentFooter.tokensCostPrice", "Токены: {totalInputTokens} вх. + {totalOutputTokens} вых. · Себестоимость: ${costUsd} ({costCents}¢)", { totalInputTokens: (synthesis.totalInputTokens as number).toLocaleString(uiIntlLocale()), totalOutputTokens: (synthesis.totalOutputTokens as number).toLocaleString(uiIntlLocale()), costUsd: (cost as number).toFixed(4), costCents: ((cost as number) * 100).toFixed(2) })}
           </span>
         )}
         {charged && (

@@ -36,6 +36,7 @@ import { useTransformStream, type TransformDoneEvent } from "../../hooks/useTran
 import { DIRECTION_LABELS, TransformHistory, summaryText } from "./TransformHistory";
 import { tl } from "@philosynth/shared/i18n/t";
 import { useContentLangAttrs } from "../../hooks/useContentLangAttrs";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export const TARGET_SECTION_TITLES = (): Readonly<Record<TransformDirection, string>> => ({
   graph_to_theses: tl("edit.transformPanel.thesisCorpus", "Корпус тезисов"),
@@ -257,7 +258,7 @@ export function TransformPanel({
               <span className="edit-regen-spinner" />
               <span>
                 {stream.started
-                  ? tl("edit.transformPanel.generatingChars", "{direction}: генерируется… {liveChars} симв.", { direction: DIRECTION_LABELS()[direction], liveChars: stream.liveChars.toLocaleString("ru") })
+                  ? tl("edit.transformPanel.generatingChars", "{direction}: генерируется… {liveChars} симв.", { direction: DIRECTION_LABELS()[direction], liveChars: stream.liveChars.toLocaleString(uiIntlLocale()) })
                   : tl("edit.transformPanel.starting", "{direction}: запуск…", { direction: DIRECTION_LABELS()[direction] })}
               </span>
             </div>
@@ -276,7 +277,7 @@ export function TransformPanel({
               <div className="cascade-title">{tl("edit.transformPanel.completed", "✓ {direction} — выполнено", { direction: DIRECTION_LABELS()[done.direction] })}</div>
               <div className="cascade-desc">{summaryText(done.summary)}</div>
               <div className="form-sublabel">
-                {tl("edit.transformPanel.usageLine", "{inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { inputTokens: done.usage.inputTokens.toLocaleString("ru"), outputTokens: done.usage.outputTokens.toLocaleString("ru"), costUsd: done.usage.costUsd.toFixed(4) })}
+                {tl("edit.transformPanel.usageLine", "{inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { inputTokens: done.usage.inputTokens.toLocaleString(uiIntlLocale()), outputTokens: done.usage.outputTokens.toLocaleString(uiIntlLocale()), costUsd: done.usage.costUsd.toFixed(4) })}
               </div>
               <div className="actions-bar-btns" style={{ marginTop: 8 }}>
                 <button type="button" className="action-btn" onClick={() => stream.clearDone()}>

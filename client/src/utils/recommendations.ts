@@ -281,20 +281,12 @@ export function estimateSelection(
   return { free, paid, conflicts };
 }
 
-const plural = (n: number, one: string, few: string, many: string): string => {
-  const d = n % 10;
-  const dd = n % 100;
-  if (d === 1 && dd !== 11) return one;
-  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return few;
-  return many;
-};
-
 /** «1 бесплатно, 1 платно» — числом, а не «бесплатно/платно» вообще. */
 export function estimateText(e: SelectionEstimate): string {
   const steps = e.free + e.paid;
   if (steps === 0) return tl("utils.recommendations.nothingSelected", "Ничего не выбрано");
   return (
-    `${steps} ${plural(steps, tl("utils.recommendations.stepOne", "шаг"), tl("utils.recommendations.stepFew", "шага"), tl("utils.recommendations.stepMany", "шагов"))}: ` +
+    tl("utils.recommendations.stepsCount", "{n, plural, one {# шаг} few {# шага} many {# шагов} other {# шага}}", { n: steps }) + ": " +
     tl("utils.recommendations.freePaid", "{free} бесплатно, {paid} платно", { free: e.free, paid: e.paid })
   );
 }

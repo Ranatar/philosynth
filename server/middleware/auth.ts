@@ -45,7 +45,7 @@ export interface AuthUser {
   /** Адрес подтверждён переходом по ссылке из письма (9.1). Пока ничего не
    *  ограничивает — нужен полосе-напоминанию в шапке клиента. */
   emailVerified: boolean;
-  /** Язык интерфейса (11.2): 'ru' | 'en' | 'de'; null — не выбирал
+  /** Язык интерфейса (11.2): значение UI_LOCALES (shared/i18n/locales); null — не выбирал
    *  (язык запроса тогда по cookie ui_locale и Accept-Language). */
   uiLocale: string | null;
   /** Язык генерации по умолчанию (11.2), значение syntheses.lang; null —

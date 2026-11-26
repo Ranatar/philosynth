@@ -863,7 +863,7 @@ export async function parseAndStore(synthesisId: string): Promise<Recommendation
       if (held.length > 0)
         throw new RecommendationsError(
           "ROUND_IN_PROGRESS",
-          tl("server.recommendations.roundInProgress", "Раунд {round} ещё в работе: {heldCount} рекомендаци{heldWordEnding} в плане правок. ", { round: latest, heldCount: held.length, heldWordEnding: held.length === 1 ? tl("server.recommendations.isSingular", "я стоит") : tl("server.recommendations.arePlural", "й стоят") }) +
+          tl("server.recommendations.roundInProgressCount", "Раунд {round} ещё в работе: {heldCount, plural, one {# рекомендация стоит} few {# рекомендации стоят} many {# рекомендаций стоят} other {# рекомендации стоят}} в плане правок. ", { round: latest, heldCount: held.length }) +
             tl("server.recommendations.executeOrDelete", "Исполните этот план либо удалите его — после этого новый разбор откроет следующий раунд."),
           {
             round: latest,

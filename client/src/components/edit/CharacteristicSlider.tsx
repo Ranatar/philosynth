@@ -45,6 +45,7 @@ import type { CharacteristicJustification } from "@philosynth/shared/types/eleme
 import { messageOfEnrichmentError, type EnrichmentStream } from "../../hooks/useEnrichmentStream";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 /** Шаг ползунка REAL-характеристик (как RangeField 5.2) */
 export const REAL_STEP = 0.05;
@@ -270,7 +271,7 @@ export function CharacteristicSlider({
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("ru-RU");
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(uiIntlLocale());
 }
 
 function JustificationBlock({

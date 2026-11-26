@@ -33,6 +33,7 @@ import { env } from "../env.js";
 import type { ElementStepKind } from "@philosynth/shared/types/edit-plan";
 import type { GenLogError, GenLogLabel } from "@philosynth/shared/types/generation";
 import type { StreamError } from "./streaming-manager.js";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 /** Метка раздела на языке запроса; не ключ раздела — как есть (режимы, «mode:…»). */
 export function sectionLabelOf(key: string): string {
@@ -107,7 +108,7 @@ export function renderLogError(err: GenLogError | null, stored: string | null): 
       if (err.raw) return err.raw;
       if (err.kind === "max-tokens")
         return (
-          tl("server.streamingManager.truncatedByMaxTokens", "Ответ оборван по лимиту токенов (max_tokens = {maxTokens}). ", { maxTokens: (err.maxTokensUsed ?? 0).toLocaleString("ru") }) +
+          tl("server.streamingManager.truncatedByMaxTokens", "Ответ оборван по лимиту токенов (max_tokens = {maxTokens}). ", { maxTokens: (err.maxTokensUsed ?? 0).toLocaleString(uiIntlLocale()) }) +
           tl("server.streamingManager.sectionTooLarge", "Раздел слишком объёмный для одного запроса.")
         );
       if (err.kind === "stuck")

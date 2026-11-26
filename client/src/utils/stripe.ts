@@ -91,14 +91,27 @@ function loadScript(): Promise<StripeFactory> {
 let instance: StripeInstance | null = null;
 
 /**
- * 14.2 (Д-77): язык Stripe Elements — язык интерфейса (хранилище 11.3:
- * ru/en/de), иначе `auto` (язык браузера — умолчание Stripe). Передаётся и
- * фабрике Stripe при первом создании, и каждому `elements()` — экземпляр один
- * на вкладку, а язык интерфейса может смениться позже.
+ * Языки, которые принимает Stripe Elements (опция `locale` Stripe.js;
+ * docs.stripe.com/js/appendix/supported_locales, сверено 2026-11-26) —
+ * свойство Stripe, а не список языков интерфейса: беседа L, добавляя язык
+ * в UI_LOCALES, эту функцию не правит (L.1: здесь прежде стояла цепочка
+ * ru/en/de, и французский интерфейс получил бы язык браузера).
+ */
+const STRIPE_ELEMENTS_LOCALES: ReadonlySet<string> = new Set([
+  "ar", "bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fil", "fr", "he", "hr", "hu", "id",
+  "it", "ja", "ko", "lt", "lv", "ms", "mt", "nb", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv",
+  "th", "tr", "vi", "zh",
+]);
+
+/**
+ * 14.2 (Д-77): язык Stripe Elements — язык интерфейса (хранилище 11.3),
+ * если Stripe его знает, иначе `auto` (язык браузера — умолчание Stripe).
+ * Передаётся и фабрике Stripe при первом создании, и каждому `elements()` —
+ * экземпляр один на вкладку, а язык интерфейса может смениться позже.
  */
 export function stripeLocale(): string {
   const locale: string = currentUiLocale();
-  return locale === "ru" || locale === "en" || locale === "de" ? locale : "auto";
+  return STRIPE_ELEMENTS_LOCALES.has(locale) ? locale : "auto";
 }
 
 /** Экземпляр Stripe (один на вкладку). Бросает, если ключа нет или CDN недоступен. */

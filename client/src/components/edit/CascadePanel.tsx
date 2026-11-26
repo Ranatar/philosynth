@@ -22,6 +22,7 @@ import type {
   CascadeImpactDto,
 } from "@philosynth/shared/types/edit-plan";
 import { tl } from "@philosynth/shared/i18n/t";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export interface CascadePanelProps {
   impact: CascadeImpactDto | null;
@@ -131,7 +132,7 @@ export function CascadePanel({
                       marginInlineStart: 6,
                     }}
                   >
-                    {tl("edit.cascadePanel.charsFrom", "{chars} симв. от {source}", { chars: w.chars.toLocaleString("ru"), source: labels(w.source) })}
+                    {tl("edit.cascadePanel.charsFrom", "{chars} симв. от {source}", { chars: w.chars.toLocaleString(uiIntlLocale()), source: labels(w.source) })}
                   </span>
                 ))}
               </span>

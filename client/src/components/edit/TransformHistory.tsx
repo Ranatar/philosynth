@@ -22,6 +22,7 @@ import type {
 import { ApiError } from "../../api/client";
 import { getTransformHistory, rollbackTransform } from "../../api/transforms";
 import { tl } from "@philosynth/shared/i18n/t";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export const DIRECTION_LABELS = (): Readonly<Record<TransformDirection, string>> => ({
   graph_to_theses: tl("edit.transformHistory.graphToTheses", "Граф → Тезисы"),
@@ -38,7 +39,7 @@ export function fmtTransformDate(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleString("ru", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    : d.toLocaleString(uiIntlLocale(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 /** Человекочитаемое summary (создано N, удалено M …). */
@@ -150,7 +151,7 @@ export function TransformHistory({
                   {fmtTransformDate(t.createdAt)}
                   {t.inputTokens + t.outputTokens > 0 && (
                     <>
-                      {tl("edit.transformHistory.usageLine", "· {inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { inputTokens: t.inputTokens.toLocaleString("ru"), outputTokens: t.outputTokens.toLocaleString("ru"), costUsd: t.costUsd.toFixed(4) })}
+                      {tl("edit.transformHistory.usageLine", "· {inputTokens} вх. + {outputTokens} вых. · ${costUsd}", { inputTokens: t.inputTokens.toLocaleString(uiIntlLocale()), outputTokens: t.outputTokens.toLocaleString(uiIntlLocale()), costUsd: t.costUsd.toFixed(4) })}
                     </>
                   )}
                 </div>

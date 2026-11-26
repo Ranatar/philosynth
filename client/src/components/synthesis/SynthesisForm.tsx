@@ -99,6 +99,7 @@ import { tl } from "@philosynth/shared/i18n/t";
 
 import { useLocale, useT } from "../../i18n/useT";
 import { useAuthStore } from "../../stores/auth-store";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 /* 12.4 (Д-19): клиентской копии CONTEXT_BUDGET [7529] больше нет — она
    расходилась с сервером, как только админ правил конфиг context_budget
@@ -230,19 +231,19 @@ function FullBudgetPreview({
       }}
     >
       {tl("synthesis.synthesisForm.parentContextLead", "Контекст родителей: ") +
-        conceptChars.toLocaleString("ru") +
+        conceptChars.toLocaleString(uiIntlLocale()) +
         tl("synthesis.synthesisForm.charsParen", " симв. (") +
         N +
         ")" +
         (rawBudget !== null && shrunkBudget !== null
           ? "\n" +
             tl("synthesis.synthesisForm.whenCompressed", "При ужимании:       бюджет секций ") +
-            shrunkBudget.toLocaleString("ru") +
+            shrunkBudget.toLocaleString(uiIntlLocale()) +
             " / " +
-            rawBudget.toLocaleString("ru") +
+            rawBudget.toLocaleString(uiIntlLocale()) +
             tl("synthesis.synthesisForm.charsNewline", " симв.\n") +
             tl("synthesis.synthesisForm.withoutCompression", "Без ужимания:       бюджет секций ") +
-            rawBudget.toLocaleString("ru") +
+            rawBudget.toLocaleString(uiIntlLocale()) +
             tl("synthesis.synthesisForm.chars", " симв.")
           : "\n" + tl("synthesis.synthesisForm.budgetPending", "Бюджет секций: ждём оценку сервера…")) +
         (diff
@@ -253,7 +254,7 @@ function FullBudgetPreview({
             tl("synthesis.synthesisForm.difference", " · разница: +") +
             fmtUsd(Math.max(diffCost, 0)) +
             " (+" +
-            Math.max(diffTokens, 0).toLocaleString("ru") +
+            Math.max(diffTokens, 0).toLocaleString(uiIntlLocale()) +
             tl("synthesis.synthesisForm.inputTokensParen", " ток. входа)")
           : "")}
     </pre>

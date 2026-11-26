@@ -98,8 +98,10 @@ philosynth-service/
 │       │   │                           # (globals.css) и экспорту HTML; правила на :dir(rtl) и на
 │       │   │                           # :lang() САМОГО элемента; GEN_SCRIPT_FONT_FAMILIES — ссылка
 │       │   │                           # шрифтов ТОЛЬКО экспортированного файла
-│       │   ├── strings.json            # мастер-таблица переводов (ru/en/de, from, draft, params,
+│       │   ├── strings.json            # мастер-таблица переводов (колонки meta.languages, from, draft, params,
 │       │   │                           # where, отметки data/static/obsolete); правится инструментами
+│       │   ├── format.ts               # L.1 (Д-94): uiIntlLocale, fmtUiNumber/fmtUiDate/fmtUiDateTime —
+│       │   │                           # числа и даты на языке интерфейса (язык каталога tl())
 │       │   ├── data.ts                 # 11.4: перевод ДАННЫХ по месту показа — displayKey(value),
 │       │   │                           # tData(value, params?), tDataLoose(value) (типы документа со
 │       │   │                           # строчной буквы); значение без ключа — как есть; единственный
@@ -107,7 +109,8 @@ philosynth-service/
 │       │   └── generated/              # каталоги рантайма — npm run i18n:split, руками не править;
 │       │       ├── en.json             # { locale, strings }; ru-каталога нет (ru — в коде);
 │       │       │                       # с 11.4 несут и data-строки (иначе tData вернул бы русский)
-│       │       ├── de.json             # 11.4: машинный черновик (draft) — вычитка владельца
+│       │       ├── de.json             # 11.4; утверждён владельцем 2026-09-29
+│       │       ├── fr.json             # L.1 (2026-11-26); утверждён владельцем тем же днём
 │       │       └── data-keys.ts        # 11.4: генерат карты «русское значение → ключ» (405 записей:
 │       │                               # data-строки + значения файлов-данных с живым tl(), напр.
 │       │                               # «Диалектический» → common.dialectical); коллизии — shared →
@@ -804,7 +807,7 @@ philosynth-service/
 │   │   │   │   │                           #  «Прочитать всё»; клик мимо закрывает
 │   │   │   │   ├── NotificationSettings.tsx # 16.2: раздел «Уведомления» профиля — категории и сводка,
 │   │   │   │   │                           #  PATCH /notifications/settings сразу
-│   │   │   │   ├── LanguageSwitch.tsx      # 11.3: переключатель ru/en/de (topbar | form); самоназвания; setUiLocale/setLocale
+│   │   │   │   ├── LanguageSwitch.tsx      # 11.3: переключатель UI_LOCALES (topbar | form); самоназвания; setUiLocale/setLocale
 │   │   │   │   ├── Header.tsx              # 8.7: гостю «Войти · Регистрация», бренд → «/», выход → «/»;
 │   │   │   │   │                           # 11.3: LanguageSwitch в .topbar-right гостю и вошедшему, useT()
 │   │   │   │   │                           # 9.1: полоса «Адрес не подтверждён» + «Отправить письмо ещё раз»
@@ -1012,13 +1015,14 @@ philosynth-service/
 │   │       │                               # resolveConceptName (FIX [а-яё]), lineageNodeToGenealogy
 │   │       ├── graph-physics.ts            # tick(), warmup() (tick(), warmup())
 │   │       ├── graph-geometry.ts           # nodeGeometry3D, mkSprite (nodeGeometry3D(), mkSprite())
-│   │       ├── format.ts                  # Форматирование чисел, дат (создан 6.2: fmtUsd/fmtMoney/fmtInt/fmtDateShort/fmtDateLong/toIsoDate)
+│   │       ├── format.ts                  # Форматирование чисел, дат (создан 6.2: fmtUsd/fmtMoney/fmtInt/fmtDateShort/fmtDateLong/toIsoDate; L.1 — по языку интерфейса)
 │   │       ├── text-diff.ts               # Построчный LCS-diff со свёрткой контекста (6.2; версии шаблонов и конфигов)
 │   │       ├── template-placeholders.ts   # {{плейсхолдеры}} шаблонов: PLACEHOLDER_RE ≡ реестру, SAMPLE_VALUES предпросмотра (6.2)
 │   │       ├── recommendations.ts         # 10.3: чистые функции панели — пометка стоимости (зеркало
 │   │       │                               # rowsToPlanActions, дрейф — 4au), группировка/развилка, оценка
 │   │       │                               # по шагам, проза по номеру, тексты отказов
-│   │       └── stripe.ts                  # Загрузчик Stripe.js без npm + VITE_STRIPE_PUBLISHABLE_KEY + appearance (6.2)
+│   │       └── stripe.ts                  # Загрузчик Stripe.js без npm + VITE_STRIPE_PUBLISHABLE_KEY + appearance (6.2);
+│   │                                      #  L.1: stripeLocale — набор локалей Stripe Elements, вне набора auto
 │   │
 │   └── public/
 │       └── favicon.svg
@@ -1279,6 +1283,9 @@ philosynth-service/
     │                                   # smoke-183-request1 — 18.3: ядро меры (веса, Жаккар, ступени); Д-88 —
     │                                   #  три потребителя обхода дают один ответ; маршрут живьём: порядок,
     │                                   #  причины, limit, потолок; видимость, граница языков, витрина (35 ✓)
+    │                                   # test-L1-requests — L.1: пять тестовых запросов шаблона L на fr —
+    │                                   #  гость и вошедший в Chrome 131 на СБОРКЕ, данные по месту показа,
+    │                                   #  плюралы, чанк каталога, сторож 4ay (55 ✓)
     │                                   # test-183-request1-ui — 18.3: Chrome 131 на СБОРКЕ: блок «Похожие
     │                                   #  концепции» — мера словами, причины текстом, ссылки в каталог,
     │                                   #  переход, пустое состояние, гость (20 ✓)

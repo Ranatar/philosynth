@@ -37,6 +37,7 @@ import { tl } from "@philosynth/shared/i18n/t";
 import { proposalNumberIn, useCollabStore } from "../../stores/collab-store"; // 17.2
 import { markupToLines } from "../../utils/proposals";
 import { tData } from "@philosynth/shared/i18n/data";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export interface EditPlanPanelProps {
   plan: EditPlan;
@@ -263,7 +264,7 @@ export function EditPlanPanel({
                     color: "var(--ink-dim)",
                   }}
                 >
-                  {tl("edit.editPlanPanel.charsCost", "{outputChars} симв. · ${costUsd}", { outputChars: result.outputChars.toLocaleString("ru"), costUsd: result.costUsd.toFixed(4) })}
+                  {tl("edit.editPlanPanel.charsCost", "{outputChars} симв. · ${costUsd}", { outputChars: result.outputChars.toLocaleString(uiIntlLocale()), costUsd: result.costUsd.toFixed(4) })}
                 </span>
               )}
               {pendingActionable && (

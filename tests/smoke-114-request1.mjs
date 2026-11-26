@@ -37,6 +37,7 @@ const table = readTable(ROOT);
 const S = table.strings;
 const enCat = JSON.parse(rd("packages/shared/i18n/generated/en.json"));
 const deCat = JSON.parse(rd("packages/shared/i18n/generated/de.json"));
+const frCat = JSON.parse(rd("packages/shared/i18n/generated/fr.json"));
 const withCat = (cat, fn) => { setCatalogProvider(() => cat); try { return fn(); } finally { setCatalogProvider(null); } };
 
 /* ── 1. Карта «значение → ключ» ── */
@@ -75,6 +76,7 @@ console.log("3. tData / tDataLoose");
 ok("без каталога — русский", tData(ML.dialectical) === "Диалектический" && tData("Онтологическая") === "Онтологическая");
 ok("en: метки метода/уровня/глубины", withCat(enCat, () => [tData(ML.dialectical), tData(SL.generative), tData(DL.deep)].join("|")) === "Dialectical|Generative|Deep");
 ok("de: метки", withCat(deCat, () => [tData(ML.analytical), tData(SL.comparative)].join("|")) === "Analytisch|Vergleichend");
+ok("fr: метки и таксономия (черновик беседы L.1)", withCat(frCat, () => [tData(ML.dialectical), tData("Онтологическая"), tData(SL.comparative)].join("|")) === "Dialectique|Ontologique|Comparatif");
 ok("en: разделы KEY_LABELS все переводятся", withCat(enCat, () => Object.values(KEY_LABELS).every((v) => tData(v) !== v && /^[A-Za-z]/.test(tData(v)))));
 ok("en: CTX_LABELS все переводятся", withCat(enCat, () => Object.values(CTX_LABELS).every((v) => tData(v) !== v)));
 ok("en: философы и эпохи переводятся", withCat(enCat, () => PHILOSOPHERS.every((p) => tData(p) !== p) && PHILOSOPHER_EPOCHS.every((e) => tData(e.label) !== e.label)));

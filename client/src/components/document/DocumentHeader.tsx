@@ -55,6 +55,7 @@ import { SectionHistory } from "../edit/SectionHistory";
 import { tl } from "@philosynth/shared/i18n/t";
 import { genLangContentAttrs } from "@philosynth/shared/i18n/locales";
 import { tData } from "@philosynth/shared/i18n/data";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export interface DocumentHeaderProps {
   synthesis: SynthesisFull;
@@ -219,7 +220,7 @@ export function DocumentHeader({ synthesis, extras }: DocumentHeaderProps) {
     }
   };
 
-  const docDate = new Date(synthesis.createdAt).toLocaleDateString("ru-RU", {
+  const docDate = new Date(synthesis.createdAt).toLocaleDateString(uiIntlLocale(), {
     day: "2-digit",
     month: "long",
     year: "numeric",

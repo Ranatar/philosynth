@@ -34,6 +34,11 @@ import os from "node:os";
 import path from "node:path";
 import postgres from "postgres";
 
+import { UI_LOCALES } from "../packages/shared/i18n/locales.ts";
+
+// Беседа L.1: «чужой» язык — первый код не из UI_LOCALES (fr стал языком интерфейса; урок 12.5)
+const FOREIGN = ["fr", "it", "es", "pt", "eo", "tlh"].find((l) => !UI_LOCALES.includes(l));
+
 const ROOT = new URL("../", import.meta.url).pathname;
 const BASE = "http://127.0.0.1:3000/api/v1";
 const MOCK_PORT = 3921;
@@ -207,8 +212,8 @@ try {
     ok(u1.ui_locale === "de" && u1.gen_lang === "German", "в БД то же", u1);
     const r2 = await api("PATCH", "/auth/me", { genLang: "French" });
     ok(r2.status === 200 && r2.json.user.uiLocale === "de" && r2.json.user.genLang === "French", "genLang=French → gen_lang=French, ui_locale не изменился (связь односторонняя)", r2.json);
-    const r3 = await api("PATCH", "/auth/me", { uiLocale: "fr" });
-    ok(r3.status === 400 && r3.json.code === "VALIDATION_ERROR" && typeof r3.json.details?.uiLocale === "string", "uiLocale=fr → 400 VALIDATION_ERROR + details.uiLocale", r3.json);
+    const r3 = await api("PATCH", "/auth/me", { uiLocale: FOREIGN });
+    ok(r3.status === 400 && r3.json.code === "VALIDATION_ERROR" && typeof r3.json.details?.uiLocale === "string", `uiLocale=${FOREIGN} → 400 VALIDATION_ERROR + details.uiLocale`, r3.json);
     const [u3] = await sql`select ui_locale, gen_lang from users where id=${userId}`;
     ok(u3.ui_locale === "de" && u3.gen_lang === "French", "после отказа ничего не записано", u3);
     const r4 = await api("PATCH", "/auth/me", { genLang: "   " });
@@ -237,8 +242,8 @@ try {
     const gDe = await api("POST", "/auth/login", bad, { "Accept-Language": "de-DE,de;q=0.9" });
     // 12.5 (Д-45): с 11.4 каталог de влит — гость с Accept-Language: de получает немецкое
     ok(gDe.status === 400 && gDe.json.error === "Ungültige Daten", "гость с Accept-Language: de — немецкое (каталог de, 11.4)", gDe.json);
-    const gEn = await api("POST", "/auth/login", bad, { "Accept-Language": "fr, en;q=0.8" });
-    ok(gEn.status === 400 && gEn.json.error === "Invalid data", "гость с Accept-Language: fr, en;q=0.8 — английское", gEn.json);
+    const gEn = await api("POST", "/auth/login", bad, { "Accept-Language": `${FOREIGN}, en;q=0.8` });
+    ok(gEn.status === 400 && gEn.json.error === "Invalid data", `гость с Accept-Language: ${FOREIGN}, en;q=0.8 — английское`, gEn.json);
     const gCk = await api("POST", "/auth/login", bad, { "Accept-Language": "ru", Cookie: "ui_locale=en" });
     ok(gCk.json.error === "Invalid data", "cookie ui_locale=en первее Accept-Language: ru", gCk.json);
     const gBadCk = await api("POST", "/auth/login", bad, { Cookie: "ui_locale=xx" });

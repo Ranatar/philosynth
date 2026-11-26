@@ -11843,8 +11843,9 @@ async function section4bt(): Promise<void> {
   if (!/\| 18 — поиск и похожие концепции \| 18\.1–18\.3 \| ЗАКРЫТА 2026-11-16/.test(await rd("../README.md"))) errs.push("4bt: README — строка Фазы 18 не закрыта");
   if ((en.strings["catalog.similar.title"] ?? "") !== "Similar concepts" || (de.strings["catalog.similar.title"] ?? "") !== "Ähnliche Konzepte") errs.push("4bt: переводы блока «Похожие концепции» не те, что утверждены");
   const table = JSON.parse(await rd("../packages/shared/i18n/strings.json")) as { strings: Record<string, { draft?: string[] }> };
-  const drafts = Object.entries(table.strings).filter(([k, v]) => k.startsWith("catalog.similar.") && (v.draft ?? []).length > 0).map(([k]) => k);
-  if (drafts.length) errs.push(`4bt: ключи catalog.similar.* снова помечены черновиками (утверждены пользователем 2026-11-16): ${drafts.slice(0, 3).join(", ")}`);
+  // Беседа L.1: утверждены en и de; черновик языка, добавленного позже (беседа L), — не возврат пометки
+  const drafts = Object.entries(table.strings).filter(([k, v]) => k.startsWith("catalog.similar.") && (v.draft ?? []).some((l) => l === "en" || l === "de")).map(([k]) => k);
+  if (drafts.length) errs.push(`4bt: ключи catalog.similar.* снова помечены черновиками en/de (утверждены пользователем 2026-11-16): ${drafts.slice(0, 3).join(", ")}`);
 }
 await section4bt();
 

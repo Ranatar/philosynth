@@ -60,6 +60,7 @@ import { formatVersion } from "@philosynth/shared/utils/version";
 
 import type { ContextEntry, ParentSpecLog } from "@philosynth/shared/types/generation";
 import { tl } from "@philosynth/shared/i18n/t";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 /* ── Локальные типы строк/метаданных ─────────────────────────────────── */
 
@@ -89,7 +90,7 @@ interface GenCommonMeta {
 }
 
 const num = (n: number | null | undefined): string =>
-  n == null ? "—" : n.toLocaleString("ru");
+  n == null ? "—" : n.toLocaleString(uiIntlLocale());
 
 const labelOf = (key: string): string =>
   (KEY_LABELS as Record<string, string>)[key] ?? key;
@@ -174,7 +175,7 @@ export async function formatCtxLog(
     return actor ? tl("server.logFormatter.startedBy", "  Запустил: {name}", { name: actor.name }) : null;
   };
   let hiddenCosts = 0;
-  lines.push(tl("server.logFormatter.date", "Дата: ") + new Date().toLocaleString("ru-RU"));
+  lines.push(tl("server.logFormatter.date", "Дата: ") + new Date().toLocaleString(uiIntlLocale()));
   const verStr = formatVersion({
     base: row.versionBase,
     sub: row.versionSub,
@@ -331,7 +332,7 @@ export async function formatCtxLog(
     // запись без кода (до 14.2, журнал из выгрузки) — колонки как есть
     const label = logLabelText(meta, g.sectionLabel);
     const errorText = logErrorText(meta, g.errorMessage);
-    const dt = g.createdAt ? g.createdAt.toLocaleString("ru-RU") : "";
+    const dt = g.createdAt ? g.createdAt.toLocaleString(uiIntlLocale()) : "";
 
     // ── Маркер версии ──
     if (g.logType === "version_marker") {
@@ -381,7 +382,7 @@ export async function formatCtxLog(
             stuck: tl("server.logFormatter.errStuck", "Таймаут (стрим завис)"),
             "max-tokens":
               tl("server.logFormatter.errMaxTokens", "Превышен лимит max_tokens") +
-              (maxTokensUsed ? " (" + maxTokensUsed.toLocaleString("ru") + ")" : ""),
+              (maxTokensUsed ? " (" + maxTokensUsed.toLocaleString(uiIntlLocale()) + ")" : ""),
             "user-abort": tl("server.logFormatter.errUserAbort", "Остановка пользователем"),
             "context-error": tl("server.logFormatter.errContext", "Ошибка построения контекста"),
           } as Record<string, string>
@@ -942,7 +943,7 @@ export async function formatPromptsForExport(
   // ── Шапка ──
   lines.push(tl("server.logFormatter.exportTitle", "# PHILOSYNTH PRO — ЭКСПОРТ ПРОМПТОВ"));
   lines.push("");
-  lines.push(tl("server.logFormatter.date", "Дата: ") + new Date().toLocaleString("ru-RU"));
+  lines.push(tl("server.logFormatter.date", "Дата: ") + new Date().toLocaleString(uiIntlLocale()));
   lines.push(tl("server.logFormatter.method", "Метод: ") + ((ML as Record<string, string>)[row.method] ?? row.method));
   lines.push(
     tl("server.logFormatter.level", "Уровень: ") + ((SL as Record<string, string>)[row.synthLevel] ?? row.synthLevel),
@@ -1058,16 +1059,16 @@ export async function formatPromptsForExport(
     lines.push(subsep);
     lines.push(
       tl("server.logFormatter.inputPrefix", "Вход: ") +
-        (g.inputChars || 0).toLocaleString("ru") +
+        (g.inputChars || 0).toLocaleString(uiIntlLocale()) +
         tl("server.logFormatter.charsArrow", " симв. → ") +
-        (g.inputTokens || 0).toLocaleString("ru") +
+        (g.inputTokens || 0).toLocaleString(uiIntlLocale()) +
         tl("server.logFormatter.tokens", " токенов"),
     );
     lines.push(
       tl("server.logFormatter.outputShort", "Выход: ") +
-        (g.outputChars || 0).toLocaleString("ru") +
+        (g.outputChars || 0).toLocaleString(uiIntlLocale()) +
         tl("server.logFormatter.charsArrow", " симв. → ") +
-        (g.outputTokens || 0).toLocaleString("ru") +
+        (g.outputTokens || 0).toLocaleString(uiIntlLocale()) +
         tl("server.logFormatter.tokens", " токенов"),
     );
     if (costVisible(g.actorUserId, loaded.row.userId, audience)) // 17.1
@@ -1085,7 +1086,7 @@ export async function formatPromptsForExport(
         : "";
       lines.push(
         tl("server.logFormatter.parentContextPrefix", "Контекст родителей: ") +
-          parentOv.toLocaleString("ru") +
+          parentOv.toLocaleString(uiIntlLocale()) +
           tl("server.logFormatter.chars", " симв.") +
           (fields ? tl("server.logFormatter.fieldsParen", "  (поля: ") + fields + ")" : ""),
       );
@@ -1104,14 +1105,14 @@ export async function formatPromptsForExport(
       if (_applied > 0) {
         lines.push(
           tl("server.logFormatter.sectionContextBudget", "Бюджет секц. контекста: ") +
-            _ctx.budget.toLocaleString("ru") +
+            _ctx.budget.toLocaleString(uiIntlLocale()) +
             tl("server.logFormatter.of", " из ") +
-            _raw.toLocaleString("ru") +
+            _raw.toLocaleString(uiIntlLocale()) +
             tl("server.logFormatter.charsCompressed", " симв. [ужато]"),
         );
       } else if (_ctx.budgetMode === "full") {
         lines.push(
-          tl("server.logFormatter.sectionContextBudget", "Бюджет секц. контекста: ") + _raw.toLocaleString("ru") + tl("server.logFormatter.charsFull", " симв. [полный]"),
+          tl("server.logFormatter.sectionContextBudget", "Бюджет секц. контекста: ") + _raw.toLocaleString(uiIntlLocale()) + tl("server.logFormatter.charsFull", " симв. [полный]"),
         );
       }
     }

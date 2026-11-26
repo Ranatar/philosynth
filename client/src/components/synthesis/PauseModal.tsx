@@ -72,6 +72,7 @@ import { chargeLine, fmtUsd, useBillingView } from "../../hooks/useBillingView";
 import { ApiError } from "../../api/client";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 const LABELS = KEY_LABELS as Record<string, string>;
 
@@ -111,7 +112,7 @@ export function pauseReasonText(ps: PausedState): { text: string; detail: string
     case "stuck":
       return { text: tl("synthesis.pauseModal.reasonStuck", "Нет ответа от API более {stuckSec} секунд (стрим «завис»).", { stuckSec: ps.stuckSec ?? 45 }), detail: null };
     case "max-tokens":
-      return { text: tl("synthesis.pauseModal.reasonMaxTokens", "Ответ оборван по лимиту токенов (max_tokens = {maxTokens}). Раздел слишком объёмный.", { maxTokens: (ps.maxTokensUsed ?? 0).toLocaleString("ru") }), detail: null };
+      return { text: tl("synthesis.pauseModal.reasonMaxTokens", "Ответ оборван по лимиту токенов (max_tokens = {maxTokens}). Раздел слишком объёмный.", { maxTokens: (ps.maxTokensUsed ?? 0).toLocaleString(uiIntlLocale()) }), detail: null };
     case "pre-stream":
       if (raw && /429/.test(raw)) return { text: tl("synthesis.pauseModal.reasonRateLimit", "Превышен лимит запросов (429)."), detail: raw };
       if (raw && /5\d{2}/.test(raw)) return { text: tl("synthesis.pauseModal.reasonServer", "Сбой сервера API."), detail: raw };
@@ -235,7 +236,7 @@ function GenContent({ ps, estimates }: { ps: PausedStateGen; estimates: PauseEst
     const fillCheaper = fill !== undefined && whole !== undefined ? fill < whole : null;
     const causeHint =
       ps.reasonKind === "max-tokens"
-        ? tl("synthesis.pauseModal.maxTokensExceeded", " (превышен лимит max_tokens = {maxTokensUsed})", { maxTokensUsed: (ps.maxTokensUsed ?? 20000).toLocaleString("ru") })
+        ? tl("synthesis.pauseModal.maxTokensExceeded", " (превышен лимит max_tokens = {maxTokensUsed})", { maxTokensUsed: (ps.maxTokensUsed ?? 20000).toLocaleString(uiIntlLocale()) })
         : ps.reasonKind === "stuck"
           ? tl("synthesis.pauseModal.streamStuck", " (стрим завис без ответа)")
           : "";
@@ -505,7 +506,6 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
     .join(", ");
   const moreHint =
     remaining.length > 5 ? tl("synthesis.pauseModal.andMore", " и ещё ") + (remaining.length - 5) : "";
-  const stepsWord = remaining.length === 1 ? tl("synthesis.pauseModal.stepOne", "шаг") : tl("synthesis.pauseModal.stepMany", "шагов");
   return (
     <div className="pause-content">
       <p>
@@ -519,7 +519,7 @@ function PlanContent({ ps }: { ps: PausedStatePlan }) {
       <InfoBox>
         <strong>{tl("synthesis.pauseModal.failedStep", "Упавший шаг:")}</strong> {planOpLabel(op)}
         <br />
-        <strong>{tl("synthesis.pauseModal.remaining", "Осталось:")}</strong> {remaining.length} {stepsWord}
+        <strong>{tl("synthesis.pauseModal.remaining", "Осталось:")}</strong> {tl("synthesis.pauseModal.stepsCount", "{n, plural, one {# шаг} few {# шага} many {# шагов} other {# шага}}", { n: remaining.length })}
         {remaining.length > 0 && (
           <>
             <br />

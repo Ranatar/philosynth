@@ -33,6 +33,7 @@ import {
 } from "../../api/members";
 import { useSecondStep } from "../../hooks/useSecondStep";
 import { LoadingSpinner } from "../shared/LoadingSpinner";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export function roleLabel(role: MemberRole): string {
   return role === "editor" ? tl("members.roleEditor", "редактор") : tl("members.roleReviewer", "рецензент");
@@ -42,7 +43,7 @@ export function memberStatusLabel(status: "invited" | "active"): string {
   return status === "active" ? tl("members.statusActive", "участник") : tl("members.statusInvited", "приглашён");
 }
 
-const fmtDate = (iso: string): string => new Date(iso).toLocaleDateString();
+const fmtDate = (iso: string): string => new Date(iso).toLocaleDateString(uiIntlLocale());
 
 function errorText(err: unknown, fallback: string): string {
   if (!(err instanceof ApiError)) return fallback;

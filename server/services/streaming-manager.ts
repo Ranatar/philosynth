@@ -40,6 +40,7 @@ import {
 import { tl } from "@philosynth/shared/i18n/t";
 
 import type { PauseReasonFields } from "@philosynth/shared/types/synthesis";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export { getStreamState, clearStreamState };
 export type { StreamState } from "../ws/stream-state.js";
@@ -402,7 +403,7 @@ export async function streamSection(
   if (stopReason === "max_tokens") {
     saveState("error", true);
     const err = new StreamError(
-      tl("server.streamingManager.truncatedByMaxTokens", "Ответ оборван по лимиту токенов (max_tokens = {maxTokens}). ", { maxTokens: maxTokens.toLocaleString("ru") }) +
+      tl("server.streamingManager.truncatedByMaxTokens", "Ответ оборван по лимиту токенов (max_tokens = {maxTokens}). ", { maxTokens: maxTokens.toLocaleString(uiIntlLocale()) }) +
         tl("server.streamingManager.sectionTooLarge", "Раздел слишком объёмный для одного запроса."),
       "max-tokens",
     );

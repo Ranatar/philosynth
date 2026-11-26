@@ -50,7 +50,7 @@ export interface AuthUser {
   /** 9.1: адрес подтверждён; до дотяжки GET /auth/me — undefined (полоса
    *  в шапке рисуется только при строгом false) */
   emailVerified?: boolean;
-  /** 11.2: язык интерфейса ('ru'|'en'|'de') и язык генерации по умолчанию;
+  /** 11.2: язык интерфейса (значение UI_LOCALES) и язык генерации по умолчанию;
    *  null — не выбирал; до дотяжки GET /auth/me — undefined. 11.3: uiLocale
    *  применяется к интерфейсу (applyUserLocale) при restore/login/PATCH;
    *  genLang — умолчание формы создания (SynthesisForm) */

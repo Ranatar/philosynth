@@ -9,6 +9,8 @@
  * CSS: #modeTabsBar / .mode-tab* в globals.css дословно (id сохранён —
  * панель на странице одна, как в исходнике).
  */
+
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 export interface ModeTabItem {
   param: string;
   /** ISO createdAt результата */
@@ -54,7 +56,7 @@ export function ModeTabBar({
         >
           {truncLabel(t.param, 24)}
           <span className="mode-tab-date">
-            {new Date(t.timestamp).toLocaleDateString("ru-RU")}
+            {new Date(t.timestamp).toLocaleDateString(uiIntlLocale())}
           </span>
           {onRemove && (
             <span

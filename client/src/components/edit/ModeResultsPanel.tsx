@@ -19,6 +19,7 @@ import type { ModeResult } from "@philosynth/shared/types/modes";
 import { MODE_ORDER, MODE_UI } from "../modes/ModeModal";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 export interface ModeResultsPanelProps {
   /** modeKey → результаты (порядок created_at ASC = индексы API) */
@@ -92,7 +93,7 @@ export function ModeResultsPanel({
                   className="edit-sec-num"
                   style={{ fontSize: 9, color: "var(--ink-dim)" }}
                 >
-                  {new Date(r.createdAt).toLocaleString("ru-RU")}
+                  {new Date(r.createdAt).toLocaleString(uiIntlLocale())}
                 </div>
               </div>
               <div className="edit-sec-checks">

@@ -83,7 +83,7 @@ export function diffLines(older: string, newer: string, opts: DiffOptions = {}):
   let skipped = 0;
   const flush = (): void => {
     if (skipped > 0) {
-      out.push({ kind: "ctx", text: tl("utils.textDiff.unchangedLines", "… {skipped} {linesWord} без изменений …", { skipped, linesWord: pluralLines(skipped) }) });
+      out.push({ kind: "ctx", text: tl("utils.textDiff.unchangedLinesCount", "… {skipped, plural, one {# строка} few {# строки} many {# строк} other {# строки}} без изменений …", { skipped }) });
       skipped = 0;
     }
   };
@@ -98,14 +98,6 @@ export function diffLines(older: string, newer: string, opts: DiffOptions = {}):
   }
   flush();
   return out;
-}
-
-function pluralLines(n: number): string {
-  const r10 = n % 10;
-  const r100 = n % 100;
-  if (r10 === 1 && r100 !== 11) return tl("utils.textDiff.lineOne", "строка");
-  if (r10 >= 2 && r10 <= 4 && (r100 < 12 || r100 > 14)) return tl("utils.textDiff.lineFew", "строки");
-  return tl("utils.textDiff.lineMany", "строк");
 }
 
 /** Сводка diff: сколько строк добавлено/удалено. */

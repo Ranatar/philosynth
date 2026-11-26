@@ -60,6 +60,7 @@ import { SearchFragmentView } from "./SearchFragment";
 import { VisibilityControl } from "./VisibilityControl";
 import { tl } from "@philosynth/shared/i18n/t";
 import { tData } from "@philosynth/shared/i18n/data";
+import { uiIntlLocale } from "@philosynth/shared/i18n/format";
 
 const STATUS_LABELS = (): Record<string, string> => ({
   draft: tl("catalog.synthesisCard.statusDraft", "черновик"),
@@ -74,17 +75,9 @@ export function synthesisStatusLabel(status: string): string {
   return STATUS_LABELS()[status] ?? status;
 }
 
-/** Множественное число «потомок» (8.4, п.4) */
+/** Множественное число «потомок» (8.4, п.4; L.1 — ICU-плюрал по языку каталога) */
 export function descendantsPhrase(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  const word =
-    mod10 === 1 && mod100 !== 11
-      ? tl("catalog.synthesisCard.descendantOne", "потомок")
-      : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)
-        ? tl("catalog.synthesisCard.descendantFew", "потомка")
-        : tl("catalog.synthesisCard.descendantMany", "потомков");
-  return `${n} ${word}`;
+  return tl("catalog.synthesisCard.descendantsCount", "{n, plural, one {# потомок} few {# потомка} many {# потомков} other {# потомка}}", { n });
 }
 
 /** Текст подтверждения удаления: ЧЕМ грозит (02 §2.4) + число потомков.
@@ -166,7 +159,7 @@ export function SynthesisCard({
     synthesis.philosophers.length > 0
       ? synthesis.philosophers.map((p) => tData(p)).join(", ")
       : tl("common.freeSynthesisLower", "свободный синтез");
-  const date = new Date(synthesis.createdAt).toLocaleDateString("ru-RU", {
+  const date = new Date(synthesis.createdAt).toLocaleDateString(uiIntlLocale(), {
     day: "2-digit",
     month: "long",
     year: "numeric",
