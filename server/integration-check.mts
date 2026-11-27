@@ -12064,6 +12064,17 @@ async function section4bv(): Promise<void> {
     if (bad.length) errs.push(`4bv: fr — обычный пробел у «ёлочек» вместо U+00A0: ${bad.slice(0, 4).join(", ")}${bad.length > 4 ? ` и ещё ${bad.length - 4}` : ""}`);
   }
 
+  // 4bv-ж (правка после L.2): харнесс с браузером берёт Chrome 131 из кэша puppeteer ПЕРВЫМ —
+  // CHROME_PATH и системный путь в песочнице ведут на Chrome 153 (09 §4)
+  for (const name of await fsm.readdir(pathm.join(rootDir, "tests"))) {
+    if (!/\.(mjs|ts)$/.test(name)) continue;
+    const src = await fsm.readFile(pathm.join(rootDir, "tests", name), "utf8");
+    if (!/executablePath|puppeteer\.launch/.test(src)) continue;
+    const i131 = src.indexOf("linux-131.0.6778.204");
+    const others = [src.indexOf("process.env.CHROME_PATH"), src.indexOf('"/opt/')].filter((i) => i >= 0);
+    if (i131 < 0 || others.some((i) => i < i131)) errs.push(`4bv: tests/${name} — путь браузера: Chrome 131 из кэша puppeteer должен стоять первым (CHROME_PATH и системный — запасные)`);
+  }
+
   // 4bv-е: NEXT-CONTEXT перезаписывается, а не дописывается (07 §10) — блоков закрытых бесед
   // и дополнений рядом со снимком «Состояние» нет (прежнее — в 08 Часть V)
   const next = await fsm.readFile(pathm.join(rootDir, "NEXT-CONTEXT.md"), "utf8");

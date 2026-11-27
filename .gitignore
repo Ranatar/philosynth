@@ -26,3 +26,7 @@ tests/out/
 *.log
 npm-debug.log*
 .DS_Store
+
+# Python (scripts/checks, scripts/patches)
+__pycache__/
+*.pyc

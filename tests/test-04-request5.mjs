@@ -7,8 +7,9 @@
  */
 import puppeteer from "puppeteer-core";
 
-const CHROME =
-  "/opt/google/chrome/chrome";
+// Chrome 131 из кэша puppeteer — ПЕРВЫМ (09 §4: иные версии дают расхождения); CHROME_PATH и
+// системный /opt/google/chrome/chrome — запасные: в песочнице оба ведут на Chrome 153 (правка после L.2)
+const CHROME = [`${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/opt/google/chrome/chrome"].find((p) => p && process.getBuiltinModule("node:fs").existsSync(p));
 
 let failures = 0;
 function check(name, cond, extra = "") {

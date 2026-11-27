@@ -29,7 +29,7 @@
  * недоступна»; тесту валидны обе ветки.
  *
  * Инфраструктура: реальный сервер (tsx index.ts, :3000), vite dev
- * (:5199), puppeteer-core + системный Chromium /opt/google/chrome/chrome.
+ * (:5199), puppeteer-core + Chrome 131 из кэша puppeteer (системный — запасной).
  * Требует: PG16+Redis подняты, миграции применены. Сиды опциональны.
  * Запуск: node tests/test-15b-requests2-5.mjs (из корня репо).
  */
@@ -39,7 +39,9 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import puppeteer from "puppeteer-core";
 
-const CHROME = "/opt/google/chrome/chrome";
+// Chrome 131 из кэша puppeteer — ПЕРВЫМ (09 §4: иные версии дают расхождения); CHROME_PATH и
+// системный /opt/google/chrome/chrome — запасные: в песочнице оба ведут на Chrome 153 (правка после L.2)
+const CHROME = [`${process.env.HOME}/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome`, process.env.CHROME_PATH, "/opt/google/chrome/chrome"].find((p) => p && process.getBuiltinModule("node:fs").existsSync(p));
 const SERVER_PORT = 3000;
 const VITE_PORT = 5199;
 const API = `http://127.0.0.1:${SERVER_PORT}/api/v1`;
