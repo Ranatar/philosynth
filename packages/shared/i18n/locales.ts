@@ -15,7 +15,7 @@
  * переводятся по месту показа в 11.4.
  */
 
-export const UI_LOCALES = ["ru", "en", "de", "fr", "es"] as const;
+export const UI_LOCALES = ["ru", "en", "de", "fr", "es", "it"] as const;
 export type UiLocale = (typeof UI_LOCALES)[number];
 
 /** Язык генерации по языку интерфейса (значения — из LANG_OPTIONS). */
@@ -25,6 +25,7 @@ export const UI_TO_GEN: Readonly<Record<UiLocale, string>> = {
   de: "German",
   fr: "French",
   es: "Spanish",
+  it: "Italian",
 };
 
 /** Язык генерации, когда соответствия языку интерфейса нет. */

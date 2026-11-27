@@ -47,6 +47,7 @@ export const UI_LOCALE_NAMES: Readonly<Record<UiLocale, string>> = {
   de: "Deutsch",
   fr: "Français",
   es: "Español",
+  it: "Italiano",
 };
 
 /** <html lang> и <html dir> по языку интерфейса (2026-11-26): направление —
